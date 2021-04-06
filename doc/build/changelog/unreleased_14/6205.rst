@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, mypy
-    :tickets: 6205
-
-    Fixed issue where the Mypy plugin would fail to interpret the
-    "collection_class" of a relationship if it were a callable and not a class.
-    Also improved type matching and error reporting for collection-oriented
-    relationships.
-

@@ -15,7 +15,110 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.6
-    :include_notes_from: unreleased_14
+    :released: April 6, 2021
+
+    .. change::
+        :tags: bug, sql, regression, oracle, mssql
+        :tickets: 6202
+
+        Fixed further regressions in the same area as that of :ticket:`6173` released in
+        1.4.5, where a "postcompile" parameter, again most typically those used for
+        LIMIT/OFFSET rendering in Oracle and SQL Server, would fail to be processed
+        correctly if the same parameter rendered in multiple places in the
+        statement.
+
+
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6203
+
+        Fixed regression where a deprecated form of :meth:`_orm.Query.join` were
+        used, passing a series of entities to join from without any ON clause in a
+        single :meth:`_orm.Query.join` call, would fail to function correctly.
+
+    .. change::
+        :tags: bug, mypy
+        :tickets: 6147
+
+        Applied a series of refactorings and fixes to accommodate for Mypy
+        "incremental" mode across multiple files, which previously was not taken
+        into account. In this mode the Mypy plugin has to accommodate Python
+        datatypes expressed in other files coming in with less information than
+        they have on a direct run.
+
+        Additionally, a new decorator :func:`_orm.declarative_mixin` is added,
+        which is necessary for the Mypy plugin to be able to definifitely identify
+        a Declarative mixin class that is otherwise not used inside a particular
+        Python file.
+
+        .. seealso::
+
+            :ref:`mypy_declarative_mixins`
+
+
+    .. change::
+        :tags: bug, mypy
+        :tickets: 6205
+
+        Fixed issue where the Mypy plugin would fail to interpret the
+        "collection_class" of a relationship if it were a callable and not a class.
+        Also improved type matching and error reporting for collection-oriented
+        relationships.
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 6204
+
+        Executing a :class:`_sql.Subquery` using :meth:`_engine.Connection.execute`
+        is deprecated and will emit a deprecation warning; this use case was an
+        oversight that should have been removed from 1.4. The operation will now
+        execute the underlying :class:`_sql.Select` object directly for backwards
+        compatibility. Similarly, the :class:`_sql.CTE` class is also not
+        appropriate for execution. In 1.3, attempting to execute a CTE would result
+        in an invalid "blank" SQL statement being executed; since this use case was
+        not working it now raises :class:`_exc.ObjectNotExecutableError`.
+        Previously, 1.4 was attempting to execute the CTE as a statement however it
+        was working only erratically.
+
+    .. change::
+        :tags: bug, regression, orm
+        :tickets: 6206
+
+        Fixed critical regression where the :meth:`_orm.Query.yield_per` method in
+        the ORM would set up the internal :class:`_engine.Result` to yield chunks
+        at a time, however made use of the new :meth:`_engine.Result.unique` method
+        which uniques across the entire result. This would lead to lost rows since
+        the ORM is using ``id(obj)`` as the uniquing function, which leads to
+        repeated identifiers for new objects as already-seen objects are garbage
+        collected. 1.3's behavior here was to "unique" across each chunk, which
+        does not actually produce "uniqued" results when results are yielded in
+        chunks. As the :meth:`_orm.Query.yield_per` method is already explicitly
+        disallowed when joined eager loading is in place, which is the primary
+        rationale for the "uniquing" feature, the "uniquing" feature is now turned
+        off entirely when :meth:`_orm.Query.yield_per` is used.
+
+        This regression only applies to the legacy :class:`_orm.Query` object; when
+        using :term:`2.0 style` execution, "uniquing" is not automatically applied.
+        To prevent the issue from arising from explicit use of
+        :meth:`_engine.Result.unique`, an error is now raised if rows are fetched
+        from a "uniqued" ORM-level :class:`_engine.Result` if any
+        :ref:`yield per <orm_queryguide_yield_per>` API is also in use, as the
+        purpose of ``yield_per`` is to allow for arbitrarily large numbers of rows,
+        which cannot be uniqued in memory without growing the number of entries to
+        fit the complete result size.
+
+
+    .. change::
+        :tags: usecase, asyncio, postgresql
+        :tickets: 6199
+
+        Added accessors ``.sqlstate`` and synonym ``.pgcode`` to the ``.orig``
+        attribute of the SQLAlchemy exception class raised by the asyncpg DBAPI
+        adapter, that is, the intermediary exception object that wraps on top of
+        that raised by the asyncpg library itself, but below the level of the
+        SQLAlchemy dialect.
 
 .. changelog::
     :version: 1.4.5
