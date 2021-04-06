@@ -422,7 +422,7 @@ Using @declared_attr and Declarative Mixins
 
 The :class:`_orm.declared_attr` class allows Declarative mapped attributes to
 be declared in class level functions, and is particularly useful when using
-`declarative mixins <orm_mixins_toplevel>`_. For these functions, the return
+:ref:`declarative mixins <orm_mixins_toplevel>`. For these functions, the return
 type of the function should be annotated using either the ``Mapped[]``
 construct or by indicating the exact kind of object returned by the function.
 Additionally, "mixin" classes that are not otherwise mapped (i.e. don't extend
