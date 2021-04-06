@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 6204
+
+    Executing a :class:`_sql.Subquery` using :meth:`_engine.Connection.execute`
+    is deprecated and will emit a deprecation warning; this use case was an
+    oversight that should have been removed from 1.4. The operation will now
+    execute the underlying :class:`_sql.Select` object directly for backwards
+    compatibility. Similarly, the :class:`_sql.CTE` class is also not
+    appropriate for execution. In 1.3, attempting to execute a CTE would result
+    in an invalid "blank" SQL statement being executed; since this use case was
+    not working it now raises :class:`_exc.ObjectNotExecutableError`.
+    Previously, 1.4 was attempting to execute the CTE as a statement however it
+    was working only erratically.

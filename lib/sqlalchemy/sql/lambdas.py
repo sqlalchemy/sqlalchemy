@@ -100,7 +100,7 @@ def lambda_stmt(
 
     return StatementLambdaElement(
         lmb,
-        roles.CoerceTextStatementRole,
+        roles.StatementRole,
         LambdaOptions(
             enable_tracking=enable_tracking,
             track_on=track_on,
@@ -155,9 +155,7 @@ class LambdaElement(elements.ClauseElement):
         self.tracker_key = (fn.__code__,)
         self.opts = opts
 
-        if apply_propagate_attrs is None and (
-            role is roles.CoerceTextStatementRole
-        ):
+        if apply_propagate_attrs is None and (role is roles.StatementRole):
             apply_propagate_attrs = self
 
         rec = self._retrieve_tracker_rec(fn, apply_propagate_attrs, opts)
@@ -491,10 +489,6 @@ class StatementLambdaElement(roles.AllowsLambdaRole, LambdaElement):
     @property
     def _effective_plugin_target(self):
         return self._rec.expected_expr._effective_plugin_target
-
-    @property
-    def _is_future(self):
-        return self._rec.expected_expr._is_future
 
     @property
     def _execution_options(self):

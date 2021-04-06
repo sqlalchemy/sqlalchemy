@@ -307,9 +307,9 @@ class ClauseElement(
         return d
 
     def _execute_on_connection(
-        self, connection, multiparams, params, execution_options
+        self, connection, multiparams, params, execution_options, _force=False
     ):
-        if self.supports_execution:
+        if _force or self.supports_execution:
             return connection._execute_clauseelement(
                 self, multiparams, params, execution_options
             )

@@ -155,26 +155,20 @@ class AnonymizedFromClauseRole(StrictFromClauseRole):
         raise NotImplementedError()
 
 
-class CoerceTextStatementRole(SQLRole):
-    _role_name = "Executable SQL or text() construct"
-
-
-class StatementRole(CoerceTextStatementRole):
-    _role_name = "Executable SQL or text() construct"
-
-    _is_future = False
-
-    _propagate_attrs = util.immutabledict()
-
-
-class ReturnsRowsRole(StatementRole):
+class ReturnsRowsRole(SQLRole):
     _role_name = (
         "Row returning expression such as a SELECT, a FROM clause, or an "
         "INSERT/UPDATE/DELETE with RETURNING"
     )
 
 
-class SelectStatementRole(ReturnsRowsRole):
+class StatementRole(SQLRole):
+    _role_name = "Executable SQL or text() construct"
+
+    _propagate_attrs = util.immutabledict()
+
+
+class SelectStatementRole(StatementRole, ReturnsRowsRole):
     _role_name = "SELECT construct or equivalent text() construct"
 
     def subquery(self):

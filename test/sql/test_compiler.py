@@ -4550,20 +4550,20 @@ class ExecutionOptionsTest(fixtures.TestBase):
         eq_(compiled.execution_options, {"autocommit": True})
 
     def test_embedded_element_true_to_none(self):
-        stmt = table1.insert().cte()
+        stmt = table1.insert()
         eq_(stmt._execution_options, {"autocommit": True})
-        s2 = select(table1).select_from(stmt)
+        s2 = select(table1).select_from(stmt.cte())
         eq_(s2._execution_options, {})
 
         compiled = s2.compile()
         eq_(compiled.execution_options, {"autocommit": True})
 
     def test_embedded_element_true_to_false(self):
-        stmt = table1.insert().cte()
+        stmt = table1.insert()
         eq_(stmt._execution_options, {"autocommit": True})
         s2 = (
             select(table1)
-            .select_from(stmt)
+            .select_from(stmt.cte())
             .execution_options(autocommit=False)
         )
         eq_(s2._execution_options, {"autocommit": False})

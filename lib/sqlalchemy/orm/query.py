@@ -3234,8 +3234,6 @@ class FromStatement(GroupedElement, SelectBase, Executable):
 
     _compile_state_factory = ORMFromStatementCompileState.create_for_statement
 
-    _is_future = True
-
     _for_update_arg = None
 
     _traverse_internals = [

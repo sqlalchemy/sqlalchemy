@@ -824,11 +824,7 @@ class ReturnsRowsImpl(RoleImpl):
     __slots__ = ()
 
 
-class StatementImpl(_NoTextCoercion, RoleImpl):
-    __slots__ = ()
-
-
-class CoerceTextStatementImpl(_CoerceLiterals, RoleImpl):
+class StatementImpl(_CoerceLiterals, RoleImpl):
     __slots__ = ()
 
     def _implicit_coercions(
@@ -837,7 +833,7 @@ class CoerceTextStatementImpl(_CoerceLiterals, RoleImpl):
         if resolved._is_lambda_element:
             return resolved
         else:
-            return super(CoerceTextStatementImpl, self)._implicit_coercions(
+            return super(StatementImpl, self)._implicit_coercions(
                 original_element, resolved, argname=argname, **kw
             )
 
