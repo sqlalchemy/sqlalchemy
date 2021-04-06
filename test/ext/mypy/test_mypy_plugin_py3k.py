@@ -11,8 +11,17 @@ from sqlalchemy.testing import fixtures
 class MypyPluginTest(fixtures.TestBase):
     __requires__ = ("sqlalchemy2_stubs",)
 
+    @testing.fixture(scope="function")
+    def per_func_cachedir(self):
+        for item in self._cachedir():
+            yield item
+
     @testing.fixture(scope="class")
     def cachedir(self):
+        for item in self._cachedir():
+            yield item
+
+    def _cachedir(self):
         with tempfile.TemporaryDirectory() as cachedir:
             with open(
                 os.path.join(cachedir, "sqla_mypy_config.cfg"), "w"
@@ -77,8 +86,10 @@ class MypyPluginTest(fixtures.TestBase):
         *[(dirname,) for dirname in _incremental_dirs()], argnames="dirname"
     )
     @testing.requires.patch_library
-    def test_incremental(self, mypy_runner, cachedir, dirname):
+    def test_incremental(self, mypy_runner, per_func_cachedir, dirname):
         import patch
+
+        cachedir = per_func_cachedir
 
         path = os.path.join(os.path.dirname(__file__), "incremental", dirname)
         dest = os.path.join(cachedir, "mymodel")
@@ -101,7 +112,9 @@ class MypyPluginTest(fixtures.TestBase):
             if patchfile is not None:
                 print("Applying patchfile %s" % patchfile)
                 patch_obj = patch.fromfile(os.path.join(path, patchfile))
-                patch_obj.apply(1, dest)
+                assert patch_obj.apply(1, dest), (
+                    "pathfile %s failed" % patchfile
+                )
             print("running mypy against %s/mymodel" % cachedir)
             result = mypy_runner(
                 "mymodel",

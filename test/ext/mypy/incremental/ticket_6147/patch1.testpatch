@@ -1,0 +1,19 @@
+--- a/one.py	2021-04-03 15:32:22.214287290 -0400
++++ b/one.py	2021-04-03 15:34:56.397398510 -0400
+@@ -1,15 +1,13 @@
+ from sqlalchemy import Column
+ from sqlalchemy import Integer
+-from sqlalchemy import String
+ from .base import Base
+
+
+ class One(Base):
+     __tablename__ = "one"
+     id = Column(Integer, primary_key=True)
+-    name = Column(String(50))
+
+
+-o1 = One(id=5, name="name")
++o1 = One(id=5)
+
+ One.id.in_([1, 2])

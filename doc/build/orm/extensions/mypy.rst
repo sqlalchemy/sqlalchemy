@@ -415,23 +415,32 @@ applied explicitly::
 
         user: Mapped[User] = relationship(User, back_populates="addresses")
 
-Using @declared_attr
-^^^^^^^^^^^^^^^^^^^^
+.. _mypy_declarative_mixins:
 
-The :class:`_orm.declared_attr` class allows Declarative mapped attributes
-to be declared in class level functions, and is particularly useful when
-using `declarative mixins <orm_mixins_toplevel>`_.  For these functions,
-the return type of the function should be annotated using either the
-``Mapped[]`` construct or by indicating the exact kind of object returned
-by the function::
+Using @declared_attr and Declarative Mixins
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    from sqlalchemy.orm.decl_api import declared_attr
+The :class:`_orm.declared_attr` class allows Declarative mapped attributes to
+be declared in class level functions, and is particularly useful when using
+`declarative mixins <orm_mixins_toplevel>`_. For these functions, the return
+type of the function should be annotated using either the ``Mapped[]``
+construct or by indicating the exact kind of object returned by the function.
+Additionally, "mixin" classes that are not otherwise mapped (i.e. don't extend
+from a :func:`_orm.declarative_base` class nor are they mapped with a method
+such as :meth:`_orm.registry.mapped`) should be decorated with the
+:func:`_orm.declarative_mixin` decorator, which provides a hint to the Mypy
+plugin that a particular class intends to serve as a declarative mixin::
 
+    from sqlalchemy.orm import declared_attr
+    from sqlalchemy.orm import declarative_mixin
+
+    @declarative_mixin
     class HasUpdatedAt:
         @declared_attr
         def updated_at(cls) -> Column[DateTime]:  # uses Column
             return Column(DateTime)
 
+    @declarative_mixin
     class HasCompany:
 
         @declared_attr
