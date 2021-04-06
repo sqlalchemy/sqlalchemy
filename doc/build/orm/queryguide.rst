@@ -869,11 +869,21 @@ When ``yield_per`` is used, the
 set for the Core execution, so that a streaming / server side cursor will be
 used if the backend supports it [1]_
 
-
 The ``yield_per`` execution option **is not compatible with subqueryload eager
 loading or joinedload eager loading when using collections**.  It is
 potentially compatible with selectinload eager loading, **provided the database
 driver supports multiple, independent cursors** [2]_ .
+
+Additionally, the ``yield_per`` execution option is not compatible
+with the :meth:`_engine.Result.unique` method; as this method relies upon
+storing a complete set of identities for all rows, it would necessarily
+defeat the purpose of using ``yield_per`` which is to handle an arbitrarily
+large number of rows.
+
+.. versionchanged:: 1.4.6  An exception is raised when ORM rows are fetched
+   from a :class:`_engine.Result` object that makes use of the
+   :meth:`_engine.Result.unique` filter, at the same time as the ``yield_per``
+   execution option is used.
 
 The ``yield_per`` execution option is equvialent to the
 :meth:`_orm.Query.yield_per` method in :term:`1.x style` ORM queries.

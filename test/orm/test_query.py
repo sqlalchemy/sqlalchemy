@@ -4878,7 +4878,7 @@ class YieldTest(_fixtures.FixtureTest):
         q = sess.query(User).yield_per(15)
         q = q.execution_options(foo="bar")
 
-        q.all()
+        eq_(len(q.all()), 4)
 
     def test_yield_per_and_execution_options(self):
         self._eagerload_mappings()
@@ -4904,7 +4904,8 @@ class YieldTest(_fixtures.FixtureTest):
             )
 
         stmt = select(User).execution_options(yield_per=15)
-        sess.execute(stmt)
+        result = sess.execute(stmt)
+        eq_(len(result.all()), 4)
 
     def test_no_joinedload_opt(self):
         self._eagerload_mappings()
@@ -4950,7 +4951,7 @@ class YieldTest(_fixtures.FixtureTest):
         Address = self.classes.Address
         sess = fixture_session()
         q = sess.query(Address).yield_per(1)
-        q.all()
+        eq_(len(q.all()), 5)
 
     def test_eagerload_opt_disable(self):
         self._eagerload_mappings()
@@ -4963,7 +4964,7 @@ class YieldTest(_fixtures.FixtureTest):
             .enable_eagerloads(False)
             .yield_per(1)
         )
-        q.all()
+        eq_(len(q.all()), 4)
 
         q = (
             sess.query(User)
@@ -4971,7 +4972,7 @@ class YieldTest(_fixtures.FixtureTest):
             .enable_eagerloads(False)
             .yield_per(1)
         )
-        q.all()
+        eq_(len(q.all()), 4)
 
     def test_m2o_joinedload_not_others(self):
         self._eagerload_mappings(addresses_lazy="joined")
@@ -4989,6 +4990,97 @@ class YieldTest(_fixtures.FixtureTest):
             assert result[0].user
 
         self.assert_sql_count(testing.db, go, 1)
+
+    def test_no_unique_w_yield_per(self):
+        self._eagerload_mappings()
+
+        User = self.classes.User
+
+        sess = fixture_session()
+        stmt = select(User).execution_options(yield_per=10)
+
+        result = sess.execute(stmt).unique()
+
+        with expect_raises_message(
+            sa_exc.InvalidRequestError,
+            r"Can't use the ORM yield_per feature in "
+            r"conjunction with unique\(\)",
+        ):
+            next(result)
+
+
+class YieldIterationTest(_fixtures.FixtureTest):
+    run_inserts = "once"
+    run_setup_mappers = "once"
+    run_deletes = None
+
+    @classmethod
+    def setup_mappers(cls):
+        User = cls.classes.User
+        users = cls.tables.users
+        mapper(User, users)
+
+    @classmethod
+    def fixtures(cls):
+        rows = [(i, "user %d" % (i)) for i in range(1, 21)]
+        return dict(users=(("id", "name"),) + tuple(rows))
+
+    @testing.combinations(
+        (0,),
+        (1,),
+        (5,),
+        (20,),
+        argnames="num_rows",
+    )
+    @testing.combinations(
+        ("all",),
+        ("allquery",),
+        ("fetchone",),
+        ("iter",),
+        ("iterquery",),
+        ("iternosavequery",),
+        argnames="method",
+    )
+    @testing.combinations((1,), (10,), (30,), argnames="yield_per")
+    def test_iter_combinations(self, num_rows, method, yield_per):
+        User = self.classes.User
+
+        s = fixture_session()
+
+        if method.endswith("query"):
+            q = s.query(User).limit(num_rows)
+
+            if yield_per is not None:
+                q = q.yield_per(yield_per)
+
+        else:
+            q = select(User).limit(num_rows)
+
+            if yield_per is not None:
+                q = q.execution_options(yield_per=yield_per)
+
+            result = s.execute(q)
+
+        if method == "allquery":
+            rows = q.all()
+        elif method == "iterquery":
+            rows = [row for row in q]
+        elif method == "iternosavequery":
+            rows = [None for row in q]
+        elif method == "all":
+            rows = result.all()
+        elif method == "fetchone":
+            rows = []
+            while True:
+                row = result.fetchone()
+                if row is None:
+                    break
+                else:
+                    rows.append(row)
+        elif method == "iter":
+            rows = [r for r in result]
+
+        eq_(len(rows), num_rows)
 
 
 class HintsTest(QueryTest, AssertsCompiledSQL):
