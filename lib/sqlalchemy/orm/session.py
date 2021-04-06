@@ -1584,7 +1584,7 @@ class Session(_SessionClassMethods):
 
 
         """
-        statement = coercions.expect(roles.CoerceTextStatementRole, statement)
+        statement = coercions.expect(roles.StatementRole, statement)
 
         if kw:
             util.warn_deprecated_20(

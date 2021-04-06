@@ -333,14 +333,18 @@ class ServerSideCursorsTest(
 
     def test_aliases_and_ss(self):
         engine = self._fixture(False)
-        s1 = select(1).execution_options(stream_results=True).alias()
+        s1 = (
+            select(sql.literal_column("1").label("x"))
+            .execution_options(stream_results=True)
+            .subquery()
+        )
+
+        # options don't propagate out when subquery is used as a FROM clause
         with engine.begin() as conn:
-            result = conn.execute(s1)
-            assert self._is_server_side(result.cursor)
+            result = conn.execute(s1.select())
+            assert not self._is_server_side(result.cursor)
             result.close()
 
-        # s1's options shouldn't affect s2 when s2 is used as a
-        # from_obj.
         s2 = select(1).select_from(s1)
         with engine.begin() as conn:
             result = conn.execute(s2)

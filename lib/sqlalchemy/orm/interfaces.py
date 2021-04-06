@@ -65,7 +65,7 @@ __all__ = (
 )
 
 
-class ORMStatementRole(roles.CoerceTextStatementRole):
+class ORMStatementRole(roles.StatementRole):
     _role_name = (
         "Executable SQL or text() construct, including ORM " "aware objects"
     )

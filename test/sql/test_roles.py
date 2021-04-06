@@ -209,24 +209,14 @@ class RoleTest(fixtures.TestBase):
         ):
             expect(roles.ExpressionElementRole, t.select().alias())
 
-    def test_statement_no_text_coercion(self):
-        assert_raises_message(
-            exc.ArgumentError,
-            r"Textual SQL expression 'select \* from table' should be "
-            r"explicitly declared",
-            expect,
-            roles.StatementRole,
-            "select * from table",
-        )
-
     def test_statement_text_coercion(self):
         with testing.expect_deprecated_20(
             "Using plain strings to indicate SQL statements"
         ):
             is_true(
-                expect(
-                    roles.CoerceTextStatementRole, "select * from table"
-                ).compare(text("select * from table"))
+                expect(roles.StatementRole, "select * from table").compare(
+                    text("select * from table")
+                )
             )
 
     def test_select_statement_no_text_coercion(self):
@@ -282,13 +272,11 @@ class RoleTest(fixtures.TestBase):
         )
 
     def test_statement_coercion_select(self):
-        is_true(
-            expect(roles.CoerceTextStatementRole, select(t)).compare(select(t))
-        )
+        is_true(expect(roles.StatementRole, select(t)).compare(select(t)))
 
     def test_statement_coercion_ddl(self):
         d1 = DDL("hi")
-        is_(expect(roles.CoerceTextStatementRole, d1), d1)
+        is_(expect(roles.StatementRole, d1), d1)
 
     def test_strict_from_clause_role(self):
         stmt = select(t).subquery()
@@ -325,7 +313,7 @@ class RoleTest(fixtures.TestBase):
 
     def test_statement_coercion_sequence(self):
         s1 = Sequence("hi")
-        is_(expect(roles.CoerceTextStatementRole, s1), s1)
+        is_(expect(roles.StatementRole, s1), s1)
 
     def test_columns_clause_role(self):
         is_(expect(roles.ColumnsClauseRole, t.c.q), t.c.q)

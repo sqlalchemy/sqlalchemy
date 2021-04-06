@@ -1150,7 +1150,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         products = table("products", column("id"), column("price"))
 
         cte = products.select().cte("pd")
-        assert "autocommit" not in cte._execution_options
+        assert "autocommit" not in cte.select()._execution_options
 
         stmt = products.update().where(products.c.price == cte.c.price)
         eq_(stmt.compile().execution_options["autocommit"], True)

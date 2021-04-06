@@ -1575,9 +1575,6 @@ class AliasedReturnsRows(NoInit, FromClause):
         self.element = coercions.expect(
             roles.ReturnsRowsRole, selectable, apply_propagate_attrs=self
         )
-        self.supports_execution = selectable.supports_execution
-        if self.supports_execution:
-            self._execution_options = selectable._execution_options
         self.element = selectable
         self._orig_name = name
         if name is None:
@@ -2337,6 +2334,23 @@ class Subquery(AliasedReturnsRows):
     )
     def as_scalar(self):
         return self.element.set_label_style(LABEL_STYLE_NONE).scalar_subquery()
+
+    def _execute_on_connection(
+        self,
+        connection,
+        multiparams,
+        params,
+        execution_options,
+    ):
+        util.warn_deprecated(
+            "Executing a subquery object is deprecated and will raise "
+            "ObjectNotExecutableError in an upcoming release.  Please "
+            "execute the underlying select() statement directly.",
+            "1.4",
+        )
+        return self.element._execute_on_connection(
+            connection, multiparams, params, execution_options, _force=True
+        )
 
 
 class FromGrouping(GroupedElement, FromClause):
@@ -4485,7 +4499,6 @@ class Select(
             ("_distinct", InternalTraversal.dp_boolean),
             ("_distinct_on", InternalTraversal.dp_clauseelement_tuple),
             ("_label_style", InternalTraversal.dp_plain_obj),
-            ("_is_future", InternalTraversal.dp_boolean),
         ]
         + HasPrefixes._has_prefixes_traverse_internals
         + HasSuffixes._has_suffixes_traverse_internals
