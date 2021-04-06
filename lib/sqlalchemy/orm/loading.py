@@ -87,11 +87,20 @@ def instances(cursor, context):
         with util.safe_reraise():
             cursor.close()
 
+    def _no_unique(entry):
+        raise sa_exc.InvalidRequestError(
+            "Can't use the ORM yield_per feature in conjunction with unique()"
+        )
+
     row_metadata = SimpleResultMetaData(
         labels,
         extra,
         _unique_filters=[
-            id if ent.use_id_for_hash else None
+            _no_unique
+            if context.yield_per
+            else id
+            if ent.use_id_for_hash
+            else None
             for ent in context.compile_state._entities
         ],
     )

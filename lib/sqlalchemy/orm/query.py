@@ -2827,7 +2827,10 @@ class Query(
         if result._attributes.get("is_single_entity", False):
             result = result.scalars()
 
-        if result._attributes.get("filtered", False):
+        if (
+            result._attributes.get("filtered", False)
+            and not self.load_options._yield_per
+        ):
             result = result.unique()
 
         return result
