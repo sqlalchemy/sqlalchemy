@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 6203
+
+    Fixed regression where a deprecated form of :meth:`_orm.Query.join` were
+    used, passing a series of entities to join from without any ON clause in a
+    single :meth:`_orm.Query.join` call, would fail to function correctly.
