@@ -88,6 +88,7 @@ def _infer_type_from_relationship(
     collection_cls_arg = util._get_callexpr_kwarg(
         stmt.rvalue, "collection_class"
     )
+    type_is_a_collection = False
 
     # this can be used to determine Optional for a many-to-one
     # in the same way nullable=False could be used, if we start supporting
@@ -99,6 +100,7 @@ def _infer_type_from_relationship(
         and uselist_arg.fullname == "builtins.True"
         and collection_cls_arg is None
     ):
+        type_is_a_collection = True
         if python_type_for_type is not None:
             python_type_for_type = Instance(
                 api.lookup_fully_qualified("builtins.list").node,
@@ -107,8 +109,16 @@ def _infer_type_from_relationship(
     elif (
         uselist_arg is None or uselist_arg.fullname == "builtins.True"
     ) and collection_cls_arg is not None:
-        if isinstance(collection_cls_arg.node, TypeInfo):
+        type_is_a_collection = True
+        if isinstance(collection_cls_arg, CallExpr):
+            collection_cls_arg = collection_cls_arg.callee
+
+        if isinstance(collection_cls_arg, NameExpr) and isinstance(
+            collection_cls_arg.node, TypeInfo
+        ):
             if python_type_for_type is not None:
+                # this can still be overridden by the left hand side
+                # within _infer_Type_from_left_and_inferred_right
                 python_type_for_type = Instance(
                     collection_cls_arg.node, [python_type_for_type]
                 )
@@ -150,7 +160,11 @@ def _infer_type_from_relationship(
         )
     elif left_hand_explicit_type is not None:
         return _infer_type_from_left_and_inferred_right(
-            api, node, left_hand_explicit_type, python_type_for_type
+            api,
+            node,
+            left_hand_explicit_type,
+            python_type_for_type,
+            type_is_a_collection=type_is_a_collection,
         )
     else:
         return python_type_for_type
@@ -317,6 +331,7 @@ def _infer_type_from_left_and_inferred_right(
     node: Var,
     left_hand_explicit_type: Optional[types.Type],
     python_type_for_type: Union[Instance, UnionType],
+    type_is_a_collection: bool = False,
 ) -> Optional[Union[Instance, UnionType]]:
     """Validate type when a left hand annotation is present and we also
     could infer the right hand side::
@@ -324,10 +339,18 @@ def _infer_type_from_left_and_inferred_right(
         attrname: SomeType = Column(SomeDBType)
 
     """
+
+    orig_left_hand_type = left_hand_explicit_type
+    orig_python_type_for_type = python_type_for_type
+
+    if type_is_a_collection and left_hand_explicit_type.args:
+        left_hand_explicit_type = left_hand_explicit_type.args[0]
+        python_type_for_type = python_type_for_type.args[0]
+
     if not is_subtype(left_hand_explicit_type, python_type_for_type):
         descriptor = api.lookup("__sa_Mapped", node)
 
-        effective_type = Instance(descriptor.node, [python_type_for_type])
+        effective_type = Instance(descriptor.node, [orig_python_type_for_type])
 
         msg = (
             "Left hand assignment '{}: {}' not compatible "
@@ -337,13 +360,13 @@ def _infer_type_from_left_and_inferred_right(
             api,
             msg.format(
                 node.name,
-                format_type(left_hand_explicit_type),
+                format_type(orig_left_hand_type),
                 format_type(effective_type),
             ),
             node,
         )
 
-    return left_hand_explicit_type
+    return orig_left_hand_type
 
 
 def _infer_type_from_left_hand_type_only(
