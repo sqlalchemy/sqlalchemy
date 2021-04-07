@@ -263,6 +263,34 @@ is supported, for more complex SET expressions it will usually be necessary
 to use either the "fetch" or False synchronization strategy as illustrated
 above.
 
+.. note:: For ORM bulk updates to work with hybrids, the function name
+   of the hybrid must match that of how it is accessed.    Something
+   like this wouldn't work::
+
+        class Interval(object):
+            # ...
+
+            def _get(self):
+                return self.end - self.start
+
+            def _set(self, value):
+                self.end = self.start + value
+
+            def _update_expr(cls, value):
+                return [
+                    (cls.end, cls.start + value)
+                ]
+
+            length = hybrid_property(
+                fget=_get, fset=_set, update_expr=_update_expr
+            )
+
+    The Python descriptor protocol does not provide any reliable way for
+    a descriptor to know what attribute name it was accessed as, and
+    the UPDATE scheme currently relies upon being able to access the
+    attribute from an instance by name in order to perform the instance
+    synchronization step.
+
 .. versionadded:: 1.2 added support for bulk updates to hybrid properties.
 
 Working with Relationships
@@ -1098,9 +1126,20 @@ class hybrid_property(interfaces.InspectionAttrInfo):
         proxy_attr = attributes.create_proxied_attribute(self)
 
         def expr_comparator(owner):
+            # because this is the descriptor protocol, we don't really know
+            # what our attribute name is.  so search for it through the
+            # MRO.
+            for lookup in owner.__mro__:
+                if self.__name__ in lookup.__dict__:
+                    if lookup.__dict__[self.__name__] is self:
+                        name = self.__name__
+                        break
+            else:
+                name = attributes.NO_KEY
+
             return proxy_attr(
                 owner,
-                self.__name__,
+                name,
                 self,
                 comparator(owner),
                 doc=comparator.__doc__ or self.__doc__,

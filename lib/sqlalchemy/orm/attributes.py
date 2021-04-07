@@ -54,6 +54,13 @@ from ..sql import traversals
 from ..sql import visitors
 
 
+class NoKey(str):
+    pass
+
+
+NO_KEY = NoKey("no name")
+
+
 @inspection._self_inspects
 class QueryableAttribute(
     interfaces._MappedAttribute,
@@ -214,10 +221,15 @@ class QueryableAttribute(
         subclass representing a column expression.
 
         """
+        if self.key is NO_KEY:
+            annotations = {"entity_namespace": self._entity_namespace}
+        else:
+            annotations = {
+                "proxy_key": self.key,
+                "entity_namespace": self._entity_namespace,
+            }
 
-        return self.comparator.__clause_element__()._annotate(
-            {"proxy_key": self.key, "entity_namespace": self._entity_namespace}
-        )
+        return self.comparator.__clause_element__()._annotate(annotations)
 
     @property
     def _entity_namespace(self):
