@@ -4415,6 +4415,17 @@ class StringifySpecialTest(fixtures.TestBase):
         stmt = Column(Integer) == 5
         eq_ignore_whitespace(str(stmt), '"<name unknown>" = :param_1')
 
+    def test_empty_insert(self):
+        stmt = table1.insert().values()
+        eq_ignore_whitespace(str(stmt), "INSERT INTO mytable () VALUES ()")
+
+    def test_multirow_insert(self):
+        stmt = table1.insert().values([{"myid": 1}, {"myid": 2}])
+        eq_ignore_whitespace(
+            str(stmt),
+            "INSERT INTO mytable (myid) VALUES (:myid_m0), (:myid_m1)",
+        )
+
     def test_cte(self):
         # stringify of these was supported anyway by defaultdialect.
         stmt = select(table1.c.myid).cte()

@@ -790,6 +790,7 @@ class StrCompileDialect(DefaultDialect):
 
     supports_native_boolean = True
 
+    supports_multivalues_insert = True
     supports_simple_order_by_label = True
 
     colspecs = {
