@@ -16,6 +16,7 @@ from . import attributes
 from . import exc as orm_exc
 from . import interfaces
 from . import loading
+from . import path_registry
 from . import properties
 from . import query
 from . import relationships
@@ -1250,9 +1251,15 @@ class SubqueryLoader(PostLoader):
             # of the current state. this is for the specific case of the entity
             # is an AliasedClass against a subquery that's not otherwise going
             # to adapt
+
             new_subq_path = current_compile_state._entities[
                 0
             ].entity_zero._path_registry[leftmost_prop]
+            additional = len(subq_path) - len(new_subq_path)
+            if additional:
+                new_subq_path += path_registry.PathRegistry.coerce(
+                    subq_path[-additional:]
+                )
         else:
             new_subq_path = given_subq_path
 
