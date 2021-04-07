@@ -4854,6 +4854,76 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
             default_schema_name="main",
         )
 
+    def test_schema_translate_map_special_chars(self):
+        m = MetaData()
+        t1 = Table("t1", m, Column("q", Integer))
+        t2 = Table("t2", m, Column("q", Integer), schema="foo % ^ #")
+        t3 = Table("t3", m, Column("q", Integer), schema="bar {}")
+
+        schema_translate_map = {None: "z", "bar {}": None, "foo % ^ #": "bat"}
+
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE [SCHEMA__none].t1 (q INTEGER)",
+            schema_translate_map=schema_translate_map,
+        )
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE z.t1 (q INTEGER)",
+            schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
+        )
+
+        self.assert_compile(
+            schema.CreateTable(t2),
+            "CREATE TABLE [SCHEMA_foo % ^ #].t2 (q INTEGER)",
+            schema_translate_map=schema_translate_map,
+        )
+        self.assert_compile(
+            schema.CreateTable(t2),
+            "CREATE TABLE bat.t2 (q INTEGER)",
+            schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
+        )
+
+        self.assert_compile(
+            schema.CreateTable(t3),
+            "CREATE TABLE [SCHEMA_bar {}].t3 (q INTEGER)",
+            schema_translate_map=schema_translate_map,
+        )
+        self.assert_compile(
+            schema.CreateTable(t3),
+            "CREATE TABLE main.t3 (q INTEGER)",
+            schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
+            default_schema_name="main",
+        )
+
+    def test_schema_translate_map_no_square_brackets(self):
+        m = MetaData()
+        t2 = Table("t2", m, Column("q", Integer), schema="bar [")
+        t3 = Table("t3", m, Column("q", Integer), schema="foo ]")
+
+        schema_translate_map = {None: "z", "bar [": None, "foo ]": "bat"}
+
+        assert_raises_message(
+            exc.CompileError,
+            r"Square bracket characters .* not supported "
+            r"in schema translate name 'bar \['",
+            schema.CreateTable(t2).compile,
+            schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
+        )
+
+        assert_raises_message(
+            exc.CompileError,
+            r"Square bracket characters .* not supported "
+            r"in schema translate name 'foo \]'",
+            schema.CreateTable(t3).compile,
+            schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
+        )
+
     def test_schema_translate_map_sequence(self):
         s1 = schema.Sequence("s1")
         s2 = schema.Sequence("s2", schema="foo")
