@@ -560,7 +560,7 @@ class RowLabelingTest(QueryTest):
 
                 row = s.execute(stmt).first()
 
-            eq_(row.keys(), expected)
+            eq_(row._mapping.keys(), expected)
 
             if selected_columns is None:
                 selected_columns = expected
@@ -638,7 +638,7 @@ class RowLabelingTest(QueryTest):
         q = s.query(User.id, User.name)
         row = q.first()
 
-        eq_(row.keys(), ("id", "name"))
+        eq_(row._mapping.keys(), ("id", "name"))
 
         eq_(
             [entity["name"] for entity in q.column_descriptions],
@@ -762,7 +762,7 @@ class RowLabelingTest(QueryTest):
 
         s = fixture_session()
         row = s.query(u1, u2).from_statement(stmt).first()
-        eq_(row.keys(), expected)
+        eq_(row._mapping.keys(), expected)
 
     def test_explicit_ambiguous_orm_cols_legacy(self):
         User = self.classes.User
@@ -772,7 +772,7 @@ class RowLabelingTest(QueryTest):
 
         s = fixture_session()
         row = s.query(u1, u2).join(u2, u1.c.id == u2.c.id).first()
-        eq_(row.keys(), ["id", "name", "id", "name"])
+        eq_(row._mapping.keys(), ["id", "name", "id", "name"])
 
     @testing.fixture
     def uname_fixture(self):
