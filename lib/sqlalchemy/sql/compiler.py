@@ -4661,6 +4661,11 @@ class IdentifierPreparer(object):
         def symbol_getter(obj):
             name = obj.schema
             if name in schema_translate_map and obj._use_schema_map:
+                if name is not None and ("[" in name or "]" in name):
+                    raise exc.CompileError(
+                        "Square bracket characters ([]) not supported "
+                        "in schema translate name '%s'" % name
+                    )
                 return quoted_name(
                     "[SCHEMA_%s]" % (name or "_none"), quote=False
                 )
@@ -4688,7 +4693,7 @@ class IdentifierPreparer(object):
                     )
             return self.quote(effective_schema)
 
-        return re.sub(r"(\[SCHEMA_([\w\d_]+)\])", replace, statement)
+        return re.sub(r"(\[SCHEMA_([^\]]+)\])", replace, statement)
 
     def _escape_identifier(self, value):
         """Escape an identifier.
