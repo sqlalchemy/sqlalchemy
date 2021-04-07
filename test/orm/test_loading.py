@@ -127,6 +127,15 @@ class MergeResultTest(_fixtures.FixtureTest):
         it = loading.merge_result(q, collection)
         eq_([x.id for x in it], [1, 2, 7, 8])
 
+    def test_single_entity_frozen(self):
+        s = fixture_session()
+        User = self.classes.User
+
+        stmt = select(User).where(User.id.in_([7, 8, 9])).order_by(User.id)
+        result = s.execute(stmt)
+        it = loading.merge_frozen_result(s, stmt, result.freeze())
+        eq_([x.id for x in it().scalars()], [7, 8, 9])
+
     def test_single_column(self):
         User = self.classes.User
 
@@ -137,6 +146,16 @@ class MergeResultTest(_fixtures.FixtureTest):
         it = loading.merge_result(q, collection)
         eq_(list(it), [(1,), (2,), (7,), (8,)])
 
+    def test_single_column_frozen(self):
+        User = self.classes.User
+
+        s = fixture_session()
+
+        stmt = select(User.id).where(User.id.in_([7, 8, 9])).order_by(User.id)
+        result = s.execute(stmt)
+        it = loading.merge_frozen_result(s, stmt, result.freeze())
+        eq_([x.id for x in it()], [7, 8, 9])
+
     def test_entity_col_mix_plain_tuple(self):
         s, (u1, u2, u3, u4) = self._fixture()
         User = self.classes.User
@@ -146,6 +165,22 @@ class MergeResultTest(_fixtures.FixtureTest):
         it = loading.merge_result(q, collection)
         it = list(it)
         eq_([(x.id, y) for x, y in it], [(1, 1), (2, 2), (7, 7), (8, 8)])
+        eq_(list(it[0]._mapping.keys()), ["User", "id"])
+
+    def test_entity_col_mix_plain_tuple_frozen(self):
+        s = fixture_session()
+        User = self.classes.User
+
+        stmt = (
+            select(User, User.id)
+            .where(User.id.in_([7, 8, 9]))
+            .order_by(User.id)
+        )
+        result = s.execute(stmt)
+
+        it = loading.merge_frozen_result(s, stmt, result.freeze())
+        it = list(it())
+        eq_([(x.id, y) for x, y in it], [(7, 7), (8, 8), (9, 9)])
         eq_(list(it[0]._mapping.keys()), ["User", "id"])
 
     def test_entity_col_mix_keyed_tuple(self):
