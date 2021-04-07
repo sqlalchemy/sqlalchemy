@@ -33,7 +33,7 @@ syntactical and behavioral differences that SQLAlchemy accommodates automaticall
 To connect to a MariaDB database, no changes to the database URL are required::
 
 
-    engine = create_engine("mysql+pymsql://user:pass@some_mariadb/dbname?charset=utf8mb4")
+    engine = create_engine("mysql+pymysql://user:pass@some_mariadb/dbname?charset=utf8mb4")
 
 Upon first connect, the SQLAlchemy dialect employs a
 server version detection scheme that determines if the
@@ -51,7 +51,7 @@ useful for the case where an application makes use of MariaDB-specific features
 and is not compatible with a MySQL database.    To use this mode of operation,
 replace the "mysql" token in the above URL with "mariadb"::
 
-    engine = create_engine("mariadb+pymsql://user:pass@some_mariadb/dbname?charset=utf8mb4")
+    engine = create_engine("mariadb+pymysql://user:pass@some_mariadb/dbname?charset=utf8mb4")
 
 The above engine, upon first connect, will raise an error if the server version
 detection detects that the backing database is not MariaDB.
