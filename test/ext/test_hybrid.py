@@ -5,6 +5,7 @@ from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import Numeric
+from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy.ext import hybrid
 from sqlalchemy.ext.declarative import declarative_base
@@ -96,6 +97,64 @@ class PropertyComparatorTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_docstring(self):
         A = self._fixture()
         eq_(A.value.__doc__, "This is a docstring")
+
+    def test_no_name_one(self):
+        """test :ticket:`6215`"""
+
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+
+            @hybrid.hybrid_property
+            def same_name(self):
+                return self.id
+
+            def name1(self):
+                return self.id
+
+            different_name = hybrid.hybrid_property(name1)
+
+            no_name = hybrid.hybrid_property(lambda self: self.name)
+
+        stmt = select(A.same_name, A.different_name, A.no_name)
+        compiled = stmt.compile()
+
+        eq_(
+            [ent._label_name for ent in compiled.compile_state._entities],
+            ["same_name", "id", "name"],
+        )
+
+    def test_no_name_two(self):
+        """test :ticket:`6215`"""
+        Base = declarative_base()
+
+        class SomeMixin(object):
+            @hybrid.hybrid_property
+            def same_name(self):
+                return self.id
+
+            def name1(self):
+                return self.id
+
+            different_name = hybrid.hybrid_property(name1)
+
+            no_name = hybrid.hybrid_property(lambda self: self.name)
+
+        class A(SomeMixin, Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+
+        stmt = select(A.same_name, A.different_name, A.no_name)
+        compiled = stmt.compile()
+
+        eq_(
+            [ent._label_name for ent in compiled.compile_state._entities],
+            ["same_name", "id", "name"],
+        )
 
 
 class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
