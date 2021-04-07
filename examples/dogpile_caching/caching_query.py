@@ -42,7 +42,7 @@ class ORMCache(object):
         event.listen(session_factory, "do_orm_execute", self._do_orm_execute)
 
     def _do_orm_execute(self, orm_context):
-
+        
         for opt in orm_context.user_defined_options:
             if isinstance(opt, RelationshipCache):
                 opt = opt._process_orm_context(orm_context)
