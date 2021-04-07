@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 6211
+
+    Fixed regression where the :func:`_orm.merge_frozen_result` function relied
+    upon by the dogpile.caching example was not included in tests and began
+    failing due to incorrect internal arguments.

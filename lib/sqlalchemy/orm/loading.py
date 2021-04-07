@@ -201,7 +201,7 @@ def merge_frozen_result(session, statement, frozen_result, load=True):
         session._autoflush()
 
     ctx = querycontext.ORMSelectCompileState._create_entities_collection(
-        statement
+        statement, legacy=False
     )
 
     autoflush = session.autoflush
@@ -262,7 +262,7 @@ def merge_result(query, iterator, load=True):
         frozen_result = None
 
     ctx = querycontext.ORMSelectCompileState._create_entities_collection(
-        query, True
+        query, legacy=True
     )
 
     autoflush = session.autoflush
