@@ -2983,7 +2983,7 @@ class Engine(Connectable, log.Identified):
         "1.4",
         "The :meth:`_engine.Engine.run_callable` "
         "method is deprecated and will be "
-        "removed in a future release.  Use the :meth:`_engine.Engine.connect` "
+        "removed in a future release.  Use the :meth:`_engine.Engine.begin` "
         "context manager instead.",
     )
     def run_callable(self, callable_, *args, **kwargs):
