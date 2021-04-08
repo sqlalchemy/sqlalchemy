@@ -27,7 +27,7 @@ class IntToStr(TypeDecorator[int]):
     ) -> Optional[int]:
         return int(value) if value is not None else value
 
-    def copy(self, /, **kwargs: Any) -> "IntToStr":
+    def copy(self, **kwargs: Any) -> "IntToStr":
         return IntToStr(self.impl.length)
 
 
