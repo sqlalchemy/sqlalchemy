@@ -3013,7 +3013,7 @@ class AnnotationsTest(fixtures.TestBase):
 class ReprTest(fixtures.TestBase):
     def test_ensure_repr_elements(self):
         for obj in [
-            elements.Cast(1, 2),
+            elements.Cast(1, Integer()),
             elements.TypeClause(String()),
             elements.ColumnClause("x"),
             elements.BindParameter("q"),

@@ -1989,6 +1989,23 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "SELECT t.a FROM t WHERE t.a IN (SELECT scan)",
         )
 
+    def test_type_inference_one(self):
+        expr = column("q").in_([1, 2, 3])
+        is_(expr.right.type._type_affinity, Integer)
+
+        self.assert_compile(expr, "q IN (1, 2, 3)", literal_binds=True)
+
+    def test_type_inference_two(self):
+        expr = column("q").in_([])
+        is_(expr.right.type, sqltypes.NULLTYPE)
+
+        self.assert_compile(
+            expr,
+            "q IN (SELECT 1 WHERE 1!=1)",
+            literal_binds=True,
+            dialect="default_enhanced",
+        )
+
 
 class MathOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __dialect__ = "default"
@@ -3073,6 +3090,26 @@ class TupleTypingTest(fixtures.TestBase):
 
         eq_(len(expr.right.value), 2)
 
+        self._assert_types(expr.right.type.types)
+
+    # since we want to infer "binary"
+    @testing.requires.python3
+    def test_tuple_type_expanding_inference(self):
+        a, b, c = column("a"), column("b"), column("c")
+
+        t1 = tuple_(a, b, c)
+        expr = t1.in_([(3, "hi", b"there"), (4, "Q", b"P")])
+
+        eq_(len(expr.right.value), 2)
+
+        self._assert_types(expr.right.type.types)
+
+    @testing.requires.python3
+    def test_tuple_type_plain_inference(self):
+        a, b, c = column("a"), column("b"), column("c")
+
+        t1 = tuple_(a, b, c)
+        expr = t1 == (3, "hi", b"there")
         self._assert_types(expr.right.type.types)
 
 

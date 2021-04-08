@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, sql, regression
+    :tickets: 6222
+
+    Enhanced the "expanding" feature used for :meth:`_sql.ColumnOperators.in_`
+    operations to infer the type of expression from the right hand list of
+    elements, if the left hand side does not have any explicit type set up.
+    This allows the expression to support stringification among other things.
+    In 1.3, "expanding" was not automatically used for
+    :meth:`_sql.ColumnOperators.in_` expressions, so in that sense this change
+    fixes a behavioral regression.
+

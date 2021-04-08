@@ -2912,7 +2912,19 @@ class TupleType(TypeEngine):
     _is_tuple_type = True
 
     def __init__(self, *types):
+        self._fully_typed = NULLTYPE not in types
         self.types = types
+
+    def _resolve_values_to_types(self, value):
+        if self._fully_typed:
+            return self
+        else:
+            return TupleType(
+                *[
+                    _resolve_value_to_type(elem) if typ is NULLTYPE else typ
+                    for typ, elem in zip(self.types, value)
+                ]
+            )
 
     def result_processor(self, dialect, coltype):
         raise NotImplementedError(

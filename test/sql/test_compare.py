@@ -692,12 +692,32 @@ class CoreFixtures(object):
             column("y").in_(
                 bindparam(
                     "q",
-                    random_choices(range(10), k=random.randint(0, 7)),
+                    # note that a different cache key is created if
+                    # the value given to the bindparam is [], as the type
+                    # cannot be inferred for the empty list but can
+                    # for the non-empty list as of #6222
+                    random_choices(range(10), k=random.randint(1, 7)),
                     expanding=True,
                 )
             ),
-            column("z").in_(random_choices(range(10), k=random.randint(0, 7))),
-            column("x") == random.randint(1, 10),
+            column("y2").in_(
+                bindparam(
+                    "q",
+                    # for typed param, empty and not empty param will have
+                    # the same type
+                    random_choices(range(10), k=random.randint(0, 7)),
+                    type_=Integer,
+                    expanding=True,
+                )
+            ),
+            # don't include empty for untyped, will create different cache
+            # key
+            column("z").in_(random_choices(range(10), k=random.randint(1, 7))),
+            # empty is fine for typed, will create the same cache key
+            column("z2", Integer).in_(
+                random_choices(range(10), k=random.randint(0, 7))
+            ),
+            column("x") == random.randint(0, 10),
         )
     ]
 
