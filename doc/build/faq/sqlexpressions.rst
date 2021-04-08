@@ -136,6 +136,37 @@ producing output like::
     WHERE mytable.x > my_fancy_formatting(5)
 
 
+
+Rendering "POSTCOMPILE" Parameters as Bound Parameters
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+SQLAlchemy includes a variant on a bound parameter known as
+:paramref:`_sql.BindParameter.expanding`, which is a "late evaluated" parameter
+that is rendered in an intermediary state when a SQL construct is compiled,
+which is then further processed at statement execution time when the actual
+known values are passed.   "Expanding" parameters are used for
+:meth:`_sql.ColumnOperators.in_` expressions by default so that the SQL
+string can be safely cached independently of the actual lists of values
+being passed to a particular invocation of :meth:`_sql.ColumnOperators.in_`::
+
+    >>> from sqlalchemy import column
+    >>> expr = column('x').in_([1, 2, 3])
+    >>> print(expr)
+    x IN ([POSTCOMPILE_x_1])
+
+To render the IN clause with real bound parameter symbols, use the
+``render_postcompile=True`` flag with :meth:`_sql.ClauseElement.compile`::
+
+    >>> print(expr.compile(compile_kwargs={"render_postcompile": True}))
+    x IN (:x_1_1, :x_1_2, :x_1_3)
+
+As described in the previous section, the ``literal_binds`` flag works here
+by automatically setting ``render_postcompile`` to True::
+
+    >>> print(expr.compile(compile_kwargs={"literal_binds": True}))
+    x IN (1, 2, 3)
+
+
 .. _faq_sql_expression_percent_signs:
 
 Why are percent signs being doubled up when stringifying SQL statements?
