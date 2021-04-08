@@ -10,6 +10,7 @@ from typing import Union
 
 from mypy import nodes
 from mypy import types
+from mypy.maptype import map_instance_to_supertype
 from mypy.messages import format_type
 from mypy.nodes import AssignmentStmt
 from mypy.nodes import CallExpr
@@ -413,9 +414,11 @@ def _extract_python_type_from_typeengine(
             n = api.lookup_fully_qualified("builtins.str")
             return Instance(n.node, [])
 
-    for mr in node.mro:
-        if mr.bases:
-            for base_ in mr.bases:
-                if base_.type.fullname == "sqlalchemy.sql.type_api.TypeEngine":
-                    return base_.args[-1]
-    assert False, "could not extract Python type from node: %s" % node
+    assert node.has_base("sqlalchemy.sql.type_api.TypeEngine"), (
+        "could not extract Python type from node: %s" % node
+    )
+    type_engine = map_instance_to_supertype(
+        Instance(node, []),
+        api.modules["sqlalchemy.sql.type_api"].names["TypeEngine"].node,
+    )
+    return type_engine.args[-1]
