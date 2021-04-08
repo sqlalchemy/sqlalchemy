@@ -10,6 +10,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import close_all_sessions
+from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
@@ -230,6 +231,64 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                 )
 
             self.assert_sql_count(testing.db, go, 3)
+
+    @testing.combinations((True,), (False,), argnames="use_alias")
+    @testing.combinations((1,), (2,), argnames="levels")
+    def test_multilevel_sub_options(self, use_alias, levels):
+        User, Dingaling, Address = self.user_dingaling_fixture()
+
+        s = fixture_session()
+
+        def go():
+            if use_alias:
+                u = aliased(User)
+            else:
+                u = User
+
+            q = s.query(u)
+            if levels == 1:
+                q = q.options(
+                    subqueryload(u.addresses).options(
+                        defer(Address.email_address)
+                    )
+                ).order_by(u.id)
+                eq_(
+                    [
+                        address.email_address
+                        for user in q
+                        for address in user.addresses
+                    ],
+                    [
+                        "jack@bean.com",
+                        "ed@wood.com",
+                        "ed@bettyboop.com",
+                        "ed@lala.com",
+                        "fred@fred.com",
+                    ],
+                )
+            else:
+                q = q.options(
+                    joinedload(u.addresses)
+                    .subqueryload(Address.dingalings)
+                    .options(defer(Dingaling.data))
+                ).order_by(u.id)
+                eq_(
+                    [
+                        ding.data
+                        for user in q
+                        for address in user.addresses
+                        for ding in address.dingalings
+                    ],
+                    ["ding 1/2", "ding 2/5"],
+                )
+
+        for i in range(2):
+            if levels == 1:
+                # address.email_address
+                self.assert_sql_count(testing.db, go, 7)
+            else:
+                # dingaling.data
+                self.assert_sql_count(testing.db, go, 4)
 
     def test_from_get(self):
         users, Address, addresses, User = (

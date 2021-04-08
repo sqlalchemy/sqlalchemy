@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 6221
+
+    Fixed regression where the :func:`_orm.subqueryload` loader strategy would
+    fail to correctly accommodate sub-options, such as a :func:`_orm.defer`
+    option on a column, if the "path" of the subqueryload were more than one
+    level deep.
+
