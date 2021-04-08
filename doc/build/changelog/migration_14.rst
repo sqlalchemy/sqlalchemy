@@ -470,6 +470,20 @@ Error conditions which fall under this category include:
   will be evaluated at statement compilation time rather than when the method
   is first called.
 
+Other things that may change involve the :class:`_orm.Query` object directly:
+
+* Behaviors may be slightly different when calling upon the
+  :attr:`_orm.Query.statement` accessor. The :class:`_sql.Select` object
+  returned is now a direct copy of the same state that was present in the
+  :class:`_orm.Query`, without any ORM-specific compilation being performed
+  (which means it's dramatically faster). However, the :class:`_sql.Select`
+  will not have the same internal state as it had in 1.3, including things like
+  the FROM clauses being explicitly spelled out if they were not explicitly
+  stated in the :class:`_orm.Query`. This means code that relies upon
+  manipulating this :class:`_sql.Select` statement such as calling methods like
+  :meth:`_sql.Select.with_only_columns` may need to accommodate for the FROM
+  clause.
+
 .. seealso::
 
     :ref:`change_4639`
