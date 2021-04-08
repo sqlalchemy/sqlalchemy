@@ -29,6 +29,8 @@ from sqlalchemy.engine import cursor as _cursor
 from sqlalchemy.engine import default
 from sqlalchemy.engine import Row
 from sqlalchemy.engine.result import SimpleResultMetaData
+from sqlalchemy.engine.row import KEY_INTEGER_ONLY
+from sqlalchemy.engine.row import KEY_OBJECTS_BUT_WARN
 from sqlalchemy.engine.row import LegacyRow
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import ColumnElement
@@ -1047,9 +1049,17 @@ class CursorResultTest(fixtures.TablesTest):
         (lambda result: result.first()._mapping),
         argnames="get_object",
     )
-    def test_keys(self, connection, get_object):
+    @testing.combinations(
+        (True,),
+        (False,),
+        argnames="future",
+    )
+    def test_keys(self, connection, get_object, future):
         users = self.tables.users
         addresses = self.tables.addresses
+
+        if future:
+            connection = connection.execution_options(future_result=True)
 
         connection.execute(users.insert(), dict(user_id=1, user_name="foo"))
         result = connection.execute(users.select())
@@ -1059,7 +1069,11 @@ class CursorResultTest(fixtures.TablesTest):
         # Row still has a .keys() method as well as LegacyRow
         # as in 1.3.x, the KeyedTuple object also had a keys() method.
         # it emits a 2.0 deprecation warning.
-        keys = obj.keys()
+        if isinstance(obj, Row):
+            with assertions.expect_deprecated_20("The Row.keys()"):
+                keys = obj.keys()
+        else:
+            keys = obj.keys()
 
         # in 1.4, keys() is now a view that includes support for testing
         # of columns and other objects
@@ -1087,9 +1101,12 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(list(row._mapping.keys()), ["user_id", "user_name"])
         eq_(row._fields, ("user_id", "user_name"))
 
-        in_("user_id", row.keys())
-        not_in("foo", row.keys())
-        in_(users.c.user_id, row.keys())
+        with assertions.expect_deprecated_20("The Row.keys()"):
+            in_("user_id", row.keys())
+        with assertions.expect_deprecated_20("The Row.keys()"):
+            not_in("foo", row.keys())
+        with assertions.expect_deprecated_20("The Row.keys()"):
+            in_(users.c.user_id, row.keys())
 
     def test_row_keys_legacy_dont_warn(self, connection):
         users = self.tables.users
@@ -1098,8 +1115,12 @@ class CursorResultTest(fixtures.TablesTest):
         result = connection.execute(users.select())
         row = result.first()
         # DO NOT WARN DEPRECATED IN 1.x, ONLY 2.0 WARNING
-        eq_(dict(row), {"user_id": 1, "user_name": "foo"})
-        eq_(row.keys(), ["user_id", "user_name"])
+
+        with assertions.expect_deprecated_20("The Row.keys()"):
+            eq_(dict(row), {"user_id": 1, "user_name": "foo"})
+
+        with assertions.expect_deprecated_20("The Row.keys()"):
+            eq_(row.keys(), ["user_id", "user_name"])
 
     def test_row_namedtuple_legacy_ok(self, connection):
         users = self.tables.users
@@ -1329,13 +1350,13 @@ class CursorResultTest(fixtures.TablesTest):
 
     @testing.combinations((Row,), (LegacyRow,))
     def test_row_special_names(self, row_cls):
-        metadata = SimpleResultMetaData(["key", "count", "index"])
+        metadata = SimpleResultMetaData(["key", "count", "index", "foo"])
         row = row_cls(
             metadata,
-            [None, None, None],
+            [None, None, None, None],
             metadata._keymap,
-            Row._default_key_style,
-            ["kv", "cv", "iv"],
+            row_cls._default_key_style,
+            ["kv", "cv", "iv", "f"],
         )
         is_true(isinstance(row, collections_abc.Sequence))
 
@@ -1343,7 +1364,12 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(row.count, "cv")
         eq_(row.index, "iv")
 
-        if isinstance(row, LegacyRow):
+        with assertions.expect_deprecated_20(
+            "Retrieving row members using strings or other non-integers "
+            "is deprecated; use row._mapping for a dictionary interface "
+            "to the row"
+        ):
+            eq_(row["foo"], "f")
             eq_(row["count"], "cv")
             eq_(row["index"], "iv")
 
@@ -1367,6 +1393,85 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(row.index("cv"), 1)
         eq_(row.count("cv"), 1)
         eq_(row.count("x"), 0)
+
+    @testing.combinations((Row,), (LegacyRow,))
+    def test_row_dict_behaviors_warn_mode(self, row_cls):
+        metadata = SimpleResultMetaData(
+            [
+                "a",
+                "b",
+                "count",
+            ]
+        )
+        row = row_cls(
+            metadata,
+            [None, None, None],
+            metadata._keymap,
+            KEY_OBJECTS_BUT_WARN,
+            ["av", "bv", "cv"],
+        )
+
+        # as of #6218, dict(row) and row["x"] work for
+        # both LegacyRow and Row, with 2.0 deprecation warnings
+        # for both
+        with assertions.expect_deprecated_20(
+            "Retrieving row members using strings or other non-integers "
+            "is deprecated; use row._mapping for a dictionary interface "
+            "to the row"
+        ):
+            eq_(dict(row), {"a": "av", "b": "bv", "count": "cv"})
+
+        with assertions.expect_deprecated_20(
+            "Retrieving row members using strings or other non-integers "
+            "is deprecated; use row._mapping for a dictionary interface "
+            "to the row"
+        ):
+            eq_(row["a"], "av")
+            eq_(row["count"], "cv")
+
+        # keys is keys
+        with assertions.expect_deprecated_20("The Row.keys()"):
+            eq_(list(row.keys()), ["a", "b", "count"])
+
+    def test_new_row_no_dict_behaviors(self):
+        """This mode is not used currently but will be once we are in 2.0."""
+        metadata = SimpleResultMetaData(
+            [
+                "a",
+                "b",
+                "count",
+            ]
+        )
+        row = Row(
+            metadata,
+            [None, None, None],
+            metadata._keymap,
+            KEY_INTEGER_ONLY,
+            ["av", "bv", "cv"],
+        )
+
+        with assertions.expect_raises_message(
+            TypeError,
+            "TypeError: tuple indices must be integers or slices, not str",
+        ):
+            with assertions.expect_deprecated_20("The Row.keys()"):
+                eq_(dict(row), {"a": "av", "b": "bv", "count": "cv"})
+
+        with assertions.expect_raises_message(
+            TypeError,
+            "TypeError: tuple indices must be integers or slices, not str",
+        ):
+            eq_(row["a"], "av")
+
+        with assertions.expect_raises_message(
+            TypeError,
+            "TypeError: tuple indices must be integers or slices, not str",
+        ):
+            eq_(row["count"], "cv")
+
+        # keys is keys
+        with assertions.expect_deprecated_20("The Row.keys()"):
+            eq_(list(row.keys()), ["a", "b", "count"])
 
     def test_row_is_hashable(self):
 

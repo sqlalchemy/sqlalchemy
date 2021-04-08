@@ -60,10 +60,6 @@ def setup_filters():
         #        r".*DefaultGenerator.execute\(\)",
         #
         #
-        # result sets
-        #
-        r"The Row.keys\(\) method",
-        r"Using non-integer/slice indices on Row ",
         #
         # Core SQL constructs
         #

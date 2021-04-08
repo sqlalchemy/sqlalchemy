@@ -80,6 +80,13 @@ class ResultMetaData(object):
         util.raise_(KeyError(key), replace_context=err)
 
     def _warn_for_nonint(self, key):
+        util.warn_deprecated_20(
+            "Retrieving row members using strings or other non-integers is "
+            "deprecated; use row._mapping for a dictionary interface "
+            "to the row"
+        )
+
+    def _raise_for_nonint(self, key):
         raise TypeError(
             "TypeError: tuple indices must be integers or slices, not %s"
             % type(key).__name__
