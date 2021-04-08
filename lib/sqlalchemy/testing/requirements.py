@@ -19,6 +19,7 @@ import platform
 import sys
 
 from . import exclusions
+from . import only_on
 from .. import util
 from ..pool import QueuePool
 
@@ -473,7 +474,7 @@ class SuiteRequirements(Requirements):
         """Target database must support external schemas, and have one
         named 'test_schema'."""
 
-        return exclusions.closed()
+        return only_on(lambda config: config.db.dialect.supports_schemas)
 
     @property
     def cross_schema_fk_reflection(self):

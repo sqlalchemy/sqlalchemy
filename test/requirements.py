@@ -541,7 +541,7 @@ class DefaultRequirements(SuiteRequirements):
         """Target database must support external schemas, and have one
         named 'test_schema'."""
 
-        return skip_if(["firebird"], "no schema support")
+        return exclusions.open()
 
     @property
     def cross_schema_fk_reflection(self):
