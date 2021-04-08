@@ -1392,15 +1392,26 @@ class BindParameter(roles.InElementRole, ColumnElement):
         self.literal_execute = literal_execute
         if _is_crud:
             self._is_crud = True
+
         if type_ is None:
+            if expanding and value:
+                check_value = value[0]
+            else:
+                check_value = value
             if _compared_to_type is not None:
                 self.type = _compared_to_type.coerce_compared_value(
-                    _compared_to_operator, value
+                    _compared_to_operator, check_value
                 )
             else:
-                self.type = type_api._resolve_value_to_type(value)
+                self.type = type_api._resolve_value_to_type(check_value)
         elif isinstance(type_, type):
             self.type = type_()
+        elif type_._is_tuple_type:
+            if expanding and value:
+                check_value = value[0]
+            else:
+                check_value = value
+            self.type = type_._resolve_values_to_types(check_value)
         else:
             self.type = type_
 
