@@ -1,0 +1,16 @@
+.. change::
+    :tags: bug, regression, orm
+    :tickets: 6233
+
+    Fixed critical regression where the :class:`_orm.Session` could fail to
+    "autobegin" a new transaction when a flush occurred without an existing
+    transaction in place, implicitly placing the :class:`_orm.Session` into
+    legacy autocommit mode which commit the transaction. The
+    :class:`_orm.Session` now has a check that will prevent this condition from
+    occurring, in addition to repairing the flush issue.
+
+    Additionally, scaled back part of the change made as part of :ticket:`5226`
+    which can run autoflush during an unexpire operation, to not actually
+    do this in the case of a :class:`_orm.Session` using legacy
+    :paramref:`_orm.Session.autocommit` mode, as this incurs a commit within
+    a refresh operation.

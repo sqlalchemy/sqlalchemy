@@ -151,6 +151,64 @@ class TransScopingTest(_fixtures.FixtureTest):
         s.commit()
         is_(s._transaction, None)
 
+    def test_autobegin_within_flush(self):
+        """test :ticket:`6233`"""
+
+        s = Session(testing.db)
+
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+        s.add(User(name="u1"))
+        s.commit()
+
+        u1 = s.query(User).first()
+
+        s.commit()
+
+        u1.name = "newname"
+
+        s.flush()
+
+        eq_(s.connection().scalar(select(User.name)), "newname")
+        assert s.in_transaction()
+        s.rollback()
+        assert not s.in_transaction()
+        eq_(s.connection().scalar(select(User.name)), "u1")
+
+    def test_no_autoflush_or_commit_in_expire_w_autocommit(self):
+        """test second part of :ticket:`6233`.
+
+        Here we test that the "autoflush on unexpire" feature added
+        in :ticket:`5226` is turned off for a legacy autocommit session.
+
+        """
+
+        s = Session(
+            testing.db, autocommit=True, expire_on_commit=True, autoflush=True
+        )
+
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        u1 = User(name="u1")
+        s.add(u1)
+        s.flush()  # this commits
+
+        u1.name = "u2"  # this does not commit
+
+        assert "id" not in u1.__dict__
+        u1.id  # this unexpires
+
+        # never expired
+        eq_(u1.__dict__["name"], "u2")
+
+        eq_(u1.name, "u2")
+
+        # still in dirty collection
+        assert u1 in s.dirty
+
     def test_autobegin_begin_method(self):
         s = Session(testing.db)
 
