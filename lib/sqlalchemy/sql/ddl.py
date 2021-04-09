@@ -167,8 +167,8 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
                         DDL("my_ddl").execute_if(dialect='postgresql')
                     )
 
-        :param dialect: May be a string, tuple or a callable
-          predicate.  If a string, it will be compared to the name of the
+        :param dialect: May be a string or tuple of strings.
+          If a string, it will be compared to the name of the
           executing database dialect::
 
             DDL('something').execute_if(dialect='postgresql')
