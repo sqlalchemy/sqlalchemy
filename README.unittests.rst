@@ -16,7 +16,7 @@ Advanced Tox Options
 
 For more elaborate CI-style test running, the tox script provided will
 run against various Python / database targets.   For a basic run against
-Python 2.7 using an in-memory SQLite database::
+Python 3.8 using an in-memory SQLite database::
 
     tox -e py38-sqlite
 
