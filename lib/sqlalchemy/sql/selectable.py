@@ -5883,7 +5883,7 @@ class ScalarSelect(roles.InElementRole, Generative, Grouping):
     """Represent a scalar subquery.
 
 
-    A :class:`_sql.ScalarSubquery` is created by invoking the
+    A :class:`_sql.ScalarSelect` is created by invoking the
     :meth:`_sql.SelectBase.scalar_subquery` method.   The object
     then participates in other SQL expressions as a SQL column expression
     within the :class:`_sql.ColumnElement` hierarchy.
