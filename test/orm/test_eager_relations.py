@@ -3703,6 +3703,44 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
 
         assert "addresses" in u1.__dict__
 
+    @testing.combinations(
+        ("selectin",),
+        ("subquery",),
+        ("immediate",),
+    )
+    def test_refresh_no_recursion(self, strat):
+        User, Address = self.classes.User, self.classes.Address
+        mapper(
+            User,
+            self.tables.users,
+            properties={
+                "addresses": relationship(
+                    Address, lazy="joined", back_populates="user"
+                )
+            },
+        )
+        mapper(
+            Address,
+            self.tables.addresses,
+            properties={
+                "user": relationship(
+                    User, lazy=strat, back_populates="addresses"
+                )
+            },
+        )
+        sess = fixture_session(autoflush=False)
+
+        u1 = sess.query(User).get(8)
+        assert "addresses" in u1.__dict__
+        sess.expire(u1)
+
+        def go():
+            eq_(u1.id, 8)
+
+        self.assert_sql_count(testing.db, go, 1)
+
+        assert "addresses" in u1.__dict__
+
     def test_populate_existing_propagate(self):
         # both SelectInLoader and SubqueryLoader receive the loaded collection
         # at once and use attributes.set_committed_value().  However
