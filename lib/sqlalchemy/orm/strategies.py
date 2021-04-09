@@ -1166,6 +1166,28 @@ class LoadLazyAttribute(object):
 class PostLoader(AbstractRelationshipLoader):
     """A relationship loader that emits a second SELECT statement."""
 
+    def _check_recursive_postload(self, context, path, join_depth=None):
+        effective_path = (
+            context.compile_state.current_path or orm_util.PathRegistry.root
+        ) + path
+
+        if loading.PostLoad.path_exists(
+            context, effective_path, self.parent_property
+        ):
+            return True
+
+        path_w_prop = path[self.parent_property]
+        effective_path_w_prop = effective_path[self.parent_property]
+
+        if not path_w_prop.contains(context.attributes, "loader"):
+            if join_depth:
+                if effective_path_w_prop.length / 2 > join_depth:
+                    return True
+            elif effective_path_w_prop.contains_mapper(self.mapper):
+                return True
+
+        return False
+
     def _immediateload_create_row_processor(
         self,
         context,
@@ -1213,6 +1235,9 @@ class ImmediateLoader(PostLoader):
     ):
         def load_immediate(state, dict_, row):
             state.get_impl(self.key).get(state, dict_)
+
+        if self._check_recursive_postload(context, path):
+            return
 
         populators["delayed"].append((self.key, load_immediate))
 
@@ -1727,6 +1752,7 @@ class SubqueryLoader(PostLoader):
         adapter,
         populators,
     ):
+
         if context.refresh_state:
             return self._immediateload_create_row_processor(
                 context,
@@ -1738,6 +1764,10 @@ class SubqueryLoader(PostLoader):
                 adapter,
                 populators,
             )
+        # the subqueryloader does a similar check in setup_query() unlike
+        # the other post loaders, however we have this here for consistency
+        elif self._check_recursive_postload(context, path, self.join_depth):
+            return
 
         if not self.parent.class_manager[self.key].impl.supports_population:
             raise sa_exc.InvalidRequestError(
@@ -2689,6 +2719,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         adapter,
         populators,
     ):
+
         if context.refresh_state:
             return self._immediateload_create_row_processor(
                 context,
@@ -2700,6 +2731,8 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                 adapter,
                 populators,
             )
+        elif self._check_recursive_postload(context, path, self.join_depth):
+            return
 
         if not self.parent.class_manager[self.key].impl.supports_population:
             raise sa_exc.InvalidRequestError(
@@ -2721,13 +2754,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
             context.compile_state.current_path or orm_util.PathRegistry.root
         ) + path
 
-        if loading.PostLoad.path_exists(
-            context, selectin_path, self.parent_property
-        ):
-            return
-
         path_w_prop = path[self.parent_property]
-        selectin_path_w_prop = selectin_path[self.parent_property]
 
         # build up a path indicating the path from the leftmost
         # entity to the thing we're subquery loading.
@@ -2739,12 +2766,6 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         else:
             effective_entity = self.entity
 
-        if not path_w_prop.contains(context.attributes, "loader"):
-            if self.join_depth:
-                if selectin_path_w_prop.length / 2 > self.join_depth:
-                    return
-            elif selectin_path_w_prop.contains_mapper(self.mapper):
-                return
         loading.PostLoad.callable_for_path(
             context,
             selectin_path,
