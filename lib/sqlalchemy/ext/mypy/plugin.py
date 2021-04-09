@@ -143,7 +143,9 @@ def _fill_in_decorators(ctx: ClassDefContext) -> None:
         else:
             continue
 
-        sym = ctx.api.lookup(target.expr.name, target, suppress_errors=True)
+        sym = ctx.api.lookup_qualified(
+            target.expr.name, target, suppress_errors=True
+        )
         if sym:
             if sym.node.type and hasattr(sym.node.type, "type"):
                 target.fullname = (
@@ -242,7 +244,7 @@ def _dynamic_class_hook(ctx: DynamicClassDefContext) -> None:
         )
         info.bases = [Instance(cls_arg.node, [])]
     else:
-        obj = ctx.api.builtin_type("builtins.object")
+        obj = ctx.api.named_type("__builtins__.object")
 
         info.bases = [obj]
 
@@ -252,7 +254,7 @@ def _dynamic_class_hook(ctx: DynamicClassDefContext) -> None:
         util.fail(
             ctx.api, "Not able to calculate MRO for declarative base", ctx.call
         )
-        obj = ctx.api.builtin_type("builtins.object")
+        obj = ctx.api.named_type("__builtins__.object")
         info.bases = [obj]
         info.fallback_to_any = True
 
@@ -268,7 +270,7 @@ def _make_declarative_meta(
     declarative_meta_name.fullname = "sqlalchemy.orm.decl_api.DeclarativeMeta"
 
     # installed by _add_globals
-    sym = api.lookup("__sa_DeclarativeMeta", target_cls)
+    sym = api.lookup_qualified("__sa_DeclarativeMeta", target_cls)
 
     declarative_meta_typeinfo = sym.node
     declarative_meta_name.node = declarative_meta_typeinfo

@@ -161,7 +161,7 @@ def _type_id_for_unbound_type(
 ) -> int:
     type_id = None
 
-    sym = api.lookup(type_.name, type_)
+    sym = api.lookup_qualified(type_.name, type_)
     if sym is not None:
         if isinstance(sym.node, TypeAlias):
             type_id = _type_id_for_named_node(sym.node.target.type)

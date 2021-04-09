@@ -83,7 +83,6 @@ def _re_apply_declarative_assignments(
         name: typ for name, typ in cls_metadata.mapped_attr_names
     }
 
-    descriptor = api.lookup("__sa_Mapped", cls)
     for stmt in cls.defs.body:
         # for a re-apply, all of our statements are AssignmentStmt;
         # @declared_attr calls will have been converted and this
@@ -96,8 +95,7 @@ def _re_apply_declarative_assignments(
             typ = mapped_attr_lookup[stmt.lvalues[0].name]
             left_node = stmt.lvalues[0].node
 
-            inst = Instance(descriptor.node, [typ])
-            left_node.type = inst
+            left_node.type = api.named_type("__sa_Mapped", [typ])
 
 
 def _apply_type_to_mapped_statement(
@@ -125,16 +123,15 @@ def _apply_type_to_mapped_statement(
             attrname : Mapped[Optional[int]] = <meaningless temp node>
 
     """
-    descriptor = api.lookup("__sa_Mapped", stmt)
     left_node = lvalue.node
 
-    inst = Instance(descriptor.node, [python_type_for_type])
-
     if left_hand_explicit_type is not None:
-        left_node.type = Instance(descriptor.node, [left_hand_explicit_type])
+        left_node.type = api.named_type(
+            "__sa_Mapped", [left_hand_explicit_type]
+        )
     else:
         lvalue.is_inferred_def = False
-        left_node.type = inst
+        left_node.type = api.named_type("__sa_Mapped", [python_type_for_type])
 
     # so to have it skip the right side totally, we can do this:
     # stmt.rvalue = TempNode(AnyType(TypeOfAny.special_form))
@@ -206,7 +203,7 @@ def _apply_placeholder_attr_to_class(
     sym = api.lookup_fully_qualified_or_none(qualified_name)
     if sym:
         assert isinstance(sym.node, TypeInfo)
-        type_ = Instance(sym.node, [])
+        type_: Union[Instance, AnyType] = Instance(sym.node, [])
     else:
         type_ = AnyType(TypeOfAny.special_form)
     var = Var(attrname)

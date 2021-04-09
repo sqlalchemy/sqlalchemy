@@ -131,7 +131,7 @@ def _scan_symbol_table_entry(
                 typeengine_arg = typeengine_arg.type
 
             if isinstance(typeengine_arg, (UnboundType, TypeInfo)):
-                sym = api.lookup(typeengine_arg.name, typeengine_arg)
+                sym = api.lookup_qualified(typeengine_arg.name, typeengine_arg)
                 if sym is not None:
                     if names._mro_has_id(sym.node.mro, names.TYPEENGINE):
 
@@ -229,7 +229,7 @@ def _scan_declarative_decorator_stmt(
         elif type_id is names.COLUMN and func_type.args:
             typeengine_arg = func_type.args[0]
             if isinstance(typeengine_arg, UnboundType):
-                sym = api.lookup(typeengine_arg.name, typeengine_arg)
+                sym = api.lookup_qualified(typeengine_arg.name, typeengine_arg)
                 if sym is not None and names._mro_has_id(
                     sym.node.mro, names.TYPEENGINE
                 ):
@@ -264,8 +264,6 @@ def _scan_declarative_decorator_stmt(
 
         left_hand_explicit_type = AnyType(TypeOfAny.special_form)
 
-    descriptor = api.lookup("__sa_Mapped", cls)
-
     left_node = NameExpr(stmt.var.name)
     left_node.node = stmt.var
 
@@ -280,7 +278,9 @@ def _scan_declarative_decorator_stmt(
             api, left_hand_explicit_type
         )
 
-    left_node.node.type = Instance(descriptor.node, [left_hand_explicit_type])
+    left_node.node.type = api.named_type(
+        "__sa_Mapped", [left_hand_explicit_type]
+    )
 
     # this will ignore the rvalue entirely
     # rvalue = TempNode(AnyType(TypeOfAny.special_form))
@@ -290,7 +290,7 @@ def _scan_declarative_decorator_stmt(
     # _sa_Mapped._empty_constructor(lambda: <function body>)
     # the function body is maintained so it gets type checked internally
     column_descriptor = nodes.NameExpr("__sa_Mapped")
-    column_descriptor.fullname = "sqlalchemy.orm.Mapped"
+    column_descriptor.fullname = "sqlalchemy.orm.attributes.Mapped"
     mm = nodes.MemberExpr(column_descriptor, "_empty_constructor")
 
     arg = nodes.LambdaExpr(stmt.func.arguments, stmt.func.body)
@@ -367,7 +367,7 @@ def _scan_declarative_assignment_stmt(
             left_hand_explicit_type = stmt.type
 
             if stmt.type.name == "Mapped":
-                mapped_sym = api.lookup("Mapped", cls)
+                mapped_sym = api.lookup_qualified("Mapped", cls)
                 if (
                     mapped_sym is not None
                     and names._type_id_for_named_node(mapped_sym.node)

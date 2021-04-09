@@ -103,9 +103,8 @@ def _infer_type_from_relationship(
     ):
         type_is_a_collection = True
         if python_type_for_type is not None:
-            python_type_for_type = Instance(
-                api.lookup_fully_qualified("builtins.list").node,
-                [python_type_for_type],
+            python_type_for_type = api.named_type(
+                "__builtins__.list", [python_type_for_type]
             )
     elif (
         uselist_arg is None or uselist_arg.fullname == "builtins.True"
@@ -349,9 +348,9 @@ def _infer_type_from_left_and_inferred_right(
         python_type_for_type = python_type_for_type.args[0]
 
     if not is_subtype(left_hand_explicit_type, python_type_for_type):
-        descriptor = api.lookup("__sa_Mapped", node)
-
-        effective_type = Instance(descriptor.node, [orig_python_type_for_type])
+        effective_type = api.named_type(
+            "__sa_Mapped", [orig_python_type_for_type]
+        )
 
         msg = (
             "Left hand assignment '{}: {}' not compatible "
@@ -390,8 +389,7 @@ def _infer_type_from_left_hand_type_only(
         )
         util.fail(api, msg.format(node.name), node)
 
-        descriptor = api.lookup("__sa_Mapped", node)
-        return Instance(descriptor.node, [AnyType(TypeOfAny.special_form)])
+        return api.named_type("__sa_Mapped", [AnyType(TypeOfAny.special_form)])
 
     else:
         # use type from the left hand side
@@ -411,14 +409,21 @@ def _extract_python_type_from_typeengine(
                     return Instance(first_arg.node, [])
             # TODO: support other pep-435 types here
         else:
-            n = api.lookup_fully_qualified("builtins.str")
-            return Instance(n.node, [])
+            return api.named_type("__builtins__.str", [])
 
     assert node.has_base("sqlalchemy.sql.type_api.TypeEngine"), (
         "could not extract Python type from node: %s" % node
     )
+
+    type_engine_sym = api.lookup_fully_qualified_or_none(
+        "sqlalchemy.sql.type_api.TypeEngine"
+    )
+
+    assert type_engine_sym is not None and isinstance(
+        type_engine_sym.node, TypeInfo
+    )
     type_engine = map_instance_to_supertype(
         Instance(node, []),
-        api.modules["sqlalchemy.sql.type_api"].names["TypeEngine"].node,
+        type_engine_sym.node,
     )
     return type_engine.args[-1]
