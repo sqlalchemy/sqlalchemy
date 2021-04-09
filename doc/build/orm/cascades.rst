@@ -603,7 +603,18 @@ option may be helpful for situations where an object needs to be kept out of a
 session until it's construction is completed, but still needs to be given
 associations to objects which are already persistent in the target session.
 
+When relationships are created by the ``backref`` parameter to
+``relationship()``, ``cascade_backrefs=False`` can be set by using the
+``backref()`` function instead of a string. For example, the above relationship
+could be declared::
 
+    mapper_registry.map_imperatively(Order, order_table, properties={
+        'items' : relationship(
+            Item, backref=backref('order', cascade_backrefs=False), cascade_backrefs=False
+        )
+    })
+
+This sets the ``cascade_backrefs=False`` behavior on both relationships.
 
 .. _session_deleting_from_collections:
 
