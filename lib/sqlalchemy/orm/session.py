@@ -1140,8 +1140,7 @@ class Session(_SessionClassMethods):
         if autocommit:
             if future:
                 raise sa_exc.ArgumentError(
-                    "Cannot use autocommit mode with future=True.  "
-                    "use the autobegin flag."
+                    "Cannot use autocommit mode with future=True."
                 )
             self.autocommit = True
         else:
@@ -1308,7 +1307,7 @@ class Session(_SessionClassMethods):
                 "Session objects."
             )
         if self._autobegin():
-            if not subtransactions and not nested:
+            if not subtransactions and not nested and not _subtrans:
                 return self._transaction
 
         if self._transaction is not None:
@@ -1321,9 +1320,18 @@ class Session(_SessionClassMethods):
                 raise sa_exc.InvalidRequestError(
                     "A transaction is already begun on this Session."
                 )
+        elif not self.autocommit:
+            # outermost transaction.  must be a not nested and not
+            # a subtransaction
+            assert not nested and not _subtrans and not subtransactions
+            trans = SessionTransaction(self)
+            assert self._transaction is trans
         else:
+            # legacy autocommit mode
+            assert not self.future
             trans = SessionTransaction(self, nested=nested)
             assert self._transaction is trans
+
         return self._transaction  # needed for __enter__/__exit__ hook
 
     def begin_nested(self):

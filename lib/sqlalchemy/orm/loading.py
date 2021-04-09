@@ -1343,7 +1343,9 @@ def load_scalar_attributes(mapper, state, attribute_names, passive):
 
     result = False
 
-    no_autoflush = bool(passive & attributes.NO_AUTOFLUSH)
+    no_autoflush = (
+        bool(passive & attributes.NO_AUTOFLUSH) or state.session.autocommit
+    )
 
     # in the case of inheritance, particularly concrete and abstract
     # concrete inheritance, the class manager might have some keys
