@@ -15,7 +15,145 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.7
-    :include_notes_from: unreleased_14
+    :released: April 9, 2021
+
+    .. change::
+        :tags: bug, sql, regression
+        :tickets: 6222
+
+        Enhanced the "expanding" feature used for :meth:`_sql.ColumnOperators.in_`
+        operations to infer the type of expression from the right hand list of
+        elements, if the left hand side does not have any explicit type set up.
+        This allows the expression to support stringification among other things.
+        In 1.3, "expanding" was not automatically used for
+        :meth:`_sql.ColumnOperators.in_` expressions, so in that sense this change
+        fixes a behavioral regression.
+
+
+    .. change::
+        :tags: bug, mypy
+
+        Fixed issue in Mypy plugin where the plugin wasn’t inferring the correct
+        type for columns of subclasses that don’t directly descend from
+        ``TypeEngine``, in particular that of  ``TypeDecorator`` and
+        ``UserDefinedType``.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6221
+
+        Fixed regression where the :func:`_orm.subqueryload` loader strategy would
+        fail to correctly accommodate sub-options, such as a :func:`_orm.defer`
+        option on a column, if the "path" of the subqueryload were more than one
+        level deep.
+
+
+    .. change::
+        :tags: bug, sql
+
+        Fixed the "stringify" compiler to support a basic stringification
+        of a "multirow" INSERT statement, i.e. one with multiple tuples
+        following the VALUES keyword.
+
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6211
+
+        Fixed regression where the :func:`_orm.merge_frozen_result` function relied
+        upon by the dogpile.caching example was not included in tests and began
+        failing due to incorrect internal arguments.
+
+    .. change::
+        :tags: bug, engine, regression
+        :tickets: 6218
+
+        Fixed up the behavior of the :class:`_result.Row` object when dictionary
+        access is used upon it, meaning converting to a dict via ``dict(row)`` or
+        accessing members using strings or other objects i.e. ``row["some_key"]``
+        works as it would with a dictionary, rather than raising ``TypeError`` as
+        would be the case with a tuple, whether or not the C extensions are in
+        place. This was originally supposed to emit a 2.0 deprecation warning for
+        the "non-future" case using :class:`_result.LegacyRow`, and was to raise
+        ``TypeError`` for the "future" :class:`_result.Row` class. However, the C
+        version of :class:`_result.Row` was failing to raise this ``TypeError``,
+        and to complicate matters, the :meth:`_orm.Session.execute` method now
+        returns :class:`_result.Row` in all cases to maintain consistency with the
+        ORM result case, so users who didn't have C extensions installed would
+        see different behavior in this one case for existing pre-1.4 style
+        code.
+
+        Therefore, in order to soften the overall upgrade scheme as most users have
+        not been exposed to the more strict behavior of :class:`_result.Row` up
+        through 1.4.6, :class:`_result.LegacyRow` and :class:`_result.Row` both
+        provide for string-key access as well as support for ``dict(row)``, in all
+        cases emitting the 2.0 deprecation warning when ``SQLALCHEMY_WARN_20`` is
+        enabled. The :class:`_result.Row` object still uses tuple-like behavior for
+        ``__contains__``, which is probably the only noticeable behavioral change
+        compared to :class:`_result.LegacyRow`, other than the removal of
+        dictionary-style methods ``values()`` and ``items()``.
+
+    .. change::
+        :tags: bug, regression, orm
+        :tickets: 6233
+
+        Fixed critical regression where the :class:`_orm.Session` could fail to
+        "autobegin" a new transaction when a flush occurred without an existing
+        transaction in place, implicitly placing the :class:`_orm.Session` into
+        legacy autocommit mode which commit the transaction. The
+        :class:`_orm.Session` now has a check that will prevent this condition from
+        occurring, in addition to repairing the flush issue.
+
+        Additionally, scaled back part of the change made as part of :ticket:`5226`
+        which can run autoflush during an unexpire operation, to not actually
+        do this in the case of a :class:`_orm.Session` using legacy
+        :paramref:`_orm.Session.autocommit` mode, as this incurs a commit within
+        a refresh operation.
+
+    .. change::
+        :tags: change, tests
+
+        Added a new flag to :class:`.DefaultDialect` called ``supports_schema``;
+        third party dialects may set this flag to ``True`` to enable SQLAlchemy's
+        schema-level tests when running the test suite for a third party dialect.
+
+    .. change::
+        :tags: bug, regression, schema
+        :tickets: 6216
+
+        Fixed regression where usage of a token in the
+        :paramref:`_engine.Connection.execution_options.schema_translate_map`
+        dictionary which contained special characters such as braces would fail to
+        be substituted properly. Use of square bracket characters ``[]`` is now
+        explicitly disallowed as these are used as a delimiter character in the
+        current implementation.
+
+    .. change::
+        :tags: bug, regression, orm
+        :tickets: 6215
+
+        Fixed regression where the ORM compilation scheme would assume the function
+        name of a hybrid property would be the same as the attribute name in such a
+        way that an ``AttributeError`` would be raised, when it would attempt to
+        determine the correct name for each element in a result tuple. A similar
+        issue exists in 1.3 but only impacts the names of tuple rows. The fix here
+        adds a check that the hybrid's function name is actually present in the
+        ``__dict__`` of the class or its superclasses before assigning this name;
+        otherwise, the hybrid is considered to be "unnamed" and ORM result tuples
+        will use the naming scheme of the underlying expression.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6232
+
+        Fixed critical regression caused by the new feature added as part of
+        :ticket:`1763`, eager loaders are invoked on unexpire operations. The new
+        feature makes use of the "immediateload" eager loader strategy as a
+        substitute for a collection loading strategy, which unlike the other
+        "post-load" strategies was not accommodating for recursive invocations
+        between mutually-dependent relationships, leading to recursion overflow
+        errors.
+
 
 .. changelog::
     :version: 1.4.6
