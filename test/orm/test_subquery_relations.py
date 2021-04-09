@@ -289,6 +289,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             else:
                 # dingaling.data
                 self.assert_sql_count(testing.db, go, 4)
+            s.close()
 
     def test_from_get(self):
         users, Address, addresses, User = (
