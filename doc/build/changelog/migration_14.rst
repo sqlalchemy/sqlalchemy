@@ -2144,16 +2144,18 @@ The above behavior was an unintended side effect of backref behavior, in that
 since ``a1.user`` implies ``u1.addresses.append(a1)``, ``a1`` would get
 cascaded into the :class:`_orm.Session`.  This remains the default behavior
 throughout 1.4.     At some point, a new flag :paramref:`_orm.relationship.cascade_backrefs`
-was added to disable to above behavior, as it can be surprising and also gets in
-the way of some operations where the object would be placed in the :class:`_orm.Session`
-too early and get prematurely flushed.
+was added to disable to above behavior, along with :paramref:`_orm.backref.cascade_backrefs`
+to set this when the relationship is specified by ``relationship.backref``, as it can be
+surprising and also gets in the way of some operations where the object would be placed in
+the :class:`_orm.Session` too early and get prematurely flushed.
 
 In 2.0, the default behavior will be that "cascade_backrefs" is False, and
 additionally there will be no "True" behavior as this is not generally a desirable
 behavior.    When 2.0 deprecation warnings are enabled, a warning will be emitted
 when a "backref cascade" actually takes place.    To get the new behavior, either
-set :paramref:`_orm.relationship.cascade_backrefs` to ``False`` on the target
-relationship, as is already supported in 1.3 and earlier, or alternatively make
+set :paramref:`_orm.relationship.cascade_backrefs` and
+:paramref:`_orm.backref.cascade_backrefs` to ``False`` on any target
+relationships, as is already supported in 1.3 and earlier, or alternatively make
 use of the :paramref:`_orm.Session.future` flag to :term:`2.0-style` mode::
 
     Session = sessionmaker(engine, future=True)
