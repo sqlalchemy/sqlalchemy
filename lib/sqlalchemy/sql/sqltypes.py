@@ -423,55 +423,53 @@ class Unicode(String):
 
     """A variable length Unicode string type.
 
-    The :class:`.Unicode` type is a :class:`.String` subclass
-    that assumes input and output as Python ``unicode`` data,
-    and in that regard is equivalent to the usage of the
-    ``convert_unicode`` flag with the :class:`.String` type.
-    However, unlike plain :class:`.String`, it also implies an
-    underlying column type that is explicitly supporting of non-ASCII
-    data, such as ``NVARCHAR`` on Oracle and SQL Server.
-    This can impact the output of ``CREATE TABLE`` statements
-    and ``CAST`` functions at the dialect level, and can
-    also affect the handling of bound parameters in some
-    specific DBAPI scenarios.
+    The :class:`.Unicode` type is a :class:`.String` subclass that assumes
+    input and output strings that may contain non-ASCII characters, and for
+    some backends implies an underlying column type that is explicitly
+    supporting of non-ASCII data, such as ``NVARCHAR`` on Oracle and SQL
+    Server.  This will impact the output of ``CREATE TABLE`` statements and
+    ``CAST`` functions at the dialect level, and also in some cases will
+    indicate different behavior in the DBAPI itself in how it handles bound
+    parameters.
 
-    The encoding used by the :class:`.Unicode` type is usually
-    determined by the DBAPI itself; most modern DBAPIs
-    feature support for Python ``unicode`` objects as bound
-    values and result set values, and the encoding should
-    be configured as detailed in the notes for the target
-    DBAPI in the :ref:`dialect_toplevel` section.
+    The character encoding used by the :class:`.Unicode` type that is used to
+    transmit and receive data to the database is usually determined by the
+    DBAPI itself. All modern DBAPIs accommodate non-ASCII strings but may have
+    different methods of managing database encodings; if necessary, this
+    encoding should be configured as detailed in the notes for the target DBAPI
+    in the :ref:`dialect_toplevel` section.
 
-    For those DBAPIs which do not support, or are not configured
-    to accommodate Python ``unicode`` objects
-    directly, SQLAlchemy does the encoding and decoding
-    outside of the DBAPI.   The encoding in this scenario
-    is determined by the ``encoding`` flag passed to
-    :func:`_sa.create_engine`.
+    In modern SQLAlchemy, use of the :class:`.Unicode` datatype does not
+    typically imply any encoding/decoding behavior within SQLAlchemy itself.
+    Historically, when DBAPIs did not support Python ``unicode`` objects under
+    Python 2, SQLAlchemy handled unicode encoding/decoding services itself
+    which would be controlled by the flag :paramref:`.String.convert_unicode`;
+    this flag is deprecated as it is no longer needed for Python 3.
 
-    When using the :class:`.Unicode` type, it is only appropriate
-    to pass Python ``unicode`` objects, and not plain ``str``.
-    If a plain ``str`` is passed under Python 2, a warning
-    is emitted.  If you notice your application emitting these warnings but
-    you're not sure of the source of them, the Python
-    ``warnings`` filter, documented at
-    http://docs.python.org/library/warnings.html,
-    can be used to turn these warnings into exceptions
-    which will illustrate a stack trace::
+    When using Python 2, data that is passed to columns that use the
+    :class:`.Unicode` datatype must be of type ``unicode``, and not ``str``
+    which in Python 2 is equivalent to ``bytes``.  In Python 3, all data
+    passed to columns that use the :class:`.Unicode` datatype should be
+    of type ``str``.   See the flag :paramref:`.String.convert_unicode` for
+    more discussion of unicode encode/decode behavior under Python 2.
 
-      import warnings
-      warnings.simplefilter('error')
-
-    For an application that wishes to pass plain bytestrings
-    and Python ``unicode`` objects to the ``Unicode`` type
-    equally, the bytestrings must first be decoded into
-    unicode.  The recipe at :ref:`coerce_to_unicode` illustrates
-    how this is done.
+    .. warning:: Some database backends, particularly SQL Server with pyodbc,
+       are known to have undesirable behaviors regarding data that is noted
+       as being of ``NVARCHAR`` type as opposed to ``VARCHAR``, including
+       datatype mismatch errors and non-use of indexes.  See the section
+       on :meth:`.DialectEvents.do_setinputsizes` for background on working
+       around unicode character issues for backends like SQL Server with
+       pyodbc as well as cx_Oracle.
 
     .. seealso::
 
         :class:`.UnicodeText` - unlengthed textual counterpart
         to :class:`.Unicode`.
+
+        :paramref:`.String.convert_unicode`
+
+        :meth:`.DialectEvents.do_setinputsizes`
+
 
     """
 
