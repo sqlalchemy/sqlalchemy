@@ -1235,7 +1235,10 @@ class SQLCompiler(Compiled):
         )
 
     @util.memoized_property
+    @util.preload_module("sqlalchemy.engine.result")
     def _inserted_primary_key_from_lastrowid_getter(self):
+        result = util.preloaded.engine_result
+
         key_getter = self._key_getters_for_crud_column[2]
         table = self.statement.table
 
@@ -1253,14 +1256,16 @@ class SQLCompiler(Compiled):
         else:
             proc = None
 
+        row_fn = result.result_tuple([col.key for col in table.primary_key])
+
         def get(lastrowid, parameters):
             if proc is not None:
                 lastrowid = proc(lastrowid)
 
             if lastrowid is None:
-                return tuple(getter(parameters) for getter, col in getters)
+                return row_fn(getter(parameters) for getter, col in getters)
             else:
-                return tuple(
+                return row_fn(
                     lastrowid if col is autoinc_col else getter(parameters)
                     for getter, col in getters
                 )
@@ -1268,7 +1273,10 @@ class SQLCompiler(Compiled):
         return get
 
     @util.memoized_property
+    @util.preload_module("sqlalchemy.engine.result")
     def _inserted_primary_key_from_returning_getter(self):
+        result = util.preloaded.engine_result
+
         key_getter = self._key_getters_for_crud_column[2]
         table = self.statement.table
 
@@ -1281,8 +1289,10 @@ class SQLCompiler(Compiled):
             for col in table.primary_key
         ]
 
+        row_fn = result.result_tuple([col.key for col in table.primary_key])
+
         def get(row, parameters):
-            return tuple(
+            return row_fn(
                 getter(row) if use_row else getter(parameters)
                 for getter, use_row in getters
             )

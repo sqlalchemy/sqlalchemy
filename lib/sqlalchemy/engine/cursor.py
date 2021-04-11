@@ -1413,22 +1413,28 @@ class BaseCursorResult(object):
     def inserted_primary_key(self):
         """Return the primary key for the row just inserted.
 
-        The return value is a list of scalar values
-        corresponding to the list of primary key columns
-        in the target table.
+        The return value is a :class:`_result.Row` object representing
+        a named tuple of primary key values in the order in which the
+        primary key columns are configured in the source
+        :class:`_schema.Table`.
 
-        This only applies to single row :func:`_expression.insert`
+        .. versionchanged:: 1.4.8 - the
+           :attr:`_engine.CursorResult.inserted_primary_key`
+           value is now a named tuple via the :class:`_result.Row` class,
+           rather than a plain tuple.
+
+        This accessor only applies to single row :func:`_expression.insert`
         constructs which did not explicitly specify
-        :meth:`_expression.Insert.returning`.
+        :meth:`_expression.Insert.returning`.    Support for multirow inserts,
+        while not yet available for most backends, would be accessed using
+        the :attr:`_engine.CursorResult.inserted_primary_key_rows` accessor.
 
-        Note that primary key columns which specify a
-        server_default clause,
-        or otherwise do not qualify as "autoincrement"
-        columns (see the notes at :class:`_schema.Column`), and were
-        generated using the database-side default, will
-        appear in this list as ``None`` unless the backend
-        supports "returning" and the insert statement executed
-        with the "implicit returning" enabled.
+        Note that primary key columns which specify a server_default clause, or
+        otherwise do not qualify as "autoincrement" columns (see the notes at
+        :class:`_schema.Column`), and were generated using the database-side
+        default, will appear in this list as ``None`` unless the backend
+        supports "returning" and the insert statement executed with the
+        "implicit returning" enabled.
 
         Raises :class:`~sqlalchemy.exc.InvalidRequestError` if the executed
         statement is not a compiled expression construct

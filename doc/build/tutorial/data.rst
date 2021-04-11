@@ -131,6 +131,10 @@ first integer primary key value, which we can acquire using the
    to be populated regardless of whether or not "autoincrement" were used, hence
    to express a complete primary key it's a tuple.
 
+.. versionchanged:: 1.4.8 the tuple returned by
+   :attr:`_engine.CursorResult.inserted_primary_key` is now a named tuple
+   fullfilled by returning it as a :class:`_result.Row` object.
+
 .. _tutorial_core_insert_values_clause:
 
 INSERT usually generates the "values" clause automatically

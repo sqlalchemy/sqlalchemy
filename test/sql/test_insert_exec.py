@@ -112,9 +112,8 @@ class InsertExecTest(fixtures.TablesTest):
                 result = connection.execute(table_.insert(), values)
                 ret = values.copy()
 
-                for col, id_ in zip(
-                    table_.primary_key, result.inserted_primary_key
-                ):
+                ipk = result.inserted_primary_key
+                for col, id_ in zip(table_.primary_key, ipk):
                     ret[col.key] = id_
 
                 if result.lastrow_has_defaults():
@@ -131,7 +130,7 @@ class InsertExecTest(fixtures.TablesTest):
                     ).first()
                     for c in table_.c:
                         ret[c.key] = row._mapping[c]
-            return ret
+            return ret, ipk
 
         if testing.against("firebird", "postgresql", "oracle", "mssql"):
             assert testing.db.dialect.implicit_returning
@@ -147,8 +146,18 @@ class InsertExecTest(fixtures.TablesTest):
         for engine in test_engines:
             try:
                 table_.create(bind=engine, checkfirst=True)
-                i = insert_values(engine, table_, values)
+                i, ipk = insert_values(engine, table_, values)
                 eq_(i, assertvalues)
+
+                # named tuple tests
+                for col in table_.primary_key:
+                    eq_(getattr(ipk, col.key), assertvalues[col.key])
+                    eq_(ipk._mapping[col.key], assertvalues[col.key])
+
+                eq_(
+                    ipk._fields, tuple([col.key for col in table_.primary_key])
+                )
+
             finally:
                 table_.drop(bind=engine)
 
