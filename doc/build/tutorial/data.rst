@@ -692,6 +692,13 @@ produce the SQL ``count()`` function::
     {opensql}SELECT count(:count_2) AS count_1
     FROM user_account
 
+.. seealso::
+
+    :ref:`orm_queryguide_select_from` - in the :ref:`queryguide_toplevel` -
+    contains additional examples and notes
+    regarding the interaction of :meth:`_sql.Select.select_from` and
+    :meth:`_sql.Select.join`.
+
 .. _tutorial_select_join_onclause:
 
 Setting the ON Clause

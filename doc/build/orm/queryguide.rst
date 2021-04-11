@@ -666,6 +666,8 @@ to it using :class:`_orm.aliased` refer to distinct sets of columns::
     User(id=2, name='sandy', fullname='Sandy Cheeks') Address(id=3, email_address='squirrel@squirrelpower.org')
 
 
+.. _orm_queryguide_select_from:
+
 Controlling what to Join From
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -694,12 +696,50 @@ can be used subsequent, the :meth:`_sql.Select.select_from` method may also
 be used::
 
 
-    >>> stmt = select(Address).select_from(User).join(User.addresses).where(User.name == 'sandy')
+    >>> stmt = select(Address).select_from(User).join(Address).where(User.name == 'sandy')
     >>> print(stmt)
     SELECT address.id, address.user_id, address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
     WHERE user_account.name = :name_1
 
+.. tip::
+
+    The :meth:`_sql.Select.select_from` method does not actually have the
+    final say on the order of tables in the FROM clause.    If the statement
+    also refers to a :class:`_sql.Join` construct that refers to existing
+    tables in a different order, the :class:`_sql.Join` construct takes
+    precedence.    When we use methods like :meth:`_sql.Select.join`
+    and :meth:`_sql.Select.join_from`, these methods are ultimately creating
+    such a :class:`_sql.Join` object.   Therefore we can see the contents
+    of :meth:`_sql.Select.select_from` being overridden in a case like this::
+
+        >>> stmt = select(Address).select_from(User).join(Address.user).where(User.name == 'sandy')
+        >>> print(stmt)
+        SELECT address.id, address.user_id, address.email_address
+        FROM address JOIN user_account ON user_account.id = address.user_id
+        WHERE user_account.name = :name_1
+
+    Where above, we see that the FROM clause is ``address JOIN user_account``,
+    even though we stated ``select_from(User)`` first. Because of the
+    ``.join(Address.user)`` method call, the statement is ultimately equivalent
+    to the following::
+
+        >>> user_table = User.__table__
+        >>> address_table = Address.__table__
+        >>> from sqlalchemy.sql import join
+        >>>
+        >>> j = address_table.join(user_table, user_table.c.id == address_table.c.user_id)
+        >>> stmt = (
+        ...     select(address_table).select_from(user_table).select_from(j).
+        ...     where(user_table.c.name == 'sandy')
+        ... )
+        >>> print(stmt)
+        SELECT address.id, address.user_id, address.email_address
+        FROM address JOIN user_account ON user_account.id = address.user_id
+        WHERE user_account.name = :name_1
+
+    The :class:`_sql.Join` construct above is added as another entry in the
+    :meth:`_sql.Select.select_from` list which supersedes the previous entry.
 
 Special Relationship Operators
 ------------------------------
