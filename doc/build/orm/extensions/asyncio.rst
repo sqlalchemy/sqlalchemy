@@ -265,6 +265,16 @@ Other guidelines include:
 * Methods like :meth:`_asyncio.AsyncSession.expire` should be avoided in favor of
   :meth:`_asyncio.AsyncSession.refresh`
 
+* Avoid using the ``all`` cascade option documented at :ref:`unitofwork_cascades`
+  in favor of listing out the desired cascade features explicitly.   The
+  ``all`` cascade option implies among others the :ref:`cascade_refresh_expire`
+  setting, which means that the :meth:`.AsyncSession.refresh` method will
+  expire the attributes on related objects, but not necessarily refresh those
+  related objects assuming eager loading is not configured within the
+  :func:`_orm.relationship`, leaving them in an expired state.   A future
+  release may introduce the ability to indicate eager loader options when
+  invoking :meth:`.Session.refresh` and/or :meth:`.AsyncSession.refresh`.
+
 * Appropriate loader options should be employed for :func:`_orm.deferred`
   columns, if used at all, in addition to that of :func:`_orm.relationship`
   constructs as noted above.  See :ref:`deferred` for background on

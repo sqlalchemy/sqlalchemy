@@ -57,6 +57,13 @@ and using it in conjunction with ``delete-orphan`` indicates that the child
 object should follow along with its parent in all cases, and be deleted once
 it is no longer associated with that parent.
 
+.. warning:: The ``all`` cascade option implies the
+   :ref:`cascade_refresh_expire`
+   cascade setting which may not be desirable when using the
+   :ref:`asyncio_toplevel` extension, as it will expire related objects
+   more aggressively than is typically appropriate in an explicit IO context.
+   See the notes at :ref:`asyncio_orm_avoid_lazyloads` for further background.
+
 The list of available values which can be specified for
 the :paramref:`_orm.relationship.cascade` parameter are described in the following subsections.
 
