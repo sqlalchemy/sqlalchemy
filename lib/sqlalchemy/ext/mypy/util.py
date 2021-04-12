@@ -11,6 +11,7 @@ from mypy.nodes import JsonDict
 from mypy.nodes import NameExpr
 from mypy.nodes import SymbolTableNode
 from mypy.nodes import TypeInfo
+from mypy.plugin import ClassDefContext
 from mypy.plugin import SemanticAnalyzerPluginInterface
 from mypy.plugins.common import deserialize_and_fixup_type
 from mypy.types import Instance
@@ -68,7 +69,7 @@ def fail(api: SemanticAnalyzerPluginInterface, msg: str, ctx: Context):
 
 
 def add_global(
-    ctx: SemanticAnalyzerPluginInterface,
+    ctx: ClassDefContext,
     module: str,
     symbol_name: str,
     asname: str,
@@ -127,7 +128,7 @@ def _unbound_to_instance(
             ),
         )
 
-    node = api.lookup(typ.name, typ)
+    node = api.lookup_qualified(typ.name, typ)
 
     if node is not None and isinstance(node, SymbolTableNode):
         bound_type = node.node
@@ -147,7 +148,7 @@ def _unbound_to_instance(
 
 def _info_for_cls(cls, api):
     if cls.info is CLASSDEF_NO_INFO:
-        sym = api.lookup(cls.name, cls)
+        sym = api.lookup_qualified(cls.name, cls)
         if sym.node and isinstance(sym.node, TypeInfo):
             info = sym.node
     else:
