@@ -80,7 +80,7 @@ class AsyncSession:
     ):
         kw["future"] = True
         if bind:
-            self.bind = engine
+            self.bind = bind
             bind = engine._get_sync_engine_or_connection(bind)
 
         if binds:

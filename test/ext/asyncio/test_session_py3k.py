@@ -2,6 +2,7 @@ from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import func
 from sqlalchemy import select
+from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -45,6 +46,14 @@ class AsyncSessionTest(AsyncFixture):
         async_session.info["foo"] = "bar"
 
         eq_(async_session.sync_session.info, {"foo": "bar"})
+
+    def test_init(self, async_engine):
+        ss = AsyncSession(bind=async_engine)
+        is_(ss.bind, async_engine)
+
+        binds = {Table: async_engine}
+        ss = AsyncSession(binds=binds)
+        is_(ss.binds, binds)
 
 
 class AsyncSessionQueryTest(AsyncFixture):
