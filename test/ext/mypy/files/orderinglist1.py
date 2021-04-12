@@ -1,7 +1,7 @@
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
-from sqlalchemy.ext.orderinglist import OrderingList
+from sqlalchemy.ext.orderinglist import ordering_list
 from sqlalchemy.orm import registry
 from sqlalchemy.orm import relationship
 
@@ -14,7 +14,7 @@ class A:
     id = Column(Integer, primary_key=True)
 
     # EXPECTED: Can't infer type from ORM mapped expression assigned to attribute 'parents'; please specify a Python type or Mapped[<python type>] on the left hand side.  # noqa
-    parents = relationship("A", collection_class=OrderingList("ordering"))
+    parents = relationship("A", collection_class=ordering_list("ordering"))
     parent_id = Column(Integer, ForeignKey("a.id"))
     ordering = Column(Integer)
 

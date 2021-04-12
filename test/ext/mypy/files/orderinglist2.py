@@ -3,7 +3,7 @@ from typing import List
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
-from sqlalchemy.ext.orderinglist import OrderingList
+from sqlalchemy.ext.orderinglist import ordering_list
 from sqlalchemy.orm import registry
 from sqlalchemy.orm import relationship
 
@@ -31,10 +31,10 @@ class A:
     __tablename__ = "a"
     id = Column(Integer, primary_key=True)
 
-    bs = relationship(B, collection_class=OrderingList("ordering"))
+    bs = relationship(B, collection_class=ordering_list("ordering"))
 
     bs_w_list: List[B] = relationship(
-        B, collection_class=OrderingList("ordering")
+        B, collection_class=ordering_list("ordering")
     )
 
     # EXPECTED: Left hand assignment 'cs: "List[B]"' not compatible with ORM mapped expression of type "Mapped[List[C]]"  # noqa
@@ -47,7 +47,8 @@ class A:
 b1 = B(ordering=10)
 
 # in this case, the plugin infers OrderingList as the type.  not great
-a1 = A(bs=OrderingList(b1))
+a1 = A()
+a1.bs.append(b1)
 
 # so we want to support being able to override it at least
 a2 = A(bs_w_list=[b1])

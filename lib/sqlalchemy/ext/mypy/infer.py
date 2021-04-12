@@ -13,6 +13,7 @@ from mypy.messages import format_type
 from mypy.nodes import AssignmentStmt
 from mypy.nodes import CallExpr
 from mypy.nodes import Expression
+from mypy.nodes import FuncDef
 from mypy.nodes import MemberExpr
 from mypy.nodes import NameExpr
 from mypy.nodes import RefExpr
@@ -22,6 +23,7 @@ from mypy.nodes import Var
 from mypy.plugin import SemanticAnalyzerPluginInterface
 from mypy.subtypes import is_subtype
 from mypy.types import AnyType
+from mypy.types import CallableType
 from mypy.types import get_proper_type
 from mypy.types import Instance
 from mypy.types import NoneType
@@ -125,6 +127,26 @@ def _infer_type_from_relationship(
                 python_type_for_type = Instance(
                     collection_cls_arg.node, [python_type_for_type]
                 )
+        elif (
+            isinstance(collection_cls_arg, NameExpr)
+            and isinstance(collection_cls_arg.node, FuncDef)
+            and collection_cls_arg.node.type is not None
+        ):
+            if python_type_for_type is not None:
+                # this can still be overridden by the left hand side
+                # within _infer_Type_from_left_and_inferred_right
+
+                # TODO: handle mypy.types.Overloaded
+                if isinstance(collection_cls_arg.node.type, CallableType):
+                    rt = get_proper_type(collection_cls_arg.node.type.ret_type)
+
+                    if isinstance(rt, CallableType):
+                        callable_ret_type = get_proper_type(rt.ret_type)
+                        if isinstance(callable_ret_type, Instance):
+                            python_type_for_type = Instance(
+                                callable_ret_type.type,
+                                [python_type_for_type],
+                            )
         else:
             util.fail(
                 api,
