@@ -1,3 +1,5 @@
+import re
+
 from sqlalchemy import and_
 from sqlalchemy import bindparam
 from sqlalchemy import case
@@ -38,11 +40,14 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
+from sqlalchemy.util import pickle
 
 A = B = t1 = t2 = t3 = table1 = table2 = table3 = table4 = None
 
 
-class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
+class TraversalTest(
+    fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
+):
 
     """test ClauseVisitor's traversal, particularly its
     ability to copy and modify a ClauseElement in place."""
@@ -174,6 +179,49 @@ class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
         vis = Vis()
         s2 = vis.traverse(s1)
         eq_(list(s2.selected_columns)[0].anon_label, c1.anon_label)
+
+    @testing.combinations(
+        ("clone",), ("pickle",), ("conv_to_unique"), ("none"), argnames="meth"
+    )
+    @testing.combinations(
+        ("name with space",), ("name with [brackets]",), argnames="name"
+    )
+    def test_bindparam_key_proc_for_copies(self, meth, name):
+        r"""test :ticket:`6249`.
+
+        The key of the bindparam needs spaces and other characters
+        escaped out for the POSTCOMPILE regex to work correctly.
+
+
+        Currently, the bind key reg is::
+
+            re.sub(r"[%\(\) \$]+", "_", body).strip("_")
+
+        and the compiler postcompile reg is::
+
+            re.sub(r"\[POSTCOMPILE_(\S+)\]", process_expanding, self.string)
+
+        Interestingly, brackets in the name seems to work out.
+
+        """
+        expr = column(name).in_([1, 2, 3])
+
+        if meth == "clone":
+            expr = visitors.cloned_traverse(expr, {}, {})
+        elif meth == "pickle":
+            expr = pickle.loads(pickle.dumps(expr))
+        elif meth == "conv_to_unique":
+            expr.right.unique = False
+            expr.right._convert_to_unique()
+
+        token = re.sub(r"[%\(\) \$]+", "_", name).strip("_")
+        self.assert_compile(
+            expr,
+            '"%(name)s" IN (:%(token)s_1_1, '
+            ":%(token)s_1_2, :%(token)s_1_3)" % {"name": name, "token": token},
+            render_postcompile=True,
+            dialect="default",
+        )
 
     def test_change_in_place(self):
         struct = B(
