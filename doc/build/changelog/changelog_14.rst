@@ -117,8 +117,8 @@ This document details individual issue-level changes made throughout
     .. change::
         :tags: change, tests
 
-        Added a new flag to :class:`.DefaultDialect` called ``supports_schema``;
-        third party dialects may set this flag to ``True`` to enable SQLAlchemy's
+        Added a new flag to :class:`.DefaultDialect` called ``supports_schemas``;
+        third party dialects may set this flag to ``False`` to disable SQLAlchemy's
         schema-level tests when running the test suite for a third party dialect.
 
     .. change::
