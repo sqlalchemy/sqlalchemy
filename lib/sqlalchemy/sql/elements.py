@@ -1363,9 +1363,10 @@ class BindParameter(roles.InElementRole, ColumnElement):
         if unique:
             self.key = _anonymous_label.safe_construct(
                 id(self),
-                re.sub(r"[%\(\) \$]+", "_", key).strip("_")
+                key
                 if key is not None and not isinstance(key, _anonymous_label)
                 else "param",
+                sanitize_key=True,
             )
             self._key_is_anon = True
         elif key:
@@ -1479,7 +1480,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
         c = ClauseElement._clone(self, **kw)
         if not maintain_key and self.unique:
             c.key = _anonymous_label.safe_construct(
-                id(c), c._orig_key or "param"
+                id(c), c._orig_key or "param", sanitize_key=True
             )
         return c
 
@@ -1514,7 +1515,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
         if not self.unique:
             self.unique = True
             self.key = _anonymous_label.safe_construct(
-                id(self), self._orig_key or "param"
+                id(self), self._orig_key or "param", sanitize_key=True
             )
 
     def __getstate__(self):
@@ -1531,7 +1532,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
     def __setstate__(self, state):
         if state.get("unique", False):
             state["key"] = _anonymous_label.safe_construct(
-                id(self), state.get("_orig_key", "param")
+                id(self), state.get("_orig_key", "param"), sanitize_key=True
             )
         self.__dict__.update(state)
 
@@ -5048,8 +5049,13 @@ class _anonymous_label(_truncated_label):
     __slots__ = ()
 
     @classmethod
-    def safe_construct(cls, seed, body, enclosing_label=None):
+    def safe_construct(
+        cls, seed, body, enclosing_label=None, sanitize_key=False
+    ):
         # type: (int, str, Optional[_anonymous_label]) -> _anonymous_label
+
+        if sanitize_key:
+            body = re.sub(r"[%\(\) \$]+", "_", body).strip("_")
 
         label = "%%(%d %s)s" % (seed, body.replace("%", "%%"))
         if enclosing_label:
