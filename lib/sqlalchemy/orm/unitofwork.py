@@ -28,7 +28,8 @@ def _warn_for_cascade_backrefs(state, prop):
         "reverse cascade will not take place.  Set cascade_backrefs to "
         "False in either the relationship() or backref() function for "
         "the 2.0 behavior; or to set globally for the whole "
-        "Session, set the future=True flag" % (state.class_.__name__, prop)
+        "Session, set the future=True flag" % (state.class_.__name__, prop),
+        code="s9r1",
     )
 
 

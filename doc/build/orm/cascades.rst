@@ -555,6 +555,8 @@ operation should be propagated down to referred objects.
 
 .. _backref_cascade:
 
+.. _error_s9r1:
+
 Controlling Cascade on Backrefs
 -------------------------------
 

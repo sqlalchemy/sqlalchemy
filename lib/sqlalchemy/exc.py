@@ -19,8 +19,8 @@ from .util import compat
 _version_token = None
 
 
-class SQLAlchemyError(Exception):
-    """Generic error class."""
+class _CodeStrMixin(object):
+    """helper which adds 'code' as an attribute and '_code_str' as a method"""
 
     code = None
 
@@ -28,7 +28,7 @@ class SQLAlchemyError(Exception):
         code = kw.pop("code", None)
         if code is not None:
             self.code = code
-        super(SQLAlchemyError, self).__init__(*arg, **kw)
+        super(_CodeStrMixin, self).__init__(*arg, **kw)
 
     def _code_str(self):
         if not self.code:
@@ -42,6 +42,10 @@ class SQLAlchemyError(Exception):
                     self.code,
                 )
             )
+
+
+class SQLAlchemyError(_CodeStrMixin, Exception):
+    """Generic error class."""
 
     def _message(self, as_unicode=compat.py3k):
         # rules:
@@ -650,11 +654,17 @@ class NotSupportedError(DatabaseError):
 # Warnings
 
 
-class SADeprecationWarning(DeprecationWarning):
+class SADeprecationWarning(_CodeStrMixin, DeprecationWarning):
     """Issued for usage of deprecated APIs."""
 
     deprecated_since = None
     "Indicates the version that started raising this deprecation warning"
+
+    def __str__(self):
+        message = super(SADeprecationWarning, self).__str__()
+        if self.code:
+            message = "%s %s" % (message, self._code_str())
+        return message
 
 
 class RemovedIn20Warning(SADeprecationWarning):
