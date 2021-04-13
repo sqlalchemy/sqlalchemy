@@ -9,9 +9,12 @@
 Mypy plugin for SQLAlchemy ORM.
 
 """
+from typing import Callable
 from typing import List
+from typing import Optional
 from typing import Tuple
-from typing import Type
+from typing import Type as TypingType
+from typing import Union
 
 from mypy import nodes
 from mypy.mro import calculate_mro
@@ -25,20 +28,20 @@ from mypy.nodes import SymbolTable
 from mypy.nodes import SymbolTableNode
 from mypy.nodes import TypeInfo
 from mypy.plugin import AttributeContext
-from mypy.plugin import Callable
 from mypy.plugin import ClassDefContext
 from mypy.plugin import DynamicClassDefContext
-from mypy.plugin import Optional
 from mypy.plugin import Plugin
 from mypy.plugin import SemanticAnalyzerPluginInterface
+from mypy.types import get_proper_type
 from mypy.types import Instance
+from mypy.types import Type
 
 from . import decl_class
 from . import names
 from . import util
 
 
-class CustomPlugin(Plugin):
+class SQLAlchemyPlugin(Plugin):
     def get_dynamic_class_hook(
         self, fullname: str
     ) -> Optional[Callable[[DynamicClassDefContext], None]]:
@@ -72,7 +75,7 @@ class CustomPlugin(Plugin):
 
         sym = self.lookup_fully_qualified(fullname)
 
-        if sym is not None:
+        if sym is not None and sym.node is not None:
             type_id = names._type_id_for_named_node(sym.node)
             if type_id is names.MAPPED_DECORATOR:
                 return _cls_decorator_hook
@@ -109,8 +112,8 @@ class CustomPlugin(Plugin):
         ]
 
 
-def plugin(version: str):
-    return CustomPlugin
+def plugin(version: str) -> TypingType[SQLAlchemyPlugin]:
+    return SQLAlchemyPlugin
 
 
 def _queryable_getattr_hook(ctx: AttributeContext) -> Type:
@@ -143,14 +146,14 @@ def _fill_in_decorators(ctx: ClassDefContext) -> None:
         else:
             continue
 
+        assert isinstance(target.expr, NameExpr)
         sym = ctx.api.lookup_qualified(
             target.expr.name, target, suppress_errors=True
         )
-        if sym:
-            if sym.node.type and hasattr(sym.node.type, "type"):
-                target.fullname = (
-                    f"{sym.node.type.type.fullname}.{target.name}"
-                )
+        if sym and sym.node:
+            sym_type = get_proper_type(sym.type)
+            if isinstance(sym_type, Instance):
+                target.fullname = f"{sym_type.type.fullname}.{target.name}"
             else:
                 # if the registry is in the same file as where the
                 # decorator is used, it might not have semantic
@@ -170,7 +173,7 @@ def _fill_in_decorators(ctx: ClassDefContext) -> None:
                 )
 
 
-def _add_globals(ctx: ClassDefContext):
+def _add_globals(ctx: Union[ClassDefContext, DynamicClassDefContext]) -> None:
     """Add __sa_DeclarativeMeta and __sa_Mapped symbol to the global space
     for all class defs
 
@@ -207,7 +210,15 @@ def _cls_decorator_hook(ctx: ClassDefContext) -> None:
     _add_globals(ctx)
     assert isinstance(ctx.reason, nodes.MemberExpr)
     expr = ctx.reason.expr
-    assert names._type_id_for_named_node(expr.node.type.type) is names.REGISTRY
+
+    assert isinstance(expr, nodes.RefExpr) and isinstance(expr.node, nodes.Var)
+
+    node_type = get_proper_type(expr.node.type)
+
+    assert (
+        isinstance(node_type, Instance)
+        and names._type_id_for_named_node(node_type.type) is names.REGISTRY
+    )
 
     decl_class._scan_declarative_assignments_and_apply_types(ctx.cls, ctx.api)
 
@@ -237,8 +248,8 @@ def _dynamic_class_hook(ctx: DynamicClassDefContext) -> None:
     cls.info = info
     _make_declarative_meta(ctx.api, cls)
 
-    cls_arg = util._get_callexpr_kwarg(ctx.call, "cls")
-    if cls_arg is not None:
+    cls_arg = util._get_callexpr_kwarg(ctx.call, "cls", expr_types=(NameExpr,))
+    if cls_arg is not None and isinstance(cls_arg.node, TypeInfo):
         decl_class._scan_declarative_assignments_and_apply_types(
             cls_arg.node.defn, ctx.api, is_mixin_scan=True
         )
@@ -263,7 +274,7 @@ def _dynamic_class_hook(ctx: DynamicClassDefContext) -> None:
 
 def _make_declarative_meta(
     api: SemanticAnalyzerPluginInterface, target_cls: ClassDef
-):
+) -> None:
 
     declarative_meta_name: NameExpr = NameExpr("__sa_DeclarativeMeta")
     declarative_meta_name.kind = GDEF
@@ -271,6 +282,8 @@ def _make_declarative_meta(
 
     # installed by _add_globals
     sym = api.lookup_qualified("__sa_DeclarativeMeta", target_cls)
+
+    assert sym is not None and isinstance(sym.node, nodes.TypeInfo)
 
     declarative_meta_typeinfo = sym.node
     declarative_meta_name.node = declarative_meta_typeinfo
