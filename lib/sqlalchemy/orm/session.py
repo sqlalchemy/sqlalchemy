@@ -2161,24 +2161,39 @@ class Session(_SessionClassMethods):
                 util.raise_(e, with_traceback=sys.exc_info()[2])
 
     def refresh(self, instance, attribute_names=None, with_for_update=None):
-        """Expire and refresh the attributes on the given instance.
+        """Expire and refresh attributes on the given instance.
 
-        A query will be issued to the database and all attributes will be
-        refreshed with their current database value.
+        The selected attributes will first be expired as they would when using
+        :meth:`_orm.Session.expire`; then a SELECT statement will be issued to
+        the database to refresh column-oriented attributes with the current
+        value available in the current transaction.
 
-        Lazy-loaded relational attributes will remain lazily loaded, so that
-        the instance-wide refresh operation will be followed immediately by
-        the lazy load of that attribute.
+        :func:`_orm.relationship` oriented attributes will also be immediately
+        loaded if they were already eagerly loaded on the object, using the
+        same eager loading strategy that they were loaded with originally.
+        Unloaded relationship attributes will remain unloaded, as will
+        relationship attributes that were originally lazy loaded.
 
-        Eagerly-loaded relational attributes will eagerly load within the
-        single refresh operation.
+        .. versionadded:: 1.4 - the :meth:`_orm.Session.refresh` method
+           can also refresh eagerly loaded attributes.
+
+        .. tip::
+
+            While the :meth:`_orm.Session.refresh` method is capable of
+            refreshing both column and relationship oriented attributes, its
+            primary focus is on refreshing of local column-oriented attributes
+            on a single instance. For more open ended "refresh" functionality,
+            including the ability to refresh the attributes on many objects at
+            once while having explicit control over relationship loader
+            strategies, use the
+            :ref:`populate existing <orm_queryguide_populate_existing>` feature
+            instead.
 
         Note that a highly isolated transaction will return the same values as
         were previously read in that same transaction, regardless of changes
-        in database state outside of that transaction - usage of
-        :meth:`~Session.refresh` usually only makes sense if non-ORM SQL
-        statement were emitted in the ongoing transaction, or if autocommit
-        mode is turned on.
+        in database state outside of that transaction.   Refreshing
+        attributes usually only makes sense at the start of a transaction
+        where database rows have not yet been accessed.
 
         :param attribute_names: optional.  An iterable collection of
           string attribute names indicating a subset of attributes to
@@ -2191,8 +2206,6 @@ class Session(_SessionClassMethods):
           :meth:`_query.Query.with_for_update`.
           Supersedes the :paramref:`.Session.refresh.lockmode` parameter.
 
-          .. versionadded:: 1.2
-
         .. seealso::
 
             :ref:`session_expire` - introductory material
@@ -2201,7 +2214,8 @@ class Session(_SessionClassMethods):
 
             :meth:`.Session.expire_all`
 
-            :meth:`_orm.Query.populate_existing`
+            :ref:`orm_queryguide_populate_existing` - allows any ORM query
+            to refresh objects as they would be loaded normally.
 
         """
         try:

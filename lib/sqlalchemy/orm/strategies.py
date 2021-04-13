@@ -972,7 +972,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         )
 
         if use_get:
-            if self._raise_on_sql:
+            if self._raise_on_sql and not passive & attributes.NO_RAISE:
                 self._invoke_raise_load(state, passive, "raise_on_sql")
 
             return loading.load_on_pk_identity(
@@ -1028,7 +1028,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         elif util.has_intersection(orm_util._never_set, params.values()):
             return None
 
-        if self._raise_on_sql:
+        if self._raise_on_sql and not passive & attributes.NO_RAISE:
             self._invoke_raise_load(state, passive, "raise_on_sql")
 
         stmt = stmt.add_criteria(
@@ -1234,7 +1234,9 @@ class ImmediateLoader(PostLoader):
         populators,
     ):
         def load_immediate(state, dict_, row):
-            state.get_impl(self.key).get(state, dict_)
+            state.get_impl(self.key).get(
+                state, dict_, attributes.PASSIVE_OFF | attributes.NO_RAISE
+            )
 
         if self._check_recursive_postload(context, path):
             return

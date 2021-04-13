@@ -1459,12 +1459,12 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         sess = fixture_session(autoflush=False)
         return User, Order, Item, sess
 
-    def _eager_config_fixture(self):
+    def _eager_config_fixture(self, default_lazy="selectin"):
         User, Address = self.classes.User, self.classes.Address
         mapper(
             User,
             self.tables.users,
-            properties={"addresses": relationship(Address, lazy="selectin")},
+            properties={"addresses": relationship(Address, lazy=default_lazy)},
         )
         mapper(Address, self.tables.addresses)
         sess = fixture_session(autoflush=False)
@@ -1488,6 +1488,32 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         User, Address, sess = self._eager_config_fixture()
 
         u1 = sess.query(User).get(8)
+        assert "addresses" in u1.__dict__
+        sess.expire(u1)
+
+        def go():
+            eq_(u1.id, 8)
+
+        self.assert_sql_count(testing.db, go, 2)
+        assert "addresses" in u1.__dict__
+
+    @testing.combinations(
+        ("raise",),
+        ("raise_on_sql",),
+        ("select",),
+        ("immediate"),
+    )
+    def test_runs_query_on_option_refresh(self, default_lazy):
+        User, Address, sess = self._eager_config_fixture(
+            default_lazy=default_lazy
+        )
+
+        u1 = (
+            sess.query(User)
+            .options(selectinload(User.addresses))
+            .filter_by(id=8)
+            .first()
+        )
         assert "addresses" in u1.__dict__
         sess.expire(u1)
 

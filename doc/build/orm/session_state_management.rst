@@ -525,13 +525,25 @@ be that of a column-mapped attribute::
     # reload obj1.attr1, obj1.attr2
     session.refresh(obj1, ['attr1', 'attr2'])
 
-An alternative method of refreshing which is often more flexible is to
-use the :meth:`_orm.Query.populate_existing` method of :class:`_orm.Query`.
-With this option, all of the ORM objects returned by the :class:`_orm.Query`
-will be refreshed with the contents of what was loaded in the SELECT::
+.. tip::
 
-    for user in session.query(User).populate_existing().filter(User.name.in_(['a', 'b', 'c'])):
-        print(user)  # will be refreshed for those columns that came back from the query
+    An alternative method of refreshing which is often more flexible is to
+    use the :ref:`orm_queryguide_populate_existing` feature of the ORM,
+    available for :term:`2.0 style` queries with :func:`_sql.select` as well
+    as from the :meth:`_orm.Query.populate_existing` method of :class:`_orm.Query`
+    within :term:`1.x style` queries.  Using this execution option,
+    all of the ORM objects returned in the result set of the statement
+    will be refreshed with data from the database::
+
+        stmt = (
+            select(User).
+            execution_options(populate_existing=True).
+            where((User.name.in_(['a', 'b', 'c']))
+        )
+        for user in session.execute(stmt).scalars():
+            print(user)  # will be refreshed for those columns that came back from the query
+
+    See :ref:`orm_queryguide_populate_existing` for further detail.
 
 
 What Actually Loads
@@ -640,7 +652,8 @@ transactions, an understanding of the isolation behavior in effect is essential.
 
     :meth:`.Session.refresh`
 
-    :meth:`_orm.Query.populate_existing` - :class:`_orm.Query` method that refreshes
+    :ref:`orm_queryguide_populate_existing` - allows any ORM query
+    to refresh objects as they would be loaded normally, refreshing
     all matching objects in the identity map against the results of a
     SELECT statement.
 

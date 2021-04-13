@@ -827,6 +827,20 @@ model of a highly isolated transaction, and to the degree that data is
 expected to change within the transaction outside of the local changes being
 made, those use cases would be handled using explicit steps such as this method.
 
+Using ``populate_existing``, any set of objects that matches a query
+can be refreshed, and it also allows control over relationship loader options.
+E.g. to refresh an instance while also refreshing a related set of objects::
+
+    stmt = (
+        select(User).
+        where(User.name.in_(names)).
+        execution_options(populate_existing=True).
+        options(selectinload(User.addresses)
+    )
+    # will refresh all matching User objects as well as the related
+    # Address objects
+    users = session.execute(stmt).scalars().all()
+
 Another use case for ``populate_existing`` is in support of various
 attribute loading features that can change how an attribute is loaded on
 a per-query basis.   Options for which this apply include:

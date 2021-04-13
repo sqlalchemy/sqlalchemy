@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 6252
+
+    Fixed issue in the new feature of :meth:`_orm.Session.refresh` introduced
+    by :ticket:`1763` where eagerly loaded relationships are also refreshed,
+    where the ``lazy="raise"`` and ``lazy="raise_on_sql"`` loader strategies
+    would interfere with the :func:`_orm.immediateload` loader strategy, thus
+    breaking the feature for relationships that were loaded with
+    :func:`_orm.selectinload`, :func:`_orm.subqueryload` as well.
