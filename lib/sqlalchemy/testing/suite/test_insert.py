@@ -167,8 +167,21 @@ class InsertBehaviorTest(fixtures.TablesTest):
                 self.tables.autoinc_pk.c.id != None
             )
         )
+        eq_(len(r.all()), 1)
 
-        assert len(r.fetchall())
+    @requirements.empty_inserts_executemany
+    def test_empty_insert_multiple(self, connection):
+        r = connection.execute(self.tables.autoinc_pk.insert(), [{}, {}, {}])
+        assert r._soft_closed
+        assert not r.closed
+
+        r = connection.execute(
+            self.tables.autoinc_pk.select().where(
+                self.tables.autoinc_pk.c.id != None
+            )
+        )
+
+        eq_(len(r.all()), 3)
 
     @requirements.insert_from_select
     def test_insert_from_select_autoinc(self, connection):

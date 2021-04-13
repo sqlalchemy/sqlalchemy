@@ -140,8 +140,18 @@ class DefaultDialect(interfaces.Dialect):
     supports_sane_multi_rowcount = True
     colspecs = {}
     default_paramstyle = "named"
+
     supports_default_values = False
+    """dialect supports INSERT... DEFAULT VALUES syntax"""
+
+    supports_default_metavalue = False
+    """dialect supports INSERT... VALUES (DEFAULT) syntax"""
+
+    # not sure if this is a real thing but the compiler will deliver it
+    # if this is the only flag enabled.
     supports_empty_insert = True
+    """dialect supports INSERT () VALUES ()"""
+
     supports_multivalues_insert = False
 
     supports_is_distinct_from = True

@@ -335,9 +335,17 @@ class SuiteRequirements(Requirements):
 
         return exclusions.only_if(
             lambda config: config.db.dialect.supports_empty_insert
-            or config.db.dialect.supports_default_values,
+            or config.db.dialect.supports_default_values
+            or config.db.dialect.supports_default_metavalue,
             "empty inserts not supported",
         )
+
+    @property
+    def empty_inserts_executemany(self):
+        """target platform supports INSERT with no values, i.e.
+        INSERT DEFAULT VALUES or equivalent, within executemany()"""
+
+        return self.empty_inserts
 
     @property
     def insert_from_select(self):

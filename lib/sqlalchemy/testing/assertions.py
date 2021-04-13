@@ -400,6 +400,7 @@ class AssertsCompiledSQL(object):
         use_default_dialect=False,
         allow_dialect_select=False,
         supports_default_values=True,
+        supports_default_metavalue=True,
         literal_binds=False,
         render_postcompile=False,
         schema_translate_map=None,
@@ -410,6 +411,7 @@ class AssertsCompiledSQL(object):
         if use_default_dialect:
             dialect = default.DefaultDialect()
             dialect.supports_default_values = supports_default_values
+            dialect.supports_default_metavalue = supports_default_metavalue
         elif allow_dialect_select:
             dialect = None
         else:
@@ -421,6 +423,7 @@ class AssertsCompiledSQL(object):
             elif dialect == "default":
                 dialect = default.DefaultDialect()
                 dialect.supports_default_values = supports_default_values
+                dialect.supports_default_metavalue = supports_default_metavalue
             elif dialect == "default_enhanced":
                 dialect = default.StrCompileDialect()
             elif isinstance(dialect, util.string_types):

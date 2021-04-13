@@ -2534,6 +2534,11 @@ class MySQLDialect(default.DefaultDialect):
     supports_for_update_of = False  # default for MySQL ...
     # ... may be updated to True for MySQL 8+ in initialize()
 
+    # MySQL doesn't support "DEFAULT VALUES" but *does* support
+    # "VALUES (DEFAULT)"
+    supports_default_values = False
+    supports_default_metavalue = True
+
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False
     supports_multivalues_insert = True

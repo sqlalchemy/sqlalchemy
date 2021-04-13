@@ -3480,6 +3480,7 @@ class SQLCompiler(Compiled):
         if (
             not crud_params
             and not self.dialect.supports_default_values
+            and not self.dialect.supports_default_metavalue
             and not self.dialect.supports_empty_insert
         ):
             raise exc.CompileError(

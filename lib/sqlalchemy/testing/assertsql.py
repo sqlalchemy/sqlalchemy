@@ -76,7 +76,11 @@ class CompiledSQL(SQLMatchRule):
 
     def _compile_dialect(self, execute_observed):
         if self.dialect == "default":
-            return DefaultDialect()
+            dialect = DefaultDialect()
+            # this is currently what tests are expecting
+            # dialect.supports_default_values = True
+            dialect.supports_default_metavalue = True
+            return dialect
         else:
             # ugh
             if self.dialect == "postgresql":
