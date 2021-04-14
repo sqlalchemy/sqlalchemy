@@ -261,6 +261,13 @@ class ExecuteTest(fixtures.TablesTest):
             (4, "sally"),
         ]
 
+    def test_dialect_has_table_assertion(self):
+        with expect_raises_message(
+            tsa.exc.ArgumentError,
+            r"The argument passed to Dialect.has_table\(\) should be a",
+        ):
+            testing.db.dialect.has_table(testing.db, "some_table")
+
     def test_exception_wrapping_dbapi(self):
         with testing.db.connect() as conn:
             # engine does not have exec_driver_sql

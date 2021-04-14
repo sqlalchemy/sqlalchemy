@@ -3303,6 +3303,7 @@ class PGDialect(default.DefaultDialect):
         return bool(cursor.first())
 
     def has_table(self, connection, table_name, schema=None):
+        self._ensure_has_table_connection(connection)
         # seems like case gets folded in pg_class...
         if schema is None:
             cursor = connection.execute(

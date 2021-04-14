@@ -467,12 +467,25 @@ class Dialect(object):
         raise NotImplementedError()
 
     def has_table(self, connection, table_name, schema=None, **kw):
-        """Check the existence of a particular table in the database.
+        """For internal dialect use, check the existence of a particular table
+        in the database.
 
-        Given a :class:`_engine.Connection` object and a string
-        `table_name`, return True if the given table (possibly within
-        the specified `schema`) exists in the database, False
-        otherwise.
+        Given a :class:`_engine.Connection` object, a string table_name and
+        optional schema name, return True if the given table exists in the
+        database, False otherwise.
+
+        This method serves as the underlying implementation of the
+        public facing :meth:`.Inspector.has_table` method, and is also used
+        internally to implement the "checkfirst" behavior for methods like
+        :meth:`_schema.Table.create` and :meth:`_schema.MetaData.create_all`.
+
+        .. note:: This method is used internally by SQLAlchemy, and is
+           published so that third-party dialects may provide an
+           implementation. It is **not** the public API for checking for table
+           presence. Please use the :meth:`.Inspector.has_table` method.
+           Alternatively, for legacy cross-compatibility, the
+           :meth:`_engine.Engine.has_table` method may be used.
+
         """
 
         raise NotImplementedError()

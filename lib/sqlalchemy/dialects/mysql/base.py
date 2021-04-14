@@ -2809,6 +2809,8 @@ class MySQLDialect(default.DefaultDialect):
         return connection.exec_driver_sql("SELECT DATABASE()").scalar()
 
     def has_table(self, connection, table_name, schema=None):
+        self._ensure_has_table_connection(connection)
+
         if schema is None:
             schema = self.default_schema_name
 

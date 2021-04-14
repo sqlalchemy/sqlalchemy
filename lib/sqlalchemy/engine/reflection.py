@@ -274,7 +274,8 @@ class Inspector(object):
         :param table_name: name of the table to check
         :param schema: schema name to query, if not the default schema.
 
-        .. versionadded:: 1.4
+        .. versionadded:: 1.4 - the :meth:`.Inspector.has_table` method
+           replaces the :meth:`_engine.Engine.has_table` method.
 
         """
         # TODO: info_cache?

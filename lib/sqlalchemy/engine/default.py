@@ -22,6 +22,7 @@ import weakref
 from . import characteristics
 from . import cursor as _cursor
 from . import interfaces
+from .base import Connection
 from .. import event
 from .. import exc
 from .. import pool
@@ -322,6 +323,19 @@ class DefaultDialect(interfaces.Dialect):
             )(self.description_encoding)
         self._encoder = codecs.getencoder(self.encoding)
         self._decoder = processors.to_unicode_processor_factory(self.encoding)
+
+    def _ensure_has_table_connection(self, arg):
+
+        if not isinstance(arg, Connection):
+            raise exc.ArgumentError(
+                "The argument passed to Dialect.has_table() should be a "
+                "%s, got %s. "
+                "Additionally, the Dialect.has_table() method is for "
+                "internal dialect "
+                "use only; please use "
+                "``inspect(some_engine).has_table(<tablename>>)`` "
+                "for public API use." % (Connection, type(arg))
+            )
 
     @util.memoized_property
     def _supports_statement_cache(self):

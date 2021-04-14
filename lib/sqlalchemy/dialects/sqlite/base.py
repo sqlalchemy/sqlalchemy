@@ -1996,6 +1996,8 @@ class SQLiteDialect(default.DefaultDialect):
         return [row[0] for row in rs]
 
     def has_table(self, connection, table_name, schema=None):
+        self._ensure_has_table_connection(connection)
+
         info = self._get_table_pragma(
             connection, "table_info", table_name, schema=schema
         )

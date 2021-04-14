@@ -1089,6 +1089,8 @@ class SybaseDialect(default.DefaultDialect):
         return [v["name"] for v in views]
 
     def has_table(self, connection, table_name, schema=None):
+        self._ensure_has_table_connection(connection)
+
         try:
             self.get_table_id(connection, table_name, schema)
         except exc.NoSuchTableError:

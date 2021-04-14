@@ -685,6 +685,7 @@ class FBDialect(default.DefaultDialect):
     def has_table(self, connection, table_name, schema=None):
         """Return ``True`` if the given table exists, ignoring
         the `schema`."""
+        self._ensure_has_table_connection(connection)
 
         tblqry = """
         SELECT 1 AS has_table FROM rdb$database

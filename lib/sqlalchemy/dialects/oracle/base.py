@@ -1596,6 +1596,8 @@ class OracleDialect(default.DefaultDialect):
         raise NotImplementedError("implemented by cx_Oracle dialect")
 
     def has_table(self, connection, table_name, schema=None):
+        self._ensure_has_table_connection(connection)
+
         if not schema:
             schema = self.default_schema_name
         cursor = connection.execute(

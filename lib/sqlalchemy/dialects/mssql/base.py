@@ -2799,6 +2799,7 @@ class MSDialect(default.DefaultDialect):
 
     @_db_plus_owner
     def has_table(self, connection, tablename, dbname, owner, schema):
+        self._ensure_has_table_connection(connection)
         if tablename.startswith("#"):  # temporary table
             tables = ischema.mssql_temp_table_columns
 
