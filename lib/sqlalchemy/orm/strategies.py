@@ -264,7 +264,10 @@ class ExpressionColumnLoader(ColumnLoader):
     def __init__(self, parent, strategy_key):
         super(ExpressionColumnLoader, self).__init__(parent, strategy_key)
 
-        null = sql.null()
+        # compare to the "default" expression that is mapped in
+        # the column.   If it's sql.null, we don't need to render
+        # unless an expr is passed in the options.
+        null = sql.null().label(None)
         self._have_default_expression = any(
             not c.compare(null) for c in self.parent_property.columns
         )

@@ -54,6 +54,8 @@ class Immutable(object):
 
 
 class SingletonConstant(Immutable):
+    """Represent SQL constants like NULL, TRUE, FALSE"""
+
     def __new__(cls, *arg, **kw):
         return cls._singleton
 
@@ -62,6 +64,13 @@ class SingletonConstant(Immutable):
         obj = object.__new__(cls)
         obj.__init__()
         cls._singleton = obj
+
+    # don't proxy singletons.   this means that a SingletonConstant
+    # will never be a "corresponding column" in a statement; the constant
+    # can be named directly and as it is often/usually compared against using
+    # "IS", it can't be adapted to a subquery column in any case.
+    # see :ticket:`6259`.
+    proxy_set = frozenset()
 
 
 def _from_objects(*elements):

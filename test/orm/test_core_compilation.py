@@ -3,6 +3,7 @@ from sqlalchemy import exc
 from sqlalchemy import func
 from sqlalchemy import insert
 from sqlalchemy import literal_column
+from sqlalchemy import null
 from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import testing
@@ -17,6 +18,7 @@ from sqlalchemy.orm import query_expression
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import with_expression
 from sqlalchemy.orm import with_polymorphic
+from sqlalchemy.sql import and_
 from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql.selectable import Join as core_join
 from sqlalchemy.sql.selectable import LABEL_STYLE_DISAMBIGUATE_ONLY
@@ -405,12 +407,50 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
             self.tables.users,
             self.classes.User,
         )
+        addresses, Address = (self.tables.addresses, self.classes.Address)
 
         mapper(
             User,
             users,
-            properties=util.OrderedDict([("value", query_expression())]),
+            properties=util.OrderedDict(
+                [
+                    ("value", query_expression()),
+                ]
+            ),
         )
+        mapper(Address, addresses)
+
+        return User
+
+    @testing.fixture
+    def query_expression_w_joinedload_fixture(self):
+        users, User = (
+            self.tables.users,
+            self.classes.User,
+        )
+        addresses, Address = (self.tables.addresses, self.classes.Address)
+
+        mapper(
+            User,
+            users,
+            properties=util.OrderedDict(
+                [
+                    ("value", query_expression()),
+                    (
+                        "addresses",
+                        relationship(
+                            Address,
+                            primaryjoin=and_(
+                                addresses.c.user_id == users.c.id,
+                                addresses.c.email_address != None,
+                            ),
+                        ),
+                    ),
+                ]
+            ),
+        )
+        mapper(Address, addresses)
+
         return User
 
     @testing.fixture
@@ -526,6 +566,49 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
             "SELECT anon_1.foo, anon_1.id, anon_1.name FROM "
             "(SELECT users.id AS id, users.name AS name, "
             "users.name || :name_1 AS foo FROM users) AS anon_1",
+        )
+
+    def test_with_expr_three(self, query_expression_w_joinedload_fixture):
+        """test :ticket:`6259`"""
+        User = query_expression_w_joinedload_fixture
+
+        stmt = select(User).options(joinedload(User.addresses)).limit(1)
+
+        # test that the outer IS NULL is rendered
+        # test that the inner query does not include a NULL default
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.id, anon_1.name, addresses_1.id AS id_1, "
+            "addresses_1.user_id, addresses_1.email_address FROM "
+            "(SELECT users.id AS id, users.name AS name FROM users "
+            "LIMIT :param_1) AS anon_1 LEFT OUTER "
+            "JOIN addresses AS addresses_1 ON addresses_1.user_id = anon_1.id "
+            "AND addresses_1.email_address IS NOT NULL",
+        )
+
+    def test_with_expr_four(self, query_expression_w_joinedload_fixture):
+        """test :ticket:`6259`"""
+        User = query_expression_w_joinedload_fixture
+
+        stmt = (
+            select(User)
+            .options(
+                with_expression(User.value, null()), joinedload(User.addresses)
+            )
+            .limit(1)
+        )
+
+        # test that the outer IS NULL is rendered, not adapted
+        # test that the inner query includes the NULL we asked for
+        self.assert_compile(
+            stmt,
+            "SELECT anon_2.anon_1, anon_2.id, anon_2.name, "
+            "addresses_1.id AS id_1, addresses_1.user_id, "
+            "addresses_1.email_address FROM (SELECT NULL AS anon_1, "
+            "users.id AS id, users.name AS name FROM users LIMIT :param_1) "
+            "AS anon_2 LEFT OUTER JOIN addresses AS addresses_1 "
+            "ON addresses_1.user_id = anon_2.id "
+            "AND addresses_1.email_address IS NOT NULL",
         )
 
     def test_joinedload_outermost(self, plain_fixture):

@@ -12,11 +12,13 @@ from sqlalchemy import Integer
 from sqlalchemy import literal
 from sqlalchemy import literal_column
 from sqlalchemy import MetaData
+from sqlalchemy import null
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import true
 from sqlalchemy import tuple_
 from sqlalchemy import union
 from sqlalchemy.sql import ClauseElement
@@ -400,6 +402,75 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             select(f), "SELECT t1_1.col1 * :col1_1 AS anon_1 FROM t1 AS t1_1"
+        )
+
+    @testing.combinations((null(),), (true(),))
+    def test_dont_adapt_singleton_elements(self, elem):
+        """test :ticket:`6259`"""
+        t1 = table("t1", column("c1"))
+
+        stmt = select(t1.c.c1, elem)
+
+        wherecond = t1.c.c1.is_(elem)
+
+        subq = stmt.subquery()
+
+        adapted_wherecond = sql_util.ClauseAdapter(subq).traverse(wherecond)
+        stmt = select(subq).where(adapted_wherecond)
+
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.c1, anon_1.anon_2 FROM (SELECT t1.c1 AS c1, "
+            "%s AS anon_2 FROM t1) AS anon_1 WHERE anon_1.c1 IS %s"
+            % (str(elem), str(elem)),
+            dialect="default_enhanced",
+        )
+
+    def test_adapt_funcs_etc_on_identity_one(self):
+        """Adapting to a function etc. will adapt if its on identity"""
+        t1 = table("t1", column("c1"))
+
+        elem = func.foobar()
+
+        stmt = select(t1.c.c1, elem)
+
+        wherecond = t1.c.c1 == elem
+
+        subq = stmt.subquery()
+
+        adapted_wherecond = sql_util.ClauseAdapter(subq).traverse(wherecond)
+        stmt = select(subq).where(adapted_wherecond)
+
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.c1, anon_1.foobar_1 FROM (SELECT t1.c1 AS c1, "
+            "foobar() AS foobar_1 FROM t1) AS anon_1 "
+            "WHERE anon_1.c1 = anon_1.foobar_1",
+            dialect="default_enhanced",
+        )
+
+    def test_adapt_funcs_etc_on_identity_two(self):
+        """Adapting to a function etc. will not adapt if they are different"""
+        t1 = table("t1", column("c1"))
+
+        elem = func.foobar()
+        elem2 = func.foobar()
+
+        stmt = select(t1.c.c1, elem)
+
+        wherecond = t1.c.c1 == elem2
+
+        subq = stmt.subquery()
+
+        adapted_wherecond = sql_util.ClauseAdapter(subq).traverse(wherecond)
+        stmt = select(subq).where(adapted_wherecond)
+
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.c1, anon_1.foobar_1 FROM (SELECT t1.c1 AS c1, "
+            "foobar() AS foobar_1 FROM t1) AS anon_1 "
+            "WHERE anon_1.c1 = foobar()",
+            dialect="default_enhanced",
         )
 
     def test_join(self):
