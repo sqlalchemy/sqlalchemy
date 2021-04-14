@@ -1454,8 +1454,6 @@ class OracleDialect(default.DefaultDialect):
 
     supports_comments = True
 
-    # Oracle supports these syntaxes but I'm not able to get them
-    # to work with RETURNING which we usually need
     supports_default_values = False
     supports_default_metavalue = True
     supports_empty_insert = False
