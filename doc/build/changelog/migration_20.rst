@@ -177,6 +177,11 @@ suppress any warnings is selected::
 
     SQLALCHEMY_WARN_20=1 python -W always::DeprecationWarning test3.py
 
+Since the reported warning location is not always in the correct place, locating
+the offending code may be difficult without the full stacktrace. This can be achieved
+by transforming the warnings to exceptions by specifying the ``error`` warning filter,
+using Python option ``-W error::DeprecationWarning``.
+
 .. _warnings filter: https://docs.python.org/3/library/warnings.html#the-warnings-filter
 
 With warnings turned on, our program now has a lot to say::
