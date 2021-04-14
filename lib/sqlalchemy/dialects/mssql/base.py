@@ -1759,13 +1759,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
             return select._fetch_clause
 
     def _use_top(self, select):
-        return (
-            select._offset_clause is None
-            or (
-                select._simple_int_clause(select._offset_clause)
-                and select._offset == 0
-            )
-        ) and (
+        return (select._offset_clause is None) and (
             select._simple_int_clause(select._limit_clause)
             or (
                 # limit can use TOP with is by itself. fetch only uses TOP

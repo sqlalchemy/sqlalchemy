@@ -265,19 +265,26 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
             [(4, 4, 5), (5, 4, 6)],
         )
 
+    @testing.combinations(
+        ([(2, 0), (2, 1), (3, 2)]),
+        ([(2, 1), (2, 0), (3, 2)]),
+        ([(3, 1), (2, 1), (3, 1)]),
+        argnames="cases",
+    )
     @testing.requires.offset
-    def test_simple_limit_offset(self, connection):
+    def test_simple_limit_offset(self, connection, cases):
         table = self.tables.some_table
-        self._assert_result(
-            connection,
-            select(table).order_by(table.c.id).limit(2).offset(1),
-            [(2, 2, 3), (3, 3, 4)],
-        )
-        self._assert_result(
-            connection,
-            select(table).order_by(table.c.id).limit(3).offset(2),
-            [(3, 3, 4), (4, 4, 5), (5, 4, 6)],
-        )
+        connection = connection.execution_options(compiled_cache={})
+
+        assert_data = [(1, 1, 2), (2, 2, 3), (3, 3, 4), (4, 4, 5), (5, 4, 6)]
+
+        for limit, offset in cases:
+            expected = assert_data[offset : offset + limit]
+            self._assert_result(
+                connection,
+                select(table).order_by(table.c.id).limit(limit).offset(offset),
+                expected,
+            )
 
     @testing.requires.fetch_first
     def test_simple_fetch_offset(self, connection):
