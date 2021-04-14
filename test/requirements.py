@@ -847,6 +847,11 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def empty_inserts_executemany(self):
+        # waiting on https://jira.mariadb.org/browse/CONPY-152
+        return skip_if(["mariadb+mariadbconnector"]) + self.empty_inserts
+
+    @property
     def expressions_against_unbounded_text(self):
         """target database supports use of an unbounded textual field in a
         WHERE clause."""

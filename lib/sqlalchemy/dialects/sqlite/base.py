@@ -1791,7 +1791,12 @@ class SQLiteDialect(default.DefaultDialect):
     supports_alter = False
     supports_unicode_statements = True
     supports_unicode_binds = True
+
+    # SQlite supports "DEFAULT VALUES" but *does not* support
+    # "VALUES (DEFAULT)"
     supports_default_values = True
+    supports_default_metavalue = False
+
     supports_empty_insert = False
     supports_cast = True
     supports_multivalues_insert = True

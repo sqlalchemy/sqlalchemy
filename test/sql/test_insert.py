@@ -951,12 +951,22 @@ class EmptyTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table1 = self.tables.mytable
 
         dialect = default.DefaultDialect()
-        dialect.supports_empty_insert = dialect.supports_default_values = True
+        dialect.supports_empty_insert = False
+        dialect.supports_default_values = True
+        dialect.supports_default_metavalue = True
 
         stmt = table1.insert().values({})
         self.assert_compile(
             stmt,
             "INSERT INTO mytable (myid) VALUES (DEFAULT)",
+            dialect=dialect,
+            for_executemany=True,
+        )
+
+        dialect.supports_default_metavalue = False
+        self.assert_compile(
+            stmt,
+            "INSERT INTO mytable DEFAULT VALUES",
             dialect=dialect,
             for_executemany=True,
         )

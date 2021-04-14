@@ -1589,6 +1589,7 @@ class DeprecatedExecParamsTest(fixtures.TablesTest):
             [(5, "some name"), (6, "some other name")],
         )
 
+    @testing.requires.empty_inserts
     def test_single_scalar(self, connection):
 
         users = self.tables.users_autoinc
