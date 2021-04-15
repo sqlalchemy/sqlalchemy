@@ -681,6 +681,12 @@ class RemovedIn20Warning(SADeprecationWarning):
     deprecated_since = "1.4"
     "Indicates the version that started raising this deprecation warning"
 
+    def __str__(self):
+        return (
+            super(RemovedIn20Warning, self).__str__()
+            + " (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)"
+        )
+
 
 class MovedIn20Warning(RemovedIn20Warning):
     """Subtype of RemovedIn20Warning to indicate an API that moved only."""

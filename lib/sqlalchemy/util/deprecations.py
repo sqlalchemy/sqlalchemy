@@ -27,13 +27,8 @@ if os.getenv("SQLALCHEMY_WARN_20", "false").lower() in ("true", "yes", "1"):
 
 
 def _warn_with_version(msg, version, type_, stacklevel, code=None):
-    is_20 = issubclass(type_, exc.RemovedIn20Warning)
-
-    if is_20 and not SQLALCHEMY_WARN_20:
+    if issubclass(type_, exc.RemovedIn20Warning) and not SQLALCHEMY_WARN_20:
         return
-
-    if is_20:
-        msg += " (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)"
 
     warn = type_(msg, code=code)
     warn.deprecated_since = version
