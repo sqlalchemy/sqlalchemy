@@ -19,7 +19,7 @@ from .util import compat
 _version_token = None
 
 
-class _CodeStrMixin(object):
+class HasDescriptionCode:
     """helper which adds 'code' as an attribute and '_code_str' as a method"""
 
     code = None
@@ -28,7 +28,7 @@ class _CodeStrMixin(object):
         code = kw.pop("code", None)
         if code is not None:
             self.code = code
-        super(_CodeStrMixin, self).__init__(*arg, **kw)
+        super(HasDescriptionCode, self).__init__(*arg, **kw)
 
     def _code_str(self):
         if not self.code:
@@ -44,7 +44,7 @@ class _CodeStrMixin(object):
             )
 
 
-class SQLAlchemyError(_CodeStrMixin, Exception):
+class SQLAlchemyError(HasDescriptionCode, Exception):
     """Generic error class."""
 
     def _message(self, as_unicode=compat.py3k):
@@ -654,7 +654,7 @@ class NotSupportedError(DatabaseError):
 # Warnings
 
 
-class SADeprecationWarning(_CodeStrMixin, DeprecationWarning):
+class SADeprecationWarning(HasDescriptionCode, DeprecationWarning):
     """Issued for usage of deprecated APIs."""
 
     deprecated_since = None

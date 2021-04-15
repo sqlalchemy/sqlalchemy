@@ -172,6 +172,24 @@ In SQLAlchemy 1.4, this :term:`2.0 style` behavior is enabled when the
 :paramref:`_orm.Session.future` flag is set on :class:`_orm.sessionmaker`
 or :class:`_orm.Session`.
 
+.. _error_s9r1:
+
+Object is being merged into a Session along the backref cascade
+---------------------------------------------------------------
+
+Backref cascades are being removed in SQLAlchemy 2.0. This is a behavior in
+which ORM relationships add objects to the session in a potentially
+surprising way.
+
+To get the 2.0 behavior, set the :paramref:`_orm.relationship.cascade_backrefs` and
+:paramref:`_orm.backref.cascade_backrefs` parameters.
+:paramref:`_orm.relationship.backref` values should be updated from strings, if
+used, to :func:`~.sqlalchemy.orm.backref` function calls.
+
+For more details on the backref cascade, see the section
+:ref:`backref_cascade`. You can also read more about the deprecation and its
+rationale in the section :ref:`change_5150`.
+
 Connections and Transactions
 ============================
 
