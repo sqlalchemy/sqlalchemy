@@ -15,7 +15,115 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.8
-    :include_notes_from: unreleased_14
+    :released: April 15, 2021
+
+    .. change::
+        :tags: change, mypy
+
+        Updated Mypy plugin to only use the public plugin interface of the
+        semantic analyzer.
+
+    .. change::
+        :tags: bug, mssql, regression
+        :tickets: 6265
+
+        Fixed an additional regression in the same area as that of :ticket:`6173`,
+        :ticket:`6184`, where using a value of 0 for OFFSET in conjunction with
+        LIMIT with SQL Server would create a statement using "TOP", as was the
+        behavior in 1.3, however due to caching would then fail to respond
+        accordingly to other values of OFFSET. If the "0" wasn't first, then it
+        would be fine. For the fix, the "TOP" syntax is now only emitted if the
+        OFFSET value is omitted entirely, that is, :meth:`_sql.Select.offset` is
+        not used. Note that this change now requires that if the "with_ties" or
+        "percent" modifiers are used, the statement can't specify an OFFSET of
+        zero, it now needs to be omitted entirely.
+
+    .. change::
+        :tags: bug, engine
+
+        The :meth:`_engine.Dialect.has_table` method now raises an informative
+        exception if a non-Connection is passed to it, as this incorrect behavior
+        seems to be common.  This method is not intended for external use outside
+        of a dialect.  Please use the :meth:`.Inspector.has_table` method
+        or for cross-compatibility with older SQLAlchemy versions, the
+        :meth:`_engine.Engine.has_table` method.
+
+
+    .. change::
+        :tags: bug, regression, sql
+        :tickets: 6249
+
+        Fixed regression where the :class:`_sql.BindParameter` object would not
+        properly render for an IN expression (i.e. using the "post compile" feature
+        in 1.4) if the object were copied from either an internal cloning
+        operation, or from a pickle operation, and the parameter name contained
+        spaces or other special characters.
+
+    .. change::
+        :tags: bug, mypy
+        :tickets: 6205
+
+        Revised the fix for ``OrderingList`` from version 1.4.7 which was testing
+        against the incorrect API.
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 6220
+
+        Fix typo that prevented setting the ``bind`` attribute of an
+        :class:`_asyncio.AsyncSession` to the correct value.
+
+    .. change::
+        :tags: feature, sql
+        :tickets: 3314
+
+        The tuple returned by :attr:`.CursorResult.inserted_primary_key` is now a
+        :class:`_result.Row` object with a named tuple interface on top of the
+        existing tuple interface.
+
+
+
+
+    .. change::
+        :tags: bug, regression, sql, sqlite
+        :tickets: 6254
+
+        Fixed regression where the introduction of the INSERT syntax "INSERT...
+        VALUES (DEFAULT)" was not supported on some backends that do however
+        support "INSERT..DEFAULT VALUES", including SQLite. The two syntaxes are
+        now each individually supported or non-supported for each dialect, for
+        example MySQL supports "VALUES (DEFAULT)" but not "DEFAULT VALUES".
+        Support for Oracle has also been enabled.
+
+    .. change::
+        :tags: bug, regression, orm
+        :tickets: 6259
+
+        Fixed a cache leak involving the :func:`_orm.with_expression` loader
+        option, where the given SQL expression would not be correctly considered as
+        part of the cache key.
+
+        Additionally, fixed regression involving the corresponding
+        :func:`_orm.query_expression` feature. While the bug technically exists in
+        1.3 as well, it was not exposed until 1.4. The "default expr" value of
+        ``null()`` would be rendered when not needed, and additionally was also not
+        adapted correctly when the ORM rewrites statements such as when using
+        joined eager loading. The fix ensures "singleton" expressions like ``NULL``
+        and ``true`` aren't "adapted" to refer to columns in ORM statements, and
+        additionally ensures that a :func:`_orm.query_expression` with no default
+        expression doesn't render in the statement if a
+        :func:`_orm.with_expression` isn't used.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6252
+
+        Fixed issue in the new feature of :meth:`_orm.Session.refresh` introduced
+        by :ticket:`1763` where eagerly loaded relationships are also refreshed,
+        where the ``lazy="raise"`` and ``lazy="raise_on_sql"`` loader strategies
+        would interfere with the :func:`_orm.immediateload` loader strategy, thus
+        breaking the feature for relationships that were loaded with
+        :func:`_orm.selectinload`, :func:`_orm.subqueryload` as well.
 
 .. changelog::
     :version: 1.4.7

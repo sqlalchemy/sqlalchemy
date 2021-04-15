@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, asyncio
-    :tickets: 6220
-
-    Fix typo that prevented setting the ``bind`` attribute of an
-    :class:`_asyncio.AsyncSession` to the correct value.

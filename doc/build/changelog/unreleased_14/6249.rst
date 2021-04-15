@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, regression, sql
-    :tickets: 6249
-
-    Fixed regression where the :class:`_sql.BindParameter` object would not
-    properly render for an IN expression (i.e. using the "post compile" feature
-    in 1.4) if the object were copied from either an internal cloning
-    operation, or from a pickle operation, and the parameter name contained
-    spaces or other special characters.

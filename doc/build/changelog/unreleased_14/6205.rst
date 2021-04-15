@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, mypy
-    :tickets: 6205
-
-    Revised the fix for ``OrderingList`` from version 1.4.7 which was testing
-    against the incorrect API.
