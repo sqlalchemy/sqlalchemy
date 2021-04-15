@@ -10,7 +10,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql.schema import ForeignKey
 
 
-@as_declarative
+@as_declarative()
 class Base(object):
     updated_at = Column(Integer)
 
