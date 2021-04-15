@@ -453,7 +453,7 @@ class SchemaEventTarget(object):
 
     """
 
-    def _set_parent(self, parent):
+    def _set_parent(self, parent, **kw):
         """Associate with this SchemaEvent's parent object."""
 
     def _set_parent_with_dispatch(self, parent, **kw):
