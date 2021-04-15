@@ -2,6 +2,7 @@ import sqlalchemy as sa
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import null
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
@@ -1824,7 +1825,7 @@ class WithExpressionTest(fixtures.DeclarativeMappedTest):
         A = self.classes.A
 
         s = fixture_session()
-        a1 = s.query(A).first()
+        a1 = s.query(A).options(with_expression(A.my_expr, null())).first()
 
         def go():
             eq_(a1.my_expr, None)

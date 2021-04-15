@@ -1,0 +1,18 @@
+.. change::
+    :tags: bug, regression, orm
+    :tickets: 6259
+
+    Fixed a cache leak involving the :func:`_orm.with_expression` loader
+    option, where the given SQL expression would not be correctly considered as
+    part of the cache key.
+
+    Additionally, fixed regression involving the corresponding
+    :func:`_orm.query_expression` feature. While the bug technically exists in
+    1.3 as well, it was not exposed until 1.4. The "default expr" value of
+    ``null()`` would be rendered when not needed, and additionally was also not
+    adapted correctly when the ORM rewrites statements such as when using
+    joined eager loading. The fix ensures "singleton" expressions like ``NULL``
+    and ``true`` aren't "adapted" to refer to columns in ORM statements, and
+    additionally ensures that a :func:`_orm.query_expression` with no default
+    expression doesn't render in the statement if a
+    :func:`_orm.with_expression` isn't used.

@@ -90,7 +90,10 @@ class Load(Generative, LoaderOption):
             "_context_cache_key",
             visitors.ExtendedInternalTraversal.dp_has_cache_key_tuples,
         ),
-        ("local_opts", visitors.ExtendedInternalTraversal.dp_plain_dict),
+        (
+            "local_opts",
+            visitors.ExtendedInternalTraversal.dp_string_multi_dict,
+        ),
     ]
 
     def __init__(self, entity):
@@ -601,7 +604,10 @@ class _UnboundLoad(Load):
         ("strategy", visitors.ExtendedInternalTraversal.dp_plain_obj),
         ("_to_bind", visitors.ExtendedInternalTraversal.dp_has_cache_key_list),
         ("_extra_criteria", visitors.InternalTraversal.dp_clauseelement_list),
-        ("local_opts", visitors.ExtendedInternalTraversal.dp_plain_dict),
+        (
+            "local_opts",
+            visitors.ExtendedInternalTraversal.dp_string_multi_dict,
+        ),
     ]
 
     _is_chain_link = False

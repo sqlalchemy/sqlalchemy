@@ -1,9 +1,12 @@
 import random
 
+from sqlalchemy import func
 from sqlalchemy import inspect
+from sqlalchemy import null
 from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import true
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import defer
@@ -16,6 +19,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import with_expression
 from sqlalchemy.orm import with_loader_criteria
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.sql.base import CacheableOptions
@@ -68,6 +72,23 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                 User.addresses,
                 Address.email_address,
                 aliased(User).addresses,
+            ),
+            compare_values=True,
+        )
+
+    def test_query_expr(self):
+        (User,) = self.classes("User")
+
+        self._run_cache_key_fixture(
+            lambda: (
+                with_expression(User.name, true()),
+                with_expression(User.name, null()),
+                with_expression(User.name, func.foobar()),
+                with_expression(User.name, User.name == "test"),
+                Load(User).with_expression(User.name, true()),
+                Load(User).with_expression(User.name, null()),
+                Load(User).with_expression(User.name, func.foobar()),
+                Load(User).with_expression(User.name, User.name == "test"),
             ),
             compare_values=True,
         )
