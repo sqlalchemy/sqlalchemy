@@ -1171,7 +1171,11 @@ class EagerTest8(fixtures.MappedTest):
         session = fixture_session()
 
         eq_(
-            session.query(Joined).limit(10).offset(0).one(),
+            session.query(Joined)
+            .order_by(Joined.id)
+            .limit(10)
+            .offset(0)
+            .one(),
             Joined(id=1, title="task 1", props_cnt=0),
         )
 

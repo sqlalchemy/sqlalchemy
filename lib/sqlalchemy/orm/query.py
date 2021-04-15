@@ -306,9 +306,7 @@ class Query(
         if self._limit_clause is not None or self._offset_clause is not None:
             raise sa_exc.InvalidRequestError(
                 "Query.%s() being called on a Query which already has LIMIT "
-                "or OFFSET applied. To modify the row-limited results of a "
-                " Query, call from_self() first.  "
-                "Otherwise, call %s() before limit() or offset() "
+                "or OFFSET applied.  Call %s() before limit() or offset() "
                 "are applied." % (meth, meth)
             )
 
