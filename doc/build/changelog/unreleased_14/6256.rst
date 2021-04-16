@@ -1,0 +1,17 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 6256
+
+    Repaired and solidified issues regarding custom functions and other
+    arbitrary expression constructs which within SQLAlchemy's column labeling
+    mechanics would seek to use ``str(obj)`` to get a string representation to
+    use as an anonymous column name in the ``.c`` collection of a subquery.
+    This is a very legacy behavior that performs poorly and leads to lots of
+    issues, so has been revised to no longer perform any compilation by
+    establishing specific methods on :class:`.FunctionElement` to handle this
+    case, as SQL functions are the only use case that it came into play. An
+    effect of this behavior is that an unlabeled column expression with no
+    derivable name will be given an arbitrary label starting with the prefix
+    ``"_no_label"`` in the ``.c`` collection of a subquery; these were
+    previously being represented either as the generic stringification of that
+    expression, or as an internal symbol.

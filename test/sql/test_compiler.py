@@ -3026,7 +3026,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             func.lala(table1.c.name).label("gg"),
         )
 
-        eq_(list(s1.subquery().c.keys()), ["myid", "foobar", str(f1), "gg"])
+        eq_(list(s1.subquery().c.keys()), ["myid", "foobar", "hoho", "gg"])
 
         meta = MetaData()
         t1 = Table("mytable", meta, Column("col1", Integer))
@@ -3039,11 +3039,16 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         for col, key, expr, lbl in (
             (table1.c.name, "name", "mytable.name", None),
-            (exprs[0], str(exprs[0]), "mytable.myid = :myid_1", "anon_1"),
-            (exprs[1], str(exprs[1]), "hoho(mytable.myid)", "hoho_1"),
+            (
+                exprs[0],
+                "_no_label",
+                "mytable.myid = :myid_1",
+                "anon_1",
+            ),
+            (exprs[1], "hoho", "hoho(mytable.myid)", "hoho_1"),
             (
                 exprs[2],
-                str(exprs[2]),
+                "_no_label",
                 "CAST(mytable.name AS NUMERIC)",
                 "name",  # due to [ticket:4449]
             ),
@@ -3062,7 +3067,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 t = table1
 
             s1 = select(col).select_from(t)
-            assert list(s1.subquery().c.keys()) == [key], list(s1.c.keys())
+            eq_(list(s1.subquery().c.keys()), [key])
 
             if lbl:
                 self.assert_compile(
@@ -5932,7 +5937,7 @@ class ResultMapTest(fixtures.TestBase):
                 "a": ("a", (t.c.a, "a", "a", "t_a"), t.c.a.type, 0),
                 "bar": ("bar", (l1, "bar"), l1.type, 1),
                 "anon_1": (
-                    tc.anon_label,
+                    tc._anon_name_label,
                     (tc_anon_label, "anon_1", tc),
                     tc.type,
                     2,

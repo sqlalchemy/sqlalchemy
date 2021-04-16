@@ -903,23 +903,20 @@ class ColumnElement(
         elif self.key:
             return self.key
         else:
-            try:
-                return str(self)
-            except exc.UnsupportedCompilationError:
-                return self.anon_label
+            return getattr(self, "name", "_no_label")
 
     def _make_proxy(
-        self, selectable, name=None, name_is_truncatable=False, **kw
+        self, selectable, name=None, key=None, name_is_truncatable=False, **kw
     ):
         """Create a new :class:`_expression.ColumnElement` representing this
-        :class:`_expression.ColumnElement`
-        as it appears in the select list of a
-        descending selectable.
+        :class:`_expression.ColumnElement` as it appears in the select list of
+        a descending selectable.
 
         """
         if name is None:
-            name = self.anon_label
-            key = self._proxy_key
+            name = self._anon_name_label
+            if key is None:
+                key = self._proxy_key
         else:
             key = name
 
@@ -980,7 +977,7 @@ class ColumnElement(
         return _anonymous_label.safe_construct(hash(self), seed or "anon")
 
     @util.memoized_property
-    def anon_label(self):
+    def _anon_name_label(self):
         """Provides a constant 'anonymous label' for this ColumnElement.
 
         This is a label() expression which will be named at compile time.
@@ -992,12 +989,16 @@ class ColumnElement(
         for expressions that are known to be 'unnamed' like binary
         expressions and function calls.
 
+        .. versionchanged:: 1.4.9 - this attribute was not intended to be
+           public and is renamed to _anon_name_label.  anon_name exists
+           for backwards compat
+
         """
         name = getattr(self, "name", None)
         return self._anon_label(name)
 
     @util.memoized_property
-    def anon_key_label(self):
+    def _anon_key_label(self):
         """Provides a constant 'anonymous key label' for this ColumnElement.
 
         Compare to ``anon_label``, except that the "key" of the column,
@@ -1006,9 +1007,30 @@ class ColumnElement(
         This is used when a deduplicating key is placed into the columns
         collection of a selectable.
 
+        .. versionchanged:: 1.4.9 - this attribute was not intended to be
+           public and is renamed to _anon_key_label.  anon_key_label exists
+           for backwards compat
+
         """
-        name = getattr(self, "key", None) or getattr(self, "name", None)
-        return self._anon_label(name)
+        return self._anon_label(self._proxy_key)
+
+    @property
+    @util.deprecated(
+        "1.4",
+        "The :attr:`_expression.ColumnElement.anon_label` attribute is now "
+        "private, and the public accessor is deprecated.",
+    )
+    def anon_label(self):
+        return self._anon_name_label
+
+    @property
+    @util.deprecated(
+        "1.4",
+        "The :attr:`_expression.ColumnElement.anon_key_label` attribute is "
+        "now private, and the public accessor is deprecated.",
+    )
+    def anon_key_label(self):
+        return self._anon_key_label
 
     @util.memoized_property
     def _dedupe_anon_label(self):
@@ -1056,14 +1078,14 @@ class WrapsColumnExpression(object):
             return None
 
     @property
-    def anon_label(self):
+    def _anon_name_label(self):
         wce = self.wrapped_column_expression
         if hasattr(wce, "name"):
             return wce.name
-        elif hasattr(wce, "anon_label"):
-            return wce.anon_label
+        elif hasattr(wce, "_anon_name_label"):
+            return wce._anon_name_label
         else:
-            return super(WrapsColumnExpression, self).anon_label
+            return super(WrapsColumnExpression, self)._anon_name_label
 
 
 class BindParameter(roles.InElementRole, ColumnElement):
@@ -3788,7 +3810,7 @@ class Grouping(GroupedElement, ColumnElement):
 
     @property
     def _label(self):
-        return getattr(self.element, "_label", None) or self.anon_label
+        return getattr(self.element, "_label", None) or self._anon_name_label
 
     @property
     def _proxies(self):
@@ -4962,8 +4984,8 @@ class AnnotatedColumnElement(Annotated):
         return self._Annotated__element.info
 
     @util.memoized_property
-    def anon_label(self):
-        return self._Annotated__element.anon_label
+    def _anon_name_label(self):
+        return self._Annotated__element._anon_name_label
 
 
 class _truncated_label(quoted_name):

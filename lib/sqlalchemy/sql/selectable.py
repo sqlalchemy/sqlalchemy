@@ -4138,7 +4138,7 @@ class SelectState(util.MemoizedSlots, CompileState):
                 if name in names:
                     if not pa:
                         pa.append(prefix_anon_map())
-                    name = c.anon_key_label % pa[0]
+                    name = c._anon_key_label % pa[0]
                 else:
                     names.add(name)
 
@@ -5674,13 +5674,13 @@ class Select(
                     return (None, c, False)
                 elif use_tablename_labels:
                     if c._label is None:
-                        repeated = c.anon_label in names
-                        names[c.anon_label] = c
+                        repeated = c._anon_name_label in names
+                        names[c._anon_name_label] = c
                         return (None, c, repeated)
                 elif getattr(c, "name", None) is None:
                     # this is a scalar_select().  need to improve this case
-                    repeated = c.anon_label in names
-                    names[c.anon_label] = c
+                    repeated = c._anon_name_label in names
+                    names[c._anon_name_label] = c
                     return (None, c, repeated)
 
                 if use_tablename_labels:
@@ -5702,7 +5702,7 @@ class Select(
                         if use_tablename_labels:
                             name = c._label_anon_label
                         else:
-                            name = c.anon_label
+                            name = c._anon_name_label
 
                         if anon_for_dupe_key and name in names:
                             # here, c._label_anon_label is definitely unique to
@@ -5766,7 +5766,7 @@ class Select(
                 if key is not None and key in keys_seen:
                     if pa is None:
                         pa = prefix_anon_map()
-                    key = c.anon_key_label % pa
+                    key = c._anon_key_label % pa
                 keys_seen.add(key)
             else:
                 key = c._proxy_key

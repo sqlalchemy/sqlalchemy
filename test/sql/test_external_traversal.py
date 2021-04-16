@@ -180,7 +180,7 @@ class TraversalTest(
 
         vis = Vis()
         s2 = vis.traverse(s1)
-        eq_(list(s2.selected_columns)[0].anon_label, c1.anon_label)
+        eq_(list(s2.selected_columns)[0]._anon_name_label, c1._anon_name_label)
 
     @testing.combinations(
         ("clone",), ("pickle",), ("conv_to_unique"), ("none"), argnames="meth"
@@ -395,7 +395,7 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
             select(f), "SELECT t1.col1 * :col1_1 AS anon_1 FROM t1"
         )
 
-        f.anon_label
+        f._anon_name_label
 
         a = t.alias()
         f = sql_util.ClauseAdapter(a).traverse(f)
