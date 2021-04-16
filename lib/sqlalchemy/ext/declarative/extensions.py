@@ -32,9 +32,9 @@ def instrument_declarative(cls, cls_registry, metadata):
     MetaData object.
 
     """
-    return registry(
-        metadata=metadata, class_registry=cls_registry
-    ).instrument_declarative(cls)
+    registry(metadata=metadata, class_registry=cls_registry).map_declaratively(
+        cls
+    )
 
 
 class ConcreteBase(object):
