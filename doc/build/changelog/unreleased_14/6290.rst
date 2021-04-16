@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, compiler, regression
+    :tickets: 6290
+
+    Fixed regression where an empty in statement on a tuple would result
+    in an error when compiled with the option ``literal_binds=True``.

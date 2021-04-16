@@ -1914,10 +1914,14 @@ class SQLCompiler(Compiled):
     ):
 
         if not values:
-            assert not parameter.type._is_tuple_type
-            replacement_expression = self.visit_empty_set_expr(
-                [parameter.type]
-            )
+            if parameter.type._is_tuple_type:
+                replacement_expression = (
+                    "VALUES " if self.dialect.tuple_in_values else ""
+                ) + self.visit_empty_set_expr(parameter.type.types)
+            else:
+                replacement_expression = self.visit_empty_set_expr(
+                    [parameter.type]
+                )
 
         elif isinstance(values[0], (tuple, list)):
             assert parameter.type._is_tuple_type

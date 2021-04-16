@@ -1407,8 +1407,8 @@ class BindParameter(roles.InElementRole, ColumnElement):
                 self.type = type_api._resolve_value_to_type(check_value)
         elif isinstance(type_, type):
             self.type = type_()
-        elif type_._is_tuple_type:
-            if expanding and value:
+        elif type_._is_tuple_type and value:
+            if expanding:
                 check_value = value[0]
             else:
                 check_value = value

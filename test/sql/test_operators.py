@@ -1933,18 +1933,51 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             self.table1.c.myid.in_([None]), "mytable.myid IN (NULL)"
         )
 
-    def test_in_29(self):
+    @testing.combinations(True, False)
+    def test_in_29(self, is_in):
         a, b, c = (
             column("a", Integer),
             column("b", String),
             column("c", LargeBinary),
         )
         t1 = tuple_(a, b, c)
-        expr = t1.in_([(3, "hi", "there"), (4, "Q", "P")])
+        expr = t1.in_([(3, "hi", b"there"), (4, "Q", b"P")])
+        if not is_in:
+            expr = ~expr
         self.assert_compile(
             expr,
-            "(a, b, c) IN ([POSTCOMPILE_param_1])",
-            checkparams={"param_1": [(3, "hi", "there"), (4, "Q", "P")]},
+            "(a, b, c) %s ([POSTCOMPILE_param_1])"
+            % ("IN" if is_in else "NOT IN"),
+            checkparams={"param_1": [(3, "hi", b"there"), (4, "Q", b"P")]},
+        )
+        self.assert_compile(
+            expr,
+            "(a, b, c) %s ((3, 'hi', 'there'), (4, 'Q', 'P'))"
+            % ("IN" if is_in else "NOT IN"),
+            literal_binds=True,
+        )
+
+    @testing.combinations(True, False)
+    def test_in_empty_tuple(self, is_in):
+        a, b, c = (
+            column("a", Integer),
+            column("b", String),
+            column("c", LargeBinary),
+        )
+        t1 = tuple_(a, b, c)
+        expr = t1.in_([]) if is_in else t1.not_in([])
+        self.assert_compile(
+            expr,
+            "(a, b, c) %s ([POSTCOMPILE_param_1])"
+            % ("IN" if is_in else "NOT IN"),
+            checkparams={"param_1": []},
+        )
+        self.assert_compile(
+            expr,
+            "(a, b, c) %s (SELECT 1 WHERE 1!=1)"
+            % ("IN" if is_in else "NOT IN"),
+            literal_binds=True,
+            dialect="default_enhanced",
         )
 
     def test_in_set(self):
