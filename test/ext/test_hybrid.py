@@ -4,6 +4,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import literal_column
 from sqlalchemy import Numeric
 from sqlalchemy import select
 from sqlalchemy import String
@@ -12,12 +13,14 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import synonym
 from sqlalchemy.sql import update
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_false
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 
@@ -490,6 +493,80 @@ class PropertyMirrorTest(fixtures.TestBase, AssertsCompiledSQL):
 
         insp = inspect(A)
         is_(insp.all_orm_descriptors["value"].info, A.value.info)
+
+
+class SynonymOfPropertyTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def _fixture(self):
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            _value = Column("value", String)
+
+            @hybrid.hybrid_property
+            def value(self):
+                return self._value
+
+            value_syn = synonym("value")
+
+            @hybrid.hybrid_property
+            def string_value(self):
+                return "foo"
+
+            string_value_syn = synonym("string_value")
+
+            @hybrid.hybrid_property
+            def string_expr_value(self):
+                return "foo"
+
+            @string_expr_value.expression
+            def string_expr_value(cls):
+                return literal_column("'foo'")
+
+            string_expr_value_syn = synonym("string_expr_value")
+
+        return A
+
+    def test_hasattr(self):
+        A = self._fixture()
+
+        is_false(hasattr(A.value_syn, "nonexistent"))
+
+        is_false(hasattr(A.string_value_syn, "nonexistent"))
+
+        is_false(hasattr(A.string_expr_value_syn, "nonexistent"))
+
+    def test_instance_access(self):
+        A = self._fixture()
+
+        a1 = A(_value="hi")
+
+        eq_(a1.value_syn, "hi")
+
+        eq_(a1.string_value_syn, "foo")
+
+        eq_(a1.string_expr_value_syn, "foo")
+
+    def test_expression_property(self):
+        A = self._fixture()
+
+        self.assert_compile(
+            select(A.id, A.value_syn).where(A.value_syn == "value"),
+            "SELECT a.id, a.value FROM a WHERE a.value = :value_1",
+        )
+
+    def test_expression_expr(self):
+        A = self._fixture()
+
+        self.assert_compile(
+            select(A.id, A.string_expr_value_syn).where(
+                A.string_expr_value_syn == "value"
+            ),
+            "SELECT a.id, 'foo' FROM a WHERE 'foo' = :'foo'_1",
+        )
 
 
 class MethodExpressionTest(fixtures.TestBase, AssertsCompiledSQL):

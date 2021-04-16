@@ -22,6 +22,7 @@ from .. import schema
 from .. import sql
 from .. import util
 from ..sql import expression
+from ..sql import operators
 
 
 class DescriptorProperty(MapperProperty):
@@ -665,15 +666,22 @@ class SynonymProperty(DescriptorProperty):
     def uses_objects(self):
         return getattr(self.parent.class_, self.name).impl.uses_objects
 
-    # TODO: when initialized, check _proxied_property,
+    # TODO: when initialized, check _proxied_object,
     # emit a warning if its not a column-based property
 
     @util.memoized_property
-    def _proxied_property(self):
+    def _proxied_object(self):
         attr = getattr(self.parent.class_, self.name)
         if not hasattr(attr, "property") or not isinstance(
             attr.property, MapperProperty
         ):
+            # attribute is a non-MapperProprerty proxy such as
+            # hybrid or association proxy
+            if isinstance(attr, attributes.QueryableAttribute):
+                return attr.comparator
+            elif isinstance(attr, operators.ColumnOperators):
+                return attr
+
             raise sa_exc.InvalidRequestError(
                 """synonym() attribute "%s.%s" only supports """
                 """ORM mapped attributes, got %r"""
@@ -682,13 +690,16 @@ class SynonymProperty(DescriptorProperty):
         return attr.property
 
     def _comparator_factory(self, mapper):
-        prop = self._proxied_property
+        prop = self._proxied_object
 
-        if self.comparator_factory:
-            comp = self.comparator_factory(prop, mapper)
+        if isinstance(prop, MapperProperty):
+            if self.comparator_factory:
+                comp = self.comparator_factory(prop, mapper)
+            else:
+                comp = prop.comparator_factory(prop, mapper)
+            return comp
         else:
-            comp = prop.comparator_factory(prop, mapper)
-        return comp
+            return prop
 
     def get_history(self, *arg, **kw):
         attr = getattr(self.parent.class_, self.name)

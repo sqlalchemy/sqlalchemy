@@ -487,6 +487,8 @@ def create_proxied_attribute(descriptor):
 
         """
 
+        _extra_criteria = ()
+
         def __init__(
             self,
             class_,

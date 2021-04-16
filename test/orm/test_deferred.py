@@ -1114,6 +1114,30 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             "orders.isopen AS orders_isopen FROM orders",
         )
 
+    @testing.combinations(("string",), ("attr",))
+    def test_load_only_synonym(self, type_):
+        orders, Order = self.tables.orders, self.classes.Order
+
+        mapper(
+            Order,
+            orders,
+            properties={"desc": synonym("description")},
+        )
+
+        if type_ == "attr":
+            opt = load_only(Order.isopen, Order.desc)
+        else:
+            opt = load_only("isopen", "desc")
+
+        sess = fixture_session()
+        q = sess.query(Order).options(opt)
+        self.assert_compile(
+            q,
+            "SELECT orders.id AS orders_id, orders.description "
+            "AS orders_description, orders.isopen AS orders_isopen "
+            "FROM orders",
+        )
+
     def test_load_only_propagate_unbound(self):
         self._test_load_only_propagate(False)
 
