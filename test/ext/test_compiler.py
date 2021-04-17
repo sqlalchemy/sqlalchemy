@@ -94,6 +94,30 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             MyType(), "POSTGRES_FOO", dialect=postgresql.dialect()
         )
 
+    def test_no_compile_for_col_label(self):
+        class MyThingy(FunctionElement):
+            pass
+
+        @compiles(MyThingy)
+        def visit_thingy(thingy, compiler, **kw):
+            raise Exception(
+                "unfriendly exception, dont catch this, dont run this"
+            )
+
+        @compiles(MyThingy, "postgresql")
+        def visit_thingy_pg(thingy, compiler, **kw):
+            return "mythingy"
+
+        subq = select(MyThingy("text")).subquery()
+
+        stmt = select(subq)
+
+        self.assert_compile(
+            stmt,
+            "SELECT anon_2.anon_1 FROM (SELECT mythingy AS anon_1) AS anon_2",
+            dialect="postgresql",
+        )
+
     def test_stateful(self):
         class MyThingy(ColumnClause):
             def __init__(self):
@@ -162,9 +186,11 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
             MyThingy(),
         )
 
-    def test_no_default_proxy_generation(self):
+    @testing.combinations((True,), (False,))
+    def test_no_default_proxy_generation(self, named):
         class my_function(FunctionElement):
-            name = "my_function"
+            if named:
+                name = "my_function"
             type = Numeric()
 
         @compiles(my_function, "sqlite")
@@ -176,11 +202,16 @@ class UserDefinedTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "SELECT my_function(t1.q) AS my_function_1 FROM t1",
+            "SELECT my_function(t1.q) AS my_function_1 FROM t1"
+            if named
+            else "SELECT my_function(t1.q) AS anon_1 FROM t1",
             dialect="sqlite",
         )
 
-        eq_(stmt.selected_columns.keys(), [stmt._raw_columns[0].anon_label])
+        if named:
+            eq_(stmt.selected_columns.keys(), ["my_function"])
+        else:
+            eq_(stmt.selected_columns.keys(), ["_no_label"])
 
     def test_no_default_message(self):
         class MyThingy(ClauseElement):

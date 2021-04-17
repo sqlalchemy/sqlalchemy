@@ -1059,8 +1059,8 @@ class OracleCompiler(compiler.SQLCompiler):
             columns.append(self.process(col_expr, within_columns_clause=False))
 
             self._add_to_result_map(
-                getattr(col_expr, "name", col_expr.anon_label),
-                getattr(col_expr, "name", col_expr.anon_label),
+                getattr(col_expr, "name", col_expr._anon_name_label),
+                getattr(col_expr, "name", col_expr._anon_name_label),
                 (
                     column,
                     getattr(column, "name", None),

@@ -404,10 +404,10 @@ class SelectableTest(
         # anon_label, e.g. a truncated_label, is used here because
         # the expr has no name, no key, and myop() can't create a
         # string, so this is the last resort
-        eq_(s.selected_columns.keys(), ["x", "y", expr.anon_label])
+        eq_(s.selected_columns.keys(), ["x", "y", "_no_label"])
 
         s = select(t, expr).subquery()
-        eq_(s.c.keys(), ["x", "y", expr.anon_label])
+        eq_(s.c.keys(), ["x", "y", "_no_label"])
 
     def test_cloned_intersection(self):
         t1 = table("t1", column("x"))
@@ -490,7 +490,7 @@ class SelectableTest(
             cloned, literal_column("2").label("b")
         )
         cloned.add_columns.non_generative(cloned, func.foo())
-        eq_(list(cloned.selected_columns.keys()), ["a", "b", "foo()"])
+        eq_(list(cloned.selected_columns.keys()), ["a", "b", "foo"])
 
     def test_clone_col_list_changes_then_proxy(self):
         t = table("t", column("q"), column("p"))
@@ -858,6 +858,16 @@ class SelectableTest(
 
         # TODO: failing due to proxy_set not correct
         assert u1.corresponding_column(table1_new.c.col2) is u1.c.col2
+
+    def test_unnamed_exprs_keys(self):
+        s1 = select(
+            table1.c.col1 == 5,
+            table1.c.col1 == 10,
+            func.count(table1.c.col1),
+            literal_column("x"),
+        ).subquery()
+
+        eq_(s1.c.keys(), ["_no_label", "_no_label_1", "count", "x"])
 
     def test_union_alias_dupe_keys(self):
         s1 = select(table1.c.col1, table1.c.col2, table2.c.col1)
@@ -2662,7 +2672,7 @@ class AnnotationsTest(fixtures.TestBase):
         eq_(y_a.key, "q")
         is_(x_a.table, t)
         eq_(x_a.info, {"q": "p", "z": "h"})
-        eq_(t.c.x.anon_label, x_a.anon_label)
+        eq_(t.c.x._anon_name_label, x_a._anon_name_label)
 
     def test_custom_constructions(self):
         from sqlalchemy.schema import Column

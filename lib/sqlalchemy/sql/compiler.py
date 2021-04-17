@@ -2876,7 +2876,7 @@ class SQLCompiler(Compiled):
         ):
             result_expr = _CompileLabel(
                 col_expr,
-                column.anon_label
+                column._anon_name_label
                 if not column_is_repeated
                 else column._dedupe_label_anon_label,
             )
