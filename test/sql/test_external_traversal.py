@@ -225,6 +225,44 @@ class TraversalTest(
             dialect="default",
         )
 
+    def test_traversal_size(self):
+        """Test :ticket:`6304`.
+
+        Testing that _iterate_from_elements returns only unique FROM
+        clauses; overall traversal should be short and all items unique.
+
+        """
+
+        t = table("t", *[column(x) for x in "pqrxyz"])
+
+        s1 = select(t.c.p, t.c.q, t.c.r, t.c.x, t.c.y, t.c.z).subquery()
+
+        s2 = (
+            select(s1.c.p, s1.c.q, s1.c.r, s1.c.x, s1.c.y, s1.c.z)
+            .select_from(s1)
+            .subquery()
+        )
+
+        s3 = (
+            select(s2.c.p, s2.c.q, s2.c.r, s2.c.x, s2.c.y, s2.c.z)
+            .select_from(s2)
+            .subquery()
+        )
+
+        tt = list(s3.element._iterate_from_elements())
+        eq_(tt, [s2])
+
+        total = list(visitors.iterate(s3))
+        # before the bug was fixed, this was 750
+        eq_(len(total), 25)
+
+        seen = set()
+        for elem in visitors.iterate(s3):
+            assert elem not in seen
+            seen.add(elem)
+
+        eq_(len(seen), 25)
+
     def test_change_in_place(self):
         struct = B(
             A("expr1"), A("expr2"), B(A("expr1b"), A("expr2b")), A("expr3")
