@@ -1783,8 +1783,9 @@ class MySQLCompiler(compiler.SQLCompiler):
             return None
 
     def update_tables_clause(self, update_stmt, from_table, extra_froms, **kw):
+        kw["asfrom"] = True
         return ", ".join(
-            t._compiler_dispatch(self, asfrom=True, **kw)
+            t._compiler_dispatch(self, **kw)
             for t in [from_table] + list(extra_froms)
         )
 
@@ -1806,8 +1807,9 @@ class MySQLCompiler(compiler.SQLCompiler):
         self, delete_stmt, from_table, extra_froms, from_hints, **kw
     ):
         """Render the DELETE .. USING clause specific to MySQL."""
+        kw["asfrom"] = True
         return "USING " + ", ".join(
-            t._compiler_dispatch(self, asfrom=True, fromhints=from_hints, **kw)
+            t._compiler_dispatch(self, fromhints=from_hints, **kw)
             for t in [from_table] + extra_froms
         )
 

@@ -1,3 +1,4 @@
+from sqlalchemy import testing
 from sqlalchemy.dialects import mssql
 from sqlalchemy.engine import default
 from sqlalchemy.exc import CompileError
@@ -975,6 +976,71 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         eq_(insert.compile().isinsert, True)
+
+    @testing.combinations(
+        ("default_enhanced",),
+        ("postgresql",),
+    )
+    def test_select_from_update_cte(self, dialect):
+        t1 = table("table_1", column("id"), column("val"))
+
+        t2 = table("table_2", column("id"), column("val"))
+
+        upd = (
+            t1.update()
+            .values(val=t2.c.val)
+            .where(t1.c.id == t2.c.id)
+            .returning(t1.c.id, t1.c.val)
+        )
+
+        cte = upd.cte("update_cte")
+
+        qry = select(cte)
+
+        self.assert_compile(
+            qry,
+            "WITH update_cte AS (UPDATE table_1 SET val=table_2.val "
+            "FROM table_2 WHERE table_1.id = table_2.id "
+            "RETURNING table_1.id, table_1.val) "
+            "SELECT update_cte.id, update_cte.val FROM update_cte",
+            dialect=dialect,
+        )
+
+    @testing.combinations(
+        ("default_enhanced",),
+        ("postgresql",),
+    )
+    def test_select_from_delete_cte(self, dialect):
+        t1 = table("table_1", column("id"), column("val"))
+
+        t2 = table("table_2", column("id"), column("val"))
+
+        dlt = (
+            t1.delete().where(t1.c.id == t2.c.id).returning(t1.c.id, t1.c.val)
+        )
+
+        cte = dlt.cte("delete_cte")
+
+        qry = select(cte)
+
+        if dialect == "postgresql":
+            self.assert_compile(
+                qry,
+                "WITH delete_cte AS (DELETE FROM table_1 USING table_2 "
+                "WHERE table_1.id = table_2.id RETURNING table_1.id, "
+                "table_1.val) SELECT delete_cte.id, delete_cte.val "
+                "FROM delete_cte",
+                dialect=dialect,
+            )
+        else:
+            self.assert_compile(
+                qry,
+                "WITH delete_cte AS (DELETE FROM table_1 , table_2 "
+                "WHERE table_1.id = table_2.id "
+                "RETURNING table_1.id, table_1.val) "
+                "SELECT delete_cte.id, delete_cte.val FROM delete_cte",
+                dialect=dialect,
+            )
 
     def test_anon_update_cte(self):
         orders = table("orders", column("region"))

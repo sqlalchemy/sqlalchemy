@@ -3885,16 +3885,18 @@ class StrSQLCompiler(SQLCompiler):
     def update_from_clause(
         self, update_stmt, from_table, extra_froms, from_hints, **kw
     ):
+        kw["asfrom"] = True
         return "FROM " + ", ".join(
-            t._compiler_dispatch(self, asfrom=True, fromhints=from_hints, **kw)
+            t._compiler_dispatch(self, fromhints=from_hints, **kw)
             for t in extra_froms
         )
 
     def delete_extra_from_clause(
         self, update_stmt, from_table, extra_froms, from_hints, **kw
     ):
+        kw["asfrom"] = True
         return ", " + ", ".join(
-            t._compiler_dispatch(self, asfrom=True, fromhints=from_hints, **kw)
+            t._compiler_dispatch(self, fromhints=from_hints, **kw)
             for t in extra_froms
         )
 
