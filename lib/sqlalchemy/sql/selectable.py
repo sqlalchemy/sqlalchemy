@@ -4428,15 +4428,24 @@ class _SelectFromElements(object):
         # note this does not include elements
         # in _setup_joins or _legacy_setup_joins
 
-        return itertools.chain(
-            itertools.chain.from_iterable(
-                [element._from_objects for element in self._raw_columns]
-            ),
-            itertools.chain.from_iterable(
-                [element._from_objects for element in self._where_criteria]
-            ),
-            self._from_obj,
-        )
+        seen = set()
+        for element in self._raw_columns:
+            for fr in element._from_objects:
+                if fr in seen:
+                    continue
+                seen.add(fr)
+                yield fr
+        for element in self._where_criteria:
+            for fr in element._from_objects:
+                if fr in seen:
+                    continue
+                seen.add(fr)
+                yield fr
+        for element in self._from_obj:
+            if element in seen:
+                continue
+            seen.add(element)
+            yield element
 
 
 class Select(
