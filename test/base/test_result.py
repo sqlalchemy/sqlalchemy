@@ -766,7 +766,7 @@ class ResultTest(fixtures.TestBase):
         result = result.scalars(1).unique()
         eq_(result.all(), [None, 4])
 
-    def test_scalar_only_on_filter(self):
+    def test_scalar_only_on_filter_w_unique(self):
         # test a mixture of the "real" result and the
         # scalar filter, where scalar has unique and real result does not.
 
@@ -793,7 +793,7 @@ class ResultTest(fixtures.TestBase):
         eq_(next(result), (3, 4, 5))  # non-unique fifth row
         eq_(u_s.all(), [])  # unique set is done because only 3 is left
 
-    def test_scalar_none_one(self):
+    def test_scalar_none_one_w_unique(self):
         result = self._fixture(data=[(1, None, 2)])
 
         result = result.scalars(1).unique()
@@ -801,7 +801,7 @@ class ResultTest(fixtures.TestBase):
         # one is returning None, see?
         eq_(result.one(), None)
 
-    def test_scalar_none_one_or_none(self):
+    def test_scalar_none_one_or_none_w_unique(self):
         result = self._fixture(data=[(1, None, 2)])
 
         result = result.scalars(1).unique()
@@ -809,6 +809,20 @@ class ResultTest(fixtures.TestBase):
         # the orm.Query can actually do this right now, so we sort of
         # have to allow for this unforuntately, unless we want to raise?
         eq_(result.one_or_none(), None)
+
+    def test_scalar_one_w_unique(self):
+        result = self._fixture(data=[(1, None, 2)])
+
+        result = result.unique()
+
+        eq_(result.scalar_one(), 1)
+
+    def test_scalars_one_w_unique(self):
+        result = self._fixture(data=[(1, None, 2)])
+
+        result = result.unique()
+
+        eq_(result.scalars().one(), 1)
 
     def test_scalar_none_first(self):
         result = self._fixture(data=[(1, None, 2)])
@@ -1075,6 +1089,27 @@ class OnlyScalarsTest(fixtures.TestBase):
 
         eq_(r.all(), [(1,), (2,), (4,)])
 
+    @testing.combinations(
+        lambda r: r.scalar(),
+        lambda r: r.scalar_one(),
+        lambda r: r.scalar_one_or_none(),
+        argnames="get",
+    )
+    def test_unique_scalar_accessors(self, no_tuple_one_fixture, get):
+        metadata = result.SimpleResultMetaData(
+            ["a", "b", "c"], _unique_filters=[int]
+        )
+
+        r = result.ChunkedIteratorResult(
+            metadata,
+            no_tuple_one_fixture,
+            source_supports_scalars=True,
+        )
+
+        r = r.unique()
+
+        eq_(get(r), 1)
+
     def test_scalar_mode_mfiltered_unique_mappings_all(self, no_tuple_fixture):
         metadata = result.SimpleResultMetaData(
             ["a", "b", "c"], _unique_filters=[int]
@@ -1176,20 +1211,32 @@ class OnlyScalarsTest(fixtures.TestBase):
 
         eq_(list(r), [(1,), (2,), (1,), (1,), (4,)])
 
-    def test_scalar_mode_first(self, no_tuple_one_fixture):
+    @testing.combinations(
+        lambda r: r.one(),
+        lambda r: r.first(),
+        lambda r: r.one_or_none(),
+        argnames="get",
+    )
+    def test_scalar_mode_first(self, no_tuple_one_fixture, get):
         metadata = result.SimpleResultMetaData(["a", "b", "c"])
 
         r = result.ChunkedIteratorResult(
             metadata, no_tuple_one_fixture, source_supports_scalars=True
         )
 
-        eq_(r.one(), (1,))
+        eq_(get(r), (1,))
 
-    def test_scalar_mode_scalar_one(self, no_tuple_one_fixture):
+    @testing.combinations(
+        lambda r: r.scalar(),
+        lambda r: r.scalar_one(),
+        lambda r: r.scalar_one_or_none(),
+        argnames="get",
+    )
+    def test_scalar_mode_scalar_one(self, no_tuple_one_fixture, get):
         metadata = result.SimpleResultMetaData(["a", "b", "c"])
 
         r = result.ChunkedIteratorResult(
             metadata, no_tuple_one_fixture, source_supports_scalars=True
         )
 
-        eq_(r.scalar_one(), 1)
+        eq_(get(r), 1)

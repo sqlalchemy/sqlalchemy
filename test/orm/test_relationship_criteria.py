@@ -1025,6 +1025,27 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                 ),
             )
 
+    @testing.combinations(
+        lambda r: r.scalar(),
+        lambda r: r.scalar_one(),
+        lambda r: r.scalar_one_or_none(),
+        argnames="get",
+    )
+    def test_joinedload_scalar(self, user_address_fixture, get):
+        User, Address = user_address_fixture
+
+        s = Session(testing.db, future=True)
+
+        stmt = (
+            select(User)
+            .options(joinedload(User.addresses))
+            .where(User.name == "jack")
+        )
+        r = s.execute(stmt).unique()
+
+        jack = get(r)
+        eq_(jack.name, "jack")
+
     def test_selectinload_local_criteria(self, user_address_fixture):
         User, Address = user_address_fixture
 
