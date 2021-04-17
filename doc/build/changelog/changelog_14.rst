@@ -15,7 +15,59 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.9
-    :include_notes_from: unreleased_14
+    :released: April 17, 2021
+
+    .. change::
+        :tags: bug, sql, regression
+        :tickets: 6290
+
+        Fixed regression where an empty in statement on a tuple would result
+        in an error when compiled with the option ``literal_binds=True``.
+
+    .. change::
+        :tags: bug, regression, orm, performance, sql
+        :tickets: 6304
+
+        Fixed a critical performance issue where the traversal of a
+        :func:`_sql.select` construct would traverse a repetitive product of the
+        represented FROM clauses as they were each referred towards by columns in
+        the columns clause; for a series of nested subqueries with lots of columns
+        this could cause a large delay and significant memory growth. This
+        traversal is used by a wide variety of SQL and ORM functions, including by
+        the ORM :class:`_orm.Session` when it's configured to have
+        "table-per-bind", which while this is not a common use case, it seems to be
+        what Flask-SQLAlchemy is hardcoded as using, so the issue impacts
+        Flask-SQLAlchemy users. The traversal has been repaired to uniqify on FROM
+        clauses which was effectively what would happen implicitly with the pre-1.4
+        architecture.
+
+    .. change::
+        :tags: bug, postgresql, sql, regression
+        :tickets: 6303
+
+        Fixed an argument error in the default and PostgreSQL compilers that
+        would interfere with an UPDATE..FROM or DELETE..FROM..USING statement
+        that was then SELECTed from as a CTE.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6272
+
+        Fixed regression where an attribute that is mapped to a
+        :func:`_orm.synonym` could not be used in column loader options such as
+        :func:`_orm.load_only`.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 6267
+
+        Established support for :func:`_orm.synoynm` in conjunction with
+        hybrid property, assocaitionproxy is set up completely, including that
+        synonyms can be established linking to these constructs which work
+        fully.   This is a behavior that was semi-explicitly disallowed previously,
+        however since it did not fail in every scenario, explicit support
+        for assoc proxy and hybrids has been added.
+
 
 .. changelog::
     :version: 1.4.8

@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, postgresql, sql, regression
-    :tickets: 6303
-
-    Fixed an argument error in the default and PostgreSQL compilers that
-    would interfere with an UPDATE..FROM or DELETE..FROM..USING statement
-    that was then SELECTed from as a CTE.
