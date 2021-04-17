@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, declarative, regression
+    :tickets: 6291
+
+    Fixed :func:`_declarative.instrument_declarative` that called
+    a non existing registry method.
