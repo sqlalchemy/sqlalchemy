@@ -923,7 +923,7 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
 
     e.g.::
 
-        2011-03-15 12:05:57.10558
+        2021-03-15 12:05:57.105542
 
     The storage format can be customized to some degree using the
     ``storage_format`` and ``regexp`` parameters, such as::
