@@ -1398,12 +1398,6 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
     def visit_TINYINT(self, type_, **kw):
         return "TINYINT"
 
-    def visit_DATETIMEOFFSET(self, type_, **kw):
-        if type_.precision is not None:
-            return "DATETIMEOFFSET(%s)" % type_.precision
-        else:
-            return "DATETIMEOFFSET"
-
     def visit_TIME(self, type_, **kw):
         precision = getattr(type_, "precision", None)
         if precision is not None:
@@ -1416,6 +1410,19 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_ROWVERSION(self, type_, **kw):
         return "ROWVERSION"
+
+    def visit_datetime(self, type_, **kw):
+        if type_.timezone:
+            return self.visit_DATETIMEOFFSET(type_, **kw)
+        else:
+            return self.visit_DATETIME(type_, **kw)
+
+    def visit_DATETIMEOFFSET(self, type_, **kw):
+        precision = getattr(type_, "precision", None)
+        if precision is not None:
+            return "DATETIMEOFFSET(%s)" % type_.precision
+        else:
+            return "DATETIMEOFFSET"
 
     def visit_DATETIME2(self, type_, **kw):
         precision = getattr(type_, "precision", None)

@@ -1,0 +1,8 @@
+.. change::
+    :tags: usecase, schema, mssql
+    :tickets: 6306
+
+    The :paramref:`_types.DateTime.timezone` parameter when set to ``True``
+    will now make use of the ``DATETIMEOFFSET`` column type with SQL Server
+    when used to emit DDL, rather than ``DATETIME`` where the flag was silently
+    ignored.
