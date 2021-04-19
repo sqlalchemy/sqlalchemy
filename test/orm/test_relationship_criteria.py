@@ -22,6 +22,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_loader_criteria
+from sqlalchemy.orm.decl_api import declared_attr
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing.assertsql import CompiledSQL
 from test.orm import _fixtures
@@ -75,6 +76,24 @@ class _Fixtures(_fixtures.FixtureTest):
 
         class HasFoob(object):
             name = Column(String)
+
+        class UserWFoob(HasFoob, self.Comparable):
+            pass
+
+        mapper(
+            UserWFoob,
+            users,
+        )
+        return HasFoob, UserWFoob
+
+    @testing.fixture
+    def declattr_mixin_fixture(self):
+        users = self.tables.users
+
+        class HasFoob(object):
+            @declared_attr
+            def name(cls):
+                return Column(String)
 
         class UserWFoob(HasFoob, self.Comparable):
             pass
@@ -648,6 +667,28 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                     sess.execute(stmt).scalars().all(),
                     [Order(description="order 3")],
                 )
+
+    def test_declared_attr_no_warning(self, declattr_mixin_fixture):
+        HasFoob, UserWFoob = declattr_mixin_fixture
+
+        statement = select(UserWFoob).filter(UserWFoob.id < 10)
+
+        def go(value):
+            return statement.options(
+                with_loader_criteria(
+                    HasFoob,
+                    lambda cls: cls.name == value,
+                    include_aliases=True,
+                )
+            )
+
+        s = Session(testing.db, future=True)
+
+        for i in range(10):
+            name = random.choice(["ed", "fred", "jack"])
+            stmt = go(name)
+
+            eq_(s.execute(stmt).scalars().all(), [UserWFoob(name=name)])
 
     def test_caching_and_binds_lambda_more_mixins(self, multi_mixin_fixture):
         # By including non-mapped mixin HasBat in the middle of the
