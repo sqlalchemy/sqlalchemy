@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 6320
+
+    Fixed bug in new :func:`_orm.with_loader_criteria` feature where using a
+    mixin class with :func:`_orm.declared_attr` on an attribute that were
+    accessed inside the custom lambda would emit a warning regarding using an
+    unmapped declared attr, when the lambda callable were first initialized.
+    This warning is now prevented using special instrumentation for this
+    lambda initialization step.
+
