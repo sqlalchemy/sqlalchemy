@@ -15,6 +15,7 @@ from mypy.nodes import AssignmentStmt
 from mypy.nodes import CallExpr
 from mypy.nodes import ClassDef
 from mypy.nodes import MDEF
+from mypy.nodes import MemberExpr
 from mypy.nodes import NameExpr
 from mypy.nodes import StrExpr
 from mypy.nodes import SymbolTableNode
@@ -32,6 +33,7 @@ from mypy.types import TypeOfAny
 from mypy.types import UnboundType
 from mypy.types import UnionType
 
+from . import infer
 from . import util
 
 
@@ -92,6 +94,7 @@ def _re_apply_declarative_assignments(
     mapped_attr_lookup = {
         name: typ for name, typ in cls_metadata.mapped_attr_names
     }
+    update_cls_metadata = False
 
     for stmt in cls.defs.body:
         # for a re-apply, all of our statements are AssignmentStmt;
@@ -104,10 +107,51 @@ def _re_apply_declarative_assignments(
             and stmt.lvalues[0].name in mapped_attr_lookup
             and isinstance(stmt.lvalues[0].node, Var)
         ):
-            typ = mapped_attr_lookup[stmt.lvalues[0].name]
-            left_node = stmt.lvalues[0].node
 
-            left_node.type = api.named_type("__sa_Mapped", [typ])
+            left_node = stmt.lvalues[0].node
+            python_type_for_type = mapped_attr_lookup[stmt.lvalues[0].name]
+            # if we have scanned an UnboundType and now there's a more
+            # specific type than UnboundType, call the re-scan so we
+            # can get that set up correctly
+            if (
+                isinstance(python_type_for_type, UnboundType)
+                and not isinstance(left_node.type, UnboundType)
+                and (
+                    isinstance(stmt.rvalue.callee, MemberExpr)
+                    and stmt.rvalue.callee.expr.node.fullname
+                    == "sqlalchemy.orm.attributes.Mapped"
+                    and stmt.rvalue.callee.name == "_empty_constructor"
+                    and isinstance(stmt.rvalue.args[0], CallExpr)
+                )
+            ):
+
+                python_type_for_type = (
+                    infer._infer_type_from_right_hand_nameexpr(
+                        api,
+                        stmt,
+                        left_node,
+                        left_node.type,
+                        stmt.rvalue.args[0].callee,
+                    )
+                )
+
+                if python_type_for_type is None or isinstance(
+                    python_type_for_type, UnboundType
+                ):
+                    continue
+
+                # update the DeclClassApplied with the better information
+                mapped_attr_lookup[stmt.lvalues[0].name] = python_type_for_type
+                update_cls_metadata = True
+
+            left_node.type = api.named_type(
+                "__sa_Mapped", [python_type_for_type]
+            )
+
+    if update_cls_metadata:
+        cls_metadata.mapped_attr_names[:] = [
+            (k, v) for k, v in mapped_attr_lookup.items()
+        ]
 
 
 def _apply_type_to_mapped_statement(
