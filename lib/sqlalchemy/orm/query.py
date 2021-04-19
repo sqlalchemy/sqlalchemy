@@ -1753,6 +1753,15 @@ class Query(
         All existing ORDER BY settings can be suppressed by  passing
         ``None``.
 
+        .. seealso::
+
+            These sections describe ORDER BY in terms of :term:`2.0 style`
+            invocation but apply to :class:`_orm.Query` as well:
+
+            :ref:`tutorial_order_by` - in the :ref:`unified_tutorial`
+
+            :ref:`tutorial_order_by_label` - in the :ref:`unified_tutorial`
+
         """
 
         if len(clauses) == 1 and (clauses[0] is None or clauses[0] is False):
@@ -1786,8 +1795,15 @@ class Query(
         passing ``None`` - this will suppress any GROUP BY configured
         on mappers as well.
 
-        .. versionadded:: 1.1 GROUP BY can be cancelled by passing
-           ``None``, in the same way as ORDER BY.
+        .. seealso::
+
+            These sections describe GROUP BY in terms of :term:`2.0 style`
+            invocation but apply to :class:`_orm.Query` as well:
+
+            :ref:`tutorial_group_by_w_aggregates` - in the
+            :ref:`unified_tutorial`
+
+            :ref:`tutorial_order_by_label` - in the :ref:`unified_tutorial`
 
         """
 

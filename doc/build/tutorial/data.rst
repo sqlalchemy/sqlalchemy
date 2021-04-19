@@ -765,6 +765,8 @@ using ``.join(..., isouter=True)``.
     SQL also has a "RIGHT OUTER JOIN".  SQLAlchemy doesn't render this directly;
     instead, reverse the order of the tables and use "LEFT OUTER JOIN".
 
+.. _tutorial_order_by:
+
 ORDER BY
 ^^^^^^^^^
 
@@ -844,6 +846,8 @@ than one address:
     [...] (1,){stop}
     [('sandy', 2)]
     {opensql}ROLLBACK{stop}
+
+.. _tutorial_order_by_label:
 
 Ordering or Grouping by a Label
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

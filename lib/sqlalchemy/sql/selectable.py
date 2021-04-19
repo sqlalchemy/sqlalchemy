@@ -3599,7 +3599,9 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
 
         .. seealso::
 
-            :ref:`core_tutorial_ordering`
+            :ref:`tutorial_order_by` - in the :ref:`unified_tutorial`
+
+            :ref:`tutorial_order_by_label` - in the :ref:`unified_tutorial`
 
         """
 
@@ -3627,7 +3629,10 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
 
         .. seealso::
 
-            :ref:`core_tutorial_ordering`
+            :ref:`tutorial_group_by_w_aggregates` - in the
+            :ref:`unified_tutorial`
+
+            :ref:`tutorial_order_by_label` - in the :ref:`unified_tutorial`
 
         """
 

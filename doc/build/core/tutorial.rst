@@ -1217,6 +1217,8 @@ be quoted:
     [...] (', ', '%@aol.com', '%@msn.com')
     {stop}[(u'Wendy Williams, wendy@aol.com',)]
 
+.. _sqlexpression_order_by_label:
+
 Ordering or Grouping by a Label
 -------------------------------
 
@@ -2241,6 +2243,9 @@ This is provided via the :meth:`_expression.SelectBase.group_by` method:
     GROUP BY users.name
     [...] ()
     {stop}[(u'jack', 2), (u'wendy', 2)]
+
+See also :ref:`sqlexpression_order_by_label` for an important technique
+of ordering or grouping by a string column name.
 
 HAVING can be used to filter results on an aggregate value, after GROUP BY has
 been applied.  It's available here via the :meth:`_expression.Select.having`
