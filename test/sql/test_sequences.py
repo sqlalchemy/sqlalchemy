@@ -1,4 +1,5 @@
 import sqlalchemy as sa
+from sqlalchemy import BigInteger
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import Sequence
@@ -386,6 +387,10 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_false(self._has_sequence(connection, "common_sequence"))
         is_false(testing.db.dialect.has_table(connection, "table_1"))
         is_false(testing.db.dialect.has_table(connection, "table_2"))
+
+    def test_next_value_type(self):
+        seq = Sequence("my_sequence", data_type=BigInteger)
+        assert isinstance(seq.next_value().type, BigInteger)
 
 
 class FutureSequenceTest(fixtures.FutureEngineMixin, SequenceTest):

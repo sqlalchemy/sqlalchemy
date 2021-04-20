@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug
+    :tickets: 6287
+    :versions: 1.4.9
+
+    Fixed a bug where ``sqlalchemy.sql.functions.next_value`` was not deriving
+    its ``type`` from the ``Sequence`` that created it.

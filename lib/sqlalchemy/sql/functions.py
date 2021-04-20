@@ -1064,6 +1064,9 @@ class next_value(GenericFunction):
         ), "next_value() accepts a Sequence object as input."
         self._bind = self._get_bind(kw)
         self.sequence = seq
+        self.type = sqltypes.to_instance(
+            seq.data_type or getattr(self, "type", None)
+        )
 
     def compare(self, other, **kw):
         return (
