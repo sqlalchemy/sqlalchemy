@@ -663,6 +663,38 @@ class ExpireTest(_fixtures.FixtureTest):
         # together when eager load used with Query
         self.assert_sql_count(testing.db, go, 1)
 
+    def test_unexpire_eager_dont_overwrite_related(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    Address, backref="user", lazy="joined"
+                )
+            },
+        )
+        mapper(Address, addresses)
+
+        sess = fixture_session(autoflush=False)
+        u = sess.query(User).get(7)
+
+        a1 = u.addresses[0]
+        eq_(a1.email_address, "jack@bean.com")
+
+        sess.expire(u)
+        a1.email_address = "foo"
+
+        assert a1 in u.addresses
+        eq_(a1.email_address, "foo")
+        assert a1 in sess.dirty
+
     def test_relationship_changes_preserved(self):
         users, Address, addresses, User = (
             self.tables.users,

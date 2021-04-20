@@ -481,7 +481,6 @@ def load_on_pk_identity(
         _, load_options = _set_get_options(
             compile_options,
             load_options,
-            populate_existing=bool(refresh_state),
             version_check=version_check,
             only_load_props=only_load_props,
             refresh_state=refresh_state,
@@ -513,7 +512,6 @@ def load_on_pk_identity(
         q._compile_options, load_options = _set_get_options(
             compile_options,
             load_options,
-            populate_existing=bool(refresh_state),
             version_check=version_check,
             only_load_props=only_load_props,
             refresh_state=refresh_state,
@@ -916,17 +914,23 @@ def _instance_processor(
                 state.session_id = session_id
                 session_identity_map._add_unpresent(state, identitykey)
 
+        effective_populate_existing = populate_existing
+        if refresh_state is state:
+            effective_populate_existing = True
+
         # populate.  this looks at whether this state is new
         # for this load or was existing, and whether or not this
         # row is the first row with this identity.
-        if currentload or populate_existing:
+        if currentload or effective_populate_existing:
             # full population routines.  Objects here are either
             # just created, or we are doing a populate_existing
 
             # be conservative about setting load_path when populate_existing
             # is in effect; want to maintain options from the original
             # load.  see test_expire->test_refresh_maintains_deferred_options
-            if isnew and (propagated_loader_options or not populate_existing):
+            if isnew and (
+                propagated_loader_options or not effective_populate_existing
+            ):
                 state.load_options = propagated_loader_options
                 state.load_path = load_path
 
@@ -938,7 +942,7 @@ def _instance_processor(
                 isnew,
                 load_path,
                 loaded_instance,
-                populate_existing,
+                effective_populate_existing,
                 populators,
             )
 
@@ -966,7 +970,7 @@ def _instance_processor(
                     if state.runid != runid:
                         _warn_for_runid_changed(state)
 
-                if populate_existing or state.modified:
+                if effective_populate_existing or state.modified:
                     if refresh_state and only_load_props:
                         state._commit(dict_, only_load_props)
                     else:
