@@ -419,6 +419,8 @@ class TypeDDLTest(fixtures.TestBase):
             (mssql.MSDateTime2, [1], {}, "DATETIME2(1)", None),
             (mssql.MSTime, [0], {}, "TIME(0)", None),
             (mssql.MSDateTimeOffset, [0], {}, "DATETIMEOFFSET(0)", None),
+            (types.DateTime, [], {"timezone": True}, "DATETIMEOFFSET", None),
+            (types.DateTime, [], {"timezone": False}, "DATETIME", None),
         ]
 
         metadata = MetaData()
@@ -760,23 +762,47 @@ class TypeRoundTripTest(
             Column("atime2", Time),
             Column("adatetime", DateTime),
             Column("adatetimeoffset", DATETIMEOFFSET),
+            Column("adatetimewithtimezone", DateTime(timezone=True)),
         )
 
         d1 = datetime.date(2007, 10, 30)
         t1 = datetime.time(11, 2, 32)
         d2 = datetime.datetime(2007, 10, 30, 11, 2, 32)
-        return t, (d1, t1, d2)
+        d3 = datetime.datetime(
+            2007,
+            10,
+            30,
+            11,
+            2,
+            32,
+            123456,
+            util.timezone(datetime.timedelta(hours=-5)),
+        )
+        return t, (d1, t1, d2, d3)
 
     def test_date_roundtrips(self, date_fixture, connection):
-        t, (d1, t1, d2) = date_fixture
+        t, (d1, t1, d2, d3) = date_fixture
         connection.execute(
-            t.insert(), dict(adate=d1, adatetime=d2, atime1=t1, atime2=d2)
+            t.insert(),
+            dict(
+                adate=d1,
+                adatetime=d2,
+                atime1=t1,
+                atime2=d2,
+                adatetimewithtimezone=d3,
+            ),
         )
 
         row = connection.execute(t.select()).first()
         eq_(
-            (row.adate, row.adatetime, row.atime1, row.atime2),
-            (d1, d2, t1, d2.time()),
+            (
+                row.adate,
+                row.adatetime,
+                row.atime1,
+                row.atime2,
+                row.adatetimewithtimezone,
+            ),
+            (d1, d2, t1, d2.time(), d3),
         )
 
     @testing.metadata_fixture()

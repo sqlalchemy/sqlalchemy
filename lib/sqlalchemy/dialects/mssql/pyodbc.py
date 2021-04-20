@@ -350,7 +350,9 @@ class _ms_binary_pyodbc(object):
         return process
 
 
-class _ODBCDateTimeOffset(DATETIMEOFFSET):
+class _ODBCDateTime(sqltypes.DateTime):
+    """Add bind processors to handle datetimeoffset behaviors"""
+
     def bind_processor(self, dialect):
         def process(value):
             if value is None:
@@ -358,7 +360,12 @@ class _ODBCDateTimeOffset(DATETIMEOFFSET):
             elif isinstance(value, util.string_types):
                 # if a string was passed directly, allow it through
                 return value
+            elif isinstance(value, datetime.datetime) and value.tzinfo is None:
+                # for DateTime(timezone=False)
+                return value
             else:
+                # for DATETIMEOFFSET or DateTime(timezone=True)
+                #
                 # Convert to string format required by T-SQL
                 dto_string = value.strftime("%Y-%m-%d %H:%M:%S.%f %z")
                 # offset needs a colon, e.g., -0700 -> -07:00
@@ -444,7 +451,9 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
             sqltypes.Numeric: _MSNumeric_pyodbc,
             sqltypes.Float: _MSFloat_pyodbc,
             BINARY: _BINARY_pyodbc,
-            DATETIMEOFFSET: _ODBCDateTimeOffset,
+            # support DateTime(timezone=True)
+            sqltypes.DateTime: _ODBCDateTime,
+            DATETIMEOFFSET: _ODBCDateTime,
             # SQL Server dialect has a VARBINARY that is just to support
             # "deprecate_large_types" w/ VARBINARY(max), but also we must
             # handle the usual SQL standard VARBINARY
