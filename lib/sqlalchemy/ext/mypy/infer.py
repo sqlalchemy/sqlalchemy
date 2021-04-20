@@ -35,6 +35,44 @@ from . import names
 from . import util
 
 
+def _infer_type_from_right_hand_nameexpr(
+    api: SemanticAnalyzerPluginInterface,
+    stmt: AssignmentStmt,
+    node: Var,
+    left_hand_explicit_type: Optional[ProperType],
+    infer_from_right_side: NameExpr,
+) -> Optional[ProperType]:
+
+    type_id = names._type_id_for_callee(infer_from_right_side)
+
+    if type_id is None:
+        return None
+    elif type_id is names.COLUMN:
+        python_type_for_type = _infer_type_from_decl_column(
+            api, stmt, node, left_hand_explicit_type
+        )
+    elif type_id is names.RELATIONSHIP:
+        python_type_for_type = _infer_type_from_relationship(
+            api, stmt, node, left_hand_explicit_type
+        )
+    elif type_id is names.COLUMN_PROPERTY:
+        python_type_for_type = _infer_type_from_decl_column_property(
+            api, stmt, node, left_hand_explicit_type
+        )
+    elif type_id is names.SYNONYM_PROPERTY:
+        python_type_for_type = _infer_type_from_left_hand_type_only(
+            api, node, left_hand_explicit_type
+        )
+    elif type_id is names.COMPOSITE_PROPERTY:
+        python_type_for_type = _infer_type_from_decl_composite_property(
+            api, stmt, node, left_hand_explicit_type
+        )
+    else:
+        return None
+
+    return python_type_for_type
+
+
 def _infer_type_from_relationship(
     api: SemanticAnalyzerPluginInterface,
     stmt: AssignmentStmt,
@@ -255,7 +293,11 @@ def _infer_type_from_decl_column_property(
         # argument
         if type_id is names.COLUMN:
             return _infer_type_from_decl_column(
-                api, stmt, node, left_hand_explicit_type, first_prop_arg
+                api,
+                stmt,
+                node,
+                left_hand_explicit_type,
+                right_hand_expression=first_prop_arg,
             )
 
     return _infer_type_from_left_hand_type_only(
@@ -268,7 +310,7 @@ def _infer_type_from_decl_column(
     stmt: AssignmentStmt,
     node: Var,
     left_hand_explicit_type: Optional[ProperType],
-    right_hand_expression: CallExpr,
+    right_hand_expression: Optional[CallExpr] = None,
 ) -> Optional[ProperType]:
     """Infer the type of mapping from a Column.
 
@@ -304,6 +346,12 @@ def _infer_type_from_decl_column(
     assert isinstance(node, Var)
 
     callee = None
+
+    if right_hand_expression is None:
+        if not isinstance(stmt.rvalue, CallExpr):
+            return None
+
+        right_hand_expression = stmt.rvalue
 
     for column_arg in right_hand_expression.args[0:2]:
         if isinstance(column_arg, CallExpr):

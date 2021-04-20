@@ -171,9 +171,13 @@ class MypyPluginTest(fixtures.TestBase):
                     errors.append(e)
 
             for num, is_mypy, msg in expected_errors:
+                msg = msg.replace("'", '"')
                 prefix = "[SQLAlchemy Mypy plugin] " if not is_mypy else ""
                 for idx, errmsg in enumerate(errors):
-                    if f"{filename}:{num + 1}: error: {prefix}{msg}" in errmsg:
+                    if (
+                        f"{filename}:{num + 1}: error: {prefix}{msg}"
+                        in errmsg.replace("'", '"')
+                    ):
                         break
                 else:
                     continue

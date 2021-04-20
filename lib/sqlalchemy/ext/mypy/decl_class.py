@@ -63,10 +63,11 @@ def _scan_declarative_assignments_and_apply_types(
         if not is_mixin_scan:
             assert cls_metadata.is_mapped
 
-            # mypy can call us more than once.  it then will have reset the
+            # mypy can call us more than once.  it then *may* have reset the
             # left hand side of everything, but not the right that we removed,
             # removing our ability to re-scan.   but we have the types
-            # here, so lets re-apply them.
+            # here, so lets re-apply them, or if we have an UnboundType,
+            # we can re-scan
 
             apply._re_apply_declarative_assignments(cls, api, cls_metadata)
 
@@ -422,33 +423,11 @@ def _scan_declarative_assignment_stmt(
         stmt.rvalue.callee, RefExpr
     ):
 
-        type_id = names._type_id_for_callee(stmt.rvalue.callee)
+        python_type_for_type = infer._infer_type_from_right_hand_nameexpr(
+            api, stmt, node, left_hand_explicit_type, stmt.rvalue.callee
+        )
 
-        if type_id is None:
-            return
-        elif type_id is names.COLUMN:
-            python_type_for_type = infer._infer_type_from_decl_column(
-                api, stmt, node, left_hand_explicit_type, stmt.rvalue
-            )
-        elif type_id is names.RELATIONSHIP:
-            python_type_for_type = infer._infer_type_from_relationship(
-                api, stmt, node, left_hand_explicit_type
-            )
-        elif type_id is names.COLUMN_PROPERTY:
-            python_type_for_type = infer._infer_type_from_decl_column_property(
-                api, stmt, node, left_hand_explicit_type
-            )
-        elif type_id is names.SYNONYM_PROPERTY:
-            python_type_for_type = infer._infer_type_from_left_hand_type_only(
-                api, node, left_hand_explicit_type
-            )
-        elif type_id is names.COMPOSITE_PROPERTY:
-            python_type_for_type = (
-                infer._infer_type_from_decl_composite_property(
-                    api, stmt, node, left_hand_explicit_type
-                )
-            )
-        else:
+        if python_type_for_type is None:
             return
 
     else:

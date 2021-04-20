@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, mypy
+    :tickets: 6255
+
+    Fixed issue where mypy plugin would not correctly interpret an explicit
+    :class:`_orm.Mapped` annotation in conjunction with a
+    :func:`_orm.relationship` that refers to a class by string name; the
+    correct annotation would be downgraded to a less specific one leading to
+    typing errors.
