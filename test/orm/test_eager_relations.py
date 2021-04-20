@@ -3741,6 +3741,9 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
 
         assert "addresses" in u1.__dict__
 
+        # immediateload would be used here for all 3 strategies
+        assert "user" in u1.addresses[0].__dict__
+
     def test_populate_existing_propagate(self):
         # both SelectInLoader and SubqueryLoader receive the loaded collection
         # at once and use attributes.set_committed_value().  However

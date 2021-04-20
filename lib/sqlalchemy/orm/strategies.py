@@ -1237,12 +1237,16 @@ class ImmediateLoader(PostLoader):
         populators,
     ):
         def load_immediate(state, dict_, row):
-            state.get_impl(self.key).get(
-                state, dict_, attributes.PASSIVE_OFF | attributes.NO_RAISE
-            )
+            state.get_impl(self.key).get(state, dict_, flags)
 
         if self._check_recursive_postload(context, path):
-            return
+            # this will not emit SQL and will only emit for a many-to-one
+            # "use get" load.   the "_RELATED" part means it may return
+            # instance even if its expired, since this is a mutually-recursive
+            # load operation.
+            flags = attributes.PASSIVE_NO_FETCH_RELATED | attributes.NO_RAISE
+        else:
+            flags = attributes.PASSIVE_OFF | attributes.NO_RAISE
 
         populators["delayed"].append((self.key, load_immediate))
 
