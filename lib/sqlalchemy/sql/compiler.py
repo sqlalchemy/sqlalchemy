@@ -2724,13 +2724,13 @@ class SQLCompiler(Compiled):
         return text
 
     def visit_values(self, element, asfrom=False, from_linter=None, **kw):
-
+        kw.setdefault("literal_binds", element.literal_binds)
         v = "VALUES %s" % ", ".join(
             self.process(
                 elements.Tuple(
                     types=element._column_types, *elem
                 ).self_group(),
-                literal_binds=element.literal_binds,
+                **kw
             )
             for chunk in element._data
             for elem in chunk

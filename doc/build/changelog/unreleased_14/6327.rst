@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 6327
+
+    Fixed issue in SQL compiler where the bound parameters set up for a
+    :class:`.Values` construct wouldn't be positionally tracked correctly if
+    inside of a :class:`_sql.CTE`, affecting database drivers that support
+    VALUES + ctes and use positional parameters such as SQL Server in
+    particular as well as asyncpg.   The fix also repairs support for
+    compiler flags such as ``literal_binds``.
