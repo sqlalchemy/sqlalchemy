@@ -1380,6 +1380,9 @@ def immediateload(loadopt, attr):
     """Indicate that the given attribute should be loaded using
     an immediate load with a per-attribute SELECT statement.
 
+    The load is achieved using the "lazyloader" strategy and does not
+    fire off any additional eager loaders.
+
     The :func:`.immediateload` option is superseded in general
     by the :func:`.selectinload` option, which performs the same task
     more efficiently by emitting a SELECT for all loaded objects.

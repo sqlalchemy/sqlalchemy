@@ -338,7 +338,9 @@ def get_from_identity(session, mapper, key, passive):
                 return attributes.PASSIVE_NO_RESULT
             elif not passive & attributes.RELATED_OBJECT_OK:
                 # this mode is used within a flush and the instance's
-                # expired state will be checked soon enough, if necessary
+                # expired state will be checked soon enough, if necessary.
+                # also used by immediateloader for a mutually-dependent
+                # o2m->m2m load, :ticket:`6301`
                 return instance
             try:
                 state._load_expired(state, passive)

@@ -121,3 +121,84 @@ class ImmediateTest(_fixtures.FixtureTest):
             ],
             result,
         )
+
+    @testing.combinations(
+        ("joined",),
+        ("selectin",),
+        ("subquery",),
+    )
+    def test_m2one_side(self, o2m_lazy):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        mapper(
+            Address,
+            addresses,
+            properties={
+                "user": relationship(
+                    User, lazy="immediate", back_populates="addresses"
+                )
+            },
+        )
+        mapper(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    Address, lazy=o2m_lazy, back_populates="user"
+                )
+            },
+        )
+        sess = fixture_session()
+        u1 = sess.query(User).filter(users.c.id == 7).one()
+        sess.close()
+
+        assert "addresses" in u1.__dict__
+        assert "user" in u1.addresses[0].__dict__
+
+    @testing.combinations(
+        ("immediate",),
+        ("joined",),
+        ("selectin",),
+        ("subquery",),
+    )
+    def test_o2mone_side(self, m2o_lazy):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        mapper(
+            Address,
+            addresses,
+            properties={
+                "user": relationship(
+                    User, lazy=m2o_lazy, back_populates="addresses"
+                )
+            },
+        )
+        mapper(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    Address, lazy="immediate", back_populates="user"
+                )
+            },
+        )
+        sess = fixture_session()
+        u1 = sess.query(User).filter(users.c.id == 7).one()
+        sess.close()
+
+        assert "addresses" in u1.__dict__
+
+        # current behavior of "immediate" is that subsequent eager loaders
+        # aren't fired off.  This is because the "lazyload" strategy
+        # does not invoke eager loaders.
+        assert "user" not in u1.addresses[0].__dict__
