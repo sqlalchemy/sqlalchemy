@@ -2282,6 +2282,24 @@ class DeclarativeTest(DeclarativeTestBase):
 
         assert not hasattr(Foo, "data_hybrid")
 
+    def test_classes_can_override_new(self):
+        class MyTable(Base):
+            __tablename__ = "my_table"
+            id = Column(Integer, primary_key=True)
+
+            def __new__(cls, *args, **kwargs):
+                return object.__new__(cls)
+
+            def some_method(self):
+                pass
+
+            @staticmethod
+            def some_static_method(self):
+                pass
+
+        mt = MyTable(id=5)
+        eq_(mt.id, 5)
+
     @testing.requires.python36
     def test_kw_support_in_declarative_meta_init(self):
         # This will not fail if DeclarativeMeta __init__ supports **kw

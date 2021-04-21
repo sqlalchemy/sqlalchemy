@@ -410,7 +410,7 @@ class _ClassScanMapperConfig(_MapperConfig):
 
             def local_attributes_for_class():
                 for name, obj in vars(cls).items():
-                    yield name, obj
+                    yield name, obj, False
 
         else:
             field_names = set()
@@ -421,10 +421,10 @@ class _ClassScanMapperConfig(_MapperConfig):
                         field_names.add(field.name)
                         yield field.name, _as_dc_declaredattr(
                             field.metadata, sa_dataclass_metadata_key
-                        )
+                        ), True
                 for name, obj in vars(cls).items():
                     if name not in field_names:
-                        yield name, obj
+                        yield name, obj, False
 
         return local_attributes_for_class
 
@@ -455,7 +455,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                     local_attributes_for_class, attribute_is_overridden
                 )
 
-            for name, obj in local_attributes_for_class():
+            for name, obj, is_dataclass in local_attributes_for_class():
                 if name == "__mapper_args__":
                     check_decl = _check_declared_props_nocascade(
                         obj, name, cls
@@ -567,15 +567,17 @@ class _ClassScanMapperConfig(_MapperConfig):
                     # however, check for some more common mistakes
                     else:
                         self._warn_for_decl_attributes(base, name, obj)
-                elif name not in dict_ or dict_[name] is not obj:
+                elif is_dataclass and (
+                    name not in dict_ or dict_[name] is not obj
+                ):
                     # here, we are definitely looking at the target class
                     # and not a superclass.   this is currently a
                     # dataclass-only path.  if the name is only
                     # a dataclass field and isn't in local cls.__dict__,
                     # put the object there.
-
                     # assert that the dataclass-enabled resolver agrees
                     # with what we are seeing
+
                     assert not attribute_is_overridden(name, obj)
 
                     if _is_declarative_props(obj):
@@ -607,7 +609,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         column_copies = self.column_copies
         # copy mixin columns to the mapped class
 
-        for name, obj in attributes_for_class():
+        for name, obj, is_dataclass in attributes_for_class():
             if isinstance(obj, Column):
                 if attribute_is_overridden(name, obj):
                     # if column has been overridden
