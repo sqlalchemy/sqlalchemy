@@ -1,7 +1,7 @@
 .. change::
-    :tags: bug
+    :tags: bug, schema
     :tickets: 6287
-    :versions: 1.4.9
 
-    Fixed a bug where ``sqlalchemy.sql.functions.next_value`` was not deriving
-    its ``type`` from the ``Sequence`` that created it.
+    Fixed issue where :func:`_functions.next_value` was not deriving its type
+    from the corresponding :class:`_schema.Sequence`, instead hardcoded to
+    :class:`_types.Integer`. The specific numeric type is now used.
