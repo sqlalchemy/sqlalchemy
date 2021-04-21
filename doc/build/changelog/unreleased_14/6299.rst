@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm, result
-    :tickets: 6299
-
-    Fixed an issue when using 2.0 style execution that prevented using
-    :meth:`_result.Result.scalar_one` or
-    :meth:`_result.Result.scalar_one_or_none` after calling
-    :meth:`_result.Result.unique`, for the case where the ORM is returning a
-    single-element row in any case.

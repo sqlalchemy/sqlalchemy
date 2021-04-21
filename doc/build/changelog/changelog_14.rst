@@ -15,7 +15,116 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.10
-    :include_notes_from: unreleased_14
+    :released: April 20, 2021
+
+    .. change::
+        :tags: bug, declarative, regression
+        :tickets: 6291
+
+        Fixed :func:`_declarative.instrument_declarative` that called
+        a non existing registry method.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6320
+
+        Fixed bug in new :func:`_orm.with_loader_criteria` feature where using a
+        mixin class with :func:`_orm.declared_attr` on an attribute that were
+        accessed inside the custom lambda would emit a warning regarding using an
+        unmapped declared attr, when the lambda callable were first initialized.
+        This warning is now prevented using special instrumentation for this
+        lambda initialization step.
+
+
+    .. change::
+        :tags: usecase, schema, mssql
+        :tickets: 6306
+
+        The :paramref:`_types.DateTime.timezone` parameter when set to ``True``
+        will now make use of the ``DATETIMEOFFSET`` column type with SQL Server
+        when used to emit DDL, rather than ``DATETIME`` where the flag was silently
+        ignored.
+
+    .. change::
+        :tags: orm, bug, regression
+        :tickets: 6326
+
+        Fixed additional regression caused by the "eagerloaders on refresh" feature
+        added in :ticket:`1763` where the refresh operation historically would set
+        ``populate_existing``, which given the new feature now overwrites pending
+        changes on eagerly loaded objects when autoflush is false. The
+        populate_existing flag has been turned off for this case and a more
+        specific method used to ensure the correct attributes refreshed.
+
+    .. change::
+        :tags: bug, orm, result
+        :tickets: 6299
+
+        Fixed an issue when using 2.0 style execution that prevented using
+        :meth:`_result.Result.scalar_one` or
+        :meth:`_result.Result.scalar_one_or_none` after calling
+        :meth:`_result.Result.unique`, for the case where the ORM is returning a
+        single-element row in any case.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 6327
+
+        Fixed issue in SQL compiler where the bound parameters set up for a
+        :class:`.Values` construct wouldn't be positionally tracked correctly if
+        inside of a :class:`_sql.CTE`, affecting database drivers that support
+        VALUES + ctes and use positional parameters such as SQL Server in
+        particular as well as asyncpg.   The fix also repairs support for
+        compiler flags such as ``literal_binds``.
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 6287
+
+        Fixed issue where :func:`_functions.next_value` was not deriving its type
+        from the corresponding :class:`_schema.Sequence`, instead hardcoded to
+        :class:`_types.Integer`. The specific numeric type is now used.
+
+    .. change::
+        :tags: bug, mypy
+        :tickets: 6255
+
+        Fixed issue where mypy plugin would not correctly interpret an explicit
+        :class:`_orm.Mapped` annotation in conjunction with a
+        :func:`_orm.relationship` that refers to a class by string name; the
+        correct annotation would be downgraded to a less specific one leading to
+        typing errors.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 6256
+
+        Repaired and solidified issues regarding custom functions and other
+        arbitrary expression constructs which within SQLAlchemy's column labeling
+        mechanics would seek to use ``str(obj)`` to get a string representation to
+        use as an anonymous column name in the ``.c`` collection of a subquery.
+        This is a very legacy behavior that performs poorly and leads to lots of
+        issues, so has been revised to no longer perform any compilation by
+        establishing specific methods on :class:`.FunctionElement` to handle this
+        case, as SQL functions are the only use case that it came into play. An
+        effect of this behavior is that an unlabeled column expression with no
+        derivable name will be given an arbitrary label starting with the prefix
+        ``"_no_label"`` in the ``.c`` collection of a subquery; these were
+        previously being represented either as the generic stringification of that
+        expression, or as an internal symbol.
+
+    .. change::
+        :tags: usecase, orm
+        :ticketS: 6301
+
+        Altered some of the behavior repaired in :ticket:`6232` where the
+        ``immediateload`` loader strategy no longer goes into recursive loops; the
+        modification is that an eager load (joinedload, selectinload, or
+        subqueryload) from A->bs->B which then states ``immediateload`` for a
+        simple manytoone B->a->A that's in the identity map will populate the B->A,
+        so that this attribute is back-populated when the collection of A/A.bs are
+        loaded. This allows the objects to be functional when detached.
+
 
 .. changelog::
     :version: 1.4.9

@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, schema
-    :tickets: 6287
-
-    Fixed issue where :func:`_functions.next_value` was not deriving its type
-    from the corresponding :class:`_schema.Sequence`, instead hardcoded to
-    :class:`_types.Integer`. The specific numeric type is now used.
