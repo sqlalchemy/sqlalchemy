@@ -1333,6 +1333,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE TABLE t (y INTEGER GENERATED %s AS IDENTITY)" % text,
         )
 
+    def test_column_identity_not_supported(self):
+        m = MetaData()
+        t = Table("t", m, Column("y", Integer, Identity(always=None)))
+        dd = oracle.OracleDialect()
+        dd.supports_identity_columns = False
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t (y INTEGER NOT NULL)",
+            dialect=dd,
+        )
+
 
 class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_basic(self):

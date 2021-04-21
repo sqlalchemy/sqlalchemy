@@ -1776,3 +1776,7 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def fetch_offset_with_options(self):
         return skip_if("mssql")
+
+    @property
+    def autoincrement_without_sequence(self):
+        return skip_if("oracle")

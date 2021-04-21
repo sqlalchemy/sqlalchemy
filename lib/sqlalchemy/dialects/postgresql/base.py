@@ -2464,6 +2464,11 @@ class PGDDLCompiler(compiler.DDLCompiler):
         if isinstance(impl_type, sqltypes.TypeDecorator):
             impl_type = impl_type.impl
 
+        has_identity = (
+            column.identity is not None
+            and self.dialect.supports_identity_columns
+        )
+
         if (
             column.primary_key
             and column is column.table._autoincrement_column
@@ -2471,7 +2476,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
                 self.dialect.supports_smallserial
                 or not isinstance(impl_type, sqltypes.SmallInteger)
             )
-            and column.identity is None
+            and not has_identity
             and (
                 column.default is None
                 or (
@@ -2498,12 +2503,12 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
         if column.computed is not None:
             colspec += " " + self.process(column.computed)
-        if column.identity is not None:
+        if has_identity:
             colspec += " " + self.process(column.identity)
 
-        if not column.nullable and not column.identity:
+        if not column.nullable and not has_identity:
             colspec += " NOT NULL"
-        elif column.nullable and column.identity:
+        elif column.nullable and has_identity:
             colspec += " NULL"
         return colspec
 
@@ -3086,6 +3091,8 @@ class PGDialect(default.DefaultDialect):
 
     supports_empty_insert = False
     supports_multivalues_insert = True
+    supports_identity_columns = True
+
     default_paramstyle = "pyformat"
     ischema_names = ischema_names
     colspecs = colspecs
@@ -3193,6 +3200,7 @@ class PGDialect(default.DefaultDialect):
             9,
             2,
         )
+        self.supports_identity_columns = self.server_version_info >= (10,)
 
     def on_connect(self):
         if self.isolation_level is not None:

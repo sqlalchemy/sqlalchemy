@@ -1933,7 +1933,10 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         if (
             column.table is not None
             and column is column.table._autoincrement_column
-            and column.server_default is None
+            and (
+                column.server_default is None
+                or isinstance(column.server_default, sa_schema.Identity)
+            )
             and not (
                 self.dialect.supports_sequences
                 and isinstance(column.default, sa_schema.Sequence)

@@ -1857,18 +1857,50 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=postgresql.dialect(),
         )
 
-    def test_column_identity(self):
+    @testing.combinations(True, False)
+    def test_column_identity(self, pk):
         # all other tests are in test_identity_column.py
         m = MetaData()
         t = Table(
             "t",
             m,
-            Column("y", Integer, Identity(always=True, start=4, increment=7)),
+            Column(
+                "y",
+                Integer,
+                Identity(always=True, start=4, increment=7),
+                primary_key=pk,
+            ),
         )
         self.assert_compile(
             schema.CreateTable(t),
             "CREATE TABLE t (y INTEGER GENERATED ALWAYS AS IDENTITY "
-            "(INCREMENT BY 7 START WITH 4))",
+            "(INCREMENT BY 7 START WITH 4)%s)"
+            % (", PRIMARY KEY (y)" if pk else ""),
+        )
+
+    @testing.combinations(True, False)
+    def test_column_identity_no_support(self, pk):
+        m = MetaData()
+        t = Table(
+            "t",
+            m,
+            Column(
+                "y",
+                Integer,
+                Identity(always=True, start=4, increment=7),
+                primary_key=pk,
+            ),
+        )
+        dd = PGDialect()
+        dd.supports_identity_columns = False
+        self.assert_compile(
+            schema.CreateTable(t),
+            "CREATE TABLE t (y %s%s)"
+            % (
+                "SERIAL NOT NULL" if pk else "INTEGER NOT NULL",
+                ", PRIMARY KEY (y)" if pk else "",
+            ),
+            dialect=dd,
         )
 
     def test_column_identity_null(self):

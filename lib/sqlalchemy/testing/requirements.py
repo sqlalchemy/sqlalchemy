@@ -1417,3 +1417,10 @@ class SuiteRequirements(Requirements):
         or ties. basically this is "not mssql"
         """
         return exclusions.closed()
+
+    @property
+    def autoincrement_without_sequence(self):
+        """If autoincrement=True on a column does not require an explicit
+        sequence. This should be false only for oracle.
+        """
+        return exclusions.open()

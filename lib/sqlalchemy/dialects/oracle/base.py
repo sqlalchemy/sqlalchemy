@@ -1457,6 +1457,7 @@ class OracleDialect(default.DefaultDialect):
     supports_default_values = False
     supports_default_metavalue = True
     supports_empty_insert = False
+    supports_identity_columns = True
 
     statement_compiler = OracleCompiler
     ddl_compiler = OracleDDLCompiler
@@ -1512,6 +1513,8 @@ class OracleDialect(default.DefaultDialect):
             self.colspecs = self.colspecs.copy()
             self.colspecs.pop(sqltypes.Interval)
             self.use_ansi = False
+
+        self.supports_identity_columns = self.server_version_info >= (12,)
 
     def _get_effective_compat_server_version_info(self, connection):
         # dialect does not need compat levels below 12.2, so don't query
