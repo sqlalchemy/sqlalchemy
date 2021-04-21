@@ -780,7 +780,22 @@ class PoolEventsTest(PoolTestBase):
 
 
 class PoolFirstConnectSyncTest(PoolTestBase):
-    # test [ticket:2964]
+    """test for :ticket:`2964`, where the pool would not mutex the
+    initialization of the dialect.
+
+    Unfortunately, as discussed in :ticket:`6337`, this test suite did not
+    ensure that the ``Engine`` itself actually uses the "first_connect" event,
+    so when :ticket:`5497` came along, the "first_connect" event was no longer
+    used and no test detected the re-introduction of the exact same race
+    condition, which was now worse as the un-initialized dialect would now
+    pollute the SQL cache causing the application to not work at all.
+
+    A new suite has therefore been added in test/engine/test_execute.py->
+    OnConnectTest::test_initialize_connect_race to ensure that the engine
+    in total synchronizes the "first_connect" process, which now works
+    using a new events feature _exec_w_sync_on_first_run.
+
+    """
 
     @testing.requires.timing_intensive
     def test_sync(self):

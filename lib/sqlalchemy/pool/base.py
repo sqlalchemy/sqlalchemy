@@ -359,7 +359,7 @@ class _ConnectionRecord(object):
     def __init__(self, pool, connect=True):
         self.__pool = pool
         if connect:
-            self.__connect(first_connect_check=True)
+            self.__connect()
         self.finalize_callback = deque()
 
     fresh = False
@@ -588,7 +588,7 @@ class _ConnectionRecord(object):
         self.__pool._close_connection(self.connection)
         self.connection = None
 
-    def __connect(self, first_connect_check=False):
+    def __connect(self):
         pool = self.__pool
 
         # ensure any existing connection is removed, so that if
@@ -604,12 +604,18 @@ class _ConnectionRecord(object):
             with util.safe_reraise():
                 pool.logger.debug("Error on connect(): %s", e)
         else:
-            if first_connect_check:
+            # in SQLAlchemy 1.4 the first_connect event is not used by
+            # the engine, so this will usually not be set
+            if pool.dispatch.first_connect:
                 pool.dispatch.first_connect.for_modify(
                     pool.dispatch
                 ).exec_once_unless_exception(self.connection, self)
-            if pool.dispatch.connect:
-                pool.dispatch.connect(self.connection, self)
+
+            # init of the dialect now takes place within the connect
+            # event, so ensure a mutex is used on the first run
+            pool.dispatch.connect.for_modify(
+                pool.dispatch
+            )._exec_w_sync_on_first_run(self.connection, self)
 
 
 def _finalize_fairy(

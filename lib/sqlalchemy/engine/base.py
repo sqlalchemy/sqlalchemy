@@ -69,6 +69,7 @@ class Connection(Connectable):
         _execution_options=None,
         _dispatch=None,
         _has_events=None,
+        _allow_revalidate=True,
     ):
         """Construct a new Connection."""
         self.engine = engine
@@ -96,7 +97,7 @@ class Connection(Connectable):
             self.__in_begin = False
             self.should_close_with_result = close_with_result
 
-            self.__can_reconnect = True
+            self.__can_reconnect = _allow_revalidate
             self._echo = self.engine._should_log_info()
 
             if _has_events is None:

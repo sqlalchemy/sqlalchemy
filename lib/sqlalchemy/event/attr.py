@@ -268,7 +268,7 @@ class _EmptyListener(_InstanceLevelDispatch):
 
 
 class _CompoundListener(_InstanceLevelDispatch):
-    __slots__ = "_exec_once_mutex", "_exec_once"
+    __slots__ = "_exec_once_mutex", "_exec_once", "_exec_w_sync_once"
 
     def _set_asyncio(self):
         self._exec_once_mutex = AsyncAdaptedLock()
@@ -310,6 +310,29 @@ class _CompoundListener(_InstanceLevelDispatch):
         """
         if not self._exec_once:
             self._exec_once_impl(True, *args, **kw)
+
+    def _exec_w_sync_on_first_run(self, *args, **kw):
+        """Execute this event, and use a mutex if it has not been
+        executed already for this collection, or was called
+        by a previous _exec_w_sync_on_first_run call and
+        raised an exception.
+
+        If _exec_w_sync_on_first_run was already called and didn't raise an
+        exception, then a mutex is not used.
+
+        .. versionadded:: 1.4.11
+
+        """
+        if not self._exec_w_sync_once:
+            with self._exec_once_mutex:
+                try:
+                    self(*args, **kw)
+                except:
+                    raise
+                else:
+                    self._exec_w_sync_once = True
+        else:
+            self(*args, **kw)
 
     def __call__(self, *args, **kw):
         """Execute this event."""
@@ -354,6 +377,7 @@ class _ListenerCollection(_CompoundListener):
         if target_cls not in parent._clslevel:
             parent.update_subclass(target_cls)
         self._exec_once = False
+        self._exec_w_sync_once = False
         self.parent_listeners = parent._clslevel[target_cls]
         self.parent = parent
         self.name = parent.name

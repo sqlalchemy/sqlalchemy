@@ -1144,9 +1144,6 @@ class RealReconnectTest(fixtures.TestBase):
             conn.invalidate()
             conn.invalidate()
 
-    @testing.skip_if(
-        [lambda: util.py3k, "oracle+cx_oracle"], "Crashes on py3k+cx_oracle"
-    )
     def test_explode_in_initializer(self):
         engine = engines.testing_engine()
 
@@ -1158,9 +1155,6 @@ class RealReconnectTest(fixtures.TestBase):
         # raises a DBAPIError, not an AttributeError
         assert_raises(exc.DBAPIError, engine.connect)
 
-    @testing.skip_if(
-        [lambda: util.py3k, "oracle+cx_oracle"], "Crashes on py3k+cx_oracle"
-    )
     def test_explode_in_initializer_disconnect(self):
         engine = engines.testing_engine()
 

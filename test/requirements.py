@@ -407,6 +407,17 @@ class DefaultRequirements(SuiteRequirements):
             "pypostgresql bombs on multiple isolation level calls",
         )
 
+    @property
+    def legacy_isolation_level(self):
+        # refers to the engine isolation_level setting
+        return only_on(
+            ("postgresql", "sqlite", "mysql", "mariadb", "mssql"),
+            "DBAPI has no isolation level support",
+        ) + fails_on(
+            "postgresql+pypostgresql",
+            "pypostgresql bombs on multiple isolation level calls",
+        )
+
     def get_isolation_levels(self, config):
         levels = set(config.db.dialect._isolation_lookup)
 
@@ -1458,14 +1469,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def ad_hoc_engines(self):
-        return (
-            exclusions.skip_if(
-                ["oracle"],
-                "works, but Oracle just gets tired with "
-                "this much connection activity",
-            )
-            + skip_if(self._sqlite_file_db)
-        )
+        return skip_if(self._sqlite_file_db)
 
     @property
     def no_asyncio(self):
