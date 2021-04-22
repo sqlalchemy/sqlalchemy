@@ -15,7 +15,25 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.11
-    :include_notes_from: unreleased_14
+    :released: April 21, 2021
+
+    .. change::
+        :tags: bug, engine, regression
+        :tickets: 6337
+
+        Fixed critical regression caused by the change in :ticket:`5497` where the
+        connection pool "init" phase no longer occurred within mutexed isolation,
+        allowing other threads to proceed with the dialect uninitialized, which
+        could then impact the compilation of SQL statements.
+
+
+    .. change::
+        :tags: bug, orm, regression, declarative
+        :tickets: 6331
+
+        Fixed regression where recent changes to support Python dataclasses had the
+        inadvertent effect that an ORM mapped class could not successfully override
+        the ``__new__()`` method.
 
 .. changelog::
     :version: 1.4.10
