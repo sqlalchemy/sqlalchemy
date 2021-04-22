@@ -36,6 +36,7 @@ from sqlalchemy.dialects.mssql import base as mssql
 from sqlalchemy.dialects.mssql import ROWVERSION
 from sqlalchemy.dialects.mssql import TIMESTAMP
 from sqlalchemy.dialects.mssql.base import _MSDate
+from sqlalchemy.dialects.mssql.base import BIT
 from sqlalchemy.dialects.mssql.base import DATETIMEOFFSET
 from sqlalchemy.dialects.mssql.base import MS_2005_VERSION
 from sqlalchemy.dialects.mssql.base import MS_2008_VERSION
@@ -1342,3 +1343,31 @@ class BinaryTest(fixtures.TestBase):
         stream = fp.read(len_)
         fp.close()
         return stream
+
+
+class BooleanTest(fixtures.TestBase, AssertsCompiledSQL):
+    __only_on__ = "mssql"
+
+    @testing.provide_metadata
+    @testing.combinations(
+        ("as_boolean_null", Boolean, True, "CREATE TABLE tbl (boo BIT NULL)"),
+        ("as_bit_null", BIT, True, "CREATE TABLE tbl (boo BIT NULL)"),
+        (
+            "as_boolean_not_null",
+            Boolean,
+            False,
+            "CREATE TABLE tbl (boo BIT NOT NULL)",
+        ),
+        ("as_bit_not_null", BIT, False, "CREATE TABLE tbl (boo BIT NOT NULL)"),
+        id_="iaaa",
+        argnames="col_type, is_nullable, ddl",
+    )
+    def test_boolean_as_bit(self, col_type, is_nullable, ddl):
+        tbl = Table(
+            "tbl", self.metadata, Column("boo", col_type, nullable=is_nullable)
+        )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            ddl,
+        )
+        assert isinstance(tbl.c.boo.type.as_generic(), Boolean)
