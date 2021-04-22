@@ -95,6 +95,9 @@ class DocTest(fixtures.TestBase):
             "tutorial/dbapi_transactions.rst",
             "tutorial/metadata.rst",
             "tutorial/data.rst",
+            "tutorial/data_insert.rst",
+            "tutorial/data_select.rst",
+            "tutorial/data_update.rst",
             "tutorial/orm_data_manipulation.rst",
             "tutorial/orm_related_objects.rst",
         )
