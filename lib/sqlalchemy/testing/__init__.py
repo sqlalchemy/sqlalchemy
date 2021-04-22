@@ -60,6 +60,7 @@ from .exclusions import only_if
 from .exclusions import only_on
 from .exclusions import skip
 from .exclusions import skip_if
+from .schema import eq_clause_element
 from .schema import eq_type_affinity
 from .util import adict
 from .util import fail

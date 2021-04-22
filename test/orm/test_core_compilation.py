@@ -7,6 +7,7 @@ from sqlalchemy import null
 from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import testing
+from sqlalchemy import text
 from sqlalchemy import util
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import column_property
@@ -105,6 +106,25 @@ class SelectableTest(QueryTest, AssertsCompiledSQL):
                     "aliased": False,
                     "expr": Address,
                     "entity": Address,
+                },
+            ],
+        ),
+        (
+            lambda User, Address: (User.id, text("whatever")),
+            lambda User, Address: [
+                {
+                    "name": "id",
+                    "type": testing.eq_type_affinity(sqltypes.Integer),
+                    "aliased": False,
+                    "expr": User.id,
+                    "entity": User,
+                },
+                {
+                    "name": None,
+                    "type": testing.eq_type_affinity(sqltypes.NullType),
+                    "aliased": False,
+                    "expr": testing.eq_clause_element(text("whatever")),
+                    "entity": None,
                 },
             ],
         ),

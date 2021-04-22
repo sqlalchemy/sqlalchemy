@@ -2807,7 +2807,35 @@ class SelectBase(
         statement; a subquery must be applied first which provides for the
         necessary parenthesization required by SQL.
 
+        .. note::
+
+            The :attr:`_sql.SelectBase.selected_columns` collection does not
+            include expressions established in the columns clause using the
+            :func:`_sql.text` construct; these are silently omitted from the
+            collection. To use plain textual column expressions inside of a
+            :class:`_sql.Select` construct, use the :func:`_sql.literal_column`
+            construct.
+
+        .. seealso::
+
+            :attr:`_sql.Select.selected_columns`
+
         .. versionadded:: 1.4
+
+        """
+        raise NotImplementedError()
+
+    @property
+    def _all_selected_columns(self):
+        """A sequence of expressions that correspond to what is rendered
+        in the columns clause, including :class:`_sql.TextClause`
+        constructs.
+
+        .. versionadded:: 1.4.12
+
+        .. seealso::
+
+            :attr:`_sql.SelectBase.exported_columns`
 
         """
         raise NotImplementedError()
@@ -2816,7 +2844,8 @@ class SelectBase(
     def exported_columns(self):
         """A :class:`_expression.ColumnCollection`
         that represents the "exported"
-        columns of this :class:`_expression.Selectable`.
+        columns of this :class:`_expression.Selectable`, not including
+        :class:`_sql.TextClause` constructs.
 
         The "exported" columns for a :class:`_expression.SelectBase`
         object are synonymous
@@ -2825,6 +2854,8 @@ class SelectBase(
         .. versionadded:: 1.4
 
         .. seealso::
+
+            :attr:`_expression.Select.exported_columns`
 
             :attr:`_expression.Selectable.exported_columns`
 
@@ -3082,16 +3113,21 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
         return self.element._exported_columns_iterator()
 
     @property
+    def _all_selected_columns(self):
+        return self.element._all_selected_columns
+
+    @property
     def selected_columns(self):
         """A :class:`_expression.ColumnCollection`
         representing the columns that
-        the embedded SELECT statement returns in its result set.
+        the embedded SELECT statement returns in its result set, not including
+        :class:`_sql.TextClause` constructs.
 
         .. versionadded:: 1.4
 
         .. seealso::
 
-            :ref:`.SelectBase.selected_columns`
+            :attr:`_sql.Select.selected_columns`
 
         """
         return self.element.selected_columns
@@ -3881,6 +3917,7 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         # to how low in the list of select()s the column occurs, so
         # that the corresponding_column() operation can resolve
         # conflicts
+
         for subq_col, select_cols in zip(
             subquery.c._all_columns,
             zip(*[s.selected_columns for s in self.selects]),
@@ -3899,16 +3936,25 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         return self.selects[0]._exported_columns_iterator()
 
     @property
+    def _all_selected_columns(self):
+        return self.selects[0]._all_selected_columns
+
+    @property
     def selected_columns(self):
         """A :class:`_expression.ColumnCollection`
         representing the columns that
-        this SELECT statement or similar construct returns in its result set.
+        this SELECT statement or similar construct returns in its result set,
+        not including :class:`_sql.TextClause` constructs.
 
         For a :class:`_expression.CompoundSelect`, the
         :attr:`_expression.CompoundSelect.selected_columns`
         attribute returns the selected
         columns of the first SELECT statement contained within the series of
         statements within the set operation.
+
+        .. seealso::
+
+            :attr:`_sql.Select.selected_columns`
 
         .. versionadded:: 1.4
 
@@ -4108,6 +4154,10 @@ class SelectState(util.MemoizedSlots, CompileState):
 
     @classmethod
     def _column_naming_convention(cls, label_style):
+        # note: these functions won't work for TextClause objects,
+        # which should be omitted when iterating through
+        # _raw_columns.
+
         if label_style is LABEL_STYLE_NONE:
 
             def go(c, col_name=None):
@@ -4281,7 +4331,15 @@ class SelectState(util.MemoizedSlots, CompileState):
 
     @classmethod
     def exported_columns_iterator(cls, statement):
-        return _select_iterables(statement._raw_columns)
+        return [
+            c
+            for c in _select_iterables(statement._raw_columns)
+            if not c._is_text_clause
+        ]
+
+    @classmethod
+    def all_selected_columns(cls, statement):
+        return [c for c in _select_iterables(statement._raw_columns)]
 
     def _setup_joins(self, args):
         for (right, onclause, left, flags) in args:
@@ -5241,10 +5299,7 @@ class Select(
             clone=clone, omit_attrs=("_from_obj",), **kw
         )
 
-        # memoizations should be cleared here as of
-        # I95c560ffcbfa30b26644999412fb6a385125f663 , asserting this
-        # is the case for now.
-        self._assert_no_memoizations()
+        self._reset_memoizations()
 
     def get_children(self, **kwargs):
         return itertools.chain(
@@ -5269,10 +5324,7 @@ class Select(
         :class:`_expression.Select` object.
 
         """
-        # memoizations should be cleared here as of
-        # I95c560ffcbfa30b26644999412fb6a385125f663 , asserting this
-        # is the case for now.
-        self._assert_no_memoizations()
+        self._reset_memoizations()
 
         self._raw_columns = self._raw_columns + [
             coercions.expect(
@@ -5602,7 +5654,8 @@ class Select(
     def selected_columns(self):
         """A :class:`_expression.ColumnCollection`
         representing the columns that
-        this SELECT statement or similar construct returns in its result set.
+        this SELECT statement or similar construct returns in its result set,
+        not including :class:`_sql.TextClause` constructs.
 
         This collection differs from the :attr:`_expression.FromClause.columns`
         collection of a :class:`_expression.FromClause` in that the columns
@@ -5626,6 +5679,16 @@ class Select(
         :class:`_expression.ColumnElement` objects that are in the
         :attr:`_expression.FromClause.c` collection of the from element.
 
+        .. note::
+
+            The :attr:`_sql.Select.selected_columns` collection does not
+            include expressions established in the columns clause using the
+            :func:`_sql.text` construct; these are silently omitted from the
+            collection. To use plain textual column expressions inside of a
+            :class:`_sql.Select` construct, use the :func:`_sql.literal_column`
+            construct.
+
+
         .. versionadded:: 1.4
 
         """
@@ -5639,6 +5702,11 @@ class Select(
         return ColumnCollection(
             [(conv(c), c) for c in self._exported_columns_iterator()]
         ).as_immutable()
+
+    @HasMemoized.memoized_attribute
+    def _all_selected_columns(self):
+        meth = SelectState.get_plugin_class(self).all_selected_columns
+        return meth(self)
 
     def _exported_columns_iterator(self):
         meth = SelectState.get_plugin_class(self).exported_columns_iterator
@@ -5658,7 +5726,7 @@ class Select(
         different rules.
 
         """
-        cols = self._exported_columns_iterator()
+        cols = self._all_selected_columns
 
         # when use_labels is on:
         # in all cases == if we see the same label name, use _label_anon_label
@@ -6237,7 +6305,8 @@ class TextualSelect(SelectBase):
     def selected_columns(self):
         """A :class:`_expression.ColumnCollection`
         representing the columns that
-        this SELECT statement or similar construct returns in its result set.
+        this SELECT statement or similar construct returns in its result set,
+        not including :class:`_sql.TextClause` constructs.
 
         This collection differs from the :attr:`_expression.FromClause.columns`
         collection of a :class:`_expression.FromClause` in that the columns
@@ -6249,6 +6318,7 @@ class TextualSelect(SelectBase):
         contains the :class:`_expression.ColumnElement` objects that were
         passed to the constructor, typically via the
         :meth:`_expression.TextClause.columns` method.
+
 
         .. versionadded:: 1.4
 

@@ -789,6 +789,14 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
     @classmethod
     def exported_columns_iterator(cls, statement):
+        return (
+            elem
+            for elem in cls.all_selected_columns(statement)
+            if not elem._is_text_clause
+        )
+
+    @classmethod
+    def all_selected_columns(cls, statement):
         for element in statement._raw_columns:
             if (
                 element.is_selectable
@@ -2614,7 +2622,10 @@ class _RawColumnEntity(_ColumnEntity):
         self.expr = column
         self.raw_column_index = raw_column_index
         self.translate_raw_column = raw_column_index is not None
-        self._label_name = compile_state._label_convention(column)
+        if column._is_text_clause:
+            self._label_name = None
+        else:
+            self._label_name = compile_state._label_convention(column)
 
         if parent_bundle:
             parent_bundle._entities.append(self)
