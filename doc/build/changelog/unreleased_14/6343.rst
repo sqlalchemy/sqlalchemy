@@ -1,0 +1,20 @@
+.. change::
+    :tags: bug, regression, sql
+    :tickets: 6343
+
+    Fixed regression where usage of the :func:`_sql.text` construct inside the
+    columns clause of a :class:`_sql.Select` construct, which is better handled
+    by using a :func:`_sql.literal_column` construct, would nonetheless prevent
+    constructs like :func:`_sql.union` from working correctly. Other use cases,
+    such as constructing subuqeries, continue to work the same as in prior
+    versions where the :func:`_sql.text` construct is silently omitted from the
+    collection of exported columns.   Also repairs similar use within the
+    ORM.
+
+
+.. change::
+    :tags: bug, regression, sql
+    :tickets: 6261
+
+    Fixed regression involving legacy methods such as
+    :meth:`_sql.Select.append_column` where internal assertions would fail.

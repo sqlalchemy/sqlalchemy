@@ -538,6 +538,7 @@ class SelectableTest(
             "JOIN (SELECT 1 AS a, 2 AS b) AS joinfrom "
             "ON basefrom.a = joinfrom.a",
         )
+        replaced.selected_columns
         replaced.add_columns.non_generative(replaced, joinfrom.c.b)
         self.assert_compile(
             replaced,
@@ -545,6 +546,29 @@ class SelectableTest(
             "JOIN (SELECT 1 AS a, 2 AS b) AS joinfrom "
             "ON basefrom.a = joinfrom.a",
         )
+
+    @testing.combinations(
+        ("_internal_subquery",),
+        ("selected_columns",),
+        ("_all_selected_columns"),
+    )
+    def test_append_column_after_legacy_subq(self, attr):
+        """test :ticket:`6261`"""
+
+        t1 = table("t1", column("a"), column("b"))
+        s1 = select(t1.c.a)
+
+        if attr == "selected_columns":
+            s1.selected_columns
+        elif attr == "_internal_subuqery":
+            with testing.expect_deprecated("The SelectBase.c"):
+                s1.c
+        elif attr == "_all_selected_columns":
+            s1._all_selected_columns
+
+        s1.add_columns.non_generative(s1, t1.c.b)
+
+        self.assert_compile(s1, "SELECT t1.a, t1.b FROM t1")
 
     def test_against_cloned_non_table(self):
         # test that corresponding column digs across

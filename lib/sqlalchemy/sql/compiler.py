@@ -3156,7 +3156,7 @@ class SQLCompiler(Compiled):
             entry["select_0"] = select
         elif compound_index:
             select_0 = entry["select_0"]
-            numcols = len(select_0.selected_columns)
+            numcols = len(select_0._all_selected_columns)
 
             if len(compile_state.columns_plus_names) != numcols:
                 raise exc.CompileError(
@@ -3168,7 +3168,7 @@ class SQLCompiler(Compiled):
                         1,
                         numcols,
                         compound_index + 1,
-                        len(select.selected_columns),
+                        len(select._all_selected_columns),
                     )
                 )
 
