@@ -1163,10 +1163,14 @@ need to refer to any pre-established :class:`_schema.Table` metadata:
     [...] ('%@aol.com', '%@msn.com')
     {stop}[(u'Wendy Williams, wendy@aol.com',)]
 
-.. versionchanged:: 1.0.0
-   The :func:`_expression.select` construct emits warnings when string SQL
-   fragments are coerced to :func:`_expression.text`, and :func:`_expression.text` should
-   be used explicitly.  See :ref:`migration_2992` for background.
+
+While :func:`_expression.text` can be used in the column list of a
+:func:`_expression.select` object, it has some restriction when composing the
+generated select, since it will not be in
+:attr:`_expression.SelectBase.selected_columns` collection and will be omitted
+from the ``.c`` collection of subqueries. The next section will introduce the
+:func:`_expression.literal_column` construct which is the better choice to
+express individual column names as SQL fragments.
 
 
 
