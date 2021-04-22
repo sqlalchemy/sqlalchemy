@@ -985,10 +985,9 @@ class MemUsageWBackendTest(EnsureZeroed):
         assert_no_mappers()
 
     @testing.uses_deprecated()
-    @testing.provide_metadata
     def test_key_fallback_result(self):
+        m = MetaData()
         e = self.engine
-        m = self.metadata
         t = Table("t", m, Column("x", Integer), Column("y", Integer))
         m.create_all(e)
         e.execute(t.insert(), {"x": 1, "y": 1})
@@ -999,7 +998,10 @@ class MemUsageWBackendTest(EnsureZeroed):
             for row in r:
                 row[t.c.x]
 
-        go()
+        try:
+            go()
+        finally:
+            m.drop_all(e)
 
     def test_many_discarded_relationships(self):
         """a use case that really isn't supported, nonetheless we can
