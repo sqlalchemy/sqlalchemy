@@ -688,6 +688,7 @@ def _possible_configs_for_cls(cls, reasons=None, sparse=False):
                 all_configs,
                 key=lambda cfg: (
                     cfg.db.name,
+                    cfg.db.driver,
                     cfg.db.dialect.server_version_info,
                 ),
             )
