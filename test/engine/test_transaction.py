@@ -626,7 +626,11 @@ class AutoRollbackTest(fixtures.TestBase):
 
 
 class IsolationLevelTest(fixtures.TestBase):
-    __requires__ = ("isolation_level", "ad_hoc_engines")
+    __requires__ = (
+        "isolation_level",
+        "ad_hoc_engines",
+        "legacy_isolation_level",
+    )
     __backend__ = True
 
     def _default_isolation_level(self):

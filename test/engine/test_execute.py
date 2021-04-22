@@ -2,6 +2,7 @@
 
 from contextlib import contextmanager
 import re
+import threading
 import weakref
 
 import sqlalchemy as tsa
@@ -26,6 +27,7 @@ from sqlalchemy import VARCHAR
 from sqlalchemy.engine import default
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.engine.base import Engine
+from sqlalchemy.pool import NullPool
 from sqlalchemy.pool import QueuePool
 from sqlalchemy.sql import column
 from sqlalchemy.sql import literal
@@ -2812,7 +2814,7 @@ class HandleErrorTest(fixtures.TestBase):
         conn.close()
 
 
-class HandleInvalidatedOnConnectTest(fixtures.TestBase):
+class OnConnectTest(fixtures.TestBase):
     __requires__ = ("sqlite",)
 
     def setup_test(self):
@@ -3089,6 +3091,63 @@ class HandleInvalidatedOnConnectTest(fixtures.TestBase):
 
         c.close()
         c2.close()
+
+    @testing.only_on("sqlite+pysqlite")
+    def test_initialize_connect_race(self):
+        """test for :ticket:`6337` fixing the regression in :ticket:`5497`,
+        dialect init is mutexed"""
+
+        m1 = []
+        cls_ = testing.db.dialect.__class__
+
+        class SomeDialect(cls_):
+            def initialize(self, connection):
+                super(SomeDialect, self).initialize(connection)
+                m1.append("initialize")
+
+            def on_connect(self):
+                oc = super(SomeDialect, self).on_connect()
+
+                def my_on_connect(conn):
+                    if oc:
+                        oc(conn)
+                    m1.append("on_connect")
+
+                return my_on_connect
+
+        u1 = Mock(
+            username=None,
+            password=None,
+            host=None,
+            port=None,
+            query={},
+            database=None,
+            _instantiate_plugins=lambda kw: (u1, [], kw),
+            _get_entrypoint=Mock(
+                return_value=Mock(get_dialect_cls=lambda u: SomeDialect)
+            ),
+        )
+
+        for j in range(5):
+            m1[:] = []
+            eng = create_engine(
+                u1,
+                poolclass=NullPool,
+                connect_args={"check_same_thread": False},
+            )
+
+            def go():
+                c = eng.connect()
+                c.execute(text("select 1"))
+                c.close()
+
+            threads = [threading.Thread(target=go) for i in range(10)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+
+            eq_(m1, ["on_connect", "initialize"] + ["on_connect"] * 9)
 
 
 class DialectEventTest(fixtures.TestBase):

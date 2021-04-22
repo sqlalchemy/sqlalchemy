@@ -626,7 +626,10 @@ def create_engine(url, **kwargs):
         if k in kwargs:
             engine_args[k] = pop_kwarg(k)
 
+    # internal flags used by the test suite for instrumenting / proxying
+    # engines with mocks etc.
     _initialize = kwargs.pop("_initialize", True)
+    _wrap_do_on_connect = kwargs.pop("_wrap_do_on_connect", None)
 
     # all kwargs should be consumed
     if kwargs:
@@ -646,30 +649,38 @@ def create_engine(url, **kwargs):
     engine = engineclass(pool, dialect, u, **engine_args)
 
     if _initialize:
+
         do_on_connect = dialect.on_connect_url(url)
         if do_on_connect:
+            if _wrap_do_on_connect:
+                do_on_connect = _wrap_do_on_connect(do_on_connect)
 
             def on_connect(dbapi_connection, connection_record):
-                conn = getattr(
-                    dbapi_connection, "_sqla_unwrap", dbapi_connection
-                )
-                if conn is None:
-                    return
-
-                do_on_connect(conn)
+                do_on_connect(dbapi_connection)
 
             event.listen(pool, "connect", on_connect)
 
         def first_connect(dbapi_connection, connection_record):
             c = base.Connection(
-                engine, connection=dbapi_connection, _has_events=False
+                engine,
+                connection=dbapi_connection,
+                _has_events=False,
+                # reconnecting will be a reentrant condition, so if the
+                # connection goes away, Connection is then closed
+                _allow_revalidate=False,
             )
             c._execution_options = util.EMPTY_DICT
 
             try:
                 dialect.initialize(c)
             finally:
-                dialect.do_rollback(c.connection)
+                # note that "invalidated" and "closed" are mutually
+                # exclusive in 1.4 Connection.
+                if not c.invalidated and not c.closed:
+                    # transaction is rolled back otherwise, tested by
+                    # test/dialect/postgresql/test_dialect.py
+                    # ::MiscBackendTest::test_initial_transaction_state
+                    dialect.do_rollback(c.connection)
 
         # previously, the "first_connect" event was used here, which was then
         # scaled back if the "on_connect" handler were present.  now,

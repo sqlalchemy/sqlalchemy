@@ -1,8 +1,8 @@
+from sqlalchemy import event
 from sqlalchemy.pool import QueuePool
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import profiling
-
 
 pool = None
 
@@ -27,6 +27,11 @@ class QueuePoolTest(fixtures.TestBase, AssertsExecutionResults):
 
         global pool
         pool = QueuePool(creator=self.Connection, pool_size=3, max_overflow=-1)
+
+        # make this a real world case where we have a "connect" handler
+        @event.listens_for(pool, "connect")
+        def do_connect(dbapi_conn, conn_record):
+            pass
 
     @profiling.function_call_count()
     def test_first_connect(self):

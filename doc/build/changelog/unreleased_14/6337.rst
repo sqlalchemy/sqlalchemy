@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, engine, regression
+    :tickets: 6337
+
+    Fixed critical regression caused by the change in :ticket`5497` where the
+    connection pool "init" phase no longer occurred within mutexed isolation,
+    allowing other threads to proceed with the dialect uninitialized, which
+    could then impact the compilation of SQL statements.
+

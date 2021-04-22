@@ -1,15 +1,15 @@
 # /home/classic/dev/sqlalchemy/test/profiles.txt
 # This file is written out on a per-environment basis.
-# For each test in aaa_profiling, the corresponding function and 
+# For each test in aaa_profiling, the corresponding function and
 # environment is located within this file.  If it doesn't exist,
 # the test is skipped.
-# If a callcount does exist, it is compared to what we received. 
+# If a callcount does exist, it is compared to what we received.
 # assertions are raised if the counts do not match.
-# 
-# To add a new callcount test, apply the function_call_count 
-# decorator and re-run the tests using the --write-profiles 
+#
+# To add a new callcount test, apply the function_call_count
+# decorator and re-run the tests using the --write-profiles
 # option - this file will be rewritten including the new count.
-# 
+#
 
 # TEST: test.aaa_profiling.test_compiler.CompileTest.test_insert
 
@@ -498,12 +498,12 @@ test.aaa_profiling.test_orm.SessionTest.test_expire_lots x86_64_linux_cpython_3.
 
 # TEST: test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect
 
-test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect x86_64_linux_cpython_2.7_sqlite_pysqlite_dbapiunicode_cextensions 102
-test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect x86_64_linux_cpython_2.7_sqlite_pysqlite_dbapiunicode_nocextensions 102
-test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect x86_64_linux_cpython_3.8_sqlite_pysqlite_dbapiunicode_cextensions 84
-test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect x86_64_linux_cpython_3.8_sqlite_pysqlite_dbapiunicode_nocextensions 84
-test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect x86_64_linux_cpython_3.9_sqlite_pysqlite_dbapiunicode_cextensions 86
-test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect x86_64_linux_cpython_3.9_sqlite_pysqlite_dbapiunicode_nocextensions 86
+test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect x86_64_linux_cpython_2.7_sqlite_pysqlite_dbapiunicode_cextensions 90
+test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect x86_64_linux_cpython_2.7_sqlite_pysqlite_dbapiunicode_nocextensions 90
+test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect x86_64_linux_cpython_3.8_sqlite_pysqlite_dbapiunicode_cextensions 72
+test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect x86_64_linux_cpython_3.8_sqlite_pysqlite_dbapiunicode_nocextensions 72
+test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect x86_64_linux_cpython_3.9_sqlite_pysqlite_dbapiunicode_cextensions 74
+test.aaa_profiling.test_pool.QueuePoolTest.test_first_connect x86_64_linux_cpython_3.9_sqlite_pysqlite_dbapiunicode_nocextensions 74
 
 # TEST: test.aaa_profiling.test_pool.QueuePoolTest.test_second_connect
 

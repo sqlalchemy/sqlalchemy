@@ -405,7 +405,7 @@ class DBAPIProxyConnection(object):
     """
 
     def __init__(self, engine, cursor_cls):
-        self.conn = self._sqla_unwrap = engine.pool._creator()
+        self.conn = engine.pool._creator()
         self.engine = engine
         self.cursor_cls = cursor_cls
 
@@ -430,4 +430,15 @@ def proxying_engine(
     def mock_conn():
         return conn_cls(config.db, cursor_cls)
 
-    return testing_engine(options={"creator": mock_conn})
+    def _wrap_do_on_connect(do_on_connect):
+        def go(dbapi_conn):
+            return do_on_connect(dbapi_conn.conn)
+
+        return go
+
+    return testing_engine(
+        options={
+            "creator": mock_conn,
+            "_wrap_do_on_connect": _wrap_do_on_connect,
+        }
+    )
