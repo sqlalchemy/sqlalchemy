@@ -1077,7 +1077,11 @@ it provides a :meth:`_sql.SelectBase.subquery` method which will produce a
 collection that may be referred towards in an enclosing :func:`_sql.select`::
 
     >>> u_subq = u.subquery()
-    >>> stmt = select(u_subq.c.name, address_table.c.email_address).join_from(address_table, u_subq)
+    >>> stmt = (
+    ...     select(u_subq.c.name, address_table.c.email_address).
+    ...     join_from(address_table, u_subq).
+    ...     order_by(u_subq.c.name, address_table.c.email_address)
+    ... )
     >>> with engine.connect() as conn:
     ...     result = conn.execute(stmt)
     ...     print(result.all())
@@ -1092,8 +1096,9 @@ collection that may be referred towards in an enclosing :func:`_sql.select`::
       FROM user_account
       WHERE user_account.name = ?)
     AS anon_1 ON anon_1.id = address.user_id
+    ORDER BY anon_1.name, address.email_address
     [generated in ...] ('sandy', 'spongebob')
-    {stop}[('spongebob', 'spongebob@sqlalchemy.org'), ('sandy', 'sandy@sqlalchemy.org'), ('sandy', 'sandy@squirrelpower.org')]
+    {stop}[('sandy', 'sandy@sqlalchemy.org'), ('sandy', 'sandy@squirrelpower.org'), ('spongebob', 'spongebob@sqlalchemy.org')]
     {opensql}ROLLBACK{stop}
 
 
