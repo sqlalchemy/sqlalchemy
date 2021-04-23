@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, orm, dataclasses
+    :tickets: 6346
+
+      Adjusted the declarative scan for dataclasses so that the inheritance
+      behavior of :func:`_orm.declared_attr` established on a mixin, when using
+      the new form of having it inside of a ``dataclasses.field()`` construct and
+      not actually a descriptor attribute on the class, correctly accommodates
+      the case when the target class to be mapped is a subclass of an existing
+      mapped class which has already mapped that :func:`_orm.declared_attr`, and
+      therefore should not be re-applied to this class.
+
