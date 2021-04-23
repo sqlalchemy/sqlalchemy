@@ -100,9 +100,9 @@ illustrates a complete example including mapper and session configuration::
     from sqlalchemy import Integer
     from sqlalchemy import String
     from sqlalchemy.ext.asyncio import AsyncSession
-    from sqlalchemy.ext.asyncio import create_async_engine
-    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.ext.asyncio import create_async_engine    
     from sqlalchemy.future import select
+    from sqlalchemy.orm import declarative_base
     from sqlalchemy.orm import relationship
     from sqlalchemy.orm import selectinload
     from sqlalchemy.orm import sessionmaker
