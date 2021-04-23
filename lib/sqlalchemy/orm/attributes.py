@@ -46,6 +46,7 @@ from .base import RELATED_OBJECT_OK  # noqa
 from .base import SQL_OK  # noqa
 from .base import state_str
 from .. import event
+from .. import exc
 from .. import inspection
 from .. import util
 from ..sql import base as sql_base
@@ -229,7 +230,20 @@ class QueryableAttribute(
                 "entity_namespace": self._entity_namespace,
             }
 
-        return self.comparator.__clause_element__()._annotate(annotations)
+        ce = self.comparator.__clause_element__()
+        try:
+            anno = ce._annotate
+        except AttributeError as ae:
+            util.raise_(
+                exc.InvalidRequestError(
+                    'When interpreting attribute "%s" as a SQL expression, '
+                    "expected __clause_element__() to return "
+                    "a ClauseElement object, got: %r" % (self, ce)
+                ),
+                from_=ae,
+            )
+        else:
+            return anno(annotations)
 
     @property
     def _entity_namespace(self):
