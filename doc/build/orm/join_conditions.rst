@@ -522,6 +522,14 @@ we seek for a load of ``Element.descendants`` to look like::
 Self-Referential Many-to-Many Relationship
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+.. seealso::
+
+    This section documents a two-table variant of the "adjacency list" pattern,
+    which is documented at :ref:`self_referential`.  Be sure to review the
+    self-referential querying patterns in subsections
+    :ref:`self_referential_query` and :ref:`self_referential_eager_loading`
+    which apply equally well to the mapping pattern discussed here.
+
 Many to many relationships can be customized by one or both of :paramref:`_orm.relationship.primaryjoin`
 and :paramref:`_orm.relationship.secondaryjoin` - the latter is significant for a relationship that
 specifies a many-to-many reference using the :paramref:`_orm.relationship.secondary` argument.
@@ -619,6 +627,14 @@ keyword specifies a ``left_nodes`` backref - when
 direction, it's smart enough to reverse the
 :paramref:`_orm.relationship.primaryjoin` and
 :paramref:`_orm.relationship.secondaryjoin` arguments.
+
+.. seealso::
+
+  * :ref:`self_referential` - single table version
+  * :ref:`self_referential_query` - tips on querying with self-referential
+    mappings
+  * :ref:`self_referential_eager_loading` - tips on eager loading with self-
+    referential mapping
 
 .. _composite_secondary_join:
 
