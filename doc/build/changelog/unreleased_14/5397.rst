@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, documentation, mysql
+    :tickets: 5397
+
+    Added support for the ``ssl_check_hostname=`` parameter in mysql connection
+    URIs and updated the mysql dialect documentation regarding secure
+    connections. Original pull request courtesy of Jerry Zhao.

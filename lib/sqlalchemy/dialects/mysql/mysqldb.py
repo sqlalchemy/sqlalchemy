@@ -31,6 +31,55 @@ Unicode
 Please see :ref:`mysql_unicode` for current recommendations on unicode
 handling.
 
+.. _mysqldb_ssl:
+
+SSL Connections
+----------------
+
+The mysqlclient and PyMySQL DBAPIs accept an additional dictionary under the
+key "ssl", which may be specified using the
+:paramref:`_sa.create_engine.connect_args` dictionary::
+
+    engine = create_engine(
+        "mysql+mysqldb://scott:tiger@192.168.0.134/test",
+        connect_args={
+            "ssl": {
+                "ssl_ca": "/home/gord/client-ssl/ca.pem",
+                "ssl_cert": "/home/gord/client-ssl/client-cert.pem",
+                "ssl_key": "/home/gord/client-ssl/client-key.pem"
+            }
+        }
+    )
+
+For convenience, the following keys may also be specified inline within the URL
+where they will be interpreted into the "ssl" dictionary automatically:
+"ssl_ca", "ssl_cert", "ssl_key", "ssl_capath", "ssl_cipher",
+"ssl_check_hostname". An example is as follows::
+
+    connection_uri = (
+        "mysql+mysqldb://scott:tiger@192.168.0.134/test"
+        "?ssl_ca=/home/gord/client-ssl/ca.pem"
+        "&ssl_cert=/home/gord/client-ssl/client-cert.pem"
+        "&ssl_key=/home/gord/client-ssl/client-key.pem"
+    )
+
+If the server uses an automatically-generated certificate that is self-signed
+or does not match the host name (as seen from the client), it may also be
+necessary to indicate ``ssl_check_hostname=false``::
+
+    connection_uri = (
+        "mysql+pymysql://scott:tiger@192.168.0.134/test"
+        "?ssl_ca=/home/gord/client-ssl/ca.pem"
+        "&ssl_cert=/home/gord/client-ssl/client-cert.pem"
+        "&ssl_key=/home/gord/client-ssl/client-key.pem"
+        "&ssl_check_hostname=false"
+    )
+
+
+.. seealso::
+
+    :ref:`pymysql_ssl` in the PyMySQL dialect
+
 
 Using MySQLdb with Google Cloud SQL
 -----------------------------------
@@ -203,11 +252,18 @@ class MySQLDialect_mysqldb(MySQLDialect):
         # query string.
 
         ssl = {}
-        keys = ["ssl_ca", "ssl_key", "ssl_cert", "ssl_capath", "ssl_cipher"]
-        for key in keys:
+        keys = [
+            ("ssl_ca", str),
+            ("ssl_key", str),
+            ("ssl_cert", str),
+            ("ssl_capath", str),
+            ("ssl_cipher", str),
+            ("ssl_check_hostname", bool),
+        ]
+        for key, kw_type in keys:
             if key in opts:
                 ssl[key[4:]] = opts[key]
-                util.coerce_kw_type(ssl, key[4:], str)
+                util.coerce_kw_type(ssl, key[4:], kw_type)
                 del opts[key]
         if ssl:
             opts["ssl"] = ssl

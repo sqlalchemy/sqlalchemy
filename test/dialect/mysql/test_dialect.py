@@ -124,43 +124,43 @@ class DialectTest(fixtures.TestBase):
         error = getattr(dbapi, exc_cls_name)(arg0, message)
         eq_(dialect.is_disconnect(error, None, None), is_disconnect)
 
-    def test_ssl_arguments_mysqldb(self):
-        from sqlalchemy.dialects.mysql import mysqldb
+    @testing.combinations(
+        ("mysqldb"),
+        ("pymysql"),
+        ("oursql"),
+        id_="s",
+        argnames="driver_name",
+    )
+    def test_ssl_arguments(self, driver_name):
+        url = (
+            "mysql+%s://scott:tiger@localhost:3306/test"
+            "?ssl_ca=/ca.pem&ssl_cert=/cert.pem&ssl_key=/key.pem" % driver_name
+        )
+        url_obj = make_url(url)
+        dialect = url_obj.get_dialect()()
 
-        dialect = mysqldb.dialect()
-        self._test_ssl_arguments(dialect)
+        expected = {
+            "{}".format(
+                "password" if driver_name == "pymysql" else "passwd"
+            ): "tiger",
+            "{}".format(
+                "database" if driver_name == "pymysql" else "db"
+            ): "test",
+            "ssl": {"ca": "/ca.pem", "cert": "/cert.pem", "key": "/key.pem"},
+            "host": "localhost",
+            "user": "scott",
+            "port": 3306,
+        }
+        # add check_hostname check for mysqldb and pymysql
+        if driver_name in ["mysqldb", "pymysql"]:
+            url = url + "&ssl_check_hostname=false"
+            expected["ssl"]["check_hostname"] = False
 
-    def test_ssl_arguments_oursql(self):
-        from sqlalchemy.dialects.mysql import oursql
-
-        dialect = oursql.dialect()
-        self._test_ssl_arguments(dialect)
-
-    def _test_ssl_arguments(self, dialect):
-        kwarg = dialect.create_connect_args(
-            make_url(
-                "mysql://scott:tiger@localhost:3306/test"
-                "?ssl_ca=/ca.pem&ssl_cert=/cert.pem&ssl_key=/key.pem"
-            )
-        )[1]
-        # args that differ among mysqldb and oursql
+        kwarg = dialect.create_connect_args(make_url(url))[1]
+        # args that differ between oursql and others
         for k in ("use_unicode", "found_rows", "client_flag"):
             kwarg.pop(k, None)
-        eq_(
-            kwarg,
-            {
-                "passwd": "tiger",
-                "db": "test",
-                "ssl": {
-                    "ca": "/ca.pem",
-                    "cert": "/cert.pem",
-                    "key": "/key.pem",
-                },
-                "host": "localhost",
-                "user": "scott",
-                "port": 3306,
-            },
-        )
+        eq_(kwarg, expected)
 
     @testing.combinations(
         ("compress", True),
