@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import inspect
@@ -8,6 +9,7 @@ from sqlalchemy import literal_column
 from sqlalchemy import Numeric
 from sqlalchemy import select
 from sqlalchemy import String
+from sqlalchemy import testing
 from sqlalchemy.ext import hybrid
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import aliased
@@ -191,6 +193,24 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         return A
 
+    def _wrong_expr_fixture(self):
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            _value = Column("value", String)
+
+            @hybrid.hybrid_property
+            def value(self):
+                return self._value is not None
+
+            @value.expression
+            def value(cls):
+                return cls._value is not None
+
+        return A
+
     def _relationship_fixture(self):
         Base = declarative_base()
 
@@ -243,6 +263,19 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             A.value.__clause_element__(), "foo(a.value) + bar(a.value)"
         )
+
+    def test_expression_isnt_clause_element(self):
+        A = self._wrong_expr_fixture()
+
+        from sqlalchemy.sql import coercions, roles
+
+        with testing.expect_raises_message(
+            exc.InvalidRequestError,
+            'When interpreting attribute "A.value" as a SQL expression, '
+            r"expected __clause_element__\(\) to return a "
+            "ClauseElement object, got: True",
+        ):
+            coercions.expect(roles.ExpressionElementRole, A.value)
 
     def test_any(self):
         A, B = self._relationship_fixture()

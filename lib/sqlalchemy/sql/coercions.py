@@ -313,7 +313,7 @@ class _ColumnCoercions(object):
     def _implicit_coercions(
         self, original_element, resolved, argname=None, **kw
     ):
-        if not resolved.is_clause_element:
+        if not getattr(resolved, "is_clause_element", False):
             self._raise_for_expected(original_element, argname, resolved)
         elif resolved._is_select_statement:
             self._warn_for_scalar_subquery_coercion()

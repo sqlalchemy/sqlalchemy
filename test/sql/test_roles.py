@@ -209,6 +209,23 @@ class RoleTest(fixtures.TestBase):
         ):
             expect(roles.ExpressionElementRole, t.select().alias())
 
+    def test_raise_on_regular_python_obj_for_expr(self):
+        """test #6350"""
+
+        def some_function():
+            pass
+
+        class Thing(object):
+            def __clause_element__(self):
+                return some_function
+
+        with testing.expect_raises_message(
+            exc.ArgumentError,
+            r"SQL expression element expected, got "
+            "<function .*some_function .* resolved from <.*Thing object .*",
+        ):
+            expect(roles.ExpressionElementRole, Thing())
+
     def test_statement_text_coercion(self):
         with testing.expect_deprecated_20(
             "Using plain strings to indicate SQL statements"
