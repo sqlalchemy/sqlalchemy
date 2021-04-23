@@ -205,11 +205,10 @@ class declared_attr(interfaces._MappedAttribute, property):
 
     """  # noqa E501
 
-    def __init__(self, fget, cascading=False, _is_dataclass=False):
+    def __init__(self, fget, cascading=False):
         super(declared_attr, self).__init__(fget)
         self.__doc__ = fget.__doc__
         self._cascading = cascading
-        self._is_dataclass = _is_dataclass
 
     def __get__(desc, self, cls):
         # the declared_attr needs to make use of a cache that exists

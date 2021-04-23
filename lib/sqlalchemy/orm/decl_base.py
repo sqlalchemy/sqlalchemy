@@ -536,11 +536,24 @@ class _ClassScanMapperConfig(_MapperConfig):
                             ] = ret = obj.__get__(obj, cls)
                             setattr(cls, name, ret)
                         else:
-                            if obj._is_dataclass:
-                                ret = obj.fget()
-                            else:
-
+                            if is_dataclass:
                                 # access attribute using normal class access
+                                # first, to see if it's been mapped on a
+                                # superclass.   note if the dataclasses.field()
+                                # has "default", this value can be anything.
+                                ret = getattr(cls, name, None)
+
+                                # so, if it's anything that's not ORM
+                                # mapped, assume we should invoke the
+                                # declared_attr
+                                if not isinstance(ret, InspectionAttr):
+                                    ret = obj.fget()
+                            else:
+                                # access attribute using normal class access.
+                                # if the declared attr already took place
+                                # on a superclass that is mapped, then
+                                # this is no longer a declared_attr, it will
+                                # be the InstrumentedAttribute
                                 ret = getattr(cls, name)
 
                             # correct for proxies created from hybrid_property
@@ -988,11 +1001,9 @@ def _as_dc_declaredattr(field_metadata, sa_dataclass_metadata_key):
     decl_api = util.preloaded.orm_decl_api
     obj = field_metadata[sa_dataclass_metadata_key]
     if callable(obj) and not isinstance(obj, decl_api.declared_attr):
-        return decl_api.declared_attr(obj, _is_dataclass=True)
-    elif isinstance(obj, decl_api.declared_attr):
-        obj._is_dataclass = True
+        return decl_api.declared_attr(obj)
+    else:
         return obj
-    return obj
 
 
 class _DeferredMapperConfig(_ClassScanMapperConfig):
