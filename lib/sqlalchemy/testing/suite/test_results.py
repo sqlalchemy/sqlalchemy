@@ -243,6 +243,8 @@ class ServerSideCursorsTest(
             return not cursor.buffered
         elif self.engine.dialect.driver in ("asyncpg", "aiosqlite"):
             return cursor.server_side
+        elif self.engine.dialect.driver == "pg8000":
+            return getattr(cursor, "server_side", False)
         else:
             return False
 
