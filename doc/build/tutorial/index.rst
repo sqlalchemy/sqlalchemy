@@ -71,7 +71,7 @@ Tutorial Overview
 
 The tutorial will present both concepts in the natural order that they
 should be learned, first with a mostly-Core-centric approach and then
-spanning out into a more ORM-centric concepts.
+spanning out into more ORM-centric concepts.
 
 The major sections of this tutorial are as follows:
 
@@ -116,7 +116,7 @@ The major sections of this tutorial are as follows:
   of how it's used, with links to deeper documentation.
 
 * :ref:`tutorial_further_reading` lists a series of major top-level
-  documentation sections which fully documents the concepts introduced in this
+  documentation sections which fully document the concepts introduced in this
   tutorial.
 
 
@@ -131,7 +131,7 @@ written with a ``>>>`` are actually run as part of SQLAlchemy's test suite, and
 the reader is invited to work with the code examples given in real time with
 their own Python interpreter.
 
-If running the examples, it is advised that the reader perform quick check to
+If running the examples, it is advised that the reader performs a quick check to
 verify that we are on  **version 1.4** of SQLAlchemy:
 
 .. sourcecode:: pycon+sql
