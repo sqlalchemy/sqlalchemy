@@ -220,6 +220,81 @@ class TransScopingTest(_fixtures.FixtureTest):
             s.begin,
         )
 
+    @testing.combinations((True,), (False,), argnames="autocommit")
+    @testing.combinations((True,), (False,), argnames="begin")
+    @testing.combinations((True,), (False,), argnames="expire_on_commit")
+    @testing.combinations((True,), (False,), argnames="modify_unconditional")
+    @testing.combinations(
+        ("nothing",), ("modify",), ("add",), ("delete",), argnames="case_"
+    )
+    def test_autobegin_attr_change(
+        self, case_, autocommit, begin, modify_unconditional, expire_on_commit
+    ):
+        """test :ticket:`6360` """
+
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        s = Session(
+            testing.db,
+            autocommit=autocommit,
+            expire_on_commit=expire_on_commit,
+        )
+
+        u = User(name="x")
+        u2 = User(name="d")
+        u3 = User(name="e")
+        s.add_all([u, u2, u3])
+
+        if autocommit:
+            s.flush()
+        else:
+            s.commit()
+
+        if begin:
+            s.begin()
+
+        if case_ == "add":
+            # this autobegins
+            s.add(User(name="q"))
+        elif case_ == "delete":
+            # this autobegins
+            s.delete(u2)
+        elif case_ == "modify":
+            # this autobegins
+            u3.name = "m"
+
+        if case_ == "nothing" and not begin:
+            assert not s._transaction
+            expect_expire = expire_on_commit
+        elif autocommit and not begin:
+            assert not s._transaction
+            expect_expire = expire_on_commit
+        else:
+            assert s._transaction
+            expect_expire = True
+
+        if modify_unconditional:
+            # this autobegins
+            u.name = "y"
+            expect_expire = True
+
+        if not expect_expire:
+            assert not s._transaction
+
+        # test is that state is consistent after rollback()
+        s.rollback()
+
+        if autocommit and not begin and modify_unconditional:
+            eq_(u.name, "y")
+        else:
+            if not expect_expire:
+                assert "name" in u.__dict__
+            else:
+                assert "name" not in u.__dict__
+            eq_(u.name, "x")
+
     @testing.requires.independent_connections
     @engines.close_open_connections
     def test_transaction(self):

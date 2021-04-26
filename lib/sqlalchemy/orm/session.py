@@ -54,17 +54,14 @@ _sessions = weakref.WeakValueDictionary()
 """Weak-referencing dictionary of :class:`.Session` objects.
 """
 
+statelib._sessions = _sessions
+
 
 def _state_session(state):
     """Given an :class:`.InstanceState`, return the :class:`.Session`
     associated, if any.
     """
-    if state.session_id:
-        try:
-            return _sessions[state.session_id]
-        except KeyError:
-            pass
-    return None
+    return state.session
 
 
 class _SessionClassMethods(object):
@@ -1273,7 +1270,13 @@ class Session(_SessionClassMethods):
     )
     def begin(self, subtransactions=False, nested=False, _subtrans=False):
         """Begin a transaction, or nested transaction,
-        on this :class:`.Session`.
+        on this :class:`.Session`, if one is not already begun.
+
+        The :class:`_orm.Session` object features **autobegin** behavior,
+        so that normally it is not necessary to call the
+        :meth:`_orm.Session.begin`
+        method explicitly. However, it may be used in order to control
+        the scope of when the transactional state is begun.
 
         When used to begin the outermost transaction, an error is raised
         if this :class:`.Session` is already inside of a transaction.
@@ -1293,6 +1296,8 @@ class Session(_SessionClassMethods):
          an example.
 
         .. seealso::
+
+            :ref:`session_autobegin`
 
             :ref:`unitofwork_transaction`
 

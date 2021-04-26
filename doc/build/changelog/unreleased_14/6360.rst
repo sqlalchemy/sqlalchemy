@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 6360, 6359
+
+    Fixed issue where the new :ref:`session_autobegin` behavior failed to
+    "autobegin" in the case where an existing persistent object has an
+    attribute change, which would then impact the behavior of
+    :meth:`_orm.Session.rollback` in that no snapshot was created to be rolled
+    back. The "attribute modify" mechanics have been updated to ensure
+    "autobegin", which does not perform any database work, does occur when
+    persistent attributes change in the same manner as when
+    :meth:`_orm.Session.add` is called. This is a regression as in 1.3, the
+    rollback() method always had a transaction to roll back and would expire
+    every time.

@@ -2024,6 +2024,40 @@ as entity / column should work::
 Session features new "autobegin" behavior
 -----------------------------------------
 
+Previously, the :class:`.Session` in its default mode of ``autocommit=False``
+would internally begin a :class:`.SessionTransaction` object immediately
+on construction, and additionally would create a new one after each call to
+:meth:`.Session.rollback` or :meth:`.Session.commit`.
+
+The new behavior is that this :class:`.SessionTransaction` object is now
+created on demand only, when methods such as :meth:`.Session.add` or
+:meth:`.Session.execute` are called.    However it is also now possible
+to call :meth:`.Session.begin` explicitly in order to begin the transaction,
+even in ``autocommit=False`` mode, thus matching the behavior of the
+future-style :class:`_base.Connection`.
+
+The behavioral changes this indicates are:
+
+* The :class:`.Session` can now be in the state where no transaction is begun,
+  even in ``autocommit=False`` mode. Previously, this state was only available
+  in "autocommit" mode.
+* Within this state, the :meth:`.Session.commit` and :meth:`.Session.rollback`
+  methods are no-ops. Code that relies upon these methods to expire all objects
+  should make explicit use of either :meth:`.Session.begin` or
+  :meth:`.Session.expire_all` to suit their use case.
+* The :meth:`.SessionEvents.after_transaction_create` event hook is not emitted
+  immediately when the :class:`.Session` is created, or after a
+  :meth:`.Session.rollback` or :meth:`.Session.commit` completes.
+* The :meth:`.Session.close` method also does not imply implicit begin of a new
+  :class:`.SessionTransaction`.
+
+.. seealso::
+
+    :ref:`session_autobegin`
+
+Rationale
+^^^^^^^^^
+
 The :class:`.Session` object's default behavior of ``autocommit=False``
 historically has meant that there is always a :class:`.SessionTransaction`
 object in play, associated with the :class:`.Session` via the
@@ -2062,13 +2096,20 @@ when the :class:`.Session` has not yet created a  new
 :meth:`.Session.delete`, when  the :attr:`.Session.transaction` attribute is
 called upon, when the :meth:`.Session.flush` method has tasks to complete, etc.
 
+In addition, code which relies upon the :meth:`.Session.commit` or
+:meth:`.Session.rollback` method to unconditionally expire all objects can no
+longer do so. Code which needs to expire all objects when no change that has
+occurred should be calling :meth:`.Session.expire_all` for this case.
+
 Besides the change in when the :meth:`.SessionEvents.after_transaction_create`
-event is emitted, the change should have no other user-visible impact on the
-:class:`.Session` object's behavior; the :class:`.Session` will continue to have
-the behavior that it remains usable for new operations after :meth:`.Session.close`
-is called, and the sequencing of how the :class:`.Session` interacts with the
-:class:`_engine.Engine` and the database itself should also remain unaffected, since
-these operations were already operating in an on-demand fashion.
+event is emitted as well as the no-op nature of :meth:`.Session.commit` or
+:meth:`.Session.rollback`, the change should have no other user-visible impact
+on the :class:`.Session` object's behavior; the :class:`.Session` will continue
+to have the behavior that it remains usable for new operations after
+:meth:`.Session.close` is called, and the sequencing of how the
+:class:`.Session` interacts with the :class:`_engine.Engine` and the database
+itself should also remain unaffected, since these operations were already
+operating in an on-demand fashion.
 
 :ticket:`5074`
 

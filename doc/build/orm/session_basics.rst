@@ -81,6 +81,8 @@ persisted to the database.  If we were only issuing SELECT calls and did not
 need to write any changes, then the call to :meth:`_orm.Session.commit` would
 be unnecessary.
 
+.. _session_begin_commit_rollback_block:
+
 Framing out a begin / commit / rollback block
 -----------------------------------------------
 
@@ -95,6 +97,7 @@ expressed using a ``try: / except: / else:`` block such as::
 
     # verbose version of what a context manager will do
     with Session(engine) as session:
+        session.begin()
         try:
             session.add(some_object)
             session.add(some_other_object)
@@ -754,36 +757,98 @@ constructs support RETURNING as well.
   :ref:`orm_queryguide_selecting_text` - introduces the
   :meth:`_sql.Select.from_statement` method.
 
+.. _session_autobegin:
+
+Auto Begin
+----------
+
+.. versionadded:: 1.4
+
+  This section describes a behavior that is new in SQLAlchemy 1.4 and does
+  not apply to previous versions.  Further details on the "autobegin"
+  change are at :ref:`change_5074`.
+
+The :class:`_orm.Session` object features a behavior known as **autobegin**.
+This indicates that the :class:`_orm.Session` will internally consider itself
+to be in a "transactional" state as soon as any work is performed with the
+:class:`_orm.Session`, either involving modifications to the internal state of
+the :class:`_orm.Session` with regards to object state changes, or with
+operations that require database connectivity.
+
+When the :class:`_orm.Session` is first constructed, there's no transactional
+state present.   The transactional state is begun automatically, when
+a method such as :meth:`_orm.Session.add` or :meth:`_orm.Session.execute`
+is invoked, or similarly if a :class:`_orm.Query` is executed to return
+results (which ultimately uses :meth:`_orm.Session.execute`), or if
+an attribute is modified on a :term:`persistent` object.
+
+The transactional state can be checked by accessing the
+:meth:`_orm.Session.in_transaction` method, which returns ``True`` or ``False``
+indicating if the "autobegin" step has proceeded. While not normally needed,
+the :meth:`_orm.Session.get_transaction` method will return the actual
+:class:`_orm.SessionTransaction` object that represents this transactional
+state.
+
+The transactional state of the :class:`_orm.Session` may also be started
+explicitly, by invoking the :meth:`_orm.Session.begin` method.   When this
+method is called, the :class:`_orm.Session` is placed into the "transactional"
+state unconditionally.   :meth:`_orm.Session.begin` may be used as a context
+manager as described at :ref:`session_begin_commit_rollback_block`.
+
+.. versionchanged:: 1.4.12 - autobegin now correctly occurs if object
+   attributes are modified; previously this was not occurring.
+
+
 .. _session_committing:
 
 Committing
 ----------
 
 :meth:`~.Session.commit` is used to commit the current
-transaction. It always issues :meth:`~.Session.flush`
+transaction, if any.   When there is no transaction in place, the method
+passes silently.
+
+When :meth:`_orm.Session.commit` operates upon the current open transaction,
+it first always issues :meth:`~.Session.flush`
 beforehand to flush any remaining state to the database; this is independent
 of the "autoflush" setting.
 
-If the :class:`_orm.Session` does not currently have a transaction present,
-the method will silently pass, unless the legacy "autocommit" mode is enabled
-in which it will raise an error.
+Subsequent to that, :meth:`_orm.Session.commit` will then COMMIT the actual
+database transaction or transactions, if any, that are in place.
 
-Another behavior of :meth:`~.Session.commit` is that by
-default it expires the state of all instances present after the commit is
-complete. This is so that when the instances are next accessed, either through
-attribute access or by them being present in the result of a SELECT,
-they receive the most recent  state.   This behavior may be controlled
-by the :paramref:`_orm.Session.expire_on_commit` flag, which may be set
-to ``False`` when this behavior is undesirable.
+Finally, all objects within the :class:`_orm.Session` are :term:`expired` as
+the transaction is closed out. This is so that when the instances are next
+accessed, either through attribute access or by them being present in the
+result of a SELECT, they receive the most recent state. This behavior may be
+controlled by the :paramref:`_orm.Session.expire_on_commit` flag, which may be
+set to ``False`` when this behavior is undesirable.
+
+.. versionchanged:: 1.4
+
+    The :class:`_orm.Session` object now features deferred "begin" behavior, as
+    described in :ref:`autobegin <session_autobegin>`. If no transaction is
+    begun, methods like :meth:`_orm.Session.commit` and
+    :meth:`_orm.Session.rollback` have no effect.  This behavior would not
+    have been observed prior to 1.4 as under non-autocommit mode, a
+    transaction would always be implicitly present.
+
+.. seealso::
+
+    :ref:`session_autobegin`
 
 .. _session_rollback:
 
 Rolling Back
 ------------
 
-:meth:`~.Session.rollback` rolls back the current
-transaction. With a default configured session, the post-rollback state of the
-session is as follows:
+:meth:`~.Session.rollback` rolls back the current transaction, if any.
+When there is no transaction in place, the method passes silently.
+
+With a default configured session, the
+post-rollback state of the session, subsequent to a transaction having
+been begun either via :ref:`autobegin <session_autobegin>`
+or by calling the :meth:`_orm.Session.begin`
+method explicitly, is as follows:
 
   * All transactions are rolled back and all connections returned to the
     connection pool, unless the Session was bound directly to a Connection, in
@@ -797,22 +862,34 @@ session is as follows:
     their DELETE statement being rolled back. Note that if those objects were
     first :term:`pending` within the transaction, that operation takes precedence
     instead.
-  * All objects not expunged are fully expired.
+  * All objects not expunged are fully expired - this is regardless of the
+    :paramref:`_orm.Session.expire_on_commit` setting.
 
-With that state understood, the :class:`~sqlalchemy.orm.session.Session` may
+With that state understood, the :class:`_orm.Session` may
 safely continue usage after a rollback occurs.
 
-When a :meth:`~.Session.flush` fails, typically for
-reasons like primary key, foreign key, or "not nullable" constraint
-violations, a ROLLBACK is issued
-automatically (it's currently not possible for a flush to continue after a
-partial failure).   However, the :class:`_orm.Session` goes into a state
-known as "inactive" at this point, and the calling application must
-always call the :meth:`_orm.Session.rollback` method explicitly so that
-the :class:`_orm.Session` can go back into a useable state (it can also
-be simply closed and discarded).   See the FAQ entry at
-:ref:`faq_session_rollback` for further discussion.
+.. versionchanged:: 1.4
 
+    The :class:`_orm.Session` object now features deferred "begin" behavior, as
+    described in :ref:`autobegin <session_autobegin>`. If no transaction is
+    begun, methods like :meth:`_orm.Session.commit` and
+    :meth:`_orm.Session.rollback` have no effect.  This behavior would not
+    have been observed prior to 1.4 as under non-autocommit mode, a
+    transaction would always be implicitly present.
+
+When a :meth:`_orm.Session.flush` fails, typically for reasons like primary
+key, foreign key, or "not nullable" constraint violations, a ROLLBACK is issued
+automatically (it's currently not possible for a flush to continue after a
+partial failure). However, the :class:`_orm.Session` goes into a state known as
+"inactive" at this point, and the calling application must always call the
+:meth:`_orm.Session.rollback` method explicitly so that the
+:class:`_orm.Session` can go back into a useable state (it can also be simply
+closed and discarded). See the FAQ entry at :ref:`faq_session_rollback` for
+further discussion.
+
+.. seealso::
+
+  :ref:`session_autobegin`
 
 
 Closing
@@ -840,6 +917,12 @@ that :meth:`_orm.Session.close` is called::
 
     # closes session automatically
 
+.. versionchanged:: 1.4
+
+    The :class:`_orm.Session` object features deferred "begin" behavior, as
+    described in :ref:`autobegin <session_autobegin>`. no longer immediately
+    begins a new transaction after the :meth:`_orm.Session.close` method is
+    called.
 
 .. _session_faq:
 

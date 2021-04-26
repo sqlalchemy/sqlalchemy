@@ -31,6 +31,10 @@ from .. import inspection
 from .. import util
 
 
+# late-populated by session.py
+_sessions = None
+
+
 @inspection._self_inspects
 class InstanceState(interfaces.InspectionAttrInfo):
     """tracks state information at the instance level.
@@ -247,7 +251,6 @@ class InstanceState(interfaces.InspectionAttrInfo):
             self._last_known_values[key] = NO_VALUE
 
     @property
-    @util.preload_module("sqlalchemy.orm.session")
     def session(self):
         """Return the owning :class:`.Session` for this instance,
         or ``None`` if none available.
@@ -260,7 +263,12 @@ class InstanceState(interfaces.InspectionAttrInfo):
         fully detached under normal circumstances.
 
         """
-        return util.preloaded.orm_session._state_session(self)
+        if self.session_id:
+            try:
+                return _sessions[self.session_id]
+            except KeyError:
+                pass
+        return None
 
     @property
     def object(self):
@@ -754,7 +762,10 @@ class InstanceState(interfaces.InspectionAttrInfo):
             self.modified = True
             instance_dict = self._instance_dict()
             if instance_dict:
+                has_modified = bool(instance_dict._modified)
                 instance_dict._modified.add(self)
+            else:
+                has_modified = False
 
             # only create _strong_obj link if attached
             # to a session
@@ -762,6 +773,20 @@ class InstanceState(interfaces.InspectionAttrInfo):
             inst = self.obj()
             if self.session_id:
                 self._strong_obj = inst
+
+                # if identity map already had modified objects,
+                # assume autobegin already occurred, else check
+                # for autobegin
+                if not has_modified:
+                    # inline of autobegin, to ensure session transaction
+                    # snapshot is established
+                    try:
+                        session = _sessions[self.session_id]
+                    except KeyError:
+                        pass
+                    else:
+                        if session._transaction is None:
+                            session._autobegin()
 
             if inst is None and attr:
                 raise orm_exc.ObjectDereferencedError(
