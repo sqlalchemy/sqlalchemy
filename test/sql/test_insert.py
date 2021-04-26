@@ -384,6 +384,75 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             dialect=postgresql.dialect(),
         )
 
+    def test_insert_seq_pk_multi_values(self):
+        """test #6361"""
+
+        m = MetaData()
+
+        t1 = Table(
+            "t",
+            m,
+            Column("id", Integer, Sequence("id_seq"), primary_key=True),
+            Column("data", String),
+        )
+
+        stmt = t1.insert().values(
+            [{"data": "d1"}, {"data": "d2"}, {"data": "d3"}]
+        )
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO t (id, data) VALUES (nextval('id_seq'), "
+            "%(data_m0)s), (nextval('id_seq'), %(data_m1)s), "
+            "(nextval('id_seq'), %(data_m2)s)",
+            dialect=postgresql.dialect(),
+        )
+
+    def test_insert_seq_non_pk_multi_values(self):
+        """test #6361"""
+
+        m = MetaData()
+
+        t1 = Table(
+            "t",
+            m,
+            Column("id", Integer, primary_key=True),
+            Column("counter", Sequence("counter_seq")),
+            Column("data", String),
+        )
+
+        stmt = t1.insert().values(
+            [{"data": "d1"}, {"data": "d2"}, {"data": "d3"}]
+        )
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO t (counter, data) VALUES (nextval('counter_seq'), "
+            "%(data_m0)s), (nextval('counter_seq'), %(data_m1)s), "
+            "(nextval('counter_seq'), %(data_m2)s)",
+            dialect=postgresql.dialect(),
+        )
+
+    def test_insert_seq_pk_multi_values_seq_not_supported(self):
+        m = MetaData()
+
+        t1 = Table(
+            "t",
+            m,
+            Column("id", Integer, Sequence("id_seq"), primary_key=True),
+            Column("data", String),
+        )
+
+        stmt = t1.insert().values(
+            [{"data": "d1"}, {"data": "d2"}, {"data": "d3"}]
+        )
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO t (data) VALUES (?), (?), (?)",
+            dialect=sqlite.dialect(),
+        )
+
     def test_insert_from_select_cte_one(self):
         table1 = self.tables.mytable
 

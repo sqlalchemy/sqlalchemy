@@ -204,6 +204,44 @@ class SequenceExecTest(fixtures.TestBase):
             else:
                 eq_(r.inserted_primary_key, (None,))
 
+    @testing.combinations(
+        ("implicit_returning",),
+        ("no_implicit_returning",),
+        ("explicit_returning", testing.requires.returning),
+        argnames="returning",
+    )
+    @testing.requires.multivalues_inserts
+    def test_seq_multivalues_inline(self, metadata, testing_engine, returning):
+        t1 = Table(
+            "t",
+            metadata,
+            Column("x", Integer, Sequence("my_seq"), primary_key=True),
+            Column("data", String(50)),
+        )
+
+        e = engines.testing_engine(
+            options={
+                "implicit_returning": returning != "no_implicit_returning"
+            }
+        )
+        metadata.create_all(e)
+        with e.begin() as conn:
+
+            stmt = t1.insert().values(
+                [{"data": "d1"}, {"data": "d2"}, {"data": "d3"}]
+            )
+            if returning == "explicit_returning":
+                stmt = stmt.returning(t1.c.x)
+
+            r = conn.execute(stmt)
+            if returning == "explicit_returning":
+                eq_(r.all(), [(1,), (2,), (3,)])
+
+            eq_(
+                conn.execute(t1.select().order_by(t1.c.x)).all(),
+                [(1, "d1"), (2, "d2"), (3, "d3")],
+            )
+
     @testing.requires.returning
     @testing.provide_metadata
     def test_inserted_pk_implicit_returning(self):
