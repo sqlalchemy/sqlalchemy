@@ -132,7 +132,7 @@ the reader is invited to work with the code examples given in real time with
 their own Python interpreter.
 
 If running the examples, it is advised that the reader performs a quick check to
-verify that they are on  **version 1.4** of SQLAlchemy:
+verify that we are on  **version 1.4** of SQLAlchemy:
 
 .. sourcecode:: pycon+sql
 
