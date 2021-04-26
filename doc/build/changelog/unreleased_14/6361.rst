@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 6361
+
+    Fixed issue where usage of an explicit :class:`.Sequence` would produce
+    inconsistent "inline" behavior for an :class:`.Insert` construct that
+    includes multiple values phrases; the first seq would be inline but
+    subsequent ones would be "pre-execute", leading to inconsistent sequence
+    ordering. The sequence expressions are now fully inline.

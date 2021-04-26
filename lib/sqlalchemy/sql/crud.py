@@ -803,7 +803,6 @@ class _multiparam_column(elements.ColumnElement):
 
 
 def _process_multiparam_default_bind(compiler, stmt, c, index, kw):
-
     if not c.default:
         raise exc.CompileError(
             "INSERT value for column %s is explicitly rendered as a bound"
@@ -812,6 +811,16 @@ def _process_multiparam_default_bind(compiler, stmt, c, index, kw):
         )
     elif c.default.is_clause_element:
         return compiler.process(c.default.arg.self_group(), **kw)
+    elif c.default.is_sequence:
+        # these conditions would have been established
+        # by append_param_insert_(?:hasdefault|pk_returning|pk_no_returning)
+        # in order for us to be here, so these don't need to be
+        # checked
+        # assert compiler.dialect.supports_sequences and (
+        #    not c.default.optional
+        #    or not compiler.dialect.sequences_optional
+        # )
+        return compiler.process(c.default, **kw)
     else:
         col = _multiparam_column(c, index)
         if isinstance(stmt, dml.Insert):
