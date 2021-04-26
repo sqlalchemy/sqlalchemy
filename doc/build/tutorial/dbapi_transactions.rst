@@ -521,7 +521,7 @@ the block with a "commit as you go" commit.
    when executing SQL against the database is next needed.
 
 The :class:`_orm.Session` obviously has a lot more tricks up its sleeve
-than that, however understanding that it has an :meth:`_orm.Session.execute`
+than that, however understanding that it has a :meth:`_orm.Session.execute`
 method that's used the same way as :meth:`_future.Connection.execute` will
 get us started with the examples that follow later.
 
