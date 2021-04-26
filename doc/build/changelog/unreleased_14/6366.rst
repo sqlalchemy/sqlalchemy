@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, mssql, regression
+    :tickets: 6366
+
+    Fixed regression caused by :ticket:`6306` which added support for
+    ``DateTime(timezone=True)``, where the previous behavior of the pyodbc
+    driver of implicitly dropping the tzinfo from a timezone-aware date when
+    INSERTing into a timezone-naive DATETIME column were lost, leading to a SQL
+    Server error when inserting timezone-aware datetime objects into
+    timezone-native database columns.
