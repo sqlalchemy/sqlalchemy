@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 6373
+
+    Fixed very old issue where the :class:`_types.Enum` datatype would not
+    inherit the :paramref:`_schema.MetaData.schema` parameter of a
+    :class:`_schema.MetaData` object when that object were passed to the
+    :class:`_types.Enum` using :paramref:`_types.Enum.metadata`.

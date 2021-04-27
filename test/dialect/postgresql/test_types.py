@@ -224,6 +224,70 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         ]
         t1.drop(conn, checkfirst=True)
 
+    @testing.combinations(
+        ("local_schema",),
+        ("metadata_schema_only",),
+        ("inherit_table_schema",),
+        ("override_metadata_schema",),
+        argnames="test_case",
+    )
+    @testing.requires.schemas
+    def test_schema_inheritance(self, test_case, metadata, connection):
+        """test #6373"""
+
+        metadata.schema = testing.config.test_schema
+
+        if test_case == "metadata_schema_only":
+            enum = Enum(
+                "four", "five", "six", metadata=metadata, name="myenum"
+            )
+            assert_schema = testing.config.test_schema
+        elif test_case == "override_metadata_schema":
+            enum = Enum(
+                "four",
+                "five",
+                "six",
+                metadata=metadata,
+                schema=testing.config.test_schema_2,
+                name="myenum",
+            )
+            assert_schema = testing.config.test_schema_2
+        elif test_case == "inherit_table_schema":
+            enum = Enum(
+                "four",
+                "five",
+                "six",
+                metadata=metadata,
+                inherit_schema=True,
+                name="myenum",
+            )
+            assert_schema = testing.config.test_schema_2
+        elif test_case == "local_schema":
+            enum = Enum("four", "five", "six", name="myenum")
+            assert_schema = testing.config.db.dialect.default_schema_name
+
+        Table(
+            "t",
+            metadata,
+            Column("data", enum),
+            schema=testing.config.test_schema_2,
+        )
+
+        metadata.create_all(connection)
+
+        eq_(
+            inspect(connection).get_enums(schema=assert_schema),
+            [
+                {
+                    "labels": ["four", "five", "six"],
+                    "name": "myenum",
+                    "schema": assert_schema,
+                    "visible": assert_schema
+                    == testing.config.db.dialect.default_schema_name,
+                }
+            ],
+        )
+
     def test_name_required(self, metadata, connection):
         etype = Enum("four", "five", "six", metadata=metadata)
         assert_raises(exc.CompileError, etype.create, connection)

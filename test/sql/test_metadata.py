@@ -2186,6 +2186,27 @@ class SchemaTypeTest(fixtures.TestBase):
         t1 = Table("x", m, Column("y", type_), schema="z")
         eq_(t1.c.y.type.schema, "q")
 
+    def test_inherit_schema_from_metadata(self):
+        """test #6373"""
+        m = MetaData(schema="q")
+        type_ = self.MyType(metadata=m)
+        t1 = Table("x", m, Column("y", type_), schema="z")
+        eq_(t1.c.y.type.schema, "q")
+
+    def test_inherit_schema_from_table_override_metadata(self):
+        """test #6373"""
+        m = MetaData(schema="q")
+        type_ = self.MyType(metadata=m, inherit_schema=True)
+        t1 = Table("x", m, Column("y", type_), schema="z")
+        eq_(t1.c.y.type.schema, "z")
+
+    def test_inherit_schema_from_metadata_override_explicit(self):
+        """test #6373"""
+        m = MetaData(schema="q")
+        type_ = self.MyType(schema="e", metadata=m)
+        t1 = Table("x", m, Column("y", type_), schema="z")
+        eq_(t1.c.y.type.schema, "e")
+
     def test_inherit_schema(self):
         m = MetaData()
         type_ = self.MyType(schema="q", inherit_schema=True)
