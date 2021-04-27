@@ -1105,6 +1105,8 @@ class SchemaType(SchemaEventTarget):
     def _set_table(self, column, table):
         if self.inherit_schema:
             self.schema = table.schema
+        elif self.metadata and self.schema is None and self.metadata.schema:
+            self.schema = self.metadata.schema
 
         if not self._create_events:
             return
@@ -1365,6 +1367,16 @@ class Enum(Emulated, String, SchemaType):
            only dropped when ``drop_all()`` is called for that ``Table``
            object's metadata, however.
 
+           The value of the :paramref:`_schema.MetaData.schema` parameter of
+           the :class:`_schema.MetaData` object, if set, will be used as the
+           default value of the :paramref:`_types.Enum.schema` on this object
+           if an explicit value is not otherwise supplied.
+
+           .. versionchanged:: 1.4.12 :class:`_types.Enum` inherits the
+              :paramref:`_schema.MetaData.schema` parameter of the
+              :class:`_schema.MetaData` object if present, when passed using
+              the :paramref:`_types.Enum.metadata` parameter.
+
         :param name: The name of this type. This is required for PostgreSQL
            and any future supported database which requires an explicitly
            named type, or an explicitly named constraint in order to generate
@@ -1388,12 +1400,22 @@ class Enum(Emulated, String, SchemaType):
            this parameter specifies the named schema in which the type is
            present.
 
-           .. note::
+           If not present, the schema name will be taken from the
+           :class:`_schema.MetaData` collection if passed as
+           :paramref:`_types.Enum.metadata`, for a :class:`_schema.MetaData`
+           that includes the :paramref:`_schema.MetaData.schema` parameter.
 
-                The ``schema`` of the :class:`.Enum` type does not
-                by default make use of the ``schema`` established on the
-                owning :class:`_schema.Table`.  If this behavior is desired,
-                set the ``inherit_schema`` flag to ``True``.
+           .. versionchanged:: 1.4.12 :class:`_types.Enum` inherits the
+              :paramref:`_schema.MetaData.schema` parameter of the
+              :class:`_schema.MetaData` object if present, when passed using
+              the :paramref:`_types.Enum.metadata` parameter.
+
+           Otherwise, if the :paramref:`_types.Enum.inherit_schema` flag is set
+           to ``True``, the schema will be inherited from the associated
+           :class:`_schema.Table` object if any; when
+           :paramref:`_types.Enum.inherit_schema` is at its default of
+           ``False``, the owning table's schema is **not** used.
+
 
         :param quote: Set explicit quoting preferences for the type's name.
 
