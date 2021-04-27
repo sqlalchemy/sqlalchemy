@@ -35,7 +35,7 @@ The components of this section are as follows:
   section :ref:`tutorial_select_relationships` as well as the
   :ref:`queryguide_toplevel`.
 
-* :ref:`tutorial_core_update_delete` - Rounding out the INSERT and SELECtion
+* :ref:`tutorial_core_update_delete` - Rounding out the INSERT and SELECTion
   of data, this section will describe from a Core perspective the use of the
   :class:`_sql.Update` and :class:`_sql.Delete` constructs.  ORM-specific
   UPDATE and DELETE is similarly described in the
