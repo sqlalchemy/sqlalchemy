@@ -805,6 +805,40 @@ class TypeRoundTripTest(
             (d1, d2, t1, d2.time(), d3),
         )
 
+    @testing.combinations(
+        (
+            datetime.datetime(
+                2007,
+                10,
+                30,
+                11,
+                2,
+                32,
+                tzinfo=util.timezone(datetime.timedelta(hours=-5)),
+            ),
+        ),
+        (datetime.datetime(2007, 10, 30, 11, 2, 32)),
+        argnames="date",
+    )
+    def test_tz_present_or_non_in_dates(self, date_fixture, connection, date):
+        t, (d1, t1, d2, d3) = date_fixture
+        connection.execute(
+            t.insert(),
+            dict(
+                adatetime=date,
+                adatetimewithtimezone=date,
+            ),
+        )
+
+        row = connection.execute(
+            select(t.c.adatetime, t.c.adatetimewithtimezone)
+        ).first()
+
+        if not date.tzinfo:
+            eq_(row, (date, date.replace(tzinfo=util.timezone.utc)))
+        else:
+            eq_(row, (date.replace(tzinfo=None), date))
+
     @testing.metadata_fixture()
     def datetimeoffset_fixture(self, metadata):
         t = Table(

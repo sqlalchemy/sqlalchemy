@@ -63,7 +63,7 @@ This document details individual issue-level changes made throughout
 
 
     .. change::
-        :tags: usecase, schema, mssql
+        :tags: usecase, mssql
         :tickets: 6306
 
         The :paramref:`_types.DateTime.timezone` parameter when set to ``True``
