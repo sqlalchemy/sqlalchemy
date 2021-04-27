@@ -60,7 +60,7 @@ Having a single :class:`_schema.MetaData` object for an entire application is
 the most common case, represented as a module-level variable in a single place
 in an application, often in a "models" or "dbschema" type of package.  There
 can be multiple :class:`_schema.MetaData` collections as well,  however
-it's typically most helpful if a series :class:`_schema.Table` objects that are
+it's typically most helpful if a series of :class:`_schema.Table` objects that are
 related to each other belong to a single :class:`_schema.MetaData` collection.
 
 
@@ -251,7 +251,7 @@ reverse order as it would emit CREATE in order to drop schema elements.
 Defining Table Metadata with the ORM
 ------------------------------------
 
-This ORM-only section will provide an example of the declaring the
+This ORM-only section will provide an example declaring the
 same database structure illustrated in the previous section, using a more
 ORM-centric configuration paradigm.   When using
 the ORM, the process by which we declare :class:`_schema.Table` metadata
@@ -514,7 +514,7 @@ using the :paramref:`_schema.Table.autoload_with` parameter:
 At the end of the process, the ``some_table`` object now contains the
 information about the :class:`_schema.Column` objects present in the table, and
 the object is usable in exactly the same way as a :class:`_schema.Table` that
-we declared explicitly.::
+we declared explicitly::
 
     >>> some_table
     Table('some_table', MetaData(),
