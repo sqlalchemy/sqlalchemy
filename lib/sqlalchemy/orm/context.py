@@ -517,15 +517,6 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             for_statement
         ) = select_statement._compile_options._for_statement
 
-        if not for_statement and not toplevel:
-            # for subqueries, turn off eagerloads.
-            # if "for_statement" mode is set, Query.subquery()
-            # would have set this flag to False already if that's what's
-            # desired
-            select_statement._compile_options += {
-                "_enable_eagerloads": False,
-            }
-
         # generally if we are from Query or directly from a select()
         self.use_legacy_query_style = (
             select_statement._compile_options._use_legacy_query_style
@@ -545,6 +536,15 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             self._setup_with_polymorphics()
 
         self.compile_options = select_statement._compile_options
+
+        if not for_statement and not toplevel:
+            # for subqueries, turn off eagerloads.
+            # if "for_statement" mode is set, Query.subquery()
+            # would have set this flag to False already if that's what's
+            # desired
+            self.compile_options += {
+                "_enable_eagerloads": False,
+            }
 
         # determine label style.   we can make different decisions here.
         # at the moment, trying to see if we can always use DISAMBIGUATE_ONLY

@@ -83,6 +83,43 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         )
         eq_(self.static.user_address_result, q.order_by(User.id).all())
 
+    def test_no_render_in_subquery(self):
+        """test #6378"""
+
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    mapper(Address, addresses),
+                    lazy="joined",
+                    order_by=Address.id,
+                )
+            },
+        )
+
+        stmt = select(User)
+        self.assert_compile(
+            select(stmt.subquery()),
+            "SELECT anon_1.id, anon_1.name FROM (SELECT users.id AS id, "
+            "users.name AS name FROM users) AS anon_1",
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT users.id, users.name, addresses_1.id AS id_1, "
+            "addresses_1.user_id, addresses_1.email_address FROM users "
+            "LEFT OUTER JOIN addresses AS addresses_1 "
+            "ON users.id = addresses_1.user_id ORDER BY addresses_1.id",
+        )
+
     def test_late_compile(self):
         User, Address, addresses, users = (
             self.classes.User,
