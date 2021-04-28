@@ -316,10 +316,10 @@ a value in the ``User.name`` column:
     >>> session.execute(
     ...     update(User).
     ...     where(User.name == "sandy").
-    ...     values(fullname="Sandy Squirrel Extraodinaire")
+    ...     values(fullname="Sandy Squirrel Extraordinaire")
     ... )
     {opensql}UPDATE user_account SET fullname=? WHERE user_account.name = ?
-    [...] ('Sandy Squirrel Extraodinaire', 'sandy'){stop}
+    [...] ('Sandy Squirrel Extraordinaire', 'sandy'){stop}
     <sqlalchemy.engine.cursor.CursorResult object ...>
 
 When invoking the ORM-enabled UPDATE statement, special logic is used to locate
@@ -328,7 +328,7 @@ are refreshed with the new data.  Above, the ``sandy`` object identity
 was located in memory and refreshed::
 
     >>> sandy.fullname
-    'Sandy Squirrel Extraodinaire'
+    'Sandy Squirrel Extraordinaire'
 
 The refresh logic is known as the ``synchronize_session`` option, and is described
 in detail in the section :ref:`orm_expression_update_delete`.
