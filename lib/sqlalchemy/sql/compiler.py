@@ -715,7 +715,7 @@ class SQLCompiler(Compiled):
             self._cache_key_bind_match = ckbm = {
                 b.key: b for b in cache_key[1]
             }
-            ckbm.update({b: b for b in cache_key[1]})
+            ckbm.update({b: [b] for b in cache_key[1]})
 
         # compile INSERT/UPDATE defaults/sequences to expect executemany
         # style execution, which may mean no pre-execute of defaults,
@@ -934,8 +934,9 @@ class SQLCompiler(Compiled):
 
             ckbm = self._cache_key_bind_match
             resolved_extracted = {
-                ckbm[b]: extracted
+                bind: extracted
                 for b, extracted in zip(orig_extracted, extracted_parameters)
+                for bind in ckbm[b]
             }
         else:
             resolved_extracted = None
@@ -2242,7 +2243,6 @@ class SQLCompiler(Compiled):
         render_postcompile=False,
         **kwargs
     ):
-
         if not skip_bind_expression:
             impl = bindparam.type.dialect_impl(self.dialect)
             if impl._has_bind_expression:
@@ -2313,7 +2313,7 @@ class SQLCompiler(Compiled):
             for bp in bindparam._cloned_set:
                 if bp.key in ckbm:
                     cb = ckbm[bp.key]
-                    ckbm[cb] = bindparam
+                    ckbm[cb].append(bindparam)
 
         if bindparam.isoutparam:
             self.has_out_parameters = True

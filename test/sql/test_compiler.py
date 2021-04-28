@@ -3835,6 +3835,104 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             {"myid_1": 10},
         )
 
+    def test_construct_duped_params_w_bind_clones_post(self):
+        """same as previous test_construct_params_w_bind_clones_post but
+        where the binds have been used
+        repeatedly, and the adaption occurs on a per-subquery basis.
+        test for #6391
+
+        """
+
+        inner_stmt = select(table1.c.myid).where(table1.c.myid == 5)
+
+        stmt = union(inner_stmt, inner_stmt, inner_stmt)
+
+        # get the original bindparam.
+        original_bind = inner_stmt._where_criteria[0].right
+
+        # same bind three times
+        is_(stmt.selects[0]._where_criteria[0].right, original_bind)
+        is_(stmt.selects[1]._where_criteria[0].right, original_bind)
+        is_(stmt.selects[2]._where_criteria[0].right, original_bind)
+
+        # it's anonymous so unique=True
+        is_true(original_bind.unique)
+
+        # cache key against hte original param
+        cache_key = stmt._generate_cache_key()
+
+        # now adapt the statement and separately adapt the inner
+        # SELECTs, since if these subqueries are also ORM then they get adapted
+        # separately.
+        stmt_adapted = sql_util.ClauseAdapter(table1).traverse(stmt)
+        stmt_adapted.selects[0] = sql_util.ClauseAdapter(table1).traverse(
+            stmt_adapted.selects[0]
+        )
+        stmt_adapted.selects[1] = sql_util.ClauseAdapter(table1).traverse(
+            stmt_adapted.selects[1]
+        )
+        stmt_adapted.selects[2] = sql_util.ClauseAdapter(table1).traverse(
+            stmt_adapted.selects[2]
+        )
+
+        # new bind parameter has a different key but same
+        # identifying key
+
+        new_bind_one = stmt_adapted.selects[0]._where_criteria[0].right
+        new_bind_two = stmt_adapted.selects[1]._where_criteria[0].right
+        new_bind_three = stmt_adapted.selects[2]._where_criteria[0].right
+
+        for new_bind in (new_bind_one, new_bind_two, new_bind_three):
+            eq_(original_bind._identifying_key, new_bind._identifying_key)
+            ne_(original_bind.key, new_bind.key)
+
+        # compile the adapted statement but set the cache key to the one
+        # generated from the unadapted statement.  this will look like
+        # when the ORM runs clause adaption inside of visit_select, after
+        # the cache key is generated but before the compiler is given the
+        # core select statement to actually render.
+        compiled = stmt_adapted.compile(cache_key=cache_key)
+
+        # the same parameter was split into three distinct ones, due to
+        # the separate adaption on a per-subquery basis.  but they still
+        # refer to the original in their _cloned_set and this is what
+        # has to match up to what's in the cache key.
+        # params set up as 5
+        eq_(
+            compiled.construct_params(
+                params={},
+            ),
+            {"myid_1": 5, "myid_2": 5, "myid_3": 5},
+        )
+
+        # also works w the original cache key
+        eq_(
+            compiled.construct_params(
+                params={}, extracted_parameters=cache_key[1]
+            ),
+            {"myid_1": 5, "myid_2": 5, "myid_3": 5},
+        )
+
+        # now make a totally new statement with the same cache key
+        new_inner_stmt = select(table1.c.myid).where(table1.c.myid == 10)
+        new_stmt = union(new_inner_stmt, new_inner_stmt, new_inner_stmt)
+
+        new_cache_key = new_stmt._generate_cache_key()
+
+        # cache keys match
+        eq_(cache_key.key, new_cache_key.key)
+
+        # ensure we get "10" from construct params.   if it matched
+        # based on .key and not ._identifying_key, it would not see that
+        # the bind parameter is part of the cache key.
+        # before #6391 was fixed you would see 5, 5, 10
+        eq_(
+            compiled.construct_params(
+                params={}, extracted_parameters=new_cache_key[1]
+            ),
+            {"myid_1": 10, "myid_2": 10, "myid_3": 10},
+        )
+
     def test_construct_params_w_bind_clones_pre(self):
         """test that a BindParameter that has been cloned before the cache
         key was generated, and was doubled up just to make sure it has to
