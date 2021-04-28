@@ -50,6 +50,29 @@ class SelectableTest(QueryTest, AssertsCompiledSQL):
             "WHERE users.name = :name_1",
         )
 
+    def test_c_accessor_not_mutated_subq(self):
+        """test #6394, ensure all_selected_columns is generated each time"""
+        User = self.classes.User
+
+        s1 = select(User.id)
+
+        eq_(s1.subquery().c.keys(), ["id"])
+        eq_(s1.subquery().c.keys(), ["id"])
+
+    def test_scalar_subquery_from_subq_same_source(self):
+        """test #6394, ensure all_selected_columns is generated each time"""
+        User = self.classes.User
+
+        s1 = select(User.id)
+
+        for i in range(2):
+            stmt = s1.subquery().select().scalar_subquery()
+            self.assert_compile(
+                stmt,
+                "(SELECT anon_1.id FROM "
+                "(SELECT users.id AS id FROM users) AS anon_1)",
+            )
+
     def test_froms_single_table(self):
         User, Address = self.classes("User", "Address")
 

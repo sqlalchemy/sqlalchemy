@@ -5706,7 +5706,7 @@ class Select(
     @HasMemoized.memoized_attribute
     def _all_selected_columns(self):
         meth = SelectState.get_plugin_class(self).all_selected_columns
-        return meth(self)
+        return list(meth(self))
 
     def _exported_columns_iterator(self):
         meth = SelectState.get_plugin_class(self).exported_columns_iterator
@@ -5727,7 +5727,6 @@ class Select(
 
         """
         cols = self._all_selected_columns
-
         # when use_labels is on:
         # in all cases == if we see the same label name, use _label_anon_label
         # for subsequent occurrences of that label
