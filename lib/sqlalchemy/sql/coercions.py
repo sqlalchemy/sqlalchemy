@@ -561,14 +561,9 @@ class InElementImpl(RoleImpl):
             return element.self_group(against=operator)
 
         elif isinstance(element, elements.BindParameter):
-            if not element.expanding:
-                # coercing to expanding at the moment to work with the
-                # lambda system.  not sure if this is the right approach.
-                # is there a valid use case to send a single non-expanding
-                # param to IN? check for ARRAY type?
-                element = element._clone(maintain_key=True)
-                element.expanding = True
-
+            # previously we were adding expanding flags here but
+            # we now do this in the compiler where we have more context
+            # see compiler.py -> _render_in_expr_w_bindparam
             return element
         else:
             return element

@@ -1411,7 +1411,17 @@ class BindParameter(roles.InElementRole, ColumnElement):
         self.callable = callable_
         self.isoutparam = isoutparam
         self.required = required
+
+        # indicate an "expanding" parameter; the compiler sets this
+        # automatically in the compiler _render_in_expr_w_bindparam method
+        # for an IN expression
         self.expanding = expanding
+
+        # this is another hint to help w/ expanding and is typically
+        # set in the compiler _render_in_expr_w_bindparam method for an
+        # IN expression
+        self.expand_op = None
+
         self.literal_execute = literal_execute
         if _is_crud:
             self._is_crud = True
