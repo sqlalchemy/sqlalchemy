@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, orm, regression, caching
+    :tickets: 6391
+
+    Fixed critical regression where bound parameter tracking as used in the SQL
+    caching system could fail to track all parameters for the case where the
+    same SQL expression containing a parameter were used in an ORM-related
+    query using a feature such as class inheritance, which was then embedded in
+    an enclosing expression which would make use of that same expression
+    multiple times, such as a UNION. The ORM would individually copy the
+    individual SELECT statements as part of compilation with class inheritance,
+    which then embedded in the enclosing statement would fail to accommodate
+    for all parameters. The logic that tracks this condition has been adjusted
+    to work for multiple copies of a parameter.
