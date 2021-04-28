@@ -710,6 +710,11 @@ class DialectTest(
         e = create_engine("sqlite+pysqlite:///:memory:")
         assert e.pool.__class__ is pool.SingletonThreadPool
 
+        e = create_engine(
+            "sqlite+pysqlite:///file:foo.db?mode=memory&uri=true"
+        )
+        assert e.pool.__class__ is pool.SingletonThreadPool
+
         e = create_engine("sqlite+pysqlite:///foo.db")
         assert e.pool.__class__ is pool.NullPool
 
