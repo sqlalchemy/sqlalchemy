@@ -492,6 +492,69 @@ class PropertyMirrorTest(fixtures.TestBase, AssertsCompiledSQL):
 
         return A
 
+    @testing.fixture
+    def _name_mismatch_fixture(self):
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            addresses = relationship("B")
+
+            @hybrid.hybrid_property
+            def some_email(self):
+                if self.addresses:
+                    return self.addresses[0].email_address
+                else:
+                    return None
+
+            @some_email.expression
+            def some_email(cls):
+                return B.email_address
+
+        class B(Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            aid = Column(ForeignKey("a.id"))
+            email_address = Column(String)
+
+        return A, B
+
+    def test_dont_assume_attr_key_is_present(self, _name_mismatch_fixture):
+        A, B = _name_mismatch_fixture
+        self.assert_compile(
+            select(A, A.some_email).join(A.addresses),
+            "SELECT a.id, b.email_address FROM a JOIN b ON a.id = b.aid",
+        )
+
+    def test_dont_assume_attr_key_is_present_ac(self, _name_mismatch_fixture):
+        A, B = _name_mismatch_fixture
+
+        ac = aliased(A)
+        self.assert_compile(
+            select(ac, ac.some_email).join(ac.addresses),
+            "SELECT a_1.id, b.email_address "
+            "FROM a AS a_1 JOIN b ON a_1.id = b.aid",
+        )
+
+    def test_filter_by_mismatched_col(self, _name_mismatch_fixture):
+        A, B = _name_mismatch_fixture
+        self.assert_compile(
+            select(A).filter_by(some_email="foo").join(A.addresses),
+            "SELECT a.id FROM a JOIN b ON a.id = b.aid "
+            "WHERE b.email_address = :email_address_1",
+        )
+
+    def test_aliased_mismatched_col(self, _name_mismatch_fixture):
+        A, B = _name_mismatch_fixture
+        sess = fixture_session()
+
+        # so what should this do ?   it's just a weird hybrid case
+        self.assert_compile(
+            sess.query(aliased(A).some_email),
+            "SELECT b.email_address AS b_email_address FROM b",
+        )
+
     def test_property(self):
         A = self._fixture()
 
