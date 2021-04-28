@@ -48,7 +48,7 @@ relationships between the :class:`_schema.Table` objects that are mapped to the
 representing the
 ``address`` table has a :class:`_schema.ForeignKeyConstraint` which refers to
 the ``user_account`` table, the :func:`_orm.relationship` can determine
-unambiguously that there is as :term:`one to many` relationship from
+unambiguously that there is a :term:`one to many` relationship from
 ``User.addresses`` to ``User``; one particular row in the ``user_account``
 table may be referred towards by many rows in the ``address`` table.
 
@@ -636,7 +636,7 @@ Joined Load
 
 The :func:`_orm.joinedload` eager load strategy is the oldest eager loader in
 SQLAlchemy, which augments the SELECT statement that's being passed to the
-database with a JOIN (which may an outer or an inner join depending on options),
+database with a JOIN (which may be an outer or an inner join depending on options),
 which can then load in related objects.
 
 The :func:`_orm.joinedload` strategy is best suited towards loading
@@ -677,7 +677,7 @@ such as :func:`_orm.selectinload` should be evaluated on a per-case basis.
 It's important to note that the WHERE and ORDER BY criteria of the enclosing
 :class:`_sql.Select` statement **do not target the table rendered by
 joinedload()**.   Above, it can be seen in the SQL that an **anonymous alias**
-is applied to the ``user_account`` table such that is not directly addressible
+is applied to the ``user_account`` table such that is not directly addressable
 in the query.   This concept is discussed in more detail in the section
 :ref:`zen_of_eager_loading`.
 
@@ -696,7 +696,7 @@ described in the next section,
   It's important to note that many-to-one eager loads are often not necessary,
   as the "N plus one" problem is much less prevalent in the common case. When
   many objects all refer to the same related object, such as many ``Address``
-  objects that each refer ot the same ``User``, SQL will be emitted only once
+  objects that each refer to the same ``User``, SQL will be emitted only once
   for that ``User`` object using normal lazy loading.  The lazy load routine
   will look up the related object by primary key in the current
   :class:`_orm.Session` without emitting any SQL when possible.
@@ -717,7 +717,7 @@ also leverage that JOIN in order to eagerly load the contents of the
 ``Address.user`` attribute on each ``Address`` object returned.  This is
 essentially that we are using "joined eager loading" but rendering the JOIN
 ourselves.   This common use case is acheived by using the
-:func:`_orm.contains_eager` option. this option is very similar to
+:func:`_orm.contains_eager` option. This option is very similar to
 :func:`_orm.joinedload`, except that it assumes we have set up the JOIN
 ourselves, and it instead only indicates that additional columns in the COLUMNS
 clause should be loaded into related attributes on each returned object, for
