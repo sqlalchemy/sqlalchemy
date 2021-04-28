@@ -1255,7 +1255,14 @@ class XML(sqltypes.Text):
     __visit_name__ = "XML"
 
 
-class BIT(sqltypes.TypeEngine):
+class BIT(sqltypes.Boolean):
+    """MSSQL BIT type.
+
+    Both pyodbc and pymssql return values from BIT columns as
+    Python <class 'bool'> so just subclass Boolean.
+
+    """
+
     __visit_name__ = "BIT"
 
 
