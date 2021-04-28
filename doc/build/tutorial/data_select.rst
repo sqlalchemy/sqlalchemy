@@ -449,7 +449,7 @@ right side of the JOIN, the left hand-side is inferred::
     observe that the ON clause of the join is also inferred for us in simple
     foreign key cases. More on that in the next section.
 
-We also have the option add elements to the FROM clause explicitly, if it is not
+We also have the option to add elements to the FROM clause explicitly, if it is not
 inferred the way we want from the columns clause.  We use the
 :meth:`_sql.Select.select_from` method to achieve this, as below
 where we establish ``user_table`` as the first element in the FROM
@@ -602,7 +602,7 @@ of a particular SQL function, which can have any name, as well as zero or
 more arguments to pass to the function, which are, like in all other cases,
 SQL Expression constructs.   For example, to
 render the SQL COUNT() function against the ``user_account.id`` column,
-we call upon the name ``count()`` name::
+we call upon the ``count()`` name::
 
     >>> from sqlalchemy import func
     >>> count_fn = func.count(user_table.c.id)
