@@ -1,0 +1,8 @@
+.. change::
+    :tags: usecase, sqlite
+    :tickets: 6379
+
+    Default to using ``SingletonThreadPool`` for in-memory SQLite databases
+    created using URI filenames. Previously the default pool used was the
+    ``NullPool`` that precented sharing the same database between multiple
+    engines.
