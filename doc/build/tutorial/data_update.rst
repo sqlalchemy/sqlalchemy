@@ -208,7 +208,7 @@ The delete() SQL Expression Construct
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The :func:`_sql.delete` function generates a new instance of
-:class:`_sql.Delete` which represents an DELETE statement in SQL, that will
+:class:`_sql.Delete` which represents a DELETE statement in SQL, that will
 delete rows from a table.
 
 The :func:`_sql.delete` statement from an API perspective is very similar to
