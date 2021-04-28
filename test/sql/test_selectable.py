@@ -590,6 +590,17 @@ class SelectableTest(
             "table1.col3, table1.colx FROM table1) AS anon_1",
         )
 
+    def test_scalar_subquery_from_subq_same_source(self):
+        s1 = select(table1.c.col1)
+
+        for i in range(2):
+            stmt = s1.subquery().select().scalar_subquery()
+            self.assert_compile(
+                stmt,
+                "(SELECT anon_1.col1 FROM "
+                "(SELECT table1.col1 AS col1 FROM table1) AS anon_1)",
+            )
+
     def test_type_coerce_preserve_subq(self):
         class MyType(TypeDecorator):
             impl = Integer
