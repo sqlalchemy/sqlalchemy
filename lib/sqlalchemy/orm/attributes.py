@@ -227,6 +227,7 @@ class QueryableAttribute(
         else:
             annotations = {
                 "proxy_key": self.key,
+                "proxy_owner": self.class_,
                 "entity_namespace": self._entity_namespace,
             }
 
