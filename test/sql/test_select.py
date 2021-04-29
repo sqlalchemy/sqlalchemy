@@ -82,6 +82,54 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE mytable.myid = myothertable.otherid",
         )
 
+    def test_new_calling_style_clauseelement_thing_that_has_iter(self):
+        class Thing(object):
+            def __clause_element__(self):
+                return table1
+
+            def __iter__(self):
+                return iter(["a", "b", "c"])
+
+        stmt = select(Thing())
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid, mytable.name, "
+            "mytable.description FROM mytable",
+        )
+
+    def test_new_calling_style_inspectable_ce_thing_that_has_iter(self):
+        class Thing(object):
+            def __iter__(self):
+                return iter(["a", "b", "c"])
+
+        class InspectedThing(object):
+            def __clause_element__(self):
+                return table1
+
+        from sqlalchemy.inspection import _inspects
+
+        @_inspects(Thing)
+        def _ce(thing):
+            return InspectedThing()
+
+        stmt = select(Thing())
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid, mytable.name, "
+            "mytable.description FROM mytable",
+        )
+
+    def test_new_calling_style_thing_ok_actually_use_iter(self):
+        class Thing(object):
+            def __iter__(self):
+                return iter([table1.c.name, table1.c.description])
+
+        stmt = select(Thing())
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.name, mytable.description FROM mytable",
+        )
+
     def test_kw_triggers_old_style(self):
 
         assert_raises_message(
