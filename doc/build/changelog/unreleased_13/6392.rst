@@ -3,7 +3,7 @@
     :tickets: 6392
     :versions: 1.4.12
 
-    Fixed issue in :meth:`_orm.Session.bulk_save` when used with persistent
+    Fixed issue in :meth:`_orm.Session.bulk_save_objects` when used with persistent
     objects which would fail to track the primary key of mappings where the
     column name of the primary key were different than the attribute name.
 
