@@ -513,12 +513,22 @@ level on a per-connection basis can be affected by using the
 
     from sqlalchemy.orm import Session
 
+    # assume session just constructed
     sess = Session(bind=engine)
-    with sess.begin():
-        sess.connection(execution_options={'isolation_level': 'SERIALIZABLE'})
 
-    # commits transaction.  the connection is released
+    # call connection() with options before any other operations proceed.
+    # this will procure a new connection from the bound engine and begin a real
+    # database transaction.
+    sess.connection(execution_options={'isolation_level': 'SERIALIZABLE'})
+
+    # ... work with session in SERIALIZABLE isolation level...
+
+    # commit transaction.  the connection is released
     # and reverted to its previous isolation level.
+    sess.commit()
+
+    # here, a new "transaction" is in play and isolation level may be set
+    # again if another transaction is to be used
 
 Above, we first produce a :class:`.Session` using either the constructor
 or a :class:`.sessionmaker`.   Then we explicitly set up the start of
