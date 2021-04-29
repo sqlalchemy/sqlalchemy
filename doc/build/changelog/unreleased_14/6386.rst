@@ -1,5 +1,5 @@
 .. change::
-    :tags: ext, bug, regression
+    :tags: orm, bug, regression
     :tickets: 6386
 
     Fixed regression in ORM where using hybrid property to indicate an
