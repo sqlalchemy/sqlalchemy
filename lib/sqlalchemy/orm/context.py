@@ -802,12 +802,13 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                 element.is_selectable
                 and "entity_namespace" in element._annotations
             ):
-                for elem in _select_iterables(
-                    element._annotations[
-                        "entity_namespace"
-                    ]._all_column_expressions
-                ):
-                    yield elem
+                ens = element._annotations["entity_namespace"]
+                if not ens.is_mapper and not ens.is_aliased_class:
+                    for elem in _select_iterables([element]):
+                        yield elem
+                else:
+                    for elem in _select_iterables(ens._all_column_expressions):
+                        yield elem
             else:
                 for elem in _select_iterables([element]):
                     yield elem

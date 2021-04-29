@@ -493,6 +493,21 @@ class PropertyMirrorTest(fixtures.TestBase, AssertsCompiledSQL):
         return A
 
     @testing.fixture
+    def _function_fixture(self):
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            value = Column(Integer)
+
+            @hybrid.hybrid_property
+            def foo_value(self):
+                return func.foo(self.value)
+
+        return A
+
+    @testing.fixture
     def _name_mismatch_fixture(self):
         Base = declarative_base()
 
@@ -536,6 +551,12 @@ class PropertyMirrorTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT a_1.id, b.email_address "
             "FROM a AS a_1 JOIN b ON a_1.id = b.aid",
         )
+
+    def test_c_collection_func_element(self, _function_fixture):
+        A = _function_fixture
+
+        stmt = select(A.id, A.foo_value)
+        eq_(stmt.subquery().c.keys(), ["id", "foo_value"])
 
     def test_filter_by_mismatched_col(self, _name_mismatch_fixture):
         A, B = _name_mismatch_fixture

@@ -483,6 +483,7 @@ class InstrumentedAttribute(Mapped):
 HasEntityNamespace = util.namedtuple(
     "HasEntityNamespace", ["entity_namespace"]
 )
+HasEntityNamespace.is_mapper = HasEntityNamespace.is_aliased_class = False
 
 
 def create_proxied_attribute(descriptor):
