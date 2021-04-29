@@ -58,6 +58,7 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing import not_in
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
+from sqlalchemy.util import compat
 from .test_update import _UpdateFromTestBase
 
 
@@ -193,6 +194,28 @@ class DeprecationWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
             r"and_\(\) construct, use and_\(True, \*args\)"
         ):
             self.assert_compile(or_(and_()), "")
+
+    @testing.combinations(
+        (schema.Column),
+        (schema.UniqueConstraint,),
+        (schema.PrimaryKeyConstraint,),
+        (schema.CheckConstraint,),
+        (schema.ForeignKeyConstraint,),
+        (schema.ForeignKey,),
+        (schema.Identity,),
+    )
+    def test_copy_dep_warning(self, cls):
+        obj = cls.__new__(cls)
+        with mock.patch.object(cls, "_copy") as _copy:
+            with testing.expect_deprecated(
+                r"The %s\(\) method is deprecated" % compat._qualname(cls.copy)
+            ):
+                obj.copy(schema="s", target_table="tt", arbitrary="arb")
+
+        eq_(
+            _copy.mock_calls,
+            [mock.call(target_table="tt", schema="s", arbitrary="arb")],
+        )
 
 
 class ConvertUnicodeDeprecationTest(fixtures.TestBase):

@@ -228,6 +228,10 @@ if py3k:
 
     from abc import ABC
 
+    def _qualname(fn):
+        return fn.__qualname__
+
+
 else:
     import base64
     import ConfigParser as configparser  # noqa
@@ -337,6 +341,17 @@ else:
     )
 
     TYPE_CHECKING = False
+
+    def _qualname(meth):
+        """return __qualname__ equivalent for a method on a class"""
+
+        for cls in meth.im_class.__mro__:
+            if meth.__name__ in cls.__dict__:
+                break
+        else:
+            return meth.__name__
+
+        return "%s.%s" % (cls.__name__, meth.__name__)
 
 
 if py3k:
