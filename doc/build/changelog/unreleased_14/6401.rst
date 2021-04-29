@@ -1,9 +1,0 @@
-.. change::
-    :tags: orm, bug, regression
-    :tickets: 6401
-
-    Fixed regression in hybrid_property where a hybrid against a SQL function
-    would generate an ``AttributeError`` when attempting to generate an entry
-    for the ``.c`` collection of a subquery in some cases; among other things
-    this would impact its use in cases like that of ``Query.count()``.
-

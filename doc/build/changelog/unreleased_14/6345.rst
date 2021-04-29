@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, mssql, schema
-    :tickets: 6345
-
-    Add :meth:`_types.TypeEngine.as_generic` support for
-    :class:`sqlalchemy.dialects.mysql.BIT` columns, mapping
-    them to :class:`_sql.sqltypes.Boolean`.

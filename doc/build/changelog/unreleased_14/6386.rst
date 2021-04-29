@@ -1,9 +1,0 @@
-.. change::
-    :tags: orm, bug, regression
-    :tickets: 6386
-
-    Fixed regression in ORM where using hybrid property to indicate an
-    expression from a different entity would confuse the column-labeling logic
-    in the ORM and attempt to derive the name of the hybrid from that other
-    class, leading to an attribute error. The owning class of the hybrid
-    attribute is now tracked along with the name.

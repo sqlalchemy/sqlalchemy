@@ -15,7 +15,230 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.12
-    :include_notes_from: unreleased_14
+    :released: April 29, 2021
+
+    .. change::
+        :tags: bug, orm, regression, caching
+        :tickets: 6391
+
+        Fixed critical regression where bound parameter tracking as used in the SQL
+        caching system could fail to track all parameters for the case where the
+        same SQL expression containing a parameter were used in an ORM-related
+        query using a feature such as class inheritance, which was then embedded in
+        an enclosing expression which would make use of that same expression
+        multiple times, such as a UNION. The ORM would individually copy the
+        individual SELECT statements as part of compilation with class inheritance,
+        which then embedded in the enclosing statement would fail to accommodate
+        for all parameters. The logic that tracks this condition has been adjusted
+        to work for multiple copies of a parameter.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 6258 6397
+
+        Revised the "EMPTY IN" expression to no longer rely upon using a subquery,
+        as this was causing some compatibility and performance problems. The new
+        approach for selected databases takes advantage of using a NULL-returning
+        IN expression combined with the usual "1 != 1" or "1 = 1" expression
+        appended by AND or OR. The expression is now the default for all backends
+        other than SQLite, which still had some compatibility issues regarding
+        tuple "IN" for older SQLite versions.
+
+        Third party dialects can still override how the "empty set" expression
+        renders by implementing a new compiler method
+        ``def visit_empty_set_op_expr(self, type_, expand_op)``, which takes
+        precedence over the existing
+        ``def visit_empty_set_expr(self, element_types)`` which remains in place.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6350
+
+        Fixed two distinct issues mostly affecting
+        :class:`_hybrid.hybrid_property`, which would come into play under common
+        mis-configuration scenarios that were silently ignored in 1.3, and now
+        failed in 1.4, where the "expression" implementation would return a non
+        :class:`_sql.ClauseElement` such as a boolean value. For both issues, 1.3's
+        behavior was to silently ignore the mis-configuration and ultimately
+        attempt to interpret the value as a SQL expression, which would lead to an
+        incorrect query.
+
+        * Fixed issue regarding interaction of the attribute system with
+          hybrid_property, where if the ``__clause_element__()`` method of the
+          attribute returned a non-:class:`_sql.ClauseElement` object, an internal
+          ``AttributeError`` would lead the attribute to return the ``expression``
+          function on the hybrid_property itself, as the attribute error was
+          against the name ``.expression`` which would invoke the ``__getattr__()``
+          method as a fallback. This now raises explicitly. In 1.3 the
+          non-:class:`_sql.ClauseElement` was returned directly.
+
+        * Fixed issue in SQL argument coercions system where passing the wrong
+          kind of object to methods that expect column expressions would fail if
+          the object were altogether not a SQLAlchemy object, such as a Python
+          function, in cases where the object were not just coerced into a bound
+          value. Again 1.3 did not have a comprehensive argument coercion system
+          so this case would also pass silently.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6378
+
+        Fixed issue where using a :class:`_sql.Select` as a subquery in an ORM
+        context would modify the :class:`_sql.Select` in place to disable
+        eagerloads on that object, which would then cause that same
+        :class:`_sql.Select` to not eagerload if it were then re-used in a
+        top-level execution context.
+
+
+    .. change::
+        :tags: bug, regression, sql
+        :tickets: 6343
+
+        Fixed regression where usage of the :func:`_sql.text` construct inside the
+        columns clause of a :class:`_sql.Select` construct, which is better handled
+        by using a :func:`_sql.literal_column` construct, would nonetheless prevent
+        constructs like :func:`_sql.union` from working correctly. Other use cases,
+        such as constructing subuqeries, continue to work the same as in prior
+        versions where the :func:`_sql.text` construct is silently omitted from the
+        collection of exported columns.   Also repairs similar use within the
+        ORM.
+
+
+    .. change::
+        :tags: bug, regression, sql
+        :tickets: 6261
+
+        Fixed regression involving legacy methods such as
+        :meth:`_sql.Select.append_column` where internal assertions would fail.
+
+    .. change::
+        :tags: usecase, sqlite
+        :tickets: 6379
+
+        Default to using ``SingletonThreadPool`` for in-memory SQLite databases
+        created using URI filenames. Previously the default pool used was the
+        ``NullPool`` that precented sharing the same database between multiple
+        engines.
+
+    .. change::
+        :tags: bug, regression, sql
+        :tickets: 6300
+
+        Fixed regression caused by :ticket:`5395` where tuning back the check for
+        sequences in :func:`_sql.select` now caused failures when doing 2.0-style
+        querying with a mapped class that also happens to have an ``__iter__()``
+        method. Tuned the check some more to accommodate this as well as some other
+        interesting ``__iter__()`` scenarios.
+
+
+    .. change::
+        :tags: bug, mssql, schema
+        :tickets: 6345
+
+        Add :meth:`_types.TypeEngine.as_generic` support for
+        :class:`sqlalchemy.dialects.mysql.BIT` columns, mapping
+        them to :class:`_sql.sqltypes.Boolean`.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6360, 6359
+
+        Fixed issue where the new :ref:`autobegin <session_autobegin>` behavior
+        failed to "autobegin" in the case where an existing persistent object has
+        an attribute change, which would then impact the behavior of
+        :meth:`_orm.Session.rollback` in that no snapshot was created to be rolled
+        back. The "attribute modify" mechanics have been updated to ensure
+        "autobegin", which does not perform any database work, does occur when
+        persistent attributes change in the same manner as when
+        :meth:`_orm.Session.add` is called. This is a regression as in 1.3, the
+        rollback() method always had a transaction to roll back and would expire
+        every time.
+
+    .. change::
+        :tags: bug, mssql, regression
+        :tickets: 6366
+
+        Fixed regression caused by :ticket:`6306` which added support for
+        ``DateTime(timezone=True)``, where the previous behavior of the pyodbc
+        driver of implicitly dropping the tzinfo from a timezone-aware date when
+        INSERTing into a timezone-naive DATETIME column were lost, leading to a SQL
+        Server error when inserting timezone-aware datetime objects into
+        timezone-native database columns.
+
+    .. change::
+        :tags: orm, bug, regression
+        :tickets: 6386
+
+        Fixed regression in ORM where using hybrid property to indicate an
+        expression from a different entity would confuse the column-labeling logic
+        in the ORM and attempt to derive the name of the hybrid from that other
+        class, leading to an attribute error. The owning class of the hybrid
+        attribute is now tracked along with the name.
+
+    .. change::
+        :tags: orm, bug, regression
+        :tickets: 6401
+
+        Fixed regression in hybrid_property where a hybrid against a SQL function
+        would generate an ``AttributeError`` when attempting to generate an entry
+        for the ``.c`` collection of a subquery in some cases; among other things
+        this would impact its use in cases like that of ``Query.count()``.
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 6373
+
+        Fixed very old issue where the :class:`_types.Enum` datatype would not
+        inherit the :paramref:`_schema.MetaData.schema` parameter of a
+        :class:`_schema.MetaData` object when that object were passed to the
+        :class:`_types.Enum` using :paramref:`_types.Enum.metadata`.
+
+    .. change::
+        :tags: bug, orm, dataclasses
+        :tickets: 6346
+
+        Adjusted the declarative scan for dataclasses so that the inheritance
+        behavior of :func:`_orm.declared_attr` established on a mixin, when using
+        the new form of having it inside of a ``dataclasses.field()`` construct and
+        not actually a descriptor attribute on the class, correctly accommodates
+        the case when the target class to be mapped is a subclass of an existing
+        mapped class which has already mapped that :func:`_orm.declared_attr`, and
+        therefore should not be re-applied to this class.
+
+
+    .. change::
+        :tags: bug, schema, mysql, mariadb, oracle, postgresql
+        :tickets: 6338
+
+        Ensure that the MySQL and MariaDB dialect ignore the
+        :class:`_sql.Identity` construct while rendering the ``AUTO_INCREMENT``
+        keyword in a create table.
+
+        The Oracle and PostgreSQL compiler was updated to not render
+        :class:`_sql.Identity` if the database version does not support it
+        (Oracle < 12 and PostgreSQL < 10). Previously it was rendered regardless
+        of the database version.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6353
+
+        Fixed an issue with the (deprecated in 1.4)
+        :meth:`_schema.ForeignKeyConstraint.copy` method that caused an error when
+        invoked with the ``schema`` argument.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 6361
+
+        Fixed issue where usage of an explicit :class:`.Sequence` would produce
+        inconsistent "inline" behavior for an :class:`.Insert` construct that
+        includes multiple values phrases; the first seq would be inline but
+        subsequent ones would be "pre-execute", leading to inconsistent sequence
+        ordering. The sequence expressions are now fully inline.
 
 .. changelog::
     :version: 1.4.11
