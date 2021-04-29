@@ -2138,10 +2138,10 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         "The :meth:`_schema.ForeignKey.copy` method is deprecated "
         "and will be removed in a future release.",
     )
-    def copy(self, schema=None):
-        return self._copy(schema)
+    def copy(self, schema=None, **kw):
+        return self._copy(schema=schema, **kw)
 
-    def _copy(self, schema=None):
+    def _copy(self, schema=None, **kw):
         """Produce a copy of this :class:`_schema.ForeignKey` object.
 
         The new :class:`_schema.ForeignKey` will not be bound
@@ -3309,7 +3309,7 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
         "is deprecated and will be removed in a future release.",
     )
     def copy(self, target_table=None, **kw):
-        return self._copy(target_table, **kw)
+        return self._copy(target_table=target_table, **kw)
 
     def _copy(self, target_table=None, **kw):
         # ticket #5276
@@ -3439,7 +3439,7 @@ class CheckConstraint(ColumnCollectionConstraint):
         "and will be removed in a future release.",
     )
     def copy(self, target_table=None, **kw):
-        return self._copy(target_table, **kw)
+        return self._copy(target_table=target_table, **kw)
 
     def _copy(self, target_table=None, **kw):
         if target_table is not None:
@@ -3732,7 +3732,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         "and will be removed in a future release.",
     )
     def copy(self, schema=None, target_table=None, **kw):
-        return self._copy(target_table, **kw)
+        return self._copy(schema=schema, target_table=target_table, **kw)
 
     def _copy(self, schema=None, target_table=None, **kw):
         fkc = ForeignKeyConstraint(

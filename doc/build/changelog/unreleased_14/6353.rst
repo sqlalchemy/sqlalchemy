@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 6353
+
+    Fixed an issue with the (deprecated in 1.4)
+    :meth:`_schema.ForeignKeyConstraint.copy` method that caused an error when
+    invoked with the ``schema`` argument.
