@@ -1299,6 +1299,11 @@ class SQLiteCompiler(compiler.SQLCompiler):
             self.process(binary.right, **kw),
         )
 
+    def visit_empty_set_op_expr(self, type_, expand_op):
+        # slightly old SQLite versions don't seem to be able to handle
+        # the empty set impl
+        return self.visit_empty_set_expr(type_)
+
     def visit_empty_set_expr(self, element_types):
         return "SELECT %s FROM (SELECT %s) WHERE 1!=1" % (
             ", ".join("1" for type_ in element_types or [INTEGER()]),

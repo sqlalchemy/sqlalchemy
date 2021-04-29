@@ -116,6 +116,46 @@ class LambdaElementTest(
         result = go()
         eq_(result.all(), [(2,)])
 
+    def test_in_expressions(self, user_address_fixture, connection):
+        """test #6397.   we initially were going to use two different
+        forms for "empty in" vs. regular "in", but instead we have an
+        improved substitution for "empty in".  regardless, as there's more
+        going on with these, make sure lambdas work with them including
+        caching.
+
+        """
+        users, _ = user_address_fixture
+        data = [
+            {"id": 1, "name": "u1"},
+            {"id": 2, "name": "u2"},
+            {"id": 3, "name": "u3"},
+        ]
+        connection.execute(users.insert(), data)
+
+        def go(val):
+            stmt = lambdas.lambda_stmt(lambda: select(users.c.id))
+            stmt += lambda s: s.where(users.c.name.in_(val))
+            stmt += lambda s: s.order_by(users.c.id)
+            return connection.execute(stmt)
+
+        for case in [
+            [],
+            ["u1", "u2"],
+            ["u3"],
+            [],
+            ["u1", "u2"],
+        ]:
+            with testing.assertsql.assert_engine(testing.db) as asserter_:
+                result = go(case)
+            asserter_.assert_(
+                CompiledSQL(
+                    "SELECT users.id FROM users WHERE users.name "
+                    "IN ([POSTCOMPILE_val_1]) ORDER BY users.id",
+                    params={"val_1": case},
+                )
+            )
+            eq_(result.all(), [(e["id"],) for e in data if e["name"] in case])
+
     def test_stale_checker_embedded(self):
         def go(x):
 
