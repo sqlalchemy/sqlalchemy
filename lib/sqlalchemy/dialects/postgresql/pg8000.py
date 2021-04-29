@@ -229,10 +229,73 @@ class _PGBoolean(sqltypes.Boolean):
         return dbapi.BOOLEAN
 
 
+_server_side_id = util.counter()
+
+
 class PGExecutionContext_pg8000(PGExecutionContext):
+    def create_server_side_cursor(self):
+        ident = "c_%s_%s" % (hex(id(self))[2:], hex(_server_side_id())[2:])
+        return ServerSideCursor(self._dbapi_connection.cursor(), ident)
+
     def pre_exec(self):
         if not self.compiled:
             return
+
+
+class ServerSideCursor:
+    server_side = True
+
+    def __init__(self, cursor, ident):
+        self.ident = ident
+        self.cursor = cursor
+
+    @property
+    def connection(self):
+        return self.cursor.connection
+
+    @property
+    def rowcount(self):
+        return self.cursor.rowcount
+
+    @property
+    def description(self):
+        return self.cursor.description
+
+    def execute(self, operation, args=(), stream=None):
+        op = "DECLARE " + self.ident + " NO SCROLL CURSOR FOR " + operation
+        self.cursor.execute(op, args, stream=stream)
+        return self
+
+    def executemany(self, operation, param_sets):
+        self.cursor.executemany(operation, param_sets)
+        return self
+
+    def fetchone(self):
+        self.cursor.execute("FETCH FORWARD 1 FROM " + self.ident)
+        return self.cursor.fetchone()
+
+    def fetchmany(self, num=None):
+        if num is None:
+            return self.fetchall()
+        else:
+            self.cursor.execute(
+                "FETCH FORWARD " + str(int(num)) + " FROM " + self.ident
+            )
+            return self.cursor.fetchall()
+
+    def fetchall(self):
+        self.cursor.execute("FETCH FORWARD ALL FROM " + self.ident)
+        return self.cursor.fetchall()
+
+    def close(self):
+        self.cursor.execute("CLOSE " + self.ident)
+        self.cursor.close()
+
+    def setinputsizes(self, *sizes):
+        self.cursor.setinputsizes(*sizes)
+
+    def setoutputsize(self, size, column=None):
+        pass
 
 
 class PGCompiler_pg8000(PGCompiler):
@@ -263,6 +326,7 @@ class PGDialect_pg8000(PGDialect):
     execution_ctx_cls = PGExecutionContext_pg8000
     statement_compiler = PGCompiler_pg8000
     preparer = PGIdentifierPreparer_pg8000
+    supports_server_side_cursors = True
 
     use_setinputsizes = True
 
