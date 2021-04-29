@@ -2873,7 +2873,7 @@ class Mapper(
         return [self._columntoproperty[col] for col in self.primary_key]
 
     @HasMemoized.memoized_attribute
-    def _all_pk_props(self):
+    def _all_pk_cols(self):
         collection = set()
         for table in self.tables:
             collection.update(self._pks_by_table[table])
@@ -2888,7 +2888,7 @@ class Mapper(
 
     @HasMemoized.memoized_attribute
     def _primary_key_propkeys(self):
-        return {prop.key for prop in self._all_pk_props}
+        return {self._columntoproperty[col].key for col in self._all_pk_cols}
 
     def _get_state_attr_by_column(
         self, state, dict_, column, passive=attributes.PASSIVE_RETURN_NO_VALUE
