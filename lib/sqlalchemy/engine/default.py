@@ -74,6 +74,7 @@ class DefaultDialect(interfaces.Dialect):
     supports_sequences = False
     sequences_optional = False
     preexecute_autoincrement_sequences = False
+    supports_identity_columns = False
     postfetch_lastrowid = True
     implicit_returning = False
     full_returning = False
@@ -807,6 +808,8 @@ class StrCompileDialect(DefaultDialect):
     preparer = compiler.IdentifierPreparer
 
     supports_statement_cache = True
+
+    supports_identity_columns = True
 
     supports_sequences = True
     sequences_optional = True

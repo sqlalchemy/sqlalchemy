@@ -1442,6 +1442,31 @@ class IdentityColumnTest(fixtures.TablesTest):
         assert_raises((DatabaseError, ProgrammingError), fn)
 
 
+class IdentityAutoincrementTest(fixtures.TablesTest):
+    __backend__ = True
+    __requires__ = ("autoincrement_without_sequence",)
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "tbl",
+            metadata,
+            Column(
+                "id",
+                Integer,
+                Identity(),
+                primary_key=True,
+                autoincrement=True,
+            ),
+            Column("desc", String(100)),
+        )
+
+    def test_autoincrement_with_identity(self, connection):
+        res = connection.execute(self.tables.tbl.insert(), {"desc": "row"})
+        res = connection.execute(self.tables.tbl.select()).first()
+        eq_(res, (1, "row"))
+
+
 class ExistsTest(fixtures.TablesTest):
     __backend__ = True
 

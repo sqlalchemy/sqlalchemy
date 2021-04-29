@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, schema, mysql, mariadb, oracle, postgresql
+    :tickets: 6338
+
+    Ensure that the MySQL and MariaDB dialect ignore the
+    :class:`_sql.Identity` construct while rendering the ``AUTO_INCREMENT``
+    keyword in a create table.
+
+    The Oracle and PostgreSQL compiler was updated to not render
+    :class:`_sql.Identity` if the database version does not support it
+    (Oracle < 12 and PostgreSQL < 10). Previously it was rendered regardless
+    of the database version.

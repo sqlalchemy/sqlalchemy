@@ -4257,10 +4257,15 @@ class DDLCompiler(Compiled):
         if column.computed is not None:
             colspec += " " + self.process(column.computed)
 
-        if column.identity is not None:
+        if (
+            column.identity is not None
+            and self.dialect.supports_identity_columns
+        ):
             colspec += " " + self.process(column.identity)
 
-        if not column.nullable and not column.identity:
+        if not column.nullable and (
+            not column.identity or not self.dialect.supports_identity_columns
+        ):
             colspec += " NOT NULL"
         return colspec
 
