@@ -479,12 +479,19 @@ Setting Isolation for Individual Sessions
 When we make a new :class:`.Session`, either using the constructor directly
 or when we call upon the callable produced by a :class:`.sessionmaker`,
 we can pass the ``bind`` argument directly, overriding the pre-existing bind.
-We can for example create our :class:`_orm.Session` from the
-"``transactional_session``" and pass the "``autocommit_engine``"::
+We can for example create our :class:`_orm.Session` from a default
+:class:`.sessionmaker` and pass an engine set for autocommit::
 
-    session = transactional_session(bind=autocommit_engine)
-    # work with session
-    session.close()
+    plain_engine = create_engine("postgresql://scott:tiger@localhost/test")
+
+    autocommit_engine = eng.execution_options(isolation_level="AUTOCOMMIT")
+
+    # will normally use plain_engine
+    Session = sessionmaker(plain_engine)
+
+    # make a specific Session that will use the "autocommit" engine
+    with Session(bind=autocommit_engine) as session:
+        # work with session
 
 For the case where the :class:`.Session` or :class:`.sessionmaker` is
 configured with multiple "binds", we can either re-specify the ``binds``
@@ -492,10 +499,8 @@ argument fully, or if we want to only replace specific binds, we
 can use the :meth:`.Session.bind_mapper` or :meth:`.Session.bind_table`
 methods::
 
-    session = maker()
-    session.bind_mapper(User, autocommit_engine)
-
-We can also use the individual transaction method that follows.
+    with Session() as session:
+        session.bind_mapper(User, autocommit_engine)
 
 Setting Isolation for Individual Transactions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
