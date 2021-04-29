@@ -56,6 +56,7 @@ from .elements import UnaryExpression
 from .visitors import InternalTraversal
 from .. import exc
 from .. import util
+from ..inspection import inspect
 
 if util.TYPE_CHECKING:
     from typing import Any
@@ -4959,8 +4960,17 @@ class Select(
         """
         if (
             args
-            and hasattr(args[0], "__iter__")
-            and not isinstance(args[0], util.string_types + (ClauseElement,))
+            and (
+                isinstance(args[0], list)
+                or (
+                    hasattr(args[0], "__iter__")
+                    and not isinstance(
+                        args[0], util.string_types + (ClauseElement,)
+                    )
+                    and inspect(args[0], raiseerr=False) is None
+                    and not hasattr(args[0], "__clause_element__")
+                )
+            )
         ) or kw:
             return cls.create_legacy_select(*args, **kw)
         else:

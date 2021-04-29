@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, regression, sql
+    :tickets: 6300
+
+    Fixed regression caused by :ticket:`5395` where tuning back the check for
+    sequences in :func:`_sql.select` now caused failures when doing 2.0-style
+    querying with a mapped class that also happens to have an ``__iter__()``
+    method. Tuned the check some more to accommodate this as well as some other
+    interesting ``__iter__()`` scenarios.
+
