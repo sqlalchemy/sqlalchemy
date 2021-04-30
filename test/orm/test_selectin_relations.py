@@ -30,6 +30,7 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import assert_engine
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.fixtures import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -3588,3 +3589,66 @@ class TestBakedCancelsCorrectly(fixtures.DeclarativeMappedTest):
         self.assert_sql_count(testing.db, go, 2)
         self.assert_sql_count(testing.db, go, 2)
         self.assert_sql_count(testing.db, go, 2)
+
+
+class TestCompositePlusNonComposite(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        from sqlalchemy.sql import lambdas
+        from sqlalchemy.orm import configure_mappers
+
+        lambdas._closure_per_cache_key.clear()
+        lambdas.AnalyzedCode._fns.clear()
+
+        class A(ComparableEntity, Base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            bs = relationship("B", lazy="selectin")
+
+        class B(ComparableEntity, Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+
+        class A2(ComparableEntity, Base):
+            __tablename__ = "a2"
+
+            id = Column(Integer, primary_key=True)
+            id2 = Column(Integer, primary_key=True)
+            bs = relationship("B2", lazy="selectin")
+
+        class B2(ComparableEntity, Base):
+            __tablename__ = "b2"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(Integer)
+            a_id2 = Column(Integer)
+            __table_args__ = (
+                ForeignKeyConstraint(["a_id", "a_id2"], ["a2.id", "a2.id2"]),
+            )
+
+        configure_mappers()
+
+    @classmethod
+    def insert_data(cls, connection):
+        A, B, A2, B2 = cls.classes("A", "B", "A2", "B2")
+        s = Session(connection)
+
+        s.add(A(bs=[B()]))
+        s.add(A2(id=1, id2=1, bs=[B2()]))
+
+        s.commit()
+
+    def test_load_composite_then_non_composite(self):
+
+        A, B, A2, B2 = self.classes("A", "B", "A2", "B2")
+
+        s = fixture_session()
+
+        a2 = s.query(A2).first()
+        a1 = s.query(A).first()
+
+        eq_(a2.bs, [B2()])
+        eq_(a1.bs, [B()])

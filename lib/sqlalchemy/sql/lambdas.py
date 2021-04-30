@@ -772,7 +772,16 @@ class AnalyzedCode(object):
         from the "track_on" parameter passed to a :class:`.LambdaElement`.
 
         """
-        if isinstance(elem, traversals.HasCacheKey):
+
+        if isinstance(elem, tuple):
+            # tuple must contain hascachekey elements
+            def get(closure, opts, anon_map, bindparams):
+                return tuple(
+                    tup_elem._gen_cache_key(anon_map, bindparams)
+                    for tup_elem in opts.track_on[idx]
+                )
+
+        elif isinstance(elem, traversals.HasCacheKey):
 
             def get(closure, opts, anon_map, bindparams):
                 return opts.track_on[idx]._gen_cache_key(anon_map, bindparams)

@@ -454,7 +454,13 @@ class LambdaElementTest(
             checkparams={"y_1": 18, "p_1": 12},
         )
 
-    def test_stmt_lambda_w_atonce_whereclause_customtrack_binds(self):
+    @testing.combinations(
+        (True,),
+        (False,),
+    )
+    def test_stmt_lambda_w_atonce_whereclause_customtrack_binds(
+        self, use_tuple
+    ):
         c2 = column("y")
 
         # this pattern is *completely unnecessary*, and I would prefer
@@ -463,14 +469,31 @@ class LambdaElementTest(
         # however I also can't come up with a reliable way to catch it.
         # so we will keep the use of "track_on" to be internal.
 
-        def go(col_expr, whereclause, p):
-            stmt = lambdas.lambda_stmt(lambda: select(col_expr))
-            stmt = stmt.add_criteria(
-                lambda stmt: stmt.where(whereclause).order_by(col_expr > p),
-                track_on=(whereclause, whereclause.right.value),
-            )
+        if use_tuple:
 
-            return stmt
+            def go(col_expr, whereclause, p):
+                stmt = lambdas.lambda_stmt(lambda: select(col_expr))
+                stmt = stmt.add_criteria(
+                    lambda stmt: stmt.where(whereclause).order_by(
+                        col_expr > p
+                    ),
+                    track_on=((whereclause,), whereclause.right.value),
+                )
+
+                return stmt
+
+        else:
+
+            def go(col_expr, whereclause, p):
+                stmt = lambdas.lambda_stmt(lambda: select(col_expr))
+                stmt = stmt.add_criteria(
+                    lambda stmt: stmt.where(whereclause).order_by(
+                        col_expr > p
+                    ),
+                    track_on=(whereclause, whereclause.right.value),
+                )
+
+                return stmt
 
         c1 = column("x")
         c2 = column("y")

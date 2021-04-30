@@ -2865,7 +2865,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
             ),
             lambda_cache=self._query_cache,
             global_track_bound_values=False,
-            track_on=(self, effective_entity) + tuple(pk_cols),
+            track_on=(self, effective_entity) + (tuple(pk_cols),),
         )
 
         if not self.parent_property.bake_queries:
