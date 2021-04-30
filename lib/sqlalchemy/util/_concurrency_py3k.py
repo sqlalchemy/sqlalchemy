@@ -7,6 +7,7 @@ from typing import Coroutine
 import greenlet
 
 from . import compat
+from .langhelpers import memoized_property
 from .. import exc
 
 
@@ -132,10 +133,15 @@ async def greenlet_spawn(
 
 
 class AsyncAdaptedLock:
-    def __init__(self):
-        self.mutex = asyncio.Lock()
+    @memoized_property
+    def mutex(self):
+        # there should not be a race here for coroutines creating the
+        # new lock as we are not using await, so therefore no concurrency
+        return asyncio.Lock()
 
     def __enter__(self):
+        # await is used to acquire the lock only after the first calling
+        # coroutine has created the mutex.
         await_fallback(self.mutex.acquire())
         return self
 

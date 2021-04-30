@@ -91,6 +91,43 @@ class AsyncEngineTest(EngineFixture):
         is_false(async_engine == None)
 
     @async_test
+    async def test_no_attach_to_event_loop(self, testing_engine):
+        """test #6409"""
+
+        import asyncio
+        import threading
+
+        errs = []
+
+        def go():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            engine = testing_engine(asyncio=True, transfer_staticpool=True)
+
+            async def main():
+                tasks = [task() for _ in range(2)]
+
+                await asyncio.gather(*tasks)
+
+            async def task():
+                async with engine.begin() as connection:
+                    result = await connection.execute(select(1))
+                    result.all()
+
+            try:
+                asyncio.run(main())
+            except Exception as err:
+                errs.append(err)
+
+        t = threading.Thread(target=go)
+        t.start()
+        t.join()
+
+        if errs:
+            raise errs[0]
+
+    @async_test
     async def test_connection_info(self, async_engine):
 
         async with async_engine.connect() as conn:
