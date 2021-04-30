@@ -78,31 +78,40 @@ class MypyPluginTest(fixtures.TestBase):
 
     def _incremental_dirs():
         path = os.path.join(os.path.dirname(__file__), "incremental")
-        return [
-            d for d in os.listdir(path) if os.path.isdir(os.path.join(path, d))
-        ]
+        files = []
+        for d in os.listdir(path):
+            if os.path.isdir(os.path.join(path, d)):
+                files.append(
+                    os.path.join(os.path.dirname(__file__), "incremental", d)
+                )
+
+        for extra_dir in testing.config.options.mypy_extra_test_paths:
+            if extra_dir and os.path.isdir(extra_dir):
+                for d in os.listdir(os.path.join(extra_dir, "incremental")):
+                    if os.path.isdir(os.path.join(path, d)):
+                        files.append(os.path.join(extra_dir, "incremental", d))
+        return files
 
     @testing.combinations(
-        *[(dirname,) for dirname in _incremental_dirs()], argnames="dirname"
+        *[(pathname,) for pathname in _incremental_dirs()], argnames="pathname"
     )
     @testing.requires.patch_library
-    def test_incremental(self, mypy_runner, per_func_cachedir, dirname):
+    def test_incremental(self, mypy_runner, per_func_cachedir, pathname):
         import patch
 
         cachedir = per_func_cachedir
 
-        path = os.path.join(os.path.dirname(__file__), "incremental", dirname)
         dest = os.path.join(cachedir, "mymodel")
         os.mkdir(dest)
 
         patches = set()
 
-        print("incremental test: %s" % dirname)
+        print("incremental test: %s" % pathname)
 
-        for fname in os.listdir(path):
+        for fname in os.listdir(pathname):
             if fname.endswith(".py"):
                 shutil.copy(
-                    os.path.join(path, fname), os.path.join(dest, fname)
+                    os.path.join(pathname, fname), os.path.join(dest, fname)
                 )
                 print("copying to: %s" % os.path.join(dest, fname))
             elif fname.endswith(".testpatch"):
@@ -111,7 +120,7 @@ class MypyPluginTest(fixtures.TestBase):
         for patchfile in [None] + sorted(patches):
             if patchfile is not None:
                 print("Applying patchfile %s" % patchfile)
-                patch_obj = patch.fromfile(os.path.join(path, patchfile))
+                patch_obj = patch.fromfile(os.path.join(pathname, patchfile))
                 assert patch_obj.apply(1, dest), (
                     "pathfile %s failed" % patchfile
                 )
@@ -131,15 +140,29 @@ class MypyPluginTest(fixtures.TestBase):
 
     def _file_combinations():
         path = os.path.join(os.path.dirname(__file__), "files")
-        return [f for f in os.listdir(path) if f.endswith(".py")]
+        files = []
+        for f in os.listdir(path):
+            if f.endswith(".py"):
+                files.append(
+                    os.path.join(os.path.dirname(__file__), "files", f)
+                )
+
+        for extra_dir in testing.config.options.mypy_extra_test_paths:
+            if extra_dir and os.path.isdir(extra_dir):
+                for f in os.listdir(os.path.join(extra_dir, "files")):
+                    if f.endswith(".py"):
+                        files.append(
+                            os.path.join(
+                                os.path.dirname(extra_dir), "files", f
+                            )
+                        )
+        return files
 
     @testing.combinations(
-        *[(filename,) for filename in _file_combinations()],
-        argnames="filename"
+        *[(filename,) for filename in _file_combinations()], argnames="path"
     )
-    def test_mypy(self, mypy_runner, filename):
-        path = os.path.join(os.path.dirname(__file__), "files", filename)
-
+    def test_mypy(self, mypy_runner, path):
+        filename = os.path.basename(path)
         use_plugin = True
 
         expected_errors = []
