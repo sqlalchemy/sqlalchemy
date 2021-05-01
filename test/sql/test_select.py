@@ -1,6 +1,8 @@
+from sqlalchemy import cast
 from sqlalchemy import Column
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
+from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import select
@@ -12,6 +14,7 @@ from sqlalchemy.sql import table
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import fixtures
+
 
 table1 = table(
     "mytable",
@@ -296,11 +299,71 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={"data_1": "p1", "data_2": "c1", "otherid_1": 5},
         )
 
-    def test_filter_by_no_property(self):
+    def test_filter_by_from_col(self):
+        stmt = select(table1.c.myid).filter_by(name="foo")
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid FROM mytable WHERE mytable.name = :name_1",
+        )
+
+    def test_filter_by_from_func(self):
+        """test #6414"""
+        stmt = select(func.count(table1.c.myid)).filter_by(name="foo")
+        self.assert_compile(
+            stmt,
+            "SELECT count(mytable.myid) AS count_1 "
+            "FROM mytable WHERE mytable.name = :name_1",
+        )
+
+    def test_filter_by_from_func_not_the_first_arg(self):
+        """test #6414"""
+        stmt = select(func.bar(True, table1.c.myid)).filter_by(name="foo")
+        self.assert_compile(
+            stmt,
+            "SELECT bar(:bar_2, mytable.myid) AS bar_1 "
+            "FROM mytable WHERE mytable.name = :name_1",
+        )
+
+    def test_filter_by_from_cast(self):
+        """test #6414"""
+        stmt = select(cast(table1.c.myid, Integer)).filter_by(name="foo")
+        self.assert_compile(
+            stmt,
+            "SELECT CAST(mytable.myid AS INTEGER) AS myid "
+            "FROM mytable WHERE mytable.name = :name_1",
+        )
+
+    def test_filter_by_from_binary(self):
+        """test #6414"""
+        stmt = select(table1.c.myid == 5).filter_by(name="foo")
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid = :myid_1 AS anon_1 "
+            "FROM mytable WHERE mytable.name = :name_1",
+        )
+
+    def test_filter_by_from_label(self):
+        """test #6414"""
+        stmt = select(table1.c.myid.label("some_id")).filter_by(name="foo")
+        self.assert_compile(
+            stmt,
+            "SELECT mytable.myid AS some_id "
+            "FROM mytable WHERE mytable.name = :name_1",
+        )
+
+    def test_filter_by_no_property_from_table(self):
         assert_raises_message(
             exc.InvalidRequestError,
             'Entity namespace for "mytable" has no property "foo"',
             select(table1).filter_by,
+            foo="bar",
+        )
+
+    def test_filter_by_no_property_from_col(self):
+        assert_raises_message(
+            exc.InvalidRequestError,
+            'Entity namespace for "mytable.myid" has no property "foo"',
+            select(table1.c.myid).filter_by,
             foo="bar",
         )
 

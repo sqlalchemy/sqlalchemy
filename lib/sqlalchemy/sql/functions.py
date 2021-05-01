@@ -15,6 +15,7 @@ from . import roles
 from . import schema
 from . import sqltypes
 from . import util as sqlutil
+from .base import _entity_namespace
 from .base import ColumnCollection
 from .base import Executable
 from .base import Generative
@@ -617,6 +618,16 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
             return Grouping(self)
         else:
             return super(FunctionElement, self).self_group(against=against)
+
+    @property
+    def entity_namespace(self):
+        """overrides FromClause.entity_namespace as functions are generally
+        column expressions and not FromClauses.
+
+        """
+        # ideally functions would not be fromclauses but we failed to make
+        # this adjustment in 1.4
+        return _entity_namespace(self.clause_expr)
 
 
 class FunctionAsBinary(BinaryExpression):

@@ -15,6 +15,7 @@ import operator
 import re
 
 from . import roles
+from . import visitors
 from .traversals import HasCacheKey  # noqa
 from .traversals import HasCopyInternals  # noqa
 from .traversals import MemoizedHasCacheKey  # noqa
@@ -1575,6 +1576,23 @@ def _bind_or_error(schemaitem, msg=None):
     return bind
 
 
+def _entity_namespace(entity):
+    """Return the nearest .entity_namespace for the given entity.
+
+    If not immediately available, does an iterate to find a sub-element
+    that has one, if any.
+
+    """
+    try:
+        return entity.entity_namespace
+    except AttributeError:
+        for elem in visitors.iterate(entity):
+            if hasattr(elem, "entity_namespace"):
+                return elem.entity_namespace
+        else:
+            raise
+
+
 def _entity_namespace_key(entity, key):
     """Return an entry from an entity_namespace.
 
@@ -1584,8 +1602,8 @@ def _entity_namespace_key(entity, key):
 
     """
 
-    ns = entity.entity_namespace
     try:
+        ns = _entity_namespace(entity)
         return getattr(ns, key)
     except AttributeError as err:
         util.raise_(

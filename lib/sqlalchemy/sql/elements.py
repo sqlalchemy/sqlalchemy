@@ -300,6 +300,13 @@ class ClauseElement(
             f = f._is_clone_of
         return s
 
+    @property
+    def entity_namespace(self):
+        raise AttributeError(
+            "This SQL expression has no entity namespace "
+            "with which to filter from."
+        )
+
     def __getstate__(self):
         d = self.__dict__.copy()
         d.pop("_is_clone_of", None)
@@ -4663,6 +4670,13 @@ class ColumnClause(
         # or selectable that is parent to this column.  Traversals
         # expect the columns of tables and subqueries to be leaf nodes.
         return []
+
+    @property
+    def entity_namespace(self):
+        if self.table is not None:
+            return self.table.entity_namespace
+        else:
+            return super(ColumnClause, self).entity_namespace
 
     @HasMemoized.memoized_attribute
     def _from_objects(self):
