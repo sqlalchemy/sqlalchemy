@@ -3592,6 +3592,8 @@ class TestBakedCancelsCorrectly(fixtures.DeclarativeMappedTest):
 
 
 class TestCompositePlusNonComposite(fixtures.DeclarativeMappedTest):
+    __requires__ = ("tuple_in",)
+
     @classmethod
     def setup_classes(cls):
         Base = cls.DeclarativeBasic
