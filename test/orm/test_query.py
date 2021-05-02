@@ -3357,6 +3357,63 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
             checkparams={"email_address_1": "ed@ed.com", "name_1": "ed"},
         )
 
+    def test_filter_by_against_function(self):
+        """test #6414
+
+        this is related to #6401 where the fact that Function is a
+        FromClause, an architectural mistake that we unfortunately did not
+        fix, is confusing the use of entity_namespace etc.
+
+        """
+        User = self.classes.User
+        sess = fixture_session()
+
+        q1 = sess.query(func.count(User.id)).filter_by(name="ed")
+
+        self.assert_compile(
+            q1,
+            "SELECT count(users.id) AS count_1 FROM users "
+            "WHERE users.name = :name_1",
+        )
+
+    def test_filter_by_against_cast(self):
+        """test #6414"""
+        User = self.classes.User
+        sess = fixture_session()
+
+        q1 = sess.query(cast(User.id, Integer)).filter_by(name="ed")
+
+        self.assert_compile(
+            q1,
+            "SELECT CAST(users.id AS INTEGER) AS users_id FROM users "
+            "WHERE users.name = :name_1",
+        )
+
+    def test_filter_by_against_binary(self):
+        """test #6414"""
+        User = self.classes.User
+        sess = fixture_session()
+
+        q1 = sess.query(User.id == 5).filter_by(name="ed")
+
+        self.assert_compile(
+            q1,
+            "SELECT users.id = :id_1 AS anon_1 FROM users "
+            "WHERE users.name = :name_1",
+        )
+
+    def test_filter_by_against_label(self):
+        """test #6414"""
+        User = self.classes.User
+        sess = fixture_session()
+
+        q1 = sess.query(User.id.label("foo")).filter_by(name="ed")
+
+        self.assert_compile(
+            q1,
+            "SELECT users.id AS foo FROM users " "WHERE users.name = :name_1",
+        )
+
     def test_empty_filters(self):
         User = self.classes.User
         sess = fixture_session()

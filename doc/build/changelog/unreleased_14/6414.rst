@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 6414
+
+    Fixed regression where :meth:`_orm.Query.filter_by` would not work if the
+    lead entity were a SQL function or other expression derived from the
+    primary entity in question, rather than a simple entity or column of that
+    entity. Additionally, improved the behavior of
+    :meth:`_sql.Select.filter_by` overall to work with column expressions even
+    in a non-ORM context.
