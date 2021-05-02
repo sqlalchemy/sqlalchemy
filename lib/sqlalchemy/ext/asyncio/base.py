@@ -5,14 +5,14 @@ from . import exc as async_exc
 
 class StartableContext(abc.ABC):
     @abc.abstractmethod
-    async def start(self) -> "StartableContext":
+    async def start(self, is_ctxmanager=False) -> "StartableContext":
         pass
 
     def __await__(self):
         return self.start().__await__()
 
     async def __aenter__(self):
-        return await self.start()
+        return await self.start(is_ctxmanager=True)
 
     @abc.abstractmethod
     async def __aexit__(self, type_, value, traceback):
