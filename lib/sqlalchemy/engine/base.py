@@ -694,10 +694,18 @@ class Connection(Connectable):
         which completes when either the :meth:`.Transaction.rollback`
         or :meth:`.Transaction.commit` method is called.
 
-        Nested calls to :meth:`.begin` on the same :class:`_engine.Connection`
-        will return new :class:`.Transaction` objects that represent
-        an emulated transaction within the scope of the enclosing
-        transaction, that is::
+        .. tip::
+
+            The :meth:`_engine.Connection.begin` method is invoked when using
+            the :meth:`_engine.Engine.begin` context manager method as well.
+            All documentation that refers to behaviors specific to the
+            :meth:`_engine.Connection.begin` method also apply to use of the
+            :meth:`_engine.Engine.begin` method.
+
+        Legacy use: nested calls to :meth:`.begin` on the same
+        :class:`_engine.Connection` will return new :class:`.Transaction`
+        objects that represent an emulated transaction within the scope of the
+        enclosing transaction, that is::
 
             trans = conn.begin()   # outermost transaction
             trans2 = conn.begin()  # "nested"
@@ -709,6 +717,14 @@ class Connection(Connectable):
         :meth:`.Transaction.rollback` method of any of the
         :class:`.Transaction` objects will roll back the
         transaction.
+
+        .. tip::
+
+            The above "nesting" behavior is a legacy behavior specific to
+            :term:`1.x style` use and will be removed in SQLAlchemy 2.0. For
+            notes on :term:`2.0 style` use, see
+            :meth:`_future.Connection.begin`.
+
 
         .. seealso::
 
@@ -745,15 +761,45 @@ class Connection(Connectable):
                 return MarkerTransaction(self)
 
     def begin_nested(self):
-        """Begin a nested transaction and return a transaction handle.
-
-        The returned object is an instance of :class:`.NestedTransaction`.
+        """Begin a nested transaction (i.e. SAVEPOINT) and return a
+        transaction handle, assuming an outer transaction is already
+        established.
 
         Nested transactions require SAVEPOINT support in the
         underlying database.  Any transaction in the hierarchy may
         ``commit`` and ``rollback``, however the outermost transaction
         still controls the overall ``commit`` or ``rollback`` of the
         transaction of a whole.
+
+        The legacy form of :meth:`_engine.Connection.begin_nested` method has
+        alternate behaviors based on whether or not the
+        :meth:`_engine.Connection.begin` method was called previously. If
+        :meth:`_engine.Connection.begin` was not called, then this method will
+        behave the same as the :meth:`_engine.Connection.begin` method and
+        return a :class:`.RootTransaction` object that begins and commits a
+        real transaction - **no savepoint is invoked**. If
+        :meth:`_engine.Connection.begin` **has** been called, and a
+        :class:`.RootTransaction` is already established, then this method
+        returns an instance of :class:`.NestedTransaction` which will invoke
+        and manage the scope of a SAVEPOINT.
+
+        .. tip::
+
+            The above mentioned behavior of
+            :meth:`_engine.Connection.begin_nested` is a legacy behavior
+            specific to :term:`1.x style` use. In :term:`2.0 style` use, the
+            :meth:`_future.Connection.begin_nested` method instead autobegins
+            the outer transaction that can be committed using
+            "commit-as-you-go" style; see
+            :meth:`_future.Connection.begin_nested` for migration details.
+
+        .. versionchanged:: 1.4.13 The behavior of
+           :meth:`_engine.Connection.begin_nested`
+           as returning a :class:`.RootTransaction` if
+           :meth:`_engine.Connection.begin` were not called has been restored
+           as was the case in 1.3.x versions; in previous 1.4.x versions, an
+           outer transaction would be "autobegun" but would not be committed.
+
 
         .. seealso::
 
@@ -768,7 +814,18 @@ class Connection(Connectable):
             return self.__branch_from.begin_nested()
 
         if self._transaction is None:
-            self.begin()
+            if not self._is_future:
+                util.warn_deprecated_20(
+                    "Calling Connection.begin_nested() in 2.0 style use will "
+                    "return a NestedTransaction (SAVEPOINT) in all cases, "
+                    "that will not commit the outer transaction.  For code "
+                    "that is cross-compatible between 1.x and 2.0 style use, "
+                    "ensure Connection.begin() is called before calling "
+                    "Connection.begin_nested()."
+                )
+                return self.begin()
+            else:
+                self._autobegin()
 
         return NestedTransaction(self)
 
@@ -2348,11 +2405,20 @@ class RootTransaction(Transaction):
     """Represent the "root" transaction on a :class:`_engine.Connection`.
 
     This corresponds to the current "BEGIN/COMMIT/ROLLBACK" that's occurring
-    for the :class:`_engine.Connection`.
-
-    The :class:`_engine.RootTransaction` object is accessible via the
-    :attr:`_engine.Connection.get_transaction` method of
+    for the :class:`_engine.Connection`. The :class:`_engine.RootTransaction`
+    is created by calling upon the :meth:`_engine.Connection.begin` method, and
+    remains associated with the :class:`_engine.Connection` throughout its
+    active span. The current :class:`_engine.RootTransaction` in use is
+    accessible via the :attr:`_engine.Connection.get_transaction` method of
     :class:`_engine.Connection`.
+
+    In :term:`2.0 style` use, the :class:`_future.Connection` also employs
+    "autobegin" behavior that will create a new
+    :class:`_engine.RootTransaction` whenever a connection in a
+    non-transactional state is used to emit commands on the DBAPI connection.
+    The scope of the :class:`_engine.RootTransaction` in 2.0 style
+    use can be controlled using the :meth:`_future.Connection.commit` and
+    :meth:`_future.Connection.rollback` methods.
 
 
     """
@@ -2899,14 +2965,14 @@ class Engine(Connectable, log.Identified):
         is committed.  If an error is raised, the :class:`.Transaction`
         is rolled back.
 
-        The ``close_with_result`` flag is normally ``False``, and indicates
-        that the :class:`_engine.Connection` will be closed when the operation
-        is complete.   When set to ``True``, it indicates the
+        Legacy use only: the ``close_with_result`` flag is normally ``False``,
+        and indicates that the :class:`_engine.Connection` will be closed when
+        the operation is complete. When set to ``True``, it indicates the
         :class:`_engine.Connection` is in "single use" mode, where the
         :class:`_engine.CursorResult` returned by the first call to
         :meth:`_engine.Connection.execute` will close the
-        :class:`_engine.Connection` when
-        that :class:`_engine.CursorResult` has exhausted all result rows.
+        :class:`_engine.Connection` when that :class:`_engine.CursorResult` has
+        exhausted all result rows.
 
         .. seealso::
 

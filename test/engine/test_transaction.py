@@ -204,6 +204,37 @@ class TransactionTest(fixtures.TablesTest):
             ],
         )
 
+    def test_ctxmanager_commits_real_trans_from_nested(self, local_connection):
+        m1 = mock.Mock()
+
+        event.listen(
+            local_connection, "rollback_savepoint", m1.rollback_savepoint
+        )
+        event.listen(
+            local_connection, "release_savepoint", m1.release_savepoint
+        )
+        event.listen(local_connection, "rollback", m1.rollback)
+        event.listen(local_connection, "commit", m1.commit)
+        event.listen(local_connection, "begin", m1.begin)
+        event.listen(local_connection, "savepoint", m1.savepoint)
+
+        with testing.expect_deprecated_20(
+            r"Calling Connection.begin_nested\(\) in 2.0 style use will return"
+        ):
+            with local_connection.begin_nested() as nested_trans:
+                pass
+
+        assert not nested_trans.is_active
+        assert nested_trans._deactivated_from_connection
+        # legacy mode, no savepoint at all
+        eq_(
+            m1.mock_calls,
+            [
+                mock.call.begin(local_connection),
+                mock.call.commit(local_connection),
+            ],
+        )
+
     def test_deactivated_warning_straight(self, local_connection):
         with expect_warnings(
             "transaction already deassociated from connection"
@@ -1173,7 +1204,11 @@ class ResetAgentTest(ResetFixture, fixtures.TestBase):
     @testing.requires.savepoints
     def test_begin_nested_close(self, reset_agent):
         with reset_agent.engine.connect() as connection:
-            trans = connection.begin_nested()
+            with testing.expect_deprecated_20(
+                r"Calling Connection.begin_nested\(\) in "
+                r"2.0 style use will return"
+            ):
+                trans = connection.begin_nested()
         assert not trans.is_active
         eq_(
             reset_agent.mock_calls,
@@ -1673,6 +1708,40 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
         assert trans._deactivated_from_connection
 
         eq_(m1.mock_calls, [mock.call.rollback(local_connection)])
+
+    @testing.requires.savepoints
+    def test_ctxmanager_autobegins_real_trans_from_nested(
+        self, local_connection
+    ):
+        m1 = mock.Mock()
+
+        event.listen(
+            local_connection, "rollback_savepoint", m1.rollback_savepoint
+        )
+        event.listen(
+            local_connection, "release_savepoint", m1.release_savepoint
+        )
+        event.listen(local_connection, "rollback", m1.rollback)
+        event.listen(local_connection, "commit", m1.commit)
+        event.listen(local_connection, "begin", m1.begin)
+        event.listen(local_connection, "savepoint", m1.savepoint)
+
+        with local_connection.begin_nested() as nested_trans:
+            pass
+
+        assert not nested_trans.is_active
+        assert nested_trans._deactivated_from_connection
+        # legacy mode, no savepoint at all
+        eq_(
+            m1.mock_calls,
+            [
+                mock.call.begin(local_connection),
+                mock.call.savepoint(local_connection, mock.ANY),
+                mock.call.release_savepoint(
+                    local_connection, mock.ANY, mock.ANY
+                ),
+            ],
+        )
 
     def test_explicit_begin(self):
         users = self.tables.users

@@ -1,0 +1,24 @@
+.. change::
+    :tags: bug, engine, regression
+    :tickets: 6408
+
+    Restored a legacy transactional behavior that was inadvertently removed
+    from the :class:`_engine.Connection` as it was never tested as a known use
+    case in previous versions, where calling upon the
+    :meth:`_engine.Connection.begin_nested` method, when no transaction were
+    present, would not create a SAVEPOINT at all, and would instead only start
+    the outermost transaction alone, and return that :class:`.RootTransaction`
+    object, acting like the outermost transaction.   Committing the transaction
+    object returned by :meth:`_engine.Connection.begin_nested` would therefore
+    emit a real COMMIT on the database connection.
+
+    This behavior is not at all what the 2.0 style connection will do - in 2.0
+    style, calling :meth:`_future.Connection.begin_nested` will "autobegin" the
+    outer transaction, and then as instructed emit a SAVEPOINT, returning the
+    :class:`.NestedTransaction` object. The outer transaction is committed by
+    calling upon :meth:`_future.Connection.commit`, as is "commit-as-you-go"
+    style usage.
+
+    In non-"future" mode, while the old behavior is restored, it also
+    emits a 2.0 deprecation warning as this is a legacy behavior.
+
