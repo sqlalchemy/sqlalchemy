@@ -11,6 +11,7 @@ from sqlalchemy.orm import backref
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import mapper
+from sqlalchemy.orm import noload
 from sqlalchemy.orm import Query
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import assert_raises
@@ -420,6 +421,36 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             "addresses",
             [],
         )
+
+    @testing.combinations(
+        ("star",),
+        ("attronly",),
+    )
+    def test_noload_issue(self, type_):
+        """test #6420.   a noload that hits the dynamic loader
+        should have no effect.
+
+        """
+
+        User, Address = self._user_address_fixture()
+
+        s = fixture_session()
+
+        if type_ == "star":
+            u1 = s.query(User).filter_by(id=7).options(noload("*")).first()
+            assert "name" not in u1.__dict__["name"]
+        elif type_ == "attronly":
+            u1 = (
+                s.query(User)
+                .filter_by(id=7)
+                .options(noload(User.addresses))
+                .first()
+            )
+
+            eq_(u1.__dict__["name"], "jack")
+
+        # noload doesn't affect a dynamic loader, because it has no state
+        eq_(list(u1.addresses), [Address(id=1)])
 
     def test_m2m(self):
         Order, Item = self._order_item_fixture(

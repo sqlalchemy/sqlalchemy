@@ -105,10 +105,11 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         passive=attributes.PASSIVE_NO_INITIALIZE,
     ):
         if not passive & attributes.SQL_OK:
-            return self._get_collection_history(state, passive).added_items
+            data = self._get_collection_history(state, passive).added_items
         else:
             history = self._get_collection_history(state, passive)
-            return history.added_plus_unchanged
+            data = history.added_plus_unchanged
+        return DynamicCollectionAdapter(data)
 
     @util.memoized_property
     def _append_token(self):
@@ -257,6 +258,27 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         self, state, dict_, value, initiator, passive=attributes.PASSIVE_OFF
     ):
         self.remove(state, dict_, value, initiator, passive=passive)
+
+
+class DynamicCollectionAdapter(object):
+    """simplified CollectionAdapter for internal API consistency"""
+
+    def __init__(self, data):
+        self.data = data
+
+    def __iter__(self):
+        return iter(self.data)
+
+    def _reset_empty(self):
+        pass
+
+    def __len__(self):
+        return len(self.data)
+
+    def __bool__(self):
+        return True
+
+    __nonzero__ = __bool__
 
 
 class AppenderMixin(object):

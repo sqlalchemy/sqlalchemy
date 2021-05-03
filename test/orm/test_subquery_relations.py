@@ -15,6 +15,7 @@ from sqlalchemy.orm import deferred
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import undefer
@@ -26,6 +27,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
@@ -3559,6 +3561,118 @@ class FromSubqTest(fixtures.DeclarativeMappedTest):
                     "(SELECT b.id AS id, b.a_id AS a_id FROM b "
                     "JOIN a ON a.id = b.a_id) AS anon_2) AS anon_1 "
                     "JOIN d ON anon_1.anon_2_id = d.b_id ORDER BY d.id"
+                ),
+            )
+            s.close()
+
+
+class Issue6149Test(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Exam(ComparableEntity, Base):
+            __tablename__ = "exam"
+            id = Column(Integer, primary_key=True, autoincrement=True)
+            name = Column(String(50), nullable=False)
+            submissions = relationship(
+                "Submission", backref="exam", cascade="all", lazy=True
+            )
+
+        class Submission(ComparableEntity, Base):
+            __tablename__ = "submission"
+            id = Column(Integer, primary_key=True, autoincrement=True)
+            exam_id = Column(
+                Integer, ForeignKey("exam.id"), nullable=False
+            )  # backref exam
+            solutions = relationship(
+                "Solution",
+                backref="submission",
+                cascade="all",
+                order_by="Solution.id",
+                lazy=True,
+            )
+
+        class Solution(ComparableEntity, Base):
+            __tablename__ = "solution"
+            id = Column(Integer, primary_key=True, autoincrement=True)
+            name = Column(String(50), nullable=False)
+            submission_id = Column(
+                Integer, ForeignKey("submission.id"), nullable=False
+            )  # backref submission
+
+    @classmethod
+    def insert_data(cls, connection):
+        Exam, Submission, Solution = cls.classes(
+            "Exam", "Submission", "Solution"
+        )
+
+        s = Session(connection)
+
+        e1 = Exam(
+            id=1,
+            name="e1",
+            submissions=[
+                Submission(
+                    solutions=[Solution(name="s1"), Solution(name="s2")]
+                ),
+                Submission(
+                    solutions=[Solution(name="s3"), Solution(name="s4")]
+                ),
+            ],
+        )
+
+        s.add(e1)
+        s.commit()
+
+    def test_issue_6419(self):
+        Exam, Submission, Solution = self.classes(
+            "Exam", "Submission", "Solution"
+        )
+
+        s = fixture_session()
+
+        for i in range(3):
+            # this warns because subqueryload is from the
+            # selectinload, which means we have to unwrap the
+            # selectinload query to see what its entities are.
+            with expect_warnings(r".*must invoke lambda callable"):
+
+                # the bug is that subqueryload looks at the query that
+                # selectinload created and assumed the "entity" was
+                # compile_state._entities[0], which in this case is a
+                # Bundle, it needs to look at compile_state._entities[1].
+                # so subqueryloader passes through orig_query_entity_index
+                # so it knows where to look.
+                ex1 = (
+                    s.query(Exam)
+                    .options(
+                        selectinload(Exam.submissions).subqueryload(
+                            Submission.solutions
+                        )
+                    )
+                    .filter_by(id=1)
+                    .first()
+                )
+
+            eq_(
+                ex1,
+                Exam(
+                    name="e1",
+                    submissions=[
+                        Submission(
+                            solutions=[
+                                Solution(name="s1"),
+                                Solution(name="s2"),
+                            ]
+                        ),
+                        Submission(
+                            solutions=[
+                                Solution(name="s3"),
+                                Solution(name="s4"),
+                            ]
+                        ),
+                    ],
                 ),
             )
             s.close()

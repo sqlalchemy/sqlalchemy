@@ -1265,7 +1265,13 @@ class SubqueryLoader(PostLoader):
             (("lazy", "select"),)
         ).init_class_attribute(mapper)
 
-    def _get_leftmost(self, subq_path, current_compile_state, is_root):
+    def _get_leftmost(
+        self,
+        orig_query_entity_index,
+        subq_path,
+        current_compile_state,
+        is_root,
+    ):
         given_subq_path = subq_path
         subq_path = subq_path.path
         subq_mapper = orm_util._class_to_mapper(subq_path[0])
@@ -1285,9 +1291,8 @@ class SubqueryLoader(PostLoader):
             # of the current state. this is for the specific case of the entity
             # is an AliasedClass against a subquery that's not otherwise going
             # to adapt
-
             new_subq_path = current_compile_state._entities[
-                0
+                orig_query_entity_index
             ].entity_zero._path_registry[leftmost_prop]
             additional = len(subq_path) - len(new_subq_path)
             if additional:
@@ -1609,6 +1614,7 @@ class SubqueryLoader(PostLoader):
     def _setup_query_from_rowproc(
         self,
         context,
+        query_entity,
         path,
         entity,
         loadopt,
@@ -1621,6 +1627,7 @@ class SubqueryLoader(PostLoader):
         ):
             return
 
+        orig_query_entity_index = compile_state._entities.index(query_entity)
         context.loaders_require_buffering = True
 
         path = path[self.parent_property]
@@ -1645,6 +1652,8 @@ class SubqueryLoader(PostLoader):
 
         # if not via query option, check for
         # a cycle
+        # TODO: why is this here???  this is now handled
+        # by the _check_recursive_postload call
         if not path.contains(compile_state.attributes, "loader"):
             if self.join_depth:
                 if (
@@ -1699,7 +1708,12 @@ class SubqueryLoader(PostLoader):
             leftmost_attr,
             leftmost_relationship,
             rewritten_path,
-        ) = self._get_leftmost(rewritten_path, orig_compile_state, is_root)
+        ) = self._get_leftmost(
+            orig_query_entity_index,
+            rewritten_path,
+            orig_compile_state,
+            is_root,
+        )
 
         # generate a new Query from the original, then
         # produce a subquery from it.
@@ -1796,6 +1810,7 @@ class SubqueryLoader(PostLoader):
 
         subq = self._setup_query_from_rowproc(
             context,
+            query_entity,
             path,
             path[-1],
             loadopt,

@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 6419
+
+    Fixed regression where using :func:`_orm.selectinload` and
+    :func:`_orm.subqueryload` to load a two-level-deep path would lead to an
+    attribute error.
+
+.. change::
+    :tags: bug, orm, regression
+    :tickets: #6420
+
+    Fixed regression where using the :func:`_orm.noload` loader strategy in
+    conjunction with a "dynamic" relationship would lead to an attribute error
+    as the noload strategy would attempt to apply itself to the dynamic loader.
