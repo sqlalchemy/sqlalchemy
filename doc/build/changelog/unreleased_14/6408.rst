@@ -5,19 +5,20 @@
     Restored a legacy transactional behavior that was inadvertently removed
     from the :class:`_engine.Connection` as it was never tested as a known use
     case in previous versions, where calling upon the
-    :meth:`_engine.Connection.begin_nested` method, when no transaction were
-    present, would not create a SAVEPOINT at all, and would instead only start
-    the outermost transaction alone, and return that :class:`.RootTransaction`
-    object, acting like the outermost transaction.   Committing the transaction
-    object returned by :meth:`_engine.Connection.begin_nested` would therefore
-    emit a real COMMIT on the database connection.
+    :meth:`_engine.Connection.begin_nested` method, when no transaction is
+    present, does not create a SAVEPOINT at all and instead starts an outer
+    transaction, returning a :class:`.RootTransaction` object instead of a
+    :class:`.NestedTransaction` object.  This :class:`.RootTransaction` then
+    will emit a real COMMIT on the database connection when committed.
+    Previously, the 2.0 style behavior was present in all cases that would
+    autobegin a transaction but not commit it, which is a behavioral change.
 
-    This behavior is not at all what the 2.0 style connection will do - in 2.0
-    style, calling :meth:`_future.Connection.begin_nested` will "autobegin" the
-    outer transaction, and then as instructed emit a SAVEPOINT, returning the
-    :class:`.NestedTransaction` object. The outer transaction is committed by
-    calling upon :meth:`_future.Connection.commit`, as is "commit-as-you-go"
-    style usage.
+    When using a :term:`2.0 style` connection object, the behavior is unchanged
+    from previous 1.4 versions; calling :meth:`_future.Connection.begin_nested`
+    will "autobegin" the outer transaction if not already present, and then as
+    instructed emit a SAVEPOINT, returning the :class:`.NestedTransaction`
+    object. The outer transaction is committed by calling upon
+    :meth:`_future.Connection.commit`, as is "commit-as-you-go" style usage.
 
     In non-"future" mode, while the old behavior is restored, it also
     emits a 2.0 deprecation warning as this is a legacy behavior.

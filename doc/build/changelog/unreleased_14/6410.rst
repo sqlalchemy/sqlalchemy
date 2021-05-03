@@ -5,5 +5,6 @@
     Fixed regression in ``selectinload`` loader strategy that would cause it to
     cache its internal state incorrectly when handling relationships that join
     across more than one column, such as when using a composite foreign key.
-    The invalid caching would then cause other loader operations to fail.
+    The invalid caching would then cause other unrelated loader operations to
+    fail.
 
