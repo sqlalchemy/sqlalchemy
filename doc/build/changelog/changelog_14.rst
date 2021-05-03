@@ -15,7 +15,89 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.13
-    :include_notes_from: unreleased_14
+    :released: May 3, 2021
+
+    .. change::
+        :tags: bug, regression, orm
+        :tickets: 6410
+
+        Fixed regression in ``selectinload`` loader strategy that would cause it to
+        cache its internal state incorrectly when handling relationships that join
+        across more than one column, such as when using a composite foreign key.
+        The invalid caching would then cause other unrelated loader operations to
+        fail.
+
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6414
+
+        Fixed regression where :meth:`_orm.Query.filter_by` would not work if the
+        lead entity were a SQL function or other expression derived from the
+        primary entity in question, rather than a simple entity or column of that
+        entity. Additionally, improved the behavior of
+        :meth:`_sql.Select.filter_by` overall to work with column expressions even
+        in a non-ORM context.
+
+    .. change::
+        :tags: bug, engine, regression
+        :tickets: 6408
+
+        Restored a legacy transactional behavior that was inadvertently removed
+        from the :class:`_engine.Connection` as it was never tested as a known use
+        case in previous versions, where calling upon the
+        :meth:`_engine.Connection.begin_nested` method, when no transaction is
+        present, does not create a SAVEPOINT at all and instead starts an outer
+        transaction, returning a :class:`.RootTransaction` object instead of a
+        :class:`.NestedTransaction` object.  This :class:`.RootTransaction` then
+        will emit a real COMMIT on the database connection when committed.
+        Previously, the 2.0 style behavior was present in all cases that would
+        autobegin a transaction but not commit it, which is a behavioral change.
+
+        When using a :term:`2.0 style` connection object, the behavior is unchanged
+        from previous 1.4 versions; calling :meth:`_future.Connection.begin_nested`
+        will "autobegin" the outer transaction if not already present, and then as
+        instructed emit a SAVEPOINT, returning the :class:`.NestedTransaction`
+        object. The outer transaction is committed by calling upon
+        :meth:`_future.Connection.commit`, as is "commit-as-you-go" style usage.
+
+        In non-"future" mode, while the old behavior is restored, it also
+        emits a 2.0 deprecation warning as this is a legacy behavior.
+
+
+    .. change::
+        :tags: bug, asyncio, regression
+        :tickets: 6409
+
+        Fixed a regression introduced by :ticket:`6337` that would create an
+        ``asyncio.Lock`` which could be attached to the wrong loop when
+        instantiating the async engine before any asyncio loop was started, leading
+        to an asyncio error message when attempting to use the engine under certain
+        circumstances.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6419
+
+        Fixed regression where using :func:`_orm.selectinload` and
+        :func:`_orm.subqueryload` to load a two-level-deep path would lead to an
+        attribute error.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6420
+
+        Fixed regression where using the :func:`_orm.noload` loader strategy in
+        conjunction with a "dynamic" relationship would lead to an attribute error
+        as the noload strategy would attempt to apply itself to the dynamic loader.
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 6198
+
+        Add support for server side cursors in the pg8000 dialect for PostgreSQL.
+        This allows use of the
+        :paramref:`.Connection.execution_options.stream_results` option.
 
 .. changelog::
     :version: 1.4.12

@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, asyncio, regression
-    :tickets: 6409
-
-    Fixed a regression introduced by :ticket:`6337` that would create an
-    ``asyncio.Lock`` which could be attached to the wrong loop when
-    instantiating the async engine before any asyncio loop was started, leading
-    to an asyncio error message when attempting to use the engine under certain
-    circumstances.
