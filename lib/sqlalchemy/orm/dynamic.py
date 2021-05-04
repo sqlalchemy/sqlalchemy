@@ -24,6 +24,7 @@ from .query import Query
 from .. import exc
 from .. import log
 from .. import util
+from ..engine import result
 
 
 @log.class_logger
@@ -324,17 +325,28 @@ class AppenderMixin(object):
 
     session = property(session, lambda s, x: None)
 
-    def __iter__(self):
+    def _iter(self):
         sess = self.session
         if sess is None:
-            return iter(
+            state = attributes.instance_state(self.instance)
+            if state.detached:
+                util.warn(
+                    "Instance %s is detached, dynamic relationship cannot "
+                    "return a correct result.   This warning will become "
+                    "a DetachedInstanceError in a future release."
+                    % (orm_util.state_str(state))
+                )
+
+            return result.IteratorResult(
+                result.SimpleResultMetaData([self.attr.class_.__name__]),
                 self.attr._get_collection_history(
                     attributes.instance_state(self.instance),
                     attributes.PASSIVE_NO_INITIALIZE,
-                ).added_items
-            )
+                ).added_items,
+                _source_supports_scalars=True,
+            ).scalars()
         else:
-            return iter(self._generate(sess))
+            return self._generate(sess)._iter()
 
     def __getitem__(self, index):
         sess = self.session

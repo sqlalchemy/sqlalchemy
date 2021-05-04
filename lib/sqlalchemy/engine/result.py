@@ -1593,10 +1593,17 @@ class IteratorResult(Result):
 
     """
 
-    def __init__(self, cursor_metadata, iterator, raw=None):
+    def __init__(
+        self,
+        cursor_metadata,
+        iterator,
+        raw=None,
+        _source_supports_scalars=False,
+    ):
         self._metadata = cursor_metadata
         self.iterator = iterator
         self.raw = raw
+        self._source_supports_scalars = _source_supports_scalars
 
     def _soft_close(self, **kw):
         self.iterator = iter([])

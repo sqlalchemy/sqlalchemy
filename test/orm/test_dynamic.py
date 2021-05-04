@@ -233,6 +233,8 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
     def test_detached_raise(self):
+        """so filtering on a detached dynamic list raises an error..."""
+
         User, Address = self._user_address_fixture()
         sess = fixture_session()
         u = sess.query(User).get(8)
@@ -242,6 +244,35 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             u.addresses.filter_by,
             email_address="e",
         )
+
+    def test_detached_all_empty_list(self):
+        """test #6426 - but you can call .all() on it and you get an empty
+        list.   This is legacy stuff, as this should be raising
+        DetachedInstanceError.
+
+        """
+
+        User, Address = self._user_address_fixture()
+        sess = fixture_session()
+        u = sess.query(User).get(8)
+        sess.expunge(u)
+
+        with testing.expect_warnings(
+            r"Instance <User .*> is detached, dynamic relationship"
+        ):
+            eq_(u.addresses.all(), [])
+
+        with testing.expect_warnings(
+            r"Instance <User .*> is detached, dynamic relationship"
+        ):
+            eq_(list(u.addresses), [])
+
+    def test_transient_all_empty_list(self):
+        User, Address = self._user_address_fixture()
+        u1 = User()
+        eq_(u1.addresses.all(), [])
+
+        eq_(list(u1.addresses), [])
 
     def test_no_uselist_false(self):
         User, Address = self._user_address_fixture(

@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, regression, orm
+    :tickets: 6426
+
+    Fixed regression involving ``lazy='dynamic'`` loader in conjunction with a
+    detached object. The previous behavior was that the dynamic loader upon
+    calling methods like ``.all()`` returns empty lists for detached objects
+    without error, this has been restored; however a warning is now emitted as
+    this is not the correct result. Other dynamic loader scenarios correctly
+    raise ``DetachedInstanceError``.
