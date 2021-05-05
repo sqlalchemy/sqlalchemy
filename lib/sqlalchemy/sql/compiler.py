@@ -1908,6 +1908,9 @@ class SQLCompiler(Compiled):
         return self._render_in_expr_w_bindparam(binary, operator, **kw)
 
     def visit_not_in_op_binary(self, binary, operator, **kw):
+        # The brackets are required in the NOT IN operation because the empty
+        # case is handled using the form "(col NOT IN (null) OR 1 = 1)".
+        # The presence of the OR makes the brackets required.
         return "(%s)" % self._render_in_expr_w_bindparam(
             binary, operator, **kw
         )
