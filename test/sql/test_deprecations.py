@@ -1467,11 +1467,11 @@ class ConnectionlessCursorResultTest(fixtures.TablesTest):
             "This result object does not return rows.",
             result.fetchone,
         )
-        assert_raises_message(
-            exc.ResourceClosedError,
-            "This result object does not return rows.",
-            result.keys,
-        )
+
+        with testing.expect_deprecated_20(
+            r"Calling the .keys\(\) method on a result set that does not "
+        ):
+            eq_(result.keys(), [])
 
 
 class CursorResultTest(fixtures.TablesTest):
@@ -1553,6 +1553,22 @@ class CursorResultTest(fixtures.TablesTest):
             "with only matching names"
         ):
             eq_(r._mapping[users.c.user_name], "jack")
+
+    def test_keys_no_rows(self, connection):
+
+        for i in range(2):
+            r = connection.execute(
+                text("update users set user_name='new' where user_id=10")
+            )
+
+            with testing.expect_deprecated(
+                r"Calling the .keys\(\) method on a result set that does not "
+                r"return rows is deprecated and will raise "
+                r"ResourceClosedError in SQLAlchemy 2.0."
+            ):
+                list_ = r.keys()
+                eq_(list_, [])
+                list_.append("Don't cache me")
 
     def test_column_accessor_basic_text(self, connection):
         users = self.tables.users

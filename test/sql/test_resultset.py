@@ -627,7 +627,12 @@ class CursorResultTest(fixtures.TablesTest):
             lambda: r._mapping["foo"],
         )
 
-    def test_graceful_fetch_on_non_rows(self):
+    @testing.combinations(
+        (True,),
+        (False,),
+        argnames="future",
+    )
+    def test_graceful_fetch_on_non_rows(self, future):
         """test that calling fetchone() etc. on a result that doesn't
         return rows fails gracefully.
 
@@ -642,6 +647,10 @@ class CursorResultTest(fixtures.TablesTest):
         users = self.tables.users
 
         conn = testing.db.connect()
+        if future:
+            conn = conn.execution_options(future_result=True)
+        keys_lambda = lambda r: r.keys()  # noqa: E731
+
         for meth in [
             lambda r: r.fetchone(),
             lambda r: r.fetchall(),
@@ -649,19 +658,27 @@ class CursorResultTest(fixtures.TablesTest):
             lambda r: r.scalar(),
             lambda r: r.fetchmany(),
             lambda r: r._getter("user"),
-            lambda r: r.keys(),
+            keys_lambda,
             lambda r: r.columns("user"),
             lambda r: r.cursor_strategy.fetchone(r, r.cursor),
         ]:
             trans = conn.begin()
             result = conn.execute(users.insert(), dict(user_id=1))
-            assert_raises_message(
-                exc.ResourceClosedError,
-                "This result object does not return rows. "
-                "It has been closed automatically.",
-                meth,
-                result,
-            )
+
+            if not future and meth is keys_lambda:
+                with testing.expect_deprecated(
+                    r"Calling the .keys\(\) method on a result set that does "
+                    r"not return rows is deprecated"
+                ):
+                    eq_(meth(result), [])
+            else:
+                assert_raises_message(
+                    exc.ResourceClosedError,
+                    "This result object does not return rows. "
+                    "It has been closed automatically.",
+                    meth,
+                    result,
+                )
             trans.rollback()
 
     def test_fetchone_til_end(self, connection):

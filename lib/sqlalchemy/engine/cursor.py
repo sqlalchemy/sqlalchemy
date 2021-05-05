@@ -1201,7 +1201,19 @@ class _NoResultMetaData(ResultMetaData):
         self._we_dont_return_rows()
 
 
+class _LegacyNoResultMetaData(_NoResultMetaData):
+    @property
+    def keys(self):
+        util.warn_deprecated_20(
+            "Calling the .keys() method on a result set that does not return "
+            "rows is deprecated and will raise ResourceClosedError in "
+            "SQLAlchemy 2.0.",
+        )
+        return []
+
+
 _NO_RESULT_METADATA = _NoResultMetaData()
+_LEGACY_NO_RESULT_METADATA = _LegacyNoResultMetaData()
 
 
 class BaseCursorResult(object):
@@ -1259,7 +1271,7 @@ class BaseCursorResult(object):
             self._set_memoized_attribute("_row_getter", make_row)
 
         else:
-            self._metadata = _NO_RESULT_METADATA
+            self._metadata = self._no_result_metadata
 
     def _init_metadata(self, context, cursor_description):
 
@@ -1763,6 +1775,7 @@ class CursorResult(BaseCursorResult, Result):
 
     _cursor_metadata = CursorResultMetaData
     _cursor_strategy_cls = CursorFetchStrategy
+    _no_result_metadata = _NO_RESULT_METADATA
 
     def _fetchiter_impl(self):
         fetchone = self.cursor_strategy.fetchone
@@ -1837,6 +1850,8 @@ class LegacyCursorResult(CursorResult):
     _process_row = LegacyRow
     _cursor_metadata = LegacyCursorResultMetaData
     _cursor_strategy_cls = CursorFetchStrategy
+
+    _no_result_metadata = _LEGACY_NO_RESULT_METADATA
 
     def close(self):
         """Close this :class:`_engine.LegacyCursorResult`.
