@@ -46,16 +46,7 @@ class MypyPluginTest(fixtures.TestBase):
     def mypy_runner(self, cachedir):
         from mypy import api
 
-        def run(
-            filename, use_plugin=True, incremental=False, working_dir=None
-        ):
-            if working_dir:
-                path = os.path.join(working_dir, filename)
-            else:
-                path = os.path.join(
-                    os.path.dirname(__file__), "files", filename
-                )
-
+        def run(path, use_plugin=True, incremental=False):
             args = [
                 "--strict",
                 "--raise-exceptions",
@@ -124,12 +115,11 @@ class MypyPluginTest(fixtures.TestBase):
                 assert patch_obj.apply(1, dest), (
                     "pathfile %s failed" % patchfile
                 )
-            print("running mypy against %s/mymodel" % cachedir)
+            print("running mypy against %s" % dest)
             result = mypy_runner(
-                "mymodel",
+                dest,
                 use_plugin=True,
                 incremental=True,
-                working_dir=cachedir,
             )
             eq_(
                 result[2],
@@ -151,11 +141,7 @@ class MypyPluginTest(fixtures.TestBase):
             if extra_dir and os.path.isdir(extra_dir):
                 for f in os.listdir(os.path.join(extra_dir, "files")):
                     if f.endswith(".py"):
-                        files.append(
-                            os.path.join(
-                                os.path.dirname(extra_dir), "files", f
-                            )
-                        )
+                        files.append(os.path.join(extra_dir, "files", f))
         return files
 
     @testing.combinations(
@@ -181,10 +167,10 @@ class MypyPluginTest(fixtures.TestBase):
                         (num, is_mypy, expected_msg.strip())
                     )
 
-        result = mypy_runner(filename, use_plugin=use_plugin)
+        result = mypy_runner(path, use_plugin=use_plugin)
 
         if expected_errors:
-            eq_(result[2], 1)
+            eq_(result[2], 1, msg=result)
 
             print(result[0])
 
@@ -209,4 +195,4 @@ class MypyPluginTest(fixtures.TestBase):
             assert not errors, "errors remain: %s" % "\n".join(errors)
 
         else:
-            eq_(result[2], 0, msg=result[0])
+            eq_(result[2], 0, msg=result)
