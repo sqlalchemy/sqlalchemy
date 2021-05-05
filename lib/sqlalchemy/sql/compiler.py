@@ -1908,7 +1908,9 @@ class SQLCompiler(Compiled):
         return self._render_in_expr_w_bindparam(binary, operator, **kw)
 
     def visit_not_in_op_binary(self, binary, operator, **kw):
-        return self._render_in_expr_w_bindparam(binary, operator, **kw)
+        return "(%s)" % self._render_in_expr_w_bindparam(
+            binary, operator, **kw
+        )
 
     def _render_in_expr_w_bindparam(self, binary, operator, **kw):
         opstring = OPERATORS[operator]
@@ -1957,10 +1959,13 @@ class SQLCompiler(Compiled):
             if parameter.type._is_tuple_type:
                 replacement_expression = (
                     "VALUES " if self.dialect.tuple_in_values else ""
-                ) + self.visit_empty_set_expr(parameter.type.types)
+                ) + self.visit_empty_set_op_expr(
+                    parameter.type.types, parameter.expand_op
+                )
+
             else:
-                replacement_expression = self.visit_empty_set_expr(
-                    [parameter.type]
+                replacement_expression = self.visit_empty_set_op_expr(
+                    [parameter.type], parameter.expand_op
                 )
 
         elif isinstance(values[0], (tuple, list)):
@@ -3938,9 +3943,6 @@ class StrSQLCompiler(SQLCompiler):
             t._compiler_dispatch(self, fromhints=from_hints, **kw)
             for t in extra_froms
         )
-
-    def visit_empty_set_op_expr(self, type_, expand_op):
-        return self.visit_empty_set_expr(type_)
 
     def visit_empty_set_expr(self, type_):
         return "SELECT 1 WHERE 1!=1"

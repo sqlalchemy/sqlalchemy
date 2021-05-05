@@ -1732,7 +1732,7 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_in_2(self):
         self.assert_compile(
             ~self.table1.c.myid.in_(["a"]),
-            "mytable.myid NOT IN ([POSTCOMPILE_myid_1])",
+            "(mytable.myid NOT IN ([POSTCOMPILE_myid_1]))",
             checkparams={"myid_1": ["a"]},
         )
 
@@ -1854,8 +1854,8 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_in_21(self):
         self.assert_compile(
             ~self.table1.c.myid.in_(select(self.table2.c.otherid)),
-            "mytable.myid NOT IN "
-            "(SELECT myothertable.otherid FROM myothertable)",
+            "(mytable.myid NOT IN "
+            "(SELECT myothertable.otherid FROM myothertable))",
         )
 
     def test_in_22(self):
@@ -1944,18 +1944,31 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         expr = t1.in_([(3, "hi", b"there"), (4, "Q", b"P")])
         if not is_in:
             expr = ~expr
-        self.assert_compile(
-            expr,
-            "(a, b, c) %s ([POSTCOMPILE_param_1])"
-            % ("IN" if is_in else "NOT IN"),
-            checkparams={"param_1": [(3, "hi", b"there"), (4, "Q", b"P")]},
-        )
-        self.assert_compile(
-            expr,
-            "(a, b, c) %s ((3, 'hi', 'there'), (4, 'Q', 'P'))"
-            % ("IN" if is_in else "NOT IN"),
-            literal_binds=True,
-        )
+
+        if is_in:
+            self.assert_compile(
+                expr,
+                "(a, b, c) %s ([POSTCOMPILE_param_1])"
+                % ("IN" if is_in else "NOT IN"),
+                checkparams={"param_1": [(3, "hi", b"there"), (4, "Q", b"P")]},
+            )
+            self.assert_compile(
+                expr,
+                "(a, b, c) %s ((3, 'hi', 'there'), (4, 'Q', 'P'))"
+                % ("IN" if is_in else "NOT IN"),
+                literal_binds=True,
+            )
+        else:
+            self.assert_compile(
+                expr,
+                "((a, b, c) NOT IN ([POSTCOMPILE_param_1]))",
+                checkparams={"param_1": [(3, "hi", b"there"), (4, "Q", b"P")]},
+            )
+            self.assert_compile(
+                expr,
+                "((a, b, c) NOT IN ((3, 'hi', 'there'), (4, 'Q', 'P')))",
+                literal_binds=True,
+            )
 
     @testing.combinations(True, False)
     def test_in_empty_tuple(self, is_in):
@@ -1966,19 +1979,61 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
         t1 = tuple_(a, b, c)
         expr = t1.in_([]) if is_in else t1.not_in([])
-        self.assert_compile(
-            expr,
-            "(a, b, c) %s ([POSTCOMPILE_param_1])"
-            % ("IN" if is_in else "NOT IN"),
-            checkparams={"param_1": []},
-        )
-        self.assert_compile(
-            expr,
-            "(a, b, c) %s (SELECT 1 WHERE 1!=1)"
-            % ("IN" if is_in else "NOT IN"),
-            literal_binds=True,
-            dialect="default_enhanced",
-        )
+
+        if is_in:
+            self.assert_compile(
+                expr,
+                "(a, b, c) IN ([POSTCOMPILE_param_1])",
+                checkparams={"param_1": []},
+            )
+            self.assert_compile(
+                expr,
+                "(a, b, c) IN ((NULL, NULL, NULL)) AND (1 != 1)",
+                literal_binds=True,
+                dialect="default_enhanced",
+            )
+        else:
+            self.assert_compile(
+                expr,
+                "((a, b, c) NOT IN ([POSTCOMPILE_param_1]))",
+                checkparams={"param_1": []},
+            )
+            self.assert_compile(
+                expr,
+                "((a, b, c) NOT IN ((NULL, NULL, NULL)) OR (1 = 1))",
+                literal_binds=True,
+                dialect="default_enhanced",
+            )
+
+    @testing.combinations(True, False)
+    def test_in_empty_single(self, is_in):
+        a = column("a", Integer)
+        expr = a.in_([]) if is_in else a.not_in([])
+
+        if is_in:
+            self.assert_compile(
+                expr,
+                "a IN ([POSTCOMPILE_a_1])",
+                checkparams={"a_1": []},
+            )
+            self.assert_compile(
+                expr,
+                "a IN (NULL) AND (1 != 1)",
+                literal_binds=True,
+                dialect="default_enhanced",
+            )
+        else:
+            self.assert_compile(
+                expr,
+                "(a NOT IN ([POSTCOMPILE_a_1]))",
+                checkparams={"a_1": []},
+            )
+            self.assert_compile(
+                expr,
+                "(a NOT IN (NULL) OR (1 = 1))",
+                literal_binds=True,
+                dialect="default_enhanced",
+            )
 
     def test_in_set(self):
         s = {1, 2, 3}
@@ -2034,7 +2089,7 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         self.assert_compile(
             expr,
-            "q IN (SELECT 1 WHERE 1!=1)",
+            "q IN (NULL) AND (1 != 1)",
             literal_binds=True,
             dialect="default_enhanced",
         )

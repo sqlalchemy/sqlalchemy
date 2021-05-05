@@ -2403,7 +2403,8 @@ class LegacyOperatorTest(AssertsCompiledSQL, fixtures.TestBase):
         self.assert_compile(column("x").isnot("foo"), "x IS NOT :x_1")
 
         self.assert_compile(
-            column("x").notin_(["foo", "bar"]), "x NOT IN ([POSTCOMPILE_x_1])"
+            column("x").notin_(["foo", "bar"]),
+            "(x NOT IN ([POSTCOMPILE_x_1]))",
         )
 
     def test_issue_5429_operators(self):

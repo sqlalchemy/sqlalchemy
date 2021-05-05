@@ -1110,6 +1110,26 @@ class ExpandingBoundInTest(fixtures.TablesTest):
         )
         self._assert_result(stmt, [(2,), (3,), (4,)])
 
+    def test_nonempty_in_plus_empty_notin(self):
+        table = self.tables.some_table
+        stmt = (
+            select(table.c.id)
+            .where(table.c.x.in_([2, 3]))
+            .where(table.c.id.not_in([]))
+            .order_by(table.c.id)
+        )
+        self._assert_result(stmt, [(2,), (3,)])
+
+    def test_empty_in_plus_notempty_notin(self):
+        table = self.tables.some_table
+        stmt = (
+            select(table.c.id)
+            .where(table.c.x.in_([]))
+            .where(table.c.id.not_in([2, 3]))
+            .order_by(table.c.id)
+        )
+        self._assert_result(stmt, [])
+
     @testing.requires.tuple_in
     def test_bound_in_two_tuple_bindparam(self):
         table = self.tables.some_table
