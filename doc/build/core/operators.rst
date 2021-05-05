@@ -212,12 +212,12 @@ NOT IN
 "NOT IN" is available via the :meth:`_sql.ColumnOperators.not_in` operator::
 
     >>> print(column('x').not_in([1, 2, 3]))
-    x NOT IN ([POSTCOMPILE_x_1])
+    (x NOT IN ([POSTCOMPILE_x_1]))
 
 This is typically more easily available by negating with the ``~`` operator::
 
     >>> print(~column('x').in_([1, 2, 3]))
-    x NOT IN ([POSTCOMPILE_x_1])
+    (x NOT IN ([POSTCOMPILE_x_1]))
 
 Tuple IN Expressions
 ~~~~~~~~~~~~~~~~~~~~
