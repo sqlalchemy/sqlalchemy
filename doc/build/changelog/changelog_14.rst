@@ -15,7 +15,83 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.14
-    :include_notes_from: unreleased_14
+    :released: May 6, 2021
+
+    .. change::
+        :tags: bug, regression, orm
+        :tickets: 6426
+
+        Fixed regression involving ``lazy='dynamic'`` loader in conjunction with a
+        detached object. The previous behavior was that the dynamic loader upon
+        calling methods like ``.all()`` returns empty lists for detached objects
+        without error, this has been restored; however a warning is now emitted as
+        this is not the correct result. Other dynamic loader scenarios correctly
+        raise ``DetachedInstanceError``.
+
+    .. change::
+        :tags: bug, regression, sql
+        :tickets: 6428
+
+        Fixed regression caused by the "empty in" change just made in
+        :ticket:`6397` 1.4.12 where the expression needs to be parenthesized for
+        the "not in" use case, otherwise the condition will interfere with the
+        other filtering criteria.
+
+
+    .. change::
+        :tags: bug, sql, regression
+        :tickets: 6436
+
+        The :class:`.TypeDecorator` class will now emit a warning when used in SQL
+        compilation with caching unless the ``.cache_ok`` flag is set to ``True``
+        or ``False``. A new class-level attribute :attr:`.TypeDecorator.cache_ok`
+        may be set which will be used as an indication that all the parameters
+        passed to the object are safe to be used as a cache key if set to ``True``,
+        ``False`` means they are not.
+
+    .. change::
+        :tags: engine, bug, regression
+        :tickets: 6427
+
+        Established a deprecation path for calling upon the
+        :meth:`_cursor.CursorResult.keys` method for a statement that returns no
+        rows to provide support for legacy patterns used by the "records" package
+        as well as any other non-migrated applications. Previously, this would
+        raise :class:`.ResourceClosedException` unconditionally in the same way as
+        it does when attempting to fetch rows. While this is the correct behavior
+        going forward, the :class:`_cursor.LegacyCursorResult` object will now in
+        this case return an empty list for ``.keys()`` as it did in 1.3, while also
+        emitting a 2.0 deprecation warning. The :class:`_cursor.CursorResult`, used
+        when using a 2.0-style "future" engine, will continue to raise as it does
+        now.
+
+    .. change::
+        :tags: usecase, engine, orm
+        :tickets: 6288
+
+        Applied consistent behavior to the use case of
+        calling ``.commit()`` or ``.rollback()`` inside of an existing
+        ``.begin()`` context manager, with the addition of potentially
+        emitting SQL within the block subsequent to the commit or rollback.
+        This change continues upon the change first added in
+        :ticket:`6155` where the use case of calling "rollback" inside of
+        a ``.begin()`` contextmanager block was proposed:
+
+        * calling ``.commit()`` or ``.rollback()`` will now be allowed
+          without error or warning within all scopes, including
+          that of legacy and future :class:`_engine.Engine`, ORM
+          :class:`_orm.Session`, asyncio :class:`.AsyncEngine`.  Previously,
+          the :class:`_orm.Session` disallowed this.
+
+        * The remaining scope of the context manager is then closed;
+          when the block ends, a check is emitted to see if the transaction
+          was already ended, and if so the block returns without action.
+
+        * It will now raise **an error** if subsequent SQL of any kind
+          is emitted within the block, **after** ``.commit()`` or
+          ``.rollback()`` is called.   The block should be closed as
+          the state of the executable object would otherwise be undefined
+          in this state.
 
 .. changelog::
     :version: 1.4.13

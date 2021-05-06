@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, regression, sql
-    :tickets: 6428
-
-    Fixed regression caused by the "empty in" change just made in
-    :ticket:`6397` 1.4.12 where the expression needs to be parenthesized for
-    the "not in" use case, otherwise the condition will interfere with the
-    other filtering criteria.
-
