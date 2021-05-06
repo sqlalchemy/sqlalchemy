@@ -10,9 +10,9 @@
 """
 
 
-from sqlalchemy.sql.traversals import NO_CACHE
 from . import operators
 from .base import SchemaEventTarget
+from .traversals import NO_CACHE
 from .visitors import Traversible
 from .visitors import TraversibleType
 from .. import exc
