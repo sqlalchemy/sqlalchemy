@@ -31,6 +31,7 @@ from .. import engine
 from .. import exc as sa_exc
 from .. import sql
 from .. import util
+from ..engine.util import TransactionalContext
 from ..inspection import inspect
 from ..sql import coercions
 from ..sql import dml
@@ -475,7 +476,7 @@ class ORMExecuteState(util.MemoizedSlots):
         ]
 
 
-class SessionTransaction(object):
+class SessionTransaction(TransactionalContext):
     """A :class:`.Session`-level transaction.
 
     :class:`.SessionTransaction` is produced from the
@@ -523,6 +524,8 @@ class SessionTransaction(object):
         nested=False,
         autobegin=False,
     ):
+        TransactionalContext._trans_ctx_check(session)
+
         self.session = session
         self._connections = {}
         self._parent = parent
@@ -927,21 +930,14 @@ class SessionTransaction(object):
         self.session = None
         self._connections = None
 
-    def __enter__(self):
-        return self
+    def _get_subject(self):
+        return self.session
 
-    def __exit__(self, type_, value, traceback):
-        self._assert_active(deactive_ok=True, prepared_ok=True)
-        if self.session._transaction is None:
-            return
-        if type_ is None:
-            try:
-                self.commit()
-            except:
-                with util.safe_reraise():
-                    self.rollback()
-        else:
-            self.rollback()
+    def _transaction_is_active(self):
+        return self._state is ACTIVE
+
+    def _transaction_is_closed(self):
+        return self._state is CLOSED
 
 
 class Session(_SessionClassMethods):
@@ -1154,6 +1150,9 @@ class Session(_SessionClassMethods):
 
         _sessions[self.hash_key] = self
 
+    # used by sqlalchemy.engine.util.TransactionalContext
+    _trans_context_manager = None
+
     connection_callable = None
 
     def __enter__(self):
@@ -1252,6 +1251,7 @@ class Session(_SessionClassMethods):
 
     def _autobegin(self):
         if not self.autocommit and self._transaction is None:
+
             trans = SessionTransaction(self, autobegin=True)
             assert self._transaction is trans
             return True
@@ -1520,6 +1520,8 @@ class Session(_SessionClassMethods):
         )
 
     def _connection_for_bind(self, engine, execution_options=None, **kw):
+        TransactionalContext._trans_ctx_check(self)
+
         if self._transaction is not None or self._autobegin():
             return self._transaction._connection_for_bind(
                 engine, execution_options

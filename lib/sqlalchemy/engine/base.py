@@ -13,6 +13,7 @@ from .interfaces import Connectable
 from .interfaces import ExceptionContext
 from .util import _distill_params
 from .util import _distill_params_20
+from .util import TransactionalContext
 from .. import exc
 from .. import inspection
 from .. import log
@@ -59,6 +60,9 @@ class Connection(Connectable):
 
     _is_future = False
     _sqla_logger_namespace = "sqlalchemy.engine.Connection"
+
+    # used by sqlalchemy.engine.util.TransactionalContext
+    _trans_context_manager = None
 
     def __init__(
         self,
@@ -1683,6 +1687,9 @@ class Connection(Connectable):
         ):
             self._invalid_transaction()
 
+        elif self._trans_context_manager:
+            TransactionalContext._trans_ctx_check(self)
+
         if self._is_future and self._transaction is None:
             self._autobegin()
 
@@ -2182,7 +2189,7 @@ class ExceptionContextImpl(ExceptionContext):
         self.invalidate_pool_on_disconnect = invalidate_pool_on_disconnect
 
 
-class Transaction(object):
+class Transaction(TransactionalContext):
     """Represent a database transaction in progress.
 
     The :class:`.Transaction` object is procured by
@@ -2324,21 +2331,14 @@ class Transaction(object):
         finally:
             assert not self.is_active
 
-    def __enter__(self):
-        return self
+    def _get_subject(self):
+        return self.connection
 
-    def __exit__(self, type_, value, traceback):
-        if type_ is None and self.is_active:
-            try:
-                self.commit()
-            except:
-                with util.safe_reraise():
-                    self.rollback()
-        else:
-            if self._deactivated_from_connection:
-                self.close()
-            else:
-                self.rollback()
+    def _transaction_is_active(self):
+        return self.is_active
+
+    def _transaction_is_closed(self):
+        return not self._deactivated_from_connection
 
 
 class MarkerTransaction(Transaction):
@@ -2368,6 +2368,10 @@ class MarkerTransaction(Transaction):
         )
 
         self.connection = connection
+
+        if connection._trans_context_manager:
+            TransactionalContext._trans_ctx_check(connection)
+
         if connection._nested_transaction is not None:
             self._transaction = connection._nested_transaction
         else:
@@ -2429,6 +2433,8 @@ class RootTransaction(Transaction):
 
     def __init__(self, connection):
         assert connection._transaction is None
+        if connection._trans_context_manager:
+            TransactionalContext._trans_ctx_check(connection)
         self.connection = connection
         self._connection_begin_impl()
         connection._transaction = self
@@ -2564,6 +2570,8 @@ class NestedTransaction(Transaction):
 
     def __init__(self, connection):
         assert connection._transaction is not None
+        if connection._trans_context_manager:
+            TransactionalContext._trans_ctx_check(connection)
         self.connection = connection
         self._savepoint = self.connection._savepoint_impl()
         self.is_active = True
@@ -2935,16 +2943,12 @@ class Engine(Connectable, log.Identified):
             self.close_with_result = close_with_result
 
         def __enter__(self):
+            self.transaction.__enter__()
             return self.conn
 
         def __exit__(self, type_, value, traceback):
             try:
-                if type_ is not None:
-                    if self.transaction.is_active:
-                        self.transaction.rollback()
-                else:
-                    if self.transaction.is_active:
-                        self.transaction.commit()
+                self.transaction.__exit__(type_, value, traceback)
             finally:
                 if not self.close_with_result:
                     self.conn.close()

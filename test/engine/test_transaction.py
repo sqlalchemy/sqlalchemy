@@ -45,6 +45,30 @@ class TransactionTest(fixtures.TablesTest):
         with testing.db.connect() as conn:
             yield conn
 
+    def test_interrupt_ctxmanager_engine(self, trans_ctx_manager_fixture):
+        fn = trans_ctx_manager_fixture
+
+        # add commit/rollback to the legacy Connection object so that
+        # we can test this less-likely case in use with the legacy
+        # Engine.begin() context manager
+        class ConnWCommitRollback(testing.db._connection_cls):
+            def commit(self):
+                self.get_transaction().commit()
+
+            def rollback(self):
+                self.get_transaction().rollback()
+
+        with mock.patch.object(
+            testing.db, "_connection_cls", ConnWCommitRollback
+        ):
+            fn(testing.db, trans_on_subject=False, execute_on_subject=False)
+
+    def test_interrupt_ctxmanager_connection(self, trans_ctx_manager_fixture):
+        fn = trans_ctx_manager_fixture
+
+        with testing.db.connect() as conn:
+            fn(conn, trans_on_subject=False, execute_on_subject=True)
+
     def test_commits(self, local_connection):
         users = self.tables.users
         connection = local_connection
@@ -111,8 +135,15 @@ class TransactionTest(fixtures.TablesTest):
             trans.rollback()
             assert not local_connection.in_transaction()
 
-            # would be subject to autocommit
-            local_connection.execute(select(1))
+            # previously, would be subject to autocommit.
+            # now it raises
+            with expect_raises_message(
+                exc.InvalidRequestError,
+                "Can't operate on closed transaction inside context manager.  "
+                "Please complete the context manager before emitting "
+                "further commands.",
+            ):
+                local_connection.execute(select(1))
 
             assert not local_connection.in_transaction()
 
@@ -400,6 +431,7 @@ class TransactionTest(fixtures.TablesTest):
         connection = local_connection
         users = self.tables.users
         trans = connection.begin()
+        trans.__enter__()
         connection.execute(users.insert(), dict(user_id=1, user_name="user1"))
         connection.execute(users.insert(), dict(user_id=2, user_name="user2"))
         try:
@@ -418,6 +450,7 @@ class TransactionTest(fixtures.TablesTest):
         )
 
         trans = connection.begin()
+        trans.__enter__()
         connection.execute(users.insert(), dict(user_id=1, user_name="user1"))
         trans.__exit__(None, None, None)
         assert not trans.is_active
@@ -1487,6 +1520,24 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
         with testing.db.connect() as conn:
             yield conn
 
+    def test_interrupt_ctxmanager_engine(self, trans_ctx_manager_fixture):
+        fn = trans_ctx_manager_fixture
+
+        fn(testing.db, trans_on_subject=False, execute_on_subject=False)
+
+    @testing.combinations((True,), (False,), argnames="trans_on_subject")
+    def test_interrupt_ctxmanager_connection(
+        self, trans_ctx_manager_fixture, trans_on_subject
+    ):
+        fn = trans_ctx_manager_fixture
+
+        with testing.db.connect() as conn:
+            fn(
+                conn,
+                trans_on_subject=trans_on_subject,
+                execute_on_subject=True,
+            )
+
     def test_autobegin_rollback(self):
         users = self.tables.users
         with testing.db.connect() as conn:
@@ -1683,10 +1734,17 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
             trans.rollback()
             assert not local_connection.in_transaction()
 
-            # autobegin
-            local_connection.execute(select(1))
+            # previously, would be subject to autocommit.
+            # now it raises
+            with expect_raises_message(
+                exc.InvalidRequestError,
+                "Can't operate on closed transaction inside context manager.  "
+                "Please complete the context manager before emitting "
+                "further commands.",
+            ):
+                local_connection.execute(select(1))
 
-            assert local_connection.in_transaction()
+            assert not local_connection.in_transaction()
 
     @testing.combinations((True,), (False,), argnames="roll_back_in_block")
     def test_ctxmanager_rolls_back(self, local_connection, roll_back_in_block):

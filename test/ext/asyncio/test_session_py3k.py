@@ -14,10 +14,11 @@ from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
+from .test_engine_py3k import AsyncFixture as _AsyncFixture
 from ...orm import _fixtures
 
 
-class AsyncFixture(_fixtures.FixtureTest):
+class AsyncFixture(_AsyncFixture, _fixtures.FixtureTest):
     __requires__ = ("async_dialect",)
 
     @classmethod
@@ -122,6 +123,14 @@ class AsyncSessionQueryTest(AsyncFixture):
 
 class AsyncSessionTransactionTest(AsyncFixture):
     run_inserts = None
+
+    @async_test
+    async def test_interrupt_ctxmanager_connection(
+        self, async_trans_ctx_manager_fixture, async_session
+    ):
+        fn = async_trans_ctx_manager_fixture
+
+        await fn(async_session, trans_on_subject=True, execute_on_subject=True)
 
     @async_test
     async def test_sessionmaker_block_one(self, async_engine):

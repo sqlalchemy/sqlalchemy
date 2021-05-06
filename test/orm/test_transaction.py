@@ -27,6 +27,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assert_warnings
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -2409,6 +2410,67 @@ class ContextManagerPlusFutureTest(FixtureTest):
         eq_(sess.connection().execute(users.select()).all(), [(1, "user1")])
         sess.close()
 
+    @testing.combinations((True,), (False,), argnames="future")
+    def test_interrupt_ctxmanager(self, trans_ctx_manager_fixture, future):
+        fn = trans_ctx_manager_fixture
+
+        session = fixture_session(future=future)
+
+        fn(session, trans_on_subject=True, execute_on_subject=True)
+
+    @testing.combinations((True,), (False,), argnames="future")
+    @testing.combinations((True,), (False,), argnames="rollback")
+    @testing.combinations((True,), (False,), argnames="expire_on_commit")
+    @testing.combinations(
+        ("add",),
+        ("modify",),
+        ("delete",),
+        ("begin",),
+        argnames="check_operation",
+    )
+    def test_interrupt_ctxmanager_ops(
+        self, future, rollback, expire_on_commit, check_operation
+    ):
+        users, User = self.tables.users, self.classes.User
+
+        mapper(User, users)
+
+        session = fixture_session(
+            future=future, expire_on_commit=expire_on_commit
+        )
+
+        with session.begin():
+            u1 = User(id=7, name="u1")
+            session.add(u1)
+
+        with session.begin():
+            u1.name  # unexpire
+            u2 = User(id=8, name="u1")
+            session.add(u2)
+
+            session.flush()
+
+            if rollback:
+                session.rollback()
+            else:
+                session.commit()
+
+            with expect_raises_message(
+                sa_exc.InvalidRequestError,
+                "Can't operate on closed transaction "
+                "inside context manager.  Please complete the context "
+                "manager before emitting further commands.",
+            ):
+                if check_operation == "add":
+                    u3 = User(id=9, name="u2")
+                    session.add(u3)
+                elif check_operation == "begin":
+                    session.begin()
+                elif check_operation == "modify":
+                    u1.name = "newname"
+                elif check_operation == "delete":
+                    session.delete(u1)
+
 
 class TransactionFlagsTest(fixtures.TestBase):
     def test_in_transaction(self):
@@ -2730,32 +2792,6 @@ class JoinIntoAnExternalTransactionFixture(object):
 
         self._assert_count(1)
 
-    @testing.requires.savepoints
-    def test_something_with_rollback(self):
-        A = self.A
-
-        a1 = A()
-        self.session.add(a1)
-        self.session.flush()
-
-        self._assert_count(1)
-        self.session.rollback()
-        self._assert_count(0)
-
-        a1 = A()
-        self.session.add(a1)
-        self.session.commit()
-        self._assert_count(1)
-
-        a2 = A()
-
-        self.session.add(a2)
-        self.session.flush()
-        self._assert_count(2)
-
-        self.session.rollback()
-        self._assert_count(1)
-
     def _assert_count(self, count):
         result = self.connection.scalar(
             select(func.count()).select_from(self.table)
@@ -2800,6 +2836,37 @@ class NewStyleJoinIntoAnExternalTransactionTest(
         # is rolled back.
         if self.trans.is_active:
             self.trans.rollback()
+
+    @testing.requires.savepoints
+    def test_something_with_context_managers(self):
+        A = self.A
+
+        a1 = A()
+
+        with self.session.begin():
+            self.session.add(a1)
+            self.session.flush()
+
+            self._assert_count(1)
+            self.session.rollback()
+
+        self._assert_count(0)
+
+        a1 = A()
+        with self.session.begin():
+            self.session.add(a1)
+
+        self._assert_count(1)
+
+        a2 = A()
+
+        with self.session.begin():
+            self.session.add(a2)
+            self.session.flush()
+            self._assert_count(2)
+
+            self.session.rollback()
+        self._assert_count(1)
 
 
 class FutureJoinIntoAnExternalTransactionTest(

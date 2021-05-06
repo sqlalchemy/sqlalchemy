@@ -359,16 +359,12 @@ class Engine(_LegacyEngine):
 
         def __enter__(self):
             self.transaction = self.conn.begin()
+            self.transaction.__enter__()
             return self.conn
 
         def __exit__(self, type_, value, traceback):
             try:
-                if type_ is not None:
-                    if self.transaction.is_active:
-                        self.transaction.rollback()
-                else:
-                    if self.transaction.is_active:
-                        self.transaction.commit()
+                self.transaction.__exit__(type_, value, traceback)
             finally:
                 self.conn.close()
 

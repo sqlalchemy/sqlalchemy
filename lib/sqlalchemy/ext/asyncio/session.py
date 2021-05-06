@@ -399,15 +399,17 @@ class AsyncSessionTransaction(StartableContext):
 
         await greenlet_spawn(self._sync_transaction().commit)
 
-    async def start(self):
+    async def start(self, is_ctxmanager=False):
         self.sync_transaction = await greenlet_spawn(
             self.session.sync_session.begin_nested
             if self.nested
             else self.session.sync_session.begin
         )
+        if is_ctxmanager:
+            self.sync_transaction.__enter__()
         return self
 
     async def __aexit__(self, type_, value, traceback):
-        return await greenlet_spawn(
+        await greenlet_spawn(
             self._sync_transaction().__exit__, type_, value, traceback
         )

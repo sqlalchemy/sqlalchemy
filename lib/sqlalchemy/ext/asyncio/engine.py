@@ -101,7 +101,7 @@ class AsyncConnection(ProxyComparable, StartableContext, AsyncConnectable):
         self.sync_engine = async_engine.sync_engine
         self.sync_connection = sync_connection
 
-    async def start(self):
+    async def start(self, is_ctxmanager=False):
         """Start this :class:`_asyncio.AsyncConnection` object's context
         outside of using a Python ``with:`` block.
 
@@ -518,19 +518,15 @@ class AsyncEngine(ProxyComparable, AsyncConnectable):
         def __init__(self, conn):
             self.conn = conn
 
-        async def start(self):
-            await self.conn.start()
+        async def start(self, is_ctxmanager=False):
+            await self.conn.start(is_ctxmanager=is_ctxmanager)
             self.transaction = self.conn.begin()
             await self.transaction.__aenter__()
 
             return self.conn
 
         async def __aexit__(self, type_, value, traceback):
-            if type_ is not None:
-                await self.transaction.rollback()
-            else:
-                if self.transaction.is_active:
-                    await self.transaction.commit()
+            await self.transaction.__aexit__(type_, value, traceback)
             await self.conn.close()
 
     def __init__(self, sync_engine: Engine):
@@ -678,7 +674,7 @@ class AsyncTransaction(ProxyComparable, StartableContext):
 
         await greenlet_spawn(self._sync_transaction().commit)
 
-    async def start(self):
+    async def start(self, is_ctxmanager=False):
         """Start this :class:`_asyncio.AsyncTransaction` object's context
         outside of using a Python ``with:`` block.
 
@@ -689,17 +685,14 @@ class AsyncTransaction(ProxyComparable, StartableContext):
             if self.nested
             else self.connection._sync_connection().begin
         )
+        if is_ctxmanager:
+            self.sync_transaction.__enter__()
         return self
 
     async def __aexit__(self, type_, value, traceback):
-        if type_ is None and self.is_active:
-            try:
-                await self.commit()
-            except:
-                with util.safe_reraise():
-                    await self.rollback()
-        else:
-            await self.rollback()
+        await greenlet_spawn(
+            self._sync_transaction().__exit__, type_, value, traceback
+        )
 
 
 def _get_sync_engine_or_connection(async_engine):
