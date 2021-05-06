@@ -1790,6 +1790,7 @@ class UnsortablePKTest(fixtures.MappedTest):
     def define_tables(cls, metadata):
         class MyUnsortable(TypeDecorator):
             impl = String(10)
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 return "%s,%s" % (value["x"], value["y"])

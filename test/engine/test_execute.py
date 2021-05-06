@@ -336,6 +336,7 @@ class ExecuteTest(fixtures.TablesTest):
     def test_exception_wrapping_non_dbapi_statement(self):
         class MyType(TypeDecorator):
             impl = Integer
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 raise SomeException("nope")
@@ -539,6 +540,7 @@ class ExecuteTest(fixtures.TablesTest):
 
         class MyType(TypeDecorator):
             impl = Integer
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 raise MyException("nope")
@@ -2575,6 +2577,7 @@ class HandleErrorTest(fixtures.TestBase):
 
         class MyType(TypeDecorator):
             impl = Integer
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 raise nope

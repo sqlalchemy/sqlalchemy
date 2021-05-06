@@ -895,6 +895,7 @@ class ColumnTypeTest(fixtures.MappedTest):
     def define_tables(cls, metadata):
         class SpecialType(TypeDecorator):
             impl = Date
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 assert isinstance(value, datetime.date)

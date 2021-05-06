@@ -1196,6 +1196,7 @@ class StringTest(fixtures.TestBase, AssertsCompiledSQL):
 
 class MyPickleType(types.TypeDecorator):
     impl = PickleType
+    cache_ok = True
 
     def process_bind_param(self, value, dialect):
         if value:

@@ -312,6 +312,7 @@ same column, use a custom type that will check each row individually::
 
     class MixedBinary(TypeDecorator):
         impl = String
+        cache_ok = True
 
         def process_result_value(self, value, dialect):
             if isinstance(value, str):

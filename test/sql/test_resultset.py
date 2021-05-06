@@ -978,18 +978,21 @@ class CursorResultTest(fixtures.TablesTest):
 
         class Goofy1(TypeDecorator):
             impl = String
+            cache_ok = True
 
             def process_result_value(self, value, dialect):
                 return value + "a"
 
         class Goofy2(TypeDecorator):
             impl = String
+            cache_ok = True
 
             def process_result_value(self, value, dialect):
                 return value + "b"
 
         class Goofy3(TypeDecorator):
             impl = String
+            cache_ok = True
 
             def process_result_value(self, value, dialect):
                 return value + "c"
@@ -2527,6 +2530,7 @@ class AlternateCursorResultTest(fixtures.TablesTest):
     def _test_result_processor(self, cls, use_cache):
         class MyType(TypeDecorator):
             impl = String()
+            cache_ok = True
 
             def process_result_value(self, value, dialect):
                 return "HI " + value

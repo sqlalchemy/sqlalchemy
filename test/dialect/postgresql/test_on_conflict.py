@@ -42,6 +42,8 @@ class OnConflictTest(fixtures.TablesTest):
         class SpecialType(sqltypes.TypeDecorator):
             impl = String
 
+            cache_ok = True
+
             def process_bind_param(self, value, dialect):
                 return value + " processed"
 

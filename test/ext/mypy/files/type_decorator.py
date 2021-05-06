@@ -12,6 +12,7 @@ Base = declarative_base()
 
 class IntToStr(TypeDecorator[int]):
     impl = String
+    cache_ok = True
 
     def process_bind_param(
         self,

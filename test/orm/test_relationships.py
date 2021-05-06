@@ -2692,6 +2692,7 @@ class TypedAssociationTable(fixtures.MappedTest):
     def define_tables(cls, metadata):
         class MySpecialType(sa.types.TypeDecorator):
             impl = String
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 return "lala" + value

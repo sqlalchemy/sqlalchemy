@@ -25,6 +25,7 @@ ischema = MetaData()
 
 class CoerceUnicode(TypeDecorator):
     impl = Unicode
+    cache_ok = True
 
     def process_bind_param(self, value, dialect):
         if util.py2k and isinstance(value, util.binary_type):
@@ -211,6 +212,7 @@ class IdentitySqlVariant(TypeDecorator):
       correct value as string.
     """
     impl = Unicode
+    cache_ok = True
 
     def column_expression(self, colexpr):
         return cast(colexpr, Numeric)

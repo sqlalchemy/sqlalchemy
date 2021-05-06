@@ -1780,6 +1780,7 @@ class PickleType(TypeDecorator):
     """
 
     impl = LargeBinary
+    cache_ok = True
 
     def __init__(
         self, protocol=pickle.HIGHEST_PROTOCOL, pickler=None, comparator=None
@@ -2027,6 +2028,7 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator):
 
     impl = DateTime
     epoch = dt.datetime.utcfromtimestamp(0)
+    cache_ok = True
 
     def __init__(self, native=True, second_precision=None, day_precision=None):
         """Construct an Interval object.

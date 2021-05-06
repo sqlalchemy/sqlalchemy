@@ -746,6 +746,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
     def test_custom_subclass(self, metadata, connection):
         class MyEnum(TypeDecorator):
             impl = Enum("oneHI", "twoHI", "threeHI", name="myenum")
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 if value is not None:
@@ -1391,6 +1392,7 @@ class ArrayRoundTripTest(object):
     def define_tables(cls, metadata):
         class ProcValue(TypeDecorator):
             impl = cls.ARRAY(Integer, dimensions=2)
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 if value is None:
@@ -2127,6 +2129,7 @@ class PGArrayRoundTripTest(
 class _ArrayOfEnum(TypeDecorator):
     # previous workaround for array of enum
     impl = postgresql.ARRAY
+    cache_ok = True
 
     def bind_expression(self, bindvalue):
         return sa.cast(bindvalue, self)
