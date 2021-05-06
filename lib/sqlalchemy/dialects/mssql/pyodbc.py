@@ -124,7 +124,7 @@ database using Azure credentials::
 
         # create token credential
         raw_token = azure_credentials.get_token(TOKEN_URL).token.encode("utf-16-le")
-        token_struct = struct.pack(f"<I{len(raw_token)}s", len(raw_token), token)
+        token_struct = struct.pack(f"<I{len(raw_token)}s", len(raw_token), raw_token)
 
         # apply it to keyword arguments
         cparams["attrs_before"] = {SQL_COPT_SS_ACCESS_TOKEN: token_struct}
