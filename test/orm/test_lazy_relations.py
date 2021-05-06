@@ -835,9 +835,11 @@ class LazyTest(_fixtures.FixtureTest):
 
         class IntDecorator(TypeDecorator):
             impl = Integer
+            cache_ok = True
 
         class SmallintDecorator(TypeDecorator):
             impl = SmallInteger
+            cache_ok = True
 
         class SomeDBInteger(sa.Integer):
             pass
@@ -986,6 +988,7 @@ class GetterStateTest(_fixtures.FixtureTest):
     def _unhashable_fixture(self, metadata, load_on_pending=False):
         class MyHashType(sa.TypeDecorator):
             impl = sa.String(100)
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 return ";".join(
@@ -1553,6 +1556,7 @@ class TypeCoerceTest(fixtures.MappedTest, testing.AssertsExecutionResults):
 
     class StringAsInt(TypeDecorator):
         impl = String(50)
+        cache_ok = True
 
         def get_dbapi_type(self, dbapi):
             return dbapi.NUMBER

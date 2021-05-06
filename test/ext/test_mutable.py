@@ -970,6 +970,7 @@ class MutableWithScalarJSONTest(_MutableDictTestBase, fixtures.MappedTest):
 
         class JSONEncodedDict(TypeDecorator):
             impl = VARCHAR(50)
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 if value is not None:
@@ -1007,6 +1008,7 @@ class MutableColumnCopyJSONTest(_MutableDictTestBase, fixtures.MappedTest):
 
         class JSONEncodedDict(TypeDecorator):
             impl = VARCHAR(50)
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 if value is not None:
@@ -1188,6 +1190,7 @@ class MutableAssociationScalarJSONTest(
 
         class JSONEncodedDict(TypeDecorator):
             impl = VARCHAR(50)
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 if value is not None:
@@ -1239,6 +1242,7 @@ class CustomMutableAssociationScalarJSONTest(
 
         class JSONEncodedDict(TypeDecorator):
             impl = VARCHAR(50)
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 if value is not None:

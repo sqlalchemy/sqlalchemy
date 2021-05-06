@@ -288,6 +288,7 @@ class _DateFixture(_LiteralRoundTripFixture, fixtures.TestBase):
     def define_tables(cls, metadata):
         class Decorated(TypeDecorator):
             impl = cls.datatype
+            cache_ok = True
 
         Table(
             "date_table",
@@ -477,6 +478,7 @@ class CastTypeDecoratorTest(_LiteralRoundTripFixture, fixtures.TestBase):
     def string_as_int(self):
         class StringAsInt(TypeDecorator):
             impl = String(50)
+            cache_ok = True
 
             def get_dbapi_type(self, dbapi):
                 return dbapi.NUMBER

@@ -407,6 +407,7 @@ class DefaultRoundTripTest(fixtures.TablesTest):
 
         class MyType(TypeDecorator):
             impl = String(50)
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 if value is not None:
@@ -1084,6 +1085,7 @@ class AutoIncrementTest(fixtures.TestBase):
     def test_autoinc_detection_no_affinity(self):
         class MyType(TypeDecorator):
             impl = TypeEngine
+            cache_ok = True
 
         assert MyType()._type_affinity is None
         t = Table("x", MetaData(), Column("id", MyType(), primary_key=True))
@@ -1211,6 +1213,8 @@ class SpecialTypePKTest(fixtures.TestBase):
     def setup_test_class(cls):
         class MyInteger(TypeDecorator):
             impl = Integer
+
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 if value is None:

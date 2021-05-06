@@ -653,6 +653,7 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
 
     class MyTime(TypeDecorator):
         impl = TIMESTAMP
+        cache_ok = True
 
     @testing.combinations(
         (TIMESTAMP,),

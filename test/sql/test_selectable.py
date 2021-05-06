@@ -604,6 +604,7 @@ class SelectableTest(
     def test_type_coerce_preserve_subq(self):
         class MyType(TypeDecorator):
             impl = Integer
+            cache_ok = True
 
         stmt = select(type_coerce(column("x"), MyType).label("foo"))
         subq = stmt.subquery()

@@ -152,7 +152,11 @@ class HasCacheKey(object):
                 # efficient switch construct
 
                 if meth is STATIC_CACHE_KEY:
-                    result += (attrname, obj._static_cache_key)
+                    sck = obj._static_cache_key
+                    if sck is NO_CACHE:
+                        anon_map[NO_CACHE] = True
+                        return None
+                    result += (attrname, sck)
                 elif meth is ANON_NAME:
                     elements = util.preloaded.sql_elements
                     if isinstance(obj, elements._anonymous_label):

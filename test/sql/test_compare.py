@@ -23,6 +23,7 @@ from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import tuple_
+from sqlalchemy import TypeDecorator
 from sqlalchemy import union
 from sqlalchemy import union_all
 from sqlalchemy import util
@@ -74,6 +75,7 @@ from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import ne_
+from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.util import random_choices
 from sqlalchemy.types import ARRAY
 from sqlalchemy.types import JSON
@@ -142,6 +144,25 @@ class Foo:
 dml.Insert.argument_for("sqlite", "foo", None)
 dml.Update.argument_for("sqlite", "foo", None)
 dml.Delete.argument_for("sqlite", "foo", None)
+
+
+class MyType1(TypeDecorator):
+    cache_ok = True
+    impl = String
+
+
+class MyType2(TypeDecorator):
+    cache_ok = True
+    impl = Integer
+
+
+class MyType3(TypeDecorator):
+    impl = Integer
+
+    cache_ok = True
+
+    def __init__(self, arg):
+        self.arg = arg
 
 
 class CoreFixtures(object):
@@ -684,6 +705,20 @@ class CoreFixtures(object):
         lambda: (table_a, table_b),
     ]
 
+    type_cache_key_fixtures = [
+        lambda: (
+            column("q") == column("x"),
+            column("q") == column("y"),
+            column("z") == column("x"),
+            column("z", String(50)) == column("x", String(50)),
+            column("z", String(50)) == column("x", String(30)),
+            column("z", String(50)) == column("x", Integer),
+            column("z", MyType1()) == column("x", MyType2()),
+            column("z", MyType1()) == column("x", MyType3("x")),
+            column("z", MyType1()) == column("x", MyType3("y")),
+        )
+    ]
+
     dont_compare_values_fixtures = [
         lambda: (
             # note the in_(...) all have different column names because
@@ -1126,6 +1161,7 @@ class CacheKeyTest(CacheKeyFixture, CoreFixtures, fixtures.TestBase):
         for fixtures_, compare_values in [
             (self.fixtures, True),
             (self.dont_compare_values_fixtures, False),
+            (self.type_cache_key_fixtures, False),
         ]:
             for fixture in fixtures_:
                 self._run_cache_key_fixture(fixture, compare_values)
@@ -1669,3 +1705,78 @@ class ExecutableFlagsTest(fixtures.TestBase):
             is_true(case.is_select)
         else:
             is_false(case.is_select)
+
+
+class TypesTest(fixtures.TestBase):
+    def test_typedec_no_cache(self):
+        class MyType(TypeDecorator):
+            impl = String
+
+        expr = column("q", MyType()) == 1
+
+        with expect_warnings(
+            r"TypeDecorator MyType\(\) will not produce a cache key"
+        ):
+            is_(expr._generate_cache_key(), None)
+
+    def test_typedec_cache_false(self):
+        class MyType(TypeDecorator):
+            impl = String
+
+            cache_ok = False
+
+        expr = column("q", MyType()) == 1
+
+        is_(expr._generate_cache_key(), None)
+
+    def test_typedec_cache_ok(self):
+        class MyType(TypeDecorator):
+            impl = String
+
+            cache_ok = True
+
+        def go1():
+            expr = column("q", MyType()) == 1
+            return expr
+
+        def go2():
+            expr = column("p", MyType()) == 1
+            return expr
+
+        c1 = go1()._generate_cache_key()[0]
+        c2 = go1()._generate_cache_key()[0]
+        c3 = go2()._generate_cache_key()[0]
+
+        eq_(c1, c2)
+        ne_(c1, c3)
+
+    def test_typedec_cache_ok_params(self):
+        class MyType(TypeDecorator):
+            impl = String
+
+            cache_ok = True
+
+            def __init__(self, p1, p2):
+                self.p1 = p1
+                self._p2 = p2
+
+        def go1():
+            expr = column("q", MyType("x", "y")) == 1
+            return expr
+
+        def go2():
+            expr = column("q", MyType("q", "y")) == 1
+            return expr
+
+        def go3():
+            expr = column("q", MyType("x", "z")) == 1
+            return expr
+
+        c1 = go1()._generate_cache_key()[0]
+        c2 = go1()._generate_cache_key()[0]
+        c3 = go2()._generate_cache_key()[0]
+        c4 = go3()._generate_cache_key()[0]
+
+        eq_(c1, c2)
+        ne_(c1, c3)
+        eq_(c1, c4)

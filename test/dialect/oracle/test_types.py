@@ -1189,6 +1189,7 @@ class SetInputSizesTest(fixtures.TestBase):
 
         class TestTypeDec(TypeDecorator):
             impl = NullType()
+            cache_ok = True
 
             def load_dialect_impl(self, dialect):
                 if dialect.name == "oracle":

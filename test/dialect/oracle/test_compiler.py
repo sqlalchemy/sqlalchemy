@@ -568,6 +568,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_limit_preserves_typing_information(self):
         class MyType(TypeDecorator):
             impl = Integer
+            cache_ok = True
 
         stmt = select(type_coerce(column("x"), MyType).label("foo")).limit(1)
         dialect = oracle.dialect()

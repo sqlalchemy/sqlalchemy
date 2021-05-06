@@ -531,6 +531,7 @@ class RowTupleTest(QueryTest):
         class MyType(TypeDecorator):
             impl = Integer
             hashable = False
+            cache_ok = True
 
             def process_result_value(self, value, dialect):
                 return [value]

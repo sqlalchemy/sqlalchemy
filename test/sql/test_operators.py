@@ -500,6 +500,7 @@ class TypeDecoratorComparatorTest(_CustomComparatorTests, fixtures.TestBase):
     def _add_override_factory(self):
         class MyInteger(TypeDecorator):
             impl = Integer
+            cache_ok = True
 
             class comparator_factory(TypeDecorator.Comparator):
                 def __init__(self, expr):
@@ -520,6 +521,7 @@ class TypeDecoratorTypeDecoratorComparatorTest(
     def _add_override_factory(self):
         class MyIntegerOne(TypeDecorator):
             impl = Integer
+            cache_ok = True
 
             class comparator_factory(TypeDecorator.Comparator):
                 def __init__(self, expr):
@@ -533,6 +535,7 @@ class TypeDecoratorTypeDecoratorComparatorTest(
 
         class MyIntegerTwo(TypeDecorator):
             impl = MyIntegerOne
+            cache_ok = True
 
         return MyIntegerTwo
 
@@ -556,6 +559,7 @@ class TypeDecoratorWVariantComparatorTest(
 
         class MyInteger(TypeDecorator):
             impl = Integer
+            cache_ok = True
 
             class comparator_factory(TypeDecorator.Comparator):
                 def __init__(self, expr):
@@ -587,6 +591,7 @@ class CustomEmbeddedinTypeDecoratorTest(
 
         class MyDecInteger(TypeDecorator):
             impl = MyInteger
+            cache_ok = True
 
         return MyDecInteger
 

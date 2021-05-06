@@ -2085,6 +2085,7 @@ class SchemaTypeTest(fixtures.TestBase):
 
     class MyTypeDecAndSchema(TypeDecorator, sqltypes.SchemaType):
         impl = String()
+        cache_ok = True
 
         evt_targets = ()
 
@@ -2114,6 +2115,7 @@ class SchemaTypeTest(fixtures.TestBase):
 
         class MyType(TypeDecorator):
             impl = target_typ
+            cache_ok = True
 
         typ = MyType()
         self._test_before_parent_attach(typ, target_typ)
@@ -2129,6 +2131,7 @@ class SchemaTypeTest(fixtures.TestBase):
     def test_before_parent_attach_typedec_of_schematype(self):
         class MyType(TypeDecorator, sqltypes.SchemaType):
             impl = String
+            cache_ok = True
 
         typ = MyType()
         self._test_before_parent_attach(typ)
@@ -2136,6 +2139,7 @@ class SchemaTypeTest(fixtures.TestBase):
     def test_before_parent_attach_schematype_of_typedec(self):
         class MyType(sqltypes.SchemaType, TypeDecorator):
             impl = String
+            cache_ok = True
 
         typ = MyType()
         self._test_before_parent_attach(typ)
@@ -2243,6 +2247,7 @@ class SchemaTypeTest(fixtures.TestBase):
     def test_to_metadata_copy_decorated(self):
         class MyDecorated(TypeDecorator):
             impl = self.MyType
+            cache_ok = True
 
         m1 = MetaData()
 

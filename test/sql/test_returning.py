@@ -100,6 +100,7 @@ class ReturningTest(fixtures.TablesTest, AssertsExecutionResults):
     def define_tables(cls, metadata):
         class GoofyType(TypeDecorator):
             impl = String
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 if value is None:
@@ -386,6 +387,7 @@ class CompositeStatementTest(fixtures.TestBase):
     def test_select_doesnt_pollute_result(self, connection):
         class MyType(TypeDecorator):
             impl = Integer
+            cache_ok = True
 
             def process_result_value(self, value, dialect):
                 raise Exception("I have not been selected")
