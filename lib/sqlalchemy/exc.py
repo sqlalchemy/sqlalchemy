@@ -19,7 +19,7 @@ from .util import compat
 _version_token = None
 
 
-class HasDescriptionCode:
+class HasDescriptionCode(object):
     """helper which adds 'code' as an attribute and '_code_str' as a method"""
 
     code = None
