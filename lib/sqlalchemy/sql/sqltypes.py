@@ -995,7 +995,7 @@ class _Binary(TypeEngine):
         def result_processor(self, dialect, coltype):
             def process(value):
                 if value is not None:
-                    value = bytes(value)
+                    value = value.bytes()
                 return value
 
             return process
