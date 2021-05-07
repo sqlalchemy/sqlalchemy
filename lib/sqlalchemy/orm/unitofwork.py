@@ -26,8 +26,10 @@ def _warn_for_cascade_backrefs(state, prop):
         '"%s" object is being merged into a Session along the backref '
         'cascade path for relationship "%s"; in SQLAlchemy 2.0, this '
         "reverse cascade will not take place.  Set cascade_backrefs to "
-        "False for the 2.0 behavior; or to set globally for the whole "
-        "Session, set the future=True flag" % (state.class_.__name__, prop)
+        "False in either the relationship() or backref() function for "
+        "the 2.0 behavior; or to set globally for the whole "
+        "Session, set the future=True flag" % (state.class_.__name__, prop),
+        code="s9r1",
     )
 
 

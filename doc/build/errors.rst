@@ -172,6 +172,38 @@ In SQLAlchemy 1.4, this :term:`2.0 style` behavior is enabled when the
 :paramref:`_orm.Session.future` flag is set on :class:`_orm.sessionmaker`
 or :class:`_orm.Session`.
 
+.. _error_s9r1:
+
+Object is being merged into a Session along the backref cascade
+---------------------------------------------------------------
+
+This message refers to the "backref cascade" behavior of SQLAlchemy,
+which is described at :ref:`backref_cascade`.   This refers to the action of
+an object being added into a :class:`_orm.Session` as a result of another
+object that's already present in that session being associated with it.
+As this behavior has been shown to be more confusing than helpful,
+the :paramref:`_orm.relationship.cascade_backrefs` and
+:paramref:`_orm.backref.cascade_backrefs` parameters were added, which can
+be set to ``False`` to disable it, and in SQLAlchemy 2.0 the "cascade backrefs"
+behavior will be disabled completely.
+
+To set :paramref:`_orm.relationship.cascade_backrefs` to ``False`` on a
+backref that is currently configured using the
+:paramref:`_orm.relationship.backref` string parameter, the backref must
+be declared using the :func:`_orm.backref` function first so that the
+:paramref:`_orm.backref.cascade_backrefs` parameter may be passed.
+
+Alternatively, the entire "cascade backrefs" behavior can be turned off
+across the board by using the :class:`_orm.Session` in "future" mode,
+by passing ``True`` for the :paramref:`_orm.Session.future` parameter.
+
+.. seealso::
+
+    :ref:`backref_cascade` - complete description of the cascade backrefs
+    behavior
+
+    :ref:`change_5150` - background on the change for SQLAlchemy 2.0.
+
 Connections and Transactions
 ============================
 

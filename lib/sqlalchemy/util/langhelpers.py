@@ -1616,9 +1616,9 @@ def warn(msg, code=None):
 
     """
     if code:
-        msg = "%s %s" % (msg, exc.SQLAlchemyError(msg, code=code)._code_str())
-
-    _warnings_warn(msg, exc.SAWarning)
+        _warnings_warn(exc.SAWarning(msg, code=code))
+    else:
+        _warnings_warn(msg, exc.SAWarning)
 
 
 def warn_limited(msg, args):

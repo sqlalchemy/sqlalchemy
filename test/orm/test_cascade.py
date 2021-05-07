@@ -1394,6 +1394,10 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
             with testing.expect_deprecated(
                 '"Address" object is being merged into a Session along '
                 'the backref cascade path for relationship "User.addresses"'
+                # link added to this specific warning
+                r".*Background on this error at: http://sqlalche.me/e/14/s9r1"
+                # link added to all RemovedIn20Warnings
+                r".*Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9"
             ):
                 a1.user = u1
             sess.add(a1)
