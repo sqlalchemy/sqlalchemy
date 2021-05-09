@@ -9,6 +9,7 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import attributes
+from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import exc as orm_exc
@@ -25,6 +26,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertsql import CountStatements
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -694,6 +696,115 @@ class ExpireTest(_fixtures.FixtureTest):
         assert a1 in u.addresses
         eq_(a1.email_address, "foo")
         assert a1 in sess.dirty
+
+    @testing.combinations(
+        ("contains,joined",),
+        ("contains,contains",),
+    )
+    def test_unexpire_eager_dont_include_contains_eager(self, case):
+        """test #6449
+
+        testing that contains_eager is downgraded to lazyload during
+        a refresh, including if additional eager loaders are off the
+        contains_eager
+
+        """
+        orders, Order, users, Address, addresses, User = (
+            self.tables.orders,
+            self.classes.Order,
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties={"orders": relationship(Order, order_by=orders.c.id)},
+        )
+        mapper(Address, addresses, properties={"user": relationship(User)})
+        mapper(Order, orders)
+
+        sess = fixture_session(autoflush=False)
+
+        with self.sql_execution_asserter(testing.db) as asserter:
+
+            if case == "contains,joined":
+                a1 = (
+                    sess.query(Address)
+                    .join(Address.user)
+                    .options(
+                        contains_eager(Address.user).joinedload(User.orders)
+                    )
+                    .filter(Address.id == 1)
+                    .one()
+                )
+            elif case == "contains,contains":
+                # legacy query.first() can't be used here because it sets
+                # limit 1 without the correct query wrapping.   1.3 has
+                # the same problem though it renders differently
+                a1 = (
+                    sess.query(Address)
+                    .join(Address.user)
+                    .join(User.orders)
+                    .order_by(Order.id)
+                    .options(
+                        contains_eager(Address.user).contains_eager(
+                            User.orders
+                        )
+                    )
+                    .filter(Address.id == 1)
+                    .one()
+                )
+
+            eq_(
+                a1,
+                Address(
+                    id=1,
+                    user=User(
+                        id=7, orders=[Order(id=1), Order(id=3), Order(id=5)]
+                    ),
+                ),
+            )
+
+        # ensure load with either contains_eager().joinedload() or
+        # contains_eager().contains_eager() worked as expected
+        asserter.assert_(CountStatements(1))
+
+        sess.expire(a1)
+
+        # assert behavior on unexpire
+        with self.sql_execution_asserter(testing.db) as asserter:
+            a1.user
+            assert "user" in a1.__dict__
+
+            if case == "contains,joined":
+                # joinedload took place
+                assert "orders" in a1.user.__dict__
+            elif case == "contains,contains":
+                # contains eager is downgraded to a lazy load
+                assert "orders" not in a1.user.__dict__
+
+            eq_(
+                a1,
+                Address(
+                    id=1,
+                    user=User(
+                        id=7, orders=[Order(id=1), Order(id=3), Order(id=5)]
+                    ),
+                ),
+            )
+
+        if case == "contains,joined":
+            # the joinedloader for Address->User works,
+            # so we get refresh(Address).lazyload(Address.user).
+            # joinedload(User.order)
+            asserter.assert_(CountStatements(2))
+        elif case == "contains,contains":
+            # both contains_eagers become normal loads so we get
+            # refresh(Address).lazyload(Address.user).lazyload(User.order]
+            asserter.assert_(CountStatements(3))
 
     def test_relationship_changes_preserved(self):
         users, Address, addresses, User = (

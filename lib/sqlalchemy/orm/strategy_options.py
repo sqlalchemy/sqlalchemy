@@ -185,9 +185,12 @@ class Load(Generative, LoaderOption):
         self._process(compile_state, not bool(compile_state.current_path))
 
     def _process(self, compile_state, raiseerr):
+        is_refresh = compile_state.compile_options._for_refresh_state
         current_path = compile_state.current_path
         if current_path:
             for (token, start_path), loader in self.context.items():
+                if is_refresh and not loader.propagate_to_loaders:
+                    continue
                 chopped_start_path = self._chop_path(start_path, current_path)
                 if chopped_start_path is not None:
                     compile_state.attributes[
@@ -705,9 +708,12 @@ class _UnboundLoad(Load):
 
     def _process(self, compile_state, raiseerr):
         dedupes = compile_state.attributes["_unbound_load_dedupes"]
+        is_refresh = compile_state.compile_options._for_refresh_state
         for val in self._to_bind:
             if val not in dedupes:
                 dedupes.add(val)
+                if is_refresh and not val.propagate_to_loaders:
+                    continue
                 val._bind_loader(
                     [
                         ent.entity_zero
