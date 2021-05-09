@@ -772,7 +772,12 @@ class ExpireTest(_fixtures.FixtureTest):
         # contains_eager().contains_eager() worked as expected
         asserter.assert_(CountStatements(1))
 
+        # expire object, reset the session fully and re-add so that
+        # the related User / Order objects are not in the identity map,
+        # allows SQL count below to be deterministic
         sess.expire(a1)
+        sess.close()
+        sess.add(a1)
 
         # assert behavior on unexpire
         with self.sql_execution_asserter(testing.db) as asserter:
