@@ -10,7 +10,7 @@ assignees: ''
 **GUIDELINES FOR REPORTING BUGS**
 
 If you are new to SQLAlchemy bug reports, please review our many examples
-of [well written bug reports](https://github.com/sqlalchemy/sqlalchemy/issues?q=is%3Aissue+label%3A%22great+mcve).   Each of these reports include the following features:
+of [well written bug reports](https://github.com/sqlalchemy/sqlalchemy/issues?q=is%3Aissue+label%3A%22great+mcve%22).   Each of these reports include the following features:
 
 1. a **succinct description of the problem** - typically a line or two at most
 2. As SQLAlchemy provides an intricate, fine-grained API around the concepts of
