@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 6449
+
+    Fixed additional regression caused by "eager loaders run on unexpire"
+    feature :ticket:`1763` where the feature would run for a
+    ``contains_eager()`` eagerload option in the case that the
+    ``contains_eager()`` were chained to an additional eager loader option,
+    which would then produce an incorrect query as the original query-bound
+    join criteria were no longer present.
