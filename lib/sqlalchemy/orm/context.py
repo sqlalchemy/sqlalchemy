@@ -2692,9 +2692,9 @@ class _ORMColumnEntity(_ColumnEntity):
         # within internal loaders.
 
         orm_key = annotations.get("proxy_key", None)
-        proxy_owner = annotations.get("proxy_owner", _entity.entity)
+        proxy_owner = annotations.get("proxy_owner", _entity)
         if orm_key:
-            self.expr = getattr(proxy_owner, orm_key)
+            self.expr = getattr(proxy_owner.entity, orm_key)
             self.translate_raw_column = False
         else:
             # if orm_key is not present, that means this is an ad-hoc

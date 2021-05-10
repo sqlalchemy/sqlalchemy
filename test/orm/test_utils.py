@@ -246,7 +246,7 @@ class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
                 "parententity": point_mapper,
                 "parentmapper": point_mapper,
                 "proxy_key": "x_alone",
-                "proxy_owner": Point,
+                "proxy_owner": point_mapper,
             },
         )
         eq_(
@@ -256,7 +256,7 @@ class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
                 "parententity": point_mapper,
                 "parentmapper": point_mapper,
                 "proxy_key": "x",
-                "proxy_owner": Point,
+                "proxy_owner": point_mapper,
             },
         )
 
@@ -264,6 +264,17 @@ class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
 
         a2 = aliased(Point)
         eq_(str(a2.x_alone == alias.x), "point_1.x = point_2.x")
+
+        eq_(
+            a2.x._annotations,
+            {
+                "entity_namespace": inspect(a2),
+                "parententity": inspect(a2),
+                "parentmapper": point_mapper,
+                "proxy_key": "x",
+                "proxy_owner": inspect(a2),
+            },
+        )
 
         sess = fixture_session()
 

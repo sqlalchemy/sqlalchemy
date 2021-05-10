@@ -310,6 +310,12 @@ class CacheKey(namedtuple("CacheKey", ["key", "bindparams"])):
     def __eq__(self, other):
         return self.key == other.key
 
+    @classmethod
+    def _diff_tuples(cls, left, right):
+        ck1 = CacheKey(left, [])
+        ck2 = CacheKey(right, [])
+        return ck1._diff(ck2)
+
     def _whats_different(self, other):
 
         k1 = self.key
@@ -412,6 +418,11 @@ class _CacheKey(ExtendedInternalTraversal):
     visit_anon_name = ANON_NAME
 
     visit_propagate_attrs = PROPAGATE_ATTRS
+
+    def visit_with_context_options(
+        self, attrname, obj, parent, anon_map, bindparams
+    ):
+        return tuple((fn.__code__, c_key) for fn, c_key in obj)
 
     def visit_inspectable(self, attrname, obj, parent, anon_map, bindparams):
         return (attrname, inspect(obj)._gen_cache_key(anon_map, bindparams))
@@ -1208,6 +1219,13 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
             )
         else:
             return left == right
+
+    def visit_with_context_options(
+        self, attrname, left_parent, left, right_parent, right, **kw
+    ):
+        return tuple((fn.__code__, c_key) for fn, c_key in left) == tuple(
+            (fn.__code__, c_key) for fn, c_key in right
+        )
 
     def visit_plain_obj(
         self, attrname, left_parent, left, right_parent, right, **kw

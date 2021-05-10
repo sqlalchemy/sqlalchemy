@@ -272,6 +272,8 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
 
     dp_executable_options = symbol("EO")
 
+    dp_with_context_options = symbol("WC")
+
     dp_fromclause_ordered_set = symbol("CO")
     """Visit an ordered set of :class:`_expression.FromClause` objects. """
 

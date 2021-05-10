@@ -723,7 +723,6 @@ class AliasedInsp(
                 "parentmapper": self.mapper,
                 "parententity": self,
                 "entity_namespace": self,
-                "compile_state_plugin": "orm",
             }
         )._set_propagate_attrs(
             {"compile_state_plugin": "orm", "plugin_subject": self}
@@ -784,7 +783,6 @@ class AliasedInsp(
         d = {
             "parententity": self,
             "parentmapper": self.mapper,
-            "compile_state_plugin": "orm",
         }
         if key:
             d["proxy_key"] = key
