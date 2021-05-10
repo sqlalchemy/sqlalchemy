@@ -781,7 +781,10 @@ class Executable(roles.StatementRole, Generative):
 
     _executable_traverse_internals = [
         ("_with_options", InternalTraversal.dp_executable_options),
-        ("_with_context_options", ExtendedInternalTraversal.dp_plain_obj),
+        (
+            "_with_context_options",
+            ExtendedInternalTraversal.dp_with_context_options,
+        ),
         ("_propagate_attrs", ExtendedInternalTraversal.dp_propagate_attrs),
     ]
 
@@ -853,8 +856,8 @@ class Executable(roles.StatementRole, Generative):
         These are callable functions that will
         be given the CompileState object upon compilation.
 
-        A second argument cache_args is required, which will be combined
-        with the identity of the function itself in order to produce a
+        A second argument cache_args is required, which will be combined with
+        the ``__code__`` identity of the function itself in order to produce a
         cache key.
 
         """

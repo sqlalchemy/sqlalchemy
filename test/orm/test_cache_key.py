@@ -1,4 +1,5 @@
 import random
+import types
 
 from sqlalchemy import func
 from sqlalchemy import inspect
@@ -12,6 +13,7 @@ from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import join as orm_join
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import Load
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import Query
@@ -27,6 +29,7 @@ from sqlalchemy.sql.expression import case
 from sqlalchemy.sql.visitors import InternalTraversal
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
 from .inheritance import _poly_fixtures
@@ -562,7 +565,9 @@ class RoundTripTest(QueryTest, AssertsCompiledSQL):
             User,
             users,
             properties={
-                "addresses": relationship(Address, back_populates="user")
+                "addresses": relationship(
+                    Address, back_populates="user", order_by=addresses.c.id
+                )
             },
         )
 
@@ -683,3 +688,60 @@ class RoundTripTest(QueryTest, AssertsCompiledSQL):
                 go()
         else:
             go()
+
+    @testing.combinations(
+        (lazyload, 2, 6),
+        (joinedload, 1, 0),
+        (selectinload, 2, 5),
+        (subqueryload, 2, 0),
+        argnames="strat,expected_stmt_cache,expected_lambda_cache",
+    )
+    def test_cache_key_loader_strategies(
+        self,
+        plain_fixture,
+        strat,
+        expected_stmt_cache,
+        expected_lambda_cache,
+        connection,
+    ):
+        User, Address = plain_fixture
+
+        cache = {}
+
+        connection = connection.execution_options(compiled_cache=cache)
+        sess = Session(connection)
+
+        with mock.patch(
+            "sqlalchemy.orm.strategies.LazyLoader._query_cache", cache
+        ), mock.patch(
+            "sqlalchemy.orm.strategies.SelectInLoader._query_cache", cache
+        ):
+
+            def go():
+                stmt = (
+                    select(User)
+                    .where(User.id == 7)
+                    .options(strat(User.addresses))
+                )
+
+                u1 = sess.execute(stmt).scalars().first()
+                eq_(u1.addresses, [Address(id=1)])
+
+            go()
+
+            lc = len(cache)
+
+            stmt_entries = [
+                k for k in cache if not isinstance(k[0], types.CodeType)
+            ]
+            lambda_entries = [
+                k for k in cache if isinstance(k[0], types.CodeType)
+            ]
+
+            eq_(len(stmt_entries), expected_stmt_cache)
+            eq_(len(lambda_entries), expected_lambda_cache)
+
+            for i in range(3):
+                go()
+
+            eq_(len(cache), lc)

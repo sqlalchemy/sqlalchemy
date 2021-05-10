@@ -227,7 +227,7 @@ class QueryableAttribute(
         else:
             annotations = {
                 "proxy_key": self.key,
-                "proxy_owner": self.class_,
+                "proxy_owner": self._parententity,
                 "entity_namespace": self._entity_namespace,
             }
 
@@ -531,6 +531,10 @@ def create_proxied_attribute(descriptor):
                 self.original_property is not None
                 and getattr(self.class_, self.key).impl.uses_objects
             )
+
+        @property
+        def _parententity(self):
+            return inspection.inspect(self.class_, raiseerr=False)
 
         @property
         def _entity_namespace(self):
