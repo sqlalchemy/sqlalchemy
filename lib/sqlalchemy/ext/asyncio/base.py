@@ -1,11 +1,13 @@
 import abc
+from typing import TypeVar 
 
 from . import exc as async_exc
 
+T = TypeVar('T')
 
 class StartableContext(abc.ABC):
     @abc.abstractmethod
-    async def start(self, is_ctxmanager=False) -> "StartableContext":
+    async def start(self:T, is_ctxmanager=False) -> T:
         pass
 
     def __await__(self):
