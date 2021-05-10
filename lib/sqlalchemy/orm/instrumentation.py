@@ -636,6 +636,7 @@ def __init__(%(apply_pos)s):
         func_kw_defaults = getattr(original_init, "__kwdefaults__", None)
 
     env = locals().copy()
+    env["__name__"] = __name__
     exec(func_text, env)
     __init__ = env["__init__"]
     __init__.__doc__ = original_init.__doc__

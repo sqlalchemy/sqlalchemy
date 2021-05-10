@@ -10,10 +10,10 @@ functionality."""
 
 import os
 import re
-import warnings
 
 from . import compat
 from .langhelpers import _hash_limit_string
+from .langhelpers import _warnings_warn
 from .langhelpers import decorator
 from .langhelpers import inject_docstring_text
 from .langhelpers import inject_param_text
@@ -38,7 +38,7 @@ def _warn_with_version(msg, version, type_, stacklevel):
     warn = type_(msg)
     warn.deprecated_since = version
 
-    warnings.warn(warn, stacklevel=stacklevel + 1)
+    _warnings_warn(warn, stacklevel=stacklevel + 1)
 
 
 def warn_deprecated(msg, version, stacklevel=3):

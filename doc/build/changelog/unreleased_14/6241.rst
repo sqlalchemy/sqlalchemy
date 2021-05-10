@@ -1,0 +1,10 @@
+.. change::
+    :tags: feature, general
+    :tickets: 6241
+
+    A new approach has been applied to the warnings system in SQLAlchemy to
+    accurately predict the appropriate stack level for each warning
+    dynamically. This allows evaluating the source of SQLAlchemy-generated
+    warnings and deprecation warnings to be more straightforward as the warning
+    will indicate the source line within end-user code, rather than from an
+    arbitrary level within SQLAlchemy's own source code.

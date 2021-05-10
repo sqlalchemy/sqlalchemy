@@ -193,7 +193,7 @@ def %(name)s(%(args)s):
 """
             % metadata
         )
-        env.update({targ_name: target, fn_name: fn})
+        env.update({targ_name: target, fn_name: fn, "__name__": fn.__module__})
 
         decorated = _exec_code_in_env(code, env, fn.__name__)
         decorated.__defaults__ = getattr(fn, "__func__", fn).__defaults__
@@ -269,7 +269,11 @@ def %(name)s(%(args)s):
 """
         % metadata
     )
-    env = {"cls": callable_, "symbol": symbol}
+    env = {
+        "cls": callable_,
+        "symbol": symbol,
+        "__name__": callable_.__module__,
+    }
     exec(code, env)
     decorated = env[location_name]
 
@@ -626,7 +630,7 @@ def create_proxy_methods(
         def instrument(name, clslevel=False):
             fn = getattr(target_cls, name)
             spec = compat.inspect_getfullargspec(fn)
-            env = {}
+            env = {"__name__": fn.__module__}
 
             spec = _update_argspec_defaults_into_env(spec, env)
             caller_argspec = format_argspec_plus(spec, grouped=False)
@@ -1614,7 +1618,7 @@ def warn(msg, code=None):
     if code:
         msg = "%s %s" % (msg, exc.SQLAlchemyError(msg, code=code)._code_str())
 
-    warnings.warn(msg, exc.SAWarning, stacklevel=2)
+    _warnings_warn(msg, exc.SAWarning)
 
 
 def warn_limited(msg, args):
@@ -1624,7 +1628,36 @@ def warn_limited(msg, args):
     """
     if args:
         msg = _hash_limit_string(msg, 10, args)
-    warnings.warn(msg, exc.SAWarning, stacklevel=2)
+    _warnings_warn(msg, exc.SAWarning)
+
+
+def _warnings_warn(message, category=None, stacklevel=2):
+
+    # adjust the given stacklevel to be outside of SQLAlchemy
+    try:
+        frame = sys._getframe(stacklevel)
+    except ValueError:
+        # being called from less than 3 (or given) stacklevels, weird,
+        # but don't crash
+        stacklevel = 0
+    except:
+        # _getframe() doesn't work, weird interpreter issue, weird,
+        # ok, but don't crash
+        stacklevel = 0
+    else:
+        # using __name__ here requires that we have __name__ in the
+        # __globals__ of the decorated string functions we make also.
+        # we generate this using {"__name__": fn.__module__}
+        while frame is not None and re.match(
+            r"^(?:sqlalchemy\.|alembic\.)", frame.f_globals.get("__name__", "")
+        ):
+            frame = frame.f_back
+            stacklevel += 1
+
+    if category is not None:
+        warnings.warn(message, category, stacklevel=stacklevel + 1)
+    else:
+        warnings.warn(message, stacklevel=stacklevel + 1)
 
 
 def only_once(fn, retry_on_exception):
