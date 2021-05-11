@@ -1,4 +1,7 @@
+from sqlalchemy import delete
 from sqlalchemy import testing
+from sqlalchemy import text
+from sqlalchemy import update
 from sqlalchemy.dialects import mssql
 from sqlalchemy.engine import default
 from sqlalchemy.exc import CompileError
@@ -1230,6 +1233,76 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE products.price = pd.price",
         )
         eq_(stmt.compile().isupdate, True)
+
+    def test_update_against_cte_directly(self):
+        """test #6464
+
+        for UPDATE, I'm not sure this is a valid syntax on any platform.
+
+        """
+        products = table("products", column("id"), column("price"))
+
+        cte = products.select().cte("pd")
+        assert "autocommit" not in cte.select()._execution_options
+
+        stmt = update(cte)
+        eq_(stmt.compile().execution_options["autocommit"], True)
+
+        self.assert_compile(
+            stmt,
+            "WITH pd AS (SELECT products.id AS id, products.price AS price "
+            "FROM products) UPDATE pd SET id=:id, price=:price",
+        )
+        eq_(stmt.compile().isupdate, True)
+
+    def test_delete_against_cte_directly(self):
+        """test #6464.
+
+        SQL-Server specific arrangement seems to allow
+        DELETE from a CTE directly.
+
+        """
+        products = table("products", column("id"), column("price"))
+
+        cte = products.select().cte("pd")
+        assert "autocommit" not in cte.select()._execution_options
+
+        stmt = delete(cte)
+        eq_(stmt.compile().execution_options["autocommit"], True)
+
+        self.assert_compile(
+            stmt,
+            "WITH pd AS (SELECT products.id AS id, products.price AS price "
+            "FROM products) DELETE FROM pd",
+        )
+        eq_(stmt.compile().isdelete, True)
+
+    def test_delete_against_user_textual_cte(self):
+        """test #6464.
+
+        Test the user's exact arrangement.
+
+        """
+
+        q = select(
+            text(
+                "name, date_hour, "
+                "ROW_NUMBER() OVER(PARTITION BY name, date_hour "
+                "ORDER BY value DESC)"
+                " AS RN FROM testtable"
+            )
+        )
+        cte = q.cte("deldup")
+        stmt = delete(cte, text("RN > 1"))
+        eq_(stmt.compile().execution_options["autocommit"], True)
+
+        self.assert_compile(
+            stmt,
+            "WITH deldup AS (SELECT name, date_hour, ROW_NUMBER() "
+            "OVER(PARTITION BY name, date_hour ORDER BY value DESC) "
+            "AS RN FROM testtable) DELETE FROM deldup WHERE RN > 1",
+        )
+        eq_(stmt.compile().isdelete, True)
 
     def test_standalone_function(self):
         a = table("a", column("x"))

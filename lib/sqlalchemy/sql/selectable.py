@@ -1992,7 +1992,13 @@ class TableSample(AliasedReturnsRows):
             return functions.func.system(self.sampling)
 
 
-class CTE(Generative, HasPrefixes, HasSuffixes, AliasedReturnsRows):
+class CTE(
+    roles.DMLTableRole,
+    Generative,
+    HasPrefixes,
+    HasSuffixes,
+    AliasedReturnsRows,
+):
     """Represent a Common Table Expression.
 
     The :class:`_expression.CTE` object is obtained using the
