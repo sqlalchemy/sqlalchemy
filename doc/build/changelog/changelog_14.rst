@@ -15,7 +15,59 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.15
-    :include_notes_from: unreleased_14
+    :released: May 11, 2021
+
+    .. change::
+        :tags: bug, documentation, mysql
+        :tickets: 5397
+
+        Added support for the ``ssl_check_hostname=`` parameter in mysql connection
+        URIs and updated the mysql dialect documentation regarding secure
+        connections. Original pull request courtesy of Jerry Zhao.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6449
+
+        Fixed additional regression caused by "eager loaders run on unexpire"
+        feature :ticket:`1763` where the feature would run for a
+        ``contains_eager()`` eagerload option in the case that the
+        ``contains_eager()`` were chained to an additional eager loader option,
+        which would then produce an incorrect query as the original query-bound
+        join criteria were no longer present.
+
+    .. change::
+        :tags: feature, general
+        :tickets: 6241
+
+        A new approach has been applied to the warnings system in SQLAlchemy to
+        accurately predict the appropriate stack level for each warning
+        dynamically. This allows evaluating the source of SQLAlchemy-generated
+        warnings and deprecation warnings to be more straightforward as the warning
+        will indicate the source line within end-user code, rather than from an
+        arbitrary level within SQLAlchemy's own source code.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6459
+
+        Fixed issue in subquery loader strategy which prevented caching from
+        working correctly. This would have been seen in the logs as a "generated"
+        message instead of "cached" for all subqueryload SQL emitted, which by
+        saturating the cache with new keys would degrade overall performance; it
+        also would produce "LRU size alert" warnings.
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 6460
+
+        Adjusted the logic added as part of :ticket:`6397` in 1.4.12 so that
+        internal mutation of the :class:`.BindParameter` object occurs within the
+        clause construction phase as it did before, rather than in the compilation
+        phase. In the latter case, the mutation still produced side effects against
+        the incoming construct and additionally could potentially interfere with
+        other internal mutation routines.
 
 .. changelog::
     :version: 1.4.14
