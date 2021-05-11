@@ -156,6 +156,43 @@ class LambdaElementTest(
             )
             eq_(result.all(), [(e["id"],) for e in data if e["name"] in case])
 
+    def test_in_expr_compile(self, user_address_fixture):
+        users, _ = user_address_fixture
+
+        def go(val):
+            stmt = lambdas.lambda_stmt(lambda: select(users.c.id))
+            stmt += lambda s: s.where(users.c.name.in_(val))
+            stmt += lambda s: s.order_by(users.c.id)
+            return stmt
+
+        # note this also requires the type of the bind is copied
+        self.assert_compile(
+            go([]),
+            "SELECT users.id FROM users "
+            "WHERE users.name IN (NULL) AND (1 != 1) ORDER BY users.id",
+            literal_binds=True,
+        )
+        self.assert_compile(
+            go(["u1", "u2"]),
+            "SELECT users.id FROM users "
+            "WHERE users.name IN ('u1', 'u2') ORDER BY users.id",
+            literal_binds=True,
+        )
+
+    def test_bind_type(self, user_address_fixture):
+        users, _ = user_address_fixture
+
+        def go(val):
+            stmt = lambdas.lambda_stmt(lambda: select(users.c.id))
+            stmt += lambda s: s.where(users.c.name == val)
+            return stmt
+
+        self.assert_compile(
+            go("u1"),
+            "SELECT users.id FROM users " "WHERE users.name = 'u1'",
+            literal_binds=True,
+        )
+
     def test_stale_checker_embedded(self):
         def go(x):
 

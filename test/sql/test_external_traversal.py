@@ -225,6 +225,22 @@ class TraversalTest(
             dialect="default",
         )
 
+    def test_expanding_in_bindparam_safe_to_clone(self):
+        expr = column("x").in_([1, 2, 3])
+
+        expr2 = expr._clone()
+
+        # shallow copy, bind is used twice
+        is_(expr.right, expr2.right)
+
+        stmt = and_(expr, expr2)
+        self.assert_compile(
+            stmt, "x IN ([POSTCOMPILE_x_1]) AND x IN ([POSTCOMPILE_x_1])"
+        )
+        self.assert_compile(
+            stmt, "x IN (1, 2, 3) AND x IN (1, 2, 3)", literal_binds=True
+        )
+
     def test_traversal_size(self):
         """Test :ticket:`6304`.
 

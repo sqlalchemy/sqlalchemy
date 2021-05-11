@@ -204,7 +204,7 @@ This document details individual issue-level changes made throughout
 
     .. change::
         :tags: bug, sql
-        :tickets: 6258 6397
+        :tickets: 6258, 6397
 
         Revised the "EMPTY IN" expression to no longer rely upon using a subquery,
         as this was causing some compatibility and performance problems. The new

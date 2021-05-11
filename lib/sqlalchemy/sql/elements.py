@@ -256,6 +256,15 @@ class ClauseElement(
 
         return c
 
+    def _negate_in_binary(self, negated_op, original_op):
+        """a hook to allow the right side of a binary expression to respond
+        to a negation of the binary expression.
+
+        Used for the special case of expanding bind parameter with IN.
+
+        """
+        return self
+
     def _with_binary_element_type(self, type_):
         """in the context of binary expression, convert the type of this
         object to the one given.
@@ -1509,6 +1518,14 @@ class BindParameter(roles.InElementRole, ColumnElement):
             type_=self.type,
             literal_execute=True,
         )
+
+    def _negate_in_binary(self, negated_op, original_op):
+        if self.expand_op is original_op:
+            bind = self._clone()
+            bind.expand_op = negated_op
+            return bind
+        else:
+            return self
 
     def _with_binary_element_type(self, type_):
         c = ClauseElement._clone(self)
@@ -3729,7 +3746,7 @@ class BinaryExpression(ColumnElement):
         if self.negate is not None:
             return BinaryExpression(
                 self.left,
-                self.right,
+                self.right._negate_in_binary(self.negate, self.operator),
                 self.negate,
                 negate=self.operator,
                 type_=self.type,

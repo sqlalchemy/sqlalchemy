@@ -1975,15 +1975,20 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 literal_binds=True,
             )
 
-    @testing.combinations(True, False)
-    def test_in_empty_tuple(self, is_in):
+    @testing.combinations(True, False, argnames="is_in")
+    @testing.combinations(True, False, argnames="negate")
+    def test_in_empty_tuple(self, is_in, negate):
         a, b, c = (
             column("a", Integer),
             column("b", String),
             column("c", LargeBinary),
         )
         t1 = tuple_(a, b, c)
-        expr = t1.in_([]) if is_in else t1.not_in([])
+
+        if negate:
+            expr = ~t1.not_in([]) if is_in else ~t1.in_([])
+        else:
+            expr = t1.in_([]) if is_in else t1.not_in([])
 
         if is_in:
             self.assert_compile(
@@ -2010,10 +2015,15 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 dialect="default_enhanced",
             )
 
-    @testing.combinations(True, False)
-    def test_in_empty_single(self, is_in):
+    @testing.combinations(True, False, argnames="is_in")
+    @testing.combinations(True, False, argnames="negate")
+    def test_in_empty_single(self, is_in, negate):
         a = column("a", Integer)
-        expr = a.in_([]) if is_in else a.not_in([])
+
+        if negate:
+            expr = ~a.not_in([]) if is_in else ~a.in_([])
+        else:
+            expr = a.in_([]) if is_in else a.not_in([])
 
         if is_in:
             self.assert_compile(
@@ -2039,6 +2049,36 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                 literal_binds=True,
                 dialect="default_enhanced",
             )
+
+    def test_in_self_plus_negated(self):
+        a = column("a", Integer)
+
+        expr1 = a.in_([5])
+        expr2 = ~expr1
+
+        stmt = and_(expr1, expr2)
+        self.assert_compile(
+            stmt, "a IN ([POSTCOMPILE_a_1]) AND (a NOT IN ([POSTCOMPILE_a_2]))"
+        )
+        self.assert_compile(
+            stmt, "a IN (5) AND (a NOT IN (5))", literal_binds=True
+        )
+
+    def test_in_self_plus_negated_empty(self):
+        a = column("a", Integer)
+
+        expr1 = a.in_([])
+        expr2 = ~expr1
+
+        stmt = and_(expr1, expr2)
+        self.assert_compile(
+            stmt, "a IN ([POSTCOMPILE_a_1]) AND (a NOT IN ([POSTCOMPILE_a_2]))"
+        )
+        self.assert_compile(
+            stmt,
+            "a IN (NULL) AND (1 != 1) AND (a NOT IN (NULL) OR (1 = 1))",
+            literal_binds=True,
+        )
 
     def test_in_set(self):
         s = {1, 2, 3}
