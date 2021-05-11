@@ -561,9 +561,10 @@ class InElementImpl(RoleImpl):
             return element.self_group(against=operator)
 
         elif isinstance(element, elements.BindParameter):
-            # previously we were adding expanding flags here but
-            # we now do this in the compiler where we have more context
-            # see compiler.py -> _render_in_expr_w_bindparam
+            element = element._clone(maintain_key=True)
+            element.expanding = True
+            element.expand_op = operator
+
             return element
         else:
             return element

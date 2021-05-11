@@ -270,6 +270,8 @@ class LambdaElement(elements.ClauseElement):
                     bind = bindparam_lookup[thing.key]
                     if thing.expanding:
                         bind.expanding = True
+                        bind.expand_op = thing.expand_op
+                        bind.type = thing.type
                     return bind
 
         if self._rec.is_sequence:
