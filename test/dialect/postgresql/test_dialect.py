@@ -62,7 +62,7 @@ if True:
 
 
 class DialectTest(fixtures.TestBase):
-    """python-side dialect tests.  """
+    """python-side dialect tests."""
 
     def test_version_parsing(self):
         def mock_conn(res):

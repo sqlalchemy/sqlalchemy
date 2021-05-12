@@ -1885,7 +1885,7 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
 class JoinedloadWPolyOfTypeContinued(
     fixtures.DeclarativeMappedTest, testing.AssertsCompiledSQL
 ):
-    """test for #5082 """
+    """test for #5082"""
 
     @classmethod
     def setup_classes(cls):
@@ -2045,7 +2045,7 @@ class JoinedloadWPolyOfTypeContinued(
 class ContainsEagerMultipleOfType(
     fixtures.DeclarativeMappedTest, testing.AssertsCompiledSQL
 ):
-    """test for #5107 """
+    """test for #5107"""
 
     __dialect__ = "default"
 

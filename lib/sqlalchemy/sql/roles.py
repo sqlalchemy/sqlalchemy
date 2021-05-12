@@ -204,7 +204,7 @@ class DMLColumnRole(SQLRole):
 
 
 class DMLSelectRole(SQLRole):
-    """A SELECT statement embedded in DML, typically INSERT from SELECT """
+    """A SELECT statement embedded in DML, typically INSERT from SELECT"""
 
     _role_name = "SELECT statement or equivalent textual object"
 

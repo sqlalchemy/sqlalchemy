@@ -230,7 +230,7 @@ class TransScopingTest(_fixtures.FixtureTest):
     def test_autobegin_attr_change(
         self, case_, autocommit, begin, modify_unconditional, expire_on_commit
     ):
-        """test :ticket:`6360` """
+        """test :ticket:`6360`"""
 
         User, users = self.classes.User, self.tables.users
 

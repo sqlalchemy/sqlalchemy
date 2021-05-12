@@ -16,11 +16,12 @@ from ...util.concurrency import greenlet_spawn
 
 if util.TYPE_CHECKING:
     from typing import Any
-    from typing import List
-    from typing import Optional
     from typing import Int
     from typing import Iterator
+    from typing import List
     from typing import Mapping
+    from typing import Optional
+
     from ...engine.result import Row
 
 

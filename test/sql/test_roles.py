@@ -147,7 +147,7 @@ class RoleTest(fixtures.TestBase):
         )
 
     def test_untyped_scalar_subquery(self):
-        """test for :ticket:`6181` """
+        """test for :ticket:`6181`"""
 
         c = column("q")
         subq = select(c).scalar_subquery()

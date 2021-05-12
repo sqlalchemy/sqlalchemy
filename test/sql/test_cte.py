@@ -265,8 +265,6 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_recursive_union_alias_two(self):
-        """"""
-
         # I know, this is the PG VALUES keyword,
         # we're cheating here.  also yes we need the SELECT,
         # sorry PG.

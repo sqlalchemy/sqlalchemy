@@ -49,7 +49,7 @@ class _LiteralRoundTripFixture(object):
 
     @testing.fixture
     def literal_round_trip(self, metadata, connection):
-        """test literal rendering """
+        """test literal rendering"""
 
         # for literal, we test the literal render in an INSERT
         # into a typed column.  we can then SELECT it back as its

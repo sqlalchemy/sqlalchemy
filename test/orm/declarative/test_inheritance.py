@@ -906,10 +906,10 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             __tablename__ = "person"
 
         class Engineer(Person):
-            """ single table inheritance, no extra cols """
+            """single table inheritance, no extra cols"""
 
         class Manager(Person):
-            """ single table inheritance, no extra cols """
+            """single table inheritance, no extra cols"""
 
         is_(Engineer.id.property.columns[0], Person.__table__.c.id)
         is_(Manager.id.property.columns[0], Person.__table__.c.id)

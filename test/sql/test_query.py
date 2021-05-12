@@ -780,7 +780,7 @@ class QueryTest(fixtures.TablesTest):
         )
 
     def test_expanding_in_dont_alter_compiled(self, connection):
-        """test for issue #5048 """
+        """test for issue #5048"""
 
         class NameWithProcess(TypeDecorator):
             impl = String

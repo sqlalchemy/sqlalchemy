@@ -33,8 +33,9 @@ from ..sql.base import _generative
 from ..sql.base import Generative
 
 if util.TYPE_CHECKING:
-    from .context import QueryContext
     from typing import Sequence
+
+    from .context import QueryContext
     from ..sql.elements import ColumnElement
 
 

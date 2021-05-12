@@ -56,7 +56,7 @@ def test_orm_commit(n):
 
 @Profiler.profile
 def test_bulk_save(n):
-    """Individual INSERT/COMMIT pairs using the "bulk" API """
+    """Individual INSERT/COMMIT pairs using the "bulk" API"""
 
     for i in range(n):
         session = Session(bind=engine)

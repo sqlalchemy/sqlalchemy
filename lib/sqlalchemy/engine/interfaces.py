@@ -14,6 +14,7 @@ from ..util import compat
 
 if compat.TYPE_CHECKING:
     from typing import Any
+
     from .url import URL
 
 
@@ -1559,8 +1560,9 @@ class Connectable(object):
     """
 
     def execute(self, object_, *multiparams, **params):
-        """Executes the given construct and returns a """
-        """:class:`_engine.CursorResult`."""
+        """Executes the given construct and returns a
+        :class:`_engine.CursorResult`.
+        """
         raise NotImplementedError()
 
     def scalar(self, object_, *multiparams, **params):

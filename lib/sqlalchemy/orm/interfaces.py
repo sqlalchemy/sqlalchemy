@@ -45,6 +45,7 @@ if util.TYPE_CHECKING:
     from typing import Any
     from typing import List
     from typing import Optional
+
     from .mapper import Mapper
     from .util import AliasedInsp
 

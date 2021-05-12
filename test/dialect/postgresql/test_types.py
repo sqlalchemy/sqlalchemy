@@ -2443,7 +2443,7 @@ class SpecialTypesCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
 class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
 
-    """test DDL and reflection of PG-specific types """
+    """test DDL and reflection of PG-specific types"""
 
     __only_on__ = ("postgresql >= 8.3.0",)
     __backend__ = True

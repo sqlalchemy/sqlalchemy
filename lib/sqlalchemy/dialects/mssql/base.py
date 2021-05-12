@@ -1740,7 +1740,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
         )
 
     def get_select_precolumns(self, select, **kw):
-        """ MS-SQL puts TOP, it's version of LIMIT here """
+        """MS-SQL puts TOP, it's version of LIMIT here"""
 
         s = super(MSSQLCompiler, self).get_select_precolumns(select, **kw)
 

@@ -2107,7 +2107,7 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
     def test_scalar_subquery_wo_type(self):
-        """ test for :ticket:`6181` """
+        """test for :ticket:`6181`"""
 
         m = MetaData()
         t = Table("t", m, Column("a", Integer))

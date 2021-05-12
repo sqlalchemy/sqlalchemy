@@ -2618,7 +2618,7 @@ class LegacySequenceExecTest(fixtures.TestBase):
             self._assert_seq_result(testing.db.scalar(s.next_value()))
 
     def test_func_implicit_connectionless_scalar(self):
-        """test func.next_value().execute()/.scalar() works. """
+        """test func.next_value().execute()/.scalar() works."""
 
         with testing.expect_deprecated_20(
             r"The MetaData.bind argument is deprecated"

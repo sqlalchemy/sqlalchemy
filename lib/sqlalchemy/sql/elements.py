@@ -450,8 +450,9 @@ class ClauseElement(
         return self
 
     def _ungroup(self):
-        """Return this :class:`_expression.ClauseElement` """
-        """without any groupings."""
+        """Return this :class:`_expression.ClauseElement`
+        without any groupings.
+        """
 
         return self
 

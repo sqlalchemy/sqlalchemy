@@ -1046,7 +1046,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         not_in(jane, sess)
 
     def test_update_with_filter_statement(self):
-        """test for [ticket:4556] """
+        """test for [ticket:4556]"""
 
         User = self.classes.User
 

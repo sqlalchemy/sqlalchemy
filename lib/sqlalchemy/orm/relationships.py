@@ -51,8 +51,9 @@ from ..sql.util import visit_binary_product
 
 
 if util.TYPE_CHECKING:
-    from .util import AliasedInsp
     from typing import Union
+
+    from .util import AliasedInsp
 
 
 def remote(expr):

@@ -395,7 +395,7 @@ class BIT(sqltypes.TypeEngine):
 
 
 class TIME(sqltypes.TIME):
-    """MySQL TIME type. """
+    """MySQL TIME type."""
 
     __visit_name__ = "TIME"
 
