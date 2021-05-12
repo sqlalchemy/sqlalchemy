@@ -2051,6 +2051,13 @@ class RelationshipProperty(StrategizedProperty):
 
     def _add_reverse_property(self, key):
         other = self.mapper.get_property(key, _configure_mappers=False)
+        if not isinstance(other, RelationshipProperty):
+            raise sa_exc.InvalidRequestError(
+                "back_populates on relationship '%s' refers to attribute '%s' "
+                "that is not a relationship.  The back_populates parameter "
+                "should refer to the name of a relationship on the target "
+                "class." % (self, other)
+            )
         # viewonly and sync_backref cases
         # 1. self.viewonly==True and other.sync_backref==True -> error
         # 2. self.viewonly==True and other.viewonly==False and
