@@ -72,17 +72,17 @@ class URL(
 
     :class:`_engine.URL` contains the following attributes:
 
-    :var `_engine.URL.drivername`: database backend and driver name, such as
-     ``postgresql+psycopg2``
-    :var `_engine.URL.username`: username string
-    :var `_engine.URL.password`: password, which is normally a string but may
-     also be any object that has a ``__str__()`` method.
-    :var `_engine.URL.host`: string hostname
-    :var `_engine.URL.port`: integer port number
-    :var `_engine.URL.database`: string database name
-    :var `_engine.URL.query`: an immutable mapping representing the query
-     string.  contains strings for keys and either strings or tuples of strings
-     for values.
+    * :attr:`_engine.URL.drivername`: database backend and driver name, such as
+      ``postgresql+psycopg2``
+    * :attr:`_engine.URL.username`: username string
+    * :attr:`_engine.URL.password`: password, which is normally a string but
+      may also be any object that has a ``__str__()`` method.
+    * :attr:`_engine.URL.host`: string hostname
+    * :attr:`_engine.URL.port`: integer port number
+    * :attr:`_engine.URL.database`: string database name
+    * :attr:`_engine.URL.query`: an immutable mapping representing the query
+      string.  contains strings for keys and either strings or tuples of
+      strings for values.
 
 
     """
