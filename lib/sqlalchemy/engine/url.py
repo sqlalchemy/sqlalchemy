@@ -72,7 +72,7 @@ class URL(
 
     :class:`_engine.URL` contains the following attributes:
 
-    :var `_engine.URL.driver`: database backend and driver name, such as
+    :var `_engine.URL.drivername`: database backend and driver name, such as
      ``postgresql+psycopg2``
     :var `_engine.URL.username`: username string
     :var `_engine.URL.password`: password, which is normally a string but may
