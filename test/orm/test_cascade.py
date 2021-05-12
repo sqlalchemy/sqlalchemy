@@ -20,6 +20,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import util as orm_util
 from sqlalchemy.orm.attributes import instance_state
+from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.orm.decl_api import declarative_base
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -4439,3 +4440,88 @@ class ViewonlyFlagWarningTest(fixtures.MappedTest):
             cascade="all, delete, delete-orphan",
             viewonly=True,
         )
+
+
+class CollectionCascadesDespiteBackrefTest(fixtures.TestBase):
+    @testing.fixture
+    def cascade_fixture(self, registry):
+        def go(collection_class):
+            @registry.mapped
+            class A(object):
+                __tablename__ = "a"
+
+                id = Column(Integer, primary_key=True)
+                bs = relationship(
+                    "B", backref="a", collection_class=collection_class
+                )
+
+            @registry.mapped
+            class B(object):
+                __tablename__ = "b_"
+                id = Column(Integer, primary_key=True)
+                a_id = Column(ForeignKey("a.id"))
+                key = Column(String)
+
+            return A, B
+
+        yield go
+
+    @testing.combinations(
+        (set, "add"),
+        (list, "append"),
+        (attribute_mapped_collection("key"), "__setitem__"),
+        (attribute_mapped_collection("key"), "setdefault"),
+        (attribute_mapped_collection("key"), "update_dict"),
+        (attribute_mapped_collection("key"), "update_kw"),
+        argnames="collection_class,methname",
+    )
+    @testing.combinations((True,), (False,), argnames="future")
+    def test_cascades_on_collection(
+        self, cascade_fixture, collection_class, methname, future
+    ):
+        A, B = cascade_fixture(collection_class)
+
+        s = Session(future=future)
+
+        a1 = A()
+        s.add(a1)
+
+        b1 = B(key="b1")
+        b2 = B(key="b2")
+        b3 = B(key="b3")
+
+        b1.a = a1
+        b3.a = a1
+
+        if future:
+            assert b1 not in s
+            assert b3 not in s
+        else:
+            assert b1 in s
+            assert b3 in s
+
+        if methname == "__setitem__":
+            meth = getattr(a1.bs, methname)
+            meth(b1.key, b1)
+            meth(b2.key, b2)
+        elif methname == "setdefault":
+            meth = getattr(a1.bs, methname)
+            meth(b1.key, b1)
+            meth(b2.key, b2)
+        elif methname == "update_dict" and isinstance(a1.bs, dict):
+            a1.bs.update({b1.key: b1, b2.key: b2})
+        elif methname == "update_kw" and isinstance(a1.bs, dict):
+            a1.bs.update(b1=b1, b2=b2)
+        else:
+            meth = getattr(a1.bs, methname)
+            meth(b1)
+            meth(b2)
+
+        assert b1 in s
+        assert b2 in s
+
+        if future:
+            assert b3 not in s  # the event never triggers from reverse
+        else:
+            # old behavior
+            assert b3 in s

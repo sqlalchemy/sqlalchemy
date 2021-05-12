@@ -32,6 +32,7 @@ class Canary(object):
         self.data = set()
         self.added = set()
         self.removed = set()
+        self.appended_wo_mutation = set()
         self.dupe_check = True
 
     @contextlib.contextmanager
@@ -44,6 +45,7 @@ class Canary(object):
 
     def listen(self, attr):
         event.listen(attr, "append", self.append)
+        event.listen(attr, "append_wo_mutation", self.append_wo_mutation)
         event.listen(attr, "remove", self.remove)
         event.listen(attr, "set", self.set)
 
@@ -53,6 +55,11 @@ class Canary(object):
             self.added.add(value)
         self.data.add(value)
         return value
+
+    def append_wo_mutation(self, obj, value, initiator):
+        if self.dupe_check:
+            assert value in self.added
+            self.appended_wo_mutation.add(value)
 
     def remove(self, obj, value, initiator):
         if self.dupe_check:
@@ -652,6 +659,48 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self._test_list_bulk(ListIsh)
         self.assert_(getattr(ListIsh, "_sa_instrumented") == id(ListIsh))
 
+    def _test_set_wo_mutation(self, typecallable, creator=None):
+        if creator is None:
+            creator = self.entity_maker
+
+        class Foo(object):
+            pass
+
+        canary = Canary()
+        instrumentation.register_class(Foo)
+        d = attributes.register_attribute(
+            Foo,
+            "attr",
+            uselist=True,
+            typecallable=typecallable,
+            useobject=True,
+        )
+        canary.listen(d)
+
+        obj = Foo()
+
+        e = creator()
+
+        obj.attr.add(e)
+
+        assert e in canary.added
+        assert e not in canary.appended_wo_mutation
+
+        obj.attr.add(e)
+        assert e in canary.added
+        assert e in canary.appended_wo_mutation
+
+        e = creator()
+
+        obj.attr.update({e})
+
+        assert e in canary.added
+        assert e not in canary.appended_wo_mutation
+
+        obj.attr.update({e})
+        assert e in canary.added
+        assert e in canary.appended_wo_mutation
+
     def _test_set(self, typecallable, creator=None):
         if creator is None:
             creator = self.entity_maker
@@ -976,6 +1025,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self._test_adapter(set)
         self._test_set(set)
         self._test_set_bulk(set)
+        self._test_set_wo_mutation(set)
 
     def test_set_subclass(self):
         class MySet(set):
@@ -1059,6 +1109,67 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self._test_set(SetIsh)
         self._test_set_bulk(SetIsh)
         self.assert_(getattr(SetIsh, "_sa_instrumented") == id(SetIsh))
+
+    def _test_dict_wo_mutation(self, typecallable, creator=None):
+        if creator is None:
+            creator = self.dictable_entity
+
+        class Foo(object):
+            pass
+
+        canary = Canary()
+        instrumentation.register_class(Foo)
+        d = attributes.register_attribute(
+            Foo,
+            "attr",
+            uselist=True,
+            typecallable=typecallable,
+            useobject=True,
+        )
+        canary.listen(d)
+
+        obj = Foo()
+
+        e = creator()
+
+        obj.attr[e.a] = e
+        assert e in canary.added
+        assert e not in canary.appended_wo_mutation
+
+        with canary.defer_dupe_check():
+            # __setitem__ sets every time
+            obj.attr[e.a] = e
+            assert e in canary.added
+            assert e not in canary.appended_wo_mutation
+
+        if hasattr(obj.attr, "update"):
+            e = creator()
+            obj.attr.update({e.a: e})
+            assert e in canary.added
+            assert e not in canary.appended_wo_mutation
+
+            obj.attr.update({e.a: e})
+            assert e in canary.added
+            assert e in canary.appended_wo_mutation
+
+            e = creator()
+            obj.attr.update(**{e.a: e})
+            assert e in canary.added
+            assert e not in canary.appended_wo_mutation
+
+            obj.attr.update(**{e.a: e})
+            assert e in canary.added
+            assert e in canary.appended_wo_mutation
+
+        if hasattr(obj.attr, "setdefault"):
+            e = creator()
+            obj.attr.setdefault(e.a, e)
+            assert e in canary.added
+            assert e not in canary.appended_wo_mutation
+
+            obj.attr.setdefault(e.a, e)
+            assert e in canary.added
+            assert e in canary.appended_wo_mutation
 
     def _test_dict(self, typecallable, creator=None):
         if creator is None:
@@ -1284,6 +1395,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         )
         self._test_dict(MyDict)
         self._test_dict_bulk(MyDict)
+        self._test_dict_wo_mutation(MyDict)
         self.assert_(getattr(MyDict, "_sa_instrumented") == id(MyDict))
 
     def test_dict_subclass2(self):
@@ -1296,6 +1408,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         )
         self._test_dict(MyEasyDict)
         self._test_dict_bulk(MyEasyDict)
+        self._test_dict_wo_mutation(MyEasyDict)
         self.assert_(getattr(MyEasyDict, "_sa_instrumented") == id(MyEasyDict))
 
     def test_dict_subclass3(self, ordered_dict_mro):
@@ -1309,6 +1422,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         )
         self._test_dict(MyOrdered)
         self._test_dict_bulk(MyOrdered)
+        self._test_dict_wo_mutation(MyOrdered)
         self.assert_(getattr(MyOrdered, "_sa_instrumented") == id(MyOrdered))
 
     def test_dict_duck(self):
@@ -1359,6 +1473,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         )
         self._test_dict(DictLike)
         self._test_dict_bulk(DictLike)
+        self._test_dict_wo_mutation(DictLike)
         self.assert_(getattr(DictLike, "_sa_instrumented") == id(DictLike))
 
     def test_dict_emulates(self):
@@ -1411,6 +1526,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         )
         self._test_dict(DictIsh)
         self._test_dict_bulk(DictIsh)
+        self._test_dict_wo_mutation(DictIsh)
         self.assert_(getattr(DictIsh, "_sa_instrumented") == id(DictIsh))
 
     def _test_object(self, typecallable, creator=None):

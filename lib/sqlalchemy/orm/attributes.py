@@ -1389,6 +1389,12 @@ class CollectionAttributeImpl(AttributeImpl):
 
         return value
 
+    def fire_append_wo_mutation_event(self, state, dict_, value, initiator):
+        for fn in self.dispatch.append_wo_mutation:
+            value = fn(state, value, initiator or self._append_token)
+
+        return value
+
     def fire_pre_remove_event(self, state, dict_, initiator):
         """A special event used for pop() operations.
 
