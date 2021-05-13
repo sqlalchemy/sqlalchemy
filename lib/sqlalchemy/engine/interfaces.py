@@ -10,12 +10,6 @@
 from .. import util
 from ..sql.compiler import Compiled  # noqa
 from ..sql.compiler import TypeCompiler  # noqa
-from ..util import compat
-
-if compat.TYPE_CHECKING:
-    from typing import Any
-
-    from .url import URL
 
 
 class Dialect(object):
@@ -1241,7 +1235,6 @@ class CreateEnginePlugin(object):
     """  # noqa: E501
 
     def __init__(self, url, kwargs):
-        # type: (URL, dict[str, Any]) -> None
         """Construct a new :class:`.CreateEnginePlugin`.
 
         The plugin object is instantiated individually for each call

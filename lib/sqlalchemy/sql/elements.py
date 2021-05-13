@@ -44,11 +44,6 @@ from .. import exc
 from .. import inspection
 from .. import util
 
-if util.TYPE_CHECKING:
-    from typing import Any
-    from typing import Optional
-    from typing import Union
-
 
 def collate(expression, collation):
     """Return the clause ``expression COLLATE collation``.
@@ -422,7 +417,6 @@ class ClauseElement(
         )
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> ClauseElement
         """Apply a 'grouping' to this :class:`_expression.ClauseElement`.
 
         This method is overridden by subclasses to return a "grouping"
@@ -792,7 +786,6 @@ class ColumnElement(
     _alt_names = ()
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> ClauseElement
         if (
             against in (operators.and_, operators.or_, operators._asbool)
             and self.type._type_affinity is type_api.BOOLEANTYPE._type_affinity
@@ -2074,7 +2067,6 @@ class TextClause(
         return self.type.comparator_factory(self)
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> Union[Grouping, TextClause]
         if against is operators.in_op:
             return Grouping(self)
         else:
@@ -2321,7 +2313,6 @@ class ClauseList(
         return list(itertools.chain(*[c._from_objects for c in self.clauses]))
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> ClauseElement
         if self.group and operators.is_precedent(self.operator, against):
             return Grouping(self)
         else:
@@ -2572,7 +2563,6 @@ class BooleanClauseList(ClauseList, ColumnElement):
         return (self,)
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> ClauseElement
         if not self.clauses:
             return self
         else:
@@ -3528,7 +3518,6 @@ class UnaryExpression(ColumnElement):
             return ClauseElement._negate(self)
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> ClauseElement
         if self.operator and operators.is_precedent(self.operator, against):
             return Grouping(self)
         else:
@@ -3654,7 +3643,6 @@ class AsBoolean(WrapsColumnExpression, UnaryExpression):
         return self.element
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> ClauseElement
         return self
 
     def _negate(self):
@@ -3736,7 +3724,6 @@ class BinaryExpression(ColumnElement):
         return self.left._from_objects + self.right._from_objects
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> ClauseElement
 
         if operators.is_precedent(self.operator, against):
             return Grouping(self)
@@ -3795,7 +3782,6 @@ class Slice(ColumnElement):
         self.type = type_api.NULLTYPE
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> ClauseElement
         assert against is operator.getitem
         return self
 
@@ -3813,7 +3799,6 @@ class GroupedElement(ClauseElement):
     __visit_name__ = "grouping"
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> ClauseElement
         return self
 
     def _ungroup(self):
@@ -4389,7 +4374,6 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
         return self._element.self_group(against=operators.as_)
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> ClauseElement
         return self._apply_to_inner(self._element.self_group, against=against)
 
     def _negate(self):
@@ -5116,7 +5100,6 @@ class _anonymous_label(_truncated_label):
     def safe_construct(
         cls, seed, body, enclosing_label=None, sanitize_key=False
     ):
-        # type: (int, str, Optional[_anonymous_label]) -> _anonymous_label
 
         if sanitize_key:
             body = re.sub(r"[%\(\) \$]+", "_", body).strip("_")

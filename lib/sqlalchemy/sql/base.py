@@ -27,12 +27,10 @@ from .. import util
 from ..util import HasMemoized
 from ..util import hybridmethod
 
-if util.TYPE_CHECKING:
-    from types import ModuleType
 
-coercions = None  # type: ModuleType
-elements = None  # type: ModuleType
-type_api = None  # type: ModuleType
+coercions = None
+elements = None
+type_api = None
 
 PARSE_AUTOCOMMIT = util.symbol("PARSE_AUTOCOMMIT")
 NO_ARG = util.symbol("NO_ARG")
