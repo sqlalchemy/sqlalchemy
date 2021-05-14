@@ -1,5 +1,7 @@
 import sqlalchemy as sa
+from sqlalchemy import delete
 from sqlalchemy import ForeignKey
+from sqlalchemy import insert
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
@@ -7,6 +9,8 @@ from sqlalchemy import select
 from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import true
+from sqlalchemy import update
+from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
@@ -733,4 +737,24 @@ class GetBindTest(fixtures.MappedTest):
         stmt = select(self.tables.base_table).union(
             select(self.tables.concrete_sub_table)
         )
+        is_(session.get_bind(clause=stmt), base_class_bind)
+
+    @testing.combinations(
+        (insert,),
+        (update,),
+        (delete,),
+        (select,),
+    )
+    def test_clause_extracts_orm_plugin_subject(self, sql_elem):
+        ClassWMixin = self.classes.ClassWMixin
+        MixinOne = self.classes.MixinOne
+        base_class_bind = Mock()
+
+        session = self._fixture({MixinOne: base_class_bind})
+
+        stmt = sql_elem(ClassWMixin)
+        is_(session.get_bind(clause=stmt), base_class_bind)
+
+        cwm_alias = aliased(ClassWMixin)
+        stmt = sql_elem(cwm_alias)
         is_(session.get_bind(clause=stmt), base_class_bind)

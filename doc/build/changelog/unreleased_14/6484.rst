@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 6484
+
+    Enhanced the bind resolution rules for :meth:`_orm.Session.execute` so that
+    when a non-ORM statement such as an :func:`_sql.insert` construct
+    nonetheless is built against ORM objects, to the greatest degree possible
+    the ORM entity will be used to resolve the bind, such as for a
+    :class:`_orm.Session` that has a bind map set up on a common superclass
+    without specific mappers or tables named in the map.

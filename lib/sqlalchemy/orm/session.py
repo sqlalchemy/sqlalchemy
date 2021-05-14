@@ -1997,6 +1997,15 @@ class Session(_SessionClassMethods):
                     clause = mapper.persist_selectable
 
             if clause is not None:
+                plugin_subject = clause._propagate_attrs.get(
+                    "plugin_subject", None
+                )
+
+                if plugin_subject is not None:
+                    for cls in plugin_subject.mapper.class_.__mro__:
+                        if cls in self.__binds:
+                            return self.__binds[cls]
+
                 for obj in visitors.iterate(clause):
                     if obj in self.__binds:
                         return self.__binds[obj]
