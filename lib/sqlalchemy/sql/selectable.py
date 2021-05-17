@@ -4209,38 +4209,57 @@ class SelectState(util.MemoizedSlots, CompileState):
         return go
 
     def _get_froms(self, statement):
+        return self._normalize_froms(
+            itertools.chain(
+                itertools.chain.from_iterable(
+                    [
+                        element._from_objects
+                        for element in statement._raw_columns
+                    ]
+                ),
+                itertools.chain.from_iterable(
+                    [
+                        element._from_objects
+                        for element in statement._where_criteria
+                    ]
+                ),
+                self.from_clauses,
+            ),
+            check_statement=statement,
+        )
+
+    def _normalize_froms(self, iterable_of_froms, check_statement=None):
+        """given an iterable of things to select FROM, reduce them to what
+        would actually render in the FROM clause of a SELECT.
+
+        This does the job of checking for JOINs, tables, etc. that are in fact
+        overlapping due to cloning, adaption, present in overlapping joins,
+        etc.
+
+        """
         seen = set()
         froms = []
 
-        for item in itertools.chain(
-            itertools.chain.from_iterable(
-                [element._from_objects for element in statement._raw_columns]
-            ),
-            itertools.chain.from_iterable(
-                [
-                    element._from_objects
-                    for element in statement._where_criteria
-                ]
-            ),
-            self.from_clauses,
-        ):
-            if item._is_subquery and item.element is statement:
+        for item in iterable_of_froms:
+            if item._is_subquery and item.element is check_statement:
                 raise exc.InvalidRequestError(
                     "select() construct refers to itself as a FROM"
                 )
+
             if not seen.intersection(item._cloned_set):
                 froms.append(item)
                 seen.update(item._cloned_set)
 
-        toremove = set(
-            itertools.chain.from_iterable(
-                [_expand_cloned(f._hide_froms) for f in froms]
+        if froms:
+            toremove = set(
+                itertools.chain.from_iterable(
+                    [_expand_cloned(f._hide_froms) for f in froms]
+                )
             )
-        )
-        if toremove:
-            # filter out to FROM clauses not in the list,
-            # using a list to maintain ordering
-            froms = [f for f in froms if f not in toremove]
+            if toremove:
+                # filter out to FROM clauses not in the list,
+                # using a list to maintain ordering
+                froms = [f for f in froms if f not in toremove]
 
         return froms
 

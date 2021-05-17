@@ -591,9 +591,15 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         self.create_eager_joins = []
         self._fallback_from_clauses = []
 
-        self.from_clauses = [
+        # normalize the FROM clauses early by themselves, as this makes
+        # it an easier job when we need to assemble a JOIN onto these,
+        # for select.join() as well as joinedload().   As of 1.4 there are now
+        # potentially more complex sets of FROM objects here as the use
+        # of lambda statements for lazyload, load_on_pk etc. uses more
+        # cloning of the select() construct.  See #6495
+        self.from_clauses = self._normalize_froms(
             info.selectable for info in select_statement._from_obj
-        ]
+        )
 
         # this is a fairly arbitrary break into a second method,
         # so it might be nicer to break up create_for_statement()
