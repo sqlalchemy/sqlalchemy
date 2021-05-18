@@ -63,7 +63,7 @@ class _LiteralRoundTripFixture(object):
             for value in input_:
                 ins = (
                     t.insert()
-                    .values(x=literal(value))
+                    .values(x=literal(value, type_))
                     .compile(
                         dialect=testing.db.dialect,
                         compile_kwargs=dict(literal_binds=True),
