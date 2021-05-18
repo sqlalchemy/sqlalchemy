@@ -49,7 +49,8 @@ class RowCountTest(fixtures.TablesTest):
         employees_table = cls.tables.employees
         connection.execute(
             employees_table.insert(),
-            [{"name": n, "department": d} for n, d in data],
+            [{"employee_id": i, "name": n, "department": d}
+             for i, (n, d) in enumerate(data)],
         )
 
     def test_basic(self, connection):

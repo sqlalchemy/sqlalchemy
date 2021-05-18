@@ -119,7 +119,7 @@ class InsertBehaviorTest(fixtures.TablesTest):
 
         with engine.begin() as conn:
             r = conn.execute(
-                self.tables.autoinc_pk.insert(), dict(data="some data")
+                self.tables.autoinc_pk.insert(), dict(id=1, data="some data")
             )
         assert r._soft_closed
         assert not r.closed
