@@ -892,7 +892,6 @@ class Result(_WithKeys, ResultInternal):
         return self._metadata._row_as_tuple_getter(keys)
 
     def mappings(self):
-        # type() -> MappingResult
         """Apply a mappings filter to returned rows, returning an instance of
         :class:`_result.MappingResult`.
 

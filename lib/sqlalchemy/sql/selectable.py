@@ -58,10 +58,6 @@ from .. import exc
 from .. import util
 from ..inspection import inspect
 
-if util.TYPE_CHECKING:
-    from typing import Any
-    from typing import Optional
-
 
 class _OffsetLimitParam(BindParameter):
     inherit_cache = True
@@ -2796,7 +2792,6 @@ class SelectBase(
     is_select = True
 
     def _generate_fromclause_column_proxies(self, fromclause):
-        # type: (FromClause) -> None
         raise NotImplementedError()
 
     def _refresh_for_new_column(self, column):
@@ -3080,7 +3075,6 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
     _is_select_container = True
 
     def __init__(self, element):
-        # type: (SelectBase) -> None
         self.element = coercions.expect(roles.SelectStatementRole, element)
 
     def _ensure_disambiguated_names(self):
@@ -3107,7 +3101,6 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
         return self.element
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> FromClause
         return self
 
     def _generate_fromclause_column_proxies(self, subquery):
@@ -3877,7 +3870,6 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         return self.selects[0]._scalar_type()
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> FromClause
         return SelectStatementGrouping(self)
 
     def is_derived_from(self, fromclause):

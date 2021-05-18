@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, pep484
+    :tickets: 6461
+
+    Remove pep484 types from the code.
+    Current effort is around the stub package, and having typing in
+    two places makes thing worse, since the types in the SQLAlchemy
+    source were usually outdated compared to the version in the stubs.

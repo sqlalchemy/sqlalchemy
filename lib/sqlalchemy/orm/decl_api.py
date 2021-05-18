@@ -32,9 +32,6 @@ from ..sql.schema import MetaData
 from ..util import hybridmethod
 from ..util import hybridproperty
 
-if util.TYPE_CHECKING:
-    from .mapper import Mapper
-
 
 def has_inherited_table(cls):
     """Given a class, return True if any of the classes it inherits from has a
@@ -885,7 +882,6 @@ class registry(object):
         return decorate
 
     def map_declaratively(self, cls):
-        # type: (type) -> Mapper
         """Map a class declaratively.
 
         In this form of mapping, the class is scanned for mapping information,

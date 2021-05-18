@@ -4,25 +4,12 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-
-from typing import Any
-from typing import Callable
-from typing import Mapping
-from typing import Optional
-from typing import TypeVar
-
 from . import engine
 from . import result as _result
 from .base import StartableContext
-from .engine import AsyncEngine
 from ... import util
-from ...engine import Result
 from ...orm import Session
-from ...sql import Executable
 from ...util.concurrency import greenlet_spawn
-
-
-T = TypeVar("T")
 
 
 @util.create_proxy_methods(
@@ -72,12 +59,7 @@ class AsyncSession:
 
     dispatch = None
 
-    def __init__(
-        self,
-        bind: AsyncEngine = None,
-        binds: Mapping[object, AsyncEngine] = None,
-        **kw
-    ):
+    def __init__(self, bind=None, binds=None, **kw):
         kw["future"] = True
         if bind:
             self.bind = bind
@@ -114,7 +96,7 @@ class AsyncSession:
             with_for_update=with_for_update,
         )
 
-    async def run_sync(self, fn: Callable[..., T], *arg, **kw) -> T:
+    async def run_sync(self, fn, *arg, **kw):
         """Invoke the given sync callable passing sync self as the first
         argument.
 
@@ -143,12 +125,12 @@ class AsyncSession:
 
     async def execute(
         self,
-        statement: Executable,
-        params: Optional[Mapping] = None,
-        execution_options: Mapping = util.EMPTY_DICT,
-        bind_arguments: Optional[Mapping] = None,
+        statement,
+        params=None,
+        execution_options=util.EMPTY_DICT,
+        bind_arguments=None,
         **kw
-    ) -> Result:
+    ):
         """Execute a statement and return a buffered
         :class:`_engine.Result` object."""
 
@@ -165,12 +147,12 @@ class AsyncSession:
 
     async def scalar(
         self,
-        statement: Executable,
-        params: Optional[Mapping] = None,
-        execution_options: Mapping = util.EMPTY_DICT,
-        bind_arguments: Optional[Mapping] = None,
+        statement,
+        params=None,
+        execution_options=util.EMPTY_DICT,
+        bind_arguments=None,
         **kw
-    ) -> Any:
+    ):
         """Execute a statement and return a scalar result."""
 
         result = await self.execute(

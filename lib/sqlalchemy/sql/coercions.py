@@ -19,15 +19,13 @@ from .. import inspection
 from .. import util
 from ..util import collections_abc
 
-if util.TYPE_CHECKING:
-    from types import ModuleType
 
-elements = None  # type: ModuleType
-lambdas = None  # type: ModuleType
-schema = None  # type: ModuleType
-selectable = None  # type: ModuleType
-sqltypes = None  # type: ModuleType
-traversals = None  # type: ModuleType
+elements = None
+lambdas = None
+schema = None
+selectable = None
+sqltypes = None
+traversals = None
 
 
 def _is_literal(element):

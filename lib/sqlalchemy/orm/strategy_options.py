@@ -32,12 +32,6 @@ from ..sql import visitors
 from ..sql.base import _generative
 from ..sql.base import Generative
 
-if util.TYPE_CHECKING:
-    from typing import Sequence
-
-    from .context import QueryContext
-    from ..sql.elements import ColumnElement
-
 
 class Load(Generative, LoaderOption):
     """Represents loader options which modify the state of a
@@ -119,7 +113,6 @@ class Load(Generative, LoaderOption):
         return load
 
     def _generate_extra_criteria(self, context):
-        # type: (QueryContext) -> Sequence[ColumnElement]
         """Apply the current bound parameters in a QueryContext to the
         "extra_criteria" stored with this Load object.
 

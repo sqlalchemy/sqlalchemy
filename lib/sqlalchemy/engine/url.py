@@ -25,14 +25,6 @@ from ..util import collections_abc
 from ..util import compat
 
 
-if compat.TYPE_CHECKING:
-    from typing import Mapping
-    from typing import Optional
-    from typing import Sequence
-    from typing import Tuple
-    from typing import Union
-
-
 class URL(
     util.namedtuple(
         "URL",
@@ -102,15 +94,14 @@ class URL(
     @classmethod
     def create(
         cls,
-        drivername,  # type: str
-        username=None,  # type: Optional[str]
-        password=None,  # type: Optional[Union[str, object]]
-        host=None,  # type: Optional[str]
-        port=None,  # type: Optional[int]
-        database=None,  # type: Optional[str]
-        query=util.EMPTY_DICT,  # type: Mapping[str, Union[str, Sequence[str]]]
+        drivername,
+        username=None,
+        password=None,
+        host=None,
+        port=None,
+        database=None,
+        query=util.EMPTY_DICT,
     ):
-        # type: (...) -> URL
         """Create a new :class:`_engine.URL` object.
 
         :param drivername: the name of the database backend. This name will
@@ -214,15 +205,14 @@ class URL(
 
     def set(
         self,
-        drivername=None,  # type: Optional[str]
-        username=None,  # type: Optional[str]
-        password=None,  # type: Optional[Union[str, object]]
-        host=None,  # type: Optional[str]
-        port=None,  # type: Optional[int]
-        database=None,  # type: Optional[str]
-        query=None,  # type: Optional[Mapping[str, Union[str, Sequence[str]]]]
+        drivername=None,
+        username=None,
+        password=None,
+        host=None,
+        port=None,
+        database=None,
+        query=None,
     ):
-        # type: (...) -> URL
         """return a new :class:`_engine.URL` object with modifications.
 
         Values are used if they are non-None.  To set a value to ``None``
@@ -267,7 +257,6 @@ class URL(
         return self._replace(**kw)
 
     def _replace(self, **kw):
-        # type: (**object) -> URL
         """Override ``namedtuple._replace()`` to provide argument checking."""
 
         if "drivername" in kw:
@@ -283,7 +272,6 @@ class URL(
         return super(URL, self)._replace(**kw)
 
     def update_query_string(self, query_string, append=False):
-        # type: (str, bool) -> URL
         """Return a new :class:`_engine.URL` object with the :attr:`_engine.URL.query`
         parameter dictionary updated by the given query string.
 
@@ -317,7 +305,6 @@ class URL(
         )
 
     def update_query_pairs(self, key_value_pairs, append=False):
-        # type: (Sequence[Tuple[str, str]], bool) -> URL
         """Return a new :class:`_engine.URL` object with the
         :attr:`_engine.URL.query`
         parameter dictionary updated by the given sequence of key/value pairs
@@ -382,7 +369,6 @@ class URL(
         return self.set(query=new_query)
 
     def update_query_dict(self, query_parameters, append=False):
-        # type: (Mapping[str, Union[str, Sequence[str]]], bool) -> URL
         """Return a new :class:`_engine.URL` object with the
         :attr:`_engine.URL.query` parameter dictionary updated by the given
         dictionary.
@@ -428,7 +414,6 @@ class URL(
         return self.update_query_pairs(query_parameters.items(), append=append)
 
     def difference_update_query(self, names):
-        # type: (Sequence[str]) -> URL
         """
         Remove the given names from the :attr:`_engine.URL.query` dictionary,
         returning the new :class:`_engine.URL`.
@@ -513,7 +498,6 @@ class URL(
         ":meth:`_engine.URL.render_as_string` method.",
     )
     def __to_string__(self, hide_password=True):
-        # type: (bool) -> str
         """Render this :class:`_engine.URL` object as a string.
 
         :param hide_password: Defaults to True.   The password is not shown
@@ -523,7 +507,6 @@ class URL(
         return self.render_as_string(hide_password=hide_password)
 
     def render_as_string(self, hide_password=True):
-        # type: (bool) -> str
         """Render this :class:`_engine.URL` object as a string.
 
         This method is used when the ``__str__()`` or ``__repr__()``

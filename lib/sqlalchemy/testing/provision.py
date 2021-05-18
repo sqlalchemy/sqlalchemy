@@ -16,9 +16,6 @@ log = logging.getLogger(__name__)
 
 FOLLOWER_IDENT = None
 
-if compat.TYPE_CHECKING:
-    from ..engine import URL
-
 
 class register(object):
     def __init__(self):
@@ -181,7 +178,6 @@ def _generate_driver_urls(url, extra_drivers):
 
 @register.init
 def generate_driver_url(url, driver, query_str):
-    # type: (URL, str, str) -> URL
     backend = url.get_backend_name()
 
     new_url = url.set(

@@ -50,12 +50,6 @@ from ..sql.util import selectables_overlap
 from ..sql.util import visit_binary_product
 
 
-if util.TYPE_CHECKING:
-    from typing import Union
-
-    from .util import AliasedInsp
-
-
 def remote(expr):
     """Annotate a portion of a primaryjoin expression
     with a 'remote' annotation.
@@ -2086,7 +2080,7 @@ class RelationshipProperty(StrategizedProperty):
 
     @util.memoized_property
     @util.preload_module("sqlalchemy.orm.mapper")
-    def entity(self):  # type: () -> Union[AliasedInsp, mapperlib.Mapper]
+    def entity(self):
         """Return the target mapped entity, which is an inspect() of the
         class or aliased class that is referred towards.
 
