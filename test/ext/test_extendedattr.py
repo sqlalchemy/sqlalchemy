@@ -1,5 +1,8 @@
 import sqlalchemy as sa
+from sqlalchemy import Column
 from sqlalchemy import event
+from sqlalchemy import Integer
+from sqlalchemy import Table
 from sqlalchemy import util
 from sqlalchemy.ext import instrumentation
 from sqlalchemy.orm import attributes
@@ -16,6 +19,8 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_not
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.util import decorator
 
@@ -85,6 +90,48 @@ class MyListLike(list):
 
 
 MyBaseClass, MyClass = None, None
+
+
+class DisposeTest(_ExtBase, fixtures.TestBase):
+    def test_unregister(self, registry):
+        class MyClassState(instrumentation.InstrumentationManager):
+            def manage(self, class_, manager):
+                setattr(class_, "xyz", manager)
+
+            def unregister(self, class_, manager):
+                delattr(class_, "xyz")
+
+            def manager_getter(self, class_):
+                def get(cls):
+                    return cls.xyz
+
+                return get
+
+        class MyClass(object):
+            __sa_instrumentation_manager__ = MyClassState
+
+        assert attributes.manager_of_class(MyClass) is None
+
+        t = Table(
+            "my_table",
+            registry.metadata,
+            Column("id", Integer, primary_key=True),
+        )
+
+        registry.map_imperatively(MyClass, t)
+
+        manager = attributes.manager_of_class(MyClass)
+        is_not(manager, None)
+        is_(manager, MyClass.xyz)
+
+        registry.configure()
+
+        registry.dispose()
+
+        manager = attributes.manager_of_class(MyClass)
+        is_(manager, None)
+
+        assert not hasattr(MyClass, "xyz")
 
 
 class UserDefinedExtensionTest(_ExtBase, fixtures.ORMTest):
