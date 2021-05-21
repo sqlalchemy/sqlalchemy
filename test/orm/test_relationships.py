@@ -2304,6 +2304,39 @@ class ManualBackrefTest(_fixtures.FixtureTest):
             configure_mappers,
         )
 
+    def test_back_propagates_not_relationship(self):
+        addr, Addr, users, User = (
+            self.tables.addresses,
+            self.classes.Address,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties={
+                "addresses": relationship(Addr, back_populates="user_id")
+            },
+        )
+
+        mapper(
+            Addr,
+            addr,
+            properties={
+                "users": relationship(User, back_populates="addresses")
+            },
+        )
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "back_populates on relationship 'User.addresses' refers to "
+            "attribute 'Address.user_id' that is not a relationship.  "
+            "The back_populates parameter should refer to the name of "
+            "a relationship on the target class.",
+            configure_mappers,
+        )
+
 
 class NoLoadBackPopulates(_fixtures.FixtureTest):
 
@@ -3146,6 +3179,7 @@ class ViewOnlySyncBackref(fixtures.MappedTest):
             return str(self.__dict__)
 
     cases = {
+        # (B_a_view, B_a_sync, A_bs_view, A_bs_sync)
         (0, 0, 0, 0): Case(),
         (0, 0, 0, 1): Case(Abs_evt=1),
         (0, 0, 1, 0): Case(),
