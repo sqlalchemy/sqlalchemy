@@ -169,7 +169,7 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
     various visit methods of the class.   The other is that the symbols
     themselves of :class:`.InternalTraversal` are used within
     the ``_traverse_internals`` collection.   Such as, the :class:`.Case`
-    object defines ``_travserse_internals`` as ::
+    object defines ``_traverse_internals`` as ::
 
         _traverse_internals = [
             ("value", InternalTraversal.dp_clauseelement),
