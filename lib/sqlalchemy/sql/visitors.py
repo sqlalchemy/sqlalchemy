@@ -445,8 +445,8 @@ class ExtendedInternalTraversal(InternalTraversal):
     """
 
     dp_inspectable = symbol("IS")
-    """Visit an inspectable object where the return value is a HasCacheKey`
-    object."""
+    """Visit an inspectable object where the return value is a
+    :class:`.HasCacheKey` object."""
 
     dp_multi = symbol("M")
     """Visit an object that may be a :class:`.HasCacheKey` or may be a
