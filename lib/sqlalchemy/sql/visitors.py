@@ -422,12 +422,12 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
     """
 
     dp_propagate_attrs = symbol("PA")
-    """Visit the propagate attrs dict.   this hardcodes to the particular
+    """Visit the propagate attrs dict.  This hardcodes to the particular
     elements we care about right now."""
 
 
 class ExtendedInternalTraversal(InternalTraversal):
-    """defines additional symbols that are useful in caching applications.
+    """Defines additional symbols that are useful in caching applications.
 
     Traversals for :class:`_expression.ClauseElement` objects only need to use
     those symbols present in :class:`.InternalTraversal`.  However, for
