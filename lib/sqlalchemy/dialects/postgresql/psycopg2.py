@@ -51,6 +51,13 @@ psycopg2-specific keyword arguments which are accepted by
     :ref:`psycopg2_executemany_mode`
 
 
+* ``sslmode``: Controls psycopg2's behavior for encrypted connections.
+  The psycopg2 default is ``sslmode=prefer``; it will attempt an SSL
+  connection and if that fails it will fall back to an unencrypted connection.
+  ``sslmode=require`` can be used to only establish secure connections. (Other
+  modes are available. See the psycopg2 documentation for details.)
+
+
 Unix Domain Connections
 ------------------------
 
