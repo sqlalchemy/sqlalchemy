@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 6482
+
+    Fixed issue where an ``@`` sign in the database portion of a URL would not
+    be interpreted correctly if the URL also had a username:password section.
+
