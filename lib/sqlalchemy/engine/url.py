@@ -702,16 +702,17 @@ def _parse_rfc1738_args(name):
             (?P<name>[\w\+]+)://
             (?:
                 (?P<username>[^:/]*)
-                (?::(?P<password>.*))?
+                (?::(?P<password>[^@]*))?
             @)?
             (?:
                 (?:
-                    \[(?P<ipv6host>[^/]+)\] |
-                    (?P<ipv4host>[^/:]+)
+                    \[(?P<ipv6host>[^/\?]+)\] |
+                    (?P<ipv4host>[^/:\?]+)
                 )?
-                (?::(?P<port>[^/]*))?
+                (?::(?P<port>[^/\?]*))?
             )?
-            (?:/(?P<database>.*))?
+            (?:/(?P<database>[^\?]*))?
+            (?:\?(?P<query>.*))?
             """,
         re.X,
     )
@@ -719,23 +720,17 @@ def _parse_rfc1738_args(name):
     m = pattern.match(name)
     if m is not None:
         components = m.groupdict()
-        if components["database"] is not None:
-            tokens = components["database"].split("?", 2)
-            components["database"] = tokens[0]
+        if components["query"] is not None:
+            query = {}
 
-            if len(tokens) > 1:
-                query = {}
-
-                for key, value in util.parse_qsl(tokens[1]):
-                    if util.py2k:
-                        key = key.encode("ascii")
-                    if key in query:
-                        query[key] = util.to_list(query[key])
-                        query[key].append(value)
-                    else:
-                        query[key] = value
-            else:
-                query = None
+            for key, value in util.parse_qsl(components["query"]):
+                if util.py2k:
+                    key = key.encode("ascii")
+                if key in query:
+                    query[key] = util.to_list(query[key])
+                    query[key].append(value)
+                else:
+                    query[key] = value
         else:
             query = None
         components["query"] = query

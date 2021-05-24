@@ -25,56 +25,60 @@ dialect = None
 
 
 class URLTest(fixtures.TestBase):
-    def test_rfc1738(self):
-        for text in (
-            "dbtype://username:password@hostspec:110//usr/db_file.db",
-            "dbtype://username:password@hostspec/database",
-            "dbtype+apitype://username:password@hostspec/database",
-            "dbtype://username:password@hostspec",
-            "dbtype://username:password@/database",
-            "dbtype://username@hostspec",
-            "dbtype://username:password@127.0.0.1:1521",
-            "dbtype://hostspec/database",
-            "dbtype://hostspec",
-            "dbtype://hostspec/?arg1=val1&arg2=val2",
-            "dbtype+apitype:///database",
-            "dbtype:///:memory:",
-            "dbtype:///foo/bar/im/a/file",
-            "dbtype:///E:/work/src/LEM/db/hello.db",
-            "dbtype:///E:/work/src/LEM/db/hello.db?foo=bar&hoho=lala",
-            "dbtype:///E:/work/src/LEM/db/hello.db?foo=bar&hoho=lala&hoho=bat",
-            "dbtype://",
-            "dbtype://username:password@/database",
-            "dbtype:////usr/local/_xtest@example.com/members.db",
-            "dbtype://username:apples%2Foranges@hostspec/database",
-            "dbtype://username:password@[2001:da8:2004:1000:202:116:160:90]"
-            "/database?foo=bar",
-            "dbtype://username:password@[2001:da8:2004:1000:202:116:160:90]:80"
-            "/database?foo=bar",
-        ):
-            u = url.make_url(text)
+    @testing.combinations(
+        "dbtype://username:password@hostspec:110//usr/db_file.db",
+        "dbtype://username:password@hostspec/database",
+        "dbtype+apitype://username:password@hostspec/database",
+        "dbtype://username:password@hostspec",
+        "dbtype://username:password@/database",
+        "dbtype://username@hostspec",
+        "dbtype://username:password@127.0.0.1:1521",
+        "dbtype://hostspec/database",
+        "dbtype://hostspec",
+        "dbtype://hostspec/?arg1=val1&arg2=val2",
+        "dbtype+apitype:///database",
+        "dbtype:///:memory:",
+        "dbtype:///foo/bar/im/a/file",
+        "dbtype:///E:/work/src/LEM/db/hello.db",
+        "dbtype:///E:/work/src/LEM/db/hello.db?foo=bar&hoho=lala",
+        "dbtype:///E:/work/src/LEM/db/hello.db?foo=bar&hoho=lala&hoho=bat",
+        "dbtype://",
+        "dbtype://username:password@/database",
+        "dbtype:////usr/local/_xtest@example.com/members.db",
+        "dbtype://username:apples%2Foranges@hostspec/database",
+        "dbtype://username:password@[2001:da8:2004:1000:202:116:160:90]"
+        "/database?foo=bar",
+        "dbtype://username:password@[2001:da8:2004:1000:202:116:160:90]:80"
+        "/database?foo=bar",
+        "dbtype://username:password@hostspec/test database with@atsign",
+        "dbtype://username:password@hostspec?query=but_no_db",
+        "dbtype://username:password@hostspec:450?query=but_no_db",
+    )
+    def test_rfc1738(self, text):
+        u = url.make_url(text)
 
-            assert u.drivername in ("dbtype", "dbtype+apitype")
-            assert u.username in ("username", None)
-            assert u.password in ("password", "apples/oranges", None)
-            assert u.host in (
-                "hostspec",
-                "127.0.0.1",
-                "2001:da8:2004:1000:202:116:160:90",
-                "",
-                None,
-            ), u.host
-            assert u.database in (
-                "database",
-                "/usr/local/_xtest@example.com/members.db",
-                "/usr/db_file.db",
-                ":memory:",
-                "",
-                "foo/bar/im/a/file",
-                "E:/work/src/LEM/db/hello.db",
-                None,
-            ), u.database
-            eq_(str(u), text)
+        assert u.drivername in ("dbtype", "dbtype+apitype")
+        assert u.username in ("username", None)
+        assert u.password in ("password", "apples/oranges", None)
+        assert u.host in (
+            "hostspec",
+            "127.0.0.1",
+            "2001:da8:2004:1000:202:116:160:90",
+            "",
+            None,
+        ), u.host
+        assert u.database in (
+            "database",
+            "test database with@atsign",
+            "/usr/local/_xtest@example.com/members.db",
+            "/usr/db_file.db",
+            ":memory:",
+            "",
+            "foo/bar/im/a/file",
+            "E:/work/src/LEM/db/hello.db",
+            None,
+        ), u.database
+        eq_(str(u), text)
 
     def test_rfc1738_password(self):
         u = url.make_url("dbtype://user:pass word + other%3Awords@host/dbname")
@@ -140,6 +144,23 @@ class URLTest(fixtures.TestBase):
         u = url.make_url("dialect://user:pass@host/db?arg1=param1&arg2=param2")
         eq_(u.query, {"arg1": "param1", "arg2": "param2"})
         eq_(str(u), "dialect://user:pass@host/db?arg1=param1&arg2=param2")
+
+        u = url.make_url("dialect://user:pass@host/?arg1=param1&arg2=param2")
+        eq_(u.query, {"arg1": "param1", "arg2": "param2"})
+        eq_(u.database, "")
+        eq_(str(u), "dialect://user:pass@host/?arg1=param1&arg2=param2")
+
+        u = url.make_url("dialect://user:pass@host?arg1=param1&arg2=param2")
+        eq_(u.query, {"arg1": "param1", "arg2": "param2"})
+        eq_(u.database, None)
+        eq_(str(u), "dialect://user:pass@host?arg1=param1&arg2=param2")
+
+        u = url.make_url(
+            "dialect://user:pass@host:450?arg1=param1&arg2=param2"
+        )
+        eq_(u.port, 450)
+        eq_(u.query, {"arg1": "param1", "arg2": "param2"})
+        eq_(str(u), "dialect://user:pass@host:450?arg1=param1&arg2=param2")
 
         u = url.make_url(
             "dialect://user:pass@host/db?arg1=param1&arg2=param2&arg2=param3"
