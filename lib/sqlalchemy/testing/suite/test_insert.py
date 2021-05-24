@@ -109,6 +109,7 @@ class InsertBehaviorTest(fixtures.TablesTest):
             ),
         )
 
+    @requirements.autoincrement_insert
     def test_autoclose_on_insert(self):
         if requirements.returning.enabled:
             engine = engines.testing_engine(
