@@ -304,7 +304,33 @@ class AsyncSession:
         return await greenlet_spawn(self.sync_session.commit)
 
     async def close(self):
-        """Close this :class:`_asyncio.AsyncSession`."""
+        """Close out the transactional resources and ORM objects used by this
+        :class:`_asyncio.AsyncSession`.
+
+        This expunges all ORM objects associated with this
+        :class:`_asyncio.AsyncSession`, ends any transaction in progress and
+        :term:`releases` any :class:`_asyncio.AsyncConnection` objects which
+        this :class:`_asyncio.AsyncSession` itself has checked out from
+        associated :class:`_asyncio.AsyncEngine` objects. The operation then
+        leaves the :class:`_asyncio.AsyncSession` in a state which it may be
+        used again.
+
+        .. tip::
+
+            The :meth:`_asyncio.AsyncSession.close` method **does not prevent
+            the Session from being used again**. The
+            :class:`_asyncio.AsyncSession` itself does not actually have a
+            distinct "closed" state; it merely means the
+            :class:`_asyncio.AsyncSession` will release all database
+            connections and ORM objects.
+
+
+        .. seealso::
+
+            :ref:`session_closing` - detail on the semantics of
+            :meth:`_asyncio.AsyncSession.close`
+
+        """
         return await greenlet_spawn(self.sync_session.close)
 
     @classmethod

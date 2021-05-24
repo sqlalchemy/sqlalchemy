@@ -891,6 +891,7 @@ further discussion.
 
   :ref:`session_autobegin`
 
+.. _session_closing:
 
 Closing
 -------

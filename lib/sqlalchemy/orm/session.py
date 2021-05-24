@@ -1713,18 +1713,33 @@ class Session(_SessionClassMethods):
         ).scalar()
 
     def close(self):
-        """Close this Session.
+        """Close out the transactional resources and ORM objects used by this
+        :class:`_orm.Session`.
 
-        This clears all items and ends any transaction in progress.
+        This expunges all ORM objects associated with this
+        :class:`_orm.Session`, ends any transaction in progress and
+        :term:`releases` any :class:`_engine.Connection` objects which this
+        :class:`_orm.Session` itself has checked out from associated
+        :class:`_engine.Engine` objects. The operation then leaves the
+        :class:`_orm.Session` in a state which it may be used again.
 
-        If this Session was created with ``autocommit=False``, a new
-        transaction will be begun when the :class:`.Session` is next asked
-        to procure a database connection.
+        .. tip::
+
+            The :meth:`_orm.Session.close` method **does not prevent the
+            Session from being used again**.   The :class:`_orm.Session` itself
+            does not actually have a distinct "closed" state; it merely means
+            the :class:`_orm.Session` will release all database connections
+            and ORM objects.
 
         .. versionchanged:: 1.4  The :meth:`.Session.close` method does not
            immediately create a new :class:`.SessionTransaction` object;
            instead, the new :class:`.SessionTransaction` is created only if
            the :class:`.Session` is used again for a database operation.
+
+        .. seealso::
+
+            :ref:`session_closing` - detail on the semantics of
+            :meth:`_orm.Session.close`
 
         """
         self._close_impl(invalidate=False)
