@@ -169,7 +169,7 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
     various visit methods of the class.   The other is that the symbols
     themselves of :class:`.InternalTraversal` are used within
     the ``_traverse_internals`` collection.   Such as, the :class:`.Case`
-    object defines ``_travserse_internals`` as ::
+    object defines ``_traverse_internals`` as ::
 
         _traverse_internals = [
             ("value", InternalTraversal.dp_clauseelement),
@@ -422,12 +422,12 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
     """
 
     dp_propagate_attrs = symbol("PA")
-    """Visit the propagate attrs dict.   this hardcodes to the particular
+    """Visit the propagate attrs dict.  This hardcodes to the particular
     elements we care about right now."""
 
 
 class ExtendedInternalTraversal(InternalTraversal):
-    """defines additional symbols that are useful in caching applications.
+    """Defines additional symbols that are useful in caching applications.
 
     Traversals for :class:`_expression.ClauseElement` objects only need to use
     those symbols present in :class:`.InternalTraversal`.  However, for
@@ -445,8 +445,8 @@ class ExtendedInternalTraversal(InternalTraversal):
     """
 
     dp_inspectable = symbol("IS")
-    """Visit an inspectable object where the return value is a HasCacheKey`
-    object."""
+    """Visit an inspectable object where the return value is a
+    :class:`.HasCacheKey` object."""
 
     dp_multi = symbol("M")
     """Visit an object that may be a :class:`.HasCacheKey` or may be a
