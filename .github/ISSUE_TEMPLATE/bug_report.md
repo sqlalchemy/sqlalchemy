@@ -1,11 +1,13 @@
 ---
 name: Create a bug report
-about: Errors and regression reports with complete reproducing test cases and/or stack traces. 
+about: Errors and regression reports with complete reproducing test cases and/or stack traces.
 title: ''
 labels: requires triage
 assignees: ''
 
 ---
+
+<!--
 
 **GUIDELINES FOR REPORTING BUGS**
 
@@ -17,6 +19,8 @@ of [well written bug reports](https://github.com/sqlalchemy/sqlalchemy/issues?q=
 3. **complete stack traces for all errors - please avoid screenshots, use formatted text inside issues**
 4. Other things as applicable:   **SQL log output**, **database backend and DBAPI driver**,
    **operating system**, **comparative performance timings** for performance issues.
+
+-->
 
 **Describe the bug**
 <!-- A clear and concise description of what the bug is. -->
