@@ -18,6 +18,7 @@ from __future__ import absolute_import
 
 from collections import deque
 from itertools import chain
+import inspect
 import sys
 import types
 import weakref
@@ -1262,7 +1263,7 @@ class Mapper(
                 method = method._sa_original_init
                 if isinstance(method, types.MethodType):
                     method = method.__func__
-            if isinstance(method, types.FunctionType):
+            if isinstance(method, types.FunctionType) or inspect._signature_is_functionlike(method):
                 if hasattr(method, "__sa_reconstructor__"):
                     self._reconstructor = method
                     event.listen(manager, "load", _event_on_load, raw=True)
