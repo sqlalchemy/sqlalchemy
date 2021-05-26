@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, ext
+    :tickets: 6529
+
+    Fixed a deprecation warning that was emitted when using
+    :func:`_automap.automap_base` without passing an existing
+    ``Base``.
+
