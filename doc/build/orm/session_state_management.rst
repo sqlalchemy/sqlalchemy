@@ -349,27 +349,15 @@ Further detail on cascade operation is at :ref:`unitofwork_cascades`.
 Another example of unexpected state::
 
     >>> a1 = Address(id=existing_a1.id, user_id=u1.id)
-    >>> assert a1.user is None
-    True
+    >>> a1.user = None
     >>> a1 = session.merge(a1)
     >>> session.commit()
     sqlalchemy.exc.IntegrityError: (IntegrityError) address.user_id
     may not be NULL
 
-Here, we accessed a1.user, which returned its default value
-of ``None``, which as a result of this access, has been placed in the ``__dict__`` of
-our object ``a1``.  Normally, this operation creates no change event,
-so the ``user_id`` attribute takes precedence during a
-flush.  But when we merge the ``Address`` object into the session, the operation
-is equivalent to::
-
-    >>> existing_a1.id = existing_a1.id
-    >>> existing_a1.user_id = u1.id
-    >>> existing_a1.user = None
-
-Where above, both ``user_id`` and ``user`` are assigned to, and change events
-are emitted for both.  The ``user`` association
-takes precedence, and None is applied to ``user_id``, causing a failure.
+Above, the assignment of ``user`` takes precedence over the foreign key
+assignment of ``user_id``, with the end result that ``None`` is applied
+to ``user_id``, causing a failure.
 
 Most :meth:`~.Session.merge` issues can be examined by first checking -
 is the object prematurely in the session ?
