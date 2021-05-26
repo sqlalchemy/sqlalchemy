@@ -25,10 +25,19 @@ def setup_filters():
     # some selected deprecations...
     warnings.filterwarnings("error", category=DeprecationWarning)
     warnings.filterwarnings(
-        "ignore", category=DeprecationWarning, message=".*StopIteration"
+        "ignore", category=DeprecationWarning, message=r".*StopIteration"
     )
     warnings.filterwarnings(
-        "ignore", category=DeprecationWarning, message=".*inspect.get.*argspec"
+        "ignore",
+        category=DeprecationWarning,
+        message=r".*inspect.get.*argspec",
+    )
+
+    # used by pytest-xdist
+    warnings.filterwarnings(
+        "ignore",
+        category=DeprecationWarning,
+        message=r".*isSet\(\) is deprecated, use is_set\(\).*",
     )
     warnings.filterwarnings(
         "ignore",

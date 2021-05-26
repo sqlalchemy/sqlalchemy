@@ -11,6 +11,7 @@ from sqlalchemy.testing import is_true
 from sqlalchemy.util import asyncio
 from sqlalchemy.util import await_fallback
 from sqlalchemy.util import await_only
+from sqlalchemy.util import compat
 from sqlalchemy.util import greenlet_spawn
 from sqlalchemy.util import queue
 
@@ -192,10 +193,15 @@ class TestAsyncAdaptedQueue(fixtures.TestBase):
                 eq_(q.get(block=False), 1)
                 q.get(timeout=0.1)
 
-            with expect_raises_message(
-                RuntimeError, "Task .* attached to a different loop"
-            ):
-                asyncio.run(greenlet_spawn(go))
+            if compat.py310:
+                # TODO: I don't really know what this means in 3.10
+                with expect_raises(queue.Empty):
+                    asyncio.run(greenlet_spawn(go))
+            else:
+                with expect_raises_message(
+                    RuntimeError, "Task .* attached to a different loop"
+                ):
+                    asyncio.run(greenlet_spawn(go))
 
             run[0] = True
 

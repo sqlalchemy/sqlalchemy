@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, general
+    :tickets: 6540, 6543
+
+    Resolved various deprecation warnings which were appearing as of Python
+    version 3.10.0b1.

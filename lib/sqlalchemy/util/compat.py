@@ -14,7 +14,7 @@ import operator
 import platform
 import sys
 
-
+py310 = sys.version_info >= (3, 10)
 py38 = sys.version_info >= (3, 8)
 py37 = sys.version_info >= (3, 7)
 py3k = sys.version_info >= (3, 0)
@@ -111,20 +111,16 @@ def inspect_getfullargspec(func):
 
 if py38:
     from importlib import metadata as importlib_metadata
-
-    def importlib_metadata_get(group):
-        return importlib_metadata.entry_points().get(group, ())
-
-
 else:
     import importlib_metadata  # noqa
 
-    def importlib_metadata_get(group):
-        ep = importlib_metadata.entry_points()
-        if hasattr(ep, "select"):
-            return ep.select(group=group)
-        else:
-            return ep.get(group, ())
+
+def importlib_metadata_get(group):
+    ep = importlib_metadata.entry_points()
+    if hasattr(ep, "select"):
+        return ep.select(group=group)
+    else:
+        return ep.get(group, ())
 
 
 if py3k:

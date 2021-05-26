@@ -74,7 +74,7 @@ def await_fallback(awaitable: Coroutine) -> Any:
     # this is called in the context greenlet while running fn
     current = greenlet.getcurrent()
     if not isinstance(current, _AsyncIoGreenlet):
-        loop = asyncio.get_event_loop()
+        loop = get_event_loop()
         if loop.is_running():
             raise exc.MissingGreenlet(
                 "greenlet_spawn has not been called and asyncio event "
@@ -152,7 +152,7 @@ class AsyncAdaptedLock:
 def _util_async_run_coroutine_function(fn, *args, **kwargs):
     """for test suite/ util only"""
 
-    loop = asyncio.get_event_loop()
+    loop = get_event_loop()
     if loop.is_running():
         raise Exception(
             "for async run coroutine we expect that no greenlet or event "
@@ -164,10 +164,25 @@ def _util_async_run_coroutine_function(fn, *args, **kwargs):
 def _util_async_run(fn, *args, **kwargs):
     """for test suite/ util only"""
 
-    loop = asyncio.get_event_loop()
+    loop = get_event_loop()
     if not loop.is_running():
         return loop.run_until_complete(greenlet_spawn(fn, *args, **kwargs))
     else:
         # allow for a wrapped test function to call another
         assert isinstance(greenlet.getcurrent(), _AsyncIoGreenlet)
         return fn(*args, **kwargs)
+
+
+def get_event_loop():
+    """vendor asyncio.get_event_loop() for python 3.7 and above.
+
+    Python 3.10 deprecates get_event_loop() as a standalone.
+
+    """
+    if compat.py37:
+        try:
+            return asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.get_event_loop_policy().get_event_loop()
+    else:
+        return asyncio.get_event_loop()
