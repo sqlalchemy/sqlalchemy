@@ -343,6 +343,40 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             ],
         )
 
+    def test_order_by_composition_uses_immutable_tuple(self):
+        addresses = self.tables.addresses
+        User, Address = self._user_address_fixture(
+            addresses_args={"order_by": addresses.c.email_address.desc()}
+        )
+
+        sess = fixture_session()
+        u = sess.query(User).get(8)
+
+        with self.sql_execution_asserter() as asserter:
+            for i in range(3):
+                eq_(
+                    list(u.addresses.order_by(desc(Address.email_address))),
+                    [
+                        Address(email_address="ed@wood.com"),
+                        Address(email_address="ed@lala.com"),
+                        Address(email_address="ed@bettyboop.com"),
+                    ],
+                )
+        asserter.assert_(
+            *[
+                CompiledSQL(
+                    "SELECT addresses.id AS addresses_id, addresses.user_id "
+                    "AS addresses_user_id, addresses.email_address "
+                    "AS addresses_email_address FROM addresses "
+                    "WHERE :param_1 = addresses.user_id "
+                    "ORDER BY addresses.email_address DESC, "
+                    "addresses.email_address DESC",
+                    [{"param_1": 8}],
+                )
+                for i in range(3)
+            ]
+        )
+
     def test_configured_order_by(self):
         addresses = self.tables.addresses
         User, Address = self._user_address_fixture(

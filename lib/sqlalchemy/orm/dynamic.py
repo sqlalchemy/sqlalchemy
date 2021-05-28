@@ -66,6 +66,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
     supports_population = False
     collection = False
     dynamic = True
+    order_by = ()
 
     def __init__(
         self,
@@ -82,7 +83,8 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
             class_, key, typecallable, dispatch, **kw
         )
         self.target_mapper = target_mapper
-        self.order_by = order_by
+        if order_by:
+            self.order_by = tuple(order_by)
         if not query_class:
             self.query_class = AppenderQuery
         elif AppenderMixin in query_class.mro():

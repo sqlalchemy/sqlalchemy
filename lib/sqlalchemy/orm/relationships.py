@@ -2208,12 +2208,12 @@ class RelationshipProperty(StrategizedProperty):
         # ensure expressions in self.order_by, foreign_keys,
         # remote_side are all columns, not strings.
         if self.order_by is not False and self.order_by is not None:
-            self.order_by = [
+            self.order_by = tuple(
                 coercions.expect(
                     roles.ColumnArgumentRole, x, argname="order_by"
                 )
                 for x in util.to_list(self.order_by)
-            ]
+            )
 
         self._user_defined_foreign_keys = util.column_set(
             coercions.expect(
