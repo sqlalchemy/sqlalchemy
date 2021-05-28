@@ -33,12 +33,6 @@ def setup_filters():
         message=r".*inspect.get.*argspec",
     )
 
-    # used by pytest-xdist
-    warnings.filterwarnings(
-        "ignore",
-        category=DeprecationWarning,
-        message=r".*isSet\(\) is deprecated, use is_set\(\).*",
-    )
     warnings.filterwarnings(
         "ignore",
         category=DeprecationWarning,
