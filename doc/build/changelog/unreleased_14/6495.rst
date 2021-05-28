@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm, regression
-    :tickets: 6495
-
-    Fixed regression where the full combination of joined inheritance, global
-    with_polymorphic, self-referential relationship and joined loading would
-    fail to be able to produce a query with the scope of lazy loads and object
-    refresh operations that also attempted to render the joined loader.

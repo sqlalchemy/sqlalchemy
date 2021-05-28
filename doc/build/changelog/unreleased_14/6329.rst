@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, engine
-    :tickets: 6329
-
-    Fixed a long-standing issue with :class:`.URL` where query parameters
-    following the question mark would not be parsed correctly if the URL did
-    not contain a database portion with a backslash.

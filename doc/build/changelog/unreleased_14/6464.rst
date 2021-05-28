@@ -1,7 +1,0 @@
-.. change::
-    :tags: usecase, mssql
-    :tickets: 6464
-
-    Implemented support for a :class:`_sql.CTE` construct to be used directly
-    as the target of a :func:`_sql.delete` construct, i.e. "WITH ... AS cte
-    DELETE FROM cte". This appears to be a useful feature of SQL Server.

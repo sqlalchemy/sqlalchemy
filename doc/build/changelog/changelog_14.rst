@@ -15,7 +15,130 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.16
-    :include_notes_from: unreleased_14
+    :released: May 28, 2021
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 6482
+
+        Fixed issue where an ``@`` sign in the database portion of a URL would not
+        be interpreted correctly if the URL also had a username:password section.
+
+
+    .. change::
+        :tags: bug, ext
+        :tickets: 6529
+
+        Fixed a deprecation warning that was emitted when using
+        :func:`_automap.automap_base` without passing an existing
+        ``Base``.
+
+
+    .. change::
+        :tags: bug, pep484
+        :tickets: 6461
+
+        Remove pep484 types from the code.
+        Current effort is around the stub package, and having typing in
+        two places makes thing worse, since the types in the SQLAlchemy
+        source were usually outdated compared to the version in the stubs.
+
+    .. change::
+        :tags: usecase, mssql
+        :tickets: 6464
+
+        Implemented support for a :class:`_sql.CTE` construct to be used directly
+        as the target of a :func:`_sql.delete` construct, i.e. "WITH ... AS cte
+        DELETE FROM cte". This appears to be a useful feature of SQL Server.
+
+    .. change::
+        :tags: bug, general
+        :tickets: 6540, 6543
+
+        Resolved various deprecation warnings which were appearing as of Python
+        version 3.10.0b1.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6471
+
+        Fixed issue when using :paramref:`_orm.relationship.cascade_backrefs`
+        parameter set to ``False``, which per :ref:`change_5150` is set to become
+        the standard behavior in SQLAlchemy 2.0, where adding the item to a
+        collection that uniquifies, such as ``set`` or ``dict`` would fail to fire
+        a cascade event if the object were already associated in that collection
+        via the backref. This fix represents a fundamental change in the collection
+        mechanics by introducing a new event state which can fire off for a
+        collection mutation even if there is no net change on the collection; the
+        action is now suited using a new event hook
+        :meth:`_orm.AttributeEvents.append_wo_mutation`.
+
+
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6550
+
+        Fixed regression involving clause adaption of labeled ORM compound
+        elements, such as single-table inheritance discriminator expressions with
+        conditionals or CASE expressions, which could cause aliased expressions
+        such as those used in ORM join / joinedload operations to not be adapted
+        correctly, such as referring to the wrong table in the ON clause in a join.
+
+        This change also improves a performance bump that was located within the
+        process of invoking :meth:`_sql.Select.join` given an ORM attribute
+        as a target.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6495
+
+        Fixed regression where the full combination of joined inheritance, global
+        with_polymorphic, self-referential relationship and joined loading would
+        fail to be able to produce a query with the scope of lazy loads and object
+        refresh operations that also attempted to render the joined loader.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 6329
+
+        Fixed a long-standing issue with :class:`.URL` where query parameters
+        following the question mark would not be parsed correctly if the URL did
+        not contain a database portion with a backslash.
+
+    .. change::
+        :tags: bug, sql, regression
+        :tickets: 6549
+
+        Fixed regression in dynamic loader strategy and :func:`_orm.relationship`
+        overall where the :paramref:`_orm.relationship.order_by` parameter were
+        stored as a mutable list, which could then be mutated when combined with
+        additional "order_by" methods used against the dynamic query object,
+        causing the ORDER BY criteria to continue to grow repetitively.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6484
+
+        Enhanced the bind resolution rules for :meth:`_orm.Session.execute` so that
+        when a non-ORM statement such as an :func:`_sql.insert` construct
+        nonetheless is built against ORM objects, to the greatest degree possible
+        the ORM entity will be used to resolve the bind, such as for a
+        :class:`_orm.Session` that has a bind map set up on a common superclass
+        without specific mappers or tables named in the map.
+
+    .. change::
+        :tags: bug, regression, ext
+        :tickets: 6390
+
+        Fixed regression in the ``sqlalchemy.ext.instrumentation`` extension that
+        prevented instrumentation disposal from working completely. This fix
+        includes both a 1.4 regression fix as well as a fix for a related issue
+        that existed in 1.3 also.   As part of this change, the
+        :class:`sqlalchemy.ext.instrumentation.InstrumentationManager` class now
+        has a new method ``unregister()``, which replaces the previous method
+        ``dispose()``, which was not called as of version 1.4.
+
 
 .. changelog::
     :version: 1.4.15

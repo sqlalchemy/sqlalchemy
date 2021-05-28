@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, sql, regression
-    :tickets: 6549
-
-    Fixed regression in dynamic loader strategy and :func:`_orm.relationship`
-    overall where the :paramref:`_orm.relationship.order_by` parameter were
-    stored as a mutable list, which could then be mutated when combined with
-    additional "order_by" methods used against the dynamic query object,
-    causing the ORDER BY criteria to continue to grow repetitively.
