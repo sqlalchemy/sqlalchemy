@@ -458,6 +458,34 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
             select(f), "SELECT t1_1.col1 * :col1_1 AS anon_1 FROM t1 AS t1_1"
         )
 
+    @testing.combinations(
+        (lambda t1: t1.c.col1, "t1_1.col1"),
+        (lambda t1: t1.c.col1 == "foo", "t1_1.col1 = :col1_1"),
+        (
+            lambda t1: case((t1.c.col1 == "foo", "bar"), else_=t1.c.col1),
+            "CASE WHEN (t1_1.col1 = :col1_1) THEN :param_1 ELSE t1_1.col1 END",
+        ),
+        argnames="case, expected",
+    )
+    @testing.combinations(False, True, argnames="label_")
+    @testing.combinations(False, True, argnames="annotate")
+    def test_annotated_label_cases(self, case, expected, label_, annotate):
+        """test #6550"""
+
+        t1 = table("t1", column("col1"))
+        a1 = t1.alias()
+
+        expr = case(t1=t1)
+
+        if label_:
+            expr = expr.label(None)
+        if annotate:
+            expr = expr._annotate({"foo": "bar"})
+
+        adapted = sql_util.ClauseAdapter(a1).traverse(expr)
+
+        self.assert_compile(adapted, expected)
+
     @testing.combinations((null(),), (true(),))
     def test_dont_adapt_singleton_elements(self, elem):
         """test :ticket:`6259`"""

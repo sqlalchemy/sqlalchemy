@@ -2,6 +2,7 @@ from sqlalchemy import and_
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import join
+from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import aliased
@@ -963,6 +964,21 @@ class JoinConditionTest(NoCache, fixtures.DeclarativeMappedTest):
         @profiling.function_call_count(times=50, warmup=1)
         def go():
             orm_join(a1, B, a1.b)
+
+        go()
+
+    def test_a_to_b_aliased_select_join(self):
+        A, B = self.classes("A", "B")
+
+        b1 = aliased(B)
+
+        stmt = select(A)
+
+        @profiling.function_call_count(times=50, warmup=1)
+        def go():
+            # should not do any adaption or aliasing, this is just getting
+            # the args.  See #6550 where we also fixed this.
+            stmt.join(A.b.of_type(b1))
 
         go()
 

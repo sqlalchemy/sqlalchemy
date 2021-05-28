@@ -737,7 +737,6 @@ class HasCopyInternals(object):
                 continue
 
             if obj is not None:
-
                 result = meth(attrname, self, obj, **kw)
                 if result is not None:
                     setattr(self, attrname, result)

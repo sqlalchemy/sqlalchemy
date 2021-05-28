@@ -151,12 +151,25 @@ def expect(
 
             is_clause_element = False
 
-            while hasattr(element, "__clause_element__"):
+            # this is a special performance optimization for ORM
+            # joins used by JoinTargetImpl that we don't go through the
+            # work of creating __clause_element__() when we only need the
+            # original QueryableAttribute, as the former will do clause
+            # adaption and all that which is just thrown away here.
+            if (
+                impl._skip_clauseelement_for_target_match
+                and isinstance(element, role)
+                and hasattr(element, "__clause_element__")
+            ):
                 is_clause_element = True
-                if not getattr(element, "is_clause_element", False):
-                    element = element.__clause_element__()
-                else:
-                    break
+            else:
+                while hasattr(element, "__clause_element__"):
+                    is_clause_element = True
+
+                    if not getattr(element, "is_clause_element", False):
+                        element = element.__clause_element__()
+                    else:
+                        break
 
             if not is_clause_element:
                 if impl._use_inspection:
@@ -230,6 +243,7 @@ class RoleImpl(object):
 
     _post_coercion = None
     _resolve_literal_only = False
+    _skip_clauseelement_for_target_match = False
 
     def __init__(self, role_class):
         self._role_class = role_class
@@ -859,6 +873,8 @@ class HasCTEImpl(ReturnsRowsImpl):
 
 class JoinTargetImpl(RoleImpl):
     __slots__ = ()
+
+    _skip_clauseelement_for_target_match = True
 
     def _literal_coercion(self, element, legacy=False, **kw):
         if isinstance(element, str):
