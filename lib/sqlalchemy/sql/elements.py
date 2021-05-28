@@ -4395,6 +4395,7 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
         return self.element.foreign_keys
 
     def _copy_internals(self, clone=_clone, anonymize_labels=False, **kw):
+        self._reset_memoizations()
         self._element = clone(self._element, **kw)
         if anonymize_labels:
             self.name = self._resolve_label = _anonymous_label.safe_construct(

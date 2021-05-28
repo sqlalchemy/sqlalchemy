@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 6550
+
+    Fixed regression involving clause adaption of labeled ORM compound
+    elements, such as single-table inheritance discriminator expressions with
+    conditionals or CASE expressions, which could cause aliased expressions
+    such as those used in ORM join / joinedload operations to not be adapted
+    correctly, such as referring to the wrong table in the ON clause in a join.
+
+    This change also improves a performance bump that was located within the
+    process of invoking :meth:`_sql.Select.join` given an ORM attribute
+    as a target.
