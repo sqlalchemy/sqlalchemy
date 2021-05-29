@@ -15,7 +15,16 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.17
-    :include_notes_from: unreleased_14
+    :released: May 29, 2021
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6558
+
+        Fixed regression caused by just-released performance fix mentioned in #6550
+        where a query.join() to a relationship could produce an AttributeError if
+        the query were made against non-ORM structures only, a fairly unusual
+        calling pattern.
 
 .. changelog::
     :version: 1.4.16
