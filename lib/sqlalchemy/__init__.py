@@ -130,7 +130,7 @@ from .types import VARBINARY
 from .types import VARCHAR
 
 
-__version__ = "1.4.17"
+__version__ = "1.4.18"
 
 
 def __go(lcls):
