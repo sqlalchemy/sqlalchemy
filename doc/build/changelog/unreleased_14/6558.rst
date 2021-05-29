@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 6558
+
+    Fixed regression caused by just-released performance fix mentioned in #6550
+    where a query.join() to a relationship could produce an AttributeError if
+    the query were made against non-ORM structures only, a fairly unusual
+    calling pattern.

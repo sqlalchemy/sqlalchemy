@@ -426,6 +426,18 @@ class PropComparator(operators.ColumnOperators):
         return inspect(self._parententity).mapper
 
     @property
+    def _propagate_attrs(self):
+        # this suits the case in coercions where we don't actually
+        # call ``__clause_element__()`` but still need to get
+        # resolved._propagate_attrs.  See #6558.
+        return util.immutabledict(
+            {
+                "compile_state_plugin": "orm",
+                "plugin_subject": self._parentmapper,
+            }
+        )
+
+    @property
     def adapter(self):
         """Produce a callable that adapts column expressions
         to suit an aliased version of this comparator.

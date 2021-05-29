@@ -884,6 +884,9 @@ class JoinTargetImpl(RoleImpl):
         self, original_element, resolved, argname=None, legacy=False, **kw
     ):
         if isinstance(original_element, roles.JoinTargetRole):
+            # note that this codepath no longer occurs as of
+            # #6550, unless JoinTargetImpl._skip_clauseelement_for_target_match
+            # were set to False.
             return original_element
         elif legacy and isinstance(resolved, str):
             util.warn_deprecated_20(

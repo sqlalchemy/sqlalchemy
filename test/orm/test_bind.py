@@ -175,6 +175,10 @@ class BindIntegrationTest(_fixtures.FixtureTest):
             },
             "e1",
         ),
+        (
+            lambda users, User: {"clause": select(users).join(User.addresses)},
+            "e1",
+        ),
         (lambda Address: {"mapper": Address}, "e2"),
         (lambda Address: {"clause": Query([Address])._statement_20()}, "e2"),
         (lambda addresses: {"clause": select(addresses)}, "e2"),
@@ -268,6 +272,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
             e2=e2,
             e3=e3,
             addresses=addresses,
+            users=users,
         )
 
         sess = Session(e3)
