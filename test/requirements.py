@@ -706,6 +706,15 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def dupe_order_by_ok(self):
+        """target db wont choke if ORDER BY specifies the same expression
+        more than once
+
+        """
+
+        return skip_if("mssql")
+
+    @property
     def order_by_col_from_union(self):
         """target database supports ordering by a column from a SELECT
         inside of a UNION

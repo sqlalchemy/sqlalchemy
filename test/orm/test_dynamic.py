@@ -343,6 +343,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             ],
         )
 
+    @testing.requires.dupe_order_by_ok
     def test_order_by_composition_uses_immutable_tuple(self):
         addresses = self.tables.addresses
         User, Address = self._user_address_fixture(
