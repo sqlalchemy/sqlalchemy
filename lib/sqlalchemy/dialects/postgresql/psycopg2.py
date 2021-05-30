@@ -12,19 +12,26 @@ r"""
     :url: http://pypi.python.org/pypi/psycopg2/
 
 psycopg2 Connect Arguments
------------------------------------
+--------------------------
 
-psycopg2-specific keyword arguments which are accepted by
-:func:`_sa.create_engine()` are:
+Keyword arguments that are specific to the SQLAlchemy psycopg2 dialect
+may be passed to :func:`_sa.create_engine()`, and include the following:
 
 
 * ``isolation_level``: This option, available for all PostgreSQL dialects,
   includes the ``AUTOCOMMIT`` isolation level when using the psycopg2
-  dialect.
+  dialect.   This option sets the **default** isolation level for the
+  connection that is set immediately upon connection to the database before
+  the connection is pooled.  This option is generally superseded by the more
+  modern :paramref:`_engine.Connection.execution_options.isolation_level`
+  execution option, detailed at :ref:`dbapi_autocommit`.
 
   .. seealso::
 
     :ref:`psycopg2_isolation_level`
+
+    :ref:`dbapi_autocommit`
+
 
 * ``client_encoding``: sets the client encoding in a libpq-agnostic way,
   using psycopg2's ``set_client_encoding()`` method.
@@ -50,13 +57,39 @@ psycopg2-specific keyword arguments which are accepted by
 
     :ref:`psycopg2_executemany_mode`
 
+.. tip::
 
-* ``sslmode``: Controls psycopg2's behavior for encrypted connections.
-  The psycopg2 default is ``sslmode=prefer``; it will attempt an SSL
-  connection and if that fails it will fall back to an unencrypted connection.
-  ``sslmode=require`` can be used to only establish secure connections. (Other
-  modes are available. See the psycopg2 documentation for details.)
+    The above keyword arguments are **dialect** keyword arguments, meaning
+    that they are passed as explicit keyword arguments to :func:`_sa.create_engine()`::
 
+        engine = create_engine(
+            "postgresql+psycopg2://scott:tiger@localhost/test",
+            isolation_level="SERIALIZABLE",
+        )
+
+    These should not be confused with **DBAPI** connect arguments, which
+    are passed as part of the :paramref:`_sa.create_engine.connect_args`
+    dictionary and/or are passed in the URL query string, as detailed in
+    the section :ref:`custom_dbapi_args`.
+
+.. _psycopg2_ssl:
+
+SSL Connections
+---------------
+
+The psycopg2 module has a connection argument named ``sslmode`` for
+controlling its behavior regarding secure (SSL) connections. The default is
+``sslmode=prefer``; it will attempt an SSL connection and if that fails it
+will fall back to an unencrypted connection. ``sslmode=require`` may be used
+to ensure that only secure connections are established.  Consult the
+psycopg2 / libpq documentation for further options that are available.
+
+Note that ``sslmode`` is specific to psycopg2 so it is included in the
+connection URI::
+
+    engine = sa.create_engine(
+        "postgresql+psycopg2://scott:tiger@192.168.0.199:5432/test?sslmode=require"
+    )
 
 Unix Domain Connections
 ------------------------
@@ -81,7 +114,7 @@ using ``host`` as an additional keyword argument::
 
 .. _psycopg2_multi_host:
 
-Specifiying multiple fallback hosts
+Specifying multiple fallback hosts
 -----------------------------------
 
 psycopg2 supports multiple connection points in the connection string.

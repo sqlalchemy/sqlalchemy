@@ -42,7 +42,7 @@ passed to :func:`_sa.create_engine` using the ``client_encoding`` parameter::
 .. _pg8000_ssl:
 
 SSL Connections
-----------------
+---------------
 
 pg8000 accepts a Python ``SSLContext`` object which may be specified using the
 :paramref:`_sa.create_engine.connect_args` dictionary::
@@ -50,8 +50,8 @@ pg8000 accepts a Python ``SSLContext`` object which may be specified using the
     import ssl
     ssl_context = ssl.create_default_context()
     engine = sa.create_engine(
-        "postgresql+pg8000://scott:tiger@192.168.0.199:5432/test,
-        connect_args={'ssl_context': ssl_context},
+        "postgresql+pg8000://scott:tiger@192.168.0.199/test",
+        connect_args={"ssl_context": ssl_context},
     )
 
 If the server uses an automatically-generated certificate that is self-signed
@@ -60,11 +60,11 @@ necessary to disable hostname checking::
 
     import ssl
     ssl_context = ssl.create_default_context()
-    ssl_context.check_hostname=False
+    ssl_context.check_hostname = False
     ssl_context.verify_mode = ssl.CERT_NONE
     engine = sa.create_engine(
-        "postgresql+pg8000://scott:tiger@192.168.0.199:5432/test,
-        connect_args={'ssl_context': ssl_context},
+        "postgresql+pg8000://scott:tiger@192.168.0.199/test",
+        connect_args={"ssl_context": ssl_context},
     )
 
 .. _pg8000_isolation_level:
