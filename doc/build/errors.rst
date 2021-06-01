@@ -1153,10 +1153,18 @@ message for details.
 relationship X will copy column Q to column P, which conflicts with relationship(s): 'Y'
 ----------------------------------------------------------------------------------------
 
-This warning refers to the case when two or more relationships will write data to the
-same columns on flush, but the ORM does not have any kind of back population configuration
-between the two relationships.  The fix is usually to install the correct
-:paramref:`_orm.relationship.back_populates` configuration.   Given the following mapping::
+This warning refers to the case when two or more relationships will write data
+to the same columns on flush, but the ORM does not have any means of
+coordinating these relationships together. Depending on specifics, the solution
+may be that two relationships need to be referred towards one another using
+:paramref:`_orm.relationship.back_populates`, or that one or more of the
+relationships should be configured with :paramref:`_orm.relationship.viewonly`
+to prevent conflicting writes, or sometimes that the configuration is fully
+intentional and should configure :paramref:`_orm.relationship.overlaps` to
+silence each warning.
+
+For the typical example that's missing
+:paramref:`_orm.relationship.back_populates`, given the following mapping::
 
   class Parent(Base):
       __tablename__ = "parent"
