@@ -3451,8 +3451,9 @@ class JoinCondition(object):
                         "constraints are partially overlapping, the "
                         "orm.foreign() "
                         "annotation can be used to isolate the columns that "
-                        "should be written towards.   The 'overlaps' "
-                        "parameter may be used to remove this warning."
+                        "should be written towards.   To silence this "
+                        "warning, add the parameter 'overlaps=\"%s\"' to the "
+                        "'%s' relationship."
                         % (
                             self.prop,
                             from_,
@@ -3461,6 +3462,8 @@ class JoinCondition(object):
                                 "'%s' (copies %s to %s)" % (pr, fr_, to_)
                                 for (pr, fr_) in other_props
                             ),
+                            ",".join(pr.key for pr, fr in other_props),
+                            self.prop,
                         ),
                         code="qzyx",
                     )
