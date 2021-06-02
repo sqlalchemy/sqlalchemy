@@ -102,13 +102,21 @@ class TestBase(object):
         from . import engines
 
         def gen_testing_engine(
-            url=None, options=None, future=None, asyncio=False
+            url=None,
+            options=None,
+            future=None,
+            asyncio=False,
+            transfer_staticpool=False,
         ):
             if options is None:
                 options = {}
             options["scope"] = "fixture"
             return engines.testing_engine(
-                url=url, options=options, future=future, asyncio=asyncio
+                url=url,
+                options=options,
+                future=future,
+                asyncio=asyncio,
+                transfer_staticpool=transfer_staticpool,
             )
 
         yield gen_testing_engine
