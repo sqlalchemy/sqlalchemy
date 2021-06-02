@@ -4248,11 +4248,6 @@ class MetaData(SchemaItem):
           this :class:`_schema.MetaData` will
           be bound to the resulting engine.
 
-        :param reflect:
-          Optional, automatically load all tables from the bound database.
-          Defaults to False. :paramref:`_schema.MetaData.bind` is required
-          when this option is set.
-
         :param schema:
            The default schema to use for the :class:`_schema.Table`,
            :class:`.Sequence`, and potentially other objects associated with
