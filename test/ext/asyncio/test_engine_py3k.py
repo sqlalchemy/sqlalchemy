@@ -16,6 +16,9 @@ from sqlalchemy import union_all
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.ext.asyncio import engine as _async_engine
 from sqlalchemy.ext.asyncio import exc as asyncio_exc
+from sqlalchemy.ext.asyncio.base import ReversibleProxy
+from sqlalchemy.ext.asyncio.engine import AsyncConnection
+from sqlalchemy.ext.asyncio.engine import AsyncEngine
 from sqlalchemy.pool import AsyncAdaptedQueuePool
 from sqlalchemy.testing import assertions
 from sqlalchemy.testing import async_test
@@ -293,8 +296,8 @@ class AsyncEngineTest(EngineFixture):
         async with async_engine.connect() as conn:
             t1 = await conn.begin()
 
-            t2 = _async_engine.AsyncTransaction._from_existing_transaction(
-                conn, t1._proxied
+            t2 = _async_engine.AsyncTransaction._regenerate_proxy_for_target(
+                t1._proxied
             )
 
             eq_(t1, t2)
@@ -886,3 +889,118 @@ class TextSyncDBAPI(fixtures.TestBase):
             )
             assert res == 1
             assert await conn.run_sync(lambda _: 2) == 2
+
+
+class AsyncProxyTest(EngineFixture, fixtures.TestBase):
+    @async_test
+    async def test_get_transaction(self, async_engine):
+        async with async_engine.connect() as conn:
+            async with conn.begin() as trans:
+
+                is_(trans.connection, conn)
+                is_(conn.get_transaction(), trans)
+
+    @async_test
+    async def test_get_nested_transaction(self, async_engine):
+        async with async_engine.connect() as conn:
+            async with conn.begin() as trans:
+                n1 = await conn.begin_nested()
+
+                is_(conn.get_nested_transaction(), n1)
+
+                n2 = await conn.begin_nested()
+
+                is_(conn.get_nested_transaction(), n2)
+
+                await n2.commit()
+
+                is_(conn.get_nested_transaction(), n1)
+
+                is_(conn.get_transaction(), trans)
+
+    @async_test
+    async def test_get_connection(self, async_engine):
+        async with async_engine.connect() as conn:
+            is_(
+                AsyncConnection._retrieve_proxy_for_target(
+                    conn.sync_connection
+                ),
+                conn,
+            )
+
+    def test_regenerate_connection(self, connection):
+
+        async_connection = AsyncConnection._retrieve_proxy_for_target(
+            connection
+        )
+
+        a2 = AsyncConnection._retrieve_proxy_for_target(connection)
+        is_(async_connection, a2)
+        is_not(async_connection, None)
+
+        is_(async_connection.engine, a2.engine)
+        is_not(async_connection.engine, None)
+
+    @testing.requires.predictable_gc
+    async def test_gc_engine(self, testing_engine):
+        ReversibleProxy._proxy_objects.clear()
+
+        eq_(len(ReversibleProxy._proxy_objects), 0)
+
+        async_engine = AsyncEngine(testing.db)
+
+        eq_(len(ReversibleProxy._proxy_objects), 1)
+
+        del async_engine
+
+        eq_(len(ReversibleProxy._proxy_objects), 0)
+
+    @testing.requires.predictable_gc
+    @async_test
+    async def test_gc_conn(self, testing_engine):
+        ReversibleProxy._proxy_objects.clear()
+
+        async_engine = AsyncEngine(testing.db)
+
+        eq_(len(ReversibleProxy._proxy_objects), 1)
+
+        async with async_engine.connect() as conn:
+            eq_(len(ReversibleProxy._proxy_objects), 2)
+
+            async with conn.begin() as trans:
+                eq_(len(ReversibleProxy._proxy_objects), 3)
+
+            del trans
+
+        del conn
+
+        eq_(len(ReversibleProxy._proxy_objects), 1)
+
+        del async_engine
+
+        eq_(len(ReversibleProxy._proxy_objects), 0)
+
+    def test_regen_conn_but_not_engine(self, async_engine):
+
+        sync_conn = async_engine.sync_engine.connect()
+
+        async_conn = AsyncConnection._retrieve_proxy_for_target(sync_conn)
+        async_conn2 = AsyncConnection._retrieve_proxy_for_target(sync_conn)
+
+        is_(async_conn, async_conn2)
+        is_(async_conn.engine, async_engine)
+
+    def test_regen_trans_but_not_conn(self, async_engine):
+        sync_conn = async_engine.sync_engine.connect()
+
+        async_conn = AsyncConnection._retrieve_proxy_for_target(sync_conn)
+
+        trans = sync_conn.begin()
+
+        async_t1 = async_conn.get_transaction()
+
+        is_(async_t1.connection, async_conn)
+        is_(async_t1.sync_transaction, trans)
+
+        async_t2 = async_conn.get_transaction()
+        is_(async_t1, async_t2)
