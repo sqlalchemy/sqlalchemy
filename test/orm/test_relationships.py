@@ -913,32 +913,32 @@ class OverlappingFksSiblingTest(fixtures.TestBase):
             with expect_warnings(
                 r"relationship 'A.bs' will copy column a.id to column b.a_id, "
                 r"which conflicts with relationship\(s\): "
-                r"'C.as' \(copies a.id to b.a_id\), "
-                r"'A.cs' \(copies a.id to b.a_id\)"
+                r"'A.cs' \(copies a.id to b.a_id\), "
+                r"'C.as' \(copies a.id to b.a_id\)"
                 r".*add the parameter 'overlaps=\"as,cs\"' to the 'A.bs' "
                 r"relationship",
                 #
                 #
                 r"relationship 'B.a' will copy column a.id to column b.a_id, "
                 r"which conflicts with relationship\(s\): "
-                r"'C.as' \(copies a.id to b.a_id\), "
-                r"'A.cs' \(copies a.id to b.a_id\)..*"
-                r"add the parameter 'overlaps=\"as,cs\"' to the 'B.a' "
+                r"'A.cs' \(copies a.id to b.a_id\), "
+                r"'C.as' \(copies a.id to b.a_id\)"
+                r".*add the parameter 'overlaps=\"as,cs\"' to the 'B.a' "
                 r"relationship",
                 #
                 #
                 r"relationship 'B.c' will copy column c.id to column b.c_id, "
                 r"which conflicts with relationship\(s\): "
-                r"'C.as' \(copies c.id to b.c_id\), "
-                r"'A.cs' \(copies c.id to b.c_id\)"
+                r"'A.cs' \(copies c.id to b.c_id\), "
+                r"'C.as' \(copies c.id to b.c_id\)"
                 r".*add the parameter 'overlaps=\"as,cs\"' to the 'B.c' "
                 r"relationship",
                 #
                 #
                 r"relationship 'C.bs' will copy column c.id to column b.c_id, "
                 r"which conflicts with relationship\(s\): "
-                r"'C.as' \(copies c.id to b.c_id\), "
-                r"'A.cs' \(copies c.id to b.c_id\)"
+                r"'A.cs' \(copies c.id to b.c_id\), "
+                r"'C.as' \(copies c.id to b.c_id\)"
                 r".*add the parameter 'overlaps=\"as,cs\"' to the 'C.bs' "
                 r"relationship",
             ):

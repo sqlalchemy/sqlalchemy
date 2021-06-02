@@ -3459,10 +3459,12 @@ class JoinCondition(object):
                             from_,
                             to_,
                             ", ".join(
-                                "'%s' (copies %s to %s)" % (pr, fr_, to_)
-                                for (pr, fr_) in other_props
+                                sorted(
+                                    "'%s' (copies %s to %s)" % (pr, fr_, to_)
+                                    for (pr, fr_) in other_props
+                                )
                             ),
-                            ",".join(pr.key for pr, fr in other_props),
+                            ",".join(sorted(pr.key for pr, fr in other_props)),
                             self.prop,
                         ),
                         code="qzyx",
