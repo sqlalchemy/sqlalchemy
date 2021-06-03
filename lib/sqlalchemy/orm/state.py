@@ -34,6 +34,9 @@ from .. import util
 # late-populated by session.py
 _sessions = None
 
+# optionally late-provided by sqlalchemy.ext.asyncio.session
+_async_provider = None
+
 
 @inspection._self_inspects
 class InstanceState(interfaces.InspectionAttrInfo):
@@ -262,6 +265,10 @@ class InstanceState(interfaces.InspectionAttrInfo):
         Only when the transaction is completed does the object become
         fully detached under normal circumstances.
 
+        .. seealso::
+
+            :attr:`_orm.InstanceState.async_session`
+
         """
         if self.session_id:
             try:
@@ -269,6 +276,34 @@ class InstanceState(interfaces.InspectionAttrInfo):
             except KeyError:
                 pass
         return None
+
+    @property
+    def async_session(self):
+        """Return the owning :class:`_asyncio.AsyncSession` for this instance,
+        or ``None`` if none available.
+
+        This attribute is only non-None when the :mod:`sqlalchemy.ext.asyncio`
+        API is in use for this ORM object. The returned
+        :class:`_asyncio.AsyncSession` object will be a proxy for the
+        :class:`_orm.Session` object that would be returned from the
+        :attr:`_orm.InstanceState.session` attribute for this
+        :class:`_orm.InstanceState`.
+
+        .. versionadded:: 1.4.18
+
+        .. seealso::
+
+            :ref:`asyncio_toplevel`
+
+        """
+        if _async_provider is None:
+            return None
+
+        sess = self.session
+        if sess is not None:
+            return _async_provider(sess)
+        else:
+            return None
 
     @property
     def object(self):

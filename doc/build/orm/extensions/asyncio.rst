@@ -100,7 +100,7 @@ illustrates a complete example including mapper and session configuration::
     from sqlalchemy import Integer
     from sqlalchemy import String
     from sqlalchemy.ext.asyncio import AsyncSession
-    from sqlalchemy.ext.asyncio import create_async_engine    
+    from sqlalchemy.ext.asyncio import create_async_engine
     from sqlalchemy.future import select
     from sqlalchemy.orm import declarative_base
     from sqlalchemy.orm import relationship
@@ -451,6 +451,10 @@ cursor.
 
 ORM Session API Documentation
 -----------------------------
+
+.. autofunction:: async_object_session
+
+.. autofunction:: async_session
 
 .. autoclass:: AsyncSession
    :members:
