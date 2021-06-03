@@ -372,6 +372,13 @@ def _expect_raises(except_cls, msg=None, check_context=False):
             _assert_proper_exception_context(err)
         print(util.text_type(err).encode("utf-8"))
 
+    # it's generally a good idea to not carry traceback objects outside
+    # of the except: block, but in this case especially we seem to have
+    # hit some bug in either python 3.10.0b2 or greenlet or both which
+    # this seems to fix:
+    # https://github.com/python-greenlet/greenlet/issues/242
+    del ec
+
     # assert outside the block so it works for AssertionError too !
     assert success, "Callable did not raise an exception"
 
