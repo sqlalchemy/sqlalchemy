@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, engine, asyncio
+    :tickets: 6285
+
+    Fixed an issue that presented itself when using the :class:`_pool.NullPool`
+    or the :class:`_pool.StaticPool` with an async engine. This mostly affected
+    the aiosqlite dialect.

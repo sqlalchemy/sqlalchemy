@@ -10,7 +10,8 @@ from sqlalchemy import pool
 from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy.engine import default
-from sqlalchemy.pool.impl import _AsyncConnDialect
+from sqlalchemy.pool.base import _AsyncConnDialect
+from sqlalchemy.pool.base import _ConnDialect
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_context_ok
 from sqlalchemy.testing import assert_raises_message
@@ -279,6 +280,39 @@ class PoolTest(PoolTestBase):
 
         if "use_lifo" in pool_args:
             eq_(p1._pool.use_lifo, p2._pool.use_lifo)
+
+    @testing.combinations(
+        (pool.QueuePool, False),
+        (pool.AsyncAdaptedQueuePool, True),
+        (pool.FallbackAsyncAdaptedQueuePool, True),
+        (pool.NullPool, None),
+        (pool.SingletonThreadPool, False),
+        (pool.StaticPool, None),
+        (pool.AssertionPool, None),
+    )
+    def test_is_asyncio_from_dialect(self, pool_cls, is_async_king):
+        p = pool_cls(creator=object())
+        for is_async in (True, False):
+            if is_async:
+                p._dialect = _AsyncConnDialect()
+            else:
+                p._dialect = _ConnDialect
+            if is_async_king is None:
+                eq_(p._is_asyncio, is_async)
+            else:
+                eq_(p._is_asyncio, is_async_king)
+
+    @testing.combinations(
+        (pool.QueuePool, False),
+        (pool.AsyncAdaptedQueuePool, True),
+        (pool.FallbackAsyncAdaptedQueuePool, True),
+        (pool.NullPool, False),
+        (pool.SingletonThreadPool, False),
+        (pool.StaticPool, False),
+        (pool.AssertionPool, False),
+    )
+    def test_is_asyncio_from_dialect_cls(self, pool_cls, is_async):
+        eq_(pool_cls._is_asyncio, is_async)
 
 
 class PoolDialectTest(PoolTestBase):

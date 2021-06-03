@@ -230,14 +230,8 @@ class AsyncEngineTest(EngineFixture):
 
         is_false(async_engine == None)
 
-    # NOTE: this test currently causes the test suite to hang; it previously
-    # was not actually running the worker thread
-    # as the testing_engine() fixture
-    # was rejecting the "transfer_staticpool" keyword argument
     @async_test
-    async def temporarily_dont_test_no_attach_to_event_loop(
-        self, testing_engine
-    ):
+    async def test_no_attach_to_event_loop(self, testing_engine):
         """test #6409"""
 
         import asyncio
@@ -249,12 +243,11 @@ class AsyncEngineTest(EngineFixture):
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
 
-            engine = testing_engine(asyncio=True, transfer_staticpool=True)
-
             async def main():
                 tasks = [task() for _ in range(2)]
 
                 await asyncio.gather(*tasks)
+                await engine.dispose()
 
             async def task():
                 async with engine.begin() as connection:
@@ -262,6 +255,10 @@ class AsyncEngineTest(EngineFixture):
                     result.all()
 
             try:
+                engine = testing_engine(
+                    asyncio=True, transfer_staticpool=False
+                )
+
                 asyncio.run(main())
             except Exception as err:
                 errs.append(err)
