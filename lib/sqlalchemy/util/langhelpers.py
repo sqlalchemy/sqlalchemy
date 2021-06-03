@@ -562,6 +562,18 @@ def format_argspec_plus(fn, grouped=True):
         defaulted_vals,
         formatvalue=lambda x: "=" + x,
     )
+
+    if spec[0]:
+        apply_kw_proxied = compat.inspect_formatargspec(
+            name_args[1:],
+            spec[1],
+            spec[2],
+            defaulted_vals,
+            formatvalue=lambda x: "=" + x,
+        )
+    else:
+        apply_kw_proxied = apply_kw
+
     if grouped:
         return dict(
             args=args,
@@ -569,6 +581,7 @@ def format_argspec_plus(fn, grouped=True):
             apply_pos=apply_pos,
             apply_kw=apply_kw,
             apply_pos_proxied=apply_pos_proxied,
+            apply_kw_proxied=apply_kw_proxied,
         )
     else:
         return dict(
@@ -577,6 +590,7 @@ def format_argspec_plus(fn, grouped=True):
             apply_pos=apply_pos[1:-1],
             apply_kw=apply_kw[1:-1],
             apply_pos_proxied=apply_pos_proxied[1:-1],
+            apply_kw_proxied=apply_kw_proxied[1:-1],
         )
 
 
@@ -609,6 +623,7 @@ def format_argspec_init(method, grouped=True):
         apply_pos=args,
         apply_kw=args,
         apply_pos_proxied=proxied,
+        apply_kw_proxied=proxied,
     )
 
 
@@ -638,6 +653,7 @@ def create_proxy_methods(
             metadata = {
                 "name": fn.__name__,
                 "apply_pos_proxied": caller_argspec["apply_pos_proxied"],
+                "apply_kw_proxied": caller_argspec["apply_kw_proxied"],
                 "args": caller_argspec["args"],
                 "self_arg": caller_argspec["self_arg"],
             }
@@ -645,14 +661,14 @@ def create_proxy_methods(
             if clslevel:
                 code = (
                     "def %(name)s(%(args)s):\n"
-                    "    return target_cls.%(name)s(%(apply_pos_proxied)s)"
+                    "    return target_cls.%(name)s(%(apply_kw_proxied)s)"
                     % metadata
                 )
                 env["target_cls"] = target_cls
             else:
                 code = (
                     "def %(name)s(%(args)s):\n"
-                    "    return %(self_arg)s._proxied.%(name)s(%(apply_pos_proxied)s)"  # noqa E501
+                    "    return %(self_arg)s._proxied.%(name)s(%(apply_kw_proxied)s)"  # noqa E501
                     % metadata
                 )
 

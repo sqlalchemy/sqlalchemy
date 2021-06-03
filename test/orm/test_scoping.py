@@ -7,9 +7,12 @@ from sqlalchemy.orm import mapper
 from sqlalchemy.orm import query
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
@@ -145,10 +148,15 @@ class ScopedSessionTest(fixtures.MappedTest):
         eq_(
             mock_session.mock_calls,
             [
-                mock.call.add("add", True),
+                mock.call.add("add", _warn=True),
                 mock.call.delete("delete"),
                 mock.call.get(
-                    "Cls", 5, mock.ANY, mock.ANY, mock.ANY, mock.ANY
+                    "Cls",
+                    5,
+                    options=None,
+                    populate_existing=False,
+                    with_for_update=None,
+                    identity_token=None,
                 ),
             ],
         )
@@ -159,3 +167,45 @@ class ScopedSessionTest(fixtures.MappedTest):
             sess.object_session("foo")
 
         eq_(mock_object_session.mock_calls, [mock.call("foo")])
+
+    @testing.combinations(
+        ("style1", testing.requires.python3),
+        ("style2", testing.requires.python3),
+        "style3",
+        "style4",
+    )
+    def test_get_bind_custom_session_subclass(self, style):
+        """test #6285"""
+
+        class MySession(Session):
+            if style == "style1":
+
+                def get_bind(self, mapper=None, **kwargs):
+                    return super().get_bind(mapper=mapper, **kwargs)
+
+            elif style == "style2":
+                # this was the workaround for #6285, ensure it continues
+                # working as well
+                def get_bind(self, mapper=None, *args, **kwargs):
+                    return super().get_bind(mapper, *args, **kwargs)
+
+            elif style == "style3":
+                # py2k style
+                def get_bind(self, mapper=None, *args, **kwargs):
+                    return super(MySession, self).get_bind(
+                        mapper, *args, **kwargs
+                    )
+
+            elif style == "style4":
+                # py2k style
+                def get_bind(self, mapper=None, **kwargs):
+                    return super(MySession, self).get_bind(
+                        mapper=mapper, **kwargs
+                    )
+
+        s1 = MySession(testing.db)
+        is_(s1.get_bind(), testing.db)
+
+        ss = scoped_session(sessionmaker(testing.db, class_=MySession))
+
+        is_(ss.get_bind(), testing.db)

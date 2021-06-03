@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 6285
+
+    Adjusted the means by which classes such as :class:`_orm.scoped_session`
+    and :class:`_asyncio.AsyncSession` are generated from the base
+    :class:`_orm.Session` class, such that custom :class:`_orm.Session`
+    subclasses such as that used by Flask-SQLAlchemy don't need to implement
+    positional arguments when they call into the superclass method, and can
+    continue using the same argument styles as in previous releases.
