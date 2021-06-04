@@ -206,6 +206,35 @@ class OnConflictTest(fixtures.TablesTest):
             [(1, "name1")],
         )
 
+    def test_on_conflict_do_update_set_executemany(self, connection):
+        """test #6581"""
+
+        users = self.tables.users
+
+        connection.execute(
+            users.insert(),
+            [dict(id=1, name="name1"), dict(id=2, name="name2")],
+        )
+
+        i = insert(users)
+        i = i.on_conflict_do_update(
+            index_elements=[users.c.id],
+            set_={"id": i.excluded.id, "name": i.excluded.name + ".5"},
+        )
+        connection.execute(
+            i,
+            [
+                dict(id=1, name="name1"),
+                dict(id=2, name="name2"),
+                dict(id=3, name="name3"),
+            ],
+        )
+
+        eq_(
+            connection.execute(users.select().order_by(users.c.id)).fetchall(),
+            [(1, "name1.5"), (2, "name2.5"), (3, "name3")],
+        )
+
     def test_on_conflict_do_update_schema(self, connection):
         users = self.tables.get("%s.users_schema" % config.test_schema)
 

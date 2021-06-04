@@ -3588,7 +3588,14 @@ class SQLCompiler(Compiled):
                 [value for c, expr, value in crud_params]
             )
             text += " VALUES (%s)" % insert_single_values_expr
-            if toplevel:
+            if toplevel and insert_stmt._post_values_clause is None:
+                # don't assign insert_single_values_expr if _post_values_clause
+                # is present.  what this means concretely is that the
+                # "fast insert executemany helper" won't be used, in other
+                # words we won't convert "executemany()" of many parameter
+                # sets into a single INSERT with many elements in VALUES.
+                # We can't apply that optimization safely if for example the
+                # statement includes a clause like "ON CONFLICT DO UPDATE"
                 self.insert_single_values_expr = insert_single_values_expr
 
         if insert_stmt._post_values_clause is not None:

@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 6581
+
+    Fixed issue where using the PostgreSQL "INSERT..ON CONFLICT" structure
+    would fail to work with the psycopg2 driver if it were used in an
+    "executemany" context along with bound parameters in the "SET" clause, due
+    to the implicit use of the psycopg2 fast execution helpers which are not
+    appropriate for this style of INSERT statement. Additional checks to
+    exclude this kind of statement from that particular extension have been
+    added.
