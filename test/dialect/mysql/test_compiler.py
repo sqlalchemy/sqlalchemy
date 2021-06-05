@@ -775,6 +775,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_cast_type_decorator(self):
         class MyInteger(sqltypes.TypeDecorator):
             impl = Integer
+            cache_ok = True
 
         type_ = MyInteger()
         t = sql.table("t", sql.column("col"))

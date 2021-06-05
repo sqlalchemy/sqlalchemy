@@ -78,6 +78,7 @@ class FBExecutionContext_kinterbasdb(FBExecutionContext):
 
 class FBDialect_kinterbasdb(FBDialect):
     driver = "kinterbasdb"
+    supports_statement_cache = True
     supports_sane_rowcount = False
     supports_sane_multi_rowcount = False
     execution_ctx_cls = FBExecutionContext_kinterbasdb

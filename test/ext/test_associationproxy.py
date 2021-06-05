@@ -30,9 +30,10 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
-from sqlalchemy.testing.assertions import expect_warnings
+from sqlalchemy.testing import is_false
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.mock import call
 from sqlalchemy.testing.mock import Mock
@@ -3243,6 +3244,54 @@ class ProxyOfSynonymTest(AssertsCompiledSQL, fixtures.DeclarativeMappedTest):
 
         self.assert_compile(
             A.b_data == "foo",
+            "EXISTS (SELECT 1 FROM a, b WHERE a.id = b.a_id "
+            "AND b.data = :data_1)",
+        )
+
+
+class SynonymOfProxyTest(AssertsCompiledSQL, fixtures.DeclarativeMappedTest):
+    __dialect__ = "default"
+
+    run_create_tables = None
+
+    @classmethod
+    def setup_classes(cls):
+        from sqlalchemy.orm import synonym
+
+        Base = cls.DeclarativeBasic
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            data = Column(String)
+            bs = relationship("B", backref="a")
+
+            b_data = association_proxy("bs", "data")
+
+            b_data_syn = synonym("b_data")
+
+        class B(Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+            data = Column(String)
+
+    def test_hasattr(self):
+        A, B = self.classes("A", "B")
+        is_false(hasattr(A.b_data_syn, "nonexistent"))
+
+    def test_o2m_instance_getter(self):
+        A, B = self.classes("A", "B")
+
+        a1 = A(bs=[B(data="bdata1"), B(data="bdata2")])
+        eq_(a1.b_data_syn, ["bdata1", "bdata2"])
+
+    def test_o2m_expr(self):
+        A, B = self.classes("A", "B")
+
+        self.assert_compile(
+            A.b_data_syn == "foo",
             "EXISTS (SELECT 1 FROM a, b WHERE a.id = b.a_id "
             "AND b.data = :data_1)",
         )

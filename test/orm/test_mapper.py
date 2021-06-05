@@ -1662,10 +1662,10 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert hasattr(User.x, "comparator")
 
     def test_synonym_of_non_property_raises(self):
-        from sqlalchemy.ext.associationproxy import association_proxy
-
         class User(object):
-            pass
+            @property
+            def x(self):
+                return "hi"
 
         users, Address, addresses = (
             self.tables.users,
@@ -1679,15 +1679,21 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             properties={"y": synonym("x"), "addresses": relationship(Address)},
         )
         self.mapper(Address, addresses)
-        User.x = association_proxy("addresses", "email_address")
 
         assert_raises_message(
             sa.exc.InvalidRequestError,
             r'synonym\(\) attribute "User.x" only supports ORM mapped '
-            "attributes, got .*AssociationProxy",
+            "attributes, got .*property",
             getattr,
             User.y,
             "property",
+        )
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            r'synonym\(\) attribute "User.x" only supports ORM mapped '
+            "attributes, got .*property",
+            lambda: User.y == 10,
         )
 
     def test_synonym_column_location(self):

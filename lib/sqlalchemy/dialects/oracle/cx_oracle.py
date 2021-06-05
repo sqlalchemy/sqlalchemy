@@ -769,7 +769,7 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
             fetch_strategy = _cursor.FullyBufferedCursorFetchStrategy(
                 self.cursor,
                 [
-                    (getattr(col, "name", col.anon_label), None)
+                    (getattr(col, "name", col._anon_name_label), None)
                     for col in self.compiled.returning
                 ],
                 initial_buffer=[tuple(returning_params)],
@@ -797,6 +797,7 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
 
 
 class OracleDialect_cx_oracle(OracleDialect):
+    supports_statement_cache = True
     execution_ctx_cls = OracleExecutionContext_cx_oracle
     statement_compiler = OracleCompiler_cx_oracle
 

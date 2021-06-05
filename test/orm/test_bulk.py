@@ -451,8 +451,15 @@ class BulkUDTestAltColKeys(BulkTest, fixtures.MappedTest):
             )
         )
 
-    def test_update_keys(self):
-        asserter = self._test_update(self.classes.PersonKeys)
+    @testing.combinations(
+        ("states",),
+        ("dicts",),
+    )
+    def test_update_keys(self, type_):
+        if type_ == "states":
+            asserter = self._test_update_states(self.classes.PersonKeys)
+        else:
+            asserter = self._test_update(self.classes.PersonKeys)
         asserter.assert_(
             CompiledSQL(
                 "UPDATE people_keys SET name=:personname "
@@ -461,9 +468,16 @@ class BulkUDTestAltColKeys(BulkTest, fixtures.MappedTest):
             )
         )
 
+    @testing.combinations(
+        ("states",),
+        ("dicts",),
+    )
     @testing.requires.updateable_autoincrement_pks
-    def test_update_attrs(self):
-        asserter = self._test_update(self.classes.PersonAttrs)
+    def test_update_attrs(self, type_):
+        if type_ == "states":
+            asserter = self._test_update_states(self.classes.PersonAttrs)
+        else:
+            asserter = self._test_update(self.classes.PersonAttrs)
         asserter.assert_(
             CompiledSQL(
                 "UPDATE people_attrs SET name=:name "
@@ -509,6 +523,22 @@ class BulkUDTestAltColKeys(BulkTest, fixtures.MappedTest):
             s.bulk_update_mappings(
                 Person, [{"id": 5, "personname": "newname"}]
             )
+
+        eq_(s.query(Person).first(), Person(id=5, personname="newname"))
+
+        return asserter
+
+    def _test_update_states(self, person_cls):
+        Person = person_cls
+
+        s = fixture_session()
+        s.add(Person(id=5, personname="thename"))
+        s.commit()
+
+        p = s.query(Person).get(5)
+        with self.sql_execution_asserter(testing.db) as asserter:
+            p.personname = "newname"
+            s.bulk_save_objects([p])
 
         eq_(s.query(Person).first(), Person(id=5, personname="newname"))
 

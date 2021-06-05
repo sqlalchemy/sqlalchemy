@@ -155,11 +155,11 @@ class ExtendedInstrumentationRegistry(InstrumentationFactory):
         return factories
 
     def unregister(self, class_):
+        super(ExtendedInstrumentationRegistry, self).unregister(class_)
         if class_ in self._manager_finders:
             del self._manager_finders[class_]
             del self._state_finders[class_]
             del self._dict_finders[class_]
-        super(ExtendedInstrumentationRegistry, self).unregister(class_)
 
     def manager_of_class(self, cls):
         if cls is None:
@@ -220,7 +220,7 @@ class InstrumentationManager(object):
     def manage(self, class_, manager):
         setattr(class_, "_default_class_manager", manager)
 
-    def dispose(self, class_, manager):
+    def unregister(self, class_, manager):
         delattr(class_, "_default_class_manager")
 
     def manager_getter(self, class_):
@@ -282,8 +282,8 @@ class _ClassInstrumentationAdapter(ClassManager):
     def manage(self):
         self._adapted.manage(self.class_, self)
 
-    def dispose(self):
-        self._adapted.dispose(self.class_)
+    def unregister(self):
+        self._adapted.unregister(self.class_, self)
 
     def manager_getter(self):
         return self._adapted.manager_getter(self.class_)

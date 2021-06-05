@@ -19,8 +19,8 @@ from .util import compat
 _version_token = None
 
 
-class SQLAlchemyError(Exception):
-    """Generic error class."""
+class HasDescriptionCode(object):
+    """helper which adds 'code' as an attribute and '_code_str' as a method"""
 
     code = None
 
@@ -28,7 +28,7 @@ class SQLAlchemyError(Exception):
         code = kw.pop("code", None)
         if code is not None:
             self.code = code
-        super(SQLAlchemyError, self).__init__(*arg, **kw)
+        super(HasDescriptionCode, self).__init__(*arg, **kw)
 
     def _code_str(self):
         if not self.code:
@@ -42,6 +42,10 @@ class SQLAlchemyError(Exception):
                     self.code,
                 )
             )
+
+
+class SQLAlchemyError(HasDescriptionCode, Exception):
+    """Generic error class."""
 
     def _message(self, as_unicode=compat.py3k):
         # rules:
@@ -650,11 +654,17 @@ class NotSupportedError(DatabaseError):
 # Warnings
 
 
-class SADeprecationWarning(DeprecationWarning):
+class SADeprecationWarning(HasDescriptionCode, DeprecationWarning):
     """Issued for usage of deprecated APIs."""
 
     deprecated_since = None
     "Indicates the version that started raising this deprecation warning"
+
+    def __str__(self):
+        message = super(SADeprecationWarning, self).__str__()
+        if self.code:
+            message = "%s %s" % (message, self._code_str())
+        return message
 
 
 class RemovedIn20Warning(SADeprecationWarning):
@@ -671,6 +681,12 @@ class RemovedIn20Warning(SADeprecationWarning):
     deprecated_since = "1.4"
     "Indicates the version that started raising this deprecation warning"
 
+    def __str__(self):
+        return (
+            super(RemovedIn20Warning, self).__str__()
+            + " (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)"
+        )
+
 
 class MovedIn20Warning(RemovedIn20Warning):
     """Subtype of RemovedIn20Warning to indicate an API that moved only."""
@@ -686,5 +702,5 @@ class SAPendingDeprecationWarning(PendingDeprecationWarning):
     "Indicates the version that started raising this deprecation warning"
 
 
-class SAWarning(RuntimeWarning):
+class SAWarning(HasDescriptionCode, RuntimeWarning):
     """Issued at runtime."""

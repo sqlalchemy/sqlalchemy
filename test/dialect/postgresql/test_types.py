@@ -49,6 +49,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import sqltypes
+from sqlalchemy.sql.type_api import Variant
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
@@ -222,6 +223,70 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             for e in inspect(conn).get_enums(schema=testing.config.test_schema)
         ]
         t1.drop(conn, checkfirst=True)
+
+    @testing.combinations(
+        ("local_schema",),
+        ("metadata_schema_only",),
+        ("inherit_table_schema",),
+        ("override_metadata_schema",),
+        argnames="test_case",
+    )
+    @testing.requires.schemas
+    def test_schema_inheritance(self, test_case, metadata, connection):
+        """test #6373"""
+
+        metadata.schema = testing.config.test_schema
+
+        if test_case == "metadata_schema_only":
+            enum = Enum(
+                "four", "five", "six", metadata=metadata, name="myenum"
+            )
+            assert_schema = testing.config.test_schema
+        elif test_case == "override_metadata_schema":
+            enum = Enum(
+                "four",
+                "five",
+                "six",
+                metadata=metadata,
+                schema=testing.config.test_schema_2,
+                name="myenum",
+            )
+            assert_schema = testing.config.test_schema_2
+        elif test_case == "inherit_table_schema":
+            enum = Enum(
+                "four",
+                "five",
+                "six",
+                metadata=metadata,
+                inherit_schema=True,
+                name="myenum",
+            )
+            assert_schema = testing.config.test_schema_2
+        elif test_case == "local_schema":
+            enum = Enum("four", "five", "six", name="myenum")
+            assert_schema = testing.config.db.dialect.default_schema_name
+
+        Table(
+            "t",
+            metadata,
+            Column("data", enum),
+            schema=testing.config.test_schema_2,
+        )
+
+        metadata.create_all(connection)
+
+        eq_(
+            inspect(connection).get_enums(schema=assert_schema),
+            [
+                {
+                    "labels": ["four", "five", "six"],
+                    "name": "myenum",
+                    "schema": assert_schema,
+                    "visible": assert_schema
+                    == testing.config.db.dialect.default_schema_name,
+                }
+            ],
+        )
 
     def test_name_required(self, metadata, connection):
         etype = Enum("four", "five", "six", metadata=metadata)
@@ -681,6 +746,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
     def test_custom_subclass(self, metadata, connection):
         class MyEnum(TypeDecorator):
             impl = Enum("oneHI", "twoHI", "threeHI", name="myenum")
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 if value is not None:
@@ -1326,6 +1392,7 @@ class ArrayRoundTripTest(object):
     def define_tables(cls, metadata):
         class ProcValue(TypeDecorator):
             impl = cls.ARRAY(Integer, dimensions=2)
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 if value is None:
@@ -1696,12 +1763,18 @@ class ArrayRoundTripTest(object):
                 "data_2",
                 self.ARRAY(types.Enum("a", "b", "c", name="my_enum_2")),
             ),
+            Column(
+                "data_3",
+                self.ARRAY(
+                    types.Enum("a", "b", "c", name="my_enum_3")
+                ).with_variant(String(), "other"),
+            ),
         )
 
         t.create(connection)
         eq_(
             set(e["name"] for e in inspect(connection).get_enums()),
-            set(["my_enum_1", "my_enum_2"]),
+            set(["my_enum_1", "my_enum_2", "my_enum_3"]),
         )
         t.drop(connection)
         eq_(inspect(connection).get_enums(), [])
@@ -1844,6 +1917,7 @@ class ArrayRoundTripTest(object):
                 ],
                 testing.requires.hstore,
             ),
+            (postgresql.ENUM(AnEnum), enum_values),
             (sqltypes.Enum(AnEnum, native_enum=True), enum_values),
             (sqltypes.Enum(AnEnum, native_enum=False), enum_values),
         ]
@@ -1864,14 +1938,21 @@ class ArrayRoundTripTest(object):
     def _cls_type_combinations(cls, **kw):
         return ArrayRoundTripTest.__dict__["_type_combinations"](**kw)
 
-    @testing.fixture
-    def type_specific_fixture(self, metadata, connection, type_):
+    @testing.fixture(params=[True, False])
+    def type_specific_fixture(self, request, metadata, connection, type_):
+        use_variant = request.param
         meta = MetaData()
+
+        if use_variant:
+            typ = self.ARRAY(type_).with_variant(String(), "other")
+        else:
+            typ = self.ARRAY(type_)
+
         table = Table(
             "foo",
             meta,
             Column("id", Integer),
-            Column("bar", self.ARRAY(type_)),
+            Column("bar", typ),
         )
 
         meta.create_all(connection)
@@ -1921,10 +2002,14 @@ class ArrayRoundTripTest(object):
 
         new_gen = gen(3)
 
+        if isinstance(table.c.bar.type, Variant):
+            # this is not likely to occur to users but we need to just
+            # exercise this as far as we can
+            expr = type_coerce(table.c.bar, ARRAY(type_))[1:3]
+        else:
+            expr = table.c.bar[1:3]
         connection.execute(
-            table.update()
-            .where(table.c.id == 2)
-            .values({table.c.bar[1:3]: new_gen[1:4]})
+            table.update().where(table.c.id == 2).values({expr: new_gen[1:4]})
         )
 
         rows = connection.execute(
@@ -2044,6 +2129,7 @@ class PGArrayRoundTripTest(
 class _ArrayOfEnum(TypeDecorator):
     # previous workaround for array of enum
     impl = postgresql.ARRAY
+    cache_ok = True
 
     def bind_expression(self, bindvalue):
         return sa.cast(bindvalue, self)
@@ -2357,7 +2443,7 @@ class SpecialTypesCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
 class SpecialTypesTest(fixtures.TablesTest, ComparesTables):
 
-    """test DDL and reflection of PG-specific types """
+    """test DDL and reflection of PG-specific types"""
 
     __only_on__ = ("postgresql >= 8.3.0",)
     __backend__ = True
@@ -2491,7 +2577,7 @@ class UUIDTest(fixtures.TestBase):
         id_="iaaa",
         argnames="datatype, value1, value2",
     )
-    @testing.fails_on("postgresql+pg8000", "No support for UUID with ARRAY")
+    # passes pg8000 as of 1.19.1
     def test_uuid_array(self, datatype, value1, value2, connection):
         self.test_round_trip(datatype, value1, value2, connection)
 

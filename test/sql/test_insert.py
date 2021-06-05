@@ -384,6 +384,75 @@ class InsertTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             dialect=postgresql.dialect(),
         )
 
+    def test_insert_seq_pk_multi_values(self):
+        """test #6361"""
+
+        m = MetaData()
+
+        t1 = Table(
+            "t",
+            m,
+            Column("id", Integer, Sequence("id_seq"), primary_key=True),
+            Column("data", String),
+        )
+
+        stmt = t1.insert().values(
+            [{"data": "d1"}, {"data": "d2"}, {"data": "d3"}]
+        )
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO t (id, data) VALUES (nextval('id_seq'), "
+            "%(data_m0)s), (nextval('id_seq'), %(data_m1)s), "
+            "(nextval('id_seq'), %(data_m2)s)",
+            dialect=postgresql.dialect(),
+        )
+
+    def test_insert_seq_non_pk_multi_values(self):
+        """test #6361"""
+
+        m = MetaData()
+
+        t1 = Table(
+            "t",
+            m,
+            Column("id", Integer, primary_key=True),
+            Column("counter", Sequence("counter_seq")),
+            Column("data", String),
+        )
+
+        stmt = t1.insert().values(
+            [{"data": "d1"}, {"data": "d2"}, {"data": "d3"}]
+        )
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO t (counter, data) VALUES (nextval('counter_seq'), "
+            "%(data_m0)s), (nextval('counter_seq'), %(data_m1)s), "
+            "(nextval('counter_seq'), %(data_m2)s)",
+            dialect=postgresql.dialect(),
+        )
+
+    def test_insert_seq_pk_multi_values_seq_not_supported(self):
+        m = MetaData()
+
+        t1 = Table(
+            "t",
+            m,
+            Column("id", Integer, Sequence("id_seq"), primary_key=True),
+            Column("data", String),
+        )
+
+        stmt = t1.insert().values(
+            [{"data": "d1"}, {"data": "d2"}, {"data": "d3"}]
+        )
+
+        self.assert_compile(
+            stmt,
+            "INSERT INTO t (data) VALUES (?), (?), (?)",
+            dialect=sqlite.dialect(),
+        )
+
     def test_insert_from_select_cte_one(self):
         table1 = self.tables.mytable
 
@@ -951,12 +1020,22 @@ class EmptyTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         table1 = self.tables.mytable
 
         dialect = default.DefaultDialect()
-        dialect.supports_empty_insert = dialect.supports_default_values = True
+        dialect.supports_empty_insert = False
+        dialect.supports_default_values = True
+        dialect.supports_default_metavalue = True
 
         stmt = table1.insert().values({})
         self.assert_compile(
             stmt,
             "INSERT INTO mytable (myid) VALUES (DEFAULT)",
+            dialect=dialect,
+            for_executemany=True,
+        )
+
+        dialect.supports_default_metavalue = False
+        self.assert_compile(
+            stmt,
+            "INSERT INTO mytable DEFAULT VALUES",
             dialect=dialect,
             for_executemany=True,
         )

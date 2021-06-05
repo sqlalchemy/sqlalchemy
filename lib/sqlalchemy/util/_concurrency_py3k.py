@@ -6,16 +6,22 @@ from typing import Coroutine
 
 import greenlet
 
+from . import compat
+from .langhelpers import memoized_property
 from .. import exc
 
-try:
-    from contextvars import copy_context as _copy_context
 
-    # If greenlet.gr_context is present in current version of greenlet,
-    # it will be set with a copy of the current context on creation.
-    # Refs: https://github.com/python-greenlet/greenlet/pull/198
-    getattr(greenlet.greenlet, "gr_context")
-except (ImportError, AttributeError):
+if compat.py37:
+    try:
+        from contextvars import copy_context as _copy_context
+
+        # If greenlet.gr_context is present in current version of greenlet,
+        # it will be set with a copy of the current context on creation.
+        # Refs: https://github.com/python-greenlet/greenlet/pull/198
+        getattr(greenlet.greenlet, "gr_context")
+    except (ImportError, AttributeError):
+        _copy_context = None
+else:
     _copy_context = None
 
 
@@ -68,7 +74,7 @@ def await_fallback(awaitable: Coroutine) -> Any:
     # this is called in the context greenlet while running fn
     current = greenlet.getcurrent()
     if not isinstance(current, _AsyncIoGreenlet):
-        loop = asyncio.get_event_loop()
+        loop = get_event_loop()
         if loop.is_running():
             raise exc.MissingGreenlet(
                 "greenlet_spawn has not been called and asyncio event "
@@ -127,10 +133,15 @@ async def greenlet_spawn(
 
 
 class AsyncAdaptedLock:
-    def __init__(self):
-        self.mutex = asyncio.Lock()
+    @memoized_property
+    def mutex(self):
+        # there should not be a race here for coroutines creating the
+        # new lock as we are not using await, so therefore no concurrency
+        return asyncio.Lock()
 
     def __enter__(self):
+        # await is used to acquire the lock only after the first calling
+        # coroutine has created the mutex.
         await_fallback(self.mutex.acquire())
         return self
 
@@ -141,7 +152,7 @@ class AsyncAdaptedLock:
 def _util_async_run_coroutine_function(fn, *args, **kwargs):
     """for test suite/ util only"""
 
-    loop = asyncio.get_event_loop()
+    loop = get_event_loop()
     if loop.is_running():
         raise Exception(
             "for async run coroutine we expect that no greenlet or event "
@@ -153,10 +164,25 @@ def _util_async_run_coroutine_function(fn, *args, **kwargs):
 def _util_async_run(fn, *args, **kwargs):
     """for test suite/ util only"""
 
-    loop = asyncio.get_event_loop()
+    loop = get_event_loop()
     if not loop.is_running():
         return loop.run_until_complete(greenlet_spawn(fn, *args, **kwargs))
     else:
         # allow for a wrapped test function to call another
         assert isinstance(greenlet.getcurrent(), _AsyncIoGreenlet)
         return fn(*args, **kwargs)
+
+
+def get_event_loop():
+    """vendor asyncio.get_event_loop() for python 3.7 and above.
+
+    Python 3.10 deprecates get_event_loop() as a standalone.
+
+    """
+    if compat.py37:
+        try:
+            return asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.get_event_loop_policy().get_event_loop()
+    else:
+        return asyncio.get_event_loop()

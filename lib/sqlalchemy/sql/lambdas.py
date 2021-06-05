@@ -100,7 +100,7 @@ def lambda_stmt(
 
     return StatementLambdaElement(
         lmb,
-        roles.CoerceTextStatementRole,
+        roles.StatementRole,
         LambdaOptions(
             enable_tracking=enable_tracking,
             track_on=track_on,
@@ -155,9 +155,7 @@ class LambdaElement(elements.ClauseElement):
         self.tracker_key = (fn.__code__,)
         self.opts = opts
 
-        if apply_propagate_attrs is None and (
-            role is roles.CoerceTextStatementRole
-        ):
+        if apply_propagate_attrs is None and (role is roles.StatementRole):
             apply_propagate_attrs = self
 
         rec = self._retrieve_tracker_rec(fn, apply_propagate_attrs, opts)
@@ -272,6 +270,8 @@ class LambdaElement(elements.ClauseElement):
                     bind = bindparam_lookup[thing.key]
                     if thing.expanding:
                         bind.expanding = True
+                        bind.expand_op = thing.expand_op
+                        bind.type = thing.type
                     return bind
 
         if self._rec.is_sequence:
@@ -491,10 +491,6 @@ class StatementLambdaElement(roles.AllowsLambdaRole, LambdaElement):
     @property
     def _effective_plugin_target(self):
         return self._rec.expected_expr._effective_plugin_target
-
-    @property
-    def _is_future(self):
-        return self._rec.expected_expr._is_future
 
     @property
     def _execution_options(self):
@@ -778,7 +774,16 @@ class AnalyzedCode(object):
         from the "track_on" parameter passed to a :class:`.LambdaElement`.
 
         """
-        if isinstance(elem, traversals.HasCacheKey):
+
+        if isinstance(elem, tuple):
+            # tuple must contain hascachekey elements
+            def get(closure, opts, anon_map, bindparams):
+                return tuple(
+                    tup_elem._gen_cache_key(anon_map, bindparams)
+                    for tup_elem in opts.track_on[idx]
+                )
+
+        elif isinstance(elem, traversals.HasCacheKey):
 
             def get(closure, opts, anon_map, bindparams):
                 return opts.track_on[idx]._gen_cache_key(anon_map, bindparams)

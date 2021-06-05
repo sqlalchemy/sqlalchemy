@@ -102,7 +102,7 @@ def before_flush(session, flush_context, instances):
 
 @event.listens_for(Query, "before_compile", retval=True)
 def before_compile(query):
-    """ensure all queries for VersionedStartEnd include criteria """
+    """ensure all queries for VersionedStartEnd include criteria"""
 
     for ent in query.column_descriptions:
         entity = ent["entity"]

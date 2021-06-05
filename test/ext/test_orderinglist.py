@@ -18,7 +18,7 @@ metadata = None
 
 
 def step_numbering(step):
-    """ order in whole steps """
+    """order in whole steps"""
 
     def f(index, collection):
         return step * index

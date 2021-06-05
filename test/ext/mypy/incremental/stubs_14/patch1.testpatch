@@ -1,0 +1,13 @@
+diff --git a/test/ext/mypy/incremental/stubs_14/user.py b/test/ext/mypy/incremental/stubs_14/user.py
+index 2c60403e4..c7e8f8874 100644
+--- a/user.py
++++ b/user.py
+@@ -18,6 +18,8 @@ if TYPE_CHECKING:
+ class User(Base):
+     name = Column(String)
+
++    othername = Column(String)
++
+     addresses: Mapped[List["Address"]] = relationship(
+         "Address", back_populates="user"
+     )

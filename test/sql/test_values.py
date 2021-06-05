@@ -85,6 +85,69 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
             'AS "Spaces and Cases" ("CaseSensitive", "has spaces", number)',
         )
 
+    def test_values_in_cte_params(self):
+        cte1 = select(
+            Values(
+                column("col1", String),
+                column("col2", Integer),
+                name="temp_table",
+            ).data([("a", 2), ("b", 3)])
+        ).cte("cte1")
+
+        cte2 = select(cte1.c.col1).where(cte1.c.col1 == "q").cte("cte2")
+        stmt = select(cte2.c.col1)
+
+        dialect = default.DefaultDialect()
+        dialect.positional = True
+        dialect.paramstyle = "numeric"
+        self.assert_compile(
+            stmt,
+            "WITH cte1 AS (SELECT temp_table.col1 AS col1, "
+            "temp_table.col2 AS col2 FROM (VALUES (:1, :2), (:3, :4)) AS "
+            "temp_table (col1, col2)), "
+            "cte2 AS "
+            "(SELECT cte1.col1 AS col1 FROM cte1 WHERE cte1.col1 = :5) "
+            "SELECT cte2.col1 FROM cte2",
+            checkpositional=("a", 2, "b", 3, "q"),
+            dialect=dialect,
+        )
+
+        self.assert_compile(
+            stmt,
+            "WITH cte1 AS (SELECT temp_table.col1 AS col1, "
+            "temp_table.col2 AS col2 FROM (VALUES ('a', 2), ('b', 3)) "
+            "AS temp_table (col1, col2)), "
+            "cte2 AS "
+            "(SELECT cte1.col1 AS col1 FROM cte1 WHERE cte1.col1 = 'q') "
+            "SELECT cte2.col1 FROM cte2",
+            literal_binds=True,
+            dialect=dialect,
+        )
+
+    def test_values_in_cte_literal_binds(self):
+        cte1 = select(
+            Values(
+                column("col1", String),
+                column("col2", Integer),
+                name="temp_table",
+                literal_binds=True,
+            ).data([("a", 2), ("b", 3)])
+        ).cte("cte1")
+
+        cte2 = select(cte1.c.col1).where(cte1.c.col1 == "q").cte("cte2")
+        stmt = select(cte2.c.col1)
+
+        self.assert_compile(
+            stmt,
+            "WITH cte1 AS (SELECT temp_table.col1 AS col1, "
+            "temp_table.col2 AS col2 FROM (VALUES ('a', 2), ('b', 3)) "
+            "AS temp_table (col1, col2)), "
+            "cte2 AS "
+            "(SELECT cte1.col1 AS col1 FROM cte1 WHERE cte1.col1 = :col1_1) "
+            "SELECT cte2.col1 FROM cte2",
+            checkparams={"col1_1": "q"},
+        )
+
     @testing.fixture
     def literal_parameter_fixture(self):
         def go(literal_binds, omit=None):

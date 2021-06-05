@@ -12,7 +12,6 @@ from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
@@ -20,6 +19,7 @@ from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import foreign
 from sqlalchemy.orm import joinedload
@@ -39,6 +39,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
+from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertsql import assert_engine
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import fixture_session
@@ -802,6 +803,29 @@ class OverlappingFksSiblingTest(fixtures.TestBase):
 
         configure_mappers()
 
+    def _fixture_four(self):
+        Base = declarative_base(metadata=self.metadata)
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+
+            c_id = Column(ForeignKey("c.id"))
+
+        class B1(A):
+            pass
+
+        class B2(A):
+            pass
+
+        class C(Base):
+            __tablename__ = "c"
+
+            id = Column(Integer, primary_key=True)
+            b1 = relationship(B1, backref="c")
+            b2 = relationship(B2, backref="c")
+
     @testing.provide_metadata
     def _test_fixture_one_run(self, **kw):
         A, AMember, B, BSub1, BSub2 = self._fixture_one(**kw)
@@ -852,6 +876,77 @@ class OverlappingFksSiblingTest(fixtures.TestBase):
             self._fixture_two,
             setup_backrefs=False,
         )
+
+    @testing.combinations((True,), (False,), argnames="set_overlaps")
+    def test_fixture_five(self, metadata, set_overlaps):
+        Base = declarative_base(metadata=self.metadata)
+
+        if set_overlaps:
+            overlaps = "as,cs"
+        else:
+            overlaps = None
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            cs = relationship("C", secondary="b", backref="as")
+            bs = relationship("B", back_populates="a", overlaps=overlaps)
+
+        class B(Base):
+            __tablename__ = "b"
+
+            a_id = Column(ForeignKey("a.id"), primary_key=True)
+            c_id = Column(ForeignKey("c.id"), primary_key=True)
+            a = relationship("A", back_populates="bs", overlaps=overlaps)
+            c = relationship("C", back_populates="bs", overlaps=overlaps)
+
+        class C(Base):
+            __tablename__ = "c"
+
+            id = Column(Integer, primary_key=True)
+            bs = relationship("B", back_populates="c", overlaps=overlaps)
+
+        if set_overlaps:
+            configure_mappers()
+        else:
+            with expect_warnings(
+                r"relationship 'A.bs' will copy column a.id to column b.a_id, "
+                r"which conflicts with relationship\(s\): "
+                r"'A.cs' \(copies a.id to b.a_id\), "
+                r"'C.as' \(copies a.id to b.a_id\)"
+                r".*add the parameter 'overlaps=\"as,cs\"' to the 'A.bs' "
+                r"relationship",
+                #
+                #
+                r"relationship 'B.a' will copy column a.id to column b.a_id, "
+                r"which conflicts with relationship\(s\): "
+                r"'A.cs' \(copies a.id to b.a_id\), "
+                r"'C.as' \(copies a.id to b.a_id\)"
+                r".*add the parameter 'overlaps=\"as,cs\"' to the 'B.a' "
+                r"relationship",
+                #
+                #
+                r"relationship 'B.c' will copy column c.id to column b.c_id, "
+                r"which conflicts with relationship\(s\): "
+                r"'A.cs' \(copies c.id to b.c_id\), "
+                r"'C.as' \(copies c.id to b.c_id\)"
+                r".*add the parameter 'overlaps=\"as,cs\"' to the 'B.c' "
+                r"relationship",
+                #
+                #
+                r"relationship 'C.bs' will copy column c.id to column b.c_id, "
+                r"which conflicts with relationship\(s\): "
+                r"'A.cs' \(copies c.id to b.c_id\), "
+                r"'C.as' \(copies c.id to b.c_id\)"
+                r".*add the parameter 'overlaps=\"as,cs\"' to the 'C.bs' "
+                r"relationship",
+            ):
+                configure_mappers()
+
+    @testing.provide_metadata
+    def test_fixture_four(self):
+        self._fixture_four()
 
     @testing.provide_metadata
     def test_simple_backrefs_works(self):
@@ -2277,6 +2372,39 @@ class ManualBackrefTest(_fixtures.FixtureTest):
             configure_mappers,
         )
 
+    def test_back_propagates_not_relationship(self):
+        addr, Addr, users, User = (
+            self.tables.addresses,
+            self.classes.Address,
+            self.tables.users,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties={
+                "addresses": relationship(Addr, back_populates="user_id")
+            },
+        )
+
+        mapper(
+            Addr,
+            addr,
+            properties={
+                "users": relationship(User, back_populates="addresses")
+            },
+        )
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "back_populates on relationship 'User.addresses' refers to "
+            "attribute 'Address.user_id' that is not a relationship.  "
+            "The back_populates parameter should refer to the name of "
+            "a relationship on the target class.",
+            configure_mappers,
+        )
+
 
 class NoLoadBackPopulates(_fixtures.FixtureTest):
 
@@ -2665,6 +2793,7 @@ class TypedAssociationTable(fixtures.MappedTest):
     def define_tables(cls, metadata):
         class MySpecialType(sa.types.TypeDecorator):
             impl = String
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 return "lala" + value
@@ -3118,6 +3247,7 @@ class ViewOnlySyncBackref(fixtures.MappedTest):
             return str(self.__dict__)
 
     cases = {
+        # (B_a_view, B_a_sync, A_bs_view, A_bs_sync)
         (0, 0, 0, 0): Case(),
         (0, 0, 0, 1): Case(Abs_evt=1),
         (0, 0, 1, 0): Case(),

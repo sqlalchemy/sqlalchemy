@@ -1,3 +1,5 @@
+import re
+
 from sqlalchemy import and_
 from sqlalchemy import bindparam
 from sqlalchemy import case
@@ -10,11 +12,13 @@ from sqlalchemy import Integer
 from sqlalchemy import literal
 from sqlalchemy import literal_column
 from sqlalchemy import MetaData
+from sqlalchemy import null
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import true
 from sqlalchemy import tuple_
 from sqlalchemy import union
 from sqlalchemy.sql import ClauseElement
@@ -38,11 +42,14 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
+from sqlalchemy.util import pickle
 
 A = B = t1 = t2 = t3 = table1 = table2 = table3 = table4 = None
 
 
-class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
+class TraversalTest(
+    fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
+):
 
     """test ClauseVisitor's traversal, particularly its
     ability to copy and modify a ClauseElement in place."""
@@ -173,7 +180,104 @@ class TraversalTest(fixtures.TestBase, AssertsExecutionResults):
 
         vis = Vis()
         s2 = vis.traverse(s1)
-        eq_(list(s2.selected_columns)[0].anon_label, c1.anon_label)
+        eq_(list(s2.selected_columns)[0]._anon_name_label, c1._anon_name_label)
+
+    @testing.combinations(
+        ("clone",), ("pickle",), ("conv_to_unique"), ("none"), argnames="meth"
+    )
+    @testing.combinations(
+        ("name with space",), ("name with [brackets]",), argnames="name"
+    )
+    def test_bindparam_key_proc_for_copies(self, meth, name):
+        r"""test :ticket:`6249`.
+
+        The key of the bindparam needs spaces and other characters
+        escaped out for the POSTCOMPILE regex to work correctly.
+
+
+        Currently, the bind key reg is::
+
+            re.sub(r"[%\(\) \$]+", "_", body).strip("_")
+
+        and the compiler postcompile reg is::
+
+            re.sub(r"\[POSTCOMPILE_(\S+)\]", process_expanding, self.string)
+
+        Interestingly, brackets in the name seems to work out.
+
+        """
+        expr = column(name).in_([1, 2, 3])
+
+        if meth == "clone":
+            expr = visitors.cloned_traverse(expr, {}, {})
+        elif meth == "pickle":
+            expr = pickle.loads(pickle.dumps(expr))
+        elif meth == "conv_to_unique":
+            expr.right.unique = False
+            expr.right._convert_to_unique()
+
+        token = re.sub(r"[%\(\) \$]+", "_", name).strip("_")
+        self.assert_compile(
+            expr,
+            '"%(name)s" IN (:%(token)s_1_1, '
+            ":%(token)s_1_2, :%(token)s_1_3)" % {"name": name, "token": token},
+            render_postcompile=True,
+            dialect="default",
+        )
+
+    def test_expanding_in_bindparam_safe_to_clone(self):
+        expr = column("x").in_([1, 2, 3])
+
+        expr2 = expr._clone()
+
+        # shallow copy, bind is used twice
+        is_(expr.right, expr2.right)
+
+        stmt = and_(expr, expr2)
+        self.assert_compile(
+            stmt, "x IN ([POSTCOMPILE_x_1]) AND x IN ([POSTCOMPILE_x_1])"
+        )
+        self.assert_compile(
+            stmt, "x IN (1, 2, 3) AND x IN (1, 2, 3)", literal_binds=True
+        )
+
+    def test_traversal_size(self):
+        """Test :ticket:`6304`.
+
+        Testing that _iterate_from_elements returns only unique FROM
+        clauses; overall traversal should be short and all items unique.
+
+        """
+
+        t = table("t", *[column(x) for x in "pqrxyz"])
+
+        s1 = select(t.c.p, t.c.q, t.c.r, t.c.x, t.c.y, t.c.z).subquery()
+
+        s2 = (
+            select(s1.c.p, s1.c.q, s1.c.r, s1.c.x, s1.c.y, s1.c.z)
+            .select_from(s1)
+            .subquery()
+        )
+
+        s3 = (
+            select(s2.c.p, s2.c.q, s2.c.r, s2.c.x, s2.c.y, s2.c.z)
+            .select_from(s2)
+            .subquery()
+        )
+
+        tt = list(s3.element._iterate_from_elements())
+        eq_(tt, [s2])
+
+        total = list(visitors.iterate(s3))
+        # before the bug was fixed, this was 750
+        eq_(len(total), 25)
+
+        seen = set()
+        for elem in visitors.iterate(s3):
+            assert elem not in seen
+            seen.add(elem)
+
+        eq_(len(seen), 25)
 
     def test_change_in_place(self):
         struct = B(
@@ -345,13 +449,110 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
             select(f), "SELECT t1.col1 * :col1_1 AS anon_1 FROM t1"
         )
 
-        f.anon_label
+        f._anon_name_label
 
         a = t.alias()
         f = sql_util.ClauseAdapter(a).traverse(f)
 
         self.assert_compile(
             select(f), "SELECT t1_1.col1 * :col1_1 AS anon_1 FROM t1 AS t1_1"
+        )
+
+    @testing.combinations(
+        (lambda t1: t1.c.col1, "t1_1.col1"),
+        (lambda t1: t1.c.col1 == "foo", "t1_1.col1 = :col1_1"),
+        (
+            lambda t1: case((t1.c.col1 == "foo", "bar"), else_=t1.c.col1),
+            "CASE WHEN (t1_1.col1 = :col1_1) THEN :param_1 ELSE t1_1.col1 END",
+        ),
+        argnames="case, expected",
+    )
+    @testing.combinations(False, True, argnames="label_")
+    @testing.combinations(False, True, argnames="annotate")
+    def test_annotated_label_cases(self, case, expected, label_, annotate):
+        """test #6550"""
+
+        t1 = table("t1", column("col1"))
+        a1 = t1.alias()
+
+        expr = case(t1=t1)
+
+        if label_:
+            expr = expr.label(None)
+        if annotate:
+            expr = expr._annotate({"foo": "bar"})
+
+        adapted = sql_util.ClauseAdapter(a1).traverse(expr)
+
+        self.assert_compile(adapted, expected)
+
+    @testing.combinations((null(),), (true(),))
+    def test_dont_adapt_singleton_elements(self, elem):
+        """test :ticket:`6259`"""
+        t1 = table("t1", column("c1"))
+
+        stmt = select(t1.c.c1, elem)
+
+        wherecond = t1.c.c1.is_(elem)
+
+        subq = stmt.subquery()
+
+        adapted_wherecond = sql_util.ClauseAdapter(subq).traverse(wherecond)
+        stmt = select(subq).where(adapted_wherecond)
+
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.c1, anon_1.anon_2 FROM (SELECT t1.c1 AS c1, "
+            "%s AS anon_2 FROM t1) AS anon_1 WHERE anon_1.c1 IS %s"
+            % (str(elem), str(elem)),
+            dialect="default_enhanced",
+        )
+
+    def test_adapt_funcs_etc_on_identity_one(self):
+        """Adapting to a function etc. will adapt if its on identity"""
+        t1 = table("t1", column("c1"))
+
+        elem = func.foobar()
+
+        stmt = select(t1.c.c1, elem)
+
+        wherecond = t1.c.c1 == elem
+
+        subq = stmt.subquery()
+
+        adapted_wherecond = sql_util.ClauseAdapter(subq).traverse(wherecond)
+        stmt = select(subq).where(adapted_wherecond)
+
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.c1, anon_1.foobar_1 FROM (SELECT t1.c1 AS c1, "
+            "foobar() AS foobar_1 FROM t1) AS anon_1 "
+            "WHERE anon_1.c1 = anon_1.foobar_1",
+            dialect="default_enhanced",
+        )
+
+    def test_adapt_funcs_etc_on_identity_two(self):
+        """Adapting to a function etc. will not adapt if they are different"""
+        t1 = table("t1", column("c1"))
+
+        elem = func.foobar()
+        elem2 = func.foobar()
+
+        stmt = select(t1.c.c1, elem)
+
+        wherecond = t1.c.c1 == elem2
+
+        subq = stmt.subquery()
+
+        adapted_wherecond = sql_util.ClauseAdapter(subq).traverse(wherecond)
+        stmt = select(subq).where(adapted_wherecond)
+
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.c1, anon_1.foobar_1 FROM (SELECT t1.c1 AS c1, "
+            "foobar() AS foobar_1 FROM t1) AS anon_1 "
+            "WHERE anon_1.c1 = foobar()",
+            dialect="default_enhanced",
         )
 
     def test_join(self):

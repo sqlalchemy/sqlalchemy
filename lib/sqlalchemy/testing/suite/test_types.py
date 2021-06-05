@@ -49,7 +49,7 @@ class _LiteralRoundTripFixture(object):
 
     @testing.fixture
     def literal_round_trip(self, metadata, connection):
-        """test literal rendering """
+        """test literal rendering"""
 
         # for literal, we test the literal render in an INSERT
         # into a typed column.  we can then SELECT it back as its
@@ -63,7 +63,7 @@ class _LiteralRoundTripFixture(object):
             for value in input_:
                 ins = (
                     t.insert()
-                    .values(x=literal(value))
+                    .values(x=literal(value, type_))
                     .compile(
                         dialect=testing.db.dialect,
                         compile_kwargs=dict(literal_binds=True),
@@ -116,7 +116,9 @@ class _UnicodeFixture(_LiteralRoundTripFixture, fixtures.TestBase):
     def test_round_trip(self, connection):
         unicode_table = self.tables.unicode_table
 
-        connection.execute(unicode_table.insert(), {"unicode_data": self.data})
+        connection.execute(
+            unicode_table.insert(), {"id": 1, "unicode_data": self.data}
+        )
 
         row = connection.execute(select(unicode_table.c.unicode_data)).first()
 
@@ -128,27 +130,31 @@ class _UnicodeFixture(_LiteralRoundTripFixture, fixtures.TestBase):
 
         connection.execute(
             unicode_table.insert(),
-            [{"unicode_data": self.data} for i in range(3)],
+            [{"id": i, "unicode_data": self.data} for i in range(1, 4)],
         )
 
         rows = connection.execute(
             select(unicode_table.c.unicode_data)
         ).fetchall()
-        eq_(rows, [(self.data,) for i in range(3)])
+        eq_(rows, [(self.data,) for i in range(1, 4)])
         for row in rows:
             assert isinstance(row[0], util.text_type)
 
     def _test_null_strings(self, connection):
         unicode_table = self.tables.unicode_table
 
-        connection.execute(unicode_table.insert(), {"unicode_data": None})
+        connection.execute(
+            unicode_table.insert(), {"id": 1, "unicode_data": None}
+        )
         row = connection.execute(select(unicode_table.c.unicode_data)).first()
         eq_(row, (None,))
 
     def _test_empty_strings(self, connection):
         unicode_table = self.tables.unicode_table
 
-        connection.execute(unicode_table.insert(), {"unicode_data": u("")})
+        connection.execute(
+            unicode_table.insert(), {"id": 1, "unicode_data": u("")}
+        )
         row = connection.execute(select(unicode_table.c.unicode_data)).first()
         eq_(row, (u(""),))
 
@@ -211,7 +217,9 @@ class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     def test_text_roundtrip(self, connection):
         text_table = self.tables.text_table
 
-        connection.execute(text_table.insert(), {"text_data": "some text"})
+        connection.execute(
+            text_table.insert(), {"id": 1, "text_data": "some text"}
+        )
         row = connection.execute(select(text_table.c.text_data)).first()
         eq_(row, ("some text",))
 
@@ -219,14 +227,14 @@ class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
     def test_text_empty_strings(self, connection):
         text_table = self.tables.text_table
 
-        connection.execute(text_table.insert(), {"text_data": ""})
+        connection.execute(text_table.insert(), {"id": 1, "text_data": ""})
         row = connection.execute(select(text_table.c.text_data)).first()
         eq_(row, ("",))
 
     def test_text_null_strings(self, connection):
         text_table = self.tables.text_table
 
-        connection.execute(text_table.insert(), {"text_data": None})
+        connection.execute(text_table.insert(), {"id": 1, "text_data": None})
         row = connection.execute(select(text_table.c.text_data)).first()
         eq_(row, (None,))
 
@@ -288,6 +296,7 @@ class _DateFixture(_LiteralRoundTripFixture, fixtures.TestBase):
     def define_tables(cls, metadata):
         class Decorated(TypeDecorator):
             impl = cls.datatype
+            cache_ok = True
 
         Table(
             "date_table",
@@ -302,7 +311,9 @@ class _DateFixture(_LiteralRoundTripFixture, fixtures.TestBase):
     def test_round_trip(self, connection):
         date_table = self.tables.date_table
 
-        connection.execute(date_table.insert(), {"date_data": self.data})
+        connection.execute(
+            date_table.insert(), {"id": 1, "date_data": self.data}
+        )
 
         row = connection.execute(select(date_table.c.date_data)).first()
 
@@ -314,7 +325,7 @@ class _DateFixture(_LiteralRoundTripFixture, fixtures.TestBase):
         date_table = self.tables.date_table
 
         connection.execute(
-            date_table.insert(), {"decorated_date_data": self.data}
+            date_table.insert(), {"id": 1, "decorated_date_data": self.data}
         )
 
         row = connection.execute(
@@ -328,7 +339,7 @@ class _DateFixture(_LiteralRoundTripFixture, fixtures.TestBase):
     def test_null(self, connection):
         date_table = self.tables.date_table
 
-        connection.execute(date_table.insert(), {"date_data": None})
+        connection.execute(date_table.insert(), {"id": 1, "date_data": None})
 
         row = connection.execute(select(date_table.c.date_data)).first()
         eq_(row, (None,))
@@ -346,7 +357,7 @@ class _DateFixture(_LiteralRoundTripFixture, fixtures.TestBase):
         date_table = self.tables.date_table
         with config.db.begin() as conn:
             result = conn.execute(
-                date_table.insert(), {"date_data": self.data}
+                date_table.insert(), {"id": 1, "date_data": self.data}
             )
             id_ = result.inserted_primary_key[0]
             stmt = select(date_table.c.id).where(
@@ -456,7 +467,9 @@ class IntegerTest(_LiteralRoundTripFixture, fixtures.TestBase):
 
             metadata.create_all(config.db)
 
-            connection.execute(int_table.insert(), {"integer_data": data})
+            connection.execute(
+                int_table.insert(), {"id": 1, "integer_data": data}
+            )
 
             row = connection.execute(select(int_table.c.integer_data)).first()
 
@@ -477,6 +490,7 @@ class CastTypeDecoratorTest(_LiteralRoundTripFixture, fixtures.TestBase):
     def string_as_int(self):
         class StringAsInt(TypeDecorator):
             impl = String(50)
+            cache_ok = True
 
             def get_dbapi_type(self, dbapi):
                 return dbapi.NUMBER
@@ -814,7 +828,8 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         data_table = self.tables.data_table
 
         connection.execute(
-            data_table.insert(), {"name": "row1", "data": data_element}
+            data_table.insert(),
+            {"id": 1, "name": "row1", "data": data_element},
         )
 
         row = connection.execute(select(data_table.c.data)).first()

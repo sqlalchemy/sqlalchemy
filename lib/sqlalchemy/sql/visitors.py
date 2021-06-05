@@ -169,7 +169,7 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
     various visit methods of the class.   The other is that the symbols
     themselves of :class:`.InternalTraversal` are used within
     the ``_traverse_internals`` collection.   Such as, the :class:`.Case`
-    object defines ``_travserse_internals`` as ::
+    object defines ``_traverse_internals`` as ::
 
         _traverse_internals = [
             ("value", InternalTraversal.dp_clauseelement),
@@ -271,6 +271,8 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
     """
 
     dp_executable_options = symbol("EO")
+
+    dp_with_context_options = symbol("WC")
 
     dp_fromclause_ordered_set = symbol("CO")
     """Visit an ordered set of :class:`_expression.FromClause` objects. """
@@ -420,12 +422,12 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
     """
 
     dp_propagate_attrs = symbol("PA")
-    """Visit the propagate attrs dict.   this hardcodes to the particular
+    """Visit the propagate attrs dict.  This hardcodes to the particular
     elements we care about right now."""
 
 
 class ExtendedInternalTraversal(InternalTraversal):
-    """defines additional symbols that are useful in caching applications.
+    """Defines additional symbols that are useful in caching applications.
 
     Traversals for :class:`_expression.ClauseElement` objects only need to use
     those symbols present in :class:`.InternalTraversal`.  However, for
@@ -443,8 +445,8 @@ class ExtendedInternalTraversal(InternalTraversal):
     """
 
     dp_inspectable = symbol("IS")
-    """Visit an inspectable object where the return value is a HasCacheKey`
-    object."""
+    """Visit an inspectable object where the return value is a
+    :class:`.HasCacheKey` object."""
 
     dp_multi = symbol("M")
     """Visit an object that may be a :class:`.HasCacheKey` or may be a
@@ -731,7 +733,7 @@ def cloned_traverse(obj, opts, visitors):
                         cloned[id(elem)] = newelem
                         return newelem
 
-                cloned[id(elem)] = newelem = elem._clone()
+                cloned[id(elem)] = newelem = elem._clone(**kw)
                 newelem._copy_internals(clone=clone, **kw)
                 meth = visitors.get(newelem.__visit_name__, None)
                 if meth:
@@ -739,7 +741,9 @@ def cloned_traverse(obj, opts, visitors):
             return cloned[id(elem)]
 
     if obj is not None:
-        obj = clone(obj, deferred_copy_internals=deferred_copy_internals)
+        obj = clone(
+            obj, deferred_copy_internals=deferred_copy_internals, **opts
+        )
     clone = None  # remove gc cycles
     return obj
 
@@ -797,7 +801,7 @@ def replacement_traverse(obj, opts, replace):
                             cloned[id_elem] = newelem
                             return newelem
 
-                    cloned[id_elem] = newelem = elem._clone()
+                    cloned[id_elem] = newelem = elem._clone(**kw)
                     newelem._copy_internals(clone=clone, **kw)
                 return cloned[id_elem]
 

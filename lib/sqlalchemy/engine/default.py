@@ -22,6 +22,7 @@ import weakref
 from . import characteristics
 from . import cursor as _cursor
 from . import interfaces
+from .base import Connection
 from .. import event
 from .. import exc
 from .. import pool
@@ -44,6 +45,7 @@ CACHE_HIT = util.symbol("CACHE_HIT")
 CACHE_MISS = util.symbol("CACHE_MISS")
 CACHING_DISABLED = util.symbol("CACHING_DISABLED")
 NO_CACHE_KEY = util.symbol("NO_CACHE_KEY")
+NO_DIALECT_SUPPORT = util.symbol("NO_DIALECT_SUPPORT")
 
 
 class DefaultDialect(interfaces.Dialect):
@@ -57,6 +59,7 @@ class DefaultDialect(interfaces.Dialect):
     supports_comments = False
     inline_comments = False
     use_setinputsizes = False
+    supports_statement_cache = True
 
     # the first value we'd get for an autoincrement
     # column.
@@ -66,10 +69,12 @@ class DefaultDialect(interfaces.Dialect):
     # not cx_oracle.
     execute_sequence_format = tuple
 
+    supports_schemas = True
     supports_views = True
     supports_sequences = False
     sequences_optional = False
     preexecute_autoincrement_sequences = False
+    supports_identity_columns = False
     postfetch_lastrowid = True
     implicit_returning = False
     full_returning = False
@@ -137,8 +142,18 @@ class DefaultDialect(interfaces.Dialect):
     supports_sane_multi_rowcount = True
     colspecs = {}
     default_paramstyle = "named"
+
     supports_default_values = False
+    """dialect supports INSERT... DEFAULT VALUES syntax"""
+
+    supports_default_metavalue = False
+    """dialect supports INSERT... VALUES (DEFAULT) syntax"""
+
+    # not sure if this is a real thing but the compiler will deliver it
+    # if this is the only flag enabled.
     supports_empty_insert = True
+    """dialect supports INSERT () VALUES ()"""
+
     supports_multivalues_insert = False
 
     supports_is_distinct_from = True
@@ -215,6 +230,7 @@ class DefaultDialect(interfaces.Dialect):
     CACHE_MISS = CACHE_MISS
     CACHING_DISABLED = CACHING_DISABLED
     NO_CACHE_KEY = NO_CACHE_KEY
+    NO_DIALECT_SUPPORT = NO_DIALECT_SUPPORT
 
     @util.deprecated_params(
         convert_unicode=(
@@ -318,6 +334,26 @@ class DefaultDialect(interfaces.Dialect):
             )(self.description_encoding)
         self._encoder = codecs.getencoder(self.encoding)
         self._decoder = processors.to_unicode_processor_factory(self.encoding)
+
+    def _ensure_has_table_connection(self, arg):
+
+        if not isinstance(arg, Connection):
+            raise exc.ArgumentError(
+                "The argument passed to Dialect.has_table() should be a "
+                "%s, got %s. "
+                "Additionally, the Dialect.has_table() method is for "
+                "internal dialect "
+                "use only; please use "
+                "``inspect(some_engine).has_table(<tablename>>)`` "
+                "for public API use." % (Connection, type(arg))
+            )
+
+    @util.memoized_property
+    def _supports_statement_cache(self):
+        return (
+            self.__class__.__dict__.get("supports_statement_cache", False)
+            is True
+        )
 
     @util.memoized_property
     def _type_memos(self):
@@ -771,6 +807,10 @@ class StrCompileDialect(DefaultDialect):
     type_compiler = compiler.StrSQLTypeCompiler
     preparer = compiler.IdentifierPreparer
 
+    supports_statement_cache = True
+
+    supports_identity_columns = True
+
     supports_sequences = True
     sequences_optional = True
     preexecute_autoincrement_sequences = False
@@ -778,6 +818,7 @@ class StrCompileDialect(DefaultDialect):
 
     supports_native_boolean = True
 
+    supports_multivalues_insert = True
     supports_simple_order_by_label = True
 
     colspecs = {
@@ -1137,6 +1178,12 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             return "generated in %.5fs" % (now - self.compiled._gen_time,)
         elif ch is CACHING_DISABLED:
             return "caching disabled %.5fs" % (now - self.compiled._gen_time,)
+        elif ch is NO_DIALECT_SUPPORT:
+            return "dialect %s+%s does not support caching %.5fs" % (
+                self.dialect.name,
+                self.dialect.driver,
+                now - self.compiled._gen_time,
+            )
         else:
             return "unknown"
 

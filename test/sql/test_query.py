@@ -353,6 +353,7 @@ class QueryTest(fixtures.TablesTest):
 
         class MyInteger(TypeDecorator):
             impl = Integer
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 return int(value[4:])
@@ -779,10 +780,11 @@ class QueryTest(fixtures.TablesTest):
         )
 
     def test_expanding_in_dont_alter_compiled(self, connection):
-        """test for issue #5048 """
+        """test for issue #5048"""
 
         class NameWithProcess(TypeDecorator):
             impl = String
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 return value[3:]

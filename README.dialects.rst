@@ -37,14 +37,14 @@ The file structure of a dialect is typically similar to the following::
                                               <dbapi>.py
                                               requirements.py
                          test/
-                                              conftest.py
                                               __init__.py
+                                              conftest.py
                                               test_suite.py
                                               test_<dialect_specific_test>.py
                                               ...
 
-An example of this structure can be seen in the Access dialect at
-https://github.com/sqlalchemy/sqlalchemy-access .
+An example of this structure can be seen in the MS Access dialect at
+https://github.com/gordthompson/sqlalchemy-access .
 
 Key aspects of this file layout include:
 
@@ -61,12 +61,9 @@ Key aspects of this file layout include:
 
     create_engine("access+pyodbc://user:pw@dsn")
 
-* setup.cfg - this file contains the traditional contents such as [egg_info],
-  and [tool:pytest] directives, but also contains new directives that are used
+* setup.cfg - this file contains the traditional contents such as
+  [tool:pytest] directives, but also contains new directives that are used
   by SQLAlchemy's testing framework.  E.g. for Access::
-
-    [egg_info]
-    tag_build = dev
 
     [tool:pytest]
     addopts= --tb native -v -r fxX --maxfail=25 -p no:warnings
@@ -179,8 +176,11 @@ Key aspects of this file layout include:
       from sqlalchemy.testing.suite import IntegerTest as _IntegerTest
 
       class IntegerTest(_IntegerTest):
+
+          @testing.skip("access")
           def test_huge_int(self):
-              # bypass test for feature unsupported by Access ODBC
+              # bypass this test because Access ODBC fails with
+              # [ODBC Microsoft Access Driver] Optional feature not implemented.
               return
 
 Going Forward

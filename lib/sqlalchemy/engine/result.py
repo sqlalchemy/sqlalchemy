@@ -22,14 +22,6 @@ from ..sql.base import InPlaceGenerative
 from ..util import collections_abc
 from ..util import py2k
 
-if util.TYPE_CHECKING:
-    from typing import Any
-    from typing import List
-    from typing import Optional
-    from typing import Int
-    from typing import Iterator
-    from typing import Mapping
-
 
 if _baserow_usecext:
     from sqlalchemy.cresultproxy import tuplegetter
@@ -80,6 +72,13 @@ class ResultMetaData(object):
         util.raise_(KeyError(key), replace_context=err)
 
     def _warn_for_nonint(self, key):
+        util.warn_deprecated_20(
+            "Retrieving row members using strings or other non-integers is "
+            "deprecated; use row._mapping for a dictionary interface "
+            "to the row"
+        )
+
+    def _raise_for_nonint(self, key):
         raise TypeError(
             "TypeError: tuple indices must be integers or slices, not %s"
             % type(key).__name__
@@ -566,6 +565,7 @@ class ResultInternal(InPlaceGenerative):
                 return None
 
         if scalar and self._source_supports_scalars:
+            self._generate_rows = False
             make_row = None
         else:
             make_row = self._row_getter
@@ -618,8 +618,6 @@ class ResultInternal(InPlaceGenerative):
                 )
         else:
             next_row = _NO_ROW
-
-        if not raise_for_second_row:
             # if we checked for second row then that would have
             # closed us :)
             self._soft_close(hard=True)
@@ -770,7 +768,6 @@ class Result(_WithKeys, ResultInternal):
 
     @_generative
     def unique(self, strategy=None):
-        # type: (Optional[object]) -> Result
         """Apply unique filtering to the objects returned by this
         :class:`_engine.Result`.
 
@@ -810,7 +807,6 @@ class Result(_WithKeys, ResultInternal):
         self._unique_filter_state = (set(), strategy)
 
     def columns(self, *col_expressions):
-        # type: (*object) -> Result
         r"""Establish the columns that should be returned in each row.
 
         This method may be used to limit the columns returned as well
@@ -849,7 +845,6 @@ class Result(_WithKeys, ResultInternal):
         return self._column_slices(col_expressions)
 
     def scalars(self, index=0):
-        # type: (Int) -> ScalarResult
         """Return a :class:`_result.ScalarResult` filtering object which
         will return single elements rather than :class:`_row.Row` objects.
 
@@ -897,7 +892,6 @@ class Result(_WithKeys, ResultInternal):
         return self._metadata._row_as_tuple_getter(keys)
 
     def mappings(self):
-        # type() -> MappingResult
         """Apply a mappings filter to returned rows, returning an instance of
         :class:`_result.MappingResult`.
 
@@ -946,7 +940,6 @@ class Result(_WithKeys, ResultInternal):
             return self._next_impl()
 
     def partitions(self, size=None):
-        # type: (Optional[Int]) -> Iterator[List[Row]]
         """Iterate through sub-lists of rows of the size given.
 
         Each list will be of the size given, excluding the last list to
@@ -985,13 +978,11 @@ class Result(_WithKeys, ResultInternal):
                 break
 
     def fetchall(self):
-        # type: () -> List[Row]
         """A synonym for the :meth:`_engine.Result.all` method."""
 
         return self._allrows()
 
     def fetchone(self):
-        # type: () -> Row
         """Fetch one row.
 
         When all rows are exhausted, returns None.
@@ -1014,7 +1005,6 @@ class Result(_WithKeys, ResultInternal):
             return row
 
     def fetchmany(self, size=None):
-        # type: (Optional[Int]) -> List[Row]
         """Fetch many rows.
 
         When all rows are exhausted, returns an empty list.
@@ -1032,7 +1022,6 @@ class Result(_WithKeys, ResultInternal):
         return self._manyrow_getter(self, size)
 
     def all(self):
-        # type: () -> List[Row]
         """Return all rows in a list.
 
         Closes the result set after invocation.   Subsequent invocations
@@ -1047,7 +1036,6 @@ class Result(_WithKeys, ResultInternal):
         return self._allrows()
 
     def first(self):
-        # type: () -> Row
         """Fetch the first row or None if no row is present.
 
         Closes the result set and discards remaining rows.
@@ -1067,10 +1055,12 @@ class Result(_WithKeys, ResultInternal):
             :meth:`_result.Result.one`
 
         """
-        return self._only_one_row(False, False, False)
+
+        return self._only_one_row(
+            raise_for_second_row=False, raise_for_none=False, scalar=False
+        )
 
     def one_or_none(self):
-        # type: () -> Optional[Row]
         """Return at most one result or raise an exception.
 
         Returns ``None`` if the result has no rows.
@@ -1090,10 +1080,11 @@ class Result(_WithKeys, ResultInternal):
             :meth:`_result.Result.one`
 
         """
-        return self._only_one_row(True, False, False)
+        return self._only_one_row(
+            raise_for_second_row=True, raise_for_none=False, scalar=False
+        )
 
     def scalar_one(self):
-        # type: () -> Any
         """Return exactly one scalar result or raise an exception.
 
         This is equivalent to calling :meth:`.Result.scalars` and then
@@ -1106,10 +1097,11 @@ class Result(_WithKeys, ResultInternal):
             :meth:`.Result.scalars`
 
         """
-        return self._only_one_row(True, True, True)
+        return self._only_one_row(
+            raise_for_second_row=True, raise_for_none=True, scalar=True
+        )
 
     def scalar_one_or_none(self):
-        # type: () -> Optional[Any]
         """Return exactly one or no scalar result.
 
         This is equivalent to calling :meth:`.Result.scalars` and then
@@ -1122,10 +1114,11 @@ class Result(_WithKeys, ResultInternal):
             :meth:`.Result.scalars`
 
         """
-        return self._only_one_row(True, False, True)
+        return self._only_one_row(
+            raise_for_second_row=True, raise_for_none=False, scalar=True
+        )
 
     def one(self):
-        # type: () -> Row
         """Return exactly one row or raise an exception.
 
         Raises :class:`.NoResultFound` if the result returns no
@@ -1152,10 +1145,11 @@ class Result(_WithKeys, ResultInternal):
             :meth:`_result.Result.scalar_one`
 
         """
-        return self._only_one_row(True, True, False)
+        return self._only_one_row(
+            raise_for_second_row=True, raise_for_none=True, scalar=False
+        )
 
     def scalar(self):
-        # type: () -> Optional[Any]
         """Fetch the first column of the first row, and close the result set.
 
         Returns None if there are no rows to fetch.
@@ -1169,7 +1163,9 @@ class Result(_WithKeys, ResultInternal):
         :return: a Python scalar value , or None if no rows remain.
 
         """
-        return self._only_one_row(False, False, True)
+        return self._only_one_row(
+            raise_for_second_row=False, raise_for_none=False, scalar=True
+        )
 
     def freeze(self):
         """Return a callable object that will produce copies of this
@@ -1270,7 +1266,6 @@ class ScalarResult(FilterResult):
         self._unique_filter_state = real_result._unique_filter_state
 
     def unique(self, strategy=None):
-        # type: () -> ScalarResult
         """Apply unique filtering to the objects returned by this
         :class:`_engine.ScalarResult`.
 
@@ -1281,7 +1276,6 @@ class ScalarResult(FilterResult):
         return self
 
     def partitions(self, size=None):
-        # type: (Optional[Int]) -> Iterator[List[Any]]
         """Iterate through sub-lists of elements of the size given.
 
         Equivalent to :meth:`_result.Result.partitions` except that
@@ -1300,13 +1294,11 @@ class ScalarResult(FilterResult):
                 break
 
     def fetchall(self):
-        # type: () -> List[Any]
         """A synonym for the :meth:`_engine.ScalarResult.all` method."""
 
         return self._allrows()
 
     def fetchmany(self, size=None):
-        # type: (Optional[Int]) -> List[Any]
         """Fetch many objects.
 
         Equivalent to :meth:`_result.Result.fetchmany` except that
@@ -1317,7 +1309,6 @@ class ScalarResult(FilterResult):
         return self._manyrow_getter(self, size)
 
     def all(self):
-        # type: () -> List[Any]
         """Return all scalar values in a list.
 
         Equivalent to :meth:`_result.Result.all` except that
@@ -1339,7 +1330,6 @@ class ScalarResult(FilterResult):
             return self._next_impl()
 
     def first(self):
-        # type: () -> Optional[Any]
         """Fetch the first object or None if no object is present.
 
         Equivalent to :meth:`_result.Result.first` except that
@@ -1348,10 +1338,11 @@ class ScalarResult(FilterResult):
 
 
         """
-        return self._only_one_row(False, False, False)
+        return self._only_one_row(
+            raise_for_second_row=False, raise_for_none=False, scalar=False
+        )
 
     def one_or_none(self):
-        # type: () -> Optional[Any]
         """Return at most one object or raise an exception.
 
         Equivalent to :meth:`_result.Result.one_or_none` except that
@@ -1359,10 +1350,11 @@ class ScalarResult(FilterResult):
         are returned.
 
         """
-        return self._only_one_row(True, False, False)
+        return self._only_one_row(
+            raise_for_second_row=True, raise_for_none=False, scalar=False
+        )
 
     def one(self):
-        # type: () -> Any
         """Return exactly one object or raise an exception.
 
         Equivalent to :meth:`_result.Result.one` except that
@@ -1370,7 +1362,9 @@ class ScalarResult(FilterResult):
         are returned.
 
         """
-        return self._only_one_row(True, True, False)
+        return self._only_one_row(
+            raise_for_second_row=True, raise_for_none=True, scalar=False
+        )
 
 
 class MappingResult(_WithKeys, FilterResult):
@@ -1394,7 +1388,6 @@ class MappingResult(_WithKeys, FilterResult):
             self._metadata = self._metadata._reduce([0])
 
     def unique(self, strategy=None):
-        # type: () -> MappingResult
         """Apply unique filtering to the objects returned by this
         :class:`_engine.MappingResult`.
 
@@ -1405,12 +1398,10 @@ class MappingResult(_WithKeys, FilterResult):
         return self
 
     def columns(self, *col_expressions):
-        # type: (*object) -> MappingResult
         r"""Establish the columns that should be returned in each row."""
         return self._column_slices(col_expressions)
 
     def partitions(self, size=None):
-        # type: (Optional[Int]) -> Iterator[List[Mapping]]
         """Iterate through sub-lists of elements of the size given.
 
         Equivalent to :meth:`_result.Result.partitions` except that
@@ -1429,13 +1420,11 @@ class MappingResult(_WithKeys, FilterResult):
                 break
 
     def fetchall(self):
-        # type: () -> List[Mapping]
         """A synonym for the :meth:`_engine.MappingResult.all` method."""
 
         return self._allrows()
 
     def fetchone(self):
-        # type: () -> Mapping
         """Fetch one object.
 
         Equivalent to :meth:`_result.Result.fetchone` except that
@@ -1451,7 +1440,6 @@ class MappingResult(_WithKeys, FilterResult):
             return row
 
     def fetchmany(self, size=None):
-        # type: (Optional[Int]) -> List[Mapping]
         """Fetch many objects.
 
         Equivalent to :meth:`_result.Result.fetchmany` except that
@@ -1463,7 +1451,6 @@ class MappingResult(_WithKeys, FilterResult):
         return self._manyrow_getter(self, size)
 
     def all(self):
-        # type: () -> List[Mapping]
         """Return all scalar values in a list.
 
         Equivalent to :meth:`_result.Result.all` except that
@@ -1486,7 +1473,6 @@ class MappingResult(_WithKeys, FilterResult):
             return self._next_impl()
 
     def first(self):
-        # type: () -> Optional[Mapping]
         """Fetch the first object or None if no object is present.
 
         Equivalent to :meth:`_result.Result.first` except that
@@ -1495,10 +1481,11 @@ class MappingResult(_WithKeys, FilterResult):
 
 
         """
-        return self._only_one_row(False, False, False)
+        return self._only_one_row(
+            raise_for_second_row=False, raise_for_none=False, scalar=False
+        )
 
     def one_or_none(self):
-        # type: () -> Optional[Mapping]
         """Return at most one object or raise an exception.
 
         Equivalent to :meth:`_result.Result.one_or_none` except that
@@ -1506,10 +1493,11 @@ class MappingResult(_WithKeys, FilterResult):
         are returned.
 
         """
-        return self._only_one_row(True, False, False)
+        return self._only_one_row(
+            raise_for_second_row=True, raise_for_none=False, scalar=False
+        )
 
     def one(self):
-        # type: () -> Mapping
         """Return exactly one object or raise an exception.
 
         Equivalent to :meth:`_result.Result.one` except that
@@ -1517,7 +1505,9 @@ class MappingResult(_WithKeys, FilterResult):
         are returned.
 
         """
-        return self._only_one_row(True, True, False)
+        return self._only_one_row(
+            raise_for_second_row=True, raise_for_none=True, scalar=False
+        )
 
 
 class FrozenResult(object):
@@ -1602,10 +1592,17 @@ class IteratorResult(Result):
 
     """
 
-    def __init__(self, cursor_metadata, iterator, raw=None):
+    def __init__(
+        self,
+        cursor_metadata,
+        iterator,
+        raw=None,
+        _source_supports_scalars=False,
+    ):
         self._metadata = cursor_metadata
         self.iterator = iterator
         self.raw = raw
+        self._source_supports_scalars = _source_supports_scalars
 
     def _soft_close(self, **kw):
         self.iterator = iter([])

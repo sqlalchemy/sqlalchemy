@@ -62,6 +62,8 @@ class SybaseDialect_pysybase(SybaseDialect):
     execution_ctx_cls = SybaseExecutionContext_pysybase
     statement_compiler = SybaseSQLCompiler_pysybase
 
+    supports_statement_cache = True
+
     colspecs = {sqltypes.Numeric: _SybNumeric, sqltypes.Float: sqltypes.Float}
 
     @classmethod

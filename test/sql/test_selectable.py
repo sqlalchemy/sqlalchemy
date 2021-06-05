@@ -161,6 +161,46 @@ class SelectableTest(
             s1, "SELECT (SELECT table1.col1 FROM table1) AS foo"
         )
 
+    @testing.combinations(("cte",), ("subquery",), argnames="type_")
+    @testing.combinations(
+        ("onelevel",), ("twolevel",), ("middle",), argnames="path"
+    )
+    @testing.combinations((True,), (False,), argnames="require_embedded")
+    def test_subquery_cte_correspondence(self, type_, require_embedded, path):
+        stmt = select(table1)
+
+        if type_ == "cte":
+            cte1 = stmt.cte()
+        elif type_ == "subquery":
+            cte1 = stmt.subquery()
+
+        if path == "onelevel":
+            is_(
+                cte1.corresponding_column(
+                    table1.c.col1, require_embedded=require_embedded
+                ),
+                cte1.c.col1,
+            )
+        elif path == "twolevel":
+            cte2 = cte1.alias()
+
+            is_(
+                cte2.corresponding_column(
+                    table1.c.col1, require_embedded=require_embedded
+                ),
+                cte2.c.col1,
+            )
+
+        elif path == "middle":
+            cte2 = cte1.alias()
+
+            is_(
+                cte2.corresponding_column(
+                    cte1.c.col1, require_embedded=require_embedded
+                ),
+                cte2.c.col1,
+            )
+
     def test_labels_anon_w_separate_key(self):
         label = select(table1.c.col1).label(None)
         label.key = "bar"
@@ -364,10 +404,10 @@ class SelectableTest(
         # anon_label, e.g. a truncated_label, is used here because
         # the expr has no name, no key, and myop() can't create a
         # string, so this is the last resort
-        eq_(s.selected_columns.keys(), ["x", "y", expr.anon_label])
+        eq_(s.selected_columns.keys(), ["x", "y", "_no_label"])
 
         s = select(t, expr).subquery()
-        eq_(s.c.keys(), ["x", "y", expr.anon_label])
+        eq_(s.c.keys(), ["x", "y", "_no_label"])
 
     def test_cloned_intersection(self):
         t1 = table("t1", column("x"))
@@ -450,7 +490,7 @@ class SelectableTest(
             cloned, literal_column("2").label("b")
         )
         cloned.add_columns.non_generative(cloned, func.foo())
-        eq_(list(cloned.selected_columns.keys()), ["a", "b", "foo()"])
+        eq_(list(cloned.selected_columns.keys()), ["a", "b", "foo"])
 
     def test_clone_col_list_changes_then_proxy(self):
         t = table("t", column("q"), column("p"))
@@ -498,6 +538,7 @@ class SelectableTest(
             "JOIN (SELECT 1 AS a, 2 AS b) AS joinfrom "
             "ON basefrom.a = joinfrom.a",
         )
+        replaced.selected_columns
         replaced.add_columns.non_generative(replaced, joinfrom.c.b)
         self.assert_compile(
             replaced,
@@ -505,6 +546,29 @@ class SelectableTest(
             "JOIN (SELECT 1 AS a, 2 AS b) AS joinfrom "
             "ON basefrom.a = joinfrom.a",
         )
+
+    @testing.combinations(
+        ("_internal_subquery",),
+        ("selected_columns",),
+        ("_all_selected_columns"),
+    )
+    def test_append_column_after_legacy_subq(self, attr):
+        """test :ticket:`6261`"""
+
+        t1 = table("t1", column("a"), column("b"))
+        s1 = select(t1.c.a)
+
+        if attr == "selected_columns":
+            s1.selected_columns
+        elif attr == "_internal_subuqery":
+            with testing.expect_deprecated("The SelectBase.c"):
+                s1.c
+        elif attr == "_all_selected_columns":
+            s1._all_selected_columns
+
+        s1.add_columns.non_generative(s1, t1.c.b)
+
+        self.assert_compile(s1, "SELECT t1.a, t1.b FROM t1")
 
     def test_against_cloned_non_table(self):
         # test that corresponding column digs across
@@ -526,9 +590,21 @@ class SelectableTest(
             "table1.col3, table1.colx FROM table1) AS anon_1",
         )
 
+    def test_scalar_subquery_from_subq_same_source(self):
+        s1 = select(table1.c.col1)
+
+        for i in range(2):
+            stmt = s1.subquery().select().scalar_subquery()
+            self.assert_compile(
+                stmt,
+                "(SELECT anon_1.col1 FROM "
+                "(SELECT table1.col1 AS col1 FROM table1) AS anon_1)",
+            )
+
     def test_type_coerce_preserve_subq(self):
         class MyType(TypeDecorator):
             impl = Integer
+            cache_ok = True
 
         stmt = select(type_coerce(column("x"), MyType).label("foo"))
         subq = stmt.subquery()
@@ -818,6 +894,16 @@ class SelectableTest(
 
         # TODO: failing due to proxy_set not correct
         assert u1.corresponding_column(table1_new.c.col2) is u1.c.col2
+
+    def test_unnamed_exprs_keys(self):
+        s1 = select(
+            table1.c.col1 == 5,
+            table1.c.col1 == 10,
+            func.count(table1.c.col1),
+            literal_column("x"),
+        ).subquery()
+
+        eq_(s1.c.keys(), ["_no_label", "_no_label_1", "count", "x"])
 
     def test_union_alias_dupe_keys(self):
         s1 = select(table1.c.col1, table1.c.col2, table2.c.col1)
@@ -2622,7 +2708,7 @@ class AnnotationsTest(fixtures.TestBase):
         eq_(y_a.key, "q")
         is_(x_a.table, t)
         eq_(x_a.info, {"q": "p", "z": "h"})
-        eq_(t.c.x.anon_label, x_a.anon_label)
+        eq_(t.c.x._anon_name_label, x_a._anon_name_label)
 
     def test_custom_constructions(self):
         from sqlalchemy.schema import Column
@@ -2973,7 +3059,7 @@ class AnnotationsTest(fixtures.TestBase):
 class ReprTest(fixtures.TestBase):
     def test_ensure_repr_elements(self):
         for obj in [
-            elements.Cast(1, 2),
+            elements.Cast(1, Integer()),
             elements.TypeClause(String()),
             elements.ColumnClause("x"),
             elements.BindParameter("q"),

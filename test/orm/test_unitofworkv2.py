@@ -2803,6 +2803,7 @@ class TypeWoBoolTest(fixtures.MappedTest, testing.AssertsExecutionResults):
 
         class MyType(TypeDecorator):
             impl = String(50)
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 if value is not None:
@@ -2891,6 +2892,8 @@ class NullEvaluatingTest(fixtures.MappedTest, testing.AssertsExecutionResults):
 
         class EvalsNull(TypeDecorator):
             impl = String(50)
+            cache_ok = True
+            cache_ok = True
 
             should_evaluate_none = True
 

@@ -57,6 +57,7 @@ class MySQLIdentifierPreparer_mariadbconnector(MySQLIdentifierPreparer):
 
 class MySQLDialect_mariadbconnector(MySQLDialect):
     driver = "mariadbconnector"
+    supports_statement_cache = True
 
     # set this to True at the module level to prevent the driver from running
     # against a backend that server detects as MySQL. currently this appears to

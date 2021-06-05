@@ -607,7 +607,7 @@ Glossary
         refers to the :mod:`psycopg2 <.postgresql.psycopg2>`
         DBAPI/dialect combination, whereas the URL ``mysql+mysqldb://@localhost/test``
         refers to the :mod:`MySQL for Python <.mysql.mysqldb>`
-        DBAPI DBAPI/dialect combination.
+        DBAPI/dialect combination.
 
         .. seealso::
 

@@ -1,22 +1,28 @@
 from decimal import Decimal
 
+from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import literal_column
 from sqlalchemy import Numeric
+from sqlalchemy import select
 from sqlalchemy import String
+from sqlalchemy import testing
 from sqlalchemy.ext import hybrid
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import synonym
 from sqlalchemy.sql import update
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_false
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 
@@ -97,6 +103,64 @@ class PropertyComparatorTest(fixtures.TestBase, AssertsCompiledSQL):
         A = self._fixture()
         eq_(A.value.__doc__, "This is a docstring")
 
+    def test_no_name_one(self):
+        """test :ticket:`6215`"""
+
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+
+            @hybrid.hybrid_property
+            def same_name(self):
+                return self.id
+
+            def name1(self):
+                return self.id
+
+            different_name = hybrid.hybrid_property(name1)
+
+            no_name = hybrid.hybrid_property(lambda self: self.name)
+
+        stmt = select(A.same_name, A.different_name, A.no_name)
+        compiled = stmt.compile()
+
+        eq_(
+            [ent._label_name for ent in compiled.compile_state._entities],
+            ["same_name", "id", "name"],
+        )
+
+    def test_no_name_two(self):
+        """test :ticket:`6215`"""
+        Base = declarative_base()
+
+        class SomeMixin(object):
+            @hybrid.hybrid_property
+            def same_name(self):
+                return self.id
+
+            def name1(self):
+                return self.id
+
+            different_name = hybrid.hybrid_property(name1)
+
+            no_name = hybrid.hybrid_property(lambda self: self.name)
+
+        class A(SomeMixin, Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+
+        stmt = select(A.same_name, A.different_name, A.no_name)
+        compiled = stmt.compile()
+
+        eq_(
+            [ent._label_name for ent in compiled.compile_state._entities],
+            ["same_name", "id", "name"],
+        )
+
 
 class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
@@ -126,6 +190,24 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
             @hybrid.hybrid_property
             def bar_value(cls):
                 return func.bar(cls._value)
+
+        return A
+
+    def _wrong_expr_fixture(self):
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            _value = Column("value", String)
+
+            @hybrid.hybrid_property
+            def value(self):
+                return self._value is not None
+
+            @value.expression
+            def value(cls):
+                return cls._value is not None
 
         return A
 
@@ -181,6 +263,19 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             A.value.__clause_element__(), "foo(a.value) + bar(a.value)"
         )
+
+    def test_expression_isnt_clause_element(self):
+        A = self._wrong_expr_fixture()
+
+        from sqlalchemy.sql import coercions, roles
+
+        with testing.expect_raises_message(
+            exc.InvalidRequestError,
+            'When interpreting attribute "A.value" as a SQL expression, '
+            r"expected __clause_element__\(\) to return a "
+            "ClauseElement object, got: True",
+        ):
+            coercions.expect(roles.ExpressionElementRole, A.value)
 
     def test_any(self):
         A, B = self._relationship_fixture()
@@ -397,6 +492,90 @@ class PropertyMirrorTest(fixtures.TestBase, AssertsCompiledSQL):
 
         return A
 
+    @testing.fixture
+    def _function_fixture(self):
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            value = Column(Integer)
+
+            @hybrid.hybrid_property
+            def foo_value(self):
+                return func.foo(self.value)
+
+        return A
+
+    @testing.fixture
+    def _name_mismatch_fixture(self):
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            addresses = relationship("B")
+
+            @hybrid.hybrid_property
+            def some_email(self):
+                if self.addresses:
+                    return self.addresses[0].email_address
+                else:
+                    return None
+
+            @some_email.expression
+            def some_email(cls):
+                return B.email_address
+
+        class B(Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            aid = Column(ForeignKey("a.id"))
+            email_address = Column(String)
+
+        return A, B
+
+    def test_dont_assume_attr_key_is_present(self, _name_mismatch_fixture):
+        A, B = _name_mismatch_fixture
+        self.assert_compile(
+            select(A, A.some_email).join(A.addresses),
+            "SELECT a.id, b.email_address FROM a JOIN b ON a.id = b.aid",
+        )
+
+    def test_dont_assume_attr_key_is_present_ac(self, _name_mismatch_fixture):
+        A, B = _name_mismatch_fixture
+
+        ac = aliased(A)
+        self.assert_compile(
+            select(ac, ac.some_email).join(ac.addresses),
+            "SELECT a_1.id, b.email_address "
+            "FROM a AS a_1 JOIN b ON a_1.id = b.aid",
+        )
+
+    def test_c_collection_func_element(self, _function_fixture):
+        A = _function_fixture
+
+        stmt = select(A.id, A.foo_value)
+        eq_(stmt.subquery().c.keys(), ["id", "foo_value"])
+
+    def test_filter_by_mismatched_col(self, _name_mismatch_fixture):
+        A, B = _name_mismatch_fixture
+        self.assert_compile(
+            select(A).filter_by(some_email="foo").join(A.addresses),
+            "SELECT a.id FROM a JOIN b ON a.id = b.aid "
+            "WHERE b.email_address = :email_address_1",
+        )
+
+    def test_aliased_mismatched_col(self, _name_mismatch_fixture):
+        A, B = _name_mismatch_fixture
+        sess = fixture_session()
+
+        # so what should this do ?   it's just a weird hybrid case
+        self.assert_compile(
+            sess.query(aliased(A).some_email),
+            "SELECT b.email_address AS b_email_address FROM b",
+        )
+
     def test_property(self):
         A = self._fixture()
 
@@ -431,6 +610,80 @@ class PropertyMirrorTest(fixtures.TestBase, AssertsCompiledSQL):
 
         insp = inspect(A)
         is_(insp.all_orm_descriptors["value"].info, A.value.info)
+
+
+class SynonymOfPropertyTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def _fixture(self):
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            _value = Column("value", String)
+
+            @hybrid.hybrid_property
+            def value(self):
+                return self._value
+
+            value_syn = synonym("value")
+
+            @hybrid.hybrid_property
+            def string_value(self):
+                return "foo"
+
+            string_value_syn = synonym("string_value")
+
+            @hybrid.hybrid_property
+            def string_expr_value(self):
+                return "foo"
+
+            @string_expr_value.expression
+            def string_expr_value(cls):
+                return literal_column("'foo'")
+
+            string_expr_value_syn = synonym("string_expr_value")
+
+        return A
+
+    def test_hasattr(self):
+        A = self._fixture()
+
+        is_false(hasattr(A.value_syn, "nonexistent"))
+
+        is_false(hasattr(A.string_value_syn, "nonexistent"))
+
+        is_false(hasattr(A.string_expr_value_syn, "nonexistent"))
+
+    def test_instance_access(self):
+        A = self._fixture()
+
+        a1 = A(_value="hi")
+
+        eq_(a1.value_syn, "hi")
+
+        eq_(a1.string_value_syn, "foo")
+
+        eq_(a1.string_expr_value_syn, "foo")
+
+    def test_expression_property(self):
+        A = self._fixture()
+
+        self.assert_compile(
+            select(A.id, A.value_syn).where(A.value_syn == "value"),
+            "SELECT a.id, a.value FROM a WHERE a.value = :value_1",
+        )
+
+    def test_expression_expr(self):
+        A = self._fixture()
+
+        self.assert_compile(
+            select(A.id, A.string_expr_value_syn).where(
+                A.string_expr_value_syn == "value"
+            ),
+            "SELECT a.id, 'foo' FROM a WHERE 'foo' = :'foo'_1",
+        )
 
 
 class MethodExpressionTest(fixtures.TestBase, AssertsCompiledSQL):

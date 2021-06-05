@@ -37,6 +37,7 @@ class _ExprFixture(object):
     def _type_decorator_outside_fixture(self):
         class MyString(TypeDecorator):
             impl = String
+            cache_ok = True
 
             def bind_expression(self, bindvalue):
                 return func.outside_bind(bindvalue)
@@ -56,6 +57,7 @@ class _ExprFixture(object):
 
         class MyString(TypeDecorator):
             impl = MyInsideString
+            cache_ok = True
 
         return self._test_table(MyString)
 
@@ -69,6 +71,7 @@ class _ExprFixture(object):
 
         class MyString(TypeDecorator):
             impl = String
+            cache_ok = True
 
             # this works because when the compiler calls dialect_impl(),
             # a copy of MyString is created which has just this impl
@@ -427,6 +430,7 @@ class TypeDecRoundTripTest(fixtures.TablesTest, RoundTripTestBase):
     def define_tables(cls, metadata):
         class MyString(TypeDecorator):
             impl = String
+            cache_ok = True
 
             def bind_expression(self, bindvalue):
                 return func.lower(bindvalue)

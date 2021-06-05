@@ -715,7 +715,7 @@ class SQLCompiler(Compiled):
             self._cache_key_bind_match = ckbm = {
                 b.key: b for b in cache_key[1]
             }
-            ckbm.update({b: b for b in cache_key[1]})
+            ckbm.update({b: [b] for b in cache_key[1]})
 
         # compile INSERT/UPDATE defaults/sequences to expect executemany
         # style execution, which may mean no pre-execute of defaults,
@@ -934,8 +934,9 @@ class SQLCompiler(Compiled):
 
             ckbm = self._cache_key_bind_match
             resolved_extracted = {
-                ckbm[b]: extracted
+                bind: extracted
                 for b, extracted in zip(orig_extracted, extracted_parameters)
+                for bind in ckbm[b]
             }
         else:
             resolved_extracted = None
@@ -1137,7 +1138,9 @@ class SQLCompiler(Compiled):
         ):
             parameter = self.binds[name]
             if parameter in self.literal_execute_params:
-                value = parameters.pop(name)
+                if name not in replacement_expressions:
+                    value = parameters.pop(name)
+
                 replacement_expressions[name] = self.render_literal_bindparam(
                     parameter, render_literal_value=value
                 )
@@ -1233,7 +1236,10 @@ class SQLCompiler(Compiled):
         )
 
     @util.memoized_property
+    @util.preload_module("sqlalchemy.engine.result")
     def _inserted_primary_key_from_lastrowid_getter(self):
+        result = util.preloaded.engine_result
+
         key_getter = self._key_getters_for_crud_column[2]
         table = self.statement.table
 
@@ -1251,14 +1257,16 @@ class SQLCompiler(Compiled):
         else:
             proc = None
 
+        row_fn = result.result_tuple([col.key for col in table.primary_key])
+
         def get(lastrowid, parameters):
             if proc is not None:
                 lastrowid = proc(lastrowid)
 
             if lastrowid is None:
-                return tuple(getter(parameters) for getter, col in getters)
+                return row_fn(getter(parameters) for getter, col in getters)
             else:
-                return tuple(
+                return row_fn(
                     lastrowid if col is autoinc_col else getter(parameters)
                     for getter, col in getters
                 )
@@ -1266,7 +1274,10 @@ class SQLCompiler(Compiled):
         return get
 
     @util.memoized_property
+    @util.preload_module("sqlalchemy.engine.result")
     def _inserted_primary_key_from_returning_getter(self):
+        result = util.preloaded.engine_result
+
         key_getter = self._key_getters_for_crud_column[2]
         table = self.statement.table
 
@@ -1279,8 +1290,10 @@ class SQLCompiler(Compiled):
             for col in table.primary_key
         ]
 
+        row_fn = result.result_tuple([col.key for col in table.primary_key])
+
         def get(row, parameters):
-            return tuple(
+            return row_fn(
                 getter(row) if use_row else getter(parameters)
                 for getter, use_row in getters
             )
@@ -1891,6 +1904,32 @@ class SQLCompiler(Compiled):
             binary, override_operator=operators.match_op
         )
 
+    def visit_not_in_op_binary(self, binary, operator, **kw):
+        # The brackets are required in the NOT IN operation because the empty
+        # case is handled using the form "(col NOT IN (null) OR 1 = 1)".
+        # The presence of the OR makes the brackets required.
+        return "(%s)" % self._generate_generic_binary(
+            binary, OPERATORS[operator], **kw
+        )
+
+    def visit_empty_set_op_expr(self, type_, expand_op):
+        if expand_op is operators.not_in_op:
+            if len(type_) > 1:
+                return "(%s)) OR (1 = 1" % (
+                    ", ".join("NULL" for element in type_)
+                )
+            else:
+                return "NULL) OR (1 = 1"
+        elif expand_op is operators.in_op:
+            if len(type_) > 1:
+                return "(%s)) AND (1 != 1" % (
+                    ", ".join("NULL" for element in type_)
+                )
+            else:
+                return "NULL) AND (1 != 1"
+        else:
+            return self.visit_empty_set_expr(type_)
+
     def visit_empty_set_expr(self, element_types):
         raise NotImplementedError(
             "Dialect '%s' does not support empty set expression."
@@ -1902,10 +1941,17 @@ class SQLCompiler(Compiled):
     ):
 
         if not values:
-            assert not parameter.type._is_tuple_type
-            replacement_expression = self.visit_empty_set_expr(
-                [parameter.type]
-            )
+            if parameter.type._is_tuple_type:
+                replacement_expression = (
+                    "VALUES " if self.dialect.tuple_in_values else ""
+                ) + self.visit_empty_set_op_expr(
+                    parameter.type.types, parameter.expand_op
+                )
+
+            else:
+                replacement_expression = self.visit_empty_set_op_expr(
+                    [parameter.type], parameter.expand_op
+                )
 
         elif isinstance(values[0], (tuple, list)):
             assert parameter.type._is_tuple_type
@@ -1943,12 +1989,12 @@ class SQLCompiler(Compiled):
             to_update = []
             if parameter.type._is_tuple_type:
 
-                replacement_expression = self.visit_empty_set_expr(
-                    parameter.type.types
+                replacement_expression = self.visit_empty_set_op_expr(
+                    parameter.type.types, parameter.expand_op
                 )
             else:
-                replacement_expression = self.visit_empty_set_expr(
-                    [parameter.type]
+                replacement_expression = self.visit_empty_set_op_expr(
+                    [parameter.type], parameter.expand_op
                 )
 
         elif isinstance(values[0], (tuple, list)):
@@ -2226,7 +2272,6 @@ class SQLCompiler(Compiled):
         render_postcompile=False,
         **kwargs
     ):
-
         if not skip_bind_expression:
             impl = bindparam.type.dialect_impl(self.dialect)
             if impl._has_bind_expression:
@@ -2297,7 +2342,7 @@ class SQLCompiler(Compiled):
             for bp in bindparam._cloned_set:
                 if bp.key in ckbm:
                     cb = ckbm[bp.key]
-                    ckbm[cb] = bindparam
+                    ckbm[cb].append(bindparam)
 
         if bindparam.isoutparam:
             self.has_out_parameters = True
@@ -2662,7 +2707,7 @@ class SQLCompiler(Compiled):
                     ", ".join(
                         "%s%s"
                         % (
-                            col.name,
+                            self.preparer.quote(col.name),
                             " %s"
                             % self.dialect.type_compiler.process(
                                 col.type, **kwargs
@@ -2708,13 +2753,13 @@ class SQLCompiler(Compiled):
         return text
 
     def visit_values(self, element, asfrom=False, from_linter=None, **kw):
-
+        kw.setdefault("literal_binds", element.literal_binds)
         v = "VALUES %s" % ", ".join(
             self.process(
                 elements.Tuple(
                     types=element._column_types, *elem
                 ).self_group(),
-                literal_binds=element.literal_binds,
+                **kw
             )
             for chunk in element._data
             for elem in chunk
@@ -2860,7 +2905,7 @@ class SQLCompiler(Compiled):
         ):
             result_expr = _CompileLabel(
                 col_expr,
-                column.anon_label
+                column._anon_name_label
                 if not column_is_repeated
                 else column._dedupe_label_anon_label,
             )
@@ -3140,7 +3185,7 @@ class SQLCompiler(Compiled):
             entry["select_0"] = select
         elif compound_index:
             select_0 = entry["select_0"]
-            numcols = len(select_0.selected_columns)
+            numcols = len(select_0._all_selected_columns)
 
             if len(compile_state.columns_plus_names) != numcols:
                 raise exc.CompileError(
@@ -3152,7 +3197,7 @@ class SQLCompiler(Compiled):
                         1,
                         numcols,
                         compound_index + 1,
-                        len(select.selected_columns),
+                        len(select._all_selected_columns),
                     )
                 )
 
@@ -3468,6 +3513,7 @@ class SQLCompiler(Compiled):
         if (
             not crud_params
             and not self.dialect.supports_default_values
+            and not self.dialect.supports_default_metavalue
             and not self.dialect.supports_empty_insert
         ):
             raise exc.CompileError(
@@ -3868,16 +3914,18 @@ class StrSQLCompiler(SQLCompiler):
     def update_from_clause(
         self, update_stmt, from_table, extra_froms, from_hints, **kw
     ):
+        kw["asfrom"] = True
         return "FROM " + ", ".join(
-            t._compiler_dispatch(self, asfrom=True, fromhints=from_hints, **kw)
+            t._compiler_dispatch(self, fromhints=from_hints, **kw)
             for t in extra_froms
         )
 
     def delete_extra_from_clause(
         self, update_stmt, from_table, extra_froms, from_hints, **kw
     ):
+        kw["asfrom"] = True
         return ", " + ", ".join(
-            t._compiler_dispatch(self, asfrom=True, fromhints=from_hints, **kw)
+            t._compiler_dispatch(self, fromhints=from_hints, **kw)
             for t in extra_froms
         )
 
@@ -4238,10 +4286,15 @@ class DDLCompiler(Compiled):
         if column.computed is not None:
             colspec += " " + self.process(column.computed)
 
-        if column.identity is not None:
+        if (
+            column.identity is not None
+            and self.dialect.supports_identity_columns
+        ):
             colspec += " " + self.process(column.identity)
 
-        if not column.nullable and not column.identity:
+        if not column.nullable and (
+            not column.identity or not self.dialect.supports_identity_columns
+        ):
             colspec += " NOT NULL"
         return colspec
 
@@ -4659,6 +4712,11 @@ class IdentifierPreparer(object):
         def symbol_getter(obj):
             name = obj.schema
             if name in schema_translate_map and obj._use_schema_map:
+                if name is not None and ("[" in name or "]" in name):
+                    raise exc.CompileError(
+                        "Square bracket characters ([]) not supported "
+                        "in schema translate name '%s'" % name
+                    )
                 return quoted_name(
                     "[SCHEMA_%s]" % (name or "_none"), quote=False
                 )
@@ -4686,7 +4744,7 @@ class IdentifierPreparer(object):
                     )
             return self.quote(effective_schema)
 
-        return re.sub(r"(\[SCHEMA_([\w\d_]+)\])", replace, statement)
+        return re.sub(r"(\[SCHEMA_([^\]]+)\])", replace, statement)
 
     def _escape_identifier(self, value):
         """Escape an identifier.

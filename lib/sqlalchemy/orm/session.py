@@ -31,6 +31,7 @@ from .. import engine
 from .. import exc as sa_exc
 from .. import sql
 from .. import util
+from ..engine.util import TransactionalContext
 from ..inspection import inspect
 from ..sql import coercions
 from ..sql import dml
@@ -54,17 +55,14 @@ _sessions = weakref.WeakValueDictionary()
 """Weak-referencing dictionary of :class:`.Session` objects.
 """
 
+statelib._sessions = _sessions
+
 
 def _state_session(state):
     """Given an :class:`.InstanceState`, return the :class:`.Session`
     associated, if any.
     """
-    if state.session_id:
-        try:
-            return _sessions[state.session_id]
-        except KeyError:
-            pass
-    return None
+    return state.session
 
 
 class _SessionClassMethods(object):
@@ -478,7 +476,7 @@ class ORMExecuteState(util.MemoizedSlots):
         ]
 
 
-class SessionTransaction(object):
+class SessionTransaction(TransactionalContext):
     """A :class:`.Session`-level transaction.
 
     :class:`.SessionTransaction` is produced from the
@@ -526,6 +524,8 @@ class SessionTransaction(object):
         nested=False,
         autobegin=False,
     ):
+        TransactionalContext._trans_ctx_check(session)
+
         self.session = session
         self._connections = {}
         self._parent = parent
@@ -930,21 +930,14 @@ class SessionTransaction(object):
         self.session = None
         self._connections = None
 
-    def __enter__(self):
-        return self
+    def _get_subject(self):
+        return self.session
 
-    def __exit__(self, type_, value, traceback):
-        self._assert_active(deactive_ok=True, prepared_ok=True)
-        if self.session._transaction is None:
-            return
-        if type_ is None:
-            try:
-                self.commit()
-            except:
-                with util.safe_reraise():
-                    self.rollback()
-        else:
-            self.rollback()
+    def _transaction_is_active(self):
+        return self._state is ACTIVE
+
+    def _transaction_is_closed(self):
+        return self._state is CLOSED
 
 
 class Session(_SessionClassMethods):
@@ -1140,8 +1133,7 @@ class Session(_SessionClassMethods):
         if autocommit:
             if future:
                 raise sa_exc.ArgumentError(
-                    "Cannot use autocommit mode with future=True.  "
-                    "use the autobegin flag."
+                    "Cannot use autocommit mode with future=True."
                 )
             self.autocommit = True
         else:
@@ -1157,6 +1149,9 @@ class Session(_SessionClassMethods):
                 self._add_bind(key, bind)
 
         _sessions[self.hash_key] = self
+
+    # used by sqlalchemy.engine.util.TransactionalContext
+    _trans_context_manager = None
 
     connection_callable = None
 
@@ -1256,6 +1251,7 @@ class Session(_SessionClassMethods):
 
     def _autobegin(self):
         if not self.autocommit and self._transaction is None:
+
             trans = SessionTransaction(self, autobegin=True)
             assert self._transaction is trans
             return True
@@ -1274,7 +1270,13 @@ class Session(_SessionClassMethods):
     )
     def begin(self, subtransactions=False, nested=False, _subtrans=False):
         """Begin a transaction, or nested transaction,
-        on this :class:`.Session`.
+        on this :class:`.Session`, if one is not already begun.
+
+        The :class:`_orm.Session` object features **autobegin** behavior,
+        so that normally it is not necessary to call the
+        :meth:`_orm.Session.begin`
+        method explicitly. However, it may be used in order to control
+        the scope of when the transactional state is begun.
 
         When used to begin the outermost transaction, an error is raised
         if this :class:`.Session` is already inside of a transaction.
@@ -1295,6 +1297,8 @@ class Session(_SessionClassMethods):
 
         .. seealso::
 
+            :ref:`session_autobegin`
+
             :ref:`unitofwork_transaction`
 
             :meth:`.Session.begin_nested`
@@ -1308,7 +1312,7 @@ class Session(_SessionClassMethods):
                 "Session objects."
             )
         if self._autobegin():
-            if not subtransactions and not nested:
+            if not subtransactions and not nested and not _subtrans:
                 return self._transaction
 
         if self._transaction is not None:
@@ -1321,9 +1325,18 @@ class Session(_SessionClassMethods):
                 raise sa_exc.InvalidRequestError(
                     "A transaction is already begun on this Session."
                 )
+        elif not self.autocommit:
+            # outermost transaction.  must be a not nested and not
+            # a subtransaction
+            assert not nested and not _subtrans and not subtransactions
+            trans = SessionTransaction(self)
+            assert self._transaction is trans
         else:
+            # legacy autocommit mode
+            assert not self.future
             trans = SessionTransaction(self, nested=nested)
             assert self._transaction is trans
+
         return self._transaction  # needed for __enter__/__exit__ hook
 
     def begin_nested(self):
@@ -1507,6 +1520,8 @@ class Session(_SessionClassMethods):
         )
 
     def _connection_for_bind(self, engine, execution_options=None, **kw):
+        TransactionalContext._trans_ctx_check(self)
+
         if self._transaction is not None or self._autobegin():
             return self._transaction._connection_for_bind(
                 engine, execution_options
@@ -1584,7 +1599,7 @@ class Session(_SessionClassMethods):
 
 
         """
-        statement = coercions.expect(roles.CoerceTextStatementRole, statement)
+        statement = coercions.expect(roles.StatementRole, statement)
 
         if kw:
             util.warn_deprecated_20(
@@ -1698,18 +1713,33 @@ class Session(_SessionClassMethods):
         ).scalar()
 
     def close(self):
-        """Close this Session.
+        """Close out the transactional resources and ORM objects used by this
+        :class:`_orm.Session`.
 
-        This clears all items and ends any transaction in progress.
+        This expunges all ORM objects associated with this
+        :class:`_orm.Session`, ends any transaction in progress and
+        :term:`releases` any :class:`_engine.Connection` objects which this
+        :class:`_orm.Session` itself has checked out from associated
+        :class:`_engine.Engine` objects. The operation then leaves the
+        :class:`_orm.Session` in a state which it may be used again.
 
-        If this Session was created with ``autocommit=False``, a new
-        transaction will be begun when the :class:`.Session` is next asked
-        to procure a database connection.
+        .. tip::
+
+            The :meth:`_orm.Session.close` method **does not prevent the
+            Session from being used again**.   The :class:`_orm.Session` itself
+            does not actually have a distinct "closed" state; it merely means
+            the :class:`_orm.Session` will release all database connections
+            and ORM objects.
 
         .. versionchanged:: 1.4  The :meth:`.Session.close` method does not
            immediately create a new :class:`.SessionTransaction` object;
            instead, the new :class:`.SessionTransaction` is created only if
            the :class:`.Session` is used again for a database operation.
+
+        .. seealso::
+
+            :ref:`session_closing` - detail on the semantics of
+            :meth:`_orm.Session.close`
 
         """
         self._close_impl(invalidate=False)
@@ -1982,6 +2012,15 @@ class Session(_SessionClassMethods):
                     clause = mapper.persist_selectable
 
             if clause is not None:
+                plugin_subject = clause._propagate_attrs.get(
+                    "plugin_subject", None
+                )
+
+                if plugin_subject is not None:
+                    for cls in plugin_subject.mapper.class_.__mro__:
+                        if cls in self.__binds:
+                            return self.__binds[cls]
+
                 for obj in visitors.iterate(clause):
                     if obj in self.__binds:
                         return self.__binds[obj]
@@ -2153,24 +2192,39 @@ class Session(_SessionClassMethods):
                 util.raise_(e, with_traceback=sys.exc_info()[2])
 
     def refresh(self, instance, attribute_names=None, with_for_update=None):
-        """Expire and refresh the attributes on the given instance.
+        """Expire and refresh attributes on the given instance.
 
-        A query will be issued to the database and all attributes will be
-        refreshed with their current database value.
+        The selected attributes will first be expired as they would when using
+        :meth:`_orm.Session.expire`; then a SELECT statement will be issued to
+        the database to refresh column-oriented attributes with the current
+        value available in the current transaction.
 
-        Lazy-loaded relational attributes will remain lazily loaded, so that
-        the instance-wide refresh operation will be followed immediately by
-        the lazy load of that attribute.
+        :func:`_orm.relationship` oriented attributes will also be immediately
+        loaded if they were already eagerly loaded on the object, using the
+        same eager loading strategy that they were loaded with originally.
+        Unloaded relationship attributes will remain unloaded, as will
+        relationship attributes that were originally lazy loaded.
 
-        Eagerly-loaded relational attributes will eagerly load within the
-        single refresh operation.
+        .. versionadded:: 1.4 - the :meth:`_orm.Session.refresh` method
+           can also refresh eagerly loaded attributes.
+
+        .. tip::
+
+            While the :meth:`_orm.Session.refresh` method is capable of
+            refreshing both column and relationship oriented attributes, its
+            primary focus is on refreshing of local column-oriented attributes
+            on a single instance. For more open ended "refresh" functionality,
+            including the ability to refresh the attributes on many objects at
+            once while having explicit control over relationship loader
+            strategies, use the
+            :ref:`populate existing <orm_queryguide_populate_existing>` feature
+            instead.
 
         Note that a highly isolated transaction will return the same values as
         were previously read in that same transaction, regardless of changes
-        in database state outside of that transaction - usage of
-        :meth:`~Session.refresh` usually only makes sense if non-ORM SQL
-        statement were emitted in the ongoing transaction, or if autocommit
-        mode is turned on.
+        in database state outside of that transaction.   Refreshing
+        attributes usually only makes sense at the start of a transaction
+        where database rows have not yet been accessed.
 
         :param attribute_names: optional.  An iterable collection of
           string attribute names indicating a subset of attributes to
@@ -2183,8 +2237,6 @@ class Session(_SessionClassMethods):
           :meth:`_query.Query.with_for_update`.
           Supersedes the :paramref:`.Session.refresh.lockmode` parameter.
 
-          .. versionadded:: 1.2
-
         .. seealso::
 
             :ref:`session_expire` - introductory material
@@ -2193,7 +2245,8 @@ class Session(_SessionClassMethods):
 
             :meth:`.Session.expire_all`
 
-            :meth:`_orm.Query.populate_existing`
+            :ref:`orm_queryguide_populate_existing` - allows any ORM query
+            to refresh objects as they would be loaded normally.
 
         """
         try:

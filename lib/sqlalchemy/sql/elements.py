@@ -44,11 +44,6 @@ from .. import exc
 from .. import inspection
 from .. import util
 
-if util.TYPE_CHECKING:
-    from typing import Any
-    from typing import Optional
-    from typing import Union
-
 
 def collate(expression, collation):
     """Return the clause ``expression COLLATE collation``.
@@ -235,7 +230,7 @@ class ClauseElement(
         self._propagate_attrs = util.immutabledict(values)
         return self
 
-    def _clone(self):
+    def _clone(self, **kw):
         """Create a shallow copy of this ClauseElement.
 
         This method may be used by a generative API.  Its also used as
@@ -255,6 +250,15 @@ class ClauseElement(
         c._is_clone_of = self
 
         return c
+
+    def _negate_in_binary(self, negated_op, original_op):
+        """a hook to allow the right side of a binary expression to respond
+        to a negation of the binary expression.
+
+        Used for the special case of expanding bind parameter with IN.
+
+        """
+        return self
 
     def _with_binary_element_type(self, type_):
         """in the context of binary expression, convert the type of this
@@ -300,6 +304,13 @@ class ClauseElement(
             f = f._is_clone_of
         return s
 
+    @property
+    def entity_namespace(self):
+        raise AttributeError(
+            "This SQL expression has no entity namespace "
+            "with which to filter from."
+        )
+
     def __getstate__(self):
         d = self.__dict__.copy()
         d.pop("_is_clone_of", None)
@@ -307,9 +318,9 @@ class ClauseElement(
         return d
 
     def _execute_on_connection(
-        self, connection, multiparams, params, execution_options
+        self, connection, multiparams, params, execution_options, _force=False
     ):
-        if self.supports_execution:
+        if _force or self.supports_execution:
             return connection._execute_clauseelement(
                 self, multiparams, params, execution_options
             )
@@ -360,7 +371,9 @@ class ClauseElement(
             if unique:
                 bind._convert_to_unique()
 
-        return cloned_traverse(self, {}, {"bindparam": visit_bindparam})
+        return cloned_traverse(
+            self, {"maintain_key": True}, {"bindparam": visit_bindparam}
+        )
 
     def compare(self, other, **kw):
         r"""Compare this :class:`_expression.ClauseElement` to
@@ -404,7 +417,6 @@ class ClauseElement(
         )
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> ClauseElement
         """Apply a 'grouping' to this :class:`_expression.ClauseElement`.
 
         This method is overridden by subclasses to return a "grouping"
@@ -432,8 +444,9 @@ class ClauseElement(
         return self
 
     def _ungroup(self):
-        """Return this :class:`_expression.ClauseElement` """
-        """without any groupings."""
+        """Return this :class:`_expression.ClauseElement`
+        without any groupings.
+        """
 
         return self
 
@@ -512,7 +525,7 @@ class ClauseElement(
         schema_translate_map=None,
         **kw
     ):
-        if compiled_cache is not None:
+        if compiled_cache is not None and dialect._supports_statement_cache:
             elem_cache_key = self._generate_cache_key()
         else:
             elem_cache_key = None
@@ -551,11 +564,13 @@ class ClauseElement(
                 schema_translate_map=schema_translate_map,
                 **kw
             )
-            cache_hit = (
-                dialect.CACHING_DISABLED
-                if compiled_cache is None
-                else dialect.NO_CACHE_KEY
-            )
+
+            if not dialect._supports_statement_cache:
+                cache_hit = dialect.NO_DIALECT_SUPPORT
+            elif compiled_cache is None:
+                cache_hit = dialect.CACHING_DISABLED
+            else:
+                cache_hit = dialect.NO_CACHE_KEY
 
         return compiled_sql, extracted_params, cache_hit
 
@@ -771,7 +786,6 @@ class ColumnElement(
     _alt_names = ()
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> ClauseElement
         if (
             against in (operators.and_, operators.or_, operators._asbool)
             and self.type._type_affinity is type_api.BOOLEANTYPE._type_affinity
@@ -899,23 +913,20 @@ class ColumnElement(
         elif self.key:
             return self.key
         else:
-            try:
-                return str(self)
-            except exc.UnsupportedCompilationError:
-                return self.anon_label
+            return getattr(self, "name", "_no_label")
 
     def _make_proxy(
-        self, selectable, name=None, name_is_truncatable=False, **kw
+        self, selectable, name=None, key=None, name_is_truncatable=False, **kw
     ):
         """Create a new :class:`_expression.ColumnElement` representing this
-        :class:`_expression.ColumnElement`
-        as it appears in the select list of a
-        descending selectable.
+        :class:`_expression.ColumnElement` as it appears in the select list of
+        a descending selectable.
 
         """
         if name is None:
-            name = self.anon_label
-            key = self._proxy_key
+            name = self._anon_name_label
+            if key is None:
+                key = self._proxy_key
         else:
             key = name
 
@@ -976,7 +987,7 @@ class ColumnElement(
         return _anonymous_label.safe_construct(hash(self), seed or "anon")
 
     @util.memoized_property
-    def anon_label(self):
+    def _anon_name_label(self):
         """Provides a constant 'anonymous label' for this ColumnElement.
 
         This is a label() expression which will be named at compile time.
@@ -988,12 +999,16 @@ class ColumnElement(
         for expressions that are known to be 'unnamed' like binary
         expressions and function calls.
 
+        .. versionchanged:: 1.4.9 - this attribute was not intended to be
+           public and is renamed to _anon_name_label.  anon_name exists
+           for backwards compat
+
         """
         name = getattr(self, "name", None)
         return self._anon_label(name)
 
     @util.memoized_property
-    def anon_key_label(self):
+    def _anon_key_label(self):
         """Provides a constant 'anonymous key label' for this ColumnElement.
 
         Compare to ``anon_label``, except that the "key" of the column,
@@ -1002,9 +1017,30 @@ class ColumnElement(
         This is used when a deduplicating key is placed into the columns
         collection of a selectable.
 
+        .. versionchanged:: 1.4.9 - this attribute was not intended to be
+           public and is renamed to _anon_key_label.  anon_key_label exists
+           for backwards compat
+
         """
-        name = getattr(self, "key", None) or getattr(self, "name", None)
-        return self._anon_label(name)
+        return self._anon_label(self._proxy_key)
+
+    @property
+    @util.deprecated(
+        "1.4",
+        "The :attr:`_expression.ColumnElement.anon_label` attribute is now "
+        "private, and the public accessor is deprecated.",
+    )
+    def anon_label(self):
+        return self._anon_name_label
+
+    @property
+    @util.deprecated(
+        "1.4",
+        "The :attr:`_expression.ColumnElement.anon_key_label` attribute is "
+        "now private, and the public accessor is deprecated.",
+    )
+    def anon_key_label(self):
+        return self._anon_key_label
 
     @util.memoized_property
     def _dedupe_anon_label(self):
@@ -1052,14 +1088,14 @@ class WrapsColumnExpression(object):
             return None
 
     @property
-    def anon_label(self):
+    def _anon_name_label(self):
         wce = self.wrapped_column_expression
         if hasattr(wce, "name"):
             return wce.name
-        elif hasattr(wce, "anon_label"):
-            return wce.anon_label
+        elif hasattr(wce, "_anon_name_label"):
+            return wce._anon_name_label
         else:
-            return super(WrapsColumnExpression, self).anon_label
+            return super(WrapsColumnExpression, self)._anon_name_label
 
 
 class BindParameter(roles.InElementRole, ColumnElement):
@@ -1359,9 +1395,10 @@ class BindParameter(roles.InElementRole, ColumnElement):
         if unique:
             self.key = _anonymous_label.safe_construct(
                 id(self),
-                re.sub(r"[%\(\) \$]+", "_", key).strip("_")
+                key
                 if key is not None and not isinstance(key, _anonymous_label)
                 else "param",
+                sanitize_key=True,
             )
             self._key_is_anon = True
         elif key:
@@ -1384,19 +1421,40 @@ class BindParameter(roles.InElementRole, ColumnElement):
         self.callable = callable_
         self.isoutparam = isoutparam
         self.required = required
+
+        # indicate an "expanding" parameter; the compiler sets this
+        # automatically in the compiler _render_in_expr_w_bindparam method
+        # for an IN expression
         self.expanding = expanding
+
+        # this is another hint to help w/ expanding and is typically
+        # set in the compiler _render_in_expr_w_bindparam method for an
+        # IN expression
+        self.expand_op = None
+
         self.literal_execute = literal_execute
         if _is_crud:
             self._is_crud = True
+
         if type_ is None:
+            if expanding and value:
+                check_value = value[0]
+            else:
+                check_value = value
             if _compared_to_type is not None:
                 self.type = _compared_to_type.coerce_compared_value(
-                    _compared_to_operator, value
+                    _compared_to_operator, check_value
                 )
             else:
-                self.type = type_api._resolve_value_to_type(value)
+                self.type = type_api._resolve_value_to_type(check_value)
         elif isinstance(type_, type):
             self.type = type_()
+        elif type_._is_tuple_type and value:
+            if expanding:
+                check_value = value[0]
+            else:
+                check_value = value
+            self.type = type_._resolve_values_to_types(check_value)
         else:
             self.type = type_
 
@@ -1427,16 +1485,52 @@ class BindParameter(roles.InElementRole, ColumnElement):
         else:
             return self.value
 
+    def render_literal_execute(self):
+        """Produce a copy of this bound parameter that will enable the
+        :paramref:`_sql.BindParameter.literal_execute` flag.
+
+        The :paramref:`_sql.BindParameter.literal_execute` flag will
+        have the effect of the parameter rendered in the compiled SQL
+        string using ``[POSTCOMPILE]`` form, which is a special form that
+        is converted to be a rendering of the literal value of the parameter
+        at SQL execution time.    The rationale is to support caching
+        of SQL statement strings that can embed per-statement literal values,
+        such as LIMIT and OFFSET parameters, in the final SQL string that
+        is passed to the DBAPI.   Dialects in particular may want to use
+        this method within custom compilation schemes.
+
+        .. versionadded:: 1.4.5
+
+        .. seealso::
+
+            :ref:`engine_thirdparty_caching`
+
+        """
+        return self.__class__(
+            self.key,
+            self.value,
+            type_=self.type,
+            literal_execute=True,
+        )
+
+    def _negate_in_binary(self, negated_op, original_op):
+        if self.expand_op is original_op:
+            bind = self._clone()
+            bind.expand_op = negated_op
+            return bind
+        else:
+            return self
+
     def _with_binary_element_type(self, type_):
         c = ClauseElement._clone(self)
         c.type = type_
         return c
 
-    def _clone(self, maintain_key=False):
-        c = ClauseElement._clone(self)
+    def _clone(self, maintain_key=False, **kw):
+        c = ClauseElement._clone(self, **kw)
         if not maintain_key and self.unique:
             c.key = _anonymous_label.safe_construct(
-                id(c), c._orig_key or "param"
+                id(c), c._orig_key or "param", sanitize_key=True
             )
         return c
 
@@ -1471,7 +1565,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
         if not self.unique:
             self.unique = True
             self.key = _anonymous_label.safe_construct(
-                id(self), self._orig_key or "param"
+                id(self), self._orig_key or "param", sanitize_key=True
             )
 
     def __getstate__(self):
@@ -1488,12 +1582,13 @@ class BindParameter(roles.InElementRole, ColumnElement):
     def __setstate__(self, state):
         if state.get("unique", False):
             state["key"] = _anonymous_label.safe_construct(
-                id(self), state.get("_orig_key", "param")
+                id(self), state.get("_orig_key", "param"), sanitize_key=True
             )
         self.__dict__.update(state)
 
     def __repr__(self):
-        return "BindParameter(%r, %r, type_=%r)" % (
+        return "%s(%r, %r, type_=%r)" % (
+            self.__class__.__name__,
             self.key,
             self.value,
             self.type,
@@ -1972,7 +2067,6 @@ class TextClause(
         return self.type.comparator_factory(self)
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> Union[Grouping, TextClause]
         if against is operators.in_op:
             return Grouping(self)
         else:
@@ -2219,7 +2313,6 @@ class ClauseList(
         return list(itertools.chain(*[c._from_objects for c in self.clauses]))
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> ClauseElement
         if self.group and operators.is_precedent(self.operator, against):
             return Grouping(self)
         else:
@@ -2470,7 +2563,6 @@ class BooleanClauseList(ClauseList, ColumnElement):
         return (self,)
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> ClauseElement
         if not self.clauses:
             return self
         else:
@@ -3426,7 +3518,6 @@ class UnaryExpression(ColumnElement):
             return ClauseElement._negate(self)
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> ClauseElement
         if self.operator and operators.is_precedent(self.operator, against):
             return Grouping(self)
         else:
@@ -3552,7 +3643,6 @@ class AsBoolean(WrapsColumnExpression, UnaryExpression):
         return self.element
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> ClauseElement
         return self
 
     def _negate(self):
@@ -3634,7 +3724,6 @@ class BinaryExpression(ColumnElement):
         return self.left._from_objects + self.right._from_objects
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> ClauseElement
 
         if operators.is_precedent(self.operator, against):
             return Grouping(self)
@@ -3645,7 +3734,7 @@ class BinaryExpression(ColumnElement):
         if self.negate is not None:
             return BinaryExpression(
                 self.left,
-                self.right,
+                self.right._negate_in_binary(self.negate, self.operator),
                 self.negate,
                 negate=self.operator,
                 type_=self.type,
@@ -3693,7 +3782,6 @@ class Slice(ColumnElement):
         self.type = type_api.NULLTYPE
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> ClauseElement
         assert against is operator.getitem
         return self
 
@@ -3711,7 +3799,6 @@ class GroupedElement(ClauseElement):
     __visit_name__ = "grouping"
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> ClauseElement
         return self
 
     def _ungroup(self):
@@ -3731,7 +3818,7 @@ class Grouping(GroupedElement, ColumnElement):
         self.type = getattr(element, "type", type_api.NULLTYPE)
 
     def _with_binary_element_type(self, type_):
-        return Grouping(self.element._with_binary_element_type(type_))
+        return self.__class__(self.element._with_binary_element_type(type_))
 
     @util.memoized_property
     def _is_implicitly_boolean(self):
@@ -3743,7 +3830,7 @@ class Grouping(GroupedElement, ColumnElement):
 
     @property
     def _label(self):
-        return getattr(self.element, "_label", None) or self.anon_label
+        return getattr(self.element, "_label", None) or self._anon_name_label
 
     @property
     def _proxies(self):
@@ -4287,7 +4374,6 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
         return self._element.self_group(against=operators.as_)
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> ClauseElement
         return self._apply_to_inner(self._element.self_group, against=against)
 
     def _negate(self):
@@ -4309,6 +4395,7 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
         return self.element.foreign_keys
 
     def _copy_internals(self, clone=_clone, anonymize_labels=False, **kw):
+        self._reset_memoizations()
         self._element = clone(self._element, **kw)
         if anonymize_labels:
             self.name = self._resolve_label = _anonymous_label.safe_construct(
@@ -4586,6 +4673,13 @@ class ColumnClause(
         # or selectable that is parent to this column.  Traversals
         # expect the columns of tables and subqueries to be leaf nodes.
         return []
+
+    @property
+    def entity_namespace(self):
+        if self.table is not None:
+            return self.table.entity_namespace
+        else:
+            return super(ColumnClause, self).entity_namespace
 
     @HasMemoized.memoized_attribute
     def _from_objects(self):
@@ -4917,8 +5011,8 @@ class AnnotatedColumnElement(Annotated):
         return self._Annotated__element.info
 
     @util.memoized_property
-    def anon_label(self):
-        return self._Annotated__element.anon_label
+    def _anon_name_label(self):
+        return self._Annotated__element._anon_name_label
 
 
 class _truncated_label(quoted_name):
@@ -5004,8 +5098,12 @@ class _anonymous_label(_truncated_label):
     __slots__ = ()
 
     @classmethod
-    def safe_construct(cls, seed, body, enclosing_label=None):
-        # type: (int, str, Optional[_anonymous_label]) -> _anonymous_label
+    def safe_construct(
+        cls, seed, body, enclosing_label=None, sanitize_key=False
+    ):
+
+        if sanitize_key:
+            body = re.sub(r"[%\(\) \$]+", "_", body).strip("_")
 
         label = "%%(%d %s)s" % (seed, body.replace("%", "%%"))
         if enclosing_label:

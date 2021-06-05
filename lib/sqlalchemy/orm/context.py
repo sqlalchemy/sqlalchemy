@@ -517,15 +517,6 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             for_statement
         ) = select_statement._compile_options._for_statement
 
-        if not for_statement and not toplevel:
-            # for subqueries, turn off eagerloads.
-            # if "for_statement" mode is set, Query.subquery()
-            # would have set this flag to False already if that's what's
-            # desired
-            select_statement._compile_options += {
-                "_enable_eagerloads": False,
-            }
-
         # generally if we are from Query or directly from a select()
         self.use_legacy_query_style = (
             select_statement._compile_options._use_legacy_query_style
@@ -545,6 +536,15 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             self._setup_with_polymorphics()
 
         self.compile_options = select_statement._compile_options
+
+        if not for_statement and not toplevel:
+            # for subqueries, turn off eagerloads.
+            # if "for_statement" mode is set, Query.subquery()
+            # would have set this flag to False already if that's what's
+            # desired
+            self.compile_options += {
+                "_enable_eagerloads": False,
+            }
 
         # determine label style.   we can make different decisions here.
         # at the moment, trying to see if we can always use DISAMBIGUATE_ONLY
@@ -591,9 +591,15 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         self.create_eager_joins = []
         self._fallback_from_clauses = []
 
-        self.from_clauses = [
+        # normalize the FROM clauses early by themselves, as this makes
+        # it an easier job when we need to assemble a JOIN onto these,
+        # for select.join() as well as joinedload().   As of 1.4 there are now
+        # potentially more complex sets of FROM objects here as the use
+        # of lambda statements for lazyload, load_on_pk etc. uses more
+        # cloning of the select() construct.  See #6495
+        self.from_clauses = self._normalize_froms(
             info.selectable for info in select_statement._from_obj
-        ]
+        )
 
         # this is a fairly arbitrary break into a second method,
         # so it might be nicer to break up create_for_statement()
@@ -789,17 +795,26 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
     @classmethod
     def exported_columns_iterator(cls, statement):
+        return (
+            elem
+            for elem in cls.all_selected_columns(statement)
+            if not elem._is_text_clause
+        )
+
+    @classmethod
+    def all_selected_columns(cls, statement):
         for element in statement._raw_columns:
             if (
                 element.is_selectable
                 and "entity_namespace" in element._annotations
             ):
-                for elem in _select_iterables(
-                    element._annotations[
-                        "entity_namespace"
-                    ]._all_column_expressions
-                ):
-                    yield elem
+                ens = element._annotations["entity_namespace"]
+                if not ens.is_mapper and not ens.is_aliased_class:
+                    for elem in _select_iterables([element]):
+                        yield elem
+                else:
+                    for elem in _select_iterables(ens._all_column_expressions):
+                        yield elem
             else:
                 for elem in _select_iterables([element]):
                     yield elem
@@ -2614,7 +2629,10 @@ class _RawColumnEntity(_ColumnEntity):
         self.expr = column
         self.raw_column_index = raw_column_index
         self.translate_raw_column = raw_column_index is not None
-        self._label_name = compile_state._label_convention(column)
+        if column._is_text_clause:
+            self._label_name = None
+        else:
+            self._label_name = compile_state._label_convention(column)
 
         if parent_bundle:
             parent_bundle._entities.append(self)
@@ -2680,8 +2698,9 @@ class _ORMColumnEntity(_ColumnEntity):
         # within internal loaders.
 
         orm_key = annotations.get("proxy_key", None)
+        proxy_owner = annotations.get("proxy_owner", _entity)
         if orm_key:
-            self.expr = getattr(_entity.entity, orm_key)
+            self.expr = getattr(proxy_owner.entity, orm_key)
             self.translate_raw_column = False
         else:
             # if orm_key is not present, that means this is an ad-hoc

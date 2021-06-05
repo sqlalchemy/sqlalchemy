@@ -25,14 +25,6 @@ from ..util import collections_abc
 from ..util import compat
 
 
-if compat.TYPE_CHECKING:
-    from typing import Mapping
-    from typing import Optional
-    from typing import Sequence
-    from typing import Tuple
-    from typing import Union
-
-
 class URL(
     util.namedtuple(
         "URL",
@@ -72,17 +64,17 @@ class URL(
 
     :class:`_engine.URL` contains the following attributes:
 
-    :var `_engine.URL.driver`: database backend and driver name, such as
-     ``postgresql+psycopg2``
-    :var `_engine.URL.username`: username string
-    :var `_engine.URL.password`: password, which is normally a string but may
-     also be any object that has a ``__str__()`` method.
-    :var `_engine.URL.host`: string hostname
-    :var `_engine.URL.port`: integer port number
-    :var `_engine.URL.database`: string database name
-    :var `_engine.URL.query`: an immutable mapping representing the query
-     string.  contains strings for keys and either strings or tuples of strings
-     for values.
+    * :attr:`_engine.URL.drivername`: database backend and driver name, such as
+      ``postgresql+psycopg2``
+    * :attr:`_engine.URL.username`: username string
+    * :attr:`_engine.URL.password`: password, which is normally a string but
+      may also be any object that has a ``__str__()`` method.
+    * :attr:`_engine.URL.host`: string hostname
+    * :attr:`_engine.URL.port`: integer port number
+    * :attr:`_engine.URL.database`: string database name
+    * :attr:`_engine.URL.query`: an immutable mapping representing the query
+      string.  contains strings for keys and either strings or tuples of
+      strings for values.
 
 
     """
@@ -102,15 +94,14 @@ class URL(
     @classmethod
     def create(
         cls,
-        drivername,  # type: str
-        username=None,  # type: Optional[str]
-        password=None,  # type: Optional[Union[str, object]]
-        host=None,  # type: Optional[str]
-        port=None,  # type: Optional[int]
-        database=None,  # type: Optional[str]
-        query=util.EMPTY_DICT,  # type: Mapping[str, Union[str, Sequence[str]]]
+        drivername,
+        username=None,
+        password=None,
+        host=None,
+        port=None,
+        database=None,
+        query=util.EMPTY_DICT,
     ):
-        # type: (...) -> URL
         """Create a new :class:`_engine.URL` object.
 
         :param drivername: the name of the database backend. This name will
@@ -214,15 +205,14 @@ class URL(
 
     def set(
         self,
-        drivername=None,  # type: Optional[str]
-        username=None,  # type: Optional[str]
-        password=None,  # type: Optional[Union[str, object]]
-        host=None,  # type: Optional[str]
-        port=None,  # type: Optional[int]
-        database=None,  # type: Optional[str]
-        query=None,  # type: Optional[Mapping[str, Union[str, Sequence[str]]]]
+        drivername=None,
+        username=None,
+        password=None,
+        host=None,
+        port=None,
+        database=None,
+        query=None,
     ):
-        # type: (...) -> URL
         """return a new :class:`_engine.URL` object with modifications.
 
         Values are used if they are non-None.  To set a value to ``None``
@@ -267,7 +257,6 @@ class URL(
         return self._replace(**kw)
 
     def _replace(self, **kw):
-        # type: (**object) -> URL
         """Override ``namedtuple._replace()`` to provide argument checking."""
 
         if "drivername" in kw:
@@ -283,7 +272,6 @@ class URL(
         return super(URL, self)._replace(**kw)
 
     def update_query_string(self, query_string, append=False):
-        # type: (str, bool) -> URL
         """Return a new :class:`_engine.URL` object with the :attr:`_engine.URL.query`
         parameter dictionary updated by the given query string.
 
@@ -317,7 +305,6 @@ class URL(
         )
 
     def update_query_pairs(self, key_value_pairs, append=False):
-        # type: (Sequence[Tuple[str, str]], bool) -> URL
         """Return a new :class:`_engine.URL` object with the
         :attr:`_engine.URL.query`
         parameter dictionary updated by the given sequence of key/value pairs
@@ -382,7 +369,6 @@ class URL(
         return self.set(query=new_query)
 
     def update_query_dict(self, query_parameters, append=False):
-        # type: (Mapping[str, Union[str, Sequence[str]]], bool) -> URL
         """Return a new :class:`_engine.URL` object with the
         :attr:`_engine.URL.query` parameter dictionary updated by the given
         dictionary.
@@ -428,7 +414,6 @@ class URL(
         return self.update_query_pairs(query_parameters.items(), append=append)
 
     def difference_update_query(self, names):
-        # type: (Sequence[str]) -> URL
         """
         Remove the given names from the :attr:`_engine.URL.query` dictionary,
         returning the new :class:`_engine.URL`.
@@ -513,7 +498,6 @@ class URL(
         ":meth:`_engine.URL.render_as_string` method.",
     )
     def __to_string__(self, hide_password=True):
-        # type: (bool) -> str
         """Render this :class:`_engine.URL` object as a string.
 
         :param hide_password: Defaults to True.   The password is not shown
@@ -523,7 +507,6 @@ class URL(
         return self.render_as_string(hide_password=hide_password)
 
     def render_as_string(self, hide_password=True):
-        # type: (bool) -> str
         """Render this :class:`_engine.URL` object as a string.
 
         This method is used when the ``__str__()`` or ``__repr__()``
@@ -719,16 +702,17 @@ def _parse_rfc1738_args(name):
             (?P<name>[\w\+]+)://
             (?:
                 (?P<username>[^:/]*)
-                (?::(?P<password>.*))?
+                (?::(?P<password>[^@]*))?
             @)?
             (?:
                 (?:
-                    \[(?P<ipv6host>[^/]+)\] |
-                    (?P<ipv4host>[^/:]+)
+                    \[(?P<ipv6host>[^/\?]+)\] |
+                    (?P<ipv4host>[^/:\?]+)
                 )?
-                (?::(?P<port>[^/]*))?
+                (?::(?P<port>[^/\?]*))?
             )?
-            (?:/(?P<database>.*))?
+            (?:/(?P<database>[^\?]*))?
+            (?:\?(?P<query>.*))?
             """,
         re.X,
     )
@@ -736,23 +720,17 @@ def _parse_rfc1738_args(name):
     m = pattern.match(name)
     if m is not None:
         components = m.groupdict()
-        if components["database"] is not None:
-            tokens = components["database"].split("?", 2)
-            components["database"] = tokens[0]
+        if components["query"] is not None:
+            query = {}
 
-            if len(tokens) > 1:
-                query = {}
-
-                for key, value in util.parse_qsl(tokens[1]):
-                    if util.py2k:
-                        key = key.encode("ascii")
-                    if key in query:
-                        query[key] = util.to_list(query[key])
-                        query[key].append(value)
-                    else:
-                        query[key] = value
-            else:
-                query = None
+            for key, value in util.parse_qsl(components["query"]):
+                if util.py2k:
+                    key = key.encode("ascii")
+                if key in query:
+                    query[key] = util.to_list(query[key])
+                    query[key].append(value)
+                else:
+                    query[key] = value
         else:
             query = None
         components["query"] = query

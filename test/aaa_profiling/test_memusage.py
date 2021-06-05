@@ -341,7 +341,7 @@ class MemUsageTest(EnsureZeroed):
 class MemUsageWBackendTest(EnsureZeroed):
 
     __tags__ = ("memory_intensive",)
-    __requires__ = "cpython", "memory_process_intensive"
+    __requires__ = "cpython", "memory_process_intensive", "no_asyncio"
     __sparse_backend__ = True
 
     # ensure a pure growing test trips the assertion
@@ -580,9 +580,8 @@ class MemUsageWBackendTest(EnsureZeroed):
             metadata.drop_all(self.engine)
 
     @testing.requires.savepoints
-    @testing.provide_metadata
     def test_savepoints(self):
-        metadata = self.metadata
+        metadata = MetaData()
 
         some_table = Table(
             "t",
@@ -597,30 +596,28 @@ class MemUsageWBackendTest(EnsureZeroed):
 
         mapper(SomeClass, some_table)
 
-        metadata.create_all()
+        metadata.create_all(self.engine)
 
-        session = Session(testing.db)
-
-        target_strings = (
-            session.connection().dialect.identifier_preparer._strings
-        )
-
-        session.close()
+        with Session(self.engine) as session:
+            target_strings = (
+                session.connection().dialect.identifier_preparer._strings
+            )
 
         @profile_memory(
             assert_no_sessions=False,
             get_num_objects=lambda: len(target_strings),
         )
         def go():
-            session = Session(testing.db)
-            with session.transaction:
-
+            with Session(self.engine) as session, session.begin():
                 sc = SomeClass()
                 session.add(sc)
                 with session.begin_nested():
                     session.query(SomeClass).first()
 
-        go()
+        try:
+            go()
+        finally:
+            metadata.drop_all(self.engine)
 
     @testing.crashes("mysql+cymysql", "blocking")
     def test_unicode_warnings(self):
@@ -988,10 +985,9 @@ class MemUsageWBackendTest(EnsureZeroed):
         assert_no_mappers()
 
     @testing.uses_deprecated()
-    @testing.provide_metadata
     def test_key_fallback_result(self):
+        m = MetaData()
         e = self.engine
-        m = self.metadata
         t = Table("t", m, Column("x", Integer), Column("y", Integer))
         m.create_all(e)
         e.execute(t.insert(), {"x": 1, "y": 1})
@@ -1002,7 +998,10 @@ class MemUsageWBackendTest(EnsureZeroed):
             for row in r:
                 row[t.c.x]
 
-        go()
+        try:
+            go()
+        finally:
+            m.drop_all(e)
 
     def test_many_discarded_relationships(self):
         """a use case that really isn't supported, nonetheless we can

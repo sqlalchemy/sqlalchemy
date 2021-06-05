@@ -43,6 +43,7 @@ class _cymysqlBIT(BIT):
 
 class MySQLDialect_cymysql(MySQLDialect_mysqldb):
     driver = "cymysql"
+    supports_statement_cache = True
 
     description_encoding = None
     supports_sane_rowcount = True

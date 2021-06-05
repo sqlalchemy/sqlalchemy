@@ -199,8 +199,8 @@ class Annotated(object):
     def _constructor(self):
         return self.__element._constructor
 
-    def _clone(self):
-        clone = self.__element._clone()
+    def _clone(self, **kw):
+        clone = self.__element._clone(**kw)
         if clone is self.__element:
             # detect immutable, don't change anything
             return self
@@ -262,7 +262,7 @@ def _deep_annotate(element, annotations, exclude=None):
             and hasattr(elem, "proxy_set")
             and elem.proxy_set.intersection(exclude)
         ):
-            newelem = elem._clone()
+            newelem = elem._clone(**kw)
         elif annotations != elem._annotations:
             newelem = elem._annotate(annotations)
         else:

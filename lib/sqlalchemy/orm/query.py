@@ -22,7 +22,6 @@ import itertools
 import operator
 import types
 
-from sqlalchemy.sql import visitors
 from . import exc as orm_exc
 from . import interfaces
 from . import loading
@@ -48,10 +47,12 @@ from .. import log
 from .. import sql
 from .. import util
 from ..sql import coercions
+from ..sql import elements
 from ..sql import expression
 from ..sql import roles
 from ..sql import Select
 from ..sql import util as sql_util
+from ..sql import visitors
 from ..sql.annotation import SupportsCloneAnnotations
 from ..sql.base import _entity_namespace_key
 from ..sql.base import _generative
@@ -305,9 +306,7 @@ class Query(
         if self._limit_clause is not None or self._offset_clause is not None:
             raise sa_exc.InvalidRequestError(
                 "Query.%s() being called on a Query which already has LIMIT "
-                "or OFFSET applied. To modify the row-limited results of a "
-                " Query, call from_self() first.  "
-                "Otherwise, call %s() before limit() or offset() "
+                "or OFFSET applied.  Call %s() before limit() or offset() "
                 "are applied." % (meth, meth)
             )
 
@@ -1754,6 +1753,15 @@ class Query(
         All existing ORDER BY settings can be suppressed by  passing
         ``None``.
 
+        .. seealso::
+
+            These sections describe ORDER BY in terms of :term:`2.0 style`
+            invocation but apply to :class:`_orm.Query` as well:
+
+            :ref:`tutorial_order_by` - in the :ref:`unified_tutorial`
+
+            :ref:`tutorial_order_by_label` - in the :ref:`unified_tutorial`
+
         """
 
         if len(clauses) == 1 and (clauses[0] is None or clauses[0] is False):
@@ -1787,8 +1795,15 @@ class Query(
         passing ``None`` - this will suppress any GROUP BY configured
         on mappers as well.
 
-        .. versionadded:: 1.1 GROUP BY can be cancelled by passing
-           ``None``, in the same way as ORDER BY.
+        .. seealso::
+
+            These sections describe GROUP BY in terms of :term:`2.0 style`
+            invocation but apply to :class:`_orm.Query` as well:
+
+            :ref:`tutorial_group_by_w_aggregates` - in the
+            :ref:`unified_tutorial`
+
+            :ref:`tutorial_order_by_label` - in the :ref:`unified_tutorial`
 
         """
 
@@ -2167,6 +2182,8 @@ class Query(
                 (Item, Item.order_id == Order.id)
             )
 
+            session.query(User).join(Order, Item)
+
             # ... and several more forms actually
 
           **Why it's legacy**: being able to chain multiple ON clauses in one
@@ -2259,9 +2276,26 @@ class Query(
         if not legacy and onclause is None and not isinstance(target, tuple):
             # non legacy argument form
             _props = [(target,)]
-        elif not legacy and isinstance(
-            target,
-            (expression.Selectable, type, AliasedClass, types.FunctionType),
+        elif (
+            not legacy
+            and isinstance(
+                target,
+                (
+                    expression.Selectable,
+                    type,
+                    AliasedClass,
+                    types.FunctionType,
+                ),
+            )
+            and isinstance(
+                onclause,
+                (
+                    elements.ColumnElement,
+                    str,
+                    interfaces.PropComparator,
+                    types.FunctionType,
+                ),
+            )
         ):
             # non legacy argument form
             _props = [(target, onclause)]
@@ -2807,7 +2841,10 @@ class Query(
         if result._attributes.get("is_single_entity", False):
             result = result.scalars()
 
-        if result._attributes.get("filtered", False):
+        if (
+            result._attributes.get("filtered", False)
+            and not self.load_options._yield_per
+        ):
             result = result.unique()
 
         return result
@@ -3233,8 +3270,6 @@ class FromStatement(GroupedElement, SelectBase, Executable):
     _compile_options = ORMFromStatementCompileState.default_compile_options
 
     _compile_state_factory = ORMFromStatementCompileState.create_for_statement
-
-    _is_future = True
 
     _for_update_arg = None
 

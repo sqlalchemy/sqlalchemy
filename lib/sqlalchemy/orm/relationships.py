@@ -50,11 +50,6 @@ from ..sql.util import selectables_overlap
 from ..sql.util import visit_binary_product
 
 
-if util.TYPE_CHECKING:
-    from .util import AliasedInsp
-    from typing import Union
-
-
 def remote(expr):
     """Annotate a portion of a primaryjoin expression
     with a 'remote' annotation.
@@ -363,6 +358,10 @@ class RelationshipProperty(StrategizedProperty):
            will ensure that no such conflicts occur.
 
            .. versionadded:: 1.4
+
+           .. seealso::
+
+                :ref:`error_qzyx` - usage example
 
         :param bake_queries=True:
           Use the :class:`.BakedQuery` cache to cache the construction of SQL
@@ -2047,6 +2046,13 @@ class RelationshipProperty(StrategizedProperty):
 
     def _add_reverse_property(self, key):
         other = self.mapper.get_property(key, _configure_mappers=False)
+        if not isinstance(other, RelationshipProperty):
+            raise sa_exc.InvalidRequestError(
+                "back_populates on relationship '%s' refers to attribute '%s' "
+                "that is not a relationship.  The back_populates parameter "
+                "should refer to the name of a relationship on the target "
+                "class." % (self, other)
+            )
         # viewonly and sync_backref cases
         # 1. self.viewonly==True and other.sync_backref==True -> error
         # 2. self.viewonly==True and other.viewonly==False and
@@ -2081,7 +2087,7 @@ class RelationshipProperty(StrategizedProperty):
 
     @util.memoized_property
     @util.preload_module("sqlalchemy.orm.mapper")
-    def entity(self):  # type: () -> Union[AliasedInsp, mapperlib.Mapper]
+    def entity(self):
         """Return the target mapped entity, which is an inspect() of the
         class or aliased class that is referred towards.
 
@@ -2202,12 +2208,12 @@ class RelationshipProperty(StrategizedProperty):
         # ensure expressions in self.order_by, foreign_keys,
         # remote_side are all columns, not strings.
         if self.order_by is not False and self.order_by is not None:
-            self.order_by = [
+            self.order_by = tuple(
                 coercions.expect(
                     roles.ColumnArgumentRole, x, argname="order_by"
                 )
                 for x in util.to_list(self.order_by)
-            ]
+            )
 
         self._user_defined_foreign_keys = util.column_set(
             coercions.expect(
@@ -3423,6 +3429,8 @@ class JoinCondition(object):
                         and self.prop.key not in pr._overlaps
                         and not self.prop.parent.is_sibling(pr.parent)
                         and not self.prop.mapper.is_sibling(pr.mapper)
+                        and not self.prop.parent.is_sibling(pr.mapper)
+                        and not self.prop.mapper.is_sibling(pr.parent)
                         and (
                             self.prop.key != pr.key
                             or not self.prop.parent.common_parent(pr.parent)
@@ -3443,17 +3451,23 @@ class JoinCondition(object):
                         "constraints are partially overlapping, the "
                         "orm.foreign() "
                         "annotation can be used to isolate the columns that "
-                        "should be written towards.   The 'overlaps' "
-                        "parameter may be used to remove this warning."
+                        "should be written towards.   To silence this "
+                        "warning, add the parameter 'overlaps=\"%s\"' to the "
+                        "'%s' relationship."
                         % (
                             self.prop,
                             from_,
                             to_,
                             ", ".join(
-                                "'%s' (copies %s to %s)" % (pr, fr_, to_)
-                                for (pr, fr_) in other_props
+                                sorted(
+                                    "'%s' (copies %s to %s)" % (pr, fr_, to_)
+                                    for (pr, fr_) in other_props
+                                )
                             ),
-                        )
+                            ",".join(sorted(pr.key for pr, fr in other_props)),
+                            self.prop,
+                        ),
+                        code="qzyx",
                     )
                 self._track_overlapping_sync_targets[to_][self.prop] = from_
 

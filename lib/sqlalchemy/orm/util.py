@@ -723,7 +723,6 @@ class AliasedInsp(
                 "parentmapper": self.mapper,
                 "parententity": self,
                 "entity_namespace": self,
-                "compile_state_plugin": "orm",
             }
         )._set_propagate_attrs(
             {"compile_state_plugin": "orm", "plugin_subject": self}
@@ -784,7 +783,6 @@ class AliasedInsp(
         d = {
             "parententity": self,
             "parentmapper": self.mapper,
-            "compile_state_plugin": "orm",
         }
         if key:
             d["proxy_key"] = key
@@ -872,6 +870,32 @@ class AliasedInsp(
             )
         else:
             return "aliased(%s)" % (self._target.__name__,)
+
+
+class _WrapUserEntity(object):
+    """A wrapper used within the loader_criteria lambda caller so that
+    we can bypass declared_attr descriptors on unmapped mixins, which
+    normally emit a warning for such use.
+
+    might also be useful for other per-lambda instrumentations should
+    the need arise.
+
+    """
+
+    def __init__(self, subject):
+        self.subject = subject
+
+    @util.preload_module("sqlalchemy.orm.decl_api")
+    def __getattribute__(self, name):
+        decl_api = util.preloaded.orm.decl_api
+
+        subject = object.__getattribute__(self, "subject")
+        if name in subject.__dict__ and isinstance(
+            subject.__dict__[name], decl_api.declared_attr
+        ):
+            return subject.__dict__[name].fget(subject)
+        else:
+            return getattr(subject, name)
 
 
 class LoaderCriteriaOption(CriteriaOption):
@@ -1033,9 +1057,11 @@ class LoaderCriteriaOption(CriteriaOption):
                 where_criteria,
                 roles.WhereHavingRole,
                 lambda_args=(
-                    self.root_entity
-                    if self.root_entity is not None
-                    else self.entity.entity,
+                    _WrapUserEntity(
+                        self.root_entity
+                        if self.root_entity is not None
+                        else self.entity.entity,
+                    ),
                 ),
                 opts=lambdas.LambdaOptions(
                     track_closure_variables=track_closure_variables

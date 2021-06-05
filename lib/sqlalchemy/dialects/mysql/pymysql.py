@@ -19,6 +19,15 @@ Unicode
 Please see :ref:`mysql_unicode` for current recommendations on unicode
 handling.
 
+.. _pymysql_ssl:
+
+SSL Connections
+------------------
+
+The PyMySQL DBAPI accepts the same SSL arguments as that of MySQLdb,
+described at :ref:`mysqldb_ssl`.   See that section for examples.
+
+
 MySQL-Python Compatibility
 --------------------------
 
@@ -35,6 +44,7 @@ from ...util import py3k
 
 class MySQLDialect_pymysql(MySQLDialect_mysqldb):
     driver = "pymysql"
+    supports_statement_cache = True
 
     description_encoding = None
 

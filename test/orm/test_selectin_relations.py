@@ -30,6 +30,7 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import assert_engine
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.fixtures import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -1080,6 +1081,36 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         else:
             self.assert_sql_count(testing.db, go, 6)
 
+    @testing.combinations(
+        ("plain",), ("cte", testing.requires.ctes), ("subquery",), id_="s"
+    )
+    def test_map_to_cte_subq(self, type_):
+        User, Address = self.classes("User", "Address")
+        users, addresses = self.tables("users", "addresses")
+
+        if type_ == "plain":
+            target = users
+        elif type_ == "cte":
+            target = select(users).cte()
+        elif type_ == "subquery":
+            target = select(users).subquery()
+
+        mapper(
+            User,
+            target,
+            properties={"addresses": relationship(Address, backref="user")},
+        )
+        mapper(Address, addresses)
+
+        sess = fixture_session()
+
+        q = (
+            sess.query(Address)
+            .options(selectinload(Address.user))
+            .order_by(Address.id)
+        )
+        eq_(q.all(), self.static.address_user_result)
+
     def test_limit(self):
         """Limit operations combined with lazy-load relationships."""
 
@@ -1429,12 +1460,12 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         sess = fixture_session(autoflush=False)
         return User, Order, Item, sess
 
-    def _eager_config_fixture(self):
+    def _eager_config_fixture(self, default_lazy="selectin"):
         User, Address = self.classes.User, self.classes.Address
         mapper(
             User,
             self.tables.users,
-            properties={"addresses": relationship(Address, lazy="selectin")},
+            properties={"addresses": relationship(Address, lazy=default_lazy)},
         )
         mapper(Address, self.tables.addresses)
         sess = fixture_session(autoflush=False)
@@ -1458,6 +1489,32 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         User, Address, sess = self._eager_config_fixture()
 
         u1 = sess.query(User).get(8)
+        assert "addresses" in u1.__dict__
+        sess.expire(u1)
+
+        def go():
+            eq_(u1.id, 8)
+
+        self.assert_sql_count(testing.db, go, 2)
+        assert "addresses" in u1.__dict__
+
+    @testing.combinations(
+        ("raise",),
+        ("raise_on_sql",),
+        ("select",),
+        ("immediate"),
+    )
+    def test_runs_query_on_option_refresh(self, default_lazy):
+        User, Address, sess = self._eager_config_fixture(
+            default_lazy=default_lazy
+        )
+
+        u1 = (
+            sess.query(User)
+            .options(selectinload(User.addresses))
+            .filter_by(id=8)
+            .first()
+        )
         assert "addresses" in u1.__dict__
         sess.expire(u1)
 
@@ -3532,3 +3589,68 @@ class TestBakedCancelsCorrectly(fixtures.DeclarativeMappedTest):
         self.assert_sql_count(testing.db, go, 2)
         self.assert_sql_count(testing.db, go, 2)
         self.assert_sql_count(testing.db, go, 2)
+
+
+class TestCompositePlusNonComposite(fixtures.DeclarativeMappedTest):
+    __requires__ = ("tuple_in",)
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        from sqlalchemy.sql import lambdas
+        from sqlalchemy.orm import configure_mappers
+
+        lambdas._closure_per_cache_key.clear()
+        lambdas.AnalyzedCode._fns.clear()
+
+        class A(ComparableEntity, Base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            bs = relationship("B", lazy="selectin")
+
+        class B(ComparableEntity, Base):
+            __tablename__ = "b"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(ForeignKey("a.id"))
+
+        class A2(ComparableEntity, Base):
+            __tablename__ = "a2"
+
+            id = Column(Integer, primary_key=True)
+            id2 = Column(Integer, primary_key=True)
+            bs = relationship("B2", lazy="selectin")
+
+        class B2(ComparableEntity, Base):
+            __tablename__ = "b2"
+            id = Column(Integer, primary_key=True)
+            a_id = Column(Integer)
+            a_id2 = Column(Integer)
+            __table_args__ = (
+                ForeignKeyConstraint(["a_id", "a_id2"], ["a2.id", "a2.id2"]),
+            )
+
+        configure_mappers()
+
+    @classmethod
+    def insert_data(cls, connection):
+        A, B, A2, B2 = cls.classes("A", "B", "A2", "B2")
+        s = Session(connection)
+
+        s.add(A(bs=[B()]))
+        s.add(A2(id=1, id2=1, bs=[B2()]))
+
+        s.commit()
+
+    def test_load_composite_then_non_composite(self):
+
+        A, B, A2, B2 = self.classes("A", "B", "A2", "B2")
+
+        s = fixture_session()
+
+        a2 = s.query(A2).first()
+        a1 = s.query(A).first()
+
+        eq_(a2.bs, [B2()])
+        eq_(a1.bs, [B()])

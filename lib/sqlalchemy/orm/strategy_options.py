@@ -25,6 +25,7 @@ from .util import _orm_full_deannotate
 from .. import exc as sa_exc
 from .. import inspect
 from .. import util
+from ..sql import and_
 from ..sql import coercions
 from ..sql import roles
 from ..sql import visitors
@@ -84,7 +85,10 @@ class Load(Generative, LoaderOption):
             "_context_cache_key",
             visitors.ExtendedInternalTraversal.dp_has_cache_key_tuples,
         ),
-        ("local_opts", visitors.ExtendedInternalTraversal.dp_plain_dict),
+        (
+            "local_opts",
+            visitors.ExtendedInternalTraversal.dp_string_multi_dict,
+        ),
     ]
 
     def __init__(self, entity):
@@ -107,6 +111,43 @@ class Load(Generative, LoaderOption):
         load._of_type = None
         load._extra_criteria = ()
         return load
+
+    def _generate_extra_criteria(self, context):
+        """Apply the current bound parameters in a QueryContext to the
+        "extra_criteria" stored with this Load object.
+
+        Load objects are typically pulled from the cached version of
+        the statement from a QueryContext.  The statement currently being
+        executed will have new values (and keys) for bound parameters in the
+        extra criteria which need to be applied by loader strategies when
+        they handle this criteria for a result set.
+
+        """
+
+        assert (
+            self._extra_criteria
+        ), "this should only be called if _extra_criteria is present"
+
+        orig_query = context.compile_state.select_statement
+        current_query = context.query
+
+        # NOTE: while it seems like we should not do the "apply" operation
+        # here if orig_query is current_query, skipping it in the "optimized"
+        # case causes the query to be different from a cache key perspective,
+        # because we are creating a copy of the criteria which is no longer
+        # the same identity of the _extra_criteria in the loader option
+        # itself.  cache key logic produces a different key for
+        # (A, copy_of_A) vs. (A, A), because in the latter case it shortens
+        # the second part of the key to just indicate on identity.
+
+        # if orig_query is current_query:
+        # not cached yet.   just do the and_()
+        #    return and_(*self._extra_criteria)
+
+        k1 = orig_query._generate_cache_key()
+        k2 = current_query._generate_cache_key()
+
+        return k2._apply_params_to_element(k1, and_(*self._extra_criteria))
 
     @property
     def _context_cache_key(self):
@@ -138,9 +179,12 @@ class Load(Generative, LoaderOption):
         self._process(compile_state, not bool(compile_state.current_path))
 
     def _process(self, compile_state, raiseerr):
+        is_refresh = compile_state.compile_options._for_refresh_state
         current_path = compile_state.current_path
         if current_path:
             for (token, start_path), loader in self.context.items():
+                if is_refresh and not loader.propagate_to_loaders:
+                    continue
                 chopped_start_path = self._chop_path(start_path, current_path)
                 if chopped_start_path is not None:
                     compile_state.attributes[
@@ -488,6 +532,10 @@ class Load(Generative, LoaderOption):
 
     def __getstate__(self):
         d = self.__dict__.copy()
+
+        # can't pickle this right now; warning is raised by strategies
+        d["_extra_criteria"] = ()
+
         if d["context"] is not None:
             d["context"] = PathRegistry.serialize_context_dict(
                 d["context"], ("loader",)
@@ -553,7 +601,10 @@ class _UnboundLoad(Load):
         ("strategy", visitors.ExtendedInternalTraversal.dp_plain_obj),
         ("_to_bind", visitors.ExtendedInternalTraversal.dp_has_cache_key_list),
         ("_extra_criteria", visitors.InternalTraversal.dp_clauseelement_list),
-        ("local_opts", visitors.ExtendedInternalTraversal.dp_plain_dict),
+        (
+            "local_opts",
+            visitors.ExtendedInternalTraversal.dp_string_multi_dict,
+        ),
     ]
 
     _is_chain_link = False
@@ -623,6 +674,10 @@ class _UnboundLoad(Load):
 
     def __getstate__(self):
         d = self.__dict__.copy()
+
+        # can't pickle this right now; warning is raised by strategies
+        d["_extra_criteria"] = ()
+
         d["path"] = self._serialize_path(self.path, filter_aliased_class=True)
         return d
 
@@ -647,9 +702,12 @@ class _UnboundLoad(Load):
 
     def _process(self, compile_state, raiseerr):
         dedupes = compile_state.attributes["_unbound_load_dedupes"]
+        is_refresh = compile_state.compile_options._for_refresh_state
         for val in self._to_bind:
             if val not in dedupes:
                 dedupes.add(val)
+                if is_refresh and not val.propagate_to_loaders:
+                    continue
                 val._bind_loader(
                     [
                         ent.entity_zero
@@ -1321,6 +1379,9 @@ def lazyload(*keys):
 def immediateload(loadopt, attr):
     """Indicate that the given attribute should be loaded using
     an immediate load with a per-attribute SELECT statement.
+
+    The load is achieved using the "lazyloader" strategy and does not
+    fire off any additional eager loaders.
 
     The :func:`.immediateload` option is superseded in general
     by the :func:`.selectinload` option, which performs the same task

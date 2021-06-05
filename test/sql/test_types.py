@@ -79,6 +79,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_deprecated_20
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -374,6 +375,7 @@ class TypeAffinityTest(fixtures.TestBase):
 
         class MyType(TypeDecorator):
             impl = CHAR
+            cache_ok = True
 
             def load_dialect_impl(self, dialect):
                 if dialect.name == "postgresql":
@@ -503,6 +505,7 @@ class _UserDefinedTypeFixture(object):
 
         class MyDecoratedType(types.TypeDecorator):
             impl = String
+            cache_ok = True
 
             def bind_processor(self, dialect):
                 impl_processor = super(MyDecoratedType, self).bind_processor(
@@ -529,6 +532,7 @@ class _UserDefinedTypeFixture(object):
 
         class MyNewUnicodeType(types.TypeDecorator):
             impl = Unicode
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 return "BIND_IN" + value
@@ -541,6 +545,7 @@ class _UserDefinedTypeFixture(object):
 
         class MyNewIntType(types.TypeDecorator):
             impl = Integer
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 return value * 10
@@ -560,6 +565,7 @@ class _UserDefinedTypeFixture(object):
 
         class MyUnicodeType(types.TypeDecorator):
             impl = Unicode
+            cache_ok = True
 
             def bind_processor(self, dialect):
                 impl_processor = super(MyUnicodeType, self).bind_processor(
@@ -586,6 +592,7 @@ class _UserDefinedTypeFixture(object):
 
         class MyDecOfDec(types.TypeDecorator):
             impl = MyNewIntType
+            cache_ok = True
 
         Table(
             "users",
@@ -734,6 +741,7 @@ class UserDefinedTest(
     def test_typedecorator_literal_render(self):
         class MyType(types.TypeDecorator):
             impl = String
+            cache_ok = True
 
             def process_literal_param(self, value, dialect):
                 return "HI->%s<-THERE" % value
@@ -766,6 +774,7 @@ class UserDefinedTest(
         # value rendering.
         class MyType(types.TypeDecorator):
             impl = String
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 return "HI->%s<-THERE" % value
@@ -795,6 +804,7 @@ class UserDefinedTest(
 
                 class MyType(types.TypeDecorator):
                     impl = impl_
+                    cache_ok = True
 
                 dec_type = MyType(**kw)
 
@@ -812,6 +822,7 @@ class UserDefinedTest(
     def test_user_defined_typedec_impl(self):
         class MyType(types.TypeDecorator):
             impl = Float
+            cache_ok = True
 
             def load_dialect_impl(self, dialect):
                 if dialect.name == "sqlite":
@@ -833,9 +844,23 @@ class UserDefinedTest(
             Float().dialect_impl(pg).__class__,
         )
 
+    @testing.combinations((Boolean,), (Enum,))
+    def test_typedecorator_schematype_constraint(self, typ):
+        class B(TypeDecorator):
+            impl = typ
+            cache_ok = True
+
+        t1 = Table("t1", MetaData(), Column("q", B(create_constraint=True)))
+        eq_(
+            len([c for c in t1.constraints if isinstance(c, CheckConstraint)]),
+            1,
+        )
+
     def test_type_decorator_repr(self):
         class MyType(TypeDecorator):
             impl = VARCHAR
+
+            cache_ok = True
 
         eq_(repr(MyType(45)), "MyType(length=45)")
 
@@ -856,6 +881,7 @@ class UserDefinedTest(
 
         class MyType(types.TypeDecorator):
             impl = TypeOne
+            cache_ok = True
 
             def load_dialect_impl(self, dialect):
                 if dialect.name == "sqlite":
@@ -939,6 +965,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
     def define_tables(cls, metadata):
         class MyType(types.TypeDecorator):
             impl = String(50)
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 return "BIND_IN" + str(value)
@@ -1240,6 +1267,7 @@ class VariantBackendTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_type_decorator_variant_one_roundtrip(self, variant_roundtrip):
         class Foo(TypeDecorator):
             impl = String(50)
+            cache_ok = True
 
         if testing.against("postgresql"):
             data = [5, 6, 10]
@@ -1276,6 +1304,7 @@ class VariantBackendTest(fixtures.TestBase, AssertsCompiledSQL):
 
         class Foo(TypeDecorator):
             impl = variant
+            cache_ok = True
 
         if testing.against("postgresql"):
             data = assert_data = [5, 6, 10]
@@ -1293,6 +1322,7 @@ class VariantBackendTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_type_decorator_variant_three(self, variant_roundtrip):
         class Foo(TypeDecorator):
             impl = String
+            cache_ok = True
 
         if testing.against("postgresql"):
             data = ["five", "six", "ten"]
@@ -1306,6 +1336,7 @@ class VariantBackendTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_type_decorator_compile_variant_one(self):
         class Foo(TypeDecorator):
             impl = String
+            cache_ok = True
 
         self.assert_compile(
             Foo().with_variant(Integer, "sqlite"),
@@ -1344,6 +1375,7 @@ class VariantBackendTest(fixtures.TestBase, AssertsCompiledSQL):
 
         class Foo(TypeDecorator):
             impl = variant
+            cache_ok = True
 
         self.assert_compile(
             Foo().with_variant(Integer, "sqlite"),
@@ -1360,6 +1392,7 @@ class VariantBackendTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_type_decorator_compile_variant_three(self):
         class Foo(TypeDecorator):
             impl = String
+            cache_ok = True
 
         self.assert_compile(
             Integer().with_variant(Foo(), "postgresql"),
@@ -1648,7 +1681,24 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             "stdlib_enum_table",
             metadata,
             Column("id", Integer, primary_key=True),
-            Column("someenum", Enum(cls.SomeEnum, create_constraint=True)),
+            Column(
+                "someenum",
+                Enum(cls.SomeEnum, create_constraint=True, omit_aliases=False),
+            ),
+        )
+        Table(
+            "stdlib_enum_table_no_alias",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column(
+                "someenum",
+                Enum(
+                    cls.SomeEnum,
+                    create_constraint=True,
+                    omit_aliases=True,
+                    name="someenum_no_alias",
+                ),
+            ),
         )
 
         Table(
@@ -1666,7 +1716,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         )
 
     def test_python_type(self):
-        eq_(types.Enum(self.SomeEnum).python_type, self.SomeEnum)
+        eq_(types.Enum(self.SomeOtherEnum).python_type, self.SomeOtherEnum)
 
     def test_pickle_types(self):
         global SomeEnum
@@ -1674,7 +1724,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         for loads, dumps in picklers():
             column_types = [
                 Column("Enu", Enum("x", "y", "z", name="somename")),
-                Column("En2", Enum(self.SomeEnum)),
+                Column("En2", Enum(self.SomeEnum, omit_aliases=False)),
             ]
             for column_type in column_types:
                 meta = MetaData()
@@ -1683,8 +1733,10 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
                 loads(dumps(meta))
 
     def test_validators_pep435(self):
-        type_ = Enum(self.SomeEnum)
-        validate_type = Enum(self.SomeEnum, validate_strings=True)
+        type_ = Enum(self.SomeEnum, omit_aliases=False)
+        validate_type = Enum(
+            self.SomeEnum, validate_strings=True, omit_aliases=False
+        )
 
         bind_processor = type_.bind_processor(testing.db.dialect)
         bind_processor_validates = validate_type.bind_processor(
@@ -2075,7 +2127,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             self.a_member,
             self.b_member,
         )
-        typ = Enum(self.SomeEnum)
+        typ = Enum(self.SomeEnum, omit_aliases=False)
 
         is_(typ.sort_key_function.__func__, typ._db_value_for_elem.__func__)
 
@@ -2095,7 +2147,11 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         def sort_enum_key_value(value):
             return str(value.value)
 
-        typ = Enum(self.SomeEnum, sort_key_function=sort_enum_key_value)
+        typ = Enum(
+            self.SomeEnum,
+            sort_key_function=sort_enum_key_value,
+            omit_aliases=False,
+        )
         is_(typ.sort_key_function, sort_enum_key_value)
 
         eq_(
@@ -2104,7 +2160,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         )
 
     def test_pep435_no_sort_key(self):
-        typ = Enum(self.SomeEnum, sort_key_function=None)
+        typ = Enum(self.SomeEnum, sort_key_function=None, omit_aliases=False)
         is_(typ.sort_key_function, None)
 
     def test_pep435_enum_round_trip(self, connection):
@@ -2220,7 +2276,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         eq_(e1.adapt(Enum).name, "foo")
         eq_(e1.adapt(Enum).schema, "bar")
         is_(e1.adapt(Enum).metadata, e1.metadata)
-        e1 = Enum(self.SomeEnum)
+        e1 = Enum(self.SomeEnum, omit_aliases=False)
         eq_(e1.adapt(ENUM).name, "someenum")
         eq_(
             e1.adapt(ENUM).enums,
@@ -2258,6 +2314,8 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
                 self.name = name
 
         class MyEnum(TypeDecorator):
+            cache_ok = True
+
             def __init__(self, values):
                 self.impl = Enum(
                     *[v.name for v in values],
@@ -2355,6 +2413,34 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         e = Enum("x", "y", "long", native_enum=False, length=42)
         eq_(e.length, 42)
 
+    def test_omit_aliases(self, connection):
+        table0 = self.tables["stdlib_enum_table"]
+        type0 = table0.c.someenum.type
+        eq_(type0.enums, ["one", "two", "three", "four", "AMember", "BMember"])
+
+        table = self.tables["stdlib_enum_table_no_alias"]
+
+        type_ = table.c.someenum.type
+        eq_(type_.enums, ["one", "two", "three", "AMember", "BMember"])
+
+        connection.execute(
+            table.insert(),
+            [
+                {"id": 1, "someenum": self.SomeEnum.three},
+                {"id": 2, "someenum": self.SomeEnum.four},
+            ],
+        )
+        eq_(
+            connection.execute(table.select().order_by(table.c.id)).fetchall(),
+            [(1, self.SomeEnum.three), (2, self.SomeEnum.three)],
+        )
+
+    def test_omit_warn(self):
+        with expect_deprecated_20(
+            r"The provided enum someenum contains the aliases \['four'\]"
+        ):
+            Enum(self.SomeEnum)
+
 
 MyPickleType = None
 
@@ -2368,6 +2454,7 @@ class BinaryTest(fixtures.TablesTest, AssertsExecutionResults):
 
         class MyPickleType(types.TypeDecorator):
             impl = PickleType
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 if value:
@@ -2725,6 +2812,8 @@ class ExpressionTest(
         class MyTypeDec(types.TypeDecorator):
             impl = String
 
+            cache_ok = True
+
             def process_bind_param(self, value, dialect):
                 return "BIND_IN" + str(value)
 
@@ -2733,6 +2822,8 @@ class ExpressionTest(
 
         class MyDecOfDec(types.TypeDecorator):
             impl = MyTypeDec
+
+            cache_ok = True
 
         Table(
             "test",
@@ -2928,14 +3019,17 @@ class ExpressionTest(
         class CoerceNothing(TypeDecorator):
             coerce_to_is_types = ()
             impl = Integer
+            cache_ok = True
 
         class CoerceBool(TypeDecorator):
             coerce_to_is_types = (bool,)
             impl = Boolean
+            cache_ok = True
 
         class CoerceNone(TypeDecorator):
             coerce_to_is_types = (type(None),)
             impl = Integer
+            cache_ok = True
 
         c1 = column("x", CoerceNothing())
         c2 = column("x", CoerceBool())
@@ -2964,6 +3058,7 @@ class ExpressionTest(
     def test_typedec_righthand_coercion(self, connection):
         class MyTypeDec(types.TypeDecorator):
             impl = String
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 return "BIND_IN" + str(value)
@@ -3468,6 +3563,7 @@ class BooleanTest(
 
         class MyBool(TypeDecorator):
             impl = Boolean(create_constraint=True)
+            cache_ok = True
 
             # future method
             def process_literal_param(self, value, dialect):

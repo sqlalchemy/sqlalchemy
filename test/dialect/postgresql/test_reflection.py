@@ -36,10 +36,37 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import AssertsExecutionResults
 from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.testing.assertions import is_
 from sqlalchemy.testing.assertions import is_true
 
 
-class ForeignTableReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
+class ReflectionFixtures(object):
+    @testing.fixture(
+        params=[
+            ("engine", True),
+            ("connection", True),
+            ("engine", False),
+            ("connection", False),
+        ]
+    )
+    def inspect_fixture(self, request, metadata, testing_engine):
+        engine, future = request.param
+
+        eng = testing_engine(future=future)
+
+        conn = eng.connect()
+
+        if engine == "connection":
+            yield inspect(eng), conn
+        else:
+            yield inspect(conn), conn
+
+        conn.close()
+
+
+class ForeignTableReflectionTest(
+    ReflectionFixtures, fixtures.TablesTest, AssertsExecutionResults
+):
     """Test reflection on foreign tables"""
 
     __requires__ = ("postgresql_test_dblink",)
@@ -89,8 +116,9 @@ class ForeignTableReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
             "Columns of reflected foreign table didn't equal expected columns",
         )
 
-    def test_get_foreign_table_names(self, connection):
-        inspector = inspect(connection)
+    def test_get_foreign_table_names(self, inspect_fixture):
+        inspector, conn = inspect_fixture
+
         ft_names = inspector.get_foreign_table_names()
         eq_(ft_names, ["test_foreigntable"])
 
@@ -178,7 +206,7 @@ class PartitionedReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
 
 
 class MaterializedViewReflectionTest(
-    fixtures.TablesTest, AssertsExecutionResults
+    ReflectionFixtures, fixtures.TablesTest, AssertsExecutionResults
 ):
     """Test reflection on materialized views"""
 
@@ -232,8 +260,8 @@ class MaterializedViewReflectionTest(
         table = Table("test_mview", metadata, autoload_with=connection)
         eq_(connection.execute(table.select()).fetchall(), [(89, "d1")])
 
-    def test_get_view_names(self, connection):
-        insp = inspect(connection)
+    def test_get_view_names(self, inspect_fixture):
+        insp, conn = inspect_fixture
         eq_(set(insp.get_view_names()), set(["test_regview", "test_mview"]))
 
     def test_get_view_names_plain(self, connection):
@@ -297,6 +325,9 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                 "CREATE DOMAIN enumdomain AS testtype",
                 "CREATE DOMAIN arraydomain AS INTEGER[]",
                 'CREATE DOMAIN "SomeSchema"."Quoted.Domain" INTEGER DEFAULT 0',
+                "CREATE DOMAIN nullable_domain AS TEXT CHECK "
+                "(VALUE IN('FOO', 'BAR'))",
+                "CREATE DOMAIN not_nullable_domain AS TEXT NOT NULL",
             ]:
                 try:
                     con.exec_driver_sql(ddl)
@@ -329,6 +360,11 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
                 "CREATE TABLE quote_test "
                 '(id integer, data "SomeSchema"."Quoted.Domain")'
             )
+            con.exec_driver_sql(
+                "CREATE TABLE nullable_domain_test "
+                "(not_nullable_domain_col nullable_domain not null,"
+                "nullable_local not_nullable_domain)"
+            )
 
     @classmethod
     def teardown_test_class(cls):
@@ -347,6 +383,10 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             con.exec_driver_sql('DROP DOMAIN "SomeSchema"."Quoted.Domain"')
             con.exec_driver_sql('DROP SCHEMA "SomeSchema"')
 
+            con.exec_driver_sql("DROP TABLE nullable_domain_test")
+            con.exec_driver_sql("DROP DOMAIN nullable_domain")
+            con.exec_driver_sql("DROP DOMAIN not_nullable_domain")
+
     def test_table_is_reflected(self, connection):
         metadata = MetaData()
         table = Table("testtable", metadata, autoload_with=connection)
@@ -356,6 +396,14 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             "Columns of reflected table didn't equal expected columns",
         )
         assert isinstance(table.c.answer.type, Integer)
+
+    def test_nullable_from_domain(self, connection):
+        metadata = MetaData()
+        table = Table(
+            "nullable_domain_test", metadata, autoload_with=connection
+        )
+        is_(table.c.not_nullable_domain_col.nullable, False)
+        is_(table.c.nullable_local.nullable, False)
 
     def test_domain_is_reflected(self, connection):
         metadata = MetaData()
@@ -450,7 +498,9 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
             base.PGDialect.ischema_names = ischema_names
 
 
-class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
+class ReflectionTest(
+    ReflectionFixtures, AssertsCompiledSQL, fixtures.TestBase
+):
     __only_on__ = "postgresql"
     __backend__ = True
 
@@ -1281,12 +1331,17 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
             ],
         )
 
-    def test_inspect_enums(self, metadata, connection):
+    def test_inspect_enums(self, metadata, inspect_fixture):
+
+        inspector, conn = inspect_fixture
+
         enum_type = postgresql.ENUM(
             "cat", "dog", "rat", name="pet", metadata=metadata
         )
-        enum_type.create(connection)
-        inspector = inspect(connection)
+
+        with conn.begin():
+            enum_type.create(conn)
+
         eq_(
             inspector.get_enums(),
             [
@@ -1298,6 +1353,15 @@ class ReflectionTest(AssertsCompiledSQL, fixtures.TestBase):
                 }
             ],
         )
+
+    def test_get_table_oid(self, metadata, inspect_fixture):
+
+        inspector, conn = inspect_fixture
+
+        with conn.begin():
+            Table("some_table", metadata, Column("q", Integer)).create(conn)
+
+        assert inspector.get_table_oid("some_table") is not None
 
     def test_inspect_enums_case_sensitive(self, metadata, connection):
         sa.event.listen(
@@ -1811,30 +1875,34 @@ class IdentityReflectionTest(fixtures.TablesTest):
     __backend__ = True
     __requires__ = ("identity_columns",)
 
+    _names = ("t1", "T2", "MiXeDCaSe!")
+
     @classmethod
     def define_tables(cls, metadata):
-        Table(
-            "t1",
-            metadata,
-            Column(
-                "id1",
-                Integer,
-                Identity(
-                    always=True,
-                    start=2,
-                    increment=3,
-                    minvalue=-2,
-                    maxvalue=42,
-                    cycle=True,
-                    cache=4,
+        for name in cls._names:
+            Table(
+                name,
+                metadata,
+                Column(
+                    "id1",
+                    Integer,
+                    Identity(
+                        always=True,
+                        start=2,
+                        increment=3,
+                        minvalue=-2,
+                        maxvalue=42,
+                        cycle=True,
+                        cache=4,
+                    ),
                 ),
-            ),
-            Column("id2", Integer, Identity()),
-            Column("id3", BigInteger, Identity()),
-            Column("id4", SmallInteger, Identity()),
-        )
+                Column("id2", Integer, Identity()),
+                Column("id3", BigInteger, Identity()),
+                Column("id4", SmallInteger, Identity()),
+            )
 
-    def test_reflect_identity(self, connection):
+    @testing.combinations(*_names, argnames="name")
+    def test_reflect_identity(self, connection, name):
         insp = inspect(connection)
         default = dict(
             always=False,
@@ -1844,7 +1912,7 @@ class IdentityReflectionTest(fixtures.TablesTest):
             cycle=False,
             cache=1,
         )
-        cols = insp.get_columns("t1")
+        cols = insp.get_columns(name)
         for col in cols:
             if col["name"] == "id1":
                 is_true("identity" in col)

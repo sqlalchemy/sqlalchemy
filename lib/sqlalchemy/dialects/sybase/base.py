@@ -564,8 +564,9 @@ class SybaseSQLCompiler(compiler.SQLCompiler):
         self, delete_stmt, from_table, extra_froms, from_hints, **kw
     ):
         """Render the DELETE .. FROM clause specific to Sybase."""
+        kw["asfrom"] = True
         return "FROM " + ", ".join(
-            t._compiler_dispatch(self, asfrom=True, fromhints=from_hints, **kw)
+            t._compiler_dispatch(self, fromhints=from_hints, **kw)
             for t in [from_table] + extra_froms
         )
 
@@ -632,6 +633,7 @@ class SybaseDialect(default.DefaultDialect):
     supports_unicode_statements = False
     supports_sane_rowcount = False
     supports_sane_multi_rowcount = False
+    supports_statement_cache = True
 
     supports_native_boolean = False
     supports_unicode_binds = False
@@ -1088,6 +1090,8 @@ class SybaseDialect(default.DefaultDialect):
         return [v["name"] for v in views]
 
     def has_table(self, connection, table_name, schema=None):
+        self._ensure_has_table_connection(connection)
+
         try:
             self.get_table_id(connection, table_name, schema)
         except exc.NoSuchTableError:

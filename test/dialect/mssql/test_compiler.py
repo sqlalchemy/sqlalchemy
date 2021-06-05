@@ -440,7 +440,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "foo.myid = mytable.myid",
         )
 
-    def test_noorderby_insubquery_offset_oldstyle(self):
+    @testing.combinations(10, 0)
+    def test_noorderby_insubquery_offset_oldstyle(self, offset):
         """test "no ORDER BY in subqueries unless TOP / LIMIT / OFFSET"
         present"""
 
@@ -454,7 +455,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         q = (
             select(table1.c.myid)
             .order_by(table1.c.myid)
-            .offset(10)
+            .offset(offset)
             .alias("foo")
         )
         crit = q.c.myid == table1.c.myid
@@ -467,7 +468,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "foo.myid = mytable.myid",
         )
 
-    def test_noorderby_insubquery_offset_newstyle(self, dialect_2012):
+    @testing.combinations(10, 0, argnames="offset")
+    def test_noorderby_insubquery_offset_newstyle(self, dialect_2012, offset):
         """test "no ORDER BY in subqueries unless TOP / LIMIT / OFFSET"
         present"""
 
@@ -481,7 +483,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         q = (
             select(table1.c.myid)
             .order_by(table1.c.myid)
-            .offset(10)
+            .offset(offset)
             .alias("foo")
         )
         crit = q.c.myid == table1.c.myid
@@ -1116,6 +1118,21 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         s = select(t).where(t.c.x == 5).order_by(t.c.y).limit(0).offset(0)
 
+        # offset is zero but we need to cache a compatible statement
+        self.assert_compile(
+            s,
+            "SELECT anon_1.x, anon_1.y FROM (SELECT t.x AS x, t.y AS y, "
+            "ROW_NUMBER() OVER (ORDER BY t.y) AS mssql_rn FROM t "
+            "WHERE t.x = :x_1) AS anon_1 WHERE mssql_rn > :param_1 "
+            "AND mssql_rn <= :param_2 + :param_1",
+            checkparams={"x_1": 5, "param_1": 0, "param_2": 0},
+        )
+
+    def test_limit_zero_using_window(self):
+        t = table("t", column("x", Integer), column("y", Integer))
+
+        s = select(t).where(t.c.x == 5).order_by(t.c.y).limit(0)
+
         # render the LIMIT of zero, but not the OFFSET
         # of zero, so produces TOP 0
         self.assert_compile(
@@ -1418,8 +1435,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         else:
             sel = "SELECT t.a FROM t ORDER BY t.a " + exp
 
+        stmt = select(t).order_by(t.c.a).fetch(fetch, **fetch_kw)
+        if "with_ties" not in fetch_kw and "percent" not in fetch_kw:
+            stmt = stmt.offset(offset)
+
         self.assert_compile(
-            select(t).order_by(t.c.a).fetch(fetch, **fetch_kw).offset(offset),
+            stmt,
             sel,
             checkparams=params,
             dialect=dialect_2012,
@@ -1510,8 +1531,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 + exp
             )
 
+        stmt = select(t).order_by(t.c.a).fetch(fetch, **fetch_kw)
+        if "with_ties" not in fetch_kw and "percent" not in fetch_kw:
+            stmt = stmt.offset(offset)
+
         self.assert_compile(
-            select(t).order_by(t.c.a).fetch(fetch, **fetch_kw).offset(offset),
+            stmt,
             sel,
             checkparams=params,
         )

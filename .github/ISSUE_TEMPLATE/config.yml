@@ -1,0 +1,18 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Usage Questions (GitHub Discussions)
+    url: https://github.com/sqlalchemy/sqlalchemy/discussions/new?category=Usage-Questions
+    about: Questions and Answers for SQLAlchemy Users 
+  - name: Live Chat on Gitter
+    url: https://gitter.im/sqlalchemy/community
+    about: Searchable Web-Based Chat
+  - name: SQLAlchemy Mailing List
+    url: https://groups.google.com/forum/#!forum/sqlalchemy
+    about: Over a decade of questions and answers are here
+  - name: Ideas / Feature Proposal (GitHub Discussions)
+    url: https://github.com/sqlalchemy/sqlalchemy/discussions/new?category=Ideas
+    about: Use this for initial discussion for new features and suggestions
+  - name: SQLAlchemy Community Guide
+    url: https://www.sqlalchemy.org/support.html
+    about: Start here for an overview of SQLAlchemy's support network and posting guidelines
+

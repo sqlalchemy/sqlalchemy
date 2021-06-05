@@ -15,6 +15,7 @@ import operator
 import re
 
 from . import roles
+from . import visitors
 from .traversals import HasCacheKey  # noqa
 from .traversals import HasCopyInternals  # noqa
 from .traversals import MemoizedHasCacheKey  # noqa
@@ -26,12 +27,10 @@ from .. import util
 from ..util import HasMemoized
 from ..util import hybridmethod
 
-if util.TYPE_CHECKING:
-    from types import ModuleType
 
-coercions = None  # type: ModuleType
-elements = None  # type: ModuleType
-type_api = None  # type: ModuleType
+coercions = None
+elements = None
+type_api = None
 
 PARSE_AUTOCOMMIT = util.symbol("PARSE_AUTOCOMMIT")
 NO_ARG = util.symbol("NO_ARG")
@@ -46,7 +45,7 @@ class Immutable(object):
     def params(self, *optionaldict, **kwargs):
         raise NotImplementedError("Immutable objects do not support copying")
 
-    def _clone(self):
+    def _clone(self, **kw):
         return self
 
     def _copy_internals(self, **kw):
@@ -54,6 +53,8 @@ class Immutable(object):
 
 
 class SingletonConstant(Immutable):
+    """Represent SQL constants like NULL, TRUE, FALSE"""
+
     def __new__(cls, *arg, **kw):
         return cls._singleton
 
@@ -62,6 +63,13 @@ class SingletonConstant(Immutable):
         obj = object.__new__(cls)
         obj.__init__()
         cls._singleton = obj
+
+    # don't proxy singletons.   this means that a SingletonConstant
+    # will never be a "corresponding column" in a statement; the constant
+    # can be named directly and as it is often/usually compared against using
+    # "IS", it can't be adapted to a subquery column in any case.
+    # see :ticket:`6259`.
+    proxy_set = frozenset()
 
 
 def _from_objects(*elements):
@@ -128,7 +136,7 @@ def _exclusive_against(*names, **kw):
 
 
 def _clone(element, **kw):
-    return element._clone()
+    return element._clone(**kw)
 
 
 def _expand_cloned(elements):
@@ -747,14 +755,14 @@ class ExecutableOption(HasCopyInternals, HasCacheKey):
 
     __visit_name__ = "executable_option"
 
-    def _clone(self):
+    def _clone(self, **kw):
         """Create a shallow copy of this ExecutableOption."""
         c = self.__class__.__new__(self.__class__)
         c.__dict__ = dict(self.__dict__)
         return c
 
 
-class Executable(roles.CoerceTextStatementRole, Generative):
+class Executable(roles.StatementRole, Generative):
     """Mark a :class:`_expression.ClauseElement` as supporting execution.
 
     :class:`.Executable` is a superclass for all "statement" types
@@ -771,7 +779,10 @@ class Executable(roles.CoerceTextStatementRole, Generative):
 
     _executable_traverse_internals = [
         ("_with_options", InternalTraversal.dp_executable_options),
-        ("_with_context_options", ExtendedInternalTraversal.dp_plain_obj),
+        (
+            "_with_context_options",
+            ExtendedInternalTraversal.dp_with_context_options,
+        ),
         ("_propagate_attrs", ExtendedInternalTraversal.dp_propagate_attrs),
     ]
 
@@ -843,8 +854,8 @@ class Executable(roles.CoerceTextStatementRole, Generative):
         These are callable functions that will
         be given the CompileState object upon compilation.
 
-        A second argument cache_args is required, which will be combined
-        with the identity of the function itself in order to produce a
+        A second argument cache_args is required, which will be combined with
+        the ``__code__`` identity of the function itself in order to produce a
         cache key.
 
         """
@@ -1566,6 +1577,23 @@ def _bind_or_error(schemaitem, msg=None):
     return bind
 
 
+def _entity_namespace(entity):
+    """Return the nearest .entity_namespace for the given entity.
+
+    If not immediately available, does an iterate to find a sub-element
+    that has one, if any.
+
+    """
+    try:
+        return entity.entity_namespace
+    except AttributeError:
+        for elem in visitors.iterate(entity):
+            if hasattr(elem, "entity_namespace"):
+                return elem.entity_namespace
+        else:
+            raise
+
+
 def _entity_namespace_key(entity, key):
     """Return an entry from an entity_namespace.
 
@@ -1575,8 +1603,8 @@ def _entity_namespace_key(entity, key):
 
     """
 
-    ns = entity.entity_namespace
     try:
+        ns = _entity_namespace(entity)
         return getattr(ns, key)
     except AttributeError as err:
         util.raise_(

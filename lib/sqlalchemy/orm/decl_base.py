@@ -410,7 +410,7 @@ class _ClassScanMapperConfig(_MapperConfig):
 
             def local_attributes_for_class():
                 for name, obj in vars(cls).items():
-                    yield name, obj
+                    yield name, obj, False
 
         else:
             field_names = set()
@@ -421,10 +421,10 @@ class _ClassScanMapperConfig(_MapperConfig):
                         field_names.add(field.name)
                         yield field.name, _as_dc_declaredattr(
                             field.metadata, sa_dataclass_metadata_key
-                        )
+                        ), True
                 for name, obj in vars(cls).items():
                     if name not in field_names:
-                        yield name, obj
+                        yield name, obj, False
 
         return local_attributes_for_class
 
@@ -455,7 +455,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                     local_attributes_for_class, attribute_is_overridden
                 )
 
-            for name, obj in local_attributes_for_class():
+            for name, obj, is_dataclass in local_attributes_for_class():
                 if name == "__mapper_args__":
                     check_decl = _check_declared_props_nocascade(
                         obj, name, cls
@@ -536,11 +536,24 @@ class _ClassScanMapperConfig(_MapperConfig):
                             ] = ret = obj.__get__(obj, cls)
                             setattr(cls, name, ret)
                         else:
-                            if obj._is_dataclass:
-                                ret = obj.fget()
-                            else:
-
+                            if is_dataclass:
                                 # access attribute using normal class access
+                                # first, to see if it's been mapped on a
+                                # superclass.   note if the dataclasses.field()
+                                # has "default", this value can be anything.
+                                ret = getattr(cls, name, None)
+
+                                # so, if it's anything that's not ORM
+                                # mapped, assume we should invoke the
+                                # declared_attr
+                                if not isinstance(ret, InspectionAttr):
+                                    ret = obj.fget()
+                            else:
+                                # access attribute using normal class access.
+                                # if the declared attr already took place
+                                # on a superclass that is mapped, then
+                                # this is no longer a declared_attr, it will
+                                # be the InstrumentedAttribute
                                 ret = getattr(cls, name)
 
                             # correct for proxies created from hybrid_property
@@ -567,15 +580,17 @@ class _ClassScanMapperConfig(_MapperConfig):
                     # however, check for some more common mistakes
                     else:
                         self._warn_for_decl_attributes(base, name, obj)
-                elif name not in dict_ or dict_[name] is not obj:
+                elif is_dataclass and (
+                    name not in dict_ or dict_[name] is not obj
+                ):
                     # here, we are definitely looking at the target class
                     # and not a superclass.   this is currently a
                     # dataclass-only path.  if the name is only
                     # a dataclass field and isn't in local cls.__dict__,
                     # put the object there.
-
                     # assert that the dataclass-enabled resolver agrees
                     # with what we are seeing
+
                     assert not attribute_is_overridden(name, obj)
 
                     if _is_declarative_props(obj):
@@ -607,7 +622,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         column_copies = self.column_copies
         # copy mixin columns to the mapped class
 
-        for name, obj in attributes_for_class():
+        for name, obj, is_dataclass in attributes_for_class():
             if isinstance(obj, Column):
                 if attribute_is_overridden(name, obj):
                     # if column has been overridden
@@ -783,7 +798,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                     "__table__",
                     table_cls(
                         tablename,
-                        manager.registry.metadata,
+                        self._metadata_for_cls(manager),
                         *(tuple(declared_columns) + tuple(args)),
                         **table_kw
                     ),
@@ -799,6 +814,12 @@ class _ClassScanMapperConfig(_MapperConfig):
                             "specifying __table__" % c.key
                         )
         self.local_table = table
+
+    def _metadata_for_cls(self, manager):
+        if hasattr(self.cls, "metadata"):
+            return self.cls.metadata
+        else:
+            return manager.registry.metadata
 
     def _setup_inheritance(self, mapper_kw):
         table = self.local_table
@@ -980,11 +1001,9 @@ def _as_dc_declaredattr(field_metadata, sa_dataclass_metadata_key):
     decl_api = util.preloaded.orm_decl_api
     obj = field_metadata[sa_dataclass_metadata_key]
     if callable(obj) and not isinstance(obj, decl_api.declared_attr):
-        return decl_api.declared_attr(obj, _is_dataclass=True)
-    elif isinstance(obj, decl_api.declared_attr):
-        obj._is_dataclass = True
+        return decl_api.declared_attr(obj)
+    else:
         return obj
-    return obj
 
 
 class _DeferredMapperConfig(_ClassScanMapperConfig):

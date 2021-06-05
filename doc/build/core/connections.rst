@@ -1136,6 +1136,47 @@ The cache can also be disabled with this argument by sending a value of
   with engine.connect().execution_options(compiled_cache=None) as conn:
       conn.execute(table.select())
 
+.. _engine_thirdparty_caching:
+
+Caching for Third Party Dialects
+---------------------------------
+
+The caching feature requires that the dialect's compiler produces a SQL
+construct that is generically reusable given a particular cache key.  This means
+that any literal values in a statement, such as the LIMIT/OFFSET values for
+a SELECT, can not be hardcoded in the dialect's compilation scheme, as
+the compiled string will not be re-usable.   SQLAlchemy supports rendered
+bound parameters using the :meth:`_sql.BindParameter.render_literal_execute`
+method which can be applied to the existing ``Select._limit_clause`` and
+``Select._offset_clause`` attributes by a custom compiler.
+
+As there are many third party dialects, many of which may be generating
+literal values from SQL statements without the benefit of the newer "literal execute"
+feature, SQLAlchemy as of version 1.4.5 has added a flag to dialects known as
+:attr:`_engine.Dialect.supports_statement_cache`.  This flag is tested to be present
+directly on a dialect class, and not any superclasses, so that even a third
+party dialect that subclasses an existing cacheable SQLAlchemy dialect such
+as ``sqlalchemy.dialects.postgresql.PGDialect`` must still specify this flag,
+once the dialect has been altered as needed and tested for reusability of
+compiled SQL statements with differing parameters.
+
+For all third party dialects that don't support this flag, the logging for
+such a dialect will indicate ``dialect does not support caching``.   Dialect
+authors can apply the flag as follows::
+
+    from sqlalchemy.engine.default import DefaultDialect
+
+    class MyDialect(DefaultDialect):
+        supports_statement_cache = True
+
+The flag needs to be applied to all subclasses of the dialect as well::
+
+    class MyDBAPIForMyDialect(MyDialect):
+        supports_statement_cache = True
+
+.. versionadded:: 1.4.5
+
+
 .. _engine_lambda_caching:
 
 Using Lambdas to add significant speed gains to statement production
@@ -1864,7 +1905,7 @@ Result Set  API
 
 .. autoclass:: Row
     :members:
-    :private-members: _fields, _mapping
+    :private-members: _asdict, _fields, _mapping
 
 .. autoclass:: RowMapping
     :members:

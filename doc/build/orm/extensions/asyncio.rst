@@ -10,10 +10,10 @@ included, using asyncio-compatible dialects.
 
 The asyncio extension requires at least Python version 3.6.
 
-
-.. note:: The asyncio should be regarded as **alpha level** for the
-   1.4 release of SQLAlchemy.  API details are **subject to change** at
-   any time.
+.. note:: The asyncio extension as of SQLAlchemy 1.4.3 can now be considered to
+   be **beta level** software. API details are subject to change however at this
+   point it is unlikely for there to be significant backwards-incompatible
+   changes.
 
 
 .. seealso::
@@ -101,8 +101,8 @@ illustrates a complete example including mapper and session configuration::
     from sqlalchemy import String
     from sqlalchemy.ext.asyncio import AsyncSession
     from sqlalchemy.ext.asyncio import create_async_engine
-    from sqlalchemy.ext.declarative import declarative_base
     from sqlalchemy.future import select
+    from sqlalchemy.orm import declarative_base
     from sqlalchemy.orm import relationship
     from sqlalchemy.orm import selectinload
     from sqlalchemy.orm import sessionmaker
@@ -264,6 +264,16 @@ Other guidelines include:
 
 * Methods like :meth:`_asyncio.AsyncSession.expire` should be avoided in favor of
   :meth:`_asyncio.AsyncSession.refresh`
+
+* Avoid using the ``all`` cascade option documented at :ref:`unitofwork_cascades`
+  in favor of listing out the desired cascade features explicitly.   The
+  ``all`` cascade option implies among others the :ref:`cascade_refresh_expire`
+  setting, which means that the :meth:`.AsyncSession.refresh` method will
+  expire the attributes on related objects, but not necessarily refresh those
+  related objects assuming eager loading is not configured within the
+  :func:`_orm.relationship`, leaving them in an expired state.   A future
+  release may introduce the ability to indicate eager loader options when
+  invoking :meth:`.Session.refresh` and/or :meth:`.AsyncSession.refresh`.
 
 * Appropriate loader options should be employed for :func:`_orm.deferred`
   columns, if used at all, in addition to that of :func:`_orm.relationship`
@@ -441,6 +451,10 @@ cursor.
 
 ORM Session API Documentation
 -----------------------------
+
+.. autofunction:: async_object_session
+
+.. autofunction:: async_session
 
 .. autoclass:: AsyncSession
    :members:

@@ -41,6 +41,7 @@ from .. import processors
 from .. import util
 from ..util import compat
 from ..util import langhelpers
+from ..util import OrderedDict
 from ..util import pickle
 
 
@@ -422,55 +423,53 @@ class Unicode(String):
 
     """A variable length Unicode string type.
 
-    The :class:`.Unicode` type is a :class:`.String` subclass
-    that assumes input and output as Python ``unicode`` data,
-    and in that regard is equivalent to the usage of the
-    ``convert_unicode`` flag with the :class:`.String` type.
-    However, unlike plain :class:`.String`, it also implies an
-    underlying column type that is explicitly supporting of non-ASCII
-    data, such as ``NVARCHAR`` on Oracle and SQL Server.
-    This can impact the output of ``CREATE TABLE`` statements
-    and ``CAST`` functions at the dialect level, and can
-    also affect the handling of bound parameters in some
-    specific DBAPI scenarios.
+    The :class:`.Unicode` type is a :class:`.String` subclass that assumes
+    input and output strings that may contain non-ASCII characters, and for
+    some backends implies an underlying column type that is explicitly
+    supporting of non-ASCII data, such as ``NVARCHAR`` on Oracle and SQL
+    Server.  This will impact the output of ``CREATE TABLE`` statements and
+    ``CAST`` functions at the dialect level, and also in some cases will
+    indicate different behavior in the DBAPI itself in how it handles bound
+    parameters.
 
-    The encoding used by the :class:`.Unicode` type is usually
-    determined by the DBAPI itself; most modern DBAPIs
-    feature support for Python ``unicode`` objects as bound
-    values and result set values, and the encoding should
-    be configured as detailed in the notes for the target
-    DBAPI in the :ref:`dialect_toplevel` section.
+    The character encoding used by the :class:`.Unicode` type that is used to
+    transmit and receive data to the database is usually determined by the
+    DBAPI itself. All modern DBAPIs accommodate non-ASCII strings but may have
+    different methods of managing database encodings; if necessary, this
+    encoding should be configured as detailed in the notes for the target DBAPI
+    in the :ref:`dialect_toplevel` section.
 
-    For those DBAPIs which do not support, or are not configured
-    to accommodate Python ``unicode`` objects
-    directly, SQLAlchemy does the encoding and decoding
-    outside of the DBAPI.   The encoding in this scenario
-    is determined by the ``encoding`` flag passed to
-    :func:`_sa.create_engine`.
+    In modern SQLAlchemy, use of the :class:`.Unicode` datatype does not
+    typically imply any encoding/decoding behavior within SQLAlchemy itself.
+    Historically, when DBAPIs did not support Python ``unicode`` objects under
+    Python 2, SQLAlchemy handled unicode encoding/decoding services itself
+    which would be controlled by the flag :paramref:`.String.convert_unicode`;
+    this flag is deprecated as it is no longer needed for Python 3.
 
-    When using the :class:`.Unicode` type, it is only appropriate
-    to pass Python ``unicode`` objects, and not plain ``str``.
-    If a plain ``str`` is passed under Python 2, a warning
-    is emitted.  If you notice your application emitting these warnings but
-    you're not sure of the source of them, the Python
-    ``warnings`` filter, documented at
-    http://docs.python.org/library/warnings.html,
-    can be used to turn these warnings into exceptions
-    which will illustrate a stack trace::
+    When using Python 2, data that is passed to columns that use the
+    :class:`.Unicode` datatype must be of type ``unicode``, and not ``str``
+    which in Python 2 is equivalent to ``bytes``.  In Python 3, all data
+    passed to columns that use the :class:`.Unicode` datatype should be
+    of type ``str``.   See the flag :paramref:`.String.convert_unicode` for
+    more discussion of unicode encode/decode behavior under Python 2.
 
-      import warnings
-      warnings.simplefilter('error')
-
-    For an application that wishes to pass plain bytestrings
-    and Python ``unicode`` objects to the ``Unicode`` type
-    equally, the bytestrings must first be decoded into
-    unicode.  The recipe at :ref:`coerce_to_unicode` illustrates
-    how this is done.
+    .. warning:: Some database backends, particularly SQL Server with pyodbc,
+       are known to have undesirable behaviors regarding data that is noted
+       as being of ``NVARCHAR`` type as opposed to ``VARCHAR``, including
+       datatype mismatch errors and non-use of indexes.  See the section
+       on :meth:`.DialectEvents.do_setinputsizes` for background on working
+       around unicode character issues for backends like SQL Server with
+       pyodbc as well as cx_Oracle.
 
     .. seealso::
 
         :class:`.UnicodeText` - unlengthed textual counterpart
         to :class:`.Unicode`.
+
+        :paramref:`.String.convert_unicode`
+
+        :meth:`.DialectEvents.do_setinputsizes`
+
 
     """
 
@@ -1092,7 +1091,7 @@ class SchemaType(SchemaEventTarget):
                 util.portable_instancemethod(self._on_metadata_drop),
             )
 
-    def _set_parent(self, column):
+    def _set_parent(self, column, **kw):
         column._on_table_attach(util.portable_instancemethod(self._set_table))
 
     def _variant_mapping_for_set_table(self, column):
@@ -1106,6 +1105,8 @@ class SchemaType(SchemaEventTarget):
     def _set_table(self, column, table):
         if self.inherit_schema:
             self.schema = table.schema
+        elif self.metadata and self.schema is None and self.metadata.schema:
+            self.schema = self.metadata.schema
 
         if not self._create_events:
             return
@@ -1221,13 +1222,19 @@ class SchemaType(SchemaEventTarget):
         if variant_mapping is None:
             return True
 
-        if (
-            dialect.name in variant_mapping
-            and variant_mapping[dialect.name] is self
+        # since PostgreSQL is the only DB that has ARRAY this can only
+        # be integration tested by PG-specific tests
+        def _we_are_the_impl(typ):
+            return (
+                typ is self or isinstance(typ, ARRAY) and typ.item_type is self
+            )
+
+        if dialect.name in variant_mapping and _we_are_the_impl(
+            variant_mapping[dialect.name]
         ):
             return True
         elif dialect.name not in variant_mapping:
-            return variant_mapping["_default"] is self
+            return _we_are_the_impl(variant_mapping["_default"])
 
 
 class Enum(Emulated, String, SchemaType):
@@ -1360,6 +1367,16 @@ class Enum(Emulated, String, SchemaType):
            only dropped when ``drop_all()`` is called for that ``Table``
            object's metadata, however.
 
+           The value of the :paramref:`_schema.MetaData.schema` parameter of
+           the :class:`_schema.MetaData` object, if set, will be used as the
+           default value of the :paramref:`_types.Enum.schema` on this object
+           if an explicit value is not otherwise supplied.
+
+           .. versionchanged:: 1.4.12 :class:`_types.Enum` inherits the
+              :paramref:`_schema.MetaData.schema` parameter of the
+              :class:`_schema.MetaData` object if present, when passed using
+              the :paramref:`_types.Enum.metadata` parameter.
+
         :param name: The name of this type. This is required for PostgreSQL
            and any future supported database which requires an explicitly
            named type, or an explicitly named constraint in order to generate
@@ -1383,12 +1400,22 @@ class Enum(Emulated, String, SchemaType):
            this parameter specifies the named schema in which the type is
            present.
 
-           .. note::
+           If not present, the schema name will be taken from the
+           :class:`_schema.MetaData` collection if passed as
+           :paramref:`_types.Enum.metadata`, for a :class:`_schema.MetaData`
+           that includes the :paramref:`_schema.MetaData.schema` parameter.
 
-                The ``schema`` of the :class:`.Enum` type does not
-                by default make use of the ``schema`` established on the
-                owning :class:`_schema.Table`.  If this behavior is desired,
-                set the ``inherit_schema`` flag to ``True``.
+           .. versionchanged:: 1.4.12 :class:`_types.Enum` inherits the
+              :paramref:`_schema.MetaData.schema` parameter of the
+              :class:`_schema.MetaData` object if present, when passed using
+              the :paramref:`_types.Enum.metadata` parameter.
+
+           Otherwise, if the :paramref:`_types.Enum.inherit_schema` flag is set
+           to ``True``, the schema will be inherited from the associated
+           :class:`_schema.Table` object if any; when
+           :paramref:`_types.Enum.inherit_schema` is at its default of
+           ``False``, the owning table's schema is **not** used.
+
 
         :param quote: Set explicit quoting preferences for the type's name.
 
@@ -1425,7 +1452,15 @@ class Enum(Emulated, String, SchemaType):
 
            .. versionadded:: 1.3.8
 
+        :param omit_aliases: A boolean that when true will remove aliases from
+           pep 435 enums. For backward compatibility it defaults to ``False``.
+           A deprecation warning is raised if the enum has aliases and this
+           flag was not set.
 
+           .. versionadded:: 1.4.5
+
+           .. deprecated:: 1.4  The default will be changed to ``True`` in
+              SQLAlchemy 2.0.
 
         """
         self._enum_init(enums, kw)
@@ -1450,6 +1485,7 @@ class Enum(Emulated, String, SchemaType):
         self.values_callable = kw.pop("values_callable", None)
         self._sort_key_function = kw.pop("sort_key_function", NO_ARG)
         length_arg = kw.pop("length", NO_ARG)
+        self._omit_aliases = kw.pop("omit_aliases", NO_ARG)
 
         values, objects = self._parse_into_values(enums, kw)
         self._setup_for_values(values, objects, kw)
@@ -1506,7 +1542,24 @@ class Enum(Emulated, String, SchemaType):
 
         if len(enums) == 1 and hasattr(enums[0], "__members__"):
             self.enum_class = enums[0]
-            members = self.enum_class.__members__
+
+            _members = self.enum_class.__members__
+
+            aliases = [n for n, v in _members.items() if v.name != n]
+            if self._omit_aliases is NO_ARG and aliases:
+                util.warn_deprecated_20(
+                    "The provided enum %s contains the aliases %s. The "
+                    "``omit_aliases`` will default to ``True`` in SQLAlchemy "
+                    "2.0. Specify a value to silence this warning."
+                    % (self.enum_class.__name__, aliases)
+                )
+            if self._omit_aliases is True:
+                # remove aliases
+                members = OrderedDict(
+                    (n, v) for n, v in _members.items() if v.name == n
+                )
+            else:
+                members = _members
             if self.values_callable:
                 values = self.values_callable(self.enum_class)
             else:
@@ -1633,6 +1686,7 @@ class Enum(Emulated, String, SchemaType):
         kw.setdefault("values_callable", self.values_callable)
         kw.setdefault("create_constraint", self.create_constraint)
         kw.setdefault("length", self.length)
+        kw.setdefault("omit_aliases", self._omit_aliases)
         assert "_enums" in kw
         return impltype(**kw)
 
@@ -1726,6 +1780,7 @@ class PickleType(TypeDecorator):
     """
 
     impl = LargeBinary
+    cache_ok = True
 
     def __init__(
         self, protocol=pickle.HIGHEST_PROTOCOL, pickler=None, comparator=None
@@ -1973,6 +2028,7 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator):
 
     impl = DateTime
     epoch = dt.datetime.utcfromtimestamp(0)
+    cache_ok = True
 
     def __init__(self, native=True, second_precision=None, day_precision=None):
         """Construct an Interval object.
@@ -2857,16 +2913,16 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
     def compare_values(self, x, y):
         return x == y
 
-    def _set_parent(self, column):
+    def _set_parent(self, column, outer=False, **kw):
         """Support SchemaEventTarget"""
 
-        if isinstance(self.item_type, SchemaEventTarget):
-            self.item_type._set_parent(column)
+        if not outer and isinstance(self.item_type, SchemaEventTarget):
+            self.item_type._set_parent(column, **kw)
 
     def _set_parent_with_dispatch(self, parent):
         """Support SchemaEventTarget"""
 
-        super(ARRAY, self)._set_parent_with_dispatch(parent)
+        super(ARRAY, self)._set_parent_with_dispatch(parent, outer=True)
 
         if isinstance(self.item_type, SchemaEventTarget):
             self.item_type._set_parent_with_dispatch(parent)
@@ -2878,7 +2934,19 @@ class TupleType(TypeEngine):
     _is_tuple_type = True
 
     def __init__(self, *types):
+        self._fully_typed = NULLTYPE not in types
         self.types = types
+
+    def _resolve_values_to_types(self, value):
+        if self._fully_typed:
+            return self
+        else:
+            return TupleType(
+                *[
+                    _resolve_value_to_type(elem) if typ is NULLTYPE else typ
+                    for typ, elem in zip(self.types, value)
+                ]
+            )
 
     def result_processor(self, dialect, coltype):
         raise NotImplementedError(

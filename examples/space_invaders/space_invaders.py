@@ -253,7 +253,7 @@ class EnemyGlyph(Glyph):
 
 
 class ArmyGlyph(EnemyGlyph):
-    """Describe an enemy that's part of the "army". """
+    """Describe an enemy that's part of the "army"."""
 
     __mapper_args__ = {"polymorphic_identity": "army"}
 

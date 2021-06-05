@@ -40,9 +40,18 @@ except ImportError:
 
 
 KEY_INTEGER_ONLY = 0
+"""__getitem__ only allows integer values, raises TypeError otherwise"""
+
 KEY_OBJECTS_ONLY = 1
+"""__getitem__ only allows string/object values, raises TypeError otherwise"""
+
 KEY_OBJECTS_BUT_WARN = 2
+"""__getitem__ allows integer or string/object values, but emits a 2.0
+deprecation warning if string/object is passed"""
+
 KEY_OBJECTS_NO_WARN = 3
+"""__getitem__ allows integer or string/object values with no warnings
+or errors."""
 
 try:
     from sqlalchemy.cresultproxy import BaseRow
@@ -100,14 +109,15 @@ except ImportError:
         def __hash__(self):
             return hash(self._data)
 
-        def __getitem__(self, key):
+        def _get_by_int_impl(self, key):
             return self._data[key]
-
-        _get_by_int_impl = __getitem__
 
         def _get_by_key_impl(self, key):
             if int in key.__class__.__mro__:
                 return self._data[key]
+
+            if self._key_style == KEY_INTEGER_ONLY:
+                self._parent._raise_for_nonint(key)
 
             # the following is all LegacyRow support.   none of this
             # should be called if not LegacyRow
@@ -131,6 +141,12 @@ except ImportError:
                 self._parent._warn_for_nonint(key)
 
             return self._data[mdindex]
+
+        # The original 1.4 plan was that Row would not allow row["str"]
+        # access, however as the C extensions were inadvertently allowing
+        # this coupled with the fact that orm Session sets future=True,
+        # this allows a softer upgrade path.  see #6218
+        __getitem__ = _get_by_key_impl
 
         def _get_by_key_impl_mapping(self, key):
             try:
@@ -192,7 +208,8 @@ class Row(BaseRow, collections_abc.Sequence):
 
     __slots__ = ()
 
-    _default_key_style = KEY_INTEGER_ONLY
+    # in 2.0, this should be KEY_INTEGER_ONLY
+    _default_key_style = KEY_OBJECTS_BUT_WARN
 
     @property
     def _mapping(self):
@@ -384,8 +401,11 @@ class LegacyRow(Row):
     def __contains__(self, key):
         return self._parent._contains(key, self)
 
-    if not _baserow_usecext:
-        __getitem__ = BaseRow._get_by_key_impl
+    # prior to #6218, LegacyRow would redirect the behavior of __getitem__
+    # for the non C version of BaseRow. This is now set up by Python BaseRow
+    # in all cases
+    # if not _baserow_usecext:
+    #    __getitem__ = BaseRow._get_by_key_impl
 
     @util.deprecated(
         "1.4",

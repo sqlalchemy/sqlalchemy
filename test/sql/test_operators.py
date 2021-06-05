@@ -500,6 +500,7 @@ class TypeDecoratorComparatorTest(_CustomComparatorTests, fixtures.TestBase):
     def _add_override_factory(self):
         class MyInteger(TypeDecorator):
             impl = Integer
+            cache_ok = True
 
             class comparator_factory(TypeDecorator.Comparator):
                 def __init__(self, expr):
@@ -520,6 +521,7 @@ class TypeDecoratorTypeDecoratorComparatorTest(
     def _add_override_factory(self):
         class MyIntegerOne(TypeDecorator):
             impl = Integer
+            cache_ok = True
 
             class comparator_factory(TypeDecorator.Comparator):
                 def __init__(self, expr):
@@ -533,6 +535,7 @@ class TypeDecoratorTypeDecoratorComparatorTest(
 
         class MyIntegerTwo(TypeDecorator):
             impl = MyIntegerOne
+            cache_ok = True
 
         return MyIntegerTwo
 
@@ -556,6 +559,7 @@ class TypeDecoratorWVariantComparatorTest(
 
         class MyInteger(TypeDecorator):
             impl = Integer
+            cache_ok = True
 
             class comparator_factory(TypeDecorator.Comparator):
                 def __init__(self, expr):
@@ -587,6 +591,7 @@ class CustomEmbeddedinTypeDecoratorTest(
 
         class MyDecInteger(TypeDecorator):
             impl = MyInteger
+            cache_ok = True
 
         return MyDecInteger
 
@@ -1732,7 +1737,7 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_in_2(self):
         self.assert_compile(
             ~self.table1.c.myid.in_(["a"]),
-            "mytable.myid NOT IN ([POSTCOMPILE_myid_1])",
+            "(mytable.myid NOT IN ([POSTCOMPILE_myid_1]))",
             checkparams={"myid_1": ["a"]},
         )
 
@@ -1854,8 +1859,8 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_in_21(self):
         self.assert_compile(
             ~self.table1.c.myid.in_(select(self.table2.c.otherid)),
-            "mytable.myid NOT IN "
-            "(SELECT myothertable.otherid FROM myothertable)",
+            "(mytable.myid NOT IN "
+            "(SELECT myothertable.otherid FROM myothertable))",
         )
 
     def test_in_22(self):
@@ -1933,18 +1938,146 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             self.table1.c.myid.in_([None]), "mytable.myid IN (NULL)"
         )
 
-    def test_in_29(self):
+    @testing.combinations(True, False)
+    def test_in_29(self, is_in):
         a, b, c = (
             column("a", Integer),
             column("b", String),
             column("c", LargeBinary),
         )
         t1 = tuple_(a, b, c)
-        expr = t1.in_([(3, "hi", "there"), (4, "Q", "P")])
+        expr = t1.in_([(3, "hi", b"there"), (4, "Q", b"P")])
+        if not is_in:
+            expr = ~expr
+
+        if is_in:
+            self.assert_compile(
+                expr,
+                "(a, b, c) %s ([POSTCOMPILE_param_1])"
+                % ("IN" if is_in else "NOT IN"),
+                checkparams={"param_1": [(3, "hi", b"there"), (4, "Q", b"P")]},
+            )
+            self.assert_compile(
+                expr,
+                "(a, b, c) %s ((3, 'hi', 'there'), (4, 'Q', 'P'))"
+                % ("IN" if is_in else "NOT IN"),
+                literal_binds=True,
+            )
+        else:
+            self.assert_compile(
+                expr,
+                "((a, b, c) NOT IN ([POSTCOMPILE_param_1]))",
+                checkparams={"param_1": [(3, "hi", b"there"), (4, "Q", b"P")]},
+            )
+            self.assert_compile(
+                expr,
+                "((a, b, c) NOT IN ((3, 'hi', 'there'), (4, 'Q', 'P')))",
+                literal_binds=True,
+            )
+
+    @testing.combinations(True, False, argnames="is_in")
+    @testing.combinations(True, False, argnames="negate")
+    def test_in_empty_tuple(self, is_in, negate):
+        a, b, c = (
+            column("a", Integer),
+            column("b", String),
+            column("c", LargeBinary),
+        )
+        t1 = tuple_(a, b, c)
+
+        if negate:
+            expr = ~t1.not_in([]) if is_in else ~t1.in_([])
+        else:
+            expr = t1.in_([]) if is_in else t1.not_in([])
+
+        if is_in:
+            self.assert_compile(
+                expr,
+                "(a, b, c) IN ([POSTCOMPILE_param_1])",
+                checkparams={"param_1": []},
+            )
+            self.assert_compile(
+                expr,
+                "(a, b, c) IN ((NULL, NULL, NULL)) AND (1 != 1)",
+                literal_binds=True,
+                dialect="default_enhanced",
+            )
+        else:
+            self.assert_compile(
+                expr,
+                "((a, b, c) NOT IN ([POSTCOMPILE_param_1]))",
+                checkparams={"param_1": []},
+            )
+            self.assert_compile(
+                expr,
+                "((a, b, c) NOT IN ((NULL, NULL, NULL)) OR (1 = 1))",
+                literal_binds=True,
+                dialect="default_enhanced",
+            )
+
+    @testing.combinations(True, False, argnames="is_in")
+    @testing.combinations(True, False, argnames="negate")
+    def test_in_empty_single(self, is_in, negate):
+        a = column("a", Integer)
+
+        if negate:
+            expr = ~a.not_in([]) if is_in else ~a.in_([])
+        else:
+            expr = a.in_([]) if is_in else a.not_in([])
+
+        if is_in:
+            self.assert_compile(
+                expr,
+                "a IN ([POSTCOMPILE_a_1])",
+                checkparams={"a_1": []},
+            )
+            self.assert_compile(
+                expr,
+                "a IN (NULL) AND (1 != 1)",
+                literal_binds=True,
+                dialect="default_enhanced",
+            )
+        else:
+            self.assert_compile(
+                expr,
+                "(a NOT IN ([POSTCOMPILE_a_1]))",
+                checkparams={"a_1": []},
+            )
+            self.assert_compile(
+                expr,
+                "(a NOT IN (NULL) OR (1 = 1))",
+                literal_binds=True,
+                dialect="default_enhanced",
+            )
+
+    def test_in_self_plus_negated(self):
+        a = column("a", Integer)
+
+        expr1 = a.in_([5])
+        expr2 = ~expr1
+
+        stmt = and_(expr1, expr2)
         self.assert_compile(
-            expr,
-            "(a, b, c) IN ([POSTCOMPILE_param_1])",
-            checkparams={"param_1": [(3, "hi", "there"), (4, "Q", "P")]},
+            stmt, "a IN ([POSTCOMPILE_a_1]) AND (a NOT IN ([POSTCOMPILE_a_2]))"
+        )
+        self.assert_compile(
+            stmt, "a IN (5) AND (a NOT IN (5))", literal_binds=True
+        )
+
+    def test_in_self_plus_negated_empty(self):
+        a = column("a", Integer)
+
+        expr1 = a.in_([])
+        expr2 = ~expr1
+
+        stmt = and_(expr1, expr2)
+        self.assert_compile(
+            stmt, "a IN ([POSTCOMPILE_a_1]) AND (a NOT IN ([POSTCOMPILE_a_2]))"
+        )
+        self.assert_compile(
+            stmt,
+            "a IN (NULL) AND (1 != 1) AND (a NOT IN (NULL) OR (1 = 1))",
+            literal_binds=True,
         )
 
     def test_in_set(self):
@@ -1971,6 +2104,39 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             self.table1.c.myid.in_(seq),
             "mytable.myid IN ([POSTCOMPILE_myid_1])",
             checkparams={"myid_1": [1, 2, 3]},
+        )
+
+    def test_scalar_subquery_wo_type(self):
+        """test for :ticket:`6181`"""
+
+        m = MetaData()
+        t = Table("t", m, Column("a", Integer))
+
+        # the scalar subquery of this will have no type; coercions will
+        # want to call _with_binary_element_type(); that has to return
+        # a scalar select
+        req = select(column("scan"))
+
+        self.assert_compile(
+            select(t.c.a).where(t.c.a.in_(req)),
+            "SELECT t.a FROM t WHERE t.a IN (SELECT scan)",
+        )
+
+    def test_type_inference_one(self):
+        expr = column("q").in_([1, 2, 3])
+        is_(expr.right.type._type_affinity, Integer)
+
+        self.assert_compile(expr, "q IN (1, 2, 3)", literal_binds=True)
+
+    def test_type_inference_two(self):
+        expr = column("q").in_([])
+        is_(expr.right.type, sqltypes.NULLTYPE)
+
+        self.assert_compile(
+            expr,
+            "q IN (NULL) AND (1 != 1)",
+            literal_binds=True,
+            dialect="default_enhanced",
         )
 
 
@@ -3057,6 +3223,26 @@ class TupleTypingTest(fixtures.TestBase):
 
         eq_(len(expr.right.value), 2)
 
+        self._assert_types(expr.right.type.types)
+
+    # since we want to infer "binary"
+    @testing.requires.python3
+    def test_tuple_type_expanding_inference(self):
+        a, b, c = column("a"), column("b"), column("c")
+
+        t1 = tuple_(a, b, c)
+        expr = t1.in_([(3, "hi", b"there"), (4, "Q", b"P")])
+
+        eq_(len(expr.right.value), 2)
+
+        self._assert_types(expr.right.type.types)
+
+    @testing.requires.python3
+    def test_tuple_type_plain_inference(self):
+        a, b, c = column("a"), column("b"), column("c")
+
+        t1 = tuple_(a, b, c)
+        expr = t1 == (3, "hi", b"there")
         self._assert_types(expr.right.type.types)
 
 

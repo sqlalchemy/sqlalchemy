@@ -4,25 +4,15 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
-
-from typing import Any
-from typing import Callable
-from typing import Mapping
-from typing import Optional
-from typing import TypeVar
-
 from . import engine
 from . import result as _result
+from .base import ReversibleProxy
 from .base import StartableContext
-from .engine import AsyncEngine
 from ... import util
-from ...engine import Result
+from ...orm import object_session
 from ...orm import Session
-from ...sql import Executable
+from ...orm import state as _instance_state
 from ...util.concurrency import greenlet_spawn
-
-
-T = TypeVar("T")
 
 
 @util.create_proxy_methods(
@@ -42,6 +32,7 @@ T = TypeVar("T")
         "get_bind",
         "is_modified",
         "in_transaction",
+        "in_nested_transaction",
     ],
     attributes=[
         "dirty",
@@ -54,7 +45,7 @@ T = TypeVar("T")
         "info",
     ],
 )
-class AsyncSession:
+class AsyncSession(ReversibleProxy):
     """Asyncio version of :class:`_orm.Session`.
 
 
@@ -72,15 +63,10 @@ class AsyncSession:
 
     dispatch = None
 
-    def __init__(
-        self,
-        bind: AsyncEngine = None,
-        binds: Mapping[object, AsyncEngine] = None,
-        **kw
-    ):
+    def __init__(self, bind=None, binds=None, **kw):
         kw["future"] = True
         if bind:
-            self.bind = engine
+            self.bind = bind
             bind = engine._get_sync_engine_or_connection(bind)
 
         if binds:
@@ -90,8 +76,8 @@ class AsyncSession:
                 for key, b in binds.items()
             }
 
-        self.sync_session = self._proxied = Session(
-            bind=bind, binds=binds, **kw
+        self.sync_session = self._proxied = self._assign_proxied(
+            Session(bind=bind, binds=binds, **kw)
         )
 
     async def refresh(
@@ -114,7 +100,7 @@ class AsyncSession:
             with_for_update=with_for_update,
         )
 
-    async def run_sync(self, fn: Callable[..., T], *arg, **kw) -> T:
+    async def run_sync(self, fn, *arg, **kw):
         """Invoke the given sync callable passing sync self as the first
         argument.
 
@@ -143,12 +129,12 @@ class AsyncSession:
 
     async def execute(
         self,
-        statement: Executable,
-        params: Optional[Mapping] = None,
-        execution_options: Mapping = util.EMPTY_DICT,
-        bind_arguments: Optional[Mapping] = None,
+        statement,
+        params=None,
+        execution_options=util.EMPTY_DICT,
+        bind_arguments=None,
         **kw
-    ) -> Result:
+    ):
         """Execute a statement and return a buffered
         :class:`_engine.Result` object."""
 
@@ -165,12 +151,12 @@ class AsyncSession:
 
     async def scalar(
         self,
-        statement: Executable,
-        params: Optional[Mapping] = None,
-        execution_options: Mapping = util.EMPTY_DICT,
-        bind_arguments: Optional[Mapping] = None,
+        statement,
+        params=None,
+        execution_options=util.EMPTY_DICT,
+        bind_arguments=None,
         **kw
-    ) -> Any:
+    ):
         """Execute a statement and return a scalar result."""
 
         result = await self.execute(
@@ -260,21 +246,46 @@ class AsyncSession:
         """
         await greenlet_spawn(self.sync_session.flush, objects=objects)
 
-    async def connection(self):
-        r"""Return a :class:`_asyncio.AsyncConnection` object corresponding to this
-        :class:`.Session` object's transactional state.
+    def get_transaction(self):
+        """Return the current root transaction in progress, if any.
+
+        :return: an :class:`_asyncio.AsyncSessionTransaction` object, or
+         ``None``.
+
+        .. versionadded:: 1.4.18
+
+        """
+        trans = self.sync_session.get_transaction()
+        if trans is not None:
+            return AsyncSessionTransaction._retrieve_proxy_for_target(trans)
+        else:
+            return None
+
+    def get_nested_transaction(self):
+        """Return the current nested transaction in progress, if any.
+
+        :return: an :class:`_asyncio.AsyncSessionTransaction` object, or
+         ``None``.
+
+        .. versionadded:: 1.4.18
 
         """
 
-        # POSSIBLY TODO: here, we see that the sync engine / connection
-        # that are generated from AsyncEngine / AsyncConnection don't
-        # provide any backlink from those sync objects back out to the
-        # async ones.   it's not *too* big a deal since AsyncEngine/Connection
-        # are just proxies and all the state is actually in the sync
-        # version of things.  However!  it has to stay that way :)
+        trans = self.sync_session.get_nested_transaction()
+        if trans is not None:
+            return AsyncSessionTransaction._retrieve_proxy_for_target(trans)
+        else:
+            return None
+
+    async def connection(self):
+        r"""Return a :class:`_asyncio.AsyncConnection` object corresponding to
+        this :class:`.Session` object's transactional state.
+
+        """
+
         sync_connection = await greenlet_spawn(self.sync_session.connection)
-        return engine.AsyncConnection(
-            engine.AsyncEngine(sync_connection.engine), sync_connection
+        return engine.AsyncConnection._retrieve_proxy_for_target(
+            sync_connection
         )
 
     def begin(self, **kw):
@@ -322,7 +333,33 @@ class AsyncSession:
         return await greenlet_spawn(self.sync_session.commit)
 
     async def close(self):
-        """Close this :class:`_asyncio.AsyncSession`."""
+        """Close out the transactional resources and ORM objects used by this
+        :class:`_asyncio.AsyncSession`.
+
+        This expunges all ORM objects associated with this
+        :class:`_asyncio.AsyncSession`, ends any transaction in progress and
+        :term:`releases` any :class:`_asyncio.AsyncConnection` objects which
+        this :class:`_asyncio.AsyncSession` itself has checked out from
+        associated :class:`_asyncio.AsyncEngine` objects. The operation then
+        leaves the :class:`_asyncio.AsyncSession` in a state which it may be
+        used again.
+
+        .. tip::
+
+            The :meth:`_asyncio.AsyncSession.close` method **does not prevent
+            the Session from being used again**. The
+            :class:`_asyncio.AsyncSession` itself does not actually have a
+            distinct "closed" state; it merely means the
+            :class:`_asyncio.AsyncSession` will release all database
+            connections and ORM objects.
+
+
+        .. seealso::
+
+            :ref:`session_closing` - detail on the semantics of
+            :meth:`_asyncio.AsyncSession.close`
+
+        """
         return await greenlet_spawn(self.sync_session.close)
 
     @classmethod
@@ -355,7 +392,7 @@ class _AsyncSessionContextManager:
         await self.async_session.__aexit__(type_, value, traceback)
 
 
-class AsyncSessionTransaction(StartableContext):
+class AsyncSessionTransaction(ReversibleProxy, StartableContext):
     """A wrapper for the ORM :class:`_orm.SessionTransaction` object.
 
     This object is provided so that a transaction-holding object
@@ -399,15 +436,64 @@ class AsyncSessionTransaction(StartableContext):
 
         await greenlet_spawn(self._sync_transaction().commit)
 
-    async def start(self):
-        self.sync_transaction = await greenlet_spawn(
-            self.session.sync_session.begin_nested
-            if self.nested
-            else self.session.sync_session.begin
+    async def start(self, is_ctxmanager=False):
+        self.sync_transaction = self._assign_proxied(
+            await greenlet_spawn(
+                self.session.sync_session.begin_nested
+                if self.nested
+                else self.session.sync_session.begin
+            )
         )
+        if is_ctxmanager:
+            self.sync_transaction.__enter__()
         return self
 
     async def __aexit__(self, type_, value, traceback):
-        return await greenlet_spawn(
+        await greenlet_spawn(
             self._sync_transaction().__exit__, type_, value, traceback
         )
+
+
+def async_object_session(instance):
+    """Return the :class:`_asyncio.AsyncSession` to which the given instance
+    belongs.
+
+    This function makes use of the sync-API function
+    :class:`_orm.object_session` to retrieve the :class:`_orm.Session` which
+    refers to the given instance, and from there links it to the original
+    :class:`_asyncio.AsyncSession`.
+
+    If the :class:`_asyncio.AsyncSession` has been garbage collected, the
+    return value is ``None``.
+
+    This functionality is also available from the
+    :attr:`_orm.InstanceState.async_session` accessor.
+
+    :param instance: an ORM mapped instance
+    :return: an :class:`_asyncio.AsyncSession` object, or ``None``.
+
+    .. versionadded:: 1.4.18
+
+    """
+
+    session = object_session(instance)
+    if session is not None:
+        return async_session(session)
+    else:
+        return None
+
+
+def async_session(session):
+    """Return the :class:`_asyncio.AsyncSession` which is proxying the given
+    :class:`_orm.Session` object, if any.
+
+    :param session: a :class:`_orm.Session` instance.
+    :return: a :class:`_asyncio.AsyncSession` instance, or ``None``.
+
+    .. versionadded:: 1.4.18
+
+    """
+    return AsyncSession._retrieve_proxy_for_target(session, regenerate=False)
+
+
+_instance_state._async_provider = async_session

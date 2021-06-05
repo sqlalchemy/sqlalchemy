@@ -46,12 +46,20 @@ from .base import RELATED_OBJECT_OK  # noqa
 from .base import SQL_OK  # noqa
 from .base import state_str
 from .. import event
+from .. import exc
 from .. import inspection
 from .. import util
 from ..sql import base as sql_base
 from ..sql import roles
 from ..sql import traversals
 from ..sql import visitors
+
+
+class NoKey(str):
+    pass
+
+
+NO_KEY = NoKey("no name")
 
 
 @inspection._self_inspects
@@ -214,10 +222,29 @@ class QueryableAttribute(
         subclass representing a column expression.
 
         """
+        if self.key is NO_KEY:
+            annotations = {"entity_namespace": self._entity_namespace}
+        else:
+            annotations = {
+                "proxy_key": self.key,
+                "proxy_owner": self._parententity,
+                "entity_namespace": self._entity_namespace,
+            }
 
-        return self.comparator.__clause_element__()._annotate(
-            {"proxy_key": self.key, "entity_namespace": self._entity_namespace}
-        )
+        ce = self.comparator.__clause_element__()
+        try:
+            anno = ce._annotate
+        except AttributeError as ae:
+            util.raise_(
+                exc.InvalidRequestError(
+                    'When interpreting attribute "%s" as a SQL expression, '
+                    "expected __clause_element__() to return "
+                    "a ClauseElement object, got: %r" % (self, ce)
+                ),
+                from_=ae,
+            )
+        else:
+            return anno(annotations)
 
     @property
     def _entity_namespace(self):
@@ -456,6 +483,7 @@ class InstrumentedAttribute(Mapped):
 HasEntityNamespace = util.namedtuple(
     "HasEntityNamespace", ["entity_namespace"]
 )
+HasEntityNamespace.is_mapper = HasEntityNamespace.is_aliased_class = False
 
 
 def create_proxied_attribute(descriptor):
@@ -474,6 +502,8 @@ def create_proxied_attribute(descriptor):
         combination.
 
         """
+
+        _extra_criteria = ()
 
         def __init__(
             self,
@@ -501,6 +531,10 @@ def create_proxied_attribute(descriptor):
                 self.original_property is not None
                 and getattr(self.class_, self.key).impl.uses_objects
             )
+
+        @property
+        def _parententity(self):
+            return inspection.inspect(self.class_, raiseerr=False)
 
         @property
         def _entity_namespace(self):
@@ -1352,6 +1386,12 @@ class CollectionAttributeImpl(AttributeImpl):
 
         if self.trackparent and value is not None:
             self.sethasparent(instance_state(value), state, True)
+
+        return value
+
+    def fire_append_wo_mutation_event(self, state, dict_, value, initiator):
+        for fn in self.dispatch.append_wo_mutation:
+            value = fn(state, value, initiator or self._append_token)
 
         return value
 

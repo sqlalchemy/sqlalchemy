@@ -13,6 +13,7 @@ from sqlalchemy.orm import close_all_sessions
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declarative_mixin
 from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import events as orm_events
@@ -89,6 +90,39 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         @mapper_registry.mapped
         class MyModel(MyMixin):
+
+            __tablename__ = "test"
+            name = Column(String(100), nullable=False, index=True)
+
+        Base.metadata.create_all(testing.db)
+        session = fixture_session()
+        session.add(MyModel(name="testing"))
+        session.flush()
+        session.expunge_all()
+        obj = session.query(MyModel).one()
+        eq_(obj.id, 1)
+        eq_(obj.name, "testing")
+        eq_(obj.foo(), "bar1")
+
+    def test_declarative_mixin_decorator(self):
+
+        # note we are also making sure an "old style class" in Python 2,
+        # as we are now illustrating in all the docs for mixins, doesn't cause
+        # a problem....
+        @declarative_mixin
+        class MyMixin:
+
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+
+            def foo(self):
+                return "bar" + str(self.id)
+
+        # ...as long as the mapped class itself is "new style", which will
+        # normally be the case for users using declarative_base
+        @mapper_registry.mapped
+        class MyModel(MyMixin, object):
 
             __tablename__ = "test"
             name = Column(String(100), nullable=False, index=True)
@@ -242,6 +276,104 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             title = Column(String)
 
         eq_(Manager.__table__.name, "manager")
+
+    def test_same_base_multiple_metadata(self):
+        m1 = MetaData()
+        m2 = MetaData()
+
+        class B1(Base):
+            __abstract__ = True
+            metadata = m1
+
+        class B2(Base):
+            __abstract__ = True
+            metadata = m2
+
+            def fullname(self):
+                return self.name + " " + self.surname
+
+        class User(B1):
+            __tablename__ = "user"
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String)
+            surname = Column(String)
+
+        class AD(B1):
+            __tablename__ = "address"
+
+            id = Column(Integer, primary_key=True)
+
+        class OtherUser(B2):
+            __tablename__ = "user"
+
+            id = Column(Integer, primary_key=True)
+            username = Column(String)
+
+        class BUser(Base):
+            __tablename__ = "user"
+
+            id = Column(Integer, primary_key=True)
+            login = Column(String)
+
+        eq_(set(m1.tables), {"user", "address"})
+        eq_(set(m2.tables), {"user"})
+        eq_(set(Base.registry.metadata.tables), {"user"})
+
+        eq_(Base.registry.metadata.tables["user"].c.keys(), ["id", "login"])
+        eq_(m1.tables["user"].c.keys(), ["id", "name", "surname"])
+        eq_(m2.tables["user"].c.keys(), ["id", "username"])
+
+    def test_same_registry_multiple_metadata(self):
+        m1 = MetaData()
+        m2 = MetaData()
+
+        reg = registry()
+
+        class B1(object):
+            metadata = m1
+
+        class B2(object):
+            metadata = m2
+
+            def fullname(self):
+                return self.name + " " + self.surname
+
+        @reg.mapped
+        class User(B1):
+            __tablename__ = "user"
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String)
+            surname = Column(String)
+
+        @reg.mapped
+        class AD(B1):
+            __tablename__ = "address"
+
+            id = Column(Integer, primary_key=True)
+
+        @reg.mapped
+        class OtherUser(B2):
+            __tablename__ = "user"
+
+            id = Column(Integer, primary_key=True)
+            username = Column(String)
+
+        @reg.mapped
+        class BUser(object):
+            __tablename__ = "user"
+
+            id = Column(Integer, primary_key=True)
+            login = Column(String)
+
+        eq_(set(m1.tables), {"user", "address"})
+        eq_(set(m2.tables), {"user"})
+        eq_(set(reg.metadata.tables), {"user"})
+
+        eq_(reg.metadata.tables["user"].c.keys(), ["id", "login"])
+        eq_(m1.tables["user"].c.keys(), ["id", "name", "surname"])
+        eq_(m2.tables["user"].c.keys(), ["id", "username"])
 
     def test_not_allowed(self):
         class MyMixin:

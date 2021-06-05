@@ -646,6 +646,9 @@ class AsyncAdapt_asyncpg_connection:
                     translated_error = exception_mapping[super_](
                         "%s: %s" % (type(error), error)
                     )
+                    translated_error.pgcode = (
+                        translated_error.sqlstate
+                    ) = getattr(error, "sqlstate", None)
                     raise translated_error from error
             else:
                 raise error
@@ -850,6 +853,7 @@ _pg_types = {
 
 class PGDialect_asyncpg(PGDialect):
     driver = "asyncpg"
+    supports_statement_cache = True
 
     supports_unicode_statements = True
     supports_server_side_cursors = True

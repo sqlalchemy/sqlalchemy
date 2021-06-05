@@ -102,9 +102,10 @@ follows::
         lastname = Column(String(50))
         fullname = column_property(firstname + " " + lastname)
 
-Correlated subqueries may be used as well.  Below we use the :func:`_expression.select`
-construct to create a SELECT that links together the count of ``Address``
-objects available for a particular ``User``::
+Correlated subqueries may be used as well. Below we use the
+:func:`_expression.select` construct to create a :class:`_sql.ScalarSelect`,
+representing a column-oriented SELECT statement, that links together the count
+of ``Address`` objects available for a particular ``User``::
 
     from sqlalchemy.orm import column_property
     from sqlalchemy import select, func
@@ -123,24 +124,33 @@ objects available for a particular ``User``::
         __tablename__ = 'user'
         id = Column(Integer, primary_key=True)
         address_count = column_property(
-            select(func.count(Address.id)).\
-                where(Address.user_id==id).\
-                correlate_except(Address)
+            select(func.count(Address.id)).
+            where(Address.user_id==id).
+            correlate_except(Address).
+            scalar_subquery()
         )
 
-In the above example, we define a :func:`_expression.select` construct like the following::
+In the above example, we define a :func:`_expression.ScalarSelect` construct like the following::
 
-    select(func.count(Address.id)).\
-        where(Address.user_id==id).\
-        correlate_except(Address)
+    stmt = (
+        select(func.count(Address.id)).
+        where(Address.user_id==id).
+        correlate_except(Address).
+        scalar_subquery()
+    )
 
-The meaning of the above statement is, select the count of ``Address.id`` rows
+Above, we first use :func:`_sql.select` to create a :class:`_sql.Select`
+construct, which we then convert into a :term:`scalar subquery` using the
+:meth:`_sql.Select.scalar_subquery` method, indicating our intent to use this
+:class:`_sql.Select` statement in a column expression context.
+
+Within the :class:`_sql.Select` itself, we select the count of ``Address.id`` rows
 where the ``Address.user_id`` column is equated to ``id``, which in the context
 of the ``User`` class is the :class:`_schema.Column` named ``id`` (note that ``id`` is
 also the name of a Python built in function, which is not what we want to use
 here - if we were outside of the ``User`` class definition, we'd use ``User.id``).
 
-The :meth:`_expression.select.correlate_except` directive indicates that each element in the
+The :meth:`_sql.Select.correlate_except` method indicates that each element in the
 FROM clause of this :func:`_expression.select` may be omitted from the FROM list (that is, correlated
 to the enclosing SELECT statement against ``User``) except for the one corresponding
 to ``Address``.  This isn't strictly necessary, but prevents ``Address`` from
@@ -150,13 +160,44 @@ of joins between ``User`` and ``Address`` tables where SELECT statements against
 
 If import issues prevent the :func:`.column_property` from being defined
 inline with the class, it can be assigned to the class after both
-are configured.   In Declarative this has the effect of calling :meth:`_orm.Mapper.add_property`
+are configured.   When using mappings that make use of a :func:`_orm.declarative_base`
+base class, this attribute assignment has the effect of calling :meth:`_orm.Mapper.add_property`
 to add an additional property after the fact::
 
+    # only works if a declarative base class is in use
     User.address_count = column_property(
-            select(func.count(Address.id)).\
-                where(Address.user_id==User.id)
+        select(func.count(Address.id)).
+        where(Address.user_id==User.id).
+        scalar_subquery()
+    )
+
+When using mapping styles that don't use :func:`_orm.declarative_base`,
+such as the :meth:`_orm.registry.mapped` decorator, the :meth:`_orm.Mapper.add_property`
+method may be invoked explicitly on the underlying :class:`_orm.Mapper` object,
+which can be obtained using :func:`_sa.inspect`::
+
+    from sqlalchemy.orm import registry
+
+    reg = registry()
+
+    @reg.mapped
+    class User:
+        __tablename__ = 'user'
+
+        # ... additional mapping directives
+
+
+    # later ...
+
+    # works for any kind of mapping
+    from sqlalchemy import inspect
+    inspect(User).add_property(
+        column_property(
+           select(func.count(Address.id)).
+           where(Address.user_id==User.id).
+           scalar_subquery()
         )
+    )
 
 For a :func:`.column_property` that refers to columns linked from a
 many-to-many relationship, use :func:`.and_` to join the fields of the
@@ -174,7 +215,7 @@ association table to both tables in a relationship::
                     book_authors.c.author_id==authors.c.id,
                     book_authors.c.book_id==books.c.id
                 )
-            )
+            ).scalar_subquery()
         )
 
 .. _mapper_column_property_sql_expressions_composed:

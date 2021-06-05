@@ -592,10 +592,18 @@ Setting Isolation for Individual Sessions
 When we make a new :class:`.Session`, either using the constructor directly
 or when we call upon the callable produced by a :class:`.sessionmaker`,
 we can pass the ``bind`` argument directly, overriding the pre-existing bind.
-We can for example create our :class:`_orm.Session` from the
-"``transactional_session``" and pass the "``autocommit_engine``"::
+We can for example create our :class:`_orm.Session` from a default
+:class:`.sessionmaker` and pass an engine set for autocommit::
 
-    with transactional_session(bind=autocommit_engine) as session:
+    plain_engine = create_engine("postgresql://scott:tiger@localhost/test")
+
+    autocommit_engine = eng.execution_options(isolation_level="AUTOCOMMIT")
+
+    # will normally use plain_engine
+    Session = sessionmaker(plain_engine)
+
+    # make a specific Session that will use the "autocommit" engine
+    with Session(bind=autocommit_engine) as session:
         # work with session
 
 For the case where the :class:`.Session` or :class:`.sessionmaker` is
@@ -604,10 +612,9 @@ argument fully, or if we want to only replace specific binds, we
 can use the :meth:`.Session.bind_mapper` or :meth:`.Session.bind_table`
 methods::
 
-    session = maker()
-    session.bind_mapper(User, autocommit_engine)
+    with Session() as session:
+        session.bind_mapper(User, autocommit_engine)
 
-We can also use the individual transaction method that follows.
 
 Setting Isolation for Individual Transactions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -625,18 +632,51 @@ level on a per-connection basis can be affected by using the
 
     from sqlalchemy.orm import Session
 
+    # assume session just constructed
     sess = Session(bind=engine)
+
+    # call connection() with options before any other operations proceed.
+    # this will procure a new connection from the bound engine and begin a real
+    # database transaction.
+    sess.connection(execution_options={'isolation_level': 'SERIALIZABLE'})
+
+    # ... work with session in SERIALIZABLE isolation level...
+
+    # commit transaction.  the connection is released
+    # and reverted to its previous isolation level.
+    sess.commit()
+
+    # subsequent to commit() above, a new transaction may be begun if desired,
+    # which will proceed with the previous default isolation level unless
+    # it is set again.
+
+Above, we first produce a :class:`.Session` using either the constructor or a
+:class:`.sessionmaker`. Then we explicitly set up the start of a database-level
+transaction by calling upon :meth:`.Session.connection`, which provides for
+execution options that will be passed to the connection before the
+database-level transaction is begun.  The transaction proceeds with this
+selected isolation level.   When the transaction completes, the isolation
+level is reset on the connection to its default before the connection is
+returned to the connection pool.
+
+The :meth:`_orm.Session.begin` method may also be used to begin the
+:class:`_orm.Session` level transaction; calling upon
+:meth:`_orm.Session.connection` subsequent to that call may be used to set up
+the per-connection-transaction isolation level::
+
+    sess = Session(bind=engine)
+
     with sess.begin():
+        # call connection() with options before any other operations proceed.
+        # this will procure a new connection from the bound engine and begin a
+        # real database transaction.
         sess.connection(execution_options={'isolation_level': 'SERIALIZABLE'})
 
-    # commits transaction.  the connection is released
-    # and reverted to its previous isolation level.
+        # ... work with session in SERIALIZABLE isolation level...
 
-Above, we first produce a :class:`.Session` using either the constructor
-or a :class:`.sessionmaker`.   Then we explicitly set up the start of
-a transaction by calling upon :meth:`.Session.connection`, which provides
-for execution options that will be passed to the connection before the
-transaction is begun.
+    # outside the block, the transaction has been committed.  the connection is
+    # released and reverted to its previous isolation level.
+
 
 
 Tracking Transaction State with Events

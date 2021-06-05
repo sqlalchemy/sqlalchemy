@@ -17,15 +17,6 @@ import sys
 
 import pytest
 
-
-try:
-    import typing
-except ImportError:
-    pass
-else:
-    if typing.TYPE_CHECKING:
-        from typing import Sequence
-
 try:
     import xdist  # noqa
 
@@ -694,11 +685,9 @@ class PytestFixtureFunctions(plugin_base.FixtureFunctions):
                 return fn
             else:
                 if argnames is None:
-                    _argnames = getargspec(fn).args[1:]  # type: Sequence(str)
+                    _argnames = getargspec(fn).args[1:]
                 else:
-                    _argnames = re.split(
-                        r", *", argnames
-                    )  # type: Sequence(str)
+                    _argnames = re.split(r", *", argnames)
 
                 if has_exclusions:
                     _argnames += ["_exclusions"]

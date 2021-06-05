@@ -618,24 +618,25 @@ class UpdateDeleteTest(fixtures.MappedTest):
             sess.execute(select(User).order_by(User.id)).scalars().all()
         )
 
-        sess.execute(
+        result = sess.execute(
             update(User)
             .where(User.age > 29)
             .values({"age": User.age - 10})
             .execution_options(synchronize_session="evaluate"),
         )
 
+        eq_(result.rowcount, 2)
         eq_([john.age, jack.age, jill.age, jane.age], [25, 37, 29, 27])
         eq_(
             sess.execute(select(User.age).order_by(User.id)).all(),
             list(zip([25, 37, 29, 27])),
         )
 
-        sess.execute(
+        result = sess.execute(
             update(User)
             .where(User.age > 29)
             .values({User.age: User.age - 10})
-            .execution_options(synchronize_session="evaluate")
+            .execution_options(synchronize_session="fetch")
         )
         eq_([john.age, jack.age, jill.age, jane.age], [25, 27, 29, 27])
         eq_(
@@ -1045,7 +1046,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         not_in(jane, sess)
 
     def test_update_with_filter_statement(self):
-        """test for [ticket:4556] """
+        """test for [ticket:4556]"""
 
         User = self.classes.User
 
@@ -1160,6 +1161,12 @@ class UpdateDeleteTest(fixtures.MappedTest):
             .update({"age": User.age - 10})
         )
         eq_(rowcount, 2)
+
+        # test future
+        result = sess.execute(
+            update(User).where(User.age > 19).values({"age": User.age - 10})
+        )
+        eq_(result.rowcount, 4)
 
     @testing.fails_if(lambda: not testing.db.dialect.supports_sane_rowcount)
     def test_delete_returns_rowcount(self):

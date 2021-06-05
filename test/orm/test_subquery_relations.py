@@ -10,10 +10,12 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import close_all_sessions
+from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import undefer
@@ -25,6 +27,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
@@ -86,6 +89,47 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         self.assert_sql_count(testing.db, go, 2)
 
+    def test_query_is_cached(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    mapper(Address, addresses),
+                    lazy="subquery",
+                    order_by=Address.id,
+                )
+            },
+        )
+        query_cache = {}
+        sess = fixture_session()
+
+        def go():
+            sess.close()
+
+            stmt = select(User).filter(User.id == 7)
+
+            sess.execute(
+                stmt, execution_options={"compiled_cache": query_cache}
+            ).one()
+
+        for i in range(3):
+            go()
+
+        qclen = len(query_cache)
+
+        for i in range(5):
+            go()
+
+        eq_(len(query_cache), qclen)
+
     def test_params_arent_cached(self):
         users, Address, addresses, User = (
             self.tables.users,
@@ -110,14 +154,14 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         u1 = (
             sess.query(User)
-            .execution_options(query_cache=query_cache)
+            .execution_options(compiled_cache=query_cache)
             .filter(User.id == 7)
             .one()
         )
 
         u2 = (
             sess.query(User)
-            .execution_options(query_cache=query_cache)
+            .execution_options(compiled_cache=query_cache)
             .filter(User.id == 8)
             .one()
         )
@@ -230,6 +274,65 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                 )
 
             self.assert_sql_count(testing.db, go, 3)
+
+    @testing.combinations((True,), (False,), argnames="use_alias")
+    @testing.combinations((1,), (2,), argnames="levels")
+    def test_multilevel_sub_options(self, use_alias, levels):
+        User, Dingaling, Address = self.user_dingaling_fixture()
+
+        s = fixture_session()
+
+        def go():
+            if use_alias:
+                u = aliased(User)
+            else:
+                u = User
+
+            q = s.query(u)
+            if levels == 1:
+                q = q.options(
+                    subqueryload(u.addresses).options(
+                        defer(Address.email_address)
+                    )
+                ).order_by(u.id)
+                eq_(
+                    [
+                        address.email_address
+                        for user in q
+                        for address in user.addresses
+                    ],
+                    [
+                        "jack@bean.com",
+                        "ed@wood.com",
+                        "ed@bettyboop.com",
+                        "ed@lala.com",
+                        "fred@fred.com",
+                    ],
+                )
+            else:
+                q = q.options(
+                    joinedload(u.addresses)
+                    .subqueryload(Address.dingalings)
+                    .options(defer(Dingaling.data))
+                ).order_by(u.id)
+                eq_(
+                    [
+                        ding.data
+                        for user in q
+                        for address in user.addresses
+                        for ding in address.dingalings
+                    ],
+                    ["ding 1/2", "ding 2/5"],
+                )
+
+        for i in range(2):
+            if levels == 1:
+                # address.email_address
+                self.assert_sql_count(testing.db, go, 7)
+            else:
+                # dingaling.data
+                self.assert_sql_count(testing.db, go, 4)
+            s.close()
 
     def test_from_get(self):
         users, Address, addresses, User = (
@@ -1117,6 +1220,36 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         else:
             self.assert_sql_count(testing.db, go, 6)
 
+    @testing.combinations(
+        ("plain",), ("cte", testing.requires.ctes), ("subquery",), id_="s"
+    )
+    def test_map_to_cte_subq(self, type_):
+        User, Address = self.classes("User", "Address")
+        users, addresses = self.tables("users", "addresses")
+
+        if type_ == "plain":
+            target = users
+        elif type_ == "cte":
+            target = select(users).cte()
+        elif type_ == "subquery":
+            target = select(users).subquery()
+
+        mapper(
+            User,
+            target,
+            properties={"addresses": relationship(Address, backref="user")},
+        )
+        mapper(Address, addresses)
+
+        sess = fixture_session()
+
+        q = (
+            sess.query(Address)
+            .options(subqueryload(Address.user))
+            .order_by(Address.id)
+        )
+        eq_(q.all(), self.static.address_user_result)
+
     def test_limit(self):
         """Limit operations combined with lazy-load relationships."""
 
@@ -1399,12 +1532,12 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         sess = fixture_session(autoflush=False)
         return User, Order, Item, sess
 
-    def _eager_config_fixture(self):
+    def _eager_config_fixture(self, default_lazy="subquery"):
         User, Address = self.classes.User, self.classes.Address
         mapper(
             User,
             self.tables.users,
-            properties={"addresses": relationship(Address, lazy="subquery")},
+            properties={"addresses": relationship(Address, lazy=default_lazy)},
         )
         mapper(Address, self.tables.addresses)
         sess = fixture_session(autoflush=False)
@@ -1428,6 +1561,32 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         User, Address, sess = self._eager_config_fixture()
 
         u1 = sess.query(User).get(8)
+        assert "addresses" in u1.__dict__
+        sess.expire(u1)
+
+        def go():
+            eq_(u1.id, 8)
+
+        self.assert_sql_count(testing.db, go, 2)
+        assert "addresses" in u1.__dict__
+
+    @testing.combinations(
+        ("raise",),
+        ("raise_on_sql",),
+        ("select",),
+        ("immediate"),
+    )
+    def test_runs_query_on_option_refresh(self, default_lazy):
+        User, Address, sess = self._eager_config_fixture(
+            default_lazy=default_lazy
+        )
+
+        u1 = (
+            sess.query(User)
+            .options(subqueryload(User.addresses))
+            .filter_by(id=8)
+            .first()
+        )
         assert "addresses" in u1.__dict__
         sess.expire(u1)
 
@@ -3443,6 +3602,118 @@ class FromSubqTest(fixtures.DeclarativeMappedTest):
                     "(SELECT b.id AS id, b.a_id AS a_id FROM b "
                     "JOIN a ON a.id = b.a_id) AS anon_2) AS anon_1 "
                     "JOIN d ON anon_1.anon_2_id = d.b_id ORDER BY d.id"
+                ),
+            )
+            s.close()
+
+
+class Issue6149Test(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Exam(ComparableEntity, Base):
+            __tablename__ = "exam"
+            id = Column(Integer, primary_key=True, autoincrement=True)
+            name = Column(String(50), nullable=False)
+            submissions = relationship(
+                "Submission", backref="exam", cascade="all", lazy=True
+            )
+
+        class Submission(ComparableEntity, Base):
+            __tablename__ = "submission"
+            id = Column(Integer, primary_key=True, autoincrement=True)
+            exam_id = Column(
+                Integer, ForeignKey("exam.id"), nullable=False
+            )  # backref exam
+            solutions = relationship(
+                "Solution",
+                backref="submission",
+                cascade="all",
+                order_by="Solution.id",
+                lazy=True,
+            )
+
+        class Solution(ComparableEntity, Base):
+            __tablename__ = "solution"
+            id = Column(Integer, primary_key=True, autoincrement=True)
+            name = Column(String(50), nullable=False)
+            submission_id = Column(
+                Integer, ForeignKey("submission.id"), nullable=False
+            )  # backref submission
+
+    @classmethod
+    def insert_data(cls, connection):
+        Exam, Submission, Solution = cls.classes(
+            "Exam", "Submission", "Solution"
+        )
+
+        s = Session(connection)
+
+        e1 = Exam(
+            id=1,
+            name="e1",
+            submissions=[
+                Submission(
+                    solutions=[Solution(name="s1"), Solution(name="s2")]
+                ),
+                Submission(
+                    solutions=[Solution(name="s3"), Solution(name="s4")]
+                ),
+            ],
+        )
+
+        s.add(e1)
+        s.commit()
+
+    def test_issue_6419(self):
+        Exam, Submission, Solution = self.classes(
+            "Exam", "Submission", "Solution"
+        )
+
+        s = fixture_session()
+
+        for i in range(3):
+            # this warns because subqueryload is from the
+            # selectinload, which means we have to unwrap the
+            # selectinload query to see what its entities are.
+            with expect_warnings(r".*must invoke lambda callable"):
+
+                # the bug is that subqueryload looks at the query that
+                # selectinload created and assumed the "entity" was
+                # compile_state._entities[0], which in this case is a
+                # Bundle, it needs to look at compile_state._entities[1].
+                # so subqueryloader passes through orig_query_entity_index
+                # so it knows where to look.
+                ex1 = (
+                    s.query(Exam)
+                    .options(
+                        selectinload(Exam.submissions).subqueryload(
+                            Submission.solutions
+                        )
+                    )
+                    .filter_by(id=1)
+                    .first()
+                )
+
+            eq_(
+                ex1,
+                Exam(
+                    name="e1",
+                    submissions=[
+                        Submission(
+                            solutions=[
+                                Solution(name="s1"),
+                                Solution(name="s2"),
+                            ]
+                        ),
+                        Submission(
+                            solutions=[
+                                Solution(name="s3"),
+                                Solution(name="s4"),
+                            ]
+                        ),
+                    ],
                 ),
             )
             s.close()

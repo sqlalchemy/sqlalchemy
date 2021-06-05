@@ -152,7 +152,11 @@ class HasCacheKey(object):
                 # efficient switch construct
 
                 if meth is STATIC_CACHE_KEY:
-                    result += (attrname, obj._static_cache_key)
+                    sck = obj._static_cache_key
+                    if sck is NO_CACHE:
+                        anon_map[NO_CACHE] = True
+                        return None
+                    result += (attrname, sck)
                 elif meth is ANON_NAME:
                     elements = util.preloaded.sql_elements
                     if isinstance(obj, elements._anonymous_label):
@@ -306,6 +310,12 @@ class CacheKey(namedtuple("CacheKey", ["key", "bindparams"])):
     def __eq__(self, other):
         return self.key == other.key
 
+    @classmethod
+    def _diff_tuples(cls, left, right):
+        ck1 = CacheKey(left, [])
+        ck2 = CacheKey(right, [])
+        return ck1._diff(ck2)
+
     def _whats_different(self, other):
 
         k1 = self.key
@@ -378,6 +388,14 @@ class CacheKey(namedtuple("CacheKey", ["key", "bindparams"])):
         _anon_map = prefix_anon_map()
         return {b.key % _anon_map: b.effective_value for b in self.bindparams}
 
+    def _apply_params_to_element(self, original_cache_key, target_element):
+        translate = {
+            k.key: v.value
+            for k, v in zip(original_cache_key.bindparams, self.bindparams)
+        }
+
+        return target_element.params(translate)
+
 
 def _clone(element, **kw):
     return element._clone()
@@ -400,6 +418,11 @@ class _CacheKey(ExtendedInternalTraversal):
     visit_anon_name = ANON_NAME
 
     visit_propagate_attrs = PROPAGATE_ATTRS
+
+    def visit_with_context_options(
+        self, attrname, obj, parent, anon_map, bindparams
+    ):
+        return tuple((fn.__code__, c_key) for fn, c_key in obj)
 
     def visit_inspectable(self, attrname, obj, parent, anon_map, bindparams):
         return (attrname, inspect(obj)._gen_cache_key(anon_map, bindparams))
@@ -714,7 +737,6 @@ class HasCopyInternals(object):
                 continue
 
             if obj is not None:
-
                 result = meth(attrname, self, obj, **kw)
                 if result is not None:
                     setattr(self, attrname, result)
@@ -1196,6 +1218,13 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
             )
         else:
             return left == right
+
+    def visit_with_context_options(
+        self, attrname, left_parent, left, right_parent, right, **kw
+    ):
+        return tuple((fn.__code__, c_key) for fn, c_key in left) == tuple(
+            (fn.__code__, c_key) for fn, c_key in right
+        )
 
     def visit_plain_obj(
         self, attrname, left_parent, left, right_parent, right, **kw

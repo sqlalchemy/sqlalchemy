@@ -156,6 +156,19 @@ class eq_type_affinity(object):
         return self.target._type_affinity is not other._type_affinity
 
 
+class eq_clause_element(object):
+    """Helper to compare SQL structures based on compare()"""
+
+    def __init__(self, target):
+        self.target = target
+
+    def __eq__(self, other):
+        return self.target.compare(other)
+
+    def __ne__(self, other):
+        return not self.target.compare(other)
+
+
 def _truncate_name(dialect, name):
     if len(name) > dialect.max_identifier_length:
         return (

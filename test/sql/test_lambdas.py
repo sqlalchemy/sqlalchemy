@@ -116,6 +116,83 @@ class LambdaElementTest(
         result = go()
         eq_(result.all(), [(2,)])
 
+    def test_in_expressions(self, user_address_fixture, connection):
+        """test #6397.   we initially were going to use two different
+        forms for "empty in" vs. regular "in", but instead we have an
+        improved substitution for "empty in".  regardless, as there's more
+        going on with these, make sure lambdas work with them including
+        caching.
+
+        """
+        users, _ = user_address_fixture
+        data = [
+            {"id": 1, "name": "u1"},
+            {"id": 2, "name": "u2"},
+            {"id": 3, "name": "u3"},
+        ]
+        connection.execute(users.insert(), data)
+
+        def go(val):
+            stmt = lambdas.lambda_stmt(lambda: select(users.c.id))
+            stmt += lambda s: s.where(users.c.name.in_(val))
+            stmt += lambda s: s.order_by(users.c.id)
+            return connection.execute(stmt)
+
+        for case in [
+            [],
+            ["u1", "u2"],
+            ["u3"],
+            [],
+            ["u1", "u2"],
+        ]:
+            with testing.assertsql.assert_engine(testing.db) as asserter_:
+                result = go(case)
+            asserter_.assert_(
+                CompiledSQL(
+                    "SELECT users.id FROM users WHERE users.name "
+                    "IN ([POSTCOMPILE_val_1]) ORDER BY users.id",
+                    params={"val_1": case},
+                )
+            )
+            eq_(result.all(), [(e["id"],) for e in data if e["name"] in case])
+
+    def test_in_expr_compile(self, user_address_fixture):
+        users, _ = user_address_fixture
+
+        def go(val):
+            stmt = lambdas.lambda_stmt(lambda: select(users.c.id))
+            stmt += lambda s: s.where(users.c.name.in_(val))
+            stmt += lambda s: s.order_by(users.c.id)
+            return stmt
+
+        # note this also requires the type of the bind is copied
+        self.assert_compile(
+            go([]),
+            "SELECT users.id FROM users "
+            "WHERE users.name IN (NULL) AND (1 != 1) ORDER BY users.id",
+            literal_binds=True,
+        )
+        self.assert_compile(
+            go(["u1", "u2"]),
+            "SELECT users.id FROM users "
+            "WHERE users.name IN ('u1', 'u2') ORDER BY users.id",
+            literal_binds=True,
+        )
+
+    def test_bind_type(self, user_address_fixture):
+        users, _ = user_address_fixture
+
+        def go(val):
+            stmt = lambdas.lambda_stmt(lambda: select(users.c.id))
+            stmt += lambda s: s.where(users.c.name == val)
+            return stmt
+
+        self.assert_compile(
+            go("u1"),
+            "SELECT users.id FROM users " "WHERE users.name = 'u1'",
+            literal_binds=True,
+        )
+
     def test_stale_checker_embedded(self):
         def go(x):
 
@@ -414,7 +491,13 @@ class LambdaElementTest(
             checkparams={"y_1": 18, "p_1": 12},
         )
 
-    def test_stmt_lambda_w_atonce_whereclause_customtrack_binds(self):
+    @testing.combinations(
+        (True,),
+        (False,),
+    )
+    def test_stmt_lambda_w_atonce_whereclause_customtrack_binds(
+        self, use_tuple
+    ):
         c2 = column("y")
 
         # this pattern is *completely unnecessary*, and I would prefer
@@ -423,14 +506,31 @@ class LambdaElementTest(
         # however I also can't come up with a reliable way to catch it.
         # so we will keep the use of "track_on" to be internal.
 
-        def go(col_expr, whereclause, p):
-            stmt = lambdas.lambda_stmt(lambda: select(col_expr))
-            stmt = stmt.add_criteria(
-                lambda stmt: stmt.where(whereclause).order_by(col_expr > p),
-                track_on=(whereclause, whereclause.right.value),
-            )
+        if use_tuple:
 
-            return stmt
+            def go(col_expr, whereclause, p):
+                stmt = lambdas.lambda_stmt(lambda: select(col_expr))
+                stmt = stmt.add_criteria(
+                    lambda stmt: stmt.where(whereclause).order_by(
+                        col_expr > p
+                    ),
+                    track_on=((whereclause,), whereclause.right.value),
+                )
+
+                return stmt
+
+        else:
+
+            def go(col_expr, whereclause, p):
+                stmt = lambdas.lambda_stmt(lambda: select(col_expr))
+                stmt = stmt.add_criteria(
+                    lambda stmt: stmt.where(whereclause).order_by(
+                        col_expr > p
+                    ),
+                    track_on=(whereclause, whereclause.right.value),
+                )
+
+                return stmt
 
         c1 = column("x")
         c2 = column("y")
@@ -1452,6 +1552,17 @@ class LambdaElementTest(
 
         is_(expr1._generate_cache_key().bindparams[0], expr1._resolved.right)
         is_(expr2._generate_cache_key().bindparams[0], expr2._resolved.right)
+
+    def test_cache_key_bindparam_matches_annotations(self):
+        t1 = table("t1", column("q"), column("p"))
+
+        def go():
+            expr = sql_util._deep_annotate((t1.c.q == 5), {"foo": "bar"})
+            stmt = coercions.expect(roles.WhereHavingRole, lambda: expr)
+            return stmt
+
+        self.assert_compile(go(), "t1.q = :q_1", checkparams={"q_1": 5})
+        self.assert_compile(go(), "t1.q = :q_1", checkparams={"q_1": 5})
 
     def test_cache_key_instance_variable_issue_incorrect(self):
         t1 = table("t1", column("q"), column("p"))

@@ -87,6 +87,11 @@ class Connection(_LegacyConnection):
     def begin(self):
         """Begin a transaction prior to autobegin occurring.
 
+        The returned object is an instance of :class:`_engine.RootTransaction`.
+        This object represents the "scope" of the transaction,
+        which completes when either the :meth:`_engine.Transaction.rollback`
+        or :meth:`_engine.Transaction.commit` method is called.
+
         The :meth:`_future.Connection.begin` method in SQLAlchemy 2.0 begins a
         transaction that normally will be begun in any case when the connection
         is first used to execute a statement.  The reason this method might be
@@ -105,7 +110,8 @@ class Connection(_LegacyConnection):
 
         The above code is not  fundamentally any different in its behavior than
         the following code  which does not use
-        :meth:`_future.Connection.begin`::
+        :meth:`_future.Connection.begin`; the below style is referred towards
+        as "commit as you go" style::
 
             with engine.connect() as conn:
                 conn.execute(...)
@@ -116,53 +122,19 @@ class Connection(_LegacyConnection):
                 conn.execute(...)
                 conn.commit()
 
-        In both examples, if an exception is raised, the transaction will not
-        be committed.  An explicit rollback of the transaction will occur,
-        including that the :meth:`_events.ConnectionEvents.rollback` event will
-        be emitted, as connection's context manager will call
-        :meth:`_future.Connection.close`, which will call
-        :meth:`_future.Connection.rollback` for any transaction in place
-        (excluding that of a SAVEPOINT).
-
         From a database point of view, the :meth:`_future.Connection.begin`
         method does not emit any SQL or change the state of the underlying
         DBAPI connection in any way; the Python DBAPI does not have any
         concept of explicit transaction begin.
 
-        :return: a :class:`_engine.Transaction` object.  This object supports
-         context-manager operation which will commit a transaction or
-         emit a rollback in case of error.
-
-        .   If this event is not being used, then there is
-        no real effect from invoking :meth:`_future.Connection.begin` ahead
-        of time as the Python DBAPI does not implement any explicit BEGIN
-
-
-        The returned object is an instance of :class:`_engine.Transaction`.
-        This object represents the "scope" of the transaction,
-        which completes when either the :meth:`_engine.Transaction.rollback`
-        or :meth:`_engine.Transaction.commit` method is called.
-
-        Nested calls to :meth:`_future.Connection.begin` on the same
-        :class:`_future.Connection` will return new
-        :class:`_engine.Transaction` objects that represent an emulated
-        transaction within the scope of the enclosing transaction, that is::
-
-            trans = conn.begin()   # outermost transaction
-            trans2 = conn.begin()  # "nested"
-            trans2.commit()        # does nothing
-            trans.commit()         # actually commits
-
-        Calls to :meth:`_engine.Transaction.commit` only have an effect when
-        invoked via the outermost :class:`_engine.Transaction` object, though
-        the :meth:`_engine.Transaction.rollback` method of any of the
-        :class:`_engine.Transaction` objects will roll back the transaction.
-
         .. seealso::
+
+            :ref:`tutorial_working_with_transactions` - in the
+            :ref:`unified_tutorial`
 
             :meth:`_future.Connection.begin_nested` - use a SAVEPOINT
 
-            :meth:`_future.Connection.begin_twophase` -
+            :meth:`_engine.Connection.begin_twophase` -
             use a two phase /XID transaction
 
             :meth:`_future.Engine.begin` - context manager available from
@@ -172,7 +144,8 @@ class Connection(_LegacyConnection):
         return super(Connection, self).begin()
 
     def begin_nested(self):
-        """Begin a nested transaction and return a transaction handle.
+        """Begin a nested transaction (i.e. SAVEPOINT) and return a transaction
+        handle.
 
         The returned object is an instance of
         :class:`_engine.NestedTransaction`.
@@ -183,9 +156,21 @@ class Connection(_LegacyConnection):
         still controls the overall ``commit`` or ``rollback`` of the
         transaction of a whole.
 
-        In SQLAlchemy 2.0, the :class:`_engine.NestedTransaction` remains
-        independent of the :class:`_future.Connection` object itself.  Calling
-        the :meth:`_future.Connection.commit` or
+        If an outer :class:`.RootTransaction` is not present on this
+        :class:`_future.Connection`, a new one is created using "autobegin".
+        This outer transaction may be completed using "commit-as-you-go" style
+        usage, by calling upon :meth:`_future.Connection.commit` or
+        :meth:`_future.Connection.rollback`.
+
+        .. tip::
+
+            The "autobegin" behavior of :meth:`_future.Connection.begin_nested`
+            is specific to :term:`2.0 style` use; for legacy behaviors, see
+            :meth:`_engine.Connection.begin_nested`.
+
+        The :class:`_engine.NestedTransaction` remains independent of the
+        :class:`_future.Connection` object itself. Calling the
+        :meth:`_future.Connection.commit` or
         :meth:`_future.Connection.rollback` will always affect the actual
         containing database transaction itself, and not the SAVEPOINT itself.
         When a database transaction is committed, any SAVEPOINTs that have been
@@ -374,16 +359,12 @@ class Engine(_LegacyEngine):
 
         def __enter__(self):
             self.transaction = self.conn.begin()
+            self.transaction.__enter__()
             return self.conn
 
         def __exit__(self, type_, value, traceback):
             try:
-                if type_ is not None:
-                    if self.transaction.is_active:
-                        self.transaction.rollback()
-                else:
-                    if self.transaction.is_active:
-                        self.transaction.commit()
+                self.transaction.__exit__(type_, value, traceback)
             finally:
                 self.conn.close()
 

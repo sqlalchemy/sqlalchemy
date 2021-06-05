@@ -10,10 +10,10 @@ functionality."""
 
 import os
 import re
-import warnings
 
 from . import compat
 from .langhelpers import _hash_limit_string
+from .langhelpers import _warnings_warn
 from .langhelpers import decorator
 from .langhelpers import inject_docstring_text
 from .langhelpers import inject_param_text
@@ -26,42 +26,42 @@ if os.getenv("SQLALCHEMY_WARN_20", "false").lower() in ("true", "yes", "1"):
     SQLALCHEMY_WARN_20 = True
 
 
-def _warn_with_version(msg, version, type_, stacklevel):
-    is_20 = issubclass(type_, exc.RemovedIn20Warning)
-
-    if is_20 and not SQLALCHEMY_WARN_20:
+def _warn_with_version(msg, version, type_, stacklevel, code=None):
+    if issubclass(type_, exc.RemovedIn20Warning) and not SQLALCHEMY_WARN_20:
         return
 
-    if is_20:
-        msg += " (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)"
-
-    warn = type_(msg)
+    warn = type_(msg, code=code)
     warn.deprecated_since = version
 
-    warnings.warn(warn, stacklevel=stacklevel + 1)
+    _warnings_warn(warn, stacklevel=stacklevel + 1)
 
 
-def warn_deprecated(msg, version, stacklevel=3):
-    _warn_with_version(msg, version, exc.SADeprecationWarning, stacklevel)
+def warn_deprecated(msg, version, stacklevel=3, code=None):
+    _warn_with_version(
+        msg, version, exc.SADeprecationWarning, stacklevel, code=code
+    )
 
 
-def warn_deprecated_limited(msg, args, version, stacklevel=3):
+def warn_deprecated_limited(msg, args, version, stacklevel=3, code=None):
     """Issue a deprecation warning with a parameterized string,
     limiting the number of registrations.
 
     """
     if args:
         msg = _hash_limit_string(msg, 10, args)
-    _warn_with_version(msg, version, exc.SADeprecationWarning, stacklevel)
+    _warn_with_version(
+        msg, version, exc.SADeprecationWarning, stacklevel, code=code
+    )
 
 
-def warn_deprecated_20(msg, stacklevel=3):
+def warn_deprecated_20(msg, stacklevel=3, code=None):
 
     _warn_with_version(
         msg,
         exc.RemovedIn20Warning.deprecated_since,
         exc.RemovedIn20Warning,
         stacklevel,
+        code=code,
     )
 
 

@@ -39,6 +39,7 @@ __all__ = ["scoped_session"]
         "expunge",
         "expunge_all",
         "flush",
+        "get",
         "get_bind",
         "is_modified",
         "bulk_save_objects",

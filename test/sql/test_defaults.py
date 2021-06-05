@@ -2,7 +2,6 @@ import datetime
 import itertools
 
 import sqlalchemy as sa
-from sqlalchemy import Boolean
 from sqlalchemy import cast
 from sqlalchemy import DateTime
 from sqlalchemy import exc
@@ -408,6 +407,7 @@ class DefaultRoundTripTest(fixtures.TablesTest):
 
         class MyType(TypeDecorator):
             impl = String(50)
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 if value is not None:
@@ -1062,25 +1062,6 @@ class PKIncrementTest(fixtures.TablesTest):
         )
 
 
-class EmptyInsertTest(fixtures.TestBase):
-    __backend__ = True
-
-    @testing.fails_on("oracle", "FIXME: unknown")
-    def test_empty_insert(self, metadata, connection):
-        t1 = Table(
-            "t1",
-            metadata,
-            Column("is_true", Boolean, server_default=("1")),
-        )
-        metadata.create_all(connection)
-        connection.execute(t1.insert())
-        eq_(
-            1,
-            connection.scalar(select(func.count(text("*"))).select_from(t1)),
-        )
-        eq_(True, connection.scalar(t1.select()))
-
-
 class AutoIncrementTest(fixtures.TestBase):
 
     __backend__ = True
@@ -1088,7 +1069,11 @@ class AutoIncrementTest(fixtures.TestBase):
     @testing.requires.empty_inserts
     def test_autoincrement_single_col(self, metadata, connection):
         single = Table(
-            "single", self.metadata, Column("id", Integer, primary_key=True)
+            "single",
+            self.metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
         )
         self.metadata.create_all(connection)
 
@@ -1100,6 +1085,7 @@ class AutoIncrementTest(fixtures.TestBase):
     def test_autoinc_detection_no_affinity(self):
         class MyType(TypeDecorator):
             impl = TypeEngine
+            cache_ok = True
 
         assert MyType()._type_affinity is None
         t = Table("x", MetaData(), Column("id", MyType(), primary_key=True))
@@ -1227,6 +1213,8 @@ class SpecialTypePKTest(fixtures.TestBase):
     def setup_test_class(cls):
         class MyInteger(TypeDecorator):
             impl = Integer
+
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 if value is None:

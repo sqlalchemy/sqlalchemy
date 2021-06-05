@@ -1,4 +1,5 @@
 import sqlalchemy as sa
+from sqlalchemy import BigInteger
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import Sequence
@@ -13,6 +14,8 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_true
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import EachOf
@@ -201,6 +204,44 @@ class SequenceExecTest(fixtures.TestBase):
             else:
                 eq_(r.inserted_primary_key, (None,))
 
+    @testing.combinations(
+        ("implicit_returning",),
+        ("no_implicit_returning",),
+        ("explicit_returning", testing.requires.returning),
+        argnames="returning",
+    )
+    @testing.requires.multivalues_inserts
+    def test_seq_multivalues_inline(self, metadata, testing_engine, returning):
+        t1 = Table(
+            "t",
+            metadata,
+            Column("x", Integer, Sequence("my_seq"), primary_key=True),
+            Column("data", String(50)),
+        )
+
+        e = engines.testing_engine(
+            options={
+                "implicit_returning": returning != "no_implicit_returning"
+            }
+        )
+        metadata.create_all(e)
+        with e.begin() as conn:
+
+            stmt = t1.insert().values(
+                [{"data": "d1"}, {"data": "d2"}, {"data": "d3"}]
+            )
+            if returning == "explicit_returning":
+                stmt = stmt.returning(t1.c.x)
+
+            r = conn.execute(stmt)
+            if returning == "explicit_returning":
+                eq_(r.all(), [(1,), (2,), (3,)])
+
+            eq_(
+                conn.execute(t1.select().order_by(t1.c.x)).all(),
+                [(1, "d1"), (2, "d2"), (3, "d3")],
+            )
+
     @testing.requires.returning
     @testing.provide_metadata
     def test_inserted_pk_implicit_returning(self):
@@ -347,6 +388,47 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         result = connection.execute(t.insert())
         eq_(result.inserted_primary_key, (1,))
+
+    @testing.requires.sequences_as_server_defaults
+    @testing.provide_metadata
+    def test_shared_sequence(self, connection):
+        # test case for #6071
+        common_seq = Sequence("common_sequence", metadata=self.metadata)
+        Table(
+            "table_1",
+            self.metadata,
+            Column(
+                "id",
+                Integer,
+                common_seq,
+                server_default=common_seq.next_value(),
+                primary_key=True,
+            ),
+        )
+        Table(
+            "table_2",
+            self.metadata,
+            Column(
+                "id",
+                Integer,
+                common_seq,
+                server_default=common_seq.next_value(),
+                primary_key=True,
+            ),
+        )
+
+        self.metadata.create_all(connection)
+        is_true(self._has_sequence(connection, "common_sequence"))
+        is_true(testing.db.dialect.has_table(connection, "table_1"))
+        is_true(testing.db.dialect.has_table(connection, "table_2"))
+        self.metadata.drop_all(connection)
+        is_false(self._has_sequence(connection, "common_sequence"))
+        is_false(testing.db.dialect.has_table(connection, "table_1"))
+        is_false(testing.db.dialect.has_table(connection, "table_2"))
+
+    def test_next_value_type(self):
+        seq = Sequence("my_sequence", data_type=BigInteger)
+        assert isinstance(seq.next_value().type, BigInteger)
 
 
 class FutureSequenceTest(fixtures.FutureEngineMixin, SequenceTest):
@@ -525,16 +607,26 @@ class SequenceAsServerDefaultTest(
         asserter.assert_(
             AllOf(
                 CompiledSQL("DROP TABLE t_seq_test_2", {}),
+                CompiledSQL("DROP TABLE t_seq_test", {}),
+            ),
+            AllOf(
+                # dropped as part of metadata level
+                CompiledSQL("DROP SEQUENCE t_seq", {}),
+                CompiledSQL("DROP SEQUENCE t_seq_2", {}),
+            ),
+        )
+
+    def test_drop_ordering_single_table(self):
+        with self.sql_execution_asserter(testing.db) as asserter:
+            for table in self.tables_test_metadata.tables.values():
+                table.drop(testing.db, checkfirst=False)
+
+        asserter.assert_(
+            AllOf(
+                CompiledSQL("DROP TABLE t_seq_test_2", {}),
                 EachOf(
                     CompiledSQL("DROP TABLE t_seq_test", {}),
-                    CompiledSQL(
-                        "DROP SEQUENCE t_seq",  # dropped as part of t_seq_test
-                        {},
-                    ),
+                    CompiledSQL("DROP SEQUENCE t_seq", {}),
                 ),
-            ),
-            CompiledSQL(
-                "DROP SEQUENCE t_seq_2",  # dropped as part of metadata level
-                {},
-            ),
+            )
         )

@@ -177,6 +177,11 @@ suppress any warnings is selected::
 
     SQLALCHEMY_WARN_20=1 python -W always::DeprecationWarning test3.py
 
+Since the reported warning location is not always in the correct place, locating
+the offending code may be difficult without the full stacktrace. This can be achieved
+by transforming the warnings to exceptions by specifying the ``error`` warning filter,
+using Python option ``-W error::DeprecationWarning``.
+
 .. _warnings filter: https://docs.python.org/3/library/warnings.html#the-warnings-filter
 
 With warnings turned on, our program now has a lot to say::
@@ -268,7 +273,7 @@ the SQLAlchemy project itself, the approach taken is as follows:
             r".*DefaultGenerator.execute\(\)",
         ]:
           warnings.filterwarnings(
-              "error", message=msg, category=sa_exc.RemovedIn20Warning,
+              "error", message=msg, category=exc.RemovedIn20Warning,
           )
 
         # for all other warnings, just log
@@ -1976,8 +1981,6 @@ as well as to allow the use of "subtransactions", which are also removed in
 Session "subtransaction" behavior removed
 ------------------------------------------
 
-TODO: more detail
-
 See the section :ref:`session_subtransactions` for background on this
 change.
 
@@ -1987,8 +1990,6 @@ change.
 
 Dogpile cache recipe and Horizontal Sharding uses new Session API
 ------------------------------------------------------------------
-
-TODO: more detail
 
 As the :class:`_orm.Query` object becomes legacy, these two recipes
 which previously relied upon subclassing of the :class:`_orm.Query`
@@ -2000,8 +2001,6 @@ an example.
 
 Baked Query Extension Superseded by built-in caching
 -----------------------------------------------------
-
-TODO: more detail
 
 The baked query extension is superseded by the built in caching system and
 is no longer used by the ORM internals.

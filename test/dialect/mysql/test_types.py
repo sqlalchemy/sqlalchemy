@@ -450,7 +450,7 @@ class TypeCompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(mysql.DATETIME(fsp=4), "DATETIME(4)")
 
     def test_time_generic(self):
-        """"Exercise TIME."""
+        """Exercise TIME."""
 
         self.assert_compile(mysql.TIME(), "TIME")
 
@@ -653,6 +653,7 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
 
     class MyTime(TypeDecorator):
         impl = TIMESTAMP
+        cache_ok = True
 
     @testing.combinations(
         (TIMESTAMP,),

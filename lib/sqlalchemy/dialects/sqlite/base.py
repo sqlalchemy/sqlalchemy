@@ -923,7 +923,7 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
 
     e.g.::
 
-        2011-03-15 12:05:57.10558
+        2021-03-15 12:05:57.105542
 
     The storage format can be customized to some degree using the
     ``storage_format`` and ``regexp`` parameters, such as::
@@ -1298,6 +1298,11 @@ class SQLiteCompiler(compiler.SQLCompiler):
             self.process(binary.left, **kw),
             self.process(binary.right, **kw),
         )
+
+    def visit_empty_set_op_expr(self, type_, expand_op):
+        # slightly old SQLite versions don't seem to be able to handle
+        # the empty set impl
+        return self.visit_empty_set_expr(type_)
 
     def visit_empty_set_expr(self, element_types):
         return "SELECT %s FROM (SELECT %s) WHERE 1!=1" % (
@@ -1791,11 +1796,17 @@ class SQLiteDialect(default.DefaultDialect):
     supports_alter = False
     supports_unicode_statements = True
     supports_unicode_binds = True
+
+    # SQlite supports "DEFAULT VALUES" but *does not* support
+    # "VALUES (DEFAULT)"
     supports_default_values = True
+    supports_default_metavalue = False
+
     supports_empty_insert = False
     supports_cast = True
     supports_multivalues_insert = True
     tuple_in_values = True
+    supports_statement_cache = True
 
     default_paramstyle = "qmark"
     execution_ctx_cls = SQLiteExecutionContext
@@ -1995,6 +2006,8 @@ class SQLiteDialect(default.DefaultDialect):
         return [row[0] for row in rs]
 
     def has_table(self, connection, table_name, schema=None):
+        self._ensure_has_table_connection(connection)
+
         info = self._get_table_pragma(
             connection, "table_info", table_name, schema=schema
         )

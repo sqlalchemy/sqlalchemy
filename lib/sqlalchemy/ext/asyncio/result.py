@@ -7,21 +7,11 @@
 
 import operator
 
-from ... import util
 from ...engine.result import _NO_ROW
 from ...engine.result import FilterResult
 from ...engine.result import FrozenResult
 from ...engine.result import MergedResult
 from ...util.concurrency import greenlet_spawn
-
-if util.TYPE_CHECKING:
-    from typing import Any
-    from typing import List
-    from typing import Optional
-    from typing import Int
-    from typing import Iterator
-    from typing import Mapping
-    from ...engine.result import Row
 
 
 class AsyncCommon(FilterResult):
@@ -76,7 +66,6 @@ class AsyncResult(AsyncCommon):
         return self
 
     def columns(self, *col_expressions):
-        # type: (*object) -> AsyncResult
         r"""Establish the columns that should be returned in each row.
 
         Refer to :meth:`_engine.Result.columns` in the synchronous
@@ -87,7 +76,6 @@ class AsyncResult(AsyncCommon):
         return self._column_slices(col_expressions)
 
     async def partitions(self, size=None):
-        # type: (Optional[Int]) -> Iterator[List[Any]]
         """Iterate through sub-lists of rows of the size given.
 
         An async iterator is returned::
@@ -114,7 +102,6 @@ class AsyncResult(AsyncCommon):
                 break
 
     async def fetchone(self):
-        # type: () -> Row
         """Fetch one row.
 
         When all rows are exhausted, returns None.
@@ -137,7 +124,6 @@ class AsyncResult(AsyncCommon):
             return row
 
     async def fetchmany(self, size=None):
-        # type: (Optional[Int]) -> List[Row]
         """Fetch many rows.
 
         When all rows are exhausted, returns an empty list.
@@ -159,7 +145,6 @@ class AsyncResult(AsyncCommon):
         return await greenlet_spawn(self._manyrow_getter, self, size)
 
     async def all(self):
-        # type: () -> List[Row]
         """Return all rows in a list.
 
         Closes the result set after invocation.   Subsequent invocations
@@ -182,7 +167,6 @@ class AsyncResult(AsyncCommon):
             return row
 
     async def first(self):
-        # type: () -> Row
         """Fetch the first row or None if no row is present.
 
         Closes the result set and discards remaining rows.
@@ -206,7 +190,6 @@ class AsyncResult(AsyncCommon):
         return await greenlet_spawn(self._only_one_row, False, False, False)
 
     async def one_or_none(self):
-        # type: () -> Optional[Row]
         """Return at most one result or raise an exception.
 
         Returns ``None`` if the result has no rows.
@@ -229,7 +212,6 @@ class AsyncResult(AsyncCommon):
         return await greenlet_spawn(self._only_one_row, True, False, False)
 
     async def scalar_one(self):
-        # type: () -> Any
         """Return exactly one scalar result or raise an exception.
 
         This is equivalent to calling :meth:`_asyncio.AsyncResult.scalars` and
@@ -245,7 +227,6 @@ class AsyncResult(AsyncCommon):
         return await greenlet_spawn(self._only_one_row, True, True, True)
 
     async def scalar_one_or_none(self):
-        # type: () -> Optional[Any]
         """Return exactly one or no scalar result.
 
         This is equivalent to calling :meth:`_asyncio.AsyncResult.scalars` and
@@ -261,7 +242,6 @@ class AsyncResult(AsyncCommon):
         return await greenlet_spawn(self._only_one_row, True, False, True)
 
     async def one(self):
-        # type: () -> Row
         """Return exactly one row or raise an exception.
 
         Raises :class:`.NoResultFound` if the result returns no
@@ -293,7 +273,6 @@ class AsyncResult(AsyncCommon):
         return await greenlet_spawn(self._only_one_row, True, True, False)
 
     async def scalar(self):
-        # type: () -> Optional[Any]
         """Fetch the first column of the first row, and close the result set.
 
         Returns None if there are no rows to fetch.
@@ -349,7 +328,6 @@ class AsyncResult(AsyncCommon):
         return MergedResult(self._metadata, (self,) + others)
 
     def scalars(self, index=0):
-        # type: (Int) -> AsyncScalarResult
         """Return an :class:`_asyncio.AsyncScalarResult` filtering object which
         will return single elements rather than :class:`_row.Row` objects.
 
@@ -366,7 +344,6 @@ class AsyncResult(AsyncCommon):
         return AsyncScalarResult(self._real_result, index)
 
     def mappings(self):
-        # type() -> AsyncMappingResult
         """Apply a mappings filter to returned rows, returning an instance of
         :class:`_asyncio.AsyncMappingResult`.
 
@@ -413,7 +390,6 @@ class AsyncScalarResult(AsyncCommon):
         self._unique_filter_state = real_result._unique_filter_state
 
     def unique(self, strategy=None):
-        # type: () -> AsyncScalarResult
         """Apply unique filtering to the objects returned by this
         :class:`_asyncio.AsyncScalarResult`.
 
@@ -424,7 +400,6 @@ class AsyncScalarResult(AsyncCommon):
         return self
 
     async def partitions(self, size=None):
-        # type: (Optional[Int]) -> Iterator[List[Any]]
         """Iterate through sub-lists of elements of the size given.
 
         Equivalent to :meth:`_asyncio.AsyncResult.partitions` except that
@@ -443,13 +418,11 @@ class AsyncScalarResult(AsyncCommon):
                 break
 
     async def fetchall(self):
-        # type: () -> List[Any]
         """A synonym for the :meth:`_asyncio.AsyncScalarResult.all` method."""
 
         return await greenlet_spawn(self._allrows)
 
     async def fetchmany(self, size=None):
-        # type: (Optional[Int]) -> List[Any]
         """Fetch many objects.
 
         Equivalent to :meth:`_asyncio.AsyncResult.fetchmany` except that
@@ -460,7 +433,6 @@ class AsyncScalarResult(AsyncCommon):
         return await greenlet_spawn(self._manyrow_getter, self, size)
 
     async def all(self):
-        # type: () -> List[Any]
         """Return all scalar values in a list.
 
         Equivalent to :meth:`_asyncio.AsyncResult.all` except that
@@ -481,7 +453,6 @@ class AsyncScalarResult(AsyncCommon):
             return row
 
     async def first(self):
-        # type: () -> Optional[Any]
         """Fetch the first object or None if no object is present.
 
         Equivalent to :meth:`_asyncio.AsyncResult.first` except that
@@ -492,7 +463,6 @@ class AsyncScalarResult(AsyncCommon):
         return await greenlet_spawn(self._only_one_row, False, False, False)
 
     async def one_or_none(self):
-        # type: () -> Optional[Any]
         """Return at most one object or raise an exception.
 
         Equivalent to :meth:`_asyncio.AsyncResult.one_or_none` except that
@@ -503,7 +473,6 @@ class AsyncScalarResult(AsyncCommon):
         return await greenlet_spawn(self._only_one_row, True, False, False)
 
     async def one(self):
-        # type: () -> Any
         """Return exactly one object or raise an exception.
 
         Equivalent to :meth:`_asyncio.AsyncResult.one` except that
@@ -555,7 +524,6 @@ class AsyncMappingResult(AsyncCommon):
         return self._metadata.keys
 
     def unique(self, strategy=None):
-        # type: () -> AsyncMappingResult
         """Apply unique filtering to the objects returned by this
         :class:`_asyncio.AsyncMappingResult`.
 
@@ -566,12 +534,10 @@ class AsyncMappingResult(AsyncCommon):
         return self
 
     def columns(self, *col_expressions):
-        # type: (*object) -> AsyncMappingResult
         r"""Establish the columns that should be returned in each row."""
         return self._column_slices(col_expressions)
 
     async def partitions(self, size=None):
-        # type: (Optional[Int]) -> Iterator[List[Mapping]]
         """Iterate through sub-lists of elements of the size given.
 
         Equivalent to :meth:`_asyncio.AsyncResult.partitions` except that
@@ -590,13 +556,11 @@ class AsyncMappingResult(AsyncCommon):
                 break
 
     async def fetchall(self):
-        # type: () -> List[Mapping]
         """A synonym for the :meth:`_asyncio.AsyncMappingResult.all` method."""
 
         return await greenlet_spawn(self._allrows)
 
     async def fetchone(self):
-        # type: () -> Mapping
         """Fetch one object.
 
         Equivalent to :meth:`_asyncio.AsyncResult.fetchone` except that
@@ -612,7 +576,6 @@ class AsyncMappingResult(AsyncCommon):
             return row
 
     async def fetchmany(self, size=None):
-        # type: (Optional[Int]) -> List[Mapping]
         """Fetch many objects.
 
         Equivalent to :meth:`_asyncio.AsyncResult.fetchmany` except that
@@ -624,7 +587,6 @@ class AsyncMappingResult(AsyncCommon):
         return await greenlet_spawn(self._manyrow_getter, self, size)
 
     async def all(self):
-        # type: () -> List[Mapping]
         """Return all scalar values in a list.
 
         Equivalent to :meth:`_asyncio.AsyncResult.all` except that
@@ -646,7 +608,6 @@ class AsyncMappingResult(AsyncCommon):
             return row
 
     async def first(self):
-        # type: () -> Optional[Mapping]
         """Fetch the first object or None if no object is present.
 
         Equivalent to :meth:`_asyncio.AsyncResult.first` except that
@@ -658,7 +619,6 @@ class AsyncMappingResult(AsyncCommon):
         return await greenlet_spawn(self._only_one_row, False, False, False)
 
     async def one_or_none(self):
-        # type: () -> Optional[Mapping]
         """Return at most one object or raise an exception.
 
         Equivalent to :meth:`_asyncio.AsyncResult.one_or_none` except that
@@ -669,7 +629,6 @@ class AsyncMappingResult(AsyncCommon):
         return await greenlet_spawn(self._only_one_row, True, False, False)
 
     async def one(self):
-        # type: () -> Mapping
         """Return exactly one object or raise an exception.
 
         Equivalent to :meth:`_asyncio.AsyncResult.one` except that

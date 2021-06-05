@@ -666,6 +666,8 @@ to it using :class:`_orm.aliased` refer to distinct sets of columns::
     User(id=2, name='sandy', fullname='Sandy Cheeks') Address(id=3, email_address='squirrel@squirrelpower.org')
 
 
+.. _orm_queryguide_select_from:
+
 Controlling what to Join From
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -694,12 +696,50 @@ can be used subsequent, the :meth:`_sql.Select.select_from` method may also
 be used::
 
 
-    >>> stmt = select(Address).select_from(User).join(User.addresses).where(User.name == 'sandy')
+    >>> stmt = select(Address).select_from(User).join(Address).where(User.name == 'sandy')
     >>> print(stmt)
     SELECT address.id, address.user_id, address.email_address
     FROM user_account JOIN address ON user_account.id = address.user_id
     WHERE user_account.name = :name_1
 
+.. tip::
+
+    The :meth:`_sql.Select.select_from` method does not actually have the
+    final say on the order of tables in the FROM clause.    If the statement
+    also refers to a :class:`_sql.Join` construct that refers to existing
+    tables in a different order, the :class:`_sql.Join` construct takes
+    precedence.    When we use methods like :meth:`_sql.Select.join`
+    and :meth:`_sql.Select.join_from`, these methods are ultimately creating
+    such a :class:`_sql.Join` object.   Therefore we can see the contents
+    of :meth:`_sql.Select.select_from` being overridden in a case like this::
+
+        >>> stmt = select(Address).select_from(User).join(Address.user).where(User.name == 'sandy')
+        >>> print(stmt)
+        SELECT address.id, address.user_id, address.email_address
+        FROM address JOIN user_account ON user_account.id = address.user_id
+        WHERE user_account.name = :name_1
+
+    Where above, we see that the FROM clause is ``address JOIN user_account``,
+    even though we stated ``select_from(User)`` first. Because of the
+    ``.join(Address.user)`` method call, the statement is ultimately equivalent
+    to the following::
+
+        >>> user_table = User.__table__
+        >>> address_table = Address.__table__
+        >>> from sqlalchemy.sql import join
+        >>>
+        >>> j = address_table.join(user_table, user_table.c.id == address_table.c.user_id)
+        >>> stmt = (
+        ...     select(address_table).select_from(user_table).select_from(j).
+        ...     where(user_table.c.name == 'sandy')
+        ... )
+        >>> print(stmt)
+        SELECT address.id, address.user_id, address.email_address
+        FROM address JOIN user_account ON user_account.id = address.user_id
+        WHERE user_account.name = :name_1
+
+    The :class:`_sql.Join` construct above is added as another entry in the
+    :meth:`_sql.Select.select_from` list which supersedes the previous entry.
 
 Special Relationship Operators
 ------------------------------
@@ -787,6 +827,20 @@ model of a highly isolated transaction, and to the degree that data is
 expected to change within the transaction outside of the local changes being
 made, those use cases would be handled using explicit steps such as this method.
 
+Using ``populate_existing``, any set of objects that matches a query
+can be refreshed, and it also allows control over relationship loader options.
+E.g. to refresh an instance while also refreshing a related set of objects::
+
+    stmt = (
+        select(User).
+        where(User.name.in_(names)).
+        execution_options(populate_existing=True).
+        options(selectinload(User.addresses)
+    )
+    # will refresh all matching User objects as well as the related
+    # Address objects
+    users = session.execute(stmt).scalars().all()
+
 Another use case for ``populate_existing`` is in support of various
 attribute loading features that can change how an attribute is loaded on
 a per-query basis.   Options for which this apply include:
@@ -869,11 +923,21 @@ When ``yield_per`` is used, the
 set for the Core execution, so that a streaming / server side cursor will be
 used if the backend supports it [1]_
 
-
 The ``yield_per`` execution option **is not compatible with subqueryload eager
 loading or joinedload eager loading when using collections**.  It is
 potentially compatible with selectinload eager loading, **provided the database
 driver supports multiple, independent cursors** [2]_ .
+
+Additionally, the ``yield_per`` execution option is not compatible
+with the :meth:`_engine.Result.unique` method; as this method relies upon
+storing a complete set of identities for all rows, it would necessarily
+defeat the purpose of using ``yield_per`` which is to handle an arbitrarily
+large number of rows.
+
+.. versionchanged:: 1.4.6  An exception is raised when ORM rows are fetched
+   from a :class:`_engine.Result` object that makes use of the
+   :meth:`_engine.Result.unique` filter, at the same time as the ``yield_per``
+   execution option is used.
 
 The ``yield_per`` execution option is equvialent to the
 :meth:`_orm.Query.yield_per` method in :term:`1.x style` ORM queries.

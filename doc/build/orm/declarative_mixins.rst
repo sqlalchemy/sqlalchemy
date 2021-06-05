@@ -16,9 +16,11 @@ or :func:`_orm.declarative_base` functions.
 
 An example of some commonly mixed-in idioms is below::
 
+    from sqlalchemy.orm import declarative_mixin
     from sqlalchemy.orm import declared_attr
 
-    class MyMixin(object):
+    @declarative_mixin
+    class MyMixin:
 
         @declared_attr
         def __tablename__(cls):
@@ -36,6 +38,14 @@ Where above, the class ``MyModel`` will contain an "id" column
 as the primary key, a ``__tablename__`` attribute that derives
 from the name of the class itself, as well as ``__table_args__``
 and ``__mapper_args__`` defined by the ``MyMixin`` mixin class.
+
+.. tip::
+
+  The use of the :func:`_orm.declarative_mixin` class decorator marks a
+  particular class as providing the service of providing SQLAlchemy declarative
+  assignments as a mixin for other classes.  This decorator is currently only
+  necessary to provide a hint to the :ref:`Mypy plugin <mypy_toplevel>` that
+  this class should be handled as part of declarative mappings.
 
 There's no fixed convention over whether ``MyMixin`` precedes
 ``Base`` or not.  Normal Python method resolution rules apply, and
@@ -61,7 +71,7 @@ using the ``cls`` argument of the :func:`_orm.declarative_base` function::
 
     from sqlalchemy.orm import declared_attr
 
-    class Base(object):
+    class Base:
         @declared_attr
         def __tablename__(cls):
             return cls.__name__.lower()
@@ -87,7 +97,8 @@ Mixing in Columns
 The most basic way to specify a column on a mixin is by simple
 declaration::
 
-    class TimestampMixin(object):
+    @declarative_mixin
+    class TimestampMixin:
         created_at = Column(DateTime, default=func.now())
 
     class MyModel(TimestampMixin, Base):
@@ -124,7 +135,8 @@ patterns common to many classes can be defined as callables::
 
     from sqlalchemy.orm import declared_attr
 
-    class ReferenceAddressMixin(object):
+    @declarative_mixin
+    class ReferenceAddressMixin:
         @declared_attr
         def address_id(cls):
             return Column(Integer, ForeignKey('address.id'))
@@ -143,6 +155,7 @@ referenced by ``__mapper_args__`` to a limited degree, currently
 by ``polymorphic_on`` and ``version_id_col``; the declarative extension
 will resolve them at class construction time::
 
+    @declarative_mixin
     class MyMixin:
         @declared_attr
         def type_(cls):
@@ -167,7 +180,8 @@ contents. Below is an example which combines a foreign key column and a
 relationship so that two classes ``Foo`` and ``Bar`` can both be configured to
 reference a common target class via many-to-one::
 
-    class RefTargetMixin(object):
+    @declarative_mixin
+    class RefTargetMixin:
         @declared_attr
         def target_id(cls):
             return Column('target_id', ForeignKey('target.id'))
@@ -206,7 +220,8 @@ Declarative will be using as it calls the methods on its own, thus using
 The canonical example is the primaryjoin condition that depends upon
 another mixed-in column::
 
-    class RefTargetMixin(object):
+  @declarative_mixin
+  class RefTargetMixin:
         @declared_attr
         def target_id(cls):
             return Column('target_id', ForeignKey('target.id'))
@@ -228,7 +243,8 @@ actually going to map to our table.
 
 The condition above is resolved using a lambda::
 
-    class RefTargetMixin(object):
+    @declarative_mixin
+    class RefTargetMixin:
         @declared_attr
         def target_id(cls):
             return Column('target_id', ForeignKey('target.id'))
@@ -241,7 +257,8 @@ The condition above is resolved using a lambda::
 
 or alternatively, the string form (which ultimately generates a lambda)::
 
-    class RefTargetMixin(object):
+    @declarative_mixin
+    class RefTargetMixin:
         @declared_attr
         def target_id(cls):
             return Column('target_id', ForeignKey('target.id'))
@@ -266,7 +283,8 @@ etc. ultimately involve references to columns, and therefore, when
 used with declarative mixins, have the :class:`_orm.declared_attr`
 requirement so that no reliance on copying is needed::
 
-    class SomethingMixin(object):
+    @declarative_mixin
+    class SomethingMixin:
 
         @declared_attr
         def dprop(cls):
@@ -279,7 +297,8 @@ The :func:`.column_property` or other construct may refer
 to other columns from the mixin.  These are copied ahead of time before
 the :class:`_orm.declared_attr` is invoked::
 
-    class SomethingMixin(object):
+    @declarative_mixin
+    class SomethingMixin:
         x = Column(Integer)
 
         y = Column(Integer)
@@ -306,13 +325,16 @@ target a different type of child object.  Below is an
 string values to an implementing class::
 
     from sqlalchemy import Column, Integer, ForeignKey, String
-    from sqlalchemy.orm import relationship
     from sqlalchemy.ext.associationproxy import association_proxy
-    from sqlalchemy.orm import declarative_base, declared_attr
+    from sqlalchemy.orm import declarative_base
+    from sqlalchemy.orm import declarative_mixin
+    from sqlalchemy.orm import declared_attr
+    from sqlalchemy.orm import relationship
 
     Base = declarative_base()
 
-    class HasStringCollection(object):
+    @declarative_mixin
+    class HasStringCollection:
         @declared_attr
         def _strings(cls):
             class StringAttribute(Base):
@@ -389,8 +411,10 @@ correct answer for each.
 For example, to create a mixin that gives every class a simple table
 name based on class name::
 
+    from sqlalchemy.orm import declarative_mixin
     from sqlalchemy.orm import declared_attr
 
+    @declarative_mixin
     class Tablename:
         @declared_attr
         def __tablename__(cls):
@@ -411,10 +435,12 @@ Alternatively, we can modify our ``__tablename__`` function to return
 the effect of those subclasses being mapped with single table inheritance
 against the parent::
 
+    from sqlalchemy.orm import declarative_mixin
     from sqlalchemy.orm import declared_attr
     from sqlalchemy.orm import has_inherited_table
 
-    class Tablename(object):
+    @declarative_mixin
+    class Tablename:
         @declared_attr
         def __tablename__(cls):
             if has_inherited_table(cls):
@@ -443,7 +469,8 @@ invoked for the **base class only** in the hierarchy.  Below, only the
 called ``id``; the mapping will fail on ``Engineer``, which is not given
 a primary key::
 
-    class HasId(object):
+    @declarative_mixin
+    class HasId:
         @declared_attr
         def id(cls):
             return Column('id', Integer, primary_key=True)
@@ -466,7 +493,8 @@ foreign key.  We can achieve this as a mixin by using the
 function should be invoked **for each class in the hierarchy**, in *almost*
 (see warning below) the same way as it does for ``__tablename__``::
 
-    class HasIdMixin(object):
+    @declarative_mixin
+    class HasIdMixin:
         @declared_attr.cascading
         def id(cls):
             if has_inherited_table(cls):
@@ -509,12 +537,15 @@ define on the class itself. The
 here to create user-defined collation routines that pull
 from multiple collections::
 
+    from sqlalchemy.orm import declarative_mixin
     from sqlalchemy.orm import declared_attr
 
-    class MySQLSettings(object):
+    @declarative_mixin
+    class MySQLSettings:
         __table_args__ = {'mysql_engine':'InnoDB'}
 
-    class MyOtherMixin(object):
+    @declarative_mixin
+    class MyOtherMixin:
         __table_args__ = {'info':'foo'}
 
     class MyModel(MySQLSettings, MyOtherMixin, Base):
@@ -536,7 +567,8 @@ To define a named, potentially multicolumn :class:`.Index` that applies to all
 tables derived from a mixin, use the "inline" form of :class:`.Index` and
 establish it as part of ``__table_args__``::
 
-    class MyMixin(object):
+    @declarative_mixin
+    class MyMixin:
         a =  Column(Integer)
         b =  Column(Integer)
 

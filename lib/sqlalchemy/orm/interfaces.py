@@ -41,12 +41,6 @@ from ..sql import visitors
 from ..sql.base import ExecutableOption
 from ..sql.traversals import HasCacheKey
 
-if util.TYPE_CHECKING:
-    from typing import Any
-    from typing import List
-    from typing import Optional
-    from .mapper import Mapper
-    from .util import AliasedInsp
 
 __all__ = (
     "EXT_CONTINUE",
@@ -65,7 +59,7 @@ __all__ = (
 )
 
 
-class ORMStatementRole(roles.CoerceTextStatementRole):
+class ORMStatementRole(roles.StatementRole):
     _role_name = (
         "Executable SQL or text() construct, including ORM " "aware objects"
     )
@@ -397,9 +391,9 @@ class PropComparator(operators.ColumnOperators):
 
     def __init__(
         self,
-        prop,  # type: MapperProperty
-        parentmapper,  # type: Mapper
-        adapt_to_entity=None,  # type: Optional[AliasedInsp]
+        prop,
+        parentmapper,
+        adapt_to_entity=None,
     ):
         self.prop = self.property = prop
         self._parententity = adapt_to_entity or parentmapper
@@ -408,10 +402,7 @@ class PropComparator(operators.ColumnOperators):
     def __clause_element__(self):
         raise NotImplementedError("%r" % self)
 
-    def _bulk_update_tuples(
-        self, value  # type: (operators.ColumnOperators)
-    ):
-        # type: (...) -> List[tuple[operators.ColumnOperators, Any]]
+    def _bulk_update_tuples(self, value):
         """Receive a SQL expression that represents a value in the SET
         clause of an UPDATE statement.
 
@@ -433,6 +424,18 @@ class PropComparator(operators.ColumnOperators):
         """legacy; this is renamed to _parententity to be
         compatible with QueryableAttribute."""
         return inspect(self._parententity).mapper
+
+    @property
+    def _propagate_attrs(self):
+        # this suits the case in coercions where we don't actually
+        # call ``__clause_element__()`` but still need to get
+        # resolved._propagate_attrs.  See #6558.
+        return util.immutabledict(
+            {
+                "compile_state_plugin": "orm",
+                "plugin_subject": self._parentmapper,
+            }
+        )
 
     @property
     def adapter(self):

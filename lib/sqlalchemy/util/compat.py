@@ -14,7 +14,7 @@ import operator
 import platform
 import sys
 
-
+py310 = sys.version_info >= (3, 10)
 py38 = sys.version_info >= (3, 8)
 py37 = sys.version_info >= (3, 7)
 py3k = sys.version_info >= (3, 0)
@@ -113,6 +113,15 @@ if py38:
     from importlib import metadata as importlib_metadata
 else:
     import importlib_metadata  # noqa
+
+
+def importlib_metadata_get(group):
+    ep = importlib_metadata.entry_points()
+    if hasattr(ep, "select"):
+        return ep.select(group=group)
+    else:
+        return ep.get(group, ())
+
 
 if py3k:
     import base64
@@ -214,6 +223,10 @@ if py3k:
     callable = callable  # noqa
 
     from abc import ABC
+
+    def _qualname(fn):
+        return fn.__qualname__
+
 
 else:
     import base64
@@ -324,6 +337,17 @@ else:
     )
 
     TYPE_CHECKING = False
+
+    def _qualname(meth):
+        """return __qualname__ equivalent for a method on a class"""
+
+        for cls in meth.im_class.__mro__:
+            if meth.__name__ in cls.__dict__:
+                break
+        else:
+            return meth.__name__
+
+        return "%s.%s" % (cls.__name__, meth.__name__)
 
 
 if py3k:

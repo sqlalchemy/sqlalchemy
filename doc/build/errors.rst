@@ -172,6 +172,38 @@ In SQLAlchemy 1.4, this :term:`2.0 style` behavior is enabled when the
 :paramref:`_orm.Session.future` flag is set on :class:`_orm.sessionmaker`
 or :class:`_orm.Session`.
 
+.. _error_s9r1:
+
+Object is being merged into a Session along the backref cascade
+---------------------------------------------------------------
+
+This message refers to the "backref cascade" behavior of SQLAlchemy,
+which is described at :ref:`backref_cascade`.   This refers to the action of
+an object being added into a :class:`_orm.Session` as a result of another
+object that's already present in that session being associated with it.
+As this behavior has been shown to be more confusing than helpful,
+the :paramref:`_orm.relationship.cascade_backrefs` and
+:paramref:`_orm.backref.cascade_backrefs` parameters were added, which can
+be set to ``False`` to disable it, and in SQLAlchemy 2.0 the "cascade backrefs"
+behavior will be disabled completely.
+
+To set :paramref:`_orm.relationship.cascade_backrefs` to ``False`` on a
+backref that is currently configured using the
+:paramref:`_orm.relationship.backref` string parameter, the backref must
+be declared using the :func:`_orm.backref` function first so that the
+:paramref:`_orm.backref.cascade_backrefs` parameter may be passed.
+
+Alternatively, the entire "cascade backrefs" behavior can be turned off
+across the board by using the :class:`_orm.Session` in "future" mode,
+by passing ``True`` for the :paramref:`_orm.Session.future` parameter.
+
+.. seealso::
+
+    :ref:`backref_cascade` - complete description of the cascade backrefs
+    behavior
+
+    :ref:`change_5150` - background on the change for SQLAlchemy 2.0.
+
 Connections and Transactions
 ============================
 
@@ -1116,6 +1148,91 @@ message for details.
     :ref:`error_bbf0`
 
 
+.. _error_qzyx:
+
+relationship X will copy column Q to column P, which conflicts with relationship(s): 'Y'
+----------------------------------------------------------------------------------------
+
+This warning refers to the case when two or more relationships will write data
+to the same columns on flush, but the ORM does not have any means of
+coordinating these relationships together. Depending on specifics, the solution
+may be that two relationships need to be referred towards one another using
+:paramref:`_orm.relationship.back_populates`, or that one or more of the
+relationships should be configured with :paramref:`_orm.relationship.viewonly`
+to prevent conflicting writes, or sometimes that the configuration is fully
+intentional and should configure :paramref:`_orm.relationship.overlaps` to
+silence each warning.
+
+For the typical example that's missing
+:paramref:`_orm.relationship.back_populates`, given the following mapping::
+
+  class Parent(Base):
+      __tablename__ = "parent"
+      id = Column(Integer, primary_key=True)
+      children = relationship("Child")
+
+
+  class Child(Base):
+      __tablename__ = "child"
+      id = Column(Integer, primary_key=True)
+      parent_id = Column(ForeignKey("parent.id"))
+      parent = relationship("Parent")
+
+The above mapping will generate warnings::
+
+  SAWarning: relationship 'Child.parent' will copy column parent.id to column child.parent_id,
+  which conflicts with relationship(s): 'Parent.children' (copies parent.id to child.parent_id).
+
+The relationships ``Child.parent`` and ``Parent.children`` appear to be in conflict.
+The solution is to apply :paramref:`_orm.relationship.back_populates`::
+
+  class Parent(Base):
+      __tablename__ = "parent"
+      id = Column(Integer, primary_key=True)
+      children = relationship("Child", back_populates="parent")
+
+
+  class Child(Base):
+      __tablename__ = "child"
+      id = Column(Integer, primary_key=True)
+      parent_id = Column(ForeignKey("parent.id"))
+      parent = relationship("Parent", back_populates="children")
+
+For more customized relationships where an "overlap" situation may be
+intentional and cannot be resolved, the :paramref:`_orm.relationship.overlaps`
+parameter may specify the names of relationships for which the warning should
+not take effect. This typically occurs for two or more relationships to the
+same underlying table that include custom
+:paramref:`_orm.relationship.primaryjoin` conditions that limit the related
+items in each case::
+
+  class Parent(Base):
+      __tablename__ = "parent"
+      id = Column(Integer, primary_key=True)
+      c1 = relationship(
+          "Child",
+          primaryjoin="and_(Parent.id == Child.parent_id, Child.flag == 0)",
+          backref="parent",
+          overlaps="c2, parent"
+      )
+      c2 = relationship(
+          "Child",
+          primaryjoin="and_(Parent.id == Child.parent_id, Child.flag == 1)",
+          overlaps="c1, parent"
+      )
+
+
+  class Child(Base):
+      __tablename__ = "child"
+      id = Column(Integer, primary_key=True)
+      parent_id = Column(ForeignKey("parent.id"))
+
+      flag = Column(Integer)
+
+
+Above, the ORM will know that the overlap between ``Parent.c1``,
+``Parent.c2`` and ``Child.parent`` is intentional.
+
 AsyncIO Exceptions
 ==================
 
@@ -1137,16 +1254,16 @@ with a non compatible :term:`DBAPI`.
 MissingGreenlet
 ---------------
 
-A call to the async :term:`DBAPI` was initiated outside the greenlet spawn context
-usually setup by the SQLAlchemy AsyncIO proxy classes.
-Usually this error happens when an IO was attempted in an unexpected 
-place, without using the provided async api.
-When using the ORM this may be due to a lazy loading attempt, which
-is unsupported when using SQLAlchemy with AsyncIO dialects.
+A call to the async :term:`DBAPI` was initiated outside the greenlet spawn
+context usually setup by the SQLAlchemy AsyncIO proxy classes. Usually this
+error happens when an IO was attempted in an unexpected place, without using
+the provided async api. When using the ORM this may be due to a lazy loading
+attempt, which is unsupported when using SQLAlchemy with AsyncIO dialects.
 
 .. seealso::
 
-    :ref:`_session_run_sync`
+    :ref:`asyncio_orm_avoid_lazyloads` - covers most ORM scenarios where
+    this problem can occur and how to mitigate.
 
 
 Core Exception Classes

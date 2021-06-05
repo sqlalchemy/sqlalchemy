@@ -33,7 +33,7 @@ syntactical and behavioral differences that SQLAlchemy accommodates automaticall
 To connect to a MariaDB database, no changes to the database URL are required::
 
 
-    engine = create_engine("mysql+pymsql://user:pass@some_mariadb/dbname?charset=utf8mb4")
+    engine = create_engine("mysql+pymysql://user:pass@some_mariadb/dbname?charset=utf8mb4")
 
 Upon first connect, the SQLAlchemy dialect employs a
 server version detection scheme that determines if the
@@ -51,7 +51,7 @@ useful for the case where an application makes use of MariaDB-specific features
 and is not compatible with a MySQL database.    To use this mode of operation,
 replace the "mysql" token in the above URL with "mariadb"::
 
-    engine = create_engine("mariadb+pymsql://user:pass@some_mariadb/dbname?charset=utf8mb4")
+    engine = create_engine("mariadb+pymysql://user:pass@some_mariadb/dbname?charset=utf8mb4")
 
 The above engine, upon first connect, will raise an error if the server version
 detection detects that the backing database is not MariaDB.
@@ -992,12 +992,8 @@ from ...types import BLOB
 from ...types import BOOLEAN
 from ...types import DATE
 from ...types import VARBINARY
-from ...util import compat
 from ...util import topological
 
-
-if compat.TYPE_CHECKING:
-    from typing import Any
 
 RESERVED_WORDS = set(
     [
@@ -1833,8 +1829,9 @@ class MySQLCompiler(compiler.SQLCompiler):
             return None
 
     def update_tables_clause(self, update_stmt, from_table, extra_froms, **kw):
+        kw["asfrom"] = True
         return ", ".join(
-            t._compiler_dispatch(self, asfrom=True, **kw)
+            t._compiler_dispatch(self, **kw)
             for t in [from_table] + list(extra_froms)
         )
 
@@ -1856,8 +1853,9 @@ class MySQLCompiler(compiler.SQLCompiler):
         self, delete_stmt, from_table, extra_froms, from_hints, **kw
     ):
         """Render the DELETE .. USING clause specific to MySQL."""
+        kw["asfrom"] = True
         return "USING " + ", ".join(
-            t._compiler_dispatch(self, asfrom=True, fromhints=from_hints, **kw)
+            t._compiler_dispatch(self, fromhints=from_hints, **kw)
             for t in [from_table] + extra_froms
         )
 
@@ -1981,7 +1979,10 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         if (
             column.table is not None
             and column is column.table._autoincrement_column
-            and column.server_default is None
+            and (
+                column.server_default is None
+                or isinstance(column.server_default, sa_schema.Identity)
+            )
             and not (
                 self.dialect.supports_sequences
                 and isinstance(column.default, sa_schema.Sequence)
@@ -2561,6 +2562,8 @@ class MySQLDialect(default.DefaultDialect):
     """
 
     name = "mysql"
+    supports_statement_cache = True
+
     supports_alter = True
 
     # MySQL has no true "boolean" type; we
@@ -2581,6 +2584,11 @@ class MySQLDialect(default.DefaultDialect):
 
     supports_for_update_of = False  # default for MySQL ...
     # ... may be updated to True for MySQL 8+ in initialize()
+
+    # MySQL doesn't support "DEFAULT VALUES" but *does* support
+    # "VALUES (DEFAULT)"
+    supports_default_values = False
+    supports_default_metavalue = True
 
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = False
@@ -2857,12 +2865,14 @@ class MySQLDialect(default.DefaultDialect):
         return connection.exec_driver_sql("SELECT DATABASE()").scalar()
 
     def has_table(self, connection, table_name, schema=None):
+        self._ensure_has_table_connection(connection)
+
         if schema is None:
             schema = self.default_schema_name
 
         rs = connection.execute(
             text(
-                "SELECT * FROM information_schema.tables WHERE "
+                "SELECT COUNT(*) FROM information_schema.tables WHERE "
                 "table_schema = :table_schema AND "
                 "table_name = :table_name"
             ).bindparams(
@@ -3320,7 +3330,6 @@ class MySQLDialect(default.DefaultDialect):
         return parser.parse(sql, charset)
 
     def _detect_charset(self, connection):
-        # type: (Any) -> str
         raise NotImplementedError()
 
     def _detect_casing(self, connection):

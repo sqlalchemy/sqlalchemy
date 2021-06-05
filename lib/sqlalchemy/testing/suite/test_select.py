@@ -194,61 +194,137 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
             ],
         )
 
-    def _assert_result(self, select, result, params=()):
-        with config.db.connect() as conn:
-            eq_(conn.execute(select, params).fetchall(), result)
+    def _assert_result(
+        self, connection, select, result, params=(), set_=False
+    ):
+        if set_:
+            query_res = connection.execute(select, params).fetchall()
+            eq_(len(query_res), len(result))
+            eq_(set(query_res), set(result))
+
+        else:
+            eq_(connection.execute(select, params).fetchall(), result)
 
     def _assert_result_str(self, select, result, params=()):
         conn = config.db.connect(close_with_result=True)
         eq_(conn.exec_driver_sql(select, params).fetchall(), result)
 
-    def test_simple_limit(self):
+    def test_simple_limit(self, connection):
         table = self.tables.some_table
+        stmt = select(table).order_by(table.c.id)
         self._assert_result(
-            select(table).order_by(table.c.id).limit(2),
+            connection,
+            stmt.limit(2),
             [(1, 1, 2), (2, 2, 3)],
+        )
+        self._assert_result(
+            connection,
+            stmt.limit(3),
+            [(1, 1, 2), (2, 2, 3), (3, 3, 4)],
+        )
+
+    def test_limit_render_multiple_times(self, connection):
+        table = self.tables.some_table
+        stmt = select(table.c.id).limit(1).scalar_subquery()
+
+        u = union(select(stmt), select(stmt)).subquery().select()
+
+        self._assert_result(
+            connection,
+            u,
+            [
+                (1,),
+            ],
         )
 
     @testing.requires.fetch_first
-    def test_simple_fetch(self):
+    def test_simple_fetch(self, connection):
         table = self.tables.some_table
         self._assert_result(
+            connection,
             select(table).order_by(table.c.id).fetch(2),
             [(1, 1, 2), (2, 2, 3)],
         )
+        self._assert_result(
+            connection,
+            select(table).order_by(table.c.id).fetch(3),
+            [(1, 1, 2), (2, 2, 3), (3, 3, 4)],
+        )
 
     @testing.requires.offset
-    def test_simple_offset(self):
+    def test_simple_offset(self, connection):
         table = self.tables.some_table
         self._assert_result(
+            connection,
             select(table).order_by(table.c.id).offset(2),
             [(3, 3, 4), (4, 4, 5), (5, 4, 6)],
         )
-
-    @testing.requires.offset
-    def test_simple_limit_offset(self):
-        table = self.tables.some_table
         self._assert_result(
-            select(table).order_by(table.c.id).limit(2).offset(1),
-            [(2, 2, 3), (3, 3, 4)],
+            connection,
+            select(table).order_by(table.c.id).offset(3),
+            [(4, 4, 5), (5, 4, 6)],
         )
 
+    @testing.combinations(
+        ([(2, 0), (2, 1), (3, 2)]),
+        ([(2, 1), (2, 0), (3, 2)]),
+        ([(3, 1), (2, 1), (3, 1)]),
+        argnames="cases",
+    )
+    @testing.requires.offset
+    def test_simple_limit_offset(self, connection, cases):
+        table = self.tables.some_table
+        connection = connection.execution_options(compiled_cache={})
+
+        assert_data = [(1, 1, 2), (2, 2, 3), (3, 3, 4), (4, 4, 5), (5, 4, 6)]
+
+        for limit, offset in cases:
+            expected = assert_data[offset : offset + limit]
+            self._assert_result(
+                connection,
+                select(table).order_by(table.c.id).limit(limit).offset(offset),
+                expected,
+            )
+
     @testing.requires.fetch_first
-    def test_simple_fetch_offset(self):
+    def test_simple_fetch_offset(self, connection):
         table = self.tables.some_table
         self._assert_result(
+            connection,
             select(table).order_by(table.c.id).fetch(2).offset(1),
             [(2, 2, 3), (3, 3, 4)],
         )
 
+        self._assert_result(
+            connection,
+            select(table).order_by(table.c.id).fetch(3).offset(2),
+            [(3, 3, 4), (4, 4, 5), (5, 4, 6)],
+        )
+
     @testing.requires.fetch_no_order_by
-    def test_fetch_offset_no_order(self):
+    def test_fetch_offset_no_order(self, connection):
         table = self.tables.some_table
-        with config.db.connect() as conn:
-            eq_(
-                set(conn.execute(select(table).fetch(10))),
-                set([(1, 1, 2), (2, 2, 3), (3, 3, 4), (4, 4, 5), (5, 4, 6)]),
-            )
+        self._assert_result(
+            connection,
+            select(table).fetch(10),
+            [(1, 1, 2), (2, 2, 3), (3, 3, 4), (4, 4, 5), (5, 4, 6)],
+            set_=True,
+        )
+
+    @testing.requires.offset
+    def test_simple_offset_zero(self, connection):
+        table = self.tables.some_table
+        self._assert_result(
+            connection,
+            select(table).order_by(table.c.id).offset(0),
+            [(1, 1, 2), (2, 2, 3), (3, 3, 4), (4, 4, 5), (5, 4, 6)],
+        )
+
+        self._assert_result(
+            connection,
+            select(table).order_by(table.c.id).offset(1),
+            [(2, 2, 3), (3, 3, 4), (4, 4, 5), (5, 4, 6)],
+        )
 
     @testing.requires.offset
     def test_limit_offset_nobinds(self):
@@ -277,27 +353,44 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
         self._assert_result_str(sql, [(2, 2, 3), (3, 3, 4)])
 
     @testing.requires.bound_limit_offset
-    def test_bound_limit(self):
+    def test_bound_limit(self, connection):
         table = self.tables.some_table
         self._assert_result(
+            connection,
             select(table).order_by(table.c.id).limit(bindparam("l")),
             [(1, 1, 2), (2, 2, 3)],
             params={"l": 2},
         )
 
+        self._assert_result(
+            connection,
+            select(table).order_by(table.c.id).limit(bindparam("l")),
+            [(1, 1, 2), (2, 2, 3), (3, 3, 4)],
+            params={"l": 3},
+        )
+
     @testing.requires.bound_limit_offset
-    def test_bound_offset(self):
+    def test_bound_offset(self, connection):
         table = self.tables.some_table
         self._assert_result(
+            connection,
             select(table).order_by(table.c.id).offset(bindparam("o")),
             [(3, 3, 4), (4, 4, 5), (5, 4, 6)],
             params={"o": 2},
         )
 
+        self._assert_result(
+            connection,
+            select(table).order_by(table.c.id).offset(bindparam("o")),
+            [(2, 2, 3), (3, 3, 4), (4, 4, 5), (5, 4, 6)],
+            params={"o": 1},
+        )
+
     @testing.requires.bound_limit_offset
-    def test_bound_limit_offset(self):
+    def test_bound_limit_offset(self, connection):
         table = self.tables.some_table
         self._assert_result(
+            connection,
             select(table)
             .order_by(table.c.id)
             .limit(bindparam("l"))
@@ -306,10 +399,21 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
             params={"l": 2, "o": 1},
         )
 
+        self._assert_result(
+            connection,
+            select(table)
+            .order_by(table.c.id)
+            .limit(bindparam("l"))
+            .offset(bindparam("o")),
+            [(3, 3, 4), (4, 4, 5), (5, 4, 6)],
+            params={"l": 3, "o": 2},
+        )
+
     @testing.requires.fetch_first
-    def test_bound_fetch_offset(self):
+    def test_bound_fetch_offset(self, connection):
         table = self.tables.some_table
         self._assert_result(
+            connection,
             select(table)
             .order_by(table.c.id)
             .fetch(bindparam("f"))
@@ -318,10 +422,21 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
             params={"f": 2, "o": 1},
         )
 
+        self._assert_result(
+            connection,
+            select(table)
+            .order_by(table.c.id)
+            .fetch(bindparam("f"))
+            .offset(bindparam("o")),
+            [(3, 3, 4), (4, 4, 5), (5, 4, 6)],
+            params={"f": 3, "o": 2},
+        )
+
     @testing.requires.sql_expression_limit_offset
-    def test_expr_offset(self):
+    def test_expr_offset(self, connection):
         table = self.tables.some_table
         self._assert_result(
+            connection,
             select(table)
             .order_by(table.c.id)
             .offset(literal_column("1") + literal_column("2")),
@@ -329,9 +444,10 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
         )
 
     @testing.requires.sql_expression_limit_offset
-    def test_expr_limit(self):
+    def test_expr_limit(self, connection):
         table = self.tables.some_table
         self._assert_result(
+            connection,
             select(table)
             .order_by(table.c.id)
             .limit(literal_column("1") + literal_column("2")),
@@ -339,9 +455,10 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
         )
 
     @testing.requires.sql_expression_limit_offset
-    def test_expr_limit_offset(self):
+    def test_expr_limit_offset(self, connection):
         table = self.tables.some_table
         self._assert_result(
+            connection,
             select(table)
             .order_by(table.c.id)
             .limit(literal_column("1") + literal_column("1"))
@@ -350,9 +467,10 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
         )
 
     @testing.requires.fetch_first
-    def test_expr_fetch_offset(self):
+    def test_expr_fetch_offset(self, connection):
         table = self.tables.some_table
         self._assert_result(
+            connection,
             select(table)
             .order_by(table.c.id)
             .fetch(literal_column("1") + literal_column("1"))
@@ -361,9 +479,10 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
         )
 
     @testing.requires.sql_expression_limit_offset
-    def test_simple_limit_expr_offset(self):
+    def test_simple_limit_expr_offset(self, connection):
         table = self.tables.some_table
         self._assert_result(
+            connection,
             select(table)
             .order_by(table.c.id)
             .limit(2)
@@ -371,10 +490,20 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
             [(3, 3, 4), (4, 4, 5)],
         )
 
+        self._assert_result(
+            connection,
+            select(table)
+            .order_by(table.c.id)
+            .limit(3)
+            .offset(literal_column("1") + literal_column("1")),
+            [(3, 3, 4), (4, 4, 5), (5, 4, 6)],
+        )
+
     @testing.requires.sql_expression_limit_offset
-    def test_expr_limit_simple_offset(self):
+    def test_expr_limit_simple_offset(self, connection):
         table = self.tables.some_table
         self._assert_result(
+            connection,
             select(table)
             .order_by(table.c.id)
             .limit(literal_column("1") + literal_column("1"))
@@ -382,40 +511,51 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
             [(3, 3, 4), (4, 4, 5)],
         )
 
-    @testing.requires.fetch_ties
-    def test_simple_fetch_ties(self):
-        table = self.tables.some_table
-        with config.db.connect() as conn:
-            eq_(
-                set(
-                    conn.execute(
-                        select(table)
-                        .order_by(table.c.x.desc())
-                        .fetch(1, with_ties=True)
-                    )
-                ),
-                set([(4, 4, 5), (5, 4, 6)]),
-            )
+        self._assert_result(
+            connection,
+            select(table)
+            .order_by(table.c.id)
+            .limit(literal_column("1") + literal_column("1"))
+            .offset(1),
+            [(2, 2, 3), (3, 3, 4)],
+        )
 
     @testing.requires.fetch_ties
-    @testing.requires.fetch_offset_with_options
-    def test_fetch_offset_ties(self):
-        table = self.tables.some_table
-        with config.db.connect() as conn:
-            fa = conn.execute(
-                select(table)
-                .order_by(table.c.x)
-                .fetch(2, with_ties=True)
-                .offset(2)
-            ).fetchall()
-            eq_(fa[0], (3, 3, 4))
-            eq_(set(fa), set([(3, 3, 4), (4, 4, 5), (5, 4, 6)]))
-
-    @testing.requires.fetch_ties
-    @testing.requires.fetch_offset_with_options
-    def test_fetch_offset_ties_exact_number(self):
+    def test_simple_fetch_ties(self, connection):
         table = self.tables.some_table
         self._assert_result(
+            connection,
+            select(table).order_by(table.c.x.desc()).fetch(1, with_ties=True),
+            [(4, 4, 5), (5, 4, 6)],
+            set_=True,
+        )
+
+        self._assert_result(
+            connection,
+            select(table).order_by(table.c.x.desc()).fetch(3, with_ties=True),
+            [(3, 3, 4), (4, 4, 5), (5, 4, 6)],
+            set_=True,
+        )
+
+    @testing.requires.fetch_ties
+    @testing.requires.fetch_offset_with_options
+    def test_fetch_offset_ties(self, connection):
+        table = self.tables.some_table
+        fa = connection.execute(
+            select(table)
+            .order_by(table.c.x)
+            .fetch(2, with_ties=True)
+            .offset(2)
+        ).fetchall()
+        eq_(fa[0], (3, 3, 4))
+        eq_(set(fa), set([(3, 3, 4), (4, 4, 5), (5, 4, 6)]))
+
+    @testing.requires.fetch_ties
+    @testing.requires.fetch_offset_with_options
+    def test_fetch_offset_ties_exact_number(self, connection):
+        table = self.tables.some_table
+        self._assert_result(
+            connection,
             select(table)
             .order_by(table.c.x)
             .fetch(2, with_ties=True)
@@ -423,19 +563,30 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
             [(2, 2, 3), (3, 3, 4)],
         )
 
+        self._assert_result(
+            connection,
+            select(table)
+            .order_by(table.c.x)
+            .fetch(3, with_ties=True)
+            .offset(3),
+            [(4, 4, 5), (5, 4, 6)],
+        )
+
     @testing.requires.fetch_percent
-    def test_simple_fetch_percent(self):
+    def test_simple_fetch_percent(self, connection):
         table = self.tables.some_table
         self._assert_result(
+            connection,
             select(table).order_by(table.c.id).fetch(20, percent=True),
             [(1, 1, 2)],
         )
 
     @testing.requires.fetch_percent
     @testing.requires.fetch_offset_with_options
-    def test_fetch_offset_percent(self):
+    def test_fetch_offset_percent(self, connection):
         table = self.tables.some_table
         self._assert_result(
+            connection,
             select(table)
             .order_by(table.c.id)
             .fetch(40, percent=True)
@@ -445,32 +596,30 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
 
     @testing.requires.fetch_ties
     @testing.requires.fetch_percent
-    def test_simple_fetch_percent_ties(self):
+    def test_simple_fetch_percent_ties(self, connection):
         table = self.tables.some_table
-        with config.db.connect() as conn:
-            fa = conn.execute(
-                select(table)
-                .order_by(table.c.x.desc())
-                .fetch(20, percent=True, with_ties=True)
-            ).fetchall()
-
-        eq_(len(fa), 2)
-        eq_(set(fa), set([(4, 4, 5), (5, 4, 6)]))
+        self._assert_result(
+            connection,
+            select(table)
+            .order_by(table.c.x.desc())
+            .fetch(20, percent=True, with_ties=True),
+            [(4, 4, 5), (5, 4, 6)],
+            set_=True,
+        )
 
     @testing.requires.fetch_ties
     @testing.requires.fetch_percent
     @testing.requires.fetch_offset_with_options
-    def test_fetch_offset_percent_ties(self):
+    def test_fetch_offset_percent_ties(self, connection):
         table = self.tables.some_table
-        with config.db.connect() as conn:
-            fa = conn.execute(
-                select(table)
-                .order_by(table.c.x)
-                .fetch(40, percent=True, with_ties=True)
-                .offset(2)
-            ).fetchall()
-            eq_(fa[0], (3, 3, 4))
-            eq_(set(fa), set([(3, 3, 4), (4, 4, 5), (5, 4, 6)]))
+        fa = connection.execute(
+            select(table)
+            .order_by(table.c.x)
+            .fetch(40, percent=True, with_ties=True)
+            .offset(2)
+        ).fetchall()
+        eq_(fa[0], (3, 3, 4))
+        eq_(set(fa), set([(3, 3, 4), (4, 4, 5), (5, 4, 6)]))
 
 
 class JoinTest(fixtures.TablesTest):
@@ -867,95 +1016,150 @@ class ExpandingBoundInTest(fixtures.TablesTest):
         with config.db.connect() as conn:
             eq_(conn.execute(select, params).fetchall(), result)
 
-    def test_multiple_empty_sets(self):
+    def test_multiple_empty_sets_bindparam(self):
         # test that any anonymous aliasing used by the dialect
         # is fine with duplicates
         table = self.tables.some_table
-
         stmt = (
             select(table.c.id)
-            .where(table.c.x.in_(bindparam("q", expanding=True)))
-            .where(table.c.y.in_(bindparam("p", expanding=True)))
+            .where(table.c.x.in_(bindparam("q")))
+            .where(table.c.y.in_(bindparam("p")))
             .order_by(table.c.id)
         )
-
         self._assert_result(stmt, [], params={"q": [], "p": []})
 
-    @testing.requires.tuple_in_w_empty
-    def test_empty_heterogeneous_tuples(self):
+    def test_multiple_empty_sets_direct(self):
+        # test that any anonymous aliasing used by the dialect
+        # is fine with duplicates
         table = self.tables.some_table
-
         stmt = (
             select(table.c.id)
-            .where(
-                tuple_(table.c.x, table.c.z).in_(
-                    bindparam("q", expanding=True)
-                )
-            )
+            .where(table.c.x.in_([]))
+            .where(table.c.y.in_([]))
             .order_by(table.c.id)
         )
+        self._assert_result(stmt, [])
 
+    @testing.requires.tuple_in_w_empty
+    def test_empty_heterogeneous_tuples_bindparam(self):
+        table = self.tables.some_table
+        stmt = (
+            select(table.c.id)
+            .where(tuple_(table.c.x, table.c.z).in_(bindparam("q")))
+            .order_by(table.c.id)
+        )
         self._assert_result(stmt, [], params={"q": []})
 
     @testing.requires.tuple_in_w_empty
-    def test_empty_homogeneous_tuples(self):
+    def test_empty_heterogeneous_tuples_direct(self):
         table = self.tables.some_table
 
+        def go(val, expected):
+            stmt = (
+                select(table.c.id)
+                .where(tuple_(table.c.x, table.c.z).in_(val))
+                .order_by(table.c.id)
+            )
+            self._assert_result(stmt, expected)
+
+        go([], [])
+        go([(2, "z2"), (3, "z3"), (4, "z4")], [(2,), (3,), (4,)])
+        go([], [])
+
+    @testing.requires.tuple_in_w_empty
+    def test_empty_homogeneous_tuples_bindparam(self):
+        table = self.tables.some_table
         stmt = (
             select(table.c.id)
-            .where(
-                tuple_(table.c.x, table.c.y).in_(
-                    bindparam("q", expanding=True)
-                )
-            )
+            .where(tuple_(table.c.x, table.c.y).in_(bindparam("q")))
             .order_by(table.c.id)
         )
-
         self._assert_result(stmt, [], params={"q": []})
 
-    def test_bound_in_scalar(self):
+    @testing.requires.tuple_in_w_empty
+    def test_empty_homogeneous_tuples_direct(self):
         table = self.tables.some_table
 
+        def go(val, expected):
+            stmt = (
+                select(table.c.id)
+                .where(tuple_(table.c.x, table.c.y).in_(val))
+                .order_by(table.c.id)
+            )
+            self._assert_result(stmt, expected)
+
+        go([], [])
+        go([(1, 2), (2, 3), (3, 4)], [(1,), (2,), (3,)])
+        go([], [])
+
+    def test_bound_in_scalar_bindparam(self):
+        table = self.tables.some_table
         stmt = (
             select(table.c.id)
-            .where(table.c.x.in_(bindparam("q", expanding=True)))
+            .where(table.c.x.in_(bindparam("q")))
             .order_by(table.c.id)
         )
-
         self._assert_result(stmt, [(2,), (3,), (4,)], params={"q": [2, 3, 4]})
 
-    @testing.requires.tuple_in
-    def test_bound_in_two_tuple(self):
+    def test_bound_in_scalar_direct(self):
         table = self.tables.some_table
-
         stmt = (
             select(table.c.id)
-            .where(
-                tuple_(table.c.x, table.c.y).in_(
-                    bindparam("q", expanding=True)
-                )
-            )
+            .where(table.c.x.in_([2, 3, 4]))
             .order_by(table.c.id)
         )
+        self._assert_result(stmt, [(2,), (3,), (4,)])
 
+    def test_nonempty_in_plus_empty_notin(self):
+        table = self.tables.some_table
+        stmt = (
+            select(table.c.id)
+            .where(table.c.x.in_([2, 3]))
+            .where(table.c.id.not_in([]))
+            .order_by(table.c.id)
+        )
+        self._assert_result(stmt, [(2,), (3,)])
+
+    def test_empty_in_plus_notempty_notin(self):
+        table = self.tables.some_table
+        stmt = (
+            select(table.c.id)
+            .where(table.c.x.in_([]))
+            .where(table.c.id.not_in([2, 3]))
+            .order_by(table.c.id)
+        )
+        self._assert_result(stmt, [])
+
+    @testing.requires.tuple_in
+    def test_bound_in_two_tuple_bindparam(self):
+        table = self.tables.some_table
+        stmt = (
+            select(table.c.id)
+            .where(tuple_(table.c.x, table.c.y).in_(bindparam("q")))
+            .order_by(table.c.id)
+        )
         self._assert_result(
             stmt, [(2,), (3,), (4,)], params={"q": [(2, 3), (3, 4), (4, 5)]}
         )
 
     @testing.requires.tuple_in
-    def test_bound_in_heterogeneous_two_tuple(self):
+    def test_bound_in_two_tuple_direct(self):
         table = self.tables.some_table
-
         stmt = (
             select(table.c.id)
-            .where(
-                tuple_(table.c.x, table.c.z).in_(
-                    bindparam("q", expanding=True)
-                )
-            )
+            .where(tuple_(table.c.x, table.c.y).in_([(2, 3), (3, 4), (4, 5)]))
             .order_by(table.c.id)
         )
+        self._assert_result(stmt, [(2,), (3,), (4,)])
 
+    @testing.requires.tuple_in
+    def test_bound_in_heterogeneous_two_tuple_bindparam(self):
+        table = self.tables.some_table
+        stmt = (
+            select(table.c.id)
+            .where(tuple_(table.c.x, table.c.z).in_(bindparam("q")))
+            .order_by(table.c.id)
+        )
         self._assert_result(
             stmt,
             [(2,), (3,), (4,)],
@@ -963,67 +1167,115 @@ class ExpandingBoundInTest(fixtures.TablesTest):
         )
 
     @testing.requires.tuple_in
-    def test_bound_in_heterogeneous_two_tuple_text(self):
+    def test_bound_in_heterogeneous_two_tuple_direct(self):
+        table = self.tables.some_table
+        stmt = (
+            select(table.c.id)
+            .where(
+                tuple_(table.c.x, table.c.z).in_(
+                    [(2, "z2"), (3, "z3"), (4, "z4")]
+                )
+            )
+            .order_by(table.c.id)
+        )
+        self._assert_result(
+            stmt,
+            [(2,), (3,), (4,)],
+        )
+
+    @testing.requires.tuple_in
+    def test_bound_in_heterogeneous_two_tuple_text_bindparam(self):
+        # note this becomes ARRAY if we dont use expanding
+        # explicitly right now
         stmt = text(
             "select id FROM some_table WHERE (x, z) IN :q ORDER BY id"
         ).bindparams(bindparam("q", expanding=True))
-
         self._assert_result(
             stmt,
             [(2,), (3,), (4,)],
             params={"q": [(2, "z2"), (3, "z3"), (4, "z4")]},
         )
 
-    def test_empty_set_against_integer(self):
+    def test_empty_set_against_integer_bindparam(self):
         table = self.tables.some_table
-
         stmt = (
             select(table.c.id)
-            .where(table.c.x.in_(bindparam("q", expanding=True)))
+            .where(table.c.x.in_(bindparam("q")))
             .order_by(table.c.id)
         )
-
         self._assert_result(stmt, [], params={"q": []})
 
-    def test_empty_set_against_integer_negation(self):
+    def test_empty_set_against_integer_direct(self):
         table = self.tables.some_table
+        stmt = select(table.c.id).where(table.c.x.in_([])).order_by(table.c.id)
+        self._assert_result(stmt, [])
 
+    def test_empty_set_against_integer_negation_bindparam(self):
+        table = self.tables.some_table
         stmt = (
             select(table.c.id)
-            .where(table.c.x.not_in(bindparam("q", expanding=True)))
+            .where(table.c.x.not_in(bindparam("q")))
             .order_by(table.c.id)
         )
-
         self._assert_result(stmt, [(1,), (2,), (3,), (4,)], params={"q": []})
 
-    def test_empty_set_against_string(self):
+    def test_empty_set_against_integer_negation_direct(self):
         table = self.tables.some_table
+        stmt = (
+            select(table.c.id).where(table.c.x.not_in([])).order_by(table.c.id)
+        )
+        self._assert_result(stmt, [(1,), (2,), (3,), (4,)])
 
+    def test_empty_set_against_string_bindparam(self):
+        table = self.tables.some_table
         stmt = (
             select(table.c.id)
-            .where(table.c.z.in_(bindparam("q", expanding=True)))
+            .where(table.c.z.in_(bindparam("q")))
             .order_by(table.c.id)
         )
-
         self._assert_result(stmt, [], params={"q": []})
 
-    def test_empty_set_against_string_negation(self):
+    def test_empty_set_against_string_direct(self):
         table = self.tables.some_table
+        stmt = select(table.c.id).where(table.c.z.in_([])).order_by(table.c.id)
+        self._assert_result(stmt, [])
 
+    def test_empty_set_against_string_negation_bindparam(self):
+        table = self.tables.some_table
         stmt = (
             select(table.c.id)
-            .where(table.c.z.not_in(bindparam("q", expanding=True)))
+            .where(table.c.z.not_in(bindparam("q")))
             .order_by(table.c.id)
         )
-
         self._assert_result(stmt, [(1,), (2,), (3,), (4,)], params={"q": []})
 
-    def test_null_in_empty_set_is_false(self, connection):
+    def test_empty_set_against_string_negation_direct(self):
+        table = self.tables.some_table
+        stmt = (
+            select(table.c.id).where(table.c.z.not_in([])).order_by(table.c.id)
+        )
+        self._assert_result(stmt, [(1,), (2,), (3,), (4,)])
+
+    def test_null_in_empty_set_is_false_bindparam(self, connection):
         stmt = select(
             case(
                 [
                     (
-                        null().in_(bindparam("foo", value=(), expanding=True)),
+                        null().in_(bindparam("foo", value=())),
+                        true(),
+                    )
+                ],
+                else_=false(),
+            )
+        )
+        in_(connection.execute(stmt).fetchone()[0], (False, 0))
+
+    def test_null_in_empty_set_is_false_direct(self, connection):
+        stmt = select(
+            case(
+                [
+                    (
+                        null().in_([]),
                         true(),
                     )
                 ],
@@ -1291,6 +1543,31 @@ class IdentityColumnTest(fixtures.TablesTest):
             )
 
         assert_raises((DatabaseError, ProgrammingError), fn)
+
+
+class IdentityAutoincrementTest(fixtures.TablesTest):
+    __backend__ = True
+    __requires__ = ("autoincrement_without_sequence",)
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "tbl",
+            metadata,
+            Column(
+                "id",
+                Integer,
+                Identity(),
+                primary_key=True,
+                autoincrement=True,
+            ),
+            Column("desc", String(100)),
+        )
+
+    def test_autoincrement_with_identity(self, connection):
+        res = connection.execute(self.tables.tbl.insert(), {"desc": "row"})
+        res = connection.execute(self.tables.tbl.select()).first()
+        eq_(res, (1, "row"))
 
 
 class ExistsTest(fixtures.TablesTest):

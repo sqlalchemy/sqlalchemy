@@ -77,6 +77,7 @@ class SybaseExecutionContext_pyodbc(SybaseExecutionContext):
 
 class SybaseDialect_pyodbc(PyODBCConnector, SybaseDialect):
     execution_ctx_cls = SybaseExecutionContext_pyodbc
+    supports_statement_cache = True
 
     colspecs = {sqltypes.Numeric: _SybNumeric_pyodbc}
 

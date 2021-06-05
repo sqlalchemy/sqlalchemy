@@ -21,12 +21,14 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.orm.interfaces import MANYTOONE
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.fixtures import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -1103,6 +1105,80 @@ class RelationshipTest8(fixtures.MappedTest):
             sess.query(Taggable).order_by(Taggable.id).all(),
             [User(data="u1"), Taggable(owner=User(data="u1"))],
         )
+
+
+class SelfRefWPolyJoinedLoadTest(fixtures.DeclarativeMappedTest):
+    """test #6495"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Node(ComparableEntity, Base):
+            __tablename__ = "nodes"
+
+            id = Column(Integer, primary_key=True)
+
+            parent_id = Column(ForeignKey("nodes.id"))
+            type = Column(String(50))
+
+            parent = relationship("Node", remote_side=id)
+
+            local_groups = relationship("LocalGroup", lazy="joined")
+
+            __mapper_args__ = {
+                "polymorphic_on": type,
+                "with_polymorphic": ("*"),
+                "polymorphic_identity": "node",
+            }
+
+        class Content(Node):
+            __tablename__ = "content"
+
+            id = Column(ForeignKey("nodes.id"), primary_key=True)
+
+            __mapper_args__ = {
+                "polymorphic_identity": "content",
+            }
+
+        class File(Node):
+            __tablename__ = "file"
+
+            id = Column(ForeignKey("nodes.id"), primary_key=True)
+            __mapper_args__ = {
+                "polymorphic_identity": "file",
+            }
+
+        class LocalGroup(ComparableEntity, Base):
+            __tablename__ = "local_group"
+            id = Column(Integer, primary_key=True)
+
+            node_id = Column(ForeignKey("nodes.id"))
+
+    @classmethod
+    def insert_data(cls, connection):
+        Node, LocalGroup = cls.classes("Node", "LocalGroup")
+
+        with Session(connection) as sess:
+            f1 = Node(id=2, local_groups=[LocalGroup(), LocalGroup()])
+            c1 = Node(id=1)
+            c1.parent = f1
+
+            sess.add_all([f1, c1])
+
+            sess.commit()
+
+    def test_emit_lazy_loadonpk_parent(self):
+        Node, LocalGroup = self.classes("Node", "LocalGroup")
+
+        s = fixture_session()
+        c1 = s.query(Node).filter_by(id=1).first()
+
+        def go():
+            p1 = c1.parent
+            eq_(p1, Node(id=2, local_groups=[LocalGroup(), LocalGroup()]))
+
+        self.assert_sql_count(testing.db, go, 1)
 
 
 class GenerativeTest(fixtures.MappedTest, AssertsExecutionResults):

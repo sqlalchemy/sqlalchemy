@@ -166,7 +166,7 @@ at :ref:`schema_metadata_schema_name`.   The :class:`_schema.MetaData` object
 may be constructed separately and passed either to :func:`_orm.registry`
 or :func:`_orm.declarative_base`::
 
-    from sqlalchemy import metadata
+    from sqlalchemy import MetaData
     metadata = MetaData(schema="some_schema")
 
     Base = declarative_base(metadata = metadata)

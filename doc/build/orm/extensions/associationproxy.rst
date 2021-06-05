@@ -24,8 +24,7 @@ Each ``User`` can have any number of ``Keyword`` objects, and vice-versa
 (the many-to-many pattern is described at :ref:`relationships_many_to_many`)::
 
     from sqlalchemy import Column, Integer, String, ForeignKey, Table
-    from sqlalchemy.orm import relationship
-    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import declarative_base, relationship
 
     Base = declarative_base()
 
@@ -167,10 +166,8 @@ collection of ``User`` to the ``.keyword`` attribute present on each
 ``UserKeyword``::
 
     from sqlalchemy import Column, Integer, String, ForeignKey
-    from sqlalchemy.orm import relationship, backref
-
     from sqlalchemy.ext.associationproxy import association_proxy
-    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import backref, declarative_base, relationship
 
     Base = declarative_base()
 
@@ -277,9 +274,8 @@ argument to the ``User.keywords`` proxy so that these values are assigned approp
 when new elements are added to the dictionary::
 
     from sqlalchemy import Column, Integer, String, ForeignKey
-    from sqlalchemy.orm import relationship, backref
     from sqlalchemy.ext.associationproxy import association_proxy
-    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import backref, declarative_base, relationship    
     from sqlalchemy.orm.collections import attribute_mapped_collection
 
     Base = declarative_base()
@@ -353,10 +349,8 @@ an association proxy on ``User`` that refers to an association proxy
 present on ``UserKeyword``::
 
     from sqlalchemy import Column, Integer, String, ForeignKey
-    from sqlalchemy.orm import relationship, backref
-
     from sqlalchemy.ext.associationproxy import association_proxy
-    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import backref, declarative_base, relationship 
     from sqlalchemy.orm.collections import attribute_mapped_collection
 
     Base = declarative_base()

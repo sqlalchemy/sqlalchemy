@@ -85,6 +85,7 @@ class _myconnpyBIT(BIT):
 
 class MySQLDialect_mysqlconnector(MySQLDialect):
     driver = "mysqlconnector"
+    supports_statement_cache = True
 
     supports_unicode_binds = True
 

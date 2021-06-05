@@ -19,15 +19,13 @@ from .. import inspection
 from .. import util
 from ..util import collections_abc
 
-if util.TYPE_CHECKING:
-    from types import ModuleType
 
-elements = None  # type: ModuleType
-lambdas = None  # type: ModuleType
-schema = None  # type: ModuleType
-selectable = None  # type: ModuleType
-sqltypes = None  # type: ModuleType
-traversals = None  # type: ModuleType
+elements = None
+lambdas = None
+schema = None
+selectable = None
+sqltypes = None
+traversals = None
 
 
 def _is_literal(element):
@@ -153,12 +151,25 @@ def expect(
 
             is_clause_element = False
 
-            while hasattr(element, "__clause_element__"):
+            # this is a special performance optimization for ORM
+            # joins used by JoinTargetImpl that we don't go through the
+            # work of creating __clause_element__() when we only need the
+            # original QueryableAttribute, as the former will do clause
+            # adaption and all that which is just thrown away here.
+            if (
+                impl._skip_clauseelement_for_target_match
+                and isinstance(element, role)
+                and hasattr(element, "__clause_element__")
+            ):
                 is_clause_element = True
-                if not getattr(element, "is_clause_element", False):
-                    element = element.__clause_element__()
-                else:
-                    break
+            else:
+                while hasattr(element, "__clause_element__"):
+                    is_clause_element = True
+
+                    if not getattr(element, "is_clause_element", False):
+                        element = element.__clause_element__()
+                    else:
+                        break
 
             if not is_clause_element:
                 if impl._use_inspection:
@@ -232,6 +243,7 @@ class RoleImpl(object):
 
     _post_coercion = None
     _resolve_literal_only = False
+    _skip_clauseelement_for_target_match = False
 
     def __init__(self, role_class):
         self._role_class = role_class
@@ -313,7 +325,7 @@ class _ColumnCoercions(object):
     def _implicit_coercions(
         self, original_element, resolved, argname=None, **kw
     ):
-        if not resolved.is_clause_element:
+        if not getattr(resolved, "is_clause_element", False):
             self._raise_for_expected(original_element, argname, resolved)
         elif resolved._is_select_statement:
             self._warn_for_scalar_subquery_coercion()
@@ -561,13 +573,9 @@ class InElementImpl(RoleImpl):
             return element.self_group(against=operator)
 
         elif isinstance(element, elements.BindParameter):
-            if not element.expanding:
-                # coercing to expanding at the moment to work with the
-                # lambda system.  not sure if this is the right approach.
-                # is there a valid use case to send a single non-expanding
-                # param to IN? check for ARRAY type?
-                element = element._clone(maintain_key=True)
-                element.expanding = True
+            element = element._clone(maintain_key=True)
+            element.expanding = True
+            element.expand_op = operator
 
             return element
         else:
@@ -824,11 +832,7 @@ class ReturnsRowsImpl(RoleImpl):
     __slots__ = ()
 
 
-class StatementImpl(_NoTextCoercion, RoleImpl):
-    __slots__ = ()
-
-
-class CoerceTextStatementImpl(_CoerceLiterals, RoleImpl):
+class StatementImpl(_CoerceLiterals, RoleImpl):
     __slots__ = ()
 
     def _implicit_coercions(
@@ -837,7 +841,7 @@ class CoerceTextStatementImpl(_CoerceLiterals, RoleImpl):
         if resolved._is_lambda_element:
             return resolved
         else:
-            return super(CoerceTextStatementImpl, self)._implicit_coercions(
+            return super(StatementImpl, self)._implicit_coercions(
                 original_element, resolved, argname=argname, **kw
             )
 
@@ -870,6 +874,8 @@ class HasCTEImpl(ReturnsRowsImpl):
 class JoinTargetImpl(RoleImpl):
     __slots__ = ()
 
+    _skip_clauseelement_for_target_match = True
+
     def _literal_coercion(self, element, legacy=False, **kw):
         if isinstance(element, str):
             return element
@@ -878,6 +884,9 @@ class JoinTargetImpl(RoleImpl):
         self, original_element, resolved, argname=None, legacy=False, **kw
     ):
         if isinstance(original_element, roles.JoinTargetRole):
+            # note that this codepath no longer occurs as of
+            # #6550, unless JoinTargetImpl._skip_clauseelement_for_target_match
+            # were set to False.
             return original_element
         elif legacy and isinstance(resolved, str):
             util.warn_deprecated_20(

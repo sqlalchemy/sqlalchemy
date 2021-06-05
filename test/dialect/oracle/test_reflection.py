@@ -742,7 +742,7 @@ class DBLinkReflectionTest(fixtures.TestBase):
             conn.exec_driver_sql("drop table test_table")
 
     def test_reflection(self):
-        """test the resolution of the synonym/dblink. """
+        """test the resolution of the synonym/dblink."""
         m = MetaData()
 
         t = Table(

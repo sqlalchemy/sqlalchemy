@@ -369,7 +369,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
         )
 
     def test_labels_no_collision_index(self):
-        """test for [ticket:4911] """
+        """test for [ticket:4911]"""
 
         t = Table(
             "foo",

@@ -708,6 +708,32 @@ class CollectionAdapter(object):
 
     __nonzero__ = __bool__
 
+    def fire_append_wo_mutation_event(self, item, initiator=None):
+        """Notify that a entity is entering the collection but is already
+        present.
+
+
+        Initiator is a token owned by the InstrumentedAttribute that
+        initiated the membership mutation, and should be left as None
+        unless you are passing along an initiator value from a chained
+        operation.
+
+        .. versionadded:: 1.4.15
+
+        """
+        if initiator is not False:
+            if self.invalidated:
+                self._warn_invalidated()
+
+            if self.empty:
+                self._reset_empty()
+
+            return self.attr.fire_append_wo_mutation_event(
+                self.owner_state, self.owner_state.dict, item, initiator
+            )
+        else:
+            return item
+
     def fire_append_event(self, item, initiator=None):
         """Notify that a entity has entered the collection.
 
@@ -1083,6 +1109,18 @@ def _instrument_membership_mutator(method, before, argument, after):
     return wrapper
 
 
+def __set_wo_mutation(collection, item, _sa_initiator=None):
+    """Run set wo mutation events.
+
+    The collection is not mutated.
+
+    """
+    if _sa_initiator is not False:
+        executor = collection._sa_adapter
+        if executor:
+            executor.fire_append_wo_mutation_event(item, _sa_initiator)
+
+
 def __set(collection, item, _sa_initiator=None):
     """Run set events.
 
@@ -1351,7 +1389,11 @@ def _dict_decorators():
                 self.__setitem__(key, default)
                 return default
             else:
-                return self.__getitem__(key)
+                value = self.__getitem__(key)
+                if value is default:
+                    __set_wo_mutation(self, value, None)
+
+                return value
 
         _tidy(setdefault)
         return setdefault
@@ -1363,13 +1405,19 @@ def _dict_decorators():
                     for key in list(__other):
                         if key not in self or self[key] is not __other[key]:
                             self[key] = __other[key]
+                        else:
+                            __set_wo_mutation(self, __other[key], None)
                 else:
                     for key, value in __other:
                         if key not in self or self[key] is not value:
                             self[key] = value
+                        else:
+                            __set_wo_mutation(self, value, None)
             for key in kw:
                 if key not in self or self[key] is not kw[key]:
                     self[key] = kw[key]
+                else:
+                    __set_wo_mutation(self, kw[key], None)
 
         _tidy(update)
         return update
@@ -1410,6 +1458,8 @@ def _set_decorators():
         def add(self, value, _sa_initiator=None):
             if value not in self:
                 value = __set(self, value, _sa_initiator)
+            else:
+                __set_wo_mutation(self, value, _sa_initiator)
             # testlib.pragma exempt:__hash__
             fn(self, value)
 

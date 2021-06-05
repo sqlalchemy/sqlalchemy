@@ -193,6 +193,7 @@ class _PGIdentifierPreparer(PGIdentifierPreparer):
 class PGDialect_pygresql(PGDialect):
 
     driver = "pygresql"
+    supports_statement_cache = True
 
     statement_compiler = _PGCompiler
     preparer = _PGIdentifierPreparer

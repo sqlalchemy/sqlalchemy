@@ -25,6 +25,8 @@ from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
+from sqlalchemy.sql.selectable import LABEL_STYLE_DISAMBIGUATE_ONLY
+from sqlalchemy.sql.selectable import LABEL_STYLE_NONE
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
@@ -178,6 +180,122 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT t.myid, t.name, t.description, foo.f FROM mytable AS t, "
             "(select f from bar where lala=heyhey) foo WHERE foo.f = t.id",
         )
+
+    @testing.combinations(
+        (
+            None,
+            "SELECT mytable.myid, whatever FROM mytable "
+            "UNION SELECT mytable.myid, whatever FROM mytable",
+        ),
+        (
+            LABEL_STYLE_NONE,
+            "SELECT mytable.myid, whatever FROM mytable "
+            "UNION SELECT mytable.myid, whatever FROM mytable",
+        ),
+        (
+            LABEL_STYLE_DISAMBIGUATE_ONLY,
+            "SELECT mytable.myid, whatever FROM mytable "
+            "UNION SELECT mytable.myid, whatever FROM mytable",
+        ),
+        (
+            LABEL_STYLE_TABLENAME_PLUS_COL,
+            "SELECT mytable.myid AS mytable_myid, whatever FROM mytable "
+            "UNION SELECT mytable.myid AS mytable_myid, whatever FROM mytable",
+        ),
+    )
+    def test_select_composition_nine(self, label_style, expected):
+
+        s1 = select(table1.c.myid, text("whatever"))
+        if label_style:
+            s1 = s1.set_label_style(label_style)
+
+        s2 = select(table1.c.myid, text("whatever"))
+
+        if label_style:
+            s2 = s2.set_label_style(label_style)
+
+        stmt = s1.union(s2)
+
+        self.assert_compile(stmt, expected)
+
+    @testing.combinations(
+        (
+            None,
+            "SELECT anon_1.myid FROM (SELECT mytable.myid AS myid, "
+            "whatever FROM mytable UNION SELECT mytable.myid AS myid, "
+            "whatever FROM mytable) AS anon_1",
+        ),
+        (
+            LABEL_STYLE_NONE,
+            "SELECT anon_1.myid FROM (SELECT mytable.myid AS myid, "
+            "whatever FROM mytable UNION SELECT mytable.myid AS myid, "
+            "whatever FROM mytable) AS anon_1",
+        ),
+        (
+            LABEL_STYLE_DISAMBIGUATE_ONLY,
+            "SELECT anon_1.myid FROM (SELECT mytable.myid AS myid, "
+            "whatever FROM mytable UNION SELECT mytable.myid AS myid, "
+            "whatever FROM mytable) AS anon_1",
+        ),
+        (
+            LABEL_STYLE_TABLENAME_PLUS_COL,
+            "SELECT anon_1.mytable_myid FROM "
+            "(SELECT mytable.myid AS mytable_myid, whatever FROM mytable "
+            "UNION SELECT mytable.myid AS mytable_myid, whatever "
+            "FROM mytable) AS anon_1",
+        ),
+    )
+    def test_select_composition_ten(self, label_style, expected):
+
+        s1 = select(table1.c.myid, text("whatever"))
+        if label_style:
+            s1 = s1.set_label_style(label_style)
+
+        s2 = select(table1.c.myid, text("whatever"))
+
+        if label_style:
+            s2 = s2.set_label_style(label_style)
+
+        stmt = s1.union(s2).subquery().select()
+
+        self.assert_compile(stmt, expected)
+
+    @testing.combinations(
+        (None, "SELECT mytable.myid, whatever FROM mytable"),
+        (LABEL_STYLE_NONE, "SELECT mytable.myid, whatever FROM mytable"),
+        (
+            LABEL_STYLE_DISAMBIGUATE_ONLY,
+            "SELECT mytable.myid, whatever FROM mytable",
+        ),
+        (
+            LABEL_STYLE_TABLENAME_PLUS_COL,
+            "SELECT mytable.myid AS mytable_myid, whatever FROM mytable",
+        ),
+    )
+    def test_select_composition_eleven(self, label_style, expected):
+
+        stmt = select(table1.c.myid, text("whatever"))
+        if label_style:
+            stmt = stmt.set_label_style(label_style)
+
+        self.assert_compile(stmt, expected)
+
+    @testing.combinations(
+        (None, ["myid", "description"]),
+        (LABEL_STYLE_NONE, ["myid", "description"]),
+        (LABEL_STYLE_DISAMBIGUATE_ONLY, ["myid", "description"]),
+        (
+            LABEL_STYLE_TABLENAME_PLUS_COL,
+            ["mytable_myid", "mytable_description"],
+        ),
+    )
+    def test_select_selected_columns_ignores_text(self, label_style, expected):
+
+        stmt = select(table1.c.myid, text("whatever"), table1.c.description)
+        if label_style:
+            stmt = stmt.set_label_style(label_style)
+
+        eq_(stmt.selected_columns.keys(), expected)
 
     def test_select_bundle_columns(self):
         self.assert_compile(

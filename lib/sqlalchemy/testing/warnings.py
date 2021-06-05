@@ -25,11 +25,14 @@ def setup_filters():
     # some selected deprecations...
     warnings.filterwarnings("error", category=DeprecationWarning)
     warnings.filterwarnings(
-        "ignore", category=DeprecationWarning, message=".*StopIteration"
+        "ignore", category=DeprecationWarning, message=r".*StopIteration"
     )
     warnings.filterwarnings(
-        "ignore", category=DeprecationWarning, message=".*inspect.get.*argspec"
+        "ignore",
+        category=DeprecationWarning,
+        message=r".*inspect.get.*argspec",
     )
+
     warnings.filterwarnings(
         "ignore",
         category=DeprecationWarning,
@@ -60,10 +63,6 @@ def setup_filters():
         #        r".*DefaultGenerator.execute\(\)",
         #
         #
-        # result sets
-        #
-        r"The Row.keys\(\) method",
-        r"Using non-integer/slice indices on Row ",
         #
         # Core SQL constructs
         #

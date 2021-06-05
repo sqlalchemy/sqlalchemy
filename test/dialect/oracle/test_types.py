@@ -291,7 +291,10 @@ class TypesTest(fixtures.TestBase):
             dict(day_interval=datetime.timedelta(days=35, seconds=5743)),
         )
         row = connection.execute(interval_table.select()).first()
-        eq_(row["day_interval"], datetime.timedelta(days=35, seconds=5743))
+        eq_(
+            row._mapping["day_interval"],
+            datetime.timedelta(days=35, seconds=5743),
+        )
 
     def test_numerics(self, metadata, connection):
         m = metadata
@@ -919,19 +922,19 @@ class LOBFetchTest(fixtures.TablesTest):
         t = self.tables.z_test
         with engine.begin() as conn:
             row = conn.execute(t.select().where(t.c.id == 1)).first()
-            eq_(row["data"].read(), "this is text 1")
-            eq_(row["bindata"].read(), b("this is binary 1"))
+            eq_(row._mapping["data"].read(), "this is text 1")
+            eq_(row._mapping["bindata"].read(), b("this is binary 1"))
 
     def test_lobs_with_convert(self, connection):
         t = self.tables.z_test
         row = connection.execute(t.select().where(t.c.id == 1)).first()
-        eq_(row["data"], "this is text 1")
-        eq_(row["bindata"], b("this is binary 1"))
+        eq_(row._mapping["data"], "this is text 1")
+        eq_(row._mapping["bindata"], b("this is binary 1"))
 
     def test_lobs_with_convert_raw(self, connection):
         row = exec_sql(connection, "select data, bindata from z_test").first()
-        eq_(row["data"], "this is text 1")
-        eq_(row["bindata"], b("this is binary 1"))
+        eq_(row._mapping["data"], "this is text 1")
+        eq_(row._mapping["bindata"], b("this is binary 1"))
 
     def test_lobs_without_convert_many_rows(self):
         engine = testing_engine(
@@ -947,9 +950,9 @@ class LOBFetchTest(fixtures.TablesTest):
             eq_(
                 [
                     dict(
-                        id=row["id"],
-                        data=row["data"].read(),
-                        bindata=row["bindata"].read(),
+                        id=row._mapping["id"],
+                        data=row._mapping["data"].read(),
+                        bindata=row._mapping["bindata"].read(),
                     )
                     for row in results
                 ],
@@ -982,7 +985,9 @@ class LOBFetchTest(fixtures.TablesTest):
             eq_(
                 [
                     dict(
-                        id=row["id"], data=row["data"], bindata=row["bindata"]
+                        id=row._mapping["id"],
+                        data=row._mapping["data"],
+                        bindata=row._mapping["bindata"],
                     )
                     for row in results
                 ],
@@ -1184,6 +1189,7 @@ class SetInputSizesTest(fixtures.TestBase):
 
         class TestTypeDec(TypeDecorator):
             impl = NullType()
+            cache_ok = True
 
             def load_dialect_impl(self, dialect):
                 if dialect.name == "oracle":

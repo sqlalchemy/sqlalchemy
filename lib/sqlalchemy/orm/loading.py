@@ -87,11 +87,20 @@ def instances(cursor, context):
         with util.safe_reraise():
             cursor.close()
 
+    def _no_unique(entry):
+        raise sa_exc.InvalidRequestError(
+            "Can't use the ORM yield_per feature in conjunction with unique()"
+        )
+
     row_metadata = SimpleResultMetaData(
         labels,
         extra,
         _unique_filters=[
-            id if ent.use_id_for_hash else None
+            _no_unique
+            if context.yield_per
+            else id
+            if ent.use_id_for_hash
+            else None
             for ent in context.compile_state._entities
         ],
     )
@@ -192,7 +201,7 @@ def merge_frozen_result(session, statement, frozen_result, load=True):
         session._autoflush()
 
     ctx = querycontext.ORMSelectCompileState._create_entities_collection(
-        statement
+        statement, legacy=False
     )
 
     autoflush = session.autoflush
@@ -253,7 +262,7 @@ def merge_result(query, iterator, load=True):
         frozen_result = None
 
     ctx = querycontext.ORMSelectCompileState._create_entities_collection(
-        query, True
+        query, legacy=True
     )
 
     autoflush = session.autoflush
@@ -329,7 +338,9 @@ def get_from_identity(session, mapper, key, passive):
                 return attributes.PASSIVE_NO_RESULT
             elif not passive & attributes.RELATED_OBJECT_OK:
                 # this mode is used within a flush and the instance's
-                # expired state will be checked soon enough, if necessary
+                # expired state will be checked soon enough, if necessary.
+                # also used by immediateloader for a mutually-dependent
+                # o2m->m2m load, :ticket:`6301`
                 return instance
             try:
                 state._load_expired(state, passive)
@@ -472,7 +483,6 @@ def load_on_pk_identity(
         _, load_options = _set_get_options(
             compile_options,
             load_options,
-            populate_existing=bool(refresh_state),
             version_check=version_check,
             only_load_props=only_load_props,
             refresh_state=refresh_state,
@@ -504,7 +514,6 @@ def load_on_pk_identity(
         q._compile_options, load_options = _set_get_options(
             compile_options,
             load_options,
-            populate_existing=bool(refresh_state),
             version_check=version_check,
             only_load_props=only_load_props,
             refresh_state=refresh_state,
@@ -907,17 +916,23 @@ def _instance_processor(
                 state.session_id = session_id
                 session_identity_map._add_unpresent(state, identitykey)
 
+        effective_populate_existing = populate_existing
+        if refresh_state is state:
+            effective_populate_existing = True
+
         # populate.  this looks at whether this state is new
         # for this load or was existing, and whether or not this
         # row is the first row with this identity.
-        if currentload or populate_existing:
+        if currentload or effective_populate_existing:
             # full population routines.  Objects here are either
             # just created, or we are doing a populate_existing
 
             # be conservative about setting load_path when populate_existing
             # is in effect; want to maintain options from the original
             # load.  see test_expire->test_refresh_maintains_deferred_options
-            if isnew and (propagated_loader_options or not populate_existing):
+            if isnew and (
+                propagated_loader_options or not effective_populate_existing
+            ):
                 state.load_options = propagated_loader_options
                 state.load_path = load_path
 
@@ -929,7 +944,7 @@ def _instance_processor(
                 isnew,
                 load_path,
                 loaded_instance,
-                populate_existing,
+                effective_populate_existing,
                 populators,
             )
 
@@ -957,7 +972,7 @@ def _instance_processor(
                     if state.runid != runid:
                         _warn_for_runid_changed(state)
 
-                if populate_existing or state.modified:
+                if effective_populate_existing or state.modified:
                     if refresh_state and only_load_props:
                         state._commit(dict_, only_load_props)
                     else:
@@ -1334,7 +1349,9 @@ def load_scalar_attributes(mapper, state, attribute_names, passive):
 
     result = False
 
-    no_autoflush = bool(passive & attributes.NO_AUTOFLUSH)
+    no_autoflush = (
+        bool(passive & attributes.NO_AUTOFLUSH) or state.session.autocommit
+    )
 
     # in the case of inheritance, particularly concrete and abstract
     # concrete inheritance, the class manager might have some keys

@@ -36,6 +36,7 @@ from sqlalchemy.dialects.mssql import base as mssql
 from sqlalchemy.dialects.mssql import ROWVERSION
 from sqlalchemy.dialects.mssql import TIMESTAMP
 from sqlalchemy.dialects.mssql.base import _MSDate
+from sqlalchemy.dialects.mssql.base import BIT
 from sqlalchemy.dialects.mssql.base import DATETIMEOFFSET
 from sqlalchemy.dialects.mssql.base import MS_2005_VERSION
 from sqlalchemy.dialects.mssql.base import MS_2008_VERSION
@@ -419,6 +420,8 @@ class TypeDDLTest(fixtures.TestBase):
             (mssql.MSDateTime2, [1], {}, "DATETIME2(1)", None),
             (mssql.MSTime, [0], {}, "TIME(0)", None),
             (mssql.MSDateTimeOffset, [0], {}, "DATETIMEOFFSET(0)", None),
+            (types.DateTime, [], {"timezone": True}, "DATETIMEOFFSET", None),
+            (types.DateTime, [], {"timezone": False}, "DATETIME", None),
         ]
 
         metadata = MetaData()
@@ -760,24 +763,82 @@ class TypeRoundTripTest(
             Column("atime2", Time),
             Column("adatetime", DateTime),
             Column("adatetimeoffset", DATETIMEOFFSET),
+            Column("adatetimewithtimezone", DateTime(timezone=True)),
         )
 
         d1 = datetime.date(2007, 10, 30)
         t1 = datetime.time(11, 2, 32)
         d2 = datetime.datetime(2007, 10, 30, 11, 2, 32)
-        return t, (d1, t1, d2)
+        d3 = datetime.datetime(
+            2007,
+            10,
+            30,
+            11,
+            2,
+            32,
+            123456,
+            util.timezone(datetime.timedelta(hours=-5)),
+        )
+        return t, (d1, t1, d2, d3)
 
     def test_date_roundtrips(self, date_fixture, connection):
-        t, (d1, t1, d2) = date_fixture
+        t, (d1, t1, d2, d3) = date_fixture
         connection.execute(
-            t.insert(), dict(adate=d1, adatetime=d2, atime1=t1, atime2=d2)
+            t.insert(),
+            dict(
+                adate=d1,
+                adatetime=d2,
+                atime1=t1,
+                atime2=d2,
+                adatetimewithtimezone=d3,
+            ),
         )
 
         row = connection.execute(t.select()).first()
         eq_(
-            (row.adate, row.adatetime, row.atime1, row.atime2),
-            (d1, d2, t1, d2.time()),
+            (
+                row.adate,
+                row.adatetime,
+                row.atime1,
+                row.atime2,
+                row.adatetimewithtimezone,
+            ),
+            (d1, d2, t1, d2.time(), d3),
         )
+
+    @testing.combinations(
+        (
+            datetime.datetime(
+                2007,
+                10,
+                30,
+                11,
+                2,
+                32,
+                tzinfo=util.timezone(datetime.timedelta(hours=-5)),
+            ),
+        ),
+        (datetime.datetime(2007, 10, 30, 11, 2, 32)),
+        argnames="date",
+    )
+    def test_tz_present_or_non_in_dates(self, date_fixture, connection, date):
+        t, (d1, t1, d2, d3) = date_fixture
+        connection.execute(
+            t.insert(),
+            dict(
+                adatetime=date,
+                adatetimewithtimezone=date,
+            ),
+        )
+
+        row = connection.execute(
+            select(t.c.adatetime, t.c.adatetimewithtimezone)
+        ).first()
+
+        if not date.tzinfo:
+            eq_(row, (date, date.replace(tzinfo=util.timezone.utc)))
+        else:
+            eq_(row, (date.replace(tzinfo=None), date))
 
     @testing.metadata_fixture()
     def datetimeoffset_fixture(self, metadata):
@@ -1135,6 +1196,7 @@ class StringTest(fixtures.TestBase, AssertsCompiledSQL):
 
 class MyPickleType(types.TypeDecorator):
     impl = PickleType
+    cache_ok = True
 
     def process_bind_param(self, value, dialect):
         if value:
@@ -1282,3 +1344,31 @@ class BinaryTest(fixtures.TestBase):
         stream = fp.read(len_)
         fp.close()
         return stream
+
+
+class BooleanTest(fixtures.TestBase, AssertsCompiledSQL):
+    __only_on__ = "mssql"
+
+    @testing.provide_metadata
+    @testing.combinations(
+        ("as_boolean_null", Boolean, True, "CREATE TABLE tbl (boo BIT NULL)"),
+        ("as_bit_null", BIT, True, "CREATE TABLE tbl (boo BIT NULL)"),
+        (
+            "as_boolean_not_null",
+            Boolean,
+            False,
+            "CREATE TABLE tbl (boo BIT NOT NULL)",
+        ),
+        ("as_bit_not_null", BIT, False, "CREATE TABLE tbl (boo BIT NOT NULL)"),
+        id_="iaaa",
+        argnames="col_type, is_nullable, ddl",
+    )
+    def test_boolean_as_bit(self, col_type, is_nullable, ddl):
+        tbl = Table(
+            "tbl", self.metadata, Column("boo", col_type, nullable=is_nullable)
+        )
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            ddl,
+        )
+        assert isinstance(tbl.c.boo.type.as_generic(), Boolean)

@@ -31,6 +31,13 @@ from .. import inspection
 from .. import util
 
 
+# late-populated by session.py
+_sessions = None
+
+# optionally late-provided by sqlalchemy.ext.asyncio.session
+_async_provider = None
+
+
 @inspection._self_inspects
 class InstanceState(interfaces.InspectionAttrInfo):
     """tracks state information at the instance level.
@@ -247,7 +254,6 @@ class InstanceState(interfaces.InspectionAttrInfo):
             self._last_known_values[key] = NO_VALUE
 
     @property
-    @util.preload_module("sqlalchemy.orm.session")
     def session(self):
         """Return the owning :class:`.Session` for this instance,
         or ``None`` if none available.
@@ -259,8 +265,45 @@ class InstanceState(interfaces.InspectionAttrInfo):
         Only when the transaction is completed does the object become
         fully detached under normal circumstances.
 
+        .. seealso::
+
+            :attr:`_orm.InstanceState.async_session`
+
         """
-        return util.preloaded.orm_session._state_session(self)
+        if self.session_id:
+            try:
+                return _sessions[self.session_id]
+            except KeyError:
+                pass
+        return None
+
+    @property
+    def async_session(self):
+        """Return the owning :class:`_asyncio.AsyncSession` for this instance,
+        or ``None`` if none available.
+
+        This attribute is only non-None when the :mod:`sqlalchemy.ext.asyncio`
+        API is in use for this ORM object. The returned
+        :class:`_asyncio.AsyncSession` object will be a proxy for the
+        :class:`_orm.Session` object that would be returned from the
+        :attr:`_orm.InstanceState.session` attribute for this
+        :class:`_orm.InstanceState`.
+
+        .. versionadded:: 1.4.18
+
+        .. seealso::
+
+            :ref:`asyncio_toplevel`
+
+        """
+        if _async_provider is None:
+            return None
+
+        sess = self.session
+        if sess is not None:
+            return _async_provider(sess)
+        else:
+            return None
 
     @property
     def object(self):
@@ -754,7 +797,10 @@ class InstanceState(interfaces.InspectionAttrInfo):
             self.modified = True
             instance_dict = self._instance_dict()
             if instance_dict:
+                has_modified = bool(instance_dict._modified)
                 instance_dict._modified.add(self)
+            else:
+                has_modified = False
 
             # only create _strong_obj link if attached
             # to a session
@@ -762,6 +808,20 @@ class InstanceState(interfaces.InspectionAttrInfo):
             inst = self.obj()
             if self.session_id:
                 self._strong_obj = inst
+
+                # if identity map already had modified objects,
+                # assume autobegin already occurred, else check
+                # for autobegin
+                if not has_modified:
+                    # inline of autobegin, to ensure session transaction
+                    # snapshot is established
+                    try:
+                        session = _sessions[self.session_id]
+                    except KeyError:
+                        pass
+                    else:
+                        if session._transaction is None:
+                            session._autobegin()
 
             if inst is None and attr:
                 raise orm_exc.ObjectDereferencedError(

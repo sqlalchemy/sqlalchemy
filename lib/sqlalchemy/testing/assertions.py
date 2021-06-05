@@ -372,6 +372,13 @@ def _expect_raises(except_cls, msg=None, check_context=False):
             _assert_proper_exception_context(err)
         print(util.text_type(err).encode("utf-8"))
 
+    # it's generally a good idea to not carry traceback objects outside
+    # of the except: block, but in this case especially we seem to have
+    # hit some bug in either python 3.10.0b2 or greenlet or both which
+    # this seems to fix:
+    # https://github.com/python-greenlet/greenlet/issues/242
+    del ec
+
     # assert outside the block so it works for AssertionError too !
     assert success, "Callable did not raise an exception"
 
@@ -400,6 +407,7 @@ class AssertsCompiledSQL(object):
         use_default_dialect=False,
         allow_dialect_select=False,
         supports_default_values=True,
+        supports_default_metavalue=True,
         literal_binds=False,
         render_postcompile=False,
         schema_translate_map=None,
@@ -410,6 +418,7 @@ class AssertsCompiledSQL(object):
         if use_default_dialect:
             dialect = default.DefaultDialect()
             dialect.supports_default_values = supports_default_values
+            dialect.supports_default_metavalue = supports_default_metavalue
         elif allow_dialect_select:
             dialect = None
         else:
@@ -421,6 +430,7 @@ class AssertsCompiledSQL(object):
             elif dialect == "default":
                 dialect = default.DefaultDialect()
                 dialect.supports_default_values = supports_default_values
+                dialect.supports_default_metavalue = supports_default_metavalue
             elif dialect == "default_enhanced":
                 dialect = default.StrCompileDialect()
             elif isinstance(dialect, util.string_types):

@@ -52,6 +52,7 @@ class PGExecutionContext_pypostgresql(PGExecutionContext):
 class PGDialect_pypostgresql(PGDialect):
     driver = "pypostgresql"
 
+    supports_statement_cache = True
     supports_unicode_statements = True
     supports_unicode_binds = True
     description_encoding = None

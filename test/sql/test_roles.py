@@ -26,6 +26,7 @@ from sqlalchemy.sql.coercions import expect
 from sqlalchemy.sql.elements import _truncated_label
 from sqlalchemy.sql.elements import Null
 from sqlalchemy.sql.selectable import FromGrouping
+from sqlalchemy.sql.selectable import ScalarSelect
 from sqlalchemy.sql.selectable import SelectStatementGrouping
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -145,6 +146,19 @@ class RoleTest(fixtures.TestBase):
             )
         )
 
+    def test_untyped_scalar_subquery(self):
+        """test for :ticket:`6181`"""
+
+        c = column("q")
+        subq = select(c).scalar_subquery()
+
+        assert isinstance(
+            subq._with_binary_element_type(Integer()), ScalarSelect
+        )
+
+        expr = column("a", Integer) == subq
+        assert isinstance(expr.right, ScalarSelect)
+
     def test_no_clauseelement_in_bind(self):
         with testing.expect_raises_message(
             exc.ArgumentError,
@@ -195,24 +209,31 @@ class RoleTest(fixtures.TestBase):
         ):
             expect(roles.ExpressionElementRole, t.select().alias())
 
-    def test_statement_no_text_coercion(self):
-        assert_raises_message(
+    def test_raise_on_regular_python_obj_for_expr(self):
+        """test #6350"""
+
+        def some_function():
+            pass
+
+        class Thing(object):
+            def __clause_element__(self):
+                return some_function
+
+        with testing.expect_raises_message(
             exc.ArgumentError,
-            r"Textual SQL expression 'select \* from table' should be "
-            r"explicitly declared",
-            expect,
-            roles.StatementRole,
-            "select * from table",
-        )
+            r"SQL expression element expected, got "
+            "<function .*some_function .* resolved from <.*Thing object .*",
+        ):
+            expect(roles.ExpressionElementRole, Thing())
 
     def test_statement_text_coercion(self):
         with testing.expect_deprecated_20(
             "Using plain strings to indicate SQL statements"
         ):
             is_true(
-                expect(
-                    roles.CoerceTextStatementRole, "select * from table"
-                ).compare(text("select * from table"))
+                expect(roles.StatementRole, "select * from table").compare(
+                    text("select * from table")
+                )
             )
 
     def test_select_statement_no_text_coercion(self):
@@ -268,13 +289,11 @@ class RoleTest(fixtures.TestBase):
         )
 
     def test_statement_coercion_select(self):
-        is_true(
-            expect(roles.CoerceTextStatementRole, select(t)).compare(select(t))
-        )
+        is_true(expect(roles.StatementRole, select(t)).compare(select(t)))
 
     def test_statement_coercion_ddl(self):
         d1 = DDL("hi")
-        is_(expect(roles.CoerceTextStatementRole, d1), d1)
+        is_(expect(roles.StatementRole, d1), d1)
 
     def test_strict_from_clause_role(self):
         stmt = select(t).subquery()
@@ -311,7 +330,7 @@ class RoleTest(fixtures.TestBase):
 
     def test_statement_coercion_sequence(self):
         s1 = Sequence("hi")
-        is_(expect(roles.CoerceTextStatementRole, s1), s1)
+        is_(expect(roles.StatementRole, s1), s1)
 
     def test_columns_clause_role(self):
         is_(expect(roles.ColumnsClauseRole, t.c.q), t.c.q)

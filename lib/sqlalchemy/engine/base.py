@@ -13,6 +13,7 @@ from .interfaces import Connectable
 from .interfaces import ExceptionContext
 from .util import _distill_params
 from .util import _distill_params_20
+from .util import TransactionalContext
 from .. import exc
 from .. import inspection
 from .. import log
@@ -60,6 +61,9 @@ class Connection(Connectable):
     _is_future = False
     _sqla_logger_namespace = "sqlalchemy.engine.Connection"
 
+    # used by sqlalchemy.engine.util.TransactionalContext
+    _trans_context_manager = None
+
     def __init__(
         self,
         engine,
@@ -69,6 +73,7 @@ class Connection(Connectable):
         _execution_options=None,
         _dispatch=None,
         _has_events=None,
+        _allow_revalidate=True,
     ):
         """Construct a new Connection."""
         self.engine = engine
@@ -96,7 +101,7 @@ class Connection(Connectable):
             self.__in_begin = False
             self.should_close_with_result = close_with_result
 
-            self.__can_reconnect = True
+            self.__can_reconnect = _allow_revalidate
             self._echo = self.engine._should_log_info()
 
             if _has_events is None:
@@ -693,10 +698,18 @@ class Connection(Connectable):
         which completes when either the :meth:`.Transaction.rollback`
         or :meth:`.Transaction.commit` method is called.
 
-        Nested calls to :meth:`.begin` on the same :class:`_engine.Connection`
-        will return new :class:`.Transaction` objects that represent
-        an emulated transaction within the scope of the enclosing
-        transaction, that is::
+        .. tip::
+
+            The :meth:`_engine.Connection.begin` method is invoked when using
+            the :meth:`_engine.Engine.begin` context manager method as well.
+            All documentation that refers to behaviors specific to the
+            :meth:`_engine.Connection.begin` method also apply to use of the
+            :meth:`_engine.Engine.begin` method.
+
+        Legacy use: nested calls to :meth:`.begin` on the same
+        :class:`_engine.Connection` will return new :class:`.Transaction`
+        objects that represent an emulated transaction within the scope of the
+        enclosing transaction, that is::
 
             trans = conn.begin()   # outermost transaction
             trans2 = conn.begin()  # "nested"
@@ -708,6 +721,14 @@ class Connection(Connectable):
         :meth:`.Transaction.rollback` method of any of the
         :class:`.Transaction` objects will roll back the
         transaction.
+
+        .. tip::
+
+            The above "nesting" behavior is a legacy behavior specific to
+            :term:`1.x style` use and will be removed in SQLAlchemy 2.0. For
+            notes on :term:`2.0 style` use, see
+            :meth:`_future.Connection.begin`.
+
 
         .. seealso::
 
@@ -744,15 +765,45 @@ class Connection(Connectable):
                 return MarkerTransaction(self)
 
     def begin_nested(self):
-        """Begin a nested transaction and return a transaction handle.
-
-        The returned object is an instance of :class:`.NestedTransaction`.
+        """Begin a nested transaction (i.e. SAVEPOINT) and return a
+        transaction handle, assuming an outer transaction is already
+        established.
 
         Nested transactions require SAVEPOINT support in the
         underlying database.  Any transaction in the hierarchy may
         ``commit`` and ``rollback``, however the outermost transaction
         still controls the overall ``commit`` or ``rollback`` of the
         transaction of a whole.
+
+        The legacy form of :meth:`_engine.Connection.begin_nested` method has
+        alternate behaviors based on whether or not the
+        :meth:`_engine.Connection.begin` method was called previously. If
+        :meth:`_engine.Connection.begin` was not called, then this method will
+        behave the same as the :meth:`_engine.Connection.begin` method and
+        return a :class:`.RootTransaction` object that begins and commits a
+        real transaction - **no savepoint is invoked**. If
+        :meth:`_engine.Connection.begin` **has** been called, and a
+        :class:`.RootTransaction` is already established, then this method
+        returns an instance of :class:`.NestedTransaction` which will invoke
+        and manage the scope of a SAVEPOINT.
+
+        .. tip::
+
+            The above mentioned behavior of
+            :meth:`_engine.Connection.begin_nested` is a legacy behavior
+            specific to :term:`1.x style` use. In :term:`2.0 style` use, the
+            :meth:`_future.Connection.begin_nested` method instead autobegins
+            the outer transaction that can be committed using
+            "commit-as-you-go" style; see
+            :meth:`_future.Connection.begin_nested` for migration details.
+
+        .. versionchanged:: 1.4.13 The behavior of
+           :meth:`_engine.Connection.begin_nested`
+           as returning a :class:`.RootTransaction` if
+           :meth:`_engine.Connection.begin` were not called has been restored
+           as was the case in 1.3.x versions; in previous 1.4.x versions, an
+           outer transaction would be "autobegun" but would not be committed.
+
 
         .. seealso::
 
@@ -767,7 +818,18 @@ class Connection(Connectable):
             return self.__branch_from.begin_nested()
 
         if self._transaction is None:
-            self.begin()
+            if not self._is_future:
+                util.warn_deprecated_20(
+                    "Calling Connection.begin_nested() in 2.0 style use will "
+                    "return a NestedTransaction (SAVEPOINT) in all cases, "
+                    "that will not commit the outer transaction.  For code "
+                    "that is cross-compatible between 1.x and 2.0 style use, "
+                    "ensure Connection.begin() is called before calling "
+                    "Connection.begin_nested()."
+                )
+                return self.begin()
+            else:
+                self._autobegin()
 
         return NestedTransaction(self)
 
@@ -1625,6 +1687,9 @@ class Connection(Connectable):
         ):
             self._invalid_transaction()
 
+        elif self._trans_context_manager:
+            TransactionalContext._trans_ctx_check(self)
+
         if self._is_future and self._transaction is None:
             self._autobegin()
 
@@ -2124,7 +2189,7 @@ class ExceptionContextImpl(ExceptionContext):
         self.invalidate_pool_on_disconnect = invalidate_pool_on_disconnect
 
 
-class Transaction(object):
+class Transaction(TransactionalContext):
     """Represent a database transaction in progress.
 
     The :class:`.Transaction` object is procured by
@@ -2181,6 +2246,14 @@ class Transaction(object):
         in place.
 
         for 2.0 we hope to remove this nesting feature.
+
+        """
+        raise NotImplementedError()
+
+    @property
+    def _deactivated_from_connection(self):
+        """True if this transaction is totally deactivated from the connection
+        and therefore can no longer affect its state.
 
         """
         raise NotImplementedError()
@@ -2258,18 +2331,14 @@ class Transaction(object):
         finally:
             assert not self.is_active
 
-    def __enter__(self):
-        return self
+    def _get_subject(self):
+        return self.connection
 
-    def __exit__(self, type_, value, traceback):
-        if type_ is None and self.is_active:
-            try:
-                self.commit()
-            except:
-                with util.safe_reraise():
-                    self.rollback()
-        else:
-            self.rollback()
+    def _transaction_is_active(self):
+        return self.is_active
+
+    def _transaction_is_closed(self):
+        return not self._deactivated_from_connection
 
 
 class MarkerTransaction(Transaction):
@@ -2299,11 +2368,19 @@ class MarkerTransaction(Transaction):
         )
 
         self.connection = connection
+
+        if connection._trans_context_manager:
+            TransactionalContext._trans_ctx_check(connection)
+
         if connection._nested_transaction is not None:
             self._transaction = connection._nested_transaction
         else:
             self._transaction = connection._transaction
         self._is_active = True
+
+    @property
+    def _deactivated_from_connection(self):
+        return not self.is_active
 
     @property
     def is_active(self):
@@ -2332,11 +2409,20 @@ class RootTransaction(Transaction):
     """Represent the "root" transaction on a :class:`_engine.Connection`.
 
     This corresponds to the current "BEGIN/COMMIT/ROLLBACK" that's occurring
-    for the :class:`_engine.Connection`.
-
-    The :class:`_engine.RootTransaction` object is accessible via the
-    :attr:`_engine.Connection.get_transaction` method of
+    for the :class:`_engine.Connection`. The :class:`_engine.RootTransaction`
+    is created by calling upon the :meth:`_engine.Connection.begin` method, and
+    remains associated with the :class:`_engine.Connection` throughout its
+    active span. The current :class:`_engine.RootTransaction` in use is
+    accessible via the :attr:`_engine.Connection.get_transaction` method of
     :class:`_engine.Connection`.
+
+    In :term:`2.0 style` use, the :class:`_future.Connection` also employs
+    "autobegin" behavior that will create a new
+    :class:`_engine.RootTransaction` whenever a connection in a
+    non-transactional state is used to emit commands on the DBAPI connection.
+    The scope of the :class:`_engine.RootTransaction` in 2.0 style
+    use can be controlled using the :meth:`_future.Connection.commit` and
+    :meth:`_future.Connection.rollback` methods.
 
 
     """
@@ -2347,6 +2433,8 @@ class RootTransaction(Transaction):
 
     def __init__(self, connection):
         assert connection._transaction is None
+        if connection._trans_context_manager:
+            TransactionalContext._trans_ctx_check(connection)
         self.connection = connection
         self._connection_begin_impl()
         connection._transaction = self
@@ -2360,6 +2448,10 @@ class RootTransaction(Transaction):
 
         elif self.connection._transaction is not self:
             util.warn("transaction already deassociated from connection")
+
+    @property
+    def _deactivated_from_connection(self):
+        return self.connection._transaction is not self
 
     def _do_deactivate(self):
         # called from a MarkerTransaction to cancel this root transaction.
@@ -2478,19 +2570,25 @@ class NestedTransaction(Transaction):
 
     def __init__(self, connection):
         assert connection._transaction is not None
+        if connection._trans_context_manager:
+            TransactionalContext._trans_ctx_check(connection)
         self.connection = connection
         self._savepoint = self.connection._savepoint_impl()
         self.is_active = True
         self._previous_nested = connection._nested_transaction
         connection._nested_transaction = self
 
-    def _deactivate_from_connection(self):
+    def _deactivate_from_connection(self, warn=True):
         if self.connection._nested_transaction is self:
             self.connection._nested_transaction = self._previous_nested
-        else:
+        elif warn:
             util.warn(
                 "nested transaction already deassociated from connection"
             )
+
+    @property
+    def _deactivated_from_connection(self):
+        return self.connection._nested_transaction is not self
 
     def _cancel(self):
         # called by RootTransaction when the outer transaction is
@@ -2501,23 +2599,28 @@ class NestedTransaction(Transaction):
         if self._previous_nested:
             self._previous_nested._cancel()
 
-    def _close_impl(self, deactivate_from_connection):
+    def _close_impl(self, deactivate_from_connection, warn_already_deactive):
         try:
             if self.is_active and self.connection._transaction.is_active:
                 self.connection._rollback_to_savepoint_impl(self._savepoint)
         finally:
             self.is_active = False
+
             if deactivate_from_connection:
-                self._deactivate_from_connection()
+                self._deactivate_from_connection(warn=warn_already_deactive)
+
+        assert not self.is_active
+        if deactivate_from_connection:
+            assert self.connection._nested_transaction is not self
 
     def _do_deactivate(self):
-        self._close_impl(False)
+        self._close_impl(False, False)
 
     def _do_close(self):
-        self._close_impl(True)
+        self._close_impl(True, False)
 
     def _do_rollback(self):
-        self._close_impl(True)
+        self._close_impl(True, True)
 
     def _do_commit(self):
         if self.is_active:
@@ -2840,16 +2943,12 @@ class Engine(Connectable, log.Identified):
             self.close_with_result = close_with_result
 
         def __enter__(self):
+            self.transaction.__enter__()
             return self.conn
 
         def __exit__(self, type_, value, traceback):
             try:
-                if type_ is not None:
-                    if self.transaction.is_active:
-                        self.transaction.rollback()
-                else:
-                    if self.transaction.is_active:
-                        self.transaction.commit()
+                self.transaction.__exit__(type_, value, traceback)
             finally:
                 if not self.close_with_result:
                     self.conn.close()
@@ -2870,14 +2969,14 @@ class Engine(Connectable, log.Identified):
         is committed.  If an error is raised, the :class:`.Transaction`
         is rolled back.
 
-        The ``close_with_result`` flag is normally ``False``, and indicates
-        that the :class:`_engine.Connection` will be closed when the operation
-        is complete.   When set to ``True``, it indicates the
+        Legacy use only: the ``close_with_result`` flag is normally ``False``,
+        and indicates that the :class:`_engine.Connection` will be closed when
+        the operation is complete. When set to ``True``, it indicates the
         :class:`_engine.Connection` is in "single use" mode, where the
         :class:`_engine.CursorResult` returned by the first call to
         :meth:`_engine.Connection.execute` will close the
-        :class:`_engine.Connection` when
-        that :class:`_engine.CursorResult` has exhausted all result rows.
+        :class:`_engine.Connection` when that :class:`_engine.CursorResult` has
+        exhausted all result rows.
 
         .. seealso::
 
@@ -2955,7 +3054,7 @@ class Engine(Connectable, log.Identified):
         "1.4",
         "The :meth:`_engine.Engine.run_callable` "
         "method is deprecated and will be "
-        "removed in a future release.  Use the :meth:`_engine.Engine.connect` "
+        "removed in a future release.  Use the :meth:`_engine.Engine.begin` "
         "context manager instead.",
     )
     def run_callable(self, callable_, *args, **kwargs):

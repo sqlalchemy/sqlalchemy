@@ -39,6 +39,33 @@ passed to :func:`_sa.create_engine` using the ``client_encoding`` parameter::
     engine = create_engine(
         "postgresql+pg8000://user:pass@host/dbname", client_encoding='utf8')
 
+.. _pg8000_ssl:
+
+SSL Connections
+---------------
+
+pg8000 accepts a Python ``SSLContext`` object which may be specified using the
+:paramref:`_sa.create_engine.connect_args` dictionary::
+
+    import ssl
+    ssl_context = ssl.create_default_context()
+    engine = sa.create_engine(
+        "postgresql+pg8000://scott:tiger@192.168.0.199/test",
+        connect_args={"ssl_context": ssl_context},
+    )
+
+If the server uses an automatically-generated certificate that is self-signed
+or does not match the host name (as seen from the client), it may also be
+necessary to disable hostname checking::
+
+    import ssl
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    engine = sa.create_engine(
+        "postgresql+pg8000://scott:tiger@192.168.0.199/test",
+        connect_args={"ssl_context": ssl_context},
+    )
 
 .. _pg8000_isolation_level:
 
@@ -229,10 +256,73 @@ class _PGBoolean(sqltypes.Boolean):
         return dbapi.BOOLEAN
 
 
+_server_side_id = util.counter()
+
+
 class PGExecutionContext_pg8000(PGExecutionContext):
+    def create_server_side_cursor(self):
+        ident = "c_%s_%s" % (hex(id(self))[2:], hex(_server_side_id())[2:])
+        return ServerSideCursor(self._dbapi_connection.cursor(), ident)
+
     def pre_exec(self):
         if not self.compiled:
             return
+
+
+class ServerSideCursor:
+    server_side = True
+
+    def __init__(self, cursor, ident):
+        self.ident = ident
+        self.cursor = cursor
+
+    @property
+    def connection(self):
+        return self.cursor.connection
+
+    @property
+    def rowcount(self):
+        return self.cursor.rowcount
+
+    @property
+    def description(self):
+        return self.cursor.description
+
+    def execute(self, operation, args=(), stream=None):
+        op = "DECLARE " + self.ident + " NO SCROLL CURSOR FOR " + operation
+        self.cursor.execute(op, args, stream=stream)
+        return self
+
+    def executemany(self, operation, param_sets):
+        self.cursor.executemany(operation, param_sets)
+        return self
+
+    def fetchone(self):
+        self.cursor.execute("FETCH FORWARD 1 FROM " + self.ident)
+        return self.cursor.fetchone()
+
+    def fetchmany(self, num=None):
+        if num is None:
+            return self.fetchall()
+        else:
+            self.cursor.execute(
+                "FETCH FORWARD " + str(int(num)) + " FROM " + self.ident
+            )
+            return self.cursor.fetchall()
+
+    def fetchall(self):
+        self.cursor.execute("FETCH FORWARD ALL FROM " + self.ident)
+        return self.cursor.fetchall()
+
+    def close(self):
+        self.cursor.execute("CLOSE " + self.ident)
+        self.cursor.close()
+
+    def setinputsizes(self, *sizes):
+        self.cursor.setinputsizes(*sizes)
+
+    def setoutputsize(self, size, column=None):
+        pass
 
 
 class PGCompiler_pg8000(PGCompiler):
@@ -252,6 +342,7 @@ class PGIdentifierPreparer_pg8000(PGIdentifierPreparer):
 
 class PGDialect_pg8000(PGDialect):
     driver = "pg8000"
+    supports_statement_cache = True
 
     supports_unicode_statements = True
 
@@ -262,6 +353,7 @@ class PGDialect_pg8000(PGDialect):
     execution_ctx_cls = PGExecutionContext_pg8000
     statement_compiler = PGCompiler_pg8000
     preparer = PGIdentifierPreparer_pg8000
+    supports_server_side_cursors = True
 
     use_setinputsizes = True
 
@@ -328,6 +420,13 @@ class PGDialect_pg8000(PGDialect):
         return ([], opts)
 
     def is_disconnect(self, e, connection, cursor):
+        if isinstance(e, self.dbapi.InterfaceError) and "network error" in str(
+            e
+        ):
+            # new as of pg8000 1.19.0 for broken connections
+            return True
+
+        # connection was closed normally
         return "connection is closed" in str(e)
 
     def set_isolation_level(self, connection, level):

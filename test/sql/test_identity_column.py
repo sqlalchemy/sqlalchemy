@@ -1,3 +1,5 @@
+import re
+
 from sqlalchemy import Column
 from sqlalchemy import Identity
 from sqlalchemy import Integer
@@ -5,6 +7,7 @@ from sqlalchemy import MetaData
 from sqlalchemy import Sequence
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy.engine import URL
 from sqlalchemy.exc import ArgumentError
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.testing import assert_raises_message
@@ -63,9 +66,9 @@ class _IdentityDDLFixture(testing.AssertsCompiledSQL):
     )
     def test_create_ddl(self, identity_args, text):
 
-        if getattr(self, "__dialect__", None) != "default" and testing.against(
-            "oracle"
-        ):
+        if getattr(
+            self, "__dialect__", None
+        ) != "default_enhanced" and testing.against("oracle"):
             text = text.replace("NO MINVALUE", "NOMINVALUE")
             text = text.replace("NO MAXVALUE", "NOMAXVALUE")
             text = text.replace("NO CYCLE", "NOCYCLE")
@@ -138,9 +141,9 @@ class _IdentityDDLFixture(testing.AssertsCompiledSQL):
         is_(t.c.c.nullable, False)
 
         nullable = ""
-        if getattr(self, "__dialect__", None) != "default" and testing.against(
-            "postgresql"
-        ):
+        if getattr(
+            self, "__dialect__", None
+        ) != "default_enhanced" and testing.against("postgresql"):
             nullable = " NULL"
 
         self.assert_compile(
@@ -183,22 +186,67 @@ class IdentityDDL(_IdentityDDLFixture, fixtures.TestBase):
 
 class DefaultDialectIdentityDDL(_IdentityDDLFixture, fixtures.TestBase):
     # this uses the default dialect
-    __dialect__ = "default"
+    __dialect__ = "default_enhanced"
 
 
 class NotSupportingIdentityDDL(testing.AssertsCompiledSQL, fixtures.TestBase):
-    # a dialect that doesn't render IDENTITY
-    __dialect__ = "sqlite"
+    def get_dialect(self, dialect):
+        dd = URL.create(dialect).get_dialect()()
+        if dialect in {"oracle", "postgresql"}:
+            dd.supports_identity_columns = False
+        return dd
 
-    @testing.skip_if(testing.requires.identity_columns)
-    def test_identity_is_ignored(self):
+    @testing.combinations("sqlite", "mysql", "mariadb", "postgresql", "oracle")
+    def test_identity_is_ignored(self, dialect):
+
         t = Table(
             "foo_table",
             MetaData(),
             Column("foo", Integer(), Identity("always", start=3)),
         )
+        t_exp = Table(
+            "foo_table",
+            MetaData(),
+            Column("foo", Integer(), nullable=False),
+        )
+        dialect = self.get_dialect(dialect)
+        exp = CreateTable(t_exp).compile(dialect=dialect).string
         self.assert_compile(
-            CreateTable(t), "CREATE TABLE foo_table (foo INTEGER NOT NULL)"
+            CreateTable(t), re.sub(r"[\n\t]", "", exp), dialect=dialect
+        )
+
+    @testing.combinations(
+        "sqlite",
+        "mysql",
+        "mariadb",
+        "postgresql",
+        "oracle",
+        argnames="dialect",
+    )
+    @testing.combinations(True, "auto", argnames="autoincrement")
+    def test_identity_is_ignored_in_pk(self, dialect, autoincrement):
+        t = Table(
+            "foo_table",
+            MetaData(),
+            Column(
+                "foo",
+                Integer(),
+                Identity("always", start=3),
+                primary_key=True,
+                autoincrement=autoincrement,
+            ),
+        )
+        t_exp = Table(
+            "foo_table",
+            MetaData(),
+            Column(
+                "foo", Integer(), primary_key=True, autoincrement=autoincrement
+            ),
+        )
+        dialect = self.get_dialect(dialect)
+        exp = CreateTable(t_exp).compile(dialect=dialect).string
+        self.assert_compile(
+            CreateTable(t), re.sub(r"[\n\t]", "", exp), dialect=dialect
         )
 
 

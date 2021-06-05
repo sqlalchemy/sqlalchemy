@@ -14,6 +14,13 @@ storage needs, for reasons of concurrency, reduced complexity, and that
 modified preorder has little advantage over an application which can fully
 load subtrees into the application space.
 
+.. seealso::
+
+    This section details the single-table version of a self-referential
+    relationship. For a self-referential relationship that uses a second table
+    as an association table, see the section
+    :ref:`self_referential_many_to_many`.
+
 In this example, we'll work with a single mapped
 class called ``Node``, representing a tree structure::
 
@@ -114,6 +121,8 @@ is on both sides, and aligns the "remote" column along with the
 ``folder_id`` column, which it recognizes as uniquely present on
 the "remote" side.
 
+.. _self_referential_query:
+
 Self-Referential Query Strategies
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -137,11 +146,11 @@ looks like:
     from sqlalchemy.orm import aliased
 
     nodealias = aliased(Node)
-    {sql}session.query(Node).filter(Node.data=='subchild1').\
+    session.query(Node).filter(Node.data=='subchild1').\
                     join(Node.parent.of_type(nodealias)).\
                     filter(nodealias.data=="child2").\
                     all()
-    SELECT node.id AS node_id,
+    {opensql}SELECT node.id AS node_id,
             node.parent_id AS node_parent_id,
             node.data AS node_data
     FROM node JOIN node AS node_1
@@ -180,8 +189,8 @@ configured via :paramref:`~.relationships.join_depth`:
                         lazy="joined",
                         join_depth=2)
 
-    {sql}session.query(Node).all()
-    SELECT node_1.id AS node_1_id,
+    session.query(Node).all()
+    {opensql}SELECT node_1.id AS node_1_id,
             node_1.parent_id AS node_1_parent_id,
             node_1.data AS node_1_data,
             node_2.id AS node_2_id,

@@ -29,9 +29,6 @@ except ImportError:
 class DataclassesTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
     __requires__ = ("dataclasses",)
 
-    run_setup_classes = "each"
-    run_setup_mappers = "each"
-
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -525,9 +522,6 @@ class FieldEmbeddedWMixinTest(FieldEmbeddedDeclarativeDataclassesTest):
 class FieldEmbeddedMixinWLambdaTest(fixtures.DeclarativeMappedTest):
     __requires__ = ("dataclasses",)
 
-    run_setup_classes = "each"
-    run_setup_mappers = "each"
-
     @classmethod
     def setup_classes(cls):
         declarative = cls.DeclarativeBasic.registry.mapped
@@ -554,6 +548,11 @@ class FieldEmbeddedMixinWLambdaTest(fixtures.DeclarativeMappedTest):
                 },
             )
 
+            has_a_default: str = dataclasses.field(
+                default="some default",
+                metadata={"sa": lambda: Column(String(50))},
+            )
+
         @declarative
         @dataclasses.dataclass
         class Widget(WidgetDC):
@@ -566,9 +565,33 @@ class FieldEmbeddedMixinWLambdaTest(fixtures.DeclarativeMappedTest):
                 default=None,
                 metadata={"sa": Column(String(30), nullable=False)},
             )
+
             __mapper_args__ = dict(
                 polymorphic_on="type",
                 polymorphic_identity="normal",
+            )
+
+        @declarative
+        @dataclasses.dataclass
+        class SpecialWidget(Widget):
+            __tablename__ = "special_widgets"
+            __sa_dataclass_metadata_key__ = "sa"
+
+            special_widget_id: int = dataclasses.field(
+                init=False,
+                metadata={
+                    "sa": Column(
+                        ForeignKey("widgets.widget_id"), primary_key=True
+                    )
+                },
+            )
+
+            magic: bool = dataclasses.field(
+                default=False, metadata={"sa": Column(Boolean)}
+            )
+
+            __mapper_args__ = dict(
+                polymorphic_identity="special",
             )
 
         @dataclasses.dataclass
@@ -631,9 +654,12 @@ class FieldEmbeddedMixinWLambdaTest(fixtures.DeclarativeMappedTest):
         cls.classes["Account"] = Account
         cls.classes["Widget"] = Widget
         cls.classes["User"] = User
+        cls.classes["SpecialWidget"] = SpecialWidget
 
     def test_setup(self):
-        Account, Widget, User = self.classes("Account", "Widget", "User")
+        Account, Widget, User, SpecialWidget = self.classes(
+            "Account", "Widget", "User", "SpecialWidget"
+        )
 
         assert "account_id" in Widget.__table__.c
         assert list(Widget.__table__.c.account_id.foreign_keys)[0].references(
@@ -641,9 +667,33 @@ class FieldEmbeddedMixinWLambdaTest(fixtures.DeclarativeMappedTest):
         )
         assert inspect(Account).relationships.widgets.mapper is inspect(Widget)
 
+        assert "account_id" not in SpecialWidget.__table__.c
+
+        assert "has_a_default" in Widget.__table__.c
+        assert "has_a_default" not in SpecialWidget.__table__.c
+
         assert "account_id" in User.__table__.c
         assert list(User.__table__.c.account_id.foreign_keys)[0].references(
             Account.__table__
+        )
+
+    def test_asdict_and_astuple_special_widget(self):
+        SpecialWidget = self.classes.SpecialWidget
+        widget = SpecialWidget(magic=True)
+        eq_(
+            dataclasses.asdict(widget),
+            {
+                "widget_id": None,
+                "account_id": None,
+                "has_a_default": "some default",
+                "name": None,
+                "special_widget_id": None,
+                "magic": True,
+            },
+        )
+        eq_(
+            dataclasses.astuple(widget),
+            (None, None, "some default", None, None, True),
         )
 
 
@@ -678,6 +728,11 @@ class FieldEmbeddedMixinWDeclaredAttrTest(FieldEmbeddedMixinWLambdaTest):
                 },
             )
 
+            has_a_default: str = dataclasses.field(
+                default="some default",
+                metadata={"sa": declared_attr(lambda: Column(String(50)))},
+            )
+
         @declarative
         @dataclasses.dataclass
         class Widget(WidgetDC):
@@ -693,6 +748,29 @@ class FieldEmbeddedMixinWDeclaredAttrTest(FieldEmbeddedMixinWLambdaTest):
             __mapper_args__ = dict(
                 polymorphic_on="type",
                 polymorphic_identity="normal",
+            )
+
+        @declarative
+        @dataclasses.dataclass
+        class SpecialWidget(Widget):
+            __tablename__ = "special_widgets"
+            __sa_dataclass_metadata_key__ = "sa"
+
+            special_widget_id: int = dataclasses.field(
+                init=False,
+                metadata={
+                    "sa": Column(
+                        ForeignKey("widgets.widget_id"), primary_key=True
+                    )
+                },
+            )
+
+            magic: bool = dataclasses.field(
+                default=False, metadata={"sa": Column(Boolean)}
+            )
+
+            __mapper_args__ = dict(
+                polymorphic_identity="special",
             )
 
         @dataclasses.dataclass
@@ -757,13 +835,11 @@ class FieldEmbeddedMixinWDeclaredAttrTest(FieldEmbeddedMixinWLambdaTest):
         cls.classes["Account"] = Account
         cls.classes["Widget"] = Widget
         cls.classes["User"] = User
+        cls.classes["SpecialWidget"] = SpecialWidget
 
 
 class PropagationFromMixinTest(fixtures.TestBase):
     __requires__ = ("dataclasses",)
-
-    run_setup_classes = "each"
-    run_setup_mappers = "each"
 
     def test_propagate_w_plain_mixin_col(self, run_test):
         @dataclasses.dataclass
@@ -864,9 +940,6 @@ class PropagationFromMixinTest(fixtures.TestBase):
 
 class PropagationFromAbstractTest(fixtures.TestBase):
     __requires__ = ("dataclasses",)
-
-    run_setup_classes = "each"
-    run_setup_mappers = "each"
 
     def test_propagate_w_plain_mixin_col(self, run_test):
         @dataclasses.dataclass

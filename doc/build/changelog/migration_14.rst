@@ -470,6 +470,20 @@ Error conditions which fall under this category include:
   will be evaluated at statement compilation time rather than when the method
   is first called.
 
+Other things that may change involve the :class:`_orm.Query` object directly:
+
+* Behaviors may be slightly different when calling upon the
+  :attr:`_orm.Query.statement` accessor. The :class:`_sql.Select` object
+  returned is now a direct copy of the same state that was present in the
+  :class:`_orm.Query`, without any ORM-specific compilation being performed
+  (which means it's dramatically faster). However, the :class:`_sql.Select`
+  will not have the same internal state as it had in 1.3, including things like
+  the FROM clauses being explicitly spelled out if they were not explicitly
+  stated in the :class:`_orm.Query`. This means code that relies upon
+  manipulating this :class:`_sql.Select` statement such as calling methods like
+  :meth:`_sql.Select.with_only_columns` may need to accommodate for the FROM
+  clause.
+
 .. seealso::
 
     :ref:`change_4639`
@@ -2010,6 +2024,40 @@ as entity / column should work::
 Session features new "autobegin" behavior
 -----------------------------------------
 
+Previously, the :class:`.Session` in its default mode of ``autocommit=False``
+would internally begin a :class:`.SessionTransaction` object immediately
+on construction, and additionally would create a new one after each call to
+:meth:`.Session.rollback` or :meth:`.Session.commit`.
+
+The new behavior is that this :class:`.SessionTransaction` object is now
+created on demand only, when methods such as :meth:`.Session.add` or
+:meth:`.Session.execute` are called.    However it is also now possible
+to call :meth:`.Session.begin` explicitly in order to begin the transaction,
+even in ``autocommit=False`` mode, thus matching the behavior of the
+future-style :class:`_base.Connection`.
+
+The behavioral changes this indicates are:
+
+* The :class:`.Session` can now be in the state where no transaction is begun,
+  even in ``autocommit=False`` mode. Previously, this state was only available
+  in "autocommit" mode.
+* Within this state, the :meth:`.Session.commit` and :meth:`.Session.rollback`
+  methods are no-ops. Code that relies upon these methods to expire all objects
+  should make explicit use of either :meth:`.Session.begin` or
+  :meth:`.Session.expire_all` to suit their use case.
+* The :meth:`.SessionEvents.after_transaction_create` event hook is not emitted
+  immediately when the :class:`.Session` is created, or after a
+  :meth:`.Session.rollback` or :meth:`.Session.commit` completes.
+* The :meth:`.Session.close` method also does not imply implicit begin of a new
+  :class:`.SessionTransaction`.
+
+.. seealso::
+
+    :ref:`session_autobegin`
+
+Rationale
+^^^^^^^^^
+
 The :class:`.Session` object's default behavior of ``autocommit=False``
 historically has meant that there is always a :class:`.SessionTransaction`
 object in play, associated with the :class:`.Session` via the
@@ -2048,13 +2096,20 @@ when the :class:`.Session` has not yet created a  new
 :meth:`.Session.delete`, when  the :attr:`.Session.transaction` attribute is
 called upon, when the :meth:`.Session.flush` method has tasks to complete, etc.
 
+In addition, code which relies upon the :meth:`.Session.commit` or
+:meth:`.Session.rollback` method to unconditionally expire all objects can no
+longer do so. Code which needs to expire all objects when no change that has
+occurred should be calling :meth:`.Session.expire_all` for this case.
+
 Besides the change in when the :meth:`.SessionEvents.after_transaction_create`
-event is emitted, the change should have no other user-visible impact on the
-:class:`.Session` object's behavior; the :class:`.Session` will continue to have
-the behavior that it remains usable for new operations after :meth:`.Session.close`
-is called, and the sequencing of how the :class:`.Session` interacts with the
-:class:`_engine.Engine` and the database itself should also remain unaffected, since
-these operations were already operating in an on-demand fashion.
+event is emitted as well as the no-op nature of :meth:`.Session.commit` or
+:meth:`.Session.rollback`, the change should have no other user-visible impact
+on the :class:`.Session` object's behavior; the :class:`.Session` will continue
+to have the behavior that it remains usable for new operations after
+:meth:`.Session.close` is called, and the sequencing of how the
+:class:`.Session` interacts with the :class:`_engine.Engine` and the database
+itself should also remain unaffected, since these operations were already
+operating in an on-demand fashion.
 
 :ticket:`5074`
 
@@ -2130,16 +2185,18 @@ The above behavior was an unintended side effect of backref behavior, in that
 since ``a1.user`` implies ``u1.addresses.append(a1)``, ``a1`` would get
 cascaded into the :class:`_orm.Session`.  This remains the default behavior
 throughout 1.4.     At some point, a new flag :paramref:`_orm.relationship.cascade_backrefs`
-was added to disable to above behavior, as it can be surprising and also gets in
-the way of some operations where the object would be placed in the :class:`_orm.Session`
-too early and get prematurely flushed.
+was added to disable to above behavior, along with :paramref:`_orm.backref.cascade_backrefs`
+to set this when the relationship is specified by ``relationship.backref``, as it can be
+surprising and also gets in the way of some operations where the object would be placed in
+the :class:`_orm.Session` too early and get prematurely flushed.
 
 In 2.0, the default behavior will be that "cascade_backrefs" is False, and
 additionally there will be no "True" behavior as this is not generally a desirable
 behavior.    When 2.0 deprecation warnings are enabled, a warning will be emitted
 when a "backref cascade" actually takes place.    To get the new behavior, either
-set :paramref:`_orm.relationship.cascade_backrefs` to ``False`` on the target
-relationship, as is already supported in 1.3 and earlier, or alternatively make
+set :paramref:`_orm.relationship.cascade_backrefs` and
+:paramref:`_orm.backref.cascade_backrefs` to ``False`` on any target
+relationships, as is already supported in 1.3 and earlier, or alternatively make
 use of the :paramref:`_orm.Session.future` flag to :term:`2.0-style` mode::
 
     Session = sessionmaker(engine, future=True)

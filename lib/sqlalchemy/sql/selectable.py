@@ -56,10 +56,7 @@ from .elements import UnaryExpression
 from .visitors import InternalTraversal
 from .. import exc
 from .. import util
-
-if util.TYPE_CHECKING:
-    from typing import Any
-    from typing import Optional
+from ..inspection import inspect
 
 
 class _OffsetLimitParam(BindParameter):
@@ -1575,9 +1572,6 @@ class AliasedReturnsRows(NoInit, FromClause):
         self.element = coercions.expect(
             roles.ReturnsRowsRole, selectable, apply_propagate_attrs=self
         )
-        self.supports_execution = selectable.supports_execution
-        if self.supports_execution:
-            self._execution_options = selectable._execution_options
         self.element = selectable
         self._orig_name = name
         if name is None:
@@ -1994,7 +1988,13 @@ class TableSample(AliasedReturnsRows):
             return functions.func.system(self.sampling)
 
 
-class CTE(Generative, HasPrefixes, HasSuffixes, AliasedReturnsRows):
+class CTE(
+    roles.DMLTableRole,
+    Generative,
+    HasPrefixes,
+    HasSuffixes,
+    AliasedReturnsRows,
+):
     """Represent a Common Table Expression.
 
     The :class:`_expression.CTE` object is obtained using the
@@ -2056,6 +2056,12 @@ class CTE(Generative, HasPrefixes, HasSuffixes, AliasedReturnsRows):
         if _suffixes:
             self._suffixes = _suffixes
         super(CTE, self)._init(selectable, name=name)
+
+    def _populate_column_collection(self):
+        if self._cte_alias is not None:
+            self._cte_alias._generate_fromclause_column_proxies(self)
+        else:
+            self.element._generate_fromclause_column_proxies(self)
 
     def alias(self, name=None, flat=False):
         """Return an :class:`_expression.Alias` of this
@@ -2331,6 +2337,23 @@ class Subquery(AliasedReturnsRows):
     )
     def as_scalar(self):
         return self.element.set_label_style(LABEL_STYLE_NONE).scalar_subquery()
+
+    def _execute_on_connection(
+        self,
+        connection,
+        multiparams,
+        params,
+        execution_options,
+    ):
+        util.warn_deprecated(
+            "Executing a subquery object is deprecated and will raise "
+            "ObjectNotExecutableError in an upcoming release.  Please "
+            "execute the underlying select() statement directly.",
+            "1.4",
+        )
+        return self.element._execute_on_connection(
+            connection, multiparams, params, execution_options, _force=True
+        )
 
 
 class FromGrouping(GroupedElement, FromClause):
@@ -2769,7 +2792,6 @@ class SelectBase(
     is_select = True
 
     def _generate_fromclause_column_proxies(self, fromclause):
-        # type: (FromClause) -> None
         raise NotImplementedError()
 
     def _refresh_for_new_column(self, column):
@@ -2787,7 +2809,35 @@ class SelectBase(
         statement; a subquery must be applied first which provides for the
         necessary parenthesization required by SQL.
 
+        .. note::
+
+            The :attr:`_sql.SelectBase.selected_columns` collection does not
+            include expressions established in the columns clause using the
+            :func:`_sql.text` construct; these are silently omitted from the
+            collection. To use plain textual column expressions inside of a
+            :class:`_sql.Select` construct, use the :func:`_sql.literal_column`
+            construct.
+
+        .. seealso::
+
+            :attr:`_sql.Select.selected_columns`
+
         .. versionadded:: 1.4
+
+        """
+        raise NotImplementedError()
+
+    @property
+    def _all_selected_columns(self):
+        """A sequence of expressions that correspond to what is rendered
+        in the columns clause, including :class:`_sql.TextClause`
+        constructs.
+
+        .. versionadded:: 1.4.12
+
+        .. seealso::
+
+            :attr:`_sql.SelectBase.exported_columns`
 
         """
         raise NotImplementedError()
@@ -2796,7 +2846,8 @@ class SelectBase(
     def exported_columns(self):
         """A :class:`_expression.ColumnCollection`
         that represents the "exported"
-        columns of this :class:`_expression.Selectable`.
+        columns of this :class:`_expression.Selectable`, not including
+        :class:`_sql.TextClause` constructs.
 
         The "exported" columns for a :class:`_expression.SelectBase`
         object are synonymous
@@ -2805,6 +2856,8 @@ class SelectBase(
         .. versionadded:: 1.4
 
         .. seealso::
+
+            :attr:`_expression.Select.exported_columns`
 
             :attr:`_expression.Selectable.exported_columns`
 
@@ -3022,7 +3075,6 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
     _is_select_container = True
 
     def __init__(self, element):
-        # type: (SelectBase) -> None
         self.element = coercions.expect(roles.SelectStatementRole, element)
 
     def _ensure_disambiguated_names(self):
@@ -3049,7 +3101,6 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
         return self.element
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> FromClause
         return self
 
     def _generate_fromclause_column_proxies(self, subquery):
@@ -3062,16 +3113,21 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
         return self.element._exported_columns_iterator()
 
     @property
+    def _all_selected_columns(self):
+        return self.element._all_selected_columns
+
+    @property
     def selected_columns(self):
         """A :class:`_expression.ColumnCollection`
         representing the columns that
-        the embedded SELECT statement returns in its result set.
+        the embedded SELECT statement returns in its result set, not including
+        :class:`_sql.TextClause` constructs.
 
         .. versionadded:: 1.4
 
         .. seealso::
 
-            :ref:`.SelectBase.selected_columns`
+            :attr:`_sql.Select.selected_columns`
 
         """
         return self.element.selected_columns
@@ -3579,7 +3635,9 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
 
         .. seealso::
 
-            :ref:`core_tutorial_ordering`
+            :ref:`tutorial_order_by` - in the :ref:`unified_tutorial`
+
+            :ref:`tutorial_order_by_label` - in the :ref:`unified_tutorial`
 
         """
 
@@ -3607,7 +3665,10 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
 
         .. seealso::
 
-            :ref:`core_tutorial_ordering`
+            :ref:`tutorial_group_by_w_aggregates` - in the
+            :ref:`unified_tutorial`
+
+            :ref:`tutorial_order_by_label` - in the :ref:`unified_tutorial`
 
         """
 
@@ -3809,7 +3870,6 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         return self.selects[0]._scalar_type()
 
     def self_group(self, against=None):
-        # type: (Optional[Any]) -> FromClause
         return SelectStatementGrouping(self)
 
     def is_derived_from(self, fromclause):
@@ -3856,6 +3916,7 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         # to how low in the list of select()s the column occurs, so
         # that the corresponding_column() operation can resolve
         # conflicts
+
         for subq_col, select_cols in zip(
             subquery.c._all_columns,
             zip(*[s.selected_columns for s in self.selects]),
@@ -3874,16 +3935,25 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         return self.selects[0]._exported_columns_iterator()
 
     @property
+    def _all_selected_columns(self):
+        return self.selects[0]._all_selected_columns
+
+    @property
     def selected_columns(self):
         """A :class:`_expression.ColumnCollection`
         representing the columns that
-        this SELECT statement or similar construct returns in its result set.
+        this SELECT statement or similar construct returns in its result set,
+        not including :class:`_sql.TextClause` constructs.
 
         For a :class:`_expression.CompoundSelect`, the
         :attr:`_expression.CompoundSelect.selected_columns`
         attribute returns the selected
         columns of the first SELECT statement contained within the series of
         statements within the set operation.
+
+        .. seealso::
+
+            :attr:`_sql.Select.selected_columns`
 
         .. versionadded:: 1.4
 
@@ -4083,6 +4153,10 @@ class SelectState(util.MemoizedSlots, CompileState):
 
     @classmethod
     def _column_naming_convention(cls, label_style):
+        # note: these functions won't work for TextClause objects,
+        # which should be omitted when iterating through
+        # _raw_columns.
+
         if label_style is LABEL_STYLE_NONE:
 
             def go(c, col_name=None):
@@ -4118,7 +4192,7 @@ class SelectState(util.MemoizedSlots, CompileState):
                 if name in names:
                     if not pa:
                         pa.append(prefix_anon_map())
-                    name = c.anon_key_label % pa[0]
+                    name = c._anon_key_label % pa[0]
                 else:
                     names.add(name)
 
@@ -4127,38 +4201,57 @@ class SelectState(util.MemoizedSlots, CompileState):
         return go
 
     def _get_froms(self, statement):
+        return self._normalize_froms(
+            itertools.chain(
+                itertools.chain.from_iterable(
+                    [
+                        element._from_objects
+                        for element in statement._raw_columns
+                    ]
+                ),
+                itertools.chain.from_iterable(
+                    [
+                        element._from_objects
+                        for element in statement._where_criteria
+                    ]
+                ),
+                self.from_clauses,
+            ),
+            check_statement=statement,
+        )
+
+    def _normalize_froms(self, iterable_of_froms, check_statement=None):
+        """given an iterable of things to select FROM, reduce them to what
+        would actually render in the FROM clause of a SELECT.
+
+        This does the job of checking for JOINs, tables, etc. that are in fact
+        overlapping due to cloning, adaption, present in overlapping joins,
+        etc.
+
+        """
         seen = set()
         froms = []
 
-        for item in itertools.chain(
-            itertools.chain.from_iterable(
-                [element._from_objects for element in statement._raw_columns]
-            ),
-            itertools.chain.from_iterable(
-                [
-                    element._from_objects
-                    for element in statement._where_criteria
-                ]
-            ),
-            self.from_clauses,
-        ):
-            if item._is_subquery and item.element is statement:
+        for item in iterable_of_froms:
+            if item._is_subquery and item.element is check_statement:
                 raise exc.InvalidRequestError(
                     "select() construct refers to itself as a FROM"
                 )
+
             if not seen.intersection(item._cloned_set):
                 froms.append(item)
                 seen.update(item._cloned_set)
 
-        toremove = set(
-            itertools.chain.from_iterable(
-                [_expand_cloned(f._hide_froms) for f in froms]
+        if froms:
+            toremove = set(
+                itertools.chain.from_iterable(
+                    [_expand_cloned(f._hide_froms) for f in froms]
+                )
             )
-        )
-        if toremove:
-            # filter out to FROM clauses not in the list,
-            # using a list to maintain ordering
-            froms = [f for f in froms if f not in toremove]
+            if toremove:
+                # filter out to FROM clauses not in the list,
+                # using a list to maintain ordering
+                froms = [f for f in froms if f not in toremove]
 
         return froms
 
@@ -4256,7 +4349,15 @@ class SelectState(util.MemoizedSlots, CompileState):
 
     @classmethod
     def exported_columns_iterator(cls, statement):
-        return _select_iterables(statement._raw_columns)
+        return [
+            c
+            for c in _select_iterables(statement._raw_columns)
+            if not c._is_text_clause
+        ]
+
+    @classmethod
+    def all_selected_columns(cls, statement):
+        return [c for c in _select_iterables(statement._raw_columns)]
 
     def _setup_joins(self, args):
         for (right, onclause, left, flags) in args:
@@ -4408,15 +4509,24 @@ class _SelectFromElements(object):
         # note this does not include elements
         # in _setup_joins or _legacy_setup_joins
 
-        return itertools.chain(
-            itertools.chain.from_iterable(
-                [element._from_objects for element in self._raw_columns]
-            ),
-            itertools.chain.from_iterable(
-                [element._from_objects for element in self._where_criteria]
-            ),
-            self._from_obj,
-        )
+        seen = set()
+        for element in self._raw_columns:
+            for fr in element._from_objects:
+                if fr in seen:
+                    continue
+                seen.add(fr)
+                yield fr
+        for element in self._where_criteria:
+            for fr in element._from_objects:
+                if fr in seen:
+                    continue
+                seen.add(fr)
+                yield fr
+        for element in self._from_obj:
+            if element in seen:
+                continue
+            seen.add(element)
+            yield element
 
 
 class Select(
@@ -4479,7 +4589,6 @@ class Select(
             ("_distinct", InternalTraversal.dp_boolean),
             ("_distinct_on", InternalTraversal.dp_clauseelement_tuple),
             ("_label_style", InternalTraversal.dp_plain_obj),
-            ("_is_future", InternalTraversal.dp_boolean),
         ]
         + HasPrefixes._has_prefixes_traverse_internals
         + HasSuffixes._has_suffixes_traverse_internals
@@ -4868,8 +4977,17 @@ class Select(
         """
         if (
             args
-            and hasattr(args[0], "__iter__")
-            and not isinstance(args[0], util.string_types + (ClauseElement,))
+            and (
+                isinstance(args[0], list)
+                or (
+                    hasattr(args[0], "__iter__")
+                    and not isinstance(
+                        args[0], util.string_types + (ClauseElement,)
+                    )
+                    and inspect(args[0], raiseerr=False) is None
+                    and not hasattr(args[0], "__clause_element__")
+                )
+            )
         ) or kw:
             return cls.create_legacy_select(*args, **kw)
         else:
@@ -5208,10 +5326,7 @@ class Select(
             clone=clone, omit_attrs=("_from_obj",), **kw
         )
 
-        # memoizations should be cleared here as of
-        # I95c560ffcbfa30b26644999412fb6a385125f663 , asserting this
-        # is the case for now.
-        self._assert_no_memoizations()
+        self._reset_memoizations()
 
     def get_children(self, **kwargs):
         return itertools.chain(
@@ -5236,10 +5351,7 @@ class Select(
         :class:`_expression.Select` object.
 
         """
-        # memoizations should be cleared here as of
-        # I95c560ffcbfa30b26644999412fb6a385125f663 , asserting this
-        # is the case for now.
-        self._assert_no_memoizations()
+        self._reset_memoizations()
 
         self._raw_columns = self._raw_columns + [
             coercions.expect(
@@ -5569,7 +5681,8 @@ class Select(
     def selected_columns(self):
         """A :class:`_expression.ColumnCollection`
         representing the columns that
-        this SELECT statement or similar construct returns in its result set.
+        this SELECT statement or similar construct returns in its result set,
+        not including :class:`_sql.TextClause` constructs.
 
         This collection differs from the :attr:`_expression.FromClause.columns`
         collection of a :class:`_expression.FromClause` in that the columns
@@ -5593,6 +5706,16 @@ class Select(
         :class:`_expression.ColumnElement` objects that are in the
         :attr:`_expression.FromClause.c` collection of the from element.
 
+        .. note::
+
+            The :attr:`_sql.Select.selected_columns` collection does not
+            include expressions established in the columns clause using the
+            :func:`_sql.text` construct; these are silently omitted from the
+            collection. To use plain textual column expressions inside of a
+            :class:`_sql.Select` construct, use the :func:`_sql.literal_column`
+            construct.
+
+
         .. versionadded:: 1.4
 
         """
@@ -5606,6 +5729,11 @@ class Select(
         return ColumnCollection(
             [(conv(c), c) for c in self._exported_columns_iterator()]
         ).as_immutable()
+
+    @HasMemoized.memoized_attribute
+    def _all_selected_columns(self):
+        meth = SelectState.get_plugin_class(self).all_selected_columns
+        return list(meth(self))
 
     def _exported_columns_iterator(self):
         meth = SelectState.get_plugin_class(self).exported_columns_iterator
@@ -5625,8 +5753,7 @@ class Select(
         different rules.
 
         """
-        cols = self._exported_columns_iterator()
-
+        cols = self._all_selected_columns
         # when use_labels is on:
         # in all cases == if we see the same label name, use _label_anon_label
         # for subsequent occurrences of that label
@@ -5655,13 +5782,13 @@ class Select(
                     return (None, c, False)
                 elif use_tablename_labels:
                     if c._label is None:
-                        repeated = c.anon_label in names
-                        names[c.anon_label] = c
+                        repeated = c._anon_name_label in names
+                        names[c._anon_name_label] = c
                         return (None, c, repeated)
                 elif getattr(c, "name", None) is None:
                     # this is a scalar_select().  need to improve this case
-                    repeated = c.anon_label in names
-                    names[c.anon_label] = c
+                    repeated = c._anon_name_label in names
+                    names[c._anon_name_label] = c
                     return (None, c, repeated)
 
                 if use_tablename_labels:
@@ -5683,7 +5810,7 @@ class Select(
                         if use_tablename_labels:
                             name = c._label_anon_label
                         else:
-                            name = c.anon_label
+                            name = c._anon_name_label
 
                         if anon_for_dupe_key and name in names:
                             # here, c._label_anon_label is definitely unique to
@@ -5747,7 +5874,7 @@ class Select(
                 if key is not None and key in keys_seen:
                     if pa is None:
                         pa = prefix_anon_map()
-                    key = c.anon_key_label % pa
+                    key = c._anon_key_label % pa
                 keys_seen.add(key)
             else:
                 key = c._proxy_key
@@ -5864,7 +5991,7 @@ class ScalarSelect(roles.InElementRole, Generative, Grouping):
     """Represent a scalar subquery.
 
 
-    A :class:`_sql.ScalarSubquery` is created by invoking the
+    A :class:`_sql.ScalarSelect` is created by invoking the
     :meth:`_sql.SelectBase.scalar_subquery` method.   The object
     then participates in other SQL expressions as a SQL column expression
     within the :class:`_sql.ColumnElement` hierarchy.
@@ -6204,7 +6331,8 @@ class TextualSelect(SelectBase):
     def selected_columns(self):
         """A :class:`_expression.ColumnCollection`
         representing the columns that
-        this SELECT statement or similar construct returns in its result set.
+        this SELECT statement or similar construct returns in its result set,
+        not including :class:`_sql.TextClause` constructs.
 
         This collection differs from the :attr:`_expression.FromClause.columns`
         collection of a :class:`_expression.FromClause` in that the columns
@@ -6216,6 +6344,7 @@ class TextualSelect(SelectBase):
         contains the :class:`_expression.ColumnElement` objects that were
         passed to the constructor, typically via the
         :meth:`_expression.TextClause.columns` method.
+
 
         .. versionadded:: 1.4
 

@@ -560,9 +560,9 @@ be applied as::
 
 
 """  # noqa
-from .declarative import declarative_base as _declarative_base
 from .. import util
 from ..orm import backref
+from ..orm import declarative_base as _declarative_base
 from ..orm import exc as orm_exc
 from ..orm import interfaces
 from ..orm import relationship

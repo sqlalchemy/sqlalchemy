@@ -29,6 +29,8 @@ from sqlalchemy.engine import cursor as _cursor
 from sqlalchemy.engine import default
 from sqlalchemy.engine import Row
 from sqlalchemy.engine.result import SimpleResultMetaData
+from sqlalchemy.engine.row import KEY_INTEGER_ONLY
+from sqlalchemy.engine.row import KEY_OBJECTS_BUT_WARN
 from sqlalchemy.engine.row import LegacyRow
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import ColumnElement
@@ -43,6 +45,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assertions
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
@@ -624,7 +627,12 @@ class CursorResultTest(fixtures.TablesTest):
             lambda: r._mapping["foo"],
         )
 
-    def test_graceful_fetch_on_non_rows(self):
+    @testing.combinations(
+        (True,),
+        (False,),
+        argnames="future",
+    )
+    def test_graceful_fetch_on_non_rows(self, future):
         """test that calling fetchone() etc. on a result that doesn't
         return rows fails gracefully.
 
@@ -639,6 +647,10 @@ class CursorResultTest(fixtures.TablesTest):
         users = self.tables.users
 
         conn = testing.db.connect()
+        if future:
+            conn = conn.execution_options(future_result=True)
+        keys_lambda = lambda r: r.keys()  # noqa: E731
+
         for meth in [
             lambda r: r.fetchone(),
             lambda r: r.fetchall(),
@@ -646,19 +658,27 @@ class CursorResultTest(fixtures.TablesTest):
             lambda r: r.scalar(),
             lambda r: r.fetchmany(),
             lambda r: r._getter("user"),
-            lambda r: r.keys(),
+            keys_lambda,
             lambda r: r.columns("user"),
             lambda r: r.cursor_strategy.fetchone(r, r.cursor),
         ]:
             trans = conn.begin()
             result = conn.execute(users.insert(), dict(user_id=1))
-            assert_raises_message(
-                exc.ResourceClosedError,
-                "This result object does not return rows. "
-                "It has been closed automatically.",
-                meth,
-                result,
-            )
+
+            if not future and meth is keys_lambda:
+                with testing.expect_deprecated(
+                    r"Calling the .keys\(\) method on a result set that does "
+                    r"not return rows is deprecated"
+                ):
+                    eq_(meth(result), [])
+            else:
+                assert_raises_message(
+                    exc.ResourceClosedError,
+                    "This result object does not return rows. "
+                    "It has been closed automatically.",
+                    meth,
+                    result,
+                )
             trans.rollback()
 
     def test_fetchone_til_end(self, connection):
@@ -958,18 +978,21 @@ class CursorResultTest(fixtures.TablesTest):
 
         class Goofy1(TypeDecorator):
             impl = String
+            cache_ok = True
 
             def process_result_value(self, value, dialect):
                 return value + "a"
 
         class Goofy2(TypeDecorator):
             impl = String
+            cache_ok = True
 
             def process_result_value(self, value, dialect):
                 return value + "b"
 
         class Goofy3(TypeDecorator):
             impl = String
+            cache_ok = True
 
             def process_result_value(self, value, dialect):
                 return value + "c"
@@ -1046,9 +1069,17 @@ class CursorResultTest(fixtures.TablesTest):
         (lambda result: result.first()._mapping),
         argnames="get_object",
     )
-    def test_keys(self, connection, get_object):
+    @testing.combinations(
+        (True,),
+        (False,),
+        argnames="future",
+    )
+    def test_keys(self, connection, get_object, future):
         users = self.tables.users
         addresses = self.tables.addresses
+
+        if future:
+            connection = connection.execution_options(future_result=True)
 
         connection.execute(users.insert(), dict(user_id=1, user_name="foo"))
         result = connection.execute(users.select())
@@ -1058,7 +1089,11 @@ class CursorResultTest(fixtures.TablesTest):
         # Row still has a .keys() method as well as LegacyRow
         # as in 1.3.x, the KeyedTuple object also had a keys() method.
         # it emits a 2.0 deprecation warning.
-        keys = obj.keys()
+        if isinstance(obj, Row):
+            with assertions.expect_deprecated_20("The Row.keys()"):
+                keys = obj.keys()
+        else:
+            keys = obj.keys()
 
         # in 1.4, keys() is now a view that includes support for testing
         # of columns and other objects
@@ -1086,9 +1121,12 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(list(row._mapping.keys()), ["user_id", "user_name"])
         eq_(row._fields, ("user_id", "user_name"))
 
-        in_("user_id", row.keys())
-        not_in("foo", row.keys())
-        in_(users.c.user_id, row.keys())
+        with assertions.expect_deprecated_20("The Row.keys()"):
+            in_("user_id", row.keys())
+        with assertions.expect_deprecated_20("The Row.keys()"):
+            not_in("foo", row.keys())
+        with assertions.expect_deprecated_20("The Row.keys()"):
+            in_(users.c.user_id, row.keys())
 
     def test_row_keys_legacy_dont_warn(self, connection):
         users = self.tables.users
@@ -1097,8 +1135,12 @@ class CursorResultTest(fixtures.TablesTest):
         result = connection.execute(users.select())
         row = result.first()
         # DO NOT WARN DEPRECATED IN 1.x, ONLY 2.0 WARNING
-        eq_(dict(row), {"user_id": 1, "user_name": "foo"})
-        eq_(row.keys(), ["user_id", "user_name"])
+
+        with assertions.expect_deprecated_20("The Row.keys()"):
+            eq_(dict(row), {"user_id": 1, "user_name": "foo"})
+
+        with assertions.expect_deprecated_20("The Row.keys()"):
+            eq_(row.keys(), ["user_id", "user_name"])
 
     def test_row_namedtuple_legacy_ok(self, connection):
         users = self.tables.users
@@ -1328,13 +1370,13 @@ class CursorResultTest(fixtures.TablesTest):
 
     @testing.combinations((Row,), (LegacyRow,))
     def test_row_special_names(self, row_cls):
-        metadata = SimpleResultMetaData(["key", "count", "index"])
+        metadata = SimpleResultMetaData(["key", "count", "index", "foo"])
         row = row_cls(
             metadata,
-            [None, None, None],
+            [None, None, None, None],
             metadata._keymap,
-            Row._default_key_style,
-            ["kv", "cv", "iv"],
+            row_cls._default_key_style,
+            ["kv", "cv", "iv", "f"],
         )
         is_true(isinstance(row, collections_abc.Sequence))
 
@@ -1342,7 +1384,12 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(row.count, "cv")
         eq_(row.index, "iv")
 
-        if isinstance(row, LegacyRow):
+        with assertions.expect_deprecated_20(
+            "Retrieving row members using strings or other non-integers "
+            "is deprecated; use row._mapping for a dictionary interface "
+            "to the row"
+        ):
+            eq_(row["foo"], "f")
             eq_(row["count"], "cv")
             eq_(row["index"], "iv")
 
@@ -1366,6 +1413,85 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(row.index("cv"), 1)
         eq_(row.count("cv"), 1)
         eq_(row.count("x"), 0)
+
+    @testing.combinations((Row,), (LegacyRow,))
+    def test_row_dict_behaviors_warn_mode(self, row_cls):
+        metadata = SimpleResultMetaData(
+            [
+                "a",
+                "b",
+                "count",
+            ]
+        )
+        row = row_cls(
+            metadata,
+            [None, None, None],
+            metadata._keymap,
+            KEY_OBJECTS_BUT_WARN,
+            ["av", "bv", "cv"],
+        )
+
+        # as of #6218, dict(row) and row["x"] work for
+        # both LegacyRow and Row, with 2.0 deprecation warnings
+        # for both
+        with assertions.expect_deprecated_20(
+            "Retrieving row members using strings or other non-integers "
+            "is deprecated; use row._mapping for a dictionary interface "
+            "to the row"
+        ):
+            eq_(dict(row), {"a": "av", "b": "bv", "count": "cv"})
+
+        with assertions.expect_deprecated_20(
+            "Retrieving row members using strings or other non-integers "
+            "is deprecated; use row._mapping for a dictionary interface "
+            "to the row"
+        ):
+            eq_(row["a"], "av")
+            eq_(row["count"], "cv")
+
+        # keys is keys
+        with assertions.expect_deprecated_20("The Row.keys()"):
+            eq_(list(row.keys()), ["a", "b", "count"])
+
+    def test_new_row_no_dict_behaviors(self):
+        """This mode is not used currently but will be once we are in 2.0."""
+        metadata = SimpleResultMetaData(
+            [
+                "a",
+                "b",
+                "count",
+            ]
+        )
+        row = Row(
+            metadata,
+            [None, None, None],
+            metadata._keymap,
+            KEY_INTEGER_ONLY,
+            ["av", "bv", "cv"],
+        )
+
+        with assertions.expect_raises_message(
+            TypeError,
+            "TypeError: tuple indices must be integers or slices, not str",
+        ):
+            with assertions.expect_deprecated_20("The Row.keys()"):
+                eq_(dict(row), {"a": "av", "b": "bv", "count": "cv"})
+
+        with assertions.expect_raises_message(
+            TypeError,
+            "TypeError: tuple indices must be integers or slices, not str",
+        ):
+            eq_(row["a"], "av")
+
+        with assertions.expect_raises_message(
+            TypeError,
+            "TypeError: tuple indices must be integers or slices, not str",
+        ):
+            eq_(row["count"], "cv")
+
+        # keys is keys
+        with assertions.expect_deprecated_20("The Row.keys()"):
+            eq_(list(row.keys()), ["a", "b", "count"])
 
     def test_row_is_hashable(self):
 
@@ -1475,6 +1601,36 @@ class CursorResultTest(fixtures.TablesTest):
 
             finally:
                 r.close()
+
+    @testing.requires.dbapi_lastrowid
+    def test_lastrowid(self, connection):
+        users = self.tables.users
+
+        r = connection.execute(
+            users.insert(), dict(user_id=1, user_name="Test")
+        )
+        eq_(r.lastrowid, r.context.get_lastrowid())
+
+    def test_raise_errors(self, connection):
+        users = self.tables.users
+
+        class Wrapper:
+            def __init__(self, context):
+                self.context = context
+
+            def __getattr__(self, name):
+                if name in ("rowcount", "get_lastrowid"):
+                    raise Exception("canary")
+                return getattr(self.context, name)
+
+        r = connection.execute(
+            users.insert(), dict(user_id=1, user_name="Test")
+        )
+        r.context = Wrapper(r.context)
+        with expect_raises_message(Exception, "canary"):
+            r.rowcount
+        with expect_raises_message(Exception, "canary"):
+            r.lastrowid
 
 
 class KeyTargetingTest(fixtures.TablesTest):
@@ -2374,6 +2530,7 @@ class AlternateCursorResultTest(fixtures.TablesTest):
     def _test_result_processor(self, cls, use_cache):
         class MyType(TypeDecorator):
             impl = String()
+            cache_ok = True
 
             def process_result_value(self, value, dialect):
                 return "HI " + value

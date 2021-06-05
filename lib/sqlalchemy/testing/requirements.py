@@ -19,6 +19,7 @@ import platform
 import sys
 
 from . import exclusions
+from . import only_on
 from .. import util
 from ..pool import QueuePool
 
@@ -334,9 +335,17 @@ class SuiteRequirements(Requirements):
 
         return exclusions.only_if(
             lambda config: config.db.dialect.supports_empty_insert
-            or config.db.dialect.supports_default_values,
+            or config.db.dialect.supports_default_values
+            or config.db.dialect.supports_default_metavalue,
             "empty inserts not supported",
         )
+
+    @property
+    def empty_inserts_executemany(self):
+        """target platform supports INSERT with no values, i.e.
+        INSERT DEFAULT VALUES or equivalent, within executemany()"""
+
+        return self.empty_inserts
 
     @property
     def insert_from_select(self):
@@ -473,7 +482,7 @@ class SuiteRequirements(Requirements):
         """Target database must support external schemas, and have one
         named 'test_schema'."""
 
-        return exclusions.closed()
+        return only_on(lambda config: config.db.dialect.supports_schemas)
 
     @property
     def cross_schema_fk_reflection(self):
@@ -1236,6 +1245,18 @@ class SuiteRequirements(Requirements):
         )
 
     @property
+    def patch_library(self):
+        def check_lib():
+            try:
+                __import__("patch")
+            except ImportError:
+                return False
+            else:
+                return True
+
+        return exclusions.only_if(check_lib, "patch library needed")
+
+    @property
     def non_broken_pickle(self):
         from sqlalchemy.util import pickle
 
@@ -1396,3 +1417,10 @@ class SuiteRequirements(Requirements):
         or ties. basically this is "not mssql"
         """
         return exclusions.closed()
+
+    @property
+    def autoincrement_without_sequence(self):
+        """If autoincrement=True on a column does not require an explicit
+        sequence. This should be false only for oracle.
+        """
+        return exclusions.open()

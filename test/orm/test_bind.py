@@ -1,5 +1,7 @@
 import sqlalchemy as sa
+from sqlalchemy import delete
 from sqlalchemy import ForeignKey
+from sqlalchemy import insert
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
@@ -7,6 +9,8 @@ from sqlalchemy import select
 from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import true
+from sqlalchemy import update
+from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
@@ -171,6 +175,10 @@ class BindIntegrationTest(_fixtures.FixtureTest):
             },
             "e1",
         ),
+        (
+            lambda users, User: {"clause": select(users).join(User.addresses)},
+            "e1",
+        ),
         (lambda Address: {"mapper": Address}, "e2"),
         (lambda Address: {"clause": Query([Address])._statement_20()}, "e2"),
         (lambda addresses: {"clause": select(addresses)}, "e2"),
@@ -264,6 +272,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
             e2=e2,
             e3=e3,
             addresses=addresses,
+            users=users,
         )
 
         sess = Session(e3)
@@ -733,4 +742,24 @@ class GetBindTest(fixtures.MappedTest):
         stmt = select(self.tables.base_table).union(
             select(self.tables.concrete_sub_table)
         )
+        is_(session.get_bind(clause=stmt), base_class_bind)
+
+    @testing.combinations(
+        (insert,),
+        (update,),
+        (delete,),
+        (select,),
+    )
+    def test_clause_extracts_orm_plugin_subject(self, sql_elem):
+        ClassWMixin = self.classes.ClassWMixin
+        MixinOne = self.classes.MixinOne
+        base_class_bind = Mock()
+
+        session = self._fixture({MixinOne: base_class_bind})
+
+        stmt = sql_elem(ClassWMixin)
+        is_(session.get_bind(clause=stmt), base_class_bind)
+
+        cwm_alias = aliased(ClassWMixin)
+        stmt = sql_elem(cwm_alias)
         is_(session.get_bind(clause=stmt), base_class_bind)

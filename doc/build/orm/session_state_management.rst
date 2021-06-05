@@ -349,27 +349,15 @@ Further detail on cascade operation is at :ref:`unitofwork_cascades`.
 Another example of unexpected state::
 
     >>> a1 = Address(id=existing_a1.id, user_id=u1.id)
-    >>> assert a1.user is None
-    True
+    >>> a1.user = None
     >>> a1 = session.merge(a1)
     >>> session.commit()
     sqlalchemy.exc.IntegrityError: (IntegrityError) address.user_id
     may not be NULL
 
-Here, we accessed a1.user, which returned its default value
-of ``None``, which as a result of this access, has been placed in the ``__dict__`` of
-our object ``a1``.  Normally, this operation creates no change event,
-so the ``user_id`` attribute takes precedence during a
-flush.  But when we merge the ``Address`` object into the session, the operation
-is equivalent to::
-
-    >>> existing_a1.id = existing_a1.id
-    >>> existing_a1.user_id = u1.id
-    >>> existing_a1.user = None
-
-Where above, both ``user_id`` and ``user`` are assigned to, and change events
-are emitted for both.  The ``user`` association
-takes precedence, and None is applied to ``user_id``, causing a failure.
+Above, the assignment of ``user`` takes precedence over the foreign key
+assignment of ``user_id``, with the end result that ``None`` is applied
+to ``user_id``, causing a failure.
 
 Most :meth:`~.Session.merge` issues can be examined by first checking -
 is the object prematurely in the session ?
@@ -525,13 +513,25 @@ be that of a column-mapped attribute::
     # reload obj1.attr1, obj1.attr2
     session.refresh(obj1, ['attr1', 'attr2'])
 
-An alternative method of refreshing which is often more flexible is to
-use the :meth:`_orm.Query.populate_existing` method of :class:`_orm.Query`.
-With this option, all of the ORM objects returned by the :class:`_orm.Query`
-will be refreshed with the contents of what was loaded in the SELECT::
+.. tip::
 
-    for user in session.query(User).populate_existing().filter(User.name.in_(['a', 'b', 'c'])):
-        print(user)  # will be refreshed for those columns that came back from the query
+    An alternative method of refreshing which is often more flexible is to
+    use the :ref:`orm_queryguide_populate_existing` feature of the ORM,
+    available for :term:`2.0 style` queries with :func:`_sql.select` as well
+    as from the :meth:`_orm.Query.populate_existing` method of :class:`_orm.Query`
+    within :term:`1.x style` queries.  Using this execution option,
+    all of the ORM objects returned in the result set of the statement
+    will be refreshed with data from the database::
+
+        stmt = (
+            select(User).
+            execution_options(populate_existing=True).
+            where((User.name.in_(['a', 'b', 'c']))
+        )
+        for user in session.execute(stmt).scalars():
+            print(user)  # will be refreshed for those columns that came back from the query
+
+    See :ref:`orm_queryguide_populate_existing` for further detail.
 
 
 What Actually Loads
@@ -640,7 +640,8 @@ transactions, an understanding of the isolation behavior in effect is essential.
 
     :meth:`.Session.refresh`
 
-    :meth:`_orm.Query.populate_existing` - :class:`_orm.Query` method that refreshes
+    :ref:`orm_queryguide_populate_existing` - allows any ORM query
+    to refresh objects as they would be loaded normally, refreshing
     all matching objects in the identity map against the results of a
     SELECT statement.
 

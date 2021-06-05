@@ -312,6 +312,7 @@ same column, use a custom type that will check each row individually::
 
     class MixedBinary(TypeDecorator):
         impl = String
+        cache_ok = True
 
         def process_result_value(self, value, dialect):
             if isinstance(value, str):
@@ -443,6 +444,7 @@ class _SQLite_pysqliteDate(DATE):
 
 class SQLiteDialect_pysqlite(SQLiteDialect):
     default_paramstyle = "qmark"
+    supports_statement_cache = True
 
     colspecs = util.update_copy(
         SQLiteDialect.colspecs,
@@ -473,7 +475,9 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
 
     @classmethod
     def _is_url_file_db(cls, url):
-        if url.database and url.database != ":memory:":
+        if (url.database and url.database != ":memory:") and (
+            url.query.get("mode", None) != "memory"
+        ):
             return True
         else:
             return False

@@ -2411,6 +2411,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
                 "apply_kw": "()",
                 "apply_pos": "()",
                 "apply_pos_proxied": "()",
+                "apply_kw_proxied": "()",
             },
             True,
         ),
@@ -2422,6 +2423,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
                 "apply_kw": "",
                 "apply_pos": "",
                 "apply_pos_proxied": "",
+                "apply_kw_proxied": "",
             },
             False,
         ),
@@ -2433,6 +2435,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
                 "apply_kw": "(self)",
                 "apply_pos": "(self)",
                 "apply_pos_proxied": "()",
+                "apply_kw_proxied": "()",
             },
             True,
         ),
@@ -2444,6 +2447,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
                 "apply_kw": "self",
                 "apply_pos": "self",
                 "apply_pos_proxied": "",
+                "apply_kw_proxied": "",
             },
             False,
         ),
@@ -2455,6 +2459,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
                 "apply_kw": "(*a)",
                 "apply_pos": "(*a)",
                 "apply_pos_proxied": "(*a)",
+                "apply_kw_proxied": "(*a)",
             },
             True,
         ),
@@ -2466,6 +2471,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
                 "apply_kw": "(**kw)",
                 "apply_pos": "(**kw)",
                 "apply_pos_proxied": "(**kw)",
+                "apply_kw_proxied": "(**kw)",
             },
             True,
         ),
@@ -2477,6 +2483,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
                 "apply_kw": "(*a, **kw)",
                 "apply_pos": "(*a, **kw)",
                 "apply_pos_proxied": "(*a, **kw)",
+                "apply_kw_proxied": "(*a, **kw)",
             },
             True,
         ),
@@ -2488,6 +2495,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
                 "apply_kw": "(a, *b)",
                 "apply_pos": "(a, *b)",
                 "apply_pos_proxied": "(*b)",
+                "apply_kw_proxied": "(*b)",
             },
             True,
         ),
@@ -2499,6 +2507,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
                 "apply_kw": "(a, **b)",
                 "apply_pos": "(a, **b)",
                 "apply_pos_proxied": "(**b)",
+                "apply_kw_proxied": "(**b)",
             },
             True,
         ),
@@ -2510,6 +2519,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
                 "apply_kw": "(a, *b, **c)",
                 "apply_pos": "(a, *b, **c)",
                 "apply_pos_proxied": "(*b, **c)",
+                "apply_kw_proxied": "(*b, **c)",
             },
             True,
         ),
@@ -2521,6 +2531,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
                 "apply_kw": "(a, b=b, **c)",
                 "apply_pos": "(a, b, **c)",
                 "apply_pos_proxied": "(b, **c)",
+                "apply_kw_proxied": "(b=b, **c)",
             },
             True,
         ),
@@ -2532,6 +2543,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
                 "apply_kw": "(a=a, b=b)",
                 "apply_pos": "(a, b)",
                 "apply_pos_proxied": "(b)",
+                "apply_kw_proxied": "(b=b)",
             },
             True,
         ),
@@ -2543,6 +2555,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
                 "apply_kw": "a=a, b=b",
                 "apply_pos": "a, b",
                 "apply_pos_proxied": "b",
+                "apply_kw_proxied": "b=b",
             },
             False,
         ),
@@ -2554,6 +2567,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
                 "apply_pos": "self, a, *, b, c",
                 "apply_kw": "self, a, b=b, c=c",
                 "apply_pos_proxied": "a, *, b, c",
+                "apply_kw_proxied": "a, b=b, c=c",
             },
             False,
             testing.requires.python3,
@@ -2566,6 +2580,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
                 "apply_pos": "self, a, *args, b, c",
                 "apply_kw": "self, a, b=b, c=c, *args",
                 "apply_pos_proxied": "a, *args, b, c",
+                "apply_kw_proxied": "a, b=b, c=c, *args",
             },
             False,
             testing.requires.python3,
@@ -2578,6 +2593,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
                 "apply_pos": "self, a, *, b, c",
                 "apply_kw": "self, a, b=b, c=c",
                 "apply_pos_proxied": "a, *, b, c",
+                "apply_kw_proxied": "a, b=b, c=c",
             },
             False,
             testing.requires.python3,
@@ -2609,6 +2625,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
             "apply_pos": "(self)",
             "apply_kw": "(self)",
             "apply_pos_proxied": "()",
+            "apply_kw_proxied": "()",
         }
         wrapper_spec = {
             "args": "(self, *args, **kwargs)",
@@ -2616,12 +2633,14 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
             "apply_pos": "(self, *args, **kwargs)",
             "apply_kw": "(self, *args, **kwargs)",
             "apply_pos_proxied": "(*args, **kwargs)",
+            "apply_kw_proxied": "(*args, **kwargs)",
         }
         custom_spec = {
             "args": "(slef, a=123)",
             "self_arg": "slef",  # yes, slef
             "apply_pos": "(slef, a)",
             "apply_pos_proxied": "(a)",
+            "apply_kw_proxied": "(a=a)",
             "apply_kw": "(slef, a=a)",
         }
 
@@ -2636,6 +2655,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
             "apply_pos": "self",
             "apply_kw": "self",
             "apply_pos_proxied": "",
+            "apply_kw_proxied": "",
         }
         wrapper_spec = {
             "args": "self, *args, **kwargs",
@@ -2643,6 +2663,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
             "apply_pos": "self, *args, **kwargs",
             "apply_kw": "self, *args, **kwargs",
             "apply_pos_proxied": "*args, **kwargs",
+            "apply_kw_proxied": "*args, **kwargs",
         }
         custom_spec = {
             "args": "slef, a=123",
@@ -2650,6 +2671,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
             "apply_pos": "slef, a",
             "apply_kw": "slef, a=a",
             "apply_pos_proxied": "a",
+            "apply_kw_proxied": "a=a",
         }
 
         self._test_init(False, object_spec, wrapper_spec, custom_spec)

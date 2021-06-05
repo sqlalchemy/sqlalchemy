@@ -124,7 +124,7 @@ database using Azure credentials::
 
         # create token credential
         raw_token = azure_credentials.get_token(TOKEN_URL).token.encode("utf-16-le")
-        token_struct = struct.pack(f"<I{len(raw_token)}s", len(raw_token), token)
+        token_struct = struct.pack(f"<I{len(raw_token)}s", len(raw_token), raw_token)
 
         # apply it to keyword arguments
         cparams["attrs_before"] = {SQL_COPT_SS_ACCESS_TOKEN: token_struct}
@@ -350,7 +350,11 @@ class _ms_binary_pyodbc(object):
         return process
 
 
-class _ODBCDateTimeOffset(DATETIMEOFFSET):
+class _ODBCDateTime(sqltypes.DateTime):
+    """Add bind processors to handle datetimeoffset behaviors"""
+
+    has_tz = False
+
     def bind_processor(self, dialect):
         def process(value):
             if value is None:
@@ -358,7 +362,12 @@ class _ODBCDateTimeOffset(DATETIMEOFFSET):
             elif isinstance(value, util.string_types):
                 # if a string was passed directly, allow it through
                 return value
+            elif not value.tzinfo or (not self.timezone and not self.has_tz):
+                # for DateTime(timezone=False)
+                return value
             else:
+                # for DATETIMEOFFSET or DateTime(timezone=True)
+                #
                 # Convert to string format required by T-SQL
                 dto_string = value.strftime("%Y-%m-%d %H:%M:%S.%f %z")
                 # offset needs a colon, e.g., -0700 -> -07:00
@@ -370,6 +379,10 @@ class _ODBCDateTimeOffset(DATETIMEOFFSET):
                 return dto_string
 
         return process
+
+
+class _ODBCDATETIMEOFFSET(_ODBCDateTime):
+    has_tz = True
 
 
 class _VARBINARY_pyodbc(_ms_binary_pyodbc, VARBINARY):
@@ -431,6 +444,7 @@ class MSExecutionContext_pyodbc(MSExecutionContext):
 
 
 class MSDialect_pyodbc(PyODBCConnector, MSDialect):
+    supports_statement_cache = True
 
     # mssql still has problems with this on Linux
     supports_sane_rowcount_returning = False
@@ -443,7 +457,9 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
             sqltypes.Numeric: _MSNumeric_pyodbc,
             sqltypes.Float: _MSFloat_pyodbc,
             BINARY: _BINARY_pyodbc,
-            DATETIMEOFFSET: _ODBCDateTimeOffset,
+            # support DateTime(timezone=True)
+            sqltypes.DateTime: _ODBCDateTime,
+            DATETIMEOFFSET: _ODBCDATETIMEOFFSET,
             # SQL Server dialect has a VARBINARY that is just to support
             # "deprecate_large_types" w/ VARBINARY(max), but also we must
             # handle the usual SQL standard VARBINARY

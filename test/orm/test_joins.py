@@ -6,6 +6,7 @@ from sqlalchemy import desc
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import lateral
 from sqlalchemy import literal_column
@@ -306,6 +307,25 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
                 "FROM users JOIN addresses ON users.id = addresses.user_id "
                 "WHERE users.name = :name_1",
             )
+
+    def test_join_relationship_propagate_attrs(self):
+        """test #6558"""
+
+        User = self.classes.User
+        users = self.tables.users
+
+        stmt = select(users).join(User.addresses)
+
+        eq_(
+            stmt._propagate_attrs,
+            {"compile_state_plugin": "orm", "plugin_subject": inspect(User)},
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT users.id, users.name FROM users "
+            "JOIN addresses ON users.id = addresses.user_id",
+        )
 
     def test_invalid_kwarg_join(self):
         User = self.classes.User

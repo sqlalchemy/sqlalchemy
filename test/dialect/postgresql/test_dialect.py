@@ -62,7 +62,7 @@ if True:
 
 
 class DialectTest(fixtures.TestBase):
-    """python-side dialect tests.  """
+    """python-side dialect tests."""
 
     def test_version_parsing(self):
         def mock_conn(res):
@@ -206,6 +206,30 @@ class DialectTest(fixtures.TestBase):
         cargs, cparams = dialect.create_connect_args(u)
         eq_(cargs, [])
         eq_(cparams["host"], "hostA:portA,hostB,hostC")
+
+
+class PGCodeTest(fixtures.TestBase):
+    __only_on__ = "postgresql"
+
+    def test_error_code(self, metadata, connection):
+        t = Table("t", metadata, Column("id", Integer, primary_key=True))
+        t.create(connection)
+
+        errmsg = assert_raises(
+            exc.IntegrityError,
+            connection.execute,
+            t.insert(),
+            [{"id": 1}, {"id": 1}],
+        )
+
+        if testing.against("postgresql+pg8000"):
+            # TODO: is there another way we're supposed to see this?
+            eq_(errmsg.orig.args[0]["C"], "23505")
+        else:
+            eq_(errmsg.orig.pgcode, "23505")
+
+        if testing.against("postgresql+asyncpg"):
+            eq_(errmsg.orig.sqlstate, "23505")
 
 
 class ExecuteManyMode(object):
@@ -1201,6 +1225,8 @@ $$ LANGUAGE plpgsql;
     def test_serial_integer(self):
         class BITD(TypeDecorator):
             impl = Integer
+
+            cache_ok = True
 
             def load_dialect_impl(self, dialect):
                 if dialect.name == "postgresql":

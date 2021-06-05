@@ -1201,7 +1201,19 @@ class _NoResultMetaData(ResultMetaData):
         self._we_dont_return_rows()
 
 
+class _LegacyNoResultMetaData(_NoResultMetaData):
+    @property
+    def keys(self):
+        util.warn_deprecated_20(
+            "Calling the .keys() method on a result set that does not return "
+            "rows is deprecated and will raise ResourceClosedError in "
+            "SQLAlchemy 2.0.",
+        )
+        return []
+
+
 _NO_RESULT_METADATA = _NoResultMetaData()
+_LEGACY_NO_RESULT_METADATA = _LegacyNoResultMetaData()
 
 
 class BaseCursorResult(object):
@@ -1259,7 +1271,7 @@ class BaseCursorResult(object):
             self._set_memoized_attribute("_row_getter", make_row)
 
         else:
-            self._metadata = _NO_RESULT_METADATA
+            self._metadata = self._no_result_metadata
 
     def _init_metadata(self, context, cursor_description):
 
@@ -1350,16 +1362,47 @@ class BaseCursorResult(object):
 
     @property
     def inserted_primary_key_rows(self):
-        """Return a list of tuples, each containing the primary key for each row
-        just inserted.
+        """Return the value of :attr:`_engine.CursorResult.inserted_primary_key`
+        as a row contained within a list; some dialects may support a
+        multiple row form as well.
 
-        Usually, this method will return at most a list with a single
-        entry which is the same row one would get back from
-        :attr:`_engine.CursorResult.inserted_primary_key`.   To support
-        "executemany with INSERT" mode, multiple rows can be part of the
-        list returned.
+        .. note:: As indicated below, in current SQLAlchemy versions this
+           accessor is only useful beyond what's already supplied by
+           :attr:`_engine.CursorResult.inserted_primary_key` when using the
+           :ref:`postgresql_psycopg2` dialect.   Future versions hope to
+           generalize this feature to more dialects.
+
+        This accessor is added to support dialects that offer the feature
+        that is currently implemented by the :ref:`psycopg2_executemany_mode`
+        feature, currently **only the psycopg2 dialect**, which provides
+        for many rows to be INSERTed at once while still retaining the
+        behavior of being able to return server-generated primary key values.
+
+        * **When using the psycopg2 dialect, or other dialects that may support
+          "fast executemany" style inserts in upcoming releases** : When
+          invoking an INSERT statement while passing a list of rows as the
+          second argument to :meth:`_engine.Connection.execute`, this accessor
+          will then provide a list of rows, where each row contains the primary
+          key value for each row that was INSERTed.
+
+        * **When using all other dialects / backends that don't yet support
+          this feature**: This accessor is only useful for **single row INSERT
+          statements**, and returns the same information as that of the
+          :attr:`_engine.CursorResult.inserted_primary_key` within a
+          single-element list. When an INSERT statement is executed in
+          conjunction with a list of rows to be INSERTed, the list will contain
+          one row per row inserted in the statement, however it will contain
+          ``None`` for any server-generated values.
+
+        Future releases of SQLAlchemy will further generalize the
+        "fast execution helper" feature of psycopg2 to suit other dialects,
+        thus allowing this accessor to be of more general use.
 
         .. versionadded:: 1.4
+
+        .. seealso::
+
+            :attr:`_engine.CursorResult.inserted_primary_key`
 
         """
         if not self.context.compiled:
@@ -1382,22 +1425,28 @@ class BaseCursorResult(object):
     def inserted_primary_key(self):
         """Return the primary key for the row just inserted.
 
-        The return value is a list of scalar values
-        corresponding to the list of primary key columns
-        in the target table.
+        The return value is a :class:`_result.Row` object representing
+        a named tuple of primary key values in the order in which the
+        primary key columns are configured in the source
+        :class:`_schema.Table`.
 
-        This only applies to single row :func:`_expression.insert`
+        .. versionchanged:: 1.4.8 - the
+           :attr:`_engine.CursorResult.inserted_primary_key`
+           value is now a named tuple via the :class:`_result.Row` class,
+           rather than a plain tuple.
+
+        This accessor only applies to single row :func:`_expression.insert`
         constructs which did not explicitly specify
-        :meth:`_expression.Insert.returning`.
+        :meth:`_expression.Insert.returning`.    Support for multirow inserts,
+        while not yet available for most backends, would be accessed using
+        the :attr:`_engine.CursorResult.inserted_primary_key_rows` accessor.
 
-        Note that primary key columns which specify a
-        server_default clause,
-        or otherwise do not qualify as "autoincrement"
-        columns (see the notes at :class:`_schema.Column`), and were
-        generated using the database-side default, will
-        appear in this list as ``None`` unless the backend
-        supports "returning" and the insert statement executed
-        with the "implicit returning" enabled.
+        Note that primary key columns which specify a server_default clause, or
+        otherwise do not qualify as "autoincrement" columns (see the notes at
+        :class:`_schema.Column`), and were generated using the database-side
+        default, will appear in this list as ``None`` unless the backend
+        supports "returning" and the insert statement executed with the
+        "implicit returning" enabled.
 
         Raises :class:`~sqlalchemy.exc.InvalidRequestError` if the executed
         statement is not a compiled expression construct
@@ -1620,11 +1669,16 @@ class BaseCursorResult(object):
            * Statements that use RETURNING may not return a correct
              rowcount.
 
-        """
+        .. seealso::
+
+            :ref:`tutorial_update_delete_rowcount` - in the :ref:`unified_tutorial`
+
+        """  # noqa E501
+
         try:
             return self.context.rowcount
         except BaseException as e:
-            self.cursor_strategy.handle_exception(self, e)
+            self.cursor_strategy.handle_exception(self, self.cursor, e)
 
     @property
     def lastrowid(self):
@@ -1645,7 +1699,7 @@ class BaseCursorResult(object):
         try:
             return self.context.get_lastrowid()
         except BaseException as e:
-            self.cursor_strategy.handle_exception(self, e)
+            self.cursor_strategy.handle_exception(self, self.cursor, e)
 
     @property
     def returns_rows(self):
@@ -1721,6 +1775,7 @@ class CursorResult(BaseCursorResult, Result):
 
     _cursor_metadata = CursorResultMetaData
     _cursor_strategy_cls = CursorFetchStrategy
+    _no_result_metadata = _NO_RESULT_METADATA
 
     def _fetchiter_impl(self):
         fetchone = self.cursor_strategy.fetchone
@@ -1795,6 +1850,8 @@ class LegacyCursorResult(CursorResult):
     _process_row = LegacyRow
     _cursor_metadata = LegacyCursorResultMetaData
     _cursor_strategy_cls = CursorFetchStrategy
+
+    _no_result_metadata = _LEGACY_NO_RESULT_METADATA
 
     def close(self):
         """Close this :class:`_engine.LegacyCursorResult`.

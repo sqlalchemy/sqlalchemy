@@ -238,6 +238,37 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             "addresses.user_id JOIN users ON users.id = addresses.user_id",
         )
 
+    def test_multiple_entities(self):
+        User = self.classes.User
+        Address = self.classes.Address
+        Dingaling = self.classes.Dingaling
+
+        s = fixture_session()
+
+        u1 = aliased(User)
+
+        with testing.expect_deprecated_20(join_chain_dep):
+            q1 = s.query(u1).join(Address, User)
+
+        self.assert_compile(
+            q1,
+            "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name "
+            "FROM users AS users_1 JOIN addresses ON users_1.id = "
+            "addresses.user_id JOIN users ON users.id = addresses.user_id",
+        )
+
+        with testing.expect_deprecated_20(join_chain_dep):
+            q1 = s.query(u1).join(Address, User, Dingaling)
+
+        self.assert_compile(
+            q1,
+            "SELECT users_1.id AS users_1_id, users_1.name AS users_1_name "
+            "FROM users AS users_1 JOIN addresses "
+            "ON users_1.id = addresses.user_id "
+            "JOIN users ON users.id = addresses.user_id "
+            "JOIN dingalings ON addresses.id = dingalings.address_id",
+        )
+
     def test_str_join_target(self):
         User = self.classes.User
 

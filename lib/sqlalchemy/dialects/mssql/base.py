@@ -1255,7 +1255,14 @@ class XML(sqltypes.Text):
     __visit_name__ = "XML"
 
 
-class BIT(sqltypes.TypeEngine):
+class BIT(sqltypes.Boolean):
+    """MSSQL BIT type.
+
+    Both pyodbc and pymssql return values from BIT columns as
+    Python <class 'bool'> so just subclass Boolean.
+
+    """
+
     __visit_name__ = "BIT"
 
 
@@ -1398,12 +1405,6 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
     def visit_TINYINT(self, type_, **kw):
         return "TINYINT"
 
-    def visit_DATETIMEOFFSET(self, type_, **kw):
-        if type_.precision is not None:
-            return "DATETIMEOFFSET(%s)" % type_.precision
-        else:
-            return "DATETIMEOFFSET"
-
     def visit_TIME(self, type_, **kw):
         precision = getattr(type_, "precision", None)
         if precision is not None:
@@ -1416,6 +1417,19 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_ROWVERSION(self, type_, **kw):
         return "ROWVERSION"
+
+    def visit_datetime(self, type_, **kw):
+        if type_.timezone:
+            return self.visit_DATETIMEOFFSET(type_, **kw)
+        else:
+            return self.visit_DATETIME(type_, **kw)
+
+    def visit_DATETIMEOFFSET(self, type_, **kw):
+        precision = getattr(type_, "precision", None)
+        if precision is not None:
+            return "DATETIMEOFFSET(%s)" % type_.precision
+        else:
+            return "DATETIMEOFFSET"
 
     def visit_DATETIME2(self, type_, **kw):
         precision = getattr(type_, "precision", None)
@@ -1726,7 +1740,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
         )
 
     def get_select_precolumns(self, select, **kw):
-        """ MS-SQL puts TOP, it's version of LIMIT here """
+        """MS-SQL puts TOP, it's version of LIMIT here"""
 
         s = super(MSSQLCompiler, self).get_select_precolumns(select, **kw)
 
@@ -1759,13 +1773,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
             return select._fetch_clause
 
     def _use_top(self, select):
-        return (
-            select._offset_clause is None
-            or (
-                select._simple_int_clause(select._offset_clause)
-                and select._offset == 0
-            )
-        ) and (
+        return (select._offset_clause is None) and (
             select._simple_int_clause(select._limit_clause)
             or (
                 # limit can use TOP with is by itself. fetch only uses TOP
@@ -1784,7 +1792,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
     def limit_clause(self, cs, **kwargs):
         return ""
 
-    def _check_can_use_fetch_like(self, select):
+    def _check_can_use_fetch_limit(self, select):
         # to use ROW_NUMBER(), an ORDER BY is required.
         # OFFSET are FETCH are options of the ORDER BY clause
         if not select._order_by_clause.clauses:
@@ -1810,7 +1818,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
         """
 
         if self.dialect._supports_offset_fetch and not self._use_top(select):
-            self._check_can_use_fetch_like(select)
+            self._check_can_use_fetch_limit(select)
 
             text = ""
 
@@ -1850,7 +1858,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
             and not self._use_top(select)
             and not getattr(select, "_mssql_visit", None)
         ):
-            self._check_can_use_fetch_like(select)
+            self._check_can_use_fetch_limit(select)
 
             _order_by_clauses = [
                 sql_util.unwrap_label_reference(elem)
@@ -2031,7 +2039,10 @@ class MSSQLCompiler(compiler.SQLCompiler):
         if (
             self.is_subquery()
             and not select._limit
-            and (not select._offset or not self.dialect._supports_offset_fetch)
+            and (
+                select._offset is None
+                or not self.dialect._supports_offset_fetch
+            )
         ):
             # avoid processing the order by clause if we won't end up
             # using it, because we don't want all the bind params tacked
@@ -2573,6 +2584,7 @@ def _schema_elements(schema):
 class MSDialect(default.DefaultDialect):
     # will assume it's at least mssql2005
     name = "mssql"
+    supports_statement_cache = True
     supports_default_values = True
     supports_empty_insert = False
     execution_ctx_cls = MSExecutionContext
@@ -2795,6 +2807,7 @@ class MSDialect(default.DefaultDialect):
 
     @_db_plus_owner
     def has_table(self, connection, tablename, dbname, owner, schema):
+        self._ensure_has_table_connection(connection)
         if tablename.startswith("#"):  # temporary table
             tables = ischema.mssql_temp_table_columns
 

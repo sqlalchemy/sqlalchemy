@@ -226,6 +226,15 @@ def setup_options(make_option):
         dest="dump_pyannotate",
         help="Run pyannotate and dump json info to given file",
     )
+    make_option(
+        "--mypy-extra-test-path",
+        type=str,
+        action="append",
+        default=[],
+        dest="mypy_extra_test_paths",
+        help="Additional test directories to add to the mypy tests. "
+        "This is used only when running mypy tests. Multiple OK",
+    )
 
 
 def configure_follower(follower_ident):
@@ -688,6 +697,7 @@ def _possible_configs_for_cls(cls, reasons=None, sparse=False):
                 all_configs,
                 key=lambda cfg: (
                     cfg.db.name,
+                    cfg.db.driver,
                     cfg.db.dialect.server_version_info,
                 ),
             )

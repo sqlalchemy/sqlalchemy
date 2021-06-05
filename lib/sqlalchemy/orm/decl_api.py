@@ -32,9 +32,6 @@ from ..sql.schema import MetaData
 from ..util import hybridmethod
 from ..util import hybridproperty
 
-if util.TYPE_CHECKING:
-    from .mapper import Mapper
-
 
 def has_inherited_table(cls):
     """Given a class, return True if any of the classes it inherits from has a
@@ -205,11 +202,10 @@ class declared_attr(interfaces._MappedAttribute, property):
 
     """  # noqa E501
 
-    def __init__(self, fget, cascading=False, _is_dataclass=False):
+    def __init__(self, fget, cascading=False):
         super(declared_attr, self).__init__(fget)
         self.__doc__ = fget.__doc__
         self._cascading = cascading
-        self._is_dataclass = _is_dataclass
 
     def __get__(desc, self, cls):
         # the declared_attr needs to make use of a cache that exists
@@ -319,6 +315,48 @@ class _stateful_declared_attr(declared_attr):
 
     def __call__(self, fn):
         return declared_attr(fn, **self.kw)
+
+
+def declarative_mixin(cls):
+    """Mark a class as providing the feature of "declarative mixin".
+
+    E.g.::
+
+        from sqlalchemy.orm import declared_attr
+        from sqlalchemy.orm import declarative_mixin
+
+        @declarative_mixin
+        class MyMixin:
+
+            @declared_attr
+            def __tablename__(cls):
+                return cls.__name__.lower()
+
+            __table_args__ = {'mysql_engine': 'InnoDB'}
+            __mapper_args__= {'always_refresh': True}
+
+            id =  Column(Integer, primary_key=True)
+
+        class MyModel(MyMixin, Base):
+            name = Column(String(1000))
+
+    The :func:`_orm.declarative_mixin` decorator currently does not modify
+    the given class in any way; it's current purpose is strictly to assist
+    the :ref:`Mypy plugin <mypy_toplevel>` in being able to identify
+    SQLAlchemy declarative mixin classes when no other context is present.
+
+    .. versionadded:: 1.4.6
+
+    .. seealso::
+
+        :ref:`orm_mixins_toplevel`
+
+        :ref:`mypy_declarative_mixins` - in the
+        :ref:`Mypy plugin documentation <mypy_toplevel>`
+
+    """  # noqa: E501
+
+    return cls
 
 
 def declarative_base(
@@ -844,7 +882,6 @@ class registry(object):
         return decorate
 
     def map_declaratively(self, cls):
-        # type: (type) -> Mapper
         """Map a class declaratively.
 
         In this form of mapping, the class is scanned for mapping information,

@@ -710,6 +710,11 @@ class DialectTest(
         e = create_engine("sqlite+pysqlite:///:memory:")
         assert e.pool.__class__ is pool.SingletonThreadPool
 
+        e = create_engine(
+            "sqlite+pysqlite:///file:foo.db?mode=memory&uri=true"
+        )
+        assert e.pool.__class__ is pool.SingletonThreadPool
+
         e = create_engine("sqlite+pysqlite:///foo.db")
         assert e.pool.__class__ is pool.NullPool
 
@@ -1677,6 +1682,7 @@ class AutoIncrementTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_sqlite_autoincrement_int_affinity(self):
         class MyInteger(sqltypes.TypeDecorator):
             impl = Integer
+            cache_ok = True
 
         table = Table(
             "autoinctable",
@@ -2688,6 +2694,7 @@ class OnConflictTest(fixtures.TablesTest):
 
         class SpecialType(sqltypes.TypeDecorator):
             impl = String
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 return value + " processed"

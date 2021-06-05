@@ -66,6 +66,8 @@ from ... import util
 
 
 class FBDialect_fdb(FBDialect_kinterbasdb):
+    supports_statement_cache = True
+
     def __init__(self, enable_rowcount=True, retaining=False, **kwargs):
         super(FBDialect_fdb, self).__init__(
             enable_rowcount=enable_rowcount, retaining=retaining, **kwargs

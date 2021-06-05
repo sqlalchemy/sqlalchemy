@@ -1163,10 +1163,14 @@ need to refer to any pre-established :class:`_schema.Table` metadata:
     [...] ('%@aol.com', '%@msn.com')
     {stop}[(u'Wendy Williams, wendy@aol.com',)]
 
-.. versionchanged:: 1.0.0
-   The :func:`_expression.select` construct emits warnings when string SQL
-   fragments are coerced to :func:`_expression.text`, and :func:`_expression.text` should
-   be used explicitly.  See :ref:`migration_2992` for background.
+
+While :func:`_expression.text` can be used in the column list of a
+:func:`_expression.select` object, it has some restriction when composing the
+generated select, since it will not be in
+:attr:`_expression.SelectBase.selected_columns` collection and will be omitted
+from the ``.c`` collection of subqueries. The next section will introduce the
+:func:`_expression.literal_column` construct which is the better choice to
+express individual column names as SQL fragments.
 
 
 
@@ -1216,6 +1220,8 @@ be quoted:
     AND (addresses.email_address LIKE ? OR addresses.email_address LIKE ?)
     [...] (', ', '%@aol.com', '%@msn.com')
     {stop}[(u'Wendy Williams, wendy@aol.com',)]
+
+.. _sqlexpression_order_by_label:
 
 Ordering or Grouping by a Label
 -------------------------------
@@ -2241,6 +2247,9 @@ This is provided via the :meth:`_expression.SelectBase.group_by` method:
     GROUP BY users.name
     [...] ()
     {stop}[(u'jack', 2), (u'wendy', 2)]
+
+See also :ref:`sqlexpression_order_by_label` for an important technique
+of ordering or grouping by a string column name.
 
 HAVING can be used to filter results on an aggregate value, after GROUP BY has
 been applied.  It's available here via the :meth:`_expression.Select.having`

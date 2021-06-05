@@ -83,6 +83,43 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         )
         eq_(self.static.user_address_result, q.order_by(User.id).all())
 
+    def test_no_render_in_subquery(self):
+        """test #6378"""
+
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        mapper(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    mapper(Address, addresses),
+                    lazy="joined",
+                    order_by=Address.id,
+                )
+            },
+        )
+
+        stmt = select(User)
+        self.assert_compile(
+            select(stmt.subquery()),
+            "SELECT anon_1.id, anon_1.name FROM (SELECT users.id AS id, "
+            "users.name AS name FROM users) AS anon_1",
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT users.id, users.name, addresses_1.id AS id_1, "
+            "addresses_1.user_id, addresses_1.email_address FROM users "
+            "LEFT OUTER JOIN addresses AS addresses_1 "
+            "ON users.id = addresses_1.user_id ORDER BY addresses_1.id",
+        )
+
     def test_late_compile(self):
         User, Address, addresses, users = (
             self.classes.User,
@@ -513,7 +550,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         q = (
             s.query(User, func.count(User.id))
             .order_by(User.id)
-            .group_by(User.id)
+            .group_by(User.id, User.name)
             .limit(1)
         )
 
@@ -999,6 +1036,36 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             )
 
         self.assert_sql_count(testing.db, go, 1)
+
+    @testing.combinations(
+        ("plain",), ("cte", testing.requires.ctes), ("subquery",), id_="s"
+    )
+    def test_map_to_cte_subq(self, type_):
+        User, Address = self.classes("User", "Address")
+        users, addresses = self.tables("users", "addresses")
+
+        if type_ == "plain":
+            target = users
+        elif type_ == "cte":
+            target = select(users).cte()
+        elif type_ == "subquery":
+            target = select(users).subquery()
+
+        mapper(
+            User,
+            target,
+            properties={"addresses": relationship(Address, backref="user")},
+        )
+        mapper(Address, addresses)
+
+        sess = fixture_session()
+
+        q = (
+            sess.query(Address)
+            .options(joinedload(Address.user))
+            .order_by(Address.id)
+        )
+        eq_(q.all(), self.static.address_user_result)
 
     def test_no_false_hits(self):
         """Eager loaders don't interpret main table columns as
@@ -3672,6 +3739,47 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, 1)
 
         assert "addresses" in u1.__dict__
+
+    @testing.combinations(
+        ("selectin",),
+        ("subquery",),
+        ("immediate",),
+    )
+    def test_refresh_no_recursion(self, strat):
+        User, Address = self.classes.User, self.classes.Address
+        mapper(
+            User,
+            self.tables.users,
+            properties={
+                "addresses": relationship(
+                    Address, lazy="joined", back_populates="user"
+                )
+            },
+        )
+        mapper(
+            Address,
+            self.tables.addresses,
+            properties={
+                "user": relationship(
+                    User, lazy=strat, back_populates="addresses"
+                )
+            },
+        )
+        sess = fixture_session(autoflush=False)
+
+        u1 = sess.query(User).get(8)
+        assert "addresses" in u1.__dict__
+        sess.expire(u1)
+
+        def go():
+            eq_(u1.id, 8)
+
+        self.assert_sql_count(testing.db, go, 1)
+
+        assert "addresses" in u1.__dict__
+
+        # immediateload would be used here for all 3 strategies
+        assert "user" in u1.addresses[0].__dict__
 
     def test_populate_existing_propagate(self):
         # both SelectInLoader and SubqueryLoader receive the loaded collection

@@ -16,7 +16,7 @@ Advanced Tox Options
 
 For more elaborate CI-style test running, the tox script provided will
 run against various Python / database targets.   For a basic run against
-Python 2.7 using an in-memory SQLite database::
+Python 3.8 using an in-memory SQLite database::
 
     tox -e py38-sqlite
 
@@ -27,7 +27,7 @@ database::
 
     tox -e py38-sqlite-postgresql
 
-Or to run just "backend" tests against a MySQL databases::
+Or to run just "backend" tests against a MySQL database::
 
     tox -e py38-mysql-backendonly
 
@@ -36,7 +36,7 @@ vendor be available at a specific URL.  See "Setting Up Databases" below
 for details.
 
 The pytest Engine
-==================
+=================
 
 The tox runner is using pytest to invoke the test suite.   Within the realm of
 pytest, SQLAlchemy itself is adding a large series of option and
@@ -158,7 +158,7 @@ to a hostname/database name combination, not a DSN name.
 
 Several tests require alternate usernames or schemas to be present, which
 are used to test dotted-name access scenarios.  On some databases such
-as Oracle or Sybase, these are usernames, and others such as PostgreSQL
+as Oracle these are usernames, and others such as PostgreSQL
 and MySQL they are schemas.   The requirement applies to all backends
 except SQLite and Firebird.  The names are::
 

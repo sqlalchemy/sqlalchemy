@@ -2,6 +2,7 @@
 
 from contextlib import contextmanager
 import re
+import threading
 import weakref
 
 import sqlalchemy as tsa
@@ -26,6 +27,7 @@ from sqlalchemy import VARCHAR
 from sqlalchemy.engine import default
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.engine.base import Engine
+from sqlalchemy.pool import NullPool
 from sqlalchemy.pool import QueuePool
 from sqlalchemy.sql import column
 from sqlalchemy.sql import literal
@@ -42,6 +44,7 @@ from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.mock import call
 from sqlalchemy.testing.mock import Mock
@@ -260,6 +263,13 @@ class ExecuteTest(fixtures.TablesTest):
             (4, "sally"),
         ]
 
+    def test_dialect_has_table_assertion(self):
+        with expect_raises_message(
+            tsa.exc.ArgumentError,
+            r"The argument passed to Dialect.has_table\(\) should be a",
+        ):
+            testing.db.dialect.has_table(testing.db, "some_table")
+
     def test_exception_wrapping_dbapi(self):
         with testing.db.connect() as conn:
             # engine does not have exec_driver_sql
@@ -326,6 +336,7 @@ class ExecuteTest(fixtures.TablesTest):
     def test_exception_wrapping_non_dbapi_statement(self):
         class MyType(TypeDecorator):
             impl = Integer
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 raise SomeException("nope")
@@ -349,6 +360,8 @@ class ExecuteTest(fixtures.TablesTest):
             tsa.and_(True).compile(),
             column("foo"),
             column("foo").compile(),
+            select(1).cte(),
+            # select(1).subquery(),
             MetaData(),
             Integer(),
             tsa.Index(name="foo"),
@@ -361,6 +374,15 @@ class ExecuteTest(fixtures.TablesTest):
                     conn.execute,
                     obj,
                 )
+
+    def test_subquery_exec_warning(self):
+        for obj in (select(1).alias(), select(1).subquery()):
+            with testing.db.connect() as conn:
+                with expect_deprecated(
+                    "Executing a subquery object is deprecated and will "
+                    "raise ObjectNotExecutableError"
+                ):
+                    eq_(conn.execute(obj).scalar(), 1)
 
     def test_stmt_exception_bytestring_raised(self):
         name = util.u("méil")
@@ -518,6 +540,7 @@ class ExecuteTest(fixtures.TablesTest):
 
         class MyType(TypeDecorator):
             impl = Integer
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 raise MyException("nope")
@@ -2554,6 +2577,7 @@ class HandleErrorTest(fixtures.TestBase):
 
         class MyType(TypeDecorator):
             impl = Integer
+            cache_ok = True
 
             def process_bind_param(self, value, dialect):
                 raise nope
@@ -2793,7 +2817,7 @@ class HandleErrorTest(fixtures.TestBase):
         conn.close()
 
 
-class HandleInvalidatedOnConnectTest(fixtures.TestBase):
+class OnConnectTest(fixtures.TestBase):
     __requires__ = ("sqlite",)
 
     def setup_test(self):
@@ -3070,6 +3094,63 @@ class HandleInvalidatedOnConnectTest(fixtures.TestBase):
 
         c.close()
         c2.close()
+
+    @testing.only_on("sqlite+pysqlite")
+    def test_initialize_connect_race(self):
+        """test for :ticket:`6337` fixing the regression in :ticket:`5497`,
+        dialect init is mutexed"""
+
+        m1 = []
+        cls_ = testing.db.dialect.__class__
+
+        class SomeDialect(cls_):
+            def initialize(self, connection):
+                super(SomeDialect, self).initialize(connection)
+                m1.append("initialize")
+
+            def on_connect(self):
+                oc = super(SomeDialect, self).on_connect()
+
+                def my_on_connect(conn):
+                    if oc:
+                        oc(conn)
+                    m1.append("on_connect")
+
+                return my_on_connect
+
+        u1 = Mock(
+            username=None,
+            password=None,
+            host=None,
+            port=None,
+            query={},
+            database=None,
+            _instantiate_plugins=lambda kw: (u1, [], kw),
+            _get_entrypoint=Mock(
+                return_value=Mock(get_dialect_cls=lambda u: SomeDialect)
+            ),
+        )
+
+        for j in range(5):
+            m1[:] = []
+            eng = create_engine(
+                u1,
+                poolclass=NullPool,
+                connect_args={"check_same_thread": False},
+            )
+
+            def go():
+                c = eng.connect()
+                c.execute(text("select 1"))
+                c.close()
+
+            threads = [threading.Thread(target=go) for i in range(10)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+
+            eq_(m1, ["on_connect", "initialize"] + ["on_connect"] * 9)
 
 
 class DialectEventTest(fixtures.TestBase):
@@ -3629,5 +3710,100 @@ class SetInputSizesTest(fixtures.TablesTest):
                     ],
                     mock.ANY,
                 )
+            ],
+        )
+
+
+class DialectDoesntSupportCachingTest(fixtures.TestBase):
+    """test the opt-in caching flag added in :ticket:`6184`."""
+
+    __only_on__ = "sqlite+pysqlite"
+
+    __requires__ = ("sqlite_memory",)
+
+    @testing.fixture()
+    def sqlite_no_cache_dialect(self, testing_engine):
+        from sqlalchemy.dialects.sqlite.pysqlite import SQLiteDialect_pysqlite
+        from sqlalchemy.dialects.sqlite.base import SQLiteCompiler
+        from sqlalchemy.sql import visitors
+
+        class MyCompiler(SQLiteCompiler):
+            def translate_select_structure(self, select_stmt, **kwargs):
+                select = select_stmt
+
+                if not getattr(select, "_mydialect_visit", None):
+                    select = visitors.cloned_traverse(select_stmt, {}, {})
+                    if select._limit_clause is not None:
+                        # create a bindparam with a fixed name and hardcode
+                        # it to the given limit.  this breaks caching.
+                        select._limit_clause = bindparam(
+                            "limit", value=select._limit, literal_execute=True
+                        )
+
+                    select._mydialect_visit = True
+
+                return select
+
+        class MyDialect(SQLiteDialect_pysqlite):
+            statement_compiler = MyCompiler
+
+        from sqlalchemy.dialects import registry
+
+        def go(name):
+            return MyDialect
+
+        with mock.patch.object(registry, "load", go):
+            eng = testing_engine()
+            yield eng
+
+    @testing.fixture
+    def data_fixture(self, sqlite_no_cache_dialect):
+        m = MetaData()
+        t = Table("t1", m, Column("x", Integer))
+        with sqlite_no_cache_dialect.begin() as conn:
+            t.create(conn)
+            conn.execute(t.insert(), [{"x": 1}, {"x": 2}, {"x": 3}, {"x": 4}])
+
+        return t
+
+    def test_no_cache(self, sqlite_no_cache_dialect, data_fixture):
+        eng = sqlite_no_cache_dialect
+
+        def go(lim):
+            with eng.connect() as conn:
+                result = conn.execute(
+                    select(data_fixture).order_by(data_fixture.c.x).limit(lim)
+                )
+                return result
+
+        r1 = go(2)
+        r2 = go(3)
+
+        eq_(r1.all(), [(1,), (2,)])
+        eq_(r2.all(), [(1,), (2,), (3,)])
+
+    def test_it_caches(self, sqlite_no_cache_dialect, data_fixture):
+        eng = sqlite_no_cache_dialect
+        eng.dialect.__class__.supports_statement_cache = True
+        del eng.dialect.__dict__["_supports_statement_cache"]
+
+        def go(lim):
+            with eng.connect() as conn:
+                result = conn.execute(
+                    select(data_fixture).order_by(data_fixture.c.x).limit(lim)
+                )
+                return result
+
+        r1 = go(2)
+        r2 = go(3)
+
+        eq_(r1.all(), [(1,), (2,)])
+
+        # wrong answer
+        eq_(
+            r2.all(),
+            [
+                (1,),
+                (2,),
             ],
         )

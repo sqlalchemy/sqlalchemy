@@ -97,7 +97,7 @@ jobs:
 
       - name: Upload wheels to release
         # upload the generated wheels to the github release
-        uses: AButler/upload-release-assets@v2.0
+        uses: sqlalchemyorg/upload-release-assets@sa
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           files: 'dist/*.whl'
@@ -179,7 +179,7 @@ jobs:
         # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
         # the action uses the image for manylinux2010 but can generate also a manylinux1 wheel
         # change the tag of this image to change the image used
-        uses: RalfG/python-wheels-manylinux-build@v0.3.3-manylinux2010_x86_64
+        uses: RalfG/python-wheels-manylinux-build@v0.3.4-manylinux2010_x86_64
         # this action generates 3 wheels in dist/. linux, manylinux1 and manylinux2010
         with:
           # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp27-cp27mu
@@ -195,7 +195,7 @@ jobs:
         # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
         # the action uses the image for manylinux2010 but can generate also a manylinux1 wheel
         # change the tag of this image to change the image used
-        uses: RalfG/python-wheels-manylinux-build@v0.3.3-manylinux2014_x86_64
+        uses: RalfG/python-wheels-manylinux-build@v0.3.4-manylinux2014_x86_64
         # this action generates 2 wheels in dist/. linux and manylinux2014
         with:
           # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp27-cp27mu
@@ -211,7 +211,7 @@ jobs:
         # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
         # the action uses the image for manylinux2010 but can generate also a manylinux1 wheel
         # change the tag of this image to change the image used
-        uses: RalfG/python-wheels-manylinux-build@v0.3.3-manylinux1_x86_64
+        uses: RalfG/python-wheels-manylinux-build@v0.3.4-manylinux1_x86_64
         # this action generates 2 wheels in dist/. linux and manylinux1
         with:
           # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp27-cp27mu
@@ -249,7 +249,7 @@ jobs:
 
       - name: Upload wheels to release
         # upload the generated wheels to the github release
-        uses: AButler/upload-release-assets@v2.0
+        uses: sqlalchemyorg/upload-release-assets@sa
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           files: 'dist/*manylinux*'
@@ -327,7 +327,7 @@ jobs:
         # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
         # the action uses the image for manylinux2014 but can generate also a manylinux1 wheel
         # change the tag of this image to change the image used
-        uses: RalfG/python-wheels-manylinux-build@v0.3.3-manylinux2014_aarch64
+        uses: RalfG/python-wheels-manylinux-build@v0.3.4-manylinux2014_aarch64
         # this action generates 2 wheels in dist/. linux and manylinux2014
         with:
           # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp37-cp37mu
@@ -355,7 +355,7 @@ jobs:
 
       - name: Upload wheels to release
         # upload the generated wheels to the github release
-        uses: AButler/upload-release-assets@v2.0
+        uses: sqlalchemyorg/upload-release-assets@sa
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           files: 'dist/*manylinux*'

@@ -24,6 +24,7 @@ from .query import Query
 from .. import exc
 from .. import log
 from .. import util
+from ..engine import result
 
 
 @log.class_logger
@@ -65,6 +66,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
     supports_population = False
     collection = False
     dynamic = True
+    order_by = ()
 
     def __init__(
         self,
@@ -81,7 +83,8 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
             class_, key, typecallable, dispatch, **kw
         )
         self.target_mapper = target_mapper
-        self.order_by = order_by
+        if order_by:
+            self.order_by = tuple(order_by)
         if not query_class:
             self.query_class = AppenderQuery
         elif AppenderMixin in query_class.mro():
@@ -105,10 +108,11 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         passive=attributes.PASSIVE_NO_INITIALIZE,
     ):
         if not passive & attributes.SQL_OK:
-            return self._get_collection_history(state, passive).added_items
+            data = self._get_collection_history(state, passive).added_items
         else:
             history = self._get_collection_history(state, passive)
-            return history.added_plus_unchanged
+            data = history.added_plus_unchanged
+        return DynamicCollectionAdapter(data)
 
     @util.memoized_property
     def _append_token(self):
@@ -259,6 +263,27 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         self.remove(state, dict_, value, initiator, passive=passive)
 
 
+class DynamicCollectionAdapter(object):
+    """simplified CollectionAdapter for internal API consistency"""
+
+    def __init__(self, data):
+        self.data = data
+
+    def __iter__(self):
+        return iter(self.data)
+
+    def _reset_empty(self):
+        pass
+
+    def __len__(self):
+        return len(self.data)
+
+    def __bool__(self):
+        return True
+
+    __nonzero__ = __bool__
+
+
 class AppenderMixin(object):
     query_class = None
 
@@ -302,17 +327,28 @@ class AppenderMixin(object):
 
     session = property(session, lambda s, x: None)
 
-    def __iter__(self):
+    def _iter(self):
         sess = self.session
         if sess is None:
-            return iter(
+            state = attributes.instance_state(self.instance)
+            if state.detached:
+                util.warn(
+                    "Instance %s is detached, dynamic relationship cannot "
+                    "return a correct result.   This warning will become "
+                    "a DetachedInstanceError in a future release."
+                    % (orm_util.state_str(state))
+                )
+
+            return result.IteratorResult(
+                result.SimpleResultMetaData([self.attr.class_.__name__]),
                 self.attr._get_collection_history(
                     attributes.instance_state(self.instance),
                     attributes.PASSIVE_NO_INITIALIZE,
-                ).added_items
-            )
+                ).added_items,
+                _source_supports_scalars=True,
+            ).scalars()
         else:
-            return iter(self._generate(sess))
+            return self._generate(sess)._iter()
 
     def __getitem__(self, index):
         sess = self.session

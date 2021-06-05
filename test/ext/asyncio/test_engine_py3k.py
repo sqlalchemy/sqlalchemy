@@ -16,9 +16,14 @@ from sqlalchemy import union_all
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.ext.asyncio import engine as _async_engine
 from sqlalchemy.ext.asyncio import exc as asyncio_exc
+from sqlalchemy.ext.asyncio.base import ReversibleProxy
+from sqlalchemy.ext.asyncio.engine import AsyncConnection
+from sqlalchemy.ext.asyncio.engine import AsyncEngine
 from sqlalchemy.pool import AsyncAdaptedQueuePool
+from sqlalchemy.testing import assertions
 from sqlalchemy.testing import async_test
 from sqlalchemy.testing import combinations
+from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
@@ -34,7 +39,133 @@ from sqlalchemy.testing import ne_
 from sqlalchemy.util.concurrency import greenlet_spawn
 
 
-class EngineFixture(fixtures.TablesTest):
+class AsyncFixture:
+    @config.fixture(
+        params=[
+            (rollback, run_second_execute, begin_nested)
+            for rollback in (True, False)
+            for run_second_execute in (True, False)
+            for begin_nested in (True, False)
+        ]
+    )
+    def async_trans_ctx_manager_fixture(self, request, metadata):
+        rollback, run_second_execute, begin_nested = request.param
+
+        from sqlalchemy import Table, Column, Integer, func, select
+
+        t = Table("test", metadata, Column("data", Integer))
+        eng = getattr(self, "bind", None) or config.db
+
+        t.create(eng)
+
+        async def run_test(subject, trans_on_subject, execute_on_subject):
+            async with subject.begin() as trans:
+
+                if begin_nested:
+                    if not config.requirements.savepoints.enabled:
+                        config.skip_test("savepoints not enabled")
+                    if execute_on_subject:
+                        nested_trans = subject.begin_nested()
+                    else:
+                        nested_trans = trans.begin_nested()
+
+                    async with nested_trans:
+                        if execute_on_subject:
+                            await subject.execute(t.insert(), {"data": 10})
+                        else:
+                            await trans.execute(t.insert(), {"data": 10})
+
+                        # for nested trans, we always commit/rollback on the
+                        # "nested trans" object itself.
+                        # only Session(future=False) will affect savepoint
+                        # transaction for session.commit/rollback
+
+                        if rollback:
+                            await nested_trans.rollback()
+                        else:
+                            await nested_trans.commit()
+
+                        if run_second_execute:
+                            with assertions.expect_raises_message(
+                                exc.InvalidRequestError,
+                                "Can't operate on closed transaction "
+                                "inside context manager.  Please complete the "
+                                "context manager "
+                                "before emitting further commands.",
+                            ):
+                                if execute_on_subject:
+                                    await subject.execute(
+                                        t.insert(), {"data": 12}
+                                    )
+                                else:
+                                    await trans.execute(
+                                        t.insert(), {"data": 12}
+                                    )
+
+                    # outside the nested trans block, but still inside the
+                    # transaction block, we can run SQL, and it will be
+                    # committed
+                    if execute_on_subject:
+                        await subject.execute(t.insert(), {"data": 14})
+                    else:
+                        await trans.execute(t.insert(), {"data": 14})
+
+                else:
+                    if execute_on_subject:
+                        await subject.execute(t.insert(), {"data": 10})
+                    else:
+                        await trans.execute(t.insert(), {"data": 10})
+
+                    if trans_on_subject:
+                        if rollback:
+                            await subject.rollback()
+                        else:
+                            await subject.commit()
+                    else:
+                        if rollback:
+                            await trans.rollback()
+                        else:
+                            await trans.commit()
+
+                    if run_second_execute:
+                        with assertions.expect_raises_message(
+                            exc.InvalidRequestError,
+                            "Can't operate on closed transaction inside "
+                            "context "
+                            "manager.  Please complete the context manager "
+                            "before emitting further commands.",
+                        ):
+                            if execute_on_subject:
+                                await subject.execute(t.insert(), {"data": 12})
+                            else:
+                                await trans.execute(t.insert(), {"data": 12})
+
+            expected_committed = 0
+            if begin_nested:
+                # begin_nested variant, we inserted a row after the nested
+                # block
+                expected_committed += 1
+            if not rollback:
+                # not rollback variant, our row inserted in the target
+                # block itself would be committed
+                expected_committed += 1
+
+            if execute_on_subject:
+                eq_(
+                    await subject.scalar(select(func.count()).select_from(t)),
+                    expected_committed,
+                )
+            else:
+                with subject.connect() as conn:
+                    eq_(
+                        await conn.scalar(select(func.count()).select_from(t)),
+                        expected_committed,
+                    )
+
+        return run_test
+
+
+class EngineFixture(AsyncFixture, fixtures.TablesTest):
     __requires__ = ("async_dialect",)
 
     @testing.fixture
@@ -68,6 +199,15 @@ class AsyncEngineTest(EngineFixture):
         async with async_engine.connect() as conn:
             eq_(await conn.scalar(text("select 1")), 2)
 
+    @async_test
+    async def test_interrupt_ctxmanager_connection(
+        self, async_engine, async_trans_ctx_manager_fixture
+    ):
+        fn = async_trans_ctx_manager_fixture
+
+        async with async_engine.connect() as conn:
+            await fn(conn, trans_on_subject=False, execute_on_subject=True)
+
     def test_proxied_attrs_engine(self, async_engine):
         sync_engine = async_engine.sync_engine
 
@@ -89,6 +229,49 @@ class AsyncEngineTest(EngineFixture):
         ne_(async_engine, e3)
 
         is_false(async_engine == None)
+
+    # NOTE: this test currently causes the test suite to hang; it previously
+    # was not actually running the worker thread
+    # as the testing_engine() fixture
+    # was rejecting the "transfer_staticpool" keyword argument
+    @async_test
+    async def temporarily_dont_test_no_attach_to_event_loop(
+        self, testing_engine
+    ):
+        """test #6409"""
+
+        import asyncio
+        import threading
+
+        errs = []
+
+        def go():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+            engine = testing_engine(asyncio=True, transfer_staticpool=True)
+
+            async def main():
+                tasks = [task() for _ in range(2)]
+
+                await asyncio.gather(*tasks)
+
+            async def task():
+                async with engine.begin() as connection:
+                    result = await connection.execute(select(1))
+                    result.all()
+
+            try:
+                asyncio.run(main())
+            except Exception as err:
+                errs.append(err)
+
+        t = threading.Thread(target=go)
+        t.start()
+        t.join()
+
+        if errs:
+            raise errs[0]
 
     @async_test
     async def test_connection_info(self, async_engine):
@@ -119,8 +302,8 @@ class AsyncEngineTest(EngineFixture):
         async with async_engine.connect() as conn:
             t1 = await conn.begin()
 
-            t2 = _async_engine.AsyncTransaction._from_existing_transaction(
-                conn, t1._proxied
+            t2 = _async_engine.AsyncTransaction._regenerate_proxy_for_target(
+                t1._proxied
             )
 
             eq_(t1, t2)
@@ -712,3 +895,118 @@ class TextSyncDBAPI(fixtures.TestBase):
             )
             assert res == 1
             assert await conn.run_sync(lambda _: 2) == 2
+
+
+class AsyncProxyTest(EngineFixture, fixtures.TestBase):
+    @async_test
+    async def test_get_transaction(self, async_engine):
+        async with async_engine.connect() as conn:
+            async with conn.begin() as trans:
+
+                is_(trans.connection, conn)
+                is_(conn.get_transaction(), trans)
+
+    @async_test
+    async def test_get_nested_transaction(self, async_engine):
+        async with async_engine.connect() as conn:
+            async with conn.begin() as trans:
+                n1 = await conn.begin_nested()
+
+                is_(conn.get_nested_transaction(), n1)
+
+                n2 = await conn.begin_nested()
+
+                is_(conn.get_nested_transaction(), n2)
+
+                await n2.commit()
+
+                is_(conn.get_nested_transaction(), n1)
+
+                is_(conn.get_transaction(), trans)
+
+    @async_test
+    async def test_get_connection(self, async_engine):
+        async with async_engine.connect() as conn:
+            is_(
+                AsyncConnection._retrieve_proxy_for_target(
+                    conn.sync_connection
+                ),
+                conn,
+            )
+
+    def test_regenerate_connection(self, connection):
+
+        async_connection = AsyncConnection._retrieve_proxy_for_target(
+            connection
+        )
+
+        a2 = AsyncConnection._retrieve_proxy_for_target(connection)
+        is_(async_connection, a2)
+        is_not(async_connection, None)
+
+        is_(async_connection.engine, a2.engine)
+        is_not(async_connection.engine, None)
+
+    @testing.requires.predictable_gc
+    async def test_gc_engine(self, testing_engine):
+        ReversibleProxy._proxy_objects.clear()
+
+        eq_(len(ReversibleProxy._proxy_objects), 0)
+
+        async_engine = AsyncEngine(testing.db)
+
+        eq_(len(ReversibleProxy._proxy_objects), 1)
+
+        del async_engine
+
+        eq_(len(ReversibleProxy._proxy_objects), 0)
+
+    @testing.requires.predictable_gc
+    @async_test
+    async def test_gc_conn(self, testing_engine):
+        ReversibleProxy._proxy_objects.clear()
+
+        async_engine = AsyncEngine(testing.db)
+
+        eq_(len(ReversibleProxy._proxy_objects), 1)
+
+        async with async_engine.connect() as conn:
+            eq_(len(ReversibleProxy._proxy_objects), 2)
+
+            async with conn.begin() as trans:
+                eq_(len(ReversibleProxy._proxy_objects), 3)
+
+            del trans
+
+        del conn
+
+        eq_(len(ReversibleProxy._proxy_objects), 1)
+
+        del async_engine
+
+        eq_(len(ReversibleProxy._proxy_objects), 0)
+
+    def test_regen_conn_but_not_engine(self, async_engine):
+
+        sync_conn = async_engine.sync_engine.connect()
+
+        async_conn = AsyncConnection._retrieve_proxy_for_target(sync_conn)
+        async_conn2 = AsyncConnection._retrieve_proxy_for_target(sync_conn)
+
+        is_(async_conn, async_conn2)
+        is_(async_conn.engine, async_engine)
+
+    def test_regen_trans_but_not_conn(self, async_engine):
+        sync_conn = async_engine.sync_engine.connect()
+
+        async_conn = AsyncConnection._retrieve_proxy_for_target(sync_conn)
+
+        trans = sync_conn.begin()
+
+        async_t1 = async_conn.get_transaction()
+
+        is_(async_t1.connection, async_conn)
+        is_(async_t1.sync_transaction, trans)
+
+        async_t2 = async_conn.get_transaction()
+        is_(async_t1, async_t2)

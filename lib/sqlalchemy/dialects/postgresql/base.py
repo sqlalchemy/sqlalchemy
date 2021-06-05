@@ -1880,6 +1880,7 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
         kw.setdefault("metadata", impl.metadata)
         kw.setdefault("_create_events", False)
         kw.setdefault("values_callable", impl.values_callable)
+        kw.setdefault("omit_aliases", impl._omit_aliases)
         return cls(**kw)
 
     def create(self, bind=None, checkfirst=True):
@@ -1989,7 +1990,6 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
             return False
 
     def _on_table_create(self, target, bind, checkfirst=False, **kw):
-
         if (
             checkfirst
             or (
@@ -2420,8 +2420,9 @@ class PGCompiler(compiler.SQLCompiler):
     def update_from_clause(
         self, update_stmt, from_table, extra_froms, from_hints, **kw
     ):
+        kw["asfrom"] = True
         return "FROM " + ", ".join(
-            t._compiler_dispatch(self, asfrom=True, fromhints=from_hints, **kw)
+            t._compiler_dispatch(self, fromhints=from_hints, **kw)
             for t in extra_froms
         )
 
@@ -2429,8 +2430,9 @@ class PGCompiler(compiler.SQLCompiler):
         self, delete_stmt, from_table, extra_froms, from_hints, **kw
     ):
         """Render the DELETE .. USING clause specific to PostgreSQL."""
+        kw["asfrom"] = True
         return "USING " + ", ".join(
-            t._compiler_dispatch(self, asfrom=True, fromhints=from_hints, **kw)
+            t._compiler_dispatch(self, fromhints=from_hints, **kw)
             for t in extra_froms
         )
 
@@ -2462,6 +2464,11 @@ class PGDDLCompiler(compiler.DDLCompiler):
         if isinstance(impl_type, sqltypes.TypeDecorator):
             impl_type = impl_type.impl
 
+        has_identity = (
+            column.identity is not None
+            and self.dialect.supports_identity_columns
+        )
+
         if (
             column.primary_key
             and column is column.table._autoincrement_column
@@ -2469,7 +2476,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
                 self.dialect.supports_smallserial
                 or not isinstance(impl_type, sqltypes.SmallInteger)
             )
-            and column.identity is None
+            and not has_identity
             and (
                 column.default is None
                 or (
@@ -2496,12 +2503,12 @@ class PGDDLCompiler(compiler.DDLCompiler):
 
         if column.computed is not None:
             colspec += " " + self.process(column.computed)
-        if column.identity is not None:
+        if has_identity:
             colspec += " " + self.process(column.identity)
 
-        if not column.nullable and not column.identity:
+        if not column.nullable and not has_identity:
             colspec += " NOT NULL"
-        elif column.nullable and column.identity:
+        elif column.nullable and has_identity:
             colspec += " NULL"
         return colspec
 
@@ -2902,9 +2909,10 @@ class PGInspector(reflection.Inspector):
     def get_table_oid(self, table_name, schema=None):
         """Return the OID for the given table name."""
 
-        return self.dialect.get_table_oid(
-            self.bind, table_name, schema, info_cache=self.info_cache
-        )
+        with self._operation_context() as conn:
+            return self.dialect.get_table_oid(
+                conn, table_name, schema, info_cache=self.info_cache
+            )
 
     def get_enums(self, schema=None):
         """Return a list of ENUM objects.
@@ -2925,7 +2933,8 @@ class PGInspector(reflection.Inspector):
 
         """
         schema = schema or self.default_schema_name
-        return self.dialect._load_enums(self.bind, schema)
+        with self._operation_context() as conn:
+            return self.dialect._load_enums(conn, schema)
 
     def get_foreign_table_names(self, schema=None):
         """Return a list of FOREIGN TABLE names.
@@ -2939,7 +2948,8 @@ class PGInspector(reflection.Inspector):
 
         """
         schema = schema or self.default_schema_name
-        return self.dialect._get_foreign_table_names(self.bind, schema)
+        with self._operation_context() as conn:
+            return self.dialect._get_foreign_table_names(conn, schema)
 
     def get_view_names(self, schema=None, include=("plain", "materialized")):
         """Return all view names in `schema`.
@@ -2955,9 +2965,10 @@ class PGInspector(reflection.Inspector):
 
         """
 
-        return self.dialect.get_view_names(
-            self.bind, schema, info_cache=self.info_cache, include=include
-        )
+        with self._operation_context() as conn:
+            return self.dialect.get_view_names(
+                conn, schema, info_cache=self.info_cache, include=include
+            )
 
 
 class CreateEnumType(schema._CreateDropBase):
@@ -3059,6 +3070,7 @@ class PGDeferrableConnectionCharacteristic(
 
 class PGDialect(default.DefaultDialect):
     name = "postgresql"
+    supports_statement_cache = True
     supports_alter = True
     max_identifier_length = 63
     supports_sane_rowcount = True
@@ -3074,8 +3086,13 @@ class PGDialect(default.DefaultDialect):
 
     supports_comments = True
     supports_default_values = True
+
+    supports_default_metavalue = True
+
     supports_empty_insert = False
     supports_multivalues_insert = True
+    supports_identity_columns = True
+
     default_paramstyle = "pyformat"
     ischema_names = ischema_names
     colspecs = colspecs
@@ -3183,6 +3200,7 @@ class PGDialect(default.DefaultDialect):
             9,
             2,
         )
+        self.supports_identity_columns = self.server_version_info >= (10,)
 
     def on_connect(self):
         if self.isolation_level is not None:
@@ -3298,6 +3316,7 @@ class PGDialect(default.DefaultDialect):
         return bool(cursor.first())
 
     def has_table(self, connection, table_name, schema=None):
+        self._ensure_has_table_connection(connection)
         # seems like case gets folded in pg_class...
         if schema is None:
             cursor = connection.execute(
@@ -3481,7 +3500,11 @@ class PGDialect(default.DefaultDialect):
                 "JOIN pg_namespace n ON n.oid = c.relnamespace "
                 "WHERE n.nspname = :schema AND c.relkind = 'f'"
             ).columns(relname=sqltypes.Unicode),
-            schema=schema if schema is not None else self.default_schema_name,
+            dict(
+                schema=schema
+                if schema is not None
+                else self.default_schema_name
+            ),
         )
         return [name for name, in result]
 
@@ -3582,12 +3605,11 @@ class PGDialect(default.DefaultDialect):
                     'cycle', s.seqcycle)
                 FROM pg_catalog.pg_sequence s
                 JOIN pg_catalog.pg_class c on s.seqrelid = c."oid"
-                JOIN pg_catalog.pg_namespace n on n.oid = c.relnamespace
                 WHERE c.relkind = 'S'
                 AND a.attidentity != ''
-                AND n.nspname || '.' || c.relname =
-                pg_catalog.pg_get_serial_sequence(
-                    a.attrelid::regclass::text, a.attname)
+                AND s.seqrelid = pg_catalog.pg_get_serial_sequence(
+                    a.attrelid::regclass::text, a.attname
+                )::regclass::oid
                 ) as identity_options\
                 """
         else:
@@ -3768,8 +3790,9 @@ class PGDialect(default.DefaultDialect):
                 attype, is_array = _handle_array_type(attype)
                 # strip quotes from case sensitive enum or domain names
                 enum_or_domain_key = tuple(util.quoted_token_parser(attype))
-                # A table can't override whether the domain is nullable.
-                nullable = domain["nullable"]
+                # A table can't override a not null on the domain,
+                # but can override nullable
+                nullable = nullable and domain["nullable"]
                 if domain["default"] and not default:
                     # It can, however, override the default
                     # value, but can't set it to null.

@@ -750,7 +750,7 @@ class ConcreteExtensionConfigTest(
         )
 
     def test_prop_on_base(self):
-        """test [ticket:2670] """
+        """test [ticket:2670]"""
 
         counter = mock.Mock()
 

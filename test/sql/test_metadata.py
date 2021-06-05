@@ -47,6 +47,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import ComparesTables
 from sqlalchemy.testing import emits_warning
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
@@ -2022,6 +2023,20 @@ class PKAutoIncrementTest(fixtures.TestBase):
         t3.append_constraint(pk)
         is_(pk._autoincrement_column, t3.c.a)
 
+    def test_no_kw_args(self):
+        with expect_raises_message(
+            TypeError,
+            r"Table\(\) takes at least two positional-only arguments",
+            check_context=False,
+        ):
+            Table(name="foo", metadata=MetaData())
+        with expect_raises_message(
+            TypeError,
+            r"Table\(\) takes at least two positional-only arguments",
+            check_context=False,
+        ):
+            Table("foo", metadata=MetaData())
+
 
 class SchemaTypeTest(fixtures.TestBase):
     __backend__ = True
@@ -2070,6 +2085,7 @@ class SchemaTypeTest(fixtures.TestBase):
 
     class MyTypeDecAndSchema(TypeDecorator, sqltypes.SchemaType):
         impl = String()
+        cache_ok = True
 
         evt_targets = ()
 
@@ -2090,6 +2106,7 @@ class SchemaTypeTest(fixtures.TestBase):
     def test_before_parent_attach_typedec_enclosing_schematype(self):
         # additional test for [ticket:2919] as part of test for
         # [ticket:3832]
+        # this also serves as the test for [ticket:6152]
 
         class MySchemaType(sqltypes.TypeEngine, sqltypes.SchemaType):
             pass
@@ -2098,9 +2115,10 @@ class SchemaTypeTest(fixtures.TestBase):
 
         class MyType(TypeDecorator):
             impl = target_typ
+            cache_ok = True
 
         typ = MyType()
-        self._test_before_parent_attach(typ, target_typ, double=True)
+        self._test_before_parent_attach(typ, target_typ)
 
     def test_before_parent_attach_array_enclosing_schematype(self):
         # test for [ticket:4141] which is the same idea as [ticket:3832]
@@ -2113,6 +2131,7 @@ class SchemaTypeTest(fixtures.TestBase):
     def test_before_parent_attach_typedec_of_schematype(self):
         class MyType(TypeDecorator, sqltypes.SchemaType):
             impl = String
+            cache_ok = True
 
         typ = MyType()
         self._test_before_parent_attach(typ)
@@ -2120,11 +2139,18 @@ class SchemaTypeTest(fixtures.TestBase):
     def test_before_parent_attach_schematype_of_typedec(self):
         class MyType(sqltypes.SchemaType, TypeDecorator):
             impl = String
+            cache_ok = True
 
         typ = MyType()
         self._test_before_parent_attach(typ)
 
-    def _test_before_parent_attach(self, typ, evt_target=None, double=False):
+    def test_before_parent_attach_variant_array_schematype(self):
+
+        target = Enum("one", "two", "three")
+        typ = ARRAY(target).with_variant(String(), "other")
+        self._test_before_parent_attach(typ, evt_target=target)
+
+    def _test_before_parent_attach(self, typ, evt_target=None):
         canary = mock.Mock()
 
         if evt_target is None:
@@ -2133,8 +2159,8 @@ class SchemaTypeTest(fixtures.TestBase):
         orig_set_parent = evt_target._set_parent
         orig_set_parent_w_dispatch = evt_target._set_parent_with_dispatch
 
-        def _set_parent(parent):
-            orig_set_parent(parent)
+        def _set_parent(parent, **kw):
+            orig_set_parent(parent, **kw)
             canary._set_parent(parent)
 
         def _set_parent_w_dispatch(parent):
@@ -2149,33 +2175,41 @@ class SchemaTypeTest(fixtures.TestBase):
 
                 c = Column("q", typ)
 
-        if double:
-            # no clean way yet to fix this, inner schema type is called
-            # twice, but this is a very unusual use case.
-            eq_(
-                canary.mock_calls,
-                [
-                    mock.call._set_parent(c),
-                    mock.call.go(evt_target, c),
-                    mock.call._set_parent(c),
-                    mock.call._set_parent_with_dispatch(c),
-                ],
-            )
-        else:
-            eq_(
-                canary.mock_calls,
-                [
-                    mock.call.go(evt_target, c),
-                    mock.call._set_parent(c),
-                    mock.call._set_parent_with_dispatch(c),
-                ],
-            )
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.go(evt_target, c),
+                mock.call._set_parent(c),
+                mock.call._set_parent_with_dispatch(c),
+            ],
+        )
 
     def test_independent_schema(self):
         m = MetaData()
         type_ = self.MyType(schema="q")
         t1 = Table("x", m, Column("y", type_), schema="z")
         eq_(t1.c.y.type.schema, "q")
+
+    def test_inherit_schema_from_metadata(self):
+        """test #6373"""
+        m = MetaData(schema="q")
+        type_ = self.MyType(metadata=m)
+        t1 = Table("x", m, Column("y", type_), schema="z")
+        eq_(t1.c.y.type.schema, "q")
+
+    def test_inherit_schema_from_table_override_metadata(self):
+        """test #6373"""
+        m = MetaData(schema="q")
+        type_ = self.MyType(metadata=m, inherit_schema=True)
+        t1 = Table("x", m, Column("y", type_), schema="z")
+        eq_(t1.c.y.type.schema, "z")
+
+    def test_inherit_schema_from_metadata_override_explicit(self):
+        """test #6373"""
+        m = MetaData(schema="q")
+        type_ = self.MyType(schema="e", metadata=m)
+        t1 = Table("x", m, Column("y", type_), schema="z")
+        eq_(t1.c.y.type.schema, "e")
 
     def test_inherit_schema(self):
         m = MetaData()
@@ -2213,6 +2247,7 @@ class SchemaTypeTest(fixtures.TestBase):
     def test_to_metadata_copy_decorated(self):
         class MyDecorated(TypeDecorator):
             impl = self.MyType
+            cache_ok = True
 
         m1 = MetaData()
 

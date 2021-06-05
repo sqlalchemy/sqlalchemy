@@ -72,6 +72,7 @@ class MySQLExecutionContext_pyodbc(MySQLExecutionContext):
 
 
 class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
+    supports_statement_cache = True
     colspecs = util.update_copy(MySQLDialect.colspecs, {Time: _pyodbcTIME})
     supports_unicode_statements = True
     execution_ctx_cls = MySQLExecutionContext_pyodbc

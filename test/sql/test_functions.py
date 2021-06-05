@@ -1638,6 +1638,28 @@ class TableValuedCompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "AS anon_1(a INTEGER, b VARCHAR)",
         )
 
+    def test_named_table_valued_w_quoting(self):
+
+        fn = (
+            func.json_to_recordset(  # noqa
+                '[{"CaseSensitive":1,"the % value":"foo"}, '
+                '{"CaseSensitive":"2","the % value":"bar"}]'
+            )
+            .table_valued(
+                column("CaseSensitive", Integer), column("the % value", String)
+            )
+            .render_derived(with_types=True)
+        )
+
+        stmt = select(fn.c.CaseSensitive, fn.c["the % value"])
+
+        self.assert_compile(
+            stmt,
+            'SELECT anon_1."CaseSensitive", anon_1."the % value" '
+            "FROM json_to_recordset(:json_to_recordset_1) "
+            'AS anon_1("CaseSensitive" INTEGER, "the % value" VARCHAR)',
+        )
+
     def test_named_table_valued_subquery(self):
 
         fn = (

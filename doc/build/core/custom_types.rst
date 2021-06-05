@@ -148,6 +148,7 @@ denormalize::
 
     class TZDateTime(TypeDecorator):
         impl = DateTime
+        cache_ok = True
 
         def process_bind_param(self, value, dialect):
             if value is not None:
@@ -186,6 +187,7 @@ binary in CHAR(16) if desired::
 
         """
         impl = CHAR
+        cache_ok = True
 
         def load_dialect_impl(self, dialect):
             if dialect.name == 'postgresql':
@@ -232,6 +234,8 @@ to/from JSON.   Can be modified to use Python's builtin json encoder::
         """
 
         impl = VARCHAR
+
+        cache_ok = True
 
         def process_bind_param(self, value, dialect):
             if value is not None:
@@ -305,6 +309,8 @@ method::
     class JSONEncodedDict(TypeDecorator):
 
         impl = VARCHAR
+
+        cache_ok = True
 
         def coerce_compared_value(self, op, value):
             if op in (operators.like_op, operators.not_like_op):
@@ -416,8 +422,11 @@ transparently::
     class PGPString(TypeDecorator):
         impl = BYTEA
 
+        cache_ok = True
+
         def __init__(self, passphrase):
             super(PGPString, self).__init__()
+
             self.passphrase = passphrase
 
         def bind_expression(self, bindvalue):

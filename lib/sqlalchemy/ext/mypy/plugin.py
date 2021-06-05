@@ -9,9 +9,12 @@
 Mypy plugin for SQLAlchemy ORM.
 
 """
+from typing import Callable
 from typing import List
+from typing import Optional
 from typing import Tuple
-from typing import Type
+from typing import Type as TypingType
+from typing import Union
 
 from mypy import nodes
 from mypy.mro import calculate_mro
@@ -25,19 +28,20 @@ from mypy.nodes import SymbolTable
 from mypy.nodes import SymbolTableNode
 from mypy.nodes import TypeInfo
 from mypy.plugin import AttributeContext
-from mypy.plugin import Callable
 from mypy.plugin import ClassDefContext
 from mypy.plugin import DynamicClassDefContext
-from mypy.plugin import Optional
 from mypy.plugin import Plugin
+from mypy.plugin import SemanticAnalyzerPluginInterface
+from mypy.types import get_proper_type
 from mypy.types import Instance
+from mypy.types import Type
 
 from . import decl_class
 from . import names
 from . import util
 
 
-class CustomPlugin(Plugin):
+class SQLAlchemyPlugin(Plugin):
     def get_dynamic_class_hook(
         self, fullname: str
     ) -> Optional[Callable[[DynamicClassDefContext], None]]:
@@ -54,6 +58,7 @@ class CustomPlugin(Plugin):
         # subclasses.   but then you can just check it here from the "base"
         # and get the same effect.
         sym = self.lookup_fully_qualified(fullname)
+
         if (
             sym
             and isinstance(sym.node, TypeInfo)
@@ -70,12 +75,18 @@ class CustomPlugin(Plugin):
 
         sym = self.lookup_fully_qualified(fullname)
 
-        if (
-            sym is not None
-            and names._type_id_for_named_node(sym.node)
-            is names.MAPPED_DECORATOR
-        ):
-            return _cls_decorator_hook
+        if sym is not None and sym.node is not None:
+            type_id = names._type_id_for_named_node(sym.node)
+            if type_id is names.MAPPED_DECORATOR:
+                return _cls_decorator_hook
+            elif type_id in (
+                names.AS_DECLARATIVE,
+                names.AS_DECLARATIVE_BASE,
+            ):
+                return _base_cls_decorator_hook
+            elif type_id is names.DECLARATIVE_MIXIN:
+                return _declarative_mixin_hook
+
         return None
 
     def get_customize_class_mro_hook(
@@ -101,8 +112,8 @@ class CustomPlugin(Plugin):
         ]
 
 
-def plugin(version: str):
-    return CustomPlugin
+def plugin(version: str) -> TypingType[SQLAlchemyPlugin]:
+    return SQLAlchemyPlugin
 
 
 def _queryable_getattr_hook(ctx: AttributeContext) -> Type:
@@ -116,90 +127,135 @@ def _fill_in_decorators(ctx: ClassDefContext) -> None:
         # set the ".fullname" attribute of a class decorator
         # that is a MemberExpr.   This causes the logic in
         # semanal.py->apply_class_plugin_hooks to invoke the
-        # get_class_decorator_hook for our "registry.map_class()" method.
+        # get_class_decorator_hook for our "registry.map_class()"
+        # and "registry.as_declarative_base()" methods.
         # this seems like a bug in mypy that these decorators are otherwise
         # skipped.
+
         if (
+            isinstance(decorator, nodes.CallExpr)
+            and isinstance(decorator.callee, nodes.MemberExpr)
+            and decorator.callee.name == "as_declarative_base"
+        ):
+            target = decorator.callee
+        elif (
             isinstance(decorator, nodes.MemberExpr)
             and decorator.name == "mapped"
         ):
+            target = decorator
+        else:
+            continue
 
-            sym = ctx.api.lookup(
-                decorator.expr.name, decorator, suppress_errors=True
-            )
-            if sym:
-                if sym.node.type and hasattr(sym.node.type, "type"):
-                    decorator.fullname = (
-                        f"{sym.node.type.type.fullname}.{decorator.name}"
-                    )
-                else:
-                    # if the registry is in the same file as where the
-                    # decorator is used, it might not have semantic
-                    # symbols applied and we can't get a fully qualified
-                    # name or an inferred type, so we are actually going to
-                    # flag an error in this case that they need to annotate
-                    # it.  The "registry" is declared just
-                    # once (or few times), so they have to just not use
-                    # type inference for its assignment in this one case.
-                    util.fail(
-                        ctx.api,
-                        "Class decorator called mapped(), but we can't "
-                        "tell if it's from an ORM registry.  Please "
-                        "annotate the registry assignment, e.g. "
-                        "my_registry: registry = registry()",
-                        sym.node,
-                    )
+        assert isinstance(target.expr, NameExpr)
+        sym = ctx.api.lookup_qualified(
+            target.expr.name, target, suppress_errors=True
+        )
+        if sym and sym.node:
+            sym_type = get_proper_type(sym.type)
+            if isinstance(sym_type, Instance):
+                target.fullname = f"{sym_type.type.fullname}.{target.name}"
+            else:
+                # if the registry is in the same file as where the
+                # decorator is used, it might not have semantic
+                # symbols applied and we can't get a fully qualified
+                # name or an inferred type, so we are actually going to
+                # flag an error in this case that they need to annotate
+                # it.  The "registry" is declared just
+                # once (or few times), so they have to just not use
+                # type inference for its assignment in this one case.
+                util.fail(
+                    ctx.api,
+                    "Class decorator called %s(), but we can't "
+                    "tell if it's from an ORM registry.  Please "
+                    "annotate the registry assignment, e.g. "
+                    "my_registry: registry = registry()" % target.name,
+                    sym.node,
+                )
+
+
+def _add_globals(ctx: Union[ClassDefContext, DynamicClassDefContext]) -> None:
+    """Add __sa_DeclarativeMeta and __sa_Mapped symbol to the global space
+    for all class defs
+
+    """
+
+    util.add_global(
+        ctx,
+        "sqlalchemy.orm.decl_api",
+        "DeclarativeMeta",
+        "__sa_DeclarativeMeta",
+    )
+
+    util.add_global(ctx, "sqlalchemy.orm.attributes", "Mapped", "__sa_Mapped")
 
 
 def _cls_metadata_hook(ctx: ClassDefContext) -> None:
+    _add_globals(ctx)
     decl_class._scan_declarative_assignments_and_apply_types(ctx.cls, ctx.api)
 
 
 def _base_cls_hook(ctx: ClassDefContext) -> None:
+    _add_globals(ctx)
     decl_class._scan_declarative_assignments_and_apply_types(ctx.cls, ctx.api)
+
+
+def _declarative_mixin_hook(ctx: ClassDefContext) -> None:
+    _add_globals(ctx)
+    decl_class._scan_declarative_assignments_and_apply_types(
+        ctx.cls, ctx.api, is_mixin_scan=True
+    )
 
 
 def _cls_decorator_hook(ctx: ClassDefContext) -> None:
+    _add_globals(ctx)
     assert isinstance(ctx.reason, nodes.MemberExpr)
     expr = ctx.reason.expr
-    assert names._type_id_for_named_node(expr.node.type.type) is names.REGISTRY
+
+    assert isinstance(expr, nodes.RefExpr) and isinstance(expr.node, nodes.Var)
+
+    node_type = get_proper_type(expr.node.type)
+
+    assert (
+        isinstance(node_type, Instance)
+        and names._type_id_for_named_node(node_type.type) is names.REGISTRY
+    )
 
     decl_class._scan_declarative_assignments_and_apply_types(ctx.cls, ctx.api)
+
+
+def _base_cls_decorator_hook(ctx: ClassDefContext) -> None:
+    _add_globals(ctx)
+
+    cls = ctx.cls
+
+    _make_declarative_meta(ctx.api, cls)
+
+    decl_class._scan_declarative_assignments_and_apply_types(
+        cls, ctx.api, is_mixin_scan=True
+    )
 
 
 def _dynamic_class_hook(ctx: DynamicClassDefContext) -> None:
     """Generate a declarative Base class when the declarative_base() function
     is encountered."""
 
+    _add_globals(ctx)
+
     cls = ClassDef(ctx.name, Block([]))
     cls.fullname = ctx.api.qualified_name(ctx.name)
 
-    declarative_meta_sym: SymbolTableNode = ctx.api.modules[
-        "sqlalchemy.orm.decl_api"
-    ].names["DeclarativeMeta"]
-    declarative_meta_typeinfo: TypeInfo = declarative_meta_sym.node
-
-    declarative_meta_name: NameExpr = NameExpr("DeclarativeMeta")
-    declarative_meta_name.kind = GDEF
-    declarative_meta_name.fullname = "sqlalchemy.orm.decl_api.DeclarativeMeta"
-    declarative_meta_name.node = declarative_meta_typeinfo
-
-    cls.metaclass = declarative_meta_name
-
-    declarative_meta_instance = Instance(declarative_meta_typeinfo, [])
-
     info = TypeInfo(SymbolTable(), cls, ctx.api.cur_mod_id)
-    info.declared_metaclass = info.metaclass_type = declarative_meta_instance
     cls.info = info
+    _make_declarative_meta(ctx.api, cls)
 
-    cls_arg = util._get_callexpr_kwarg(ctx.call, "cls")
-    if cls_arg is not None:
+    cls_arg = util._get_callexpr_kwarg(ctx.call, "cls", expr_types=(NameExpr,))
+    if cls_arg is not None and isinstance(cls_arg.node, TypeInfo):
         decl_class._scan_declarative_assignments_and_apply_types(
             cls_arg.node.defn, ctx.api, is_mixin_scan=True
         )
         info.bases = [Instance(cls_arg.node, [])]
     else:
-        obj = ctx.api.builtin_type("builtins.object")
+        obj = ctx.api.named_type("__builtins__.object")
 
         info.bases = [obj]
 
@@ -209,7 +265,32 @@ def _dynamic_class_hook(ctx: DynamicClassDefContext) -> None:
         util.fail(
             ctx.api, "Not able to calculate MRO for declarative base", ctx.call
         )
+        obj = ctx.api.named_type("__builtins__.object")
         info.bases = [obj]
         info.fallback_to_any = True
 
     ctx.api.add_symbol_table_node(ctx.name, SymbolTableNode(GDEF, info))
+
+
+def _make_declarative_meta(
+    api: SemanticAnalyzerPluginInterface, target_cls: ClassDef
+) -> None:
+
+    declarative_meta_name: NameExpr = NameExpr("__sa_DeclarativeMeta")
+    declarative_meta_name.kind = GDEF
+    declarative_meta_name.fullname = "sqlalchemy.orm.decl_api.DeclarativeMeta"
+
+    # installed by _add_globals
+    sym = api.lookup_qualified("__sa_DeclarativeMeta", target_cls)
+
+    assert sym is not None and isinstance(sym.node, nodes.TypeInfo)
+
+    declarative_meta_typeinfo = sym.node
+    declarative_meta_name.node = declarative_meta_typeinfo
+
+    target_cls.metaclass = declarative_meta_name
+
+    declarative_meta_instance = Instance(declarative_meta_typeinfo, [])
+
+    info = target_cls.info
+    info.declared_metaclass = info.metaclass_type = declarative_meta_instance

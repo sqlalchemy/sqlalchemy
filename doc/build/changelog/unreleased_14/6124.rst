@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 6124
-
-    Repaired support so that the :meth:`_sql.Select.params` method can work
-    correctly with a :class:`_sql.Select` object that includes joins across ORM
-    relationship structures, which is a new feature in 1.4.
-

@@ -11,6 +11,7 @@ from sqlalchemy.orm import backref
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import mapper
+from sqlalchemy.orm import noload
 from sqlalchemy.orm import Query
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import assert_raises
@@ -232,6 +233,8 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
     def test_detached_raise(self):
+        """so filtering on a detached dynamic list raises an error..."""
+
         User, Address = self._user_address_fixture()
         sess = fixture_session()
         u = sess.query(User).get(8)
@@ -241,6 +244,35 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             u.addresses.filter_by,
             email_address="e",
         )
+
+    def test_detached_all_empty_list(self):
+        """test #6426 - but you can call .all() on it and you get an empty
+        list.   This is legacy stuff, as this should be raising
+        DetachedInstanceError.
+
+        """
+
+        User, Address = self._user_address_fixture()
+        sess = fixture_session()
+        u = sess.query(User).get(8)
+        sess.expunge(u)
+
+        with testing.expect_warnings(
+            r"Instance <User .*> is detached, dynamic relationship"
+        ):
+            eq_(u.addresses.all(), [])
+
+        with testing.expect_warnings(
+            r"Instance <User .*> is detached, dynamic relationship"
+        ):
+            eq_(list(u.addresses), [])
+
+    def test_transient_all_empty_list(self):
+        User, Address = self._user_address_fixture()
+        u1 = User()
+        eq_(u1.addresses.all(), [])
+
+        eq_(list(u1.addresses), [])
 
     def test_no_uselist_false(self):
         User, Address = self._user_address_fixture(
@@ -309,6 +341,41 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
                 Address(email_address="ed@lala.com"),
                 Address(email_address="ed@bettyboop.com"),
             ],
+        )
+
+    @testing.requires.dupe_order_by_ok
+    def test_order_by_composition_uses_immutable_tuple(self):
+        addresses = self.tables.addresses
+        User, Address = self._user_address_fixture(
+            addresses_args={"order_by": addresses.c.email_address.desc()}
+        )
+
+        sess = fixture_session()
+        u = sess.query(User).get(8)
+
+        with self.sql_execution_asserter() as asserter:
+            for i in range(3):
+                eq_(
+                    list(u.addresses.order_by(desc(Address.email_address))),
+                    [
+                        Address(email_address="ed@wood.com"),
+                        Address(email_address="ed@lala.com"),
+                        Address(email_address="ed@bettyboop.com"),
+                    ],
+                )
+        asserter.assert_(
+            *[
+                CompiledSQL(
+                    "SELECT addresses.id AS addresses_id, addresses.user_id "
+                    "AS addresses_user_id, addresses.email_address "
+                    "AS addresses_email_address FROM addresses "
+                    "WHERE :param_1 = addresses.user_id "
+                    "ORDER BY addresses.email_address DESC, "
+                    "addresses.email_address DESC",
+                    [{"param_1": 8}],
+                )
+                for i in range(3)
+            ]
         )
 
     def test_configured_order_by(self):
@@ -420,6 +487,36 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             "addresses",
             [],
         )
+
+    @testing.combinations(
+        ("star",),
+        ("attronly",),
+    )
+    def test_noload_issue(self, type_):
+        """test #6420.   a noload that hits the dynamic loader
+        should have no effect.
+
+        """
+
+        User, Address = self._user_address_fixture()
+
+        s = fixture_session()
+
+        if type_ == "star":
+            u1 = s.query(User).filter_by(id=7).options(noload("*")).first()
+            assert "name" not in u1.__dict__["name"]
+        elif type_ == "attronly":
+            u1 = (
+                s.query(User)
+                .filter_by(id=7)
+                .options(noload(User.addresses))
+                .first()
+            )
+
+            eq_(u1.__dict__["name"], "jack")
+
+        # noload doesn't affect a dynamic loader, because it has no state
+        eq_(list(u1.addresses), [Address(id=1)])
 
     def test_m2m(self):
         Order, Item = self._order_item_fixture(

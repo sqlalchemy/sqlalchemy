@@ -61,9 +61,15 @@ The primary forms of relationship loading are:
   An introduction to raise loading is at :ref:`prevent_lazy_with_raiseload`.
 
 * **no loading** - available via ``lazy='noload'``, or the :func:`.noload`
-  option; this loading style turns the attribute into an empty attribute (``None``) that
-  will never load or have any loading effect.  "noload" is a fairly
-  uncommon loader option.
+  option; this loading style turns the attribute into an empty attribute
+  (``None`` or ``[]``) that will never load or have any loading effect. This
+  seldom-used strategy behaves somewhat like an eager loader when objects are
+  loaded in that an empty attribute or collection is placed, but for expired
+  objects relies upon the default value of the attribute being returned on
+  access; the net effect is the same except for whether or not the attribute
+  name appears in the :attr:`.InstanceState.unloaded` collection.   ``noload``
+  may be useful for implementing a "write-only" attribute but this usage is not
+  currently tested or formally supported.
 
 
 .. _relationship_lazy_option:

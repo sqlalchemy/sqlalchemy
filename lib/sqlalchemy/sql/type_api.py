@@ -12,6 +12,7 @@
 
 from . import operators
 from .base import SchemaEventTarget
+from .traversals import NO_CACHE
 from .visitors import Traversible
 from .visitors import TraversibleType
 from .. import exc
@@ -48,6 +49,7 @@ class TypeEngine(Traversible):
     _is_tuple_type = False
     _is_table_value = False
     _is_array = False
+    _is_type_decorator = False
 
     class Comparator(operators.ColumnOperators):
         """Base class for custom comparison operations defined at the
@@ -871,6 +873,8 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
 
           impl = types.Unicode
 
+          cache_ok = True
+
           def process_bind_param(self, value, dialect):
               return "PREFIX:" + value
 
@@ -885,6 +889,16 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
     method can be used to provide different type classes based on the dialect
     given; in this case, the ``impl`` variable can reference
     ``TypeEngine`` as a placeholder.
+
+    The :attr:`.TypeDecorator.cache_ok` class-level flag indicates if this
+    custom :class:`.TypeDecorator` is safe to be used as part of a cache key.
+    This flag defaults to ``None`` which will initially generate a warning
+    when the SQL compiler attempts to generate a cache key for a statement
+    that uses this type.  If the :class:`.TypeDecorator` is not guaranteed
+    to produce the same bind/result behavior and SQL generation
+    every time, this flag should be set to ``False``; otherwise if the
+    class produces the same behavior each time, it may be set to ``True``.
+    See :attr:`.TypeDecorator.cache_ok` for further notes on how this works.
 
     Types that receive a Python type that isn't similar to the ultimate type
     used may want to define the :meth:`TypeDecorator.coerce_compared_value`
@@ -945,6 +959,8 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
             class MyJsonType(TypeDecorator):
                 impl = postgresql.JSON
 
+                cache_ok = True
+
                 def coerce_compared_value(self, op, value):
                     return self.impl.coerce_compared_value(op, value)
 
@@ -954,6 +970,8 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
     """
 
     __visit_name__ = "type_decorator"
+
+    _is_type_decorator = True
 
     def __init__(self, *args, **kwargs):
         """Construct a :class:`.TypeDecorator`.
@@ -999,6 +1017,47 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
 
     """
 
+    cache_ok = None
+    """Indicate if statements using this :class:`.TypeDecorator` are "safe to
+    cache".
+
+    The default value ``None`` will emit a warning and then not allow caching
+    of a statement which includes this type.   Set to ``False`` to disable
+    statements using this type from being cached at all without a warning.
+    When set to ``True``, the object's class and selected elements from its
+    state will be used as part of the cache key, e.g.::
+
+        class MyType(TypeDecorator):
+            impl = String
+
+            cache_ok = True
+
+            def __init__(self, choices):
+                self.choices = tuple(choices)
+                self.internal_only = True
+
+    The cache key for the above type would be equivalent to::
+
+        (<class '__main__.MyType'>, ('choices', ('a', 'b', 'c')))
+
+    The caching scheme will extract attributes from the type that correspond
+    to the names of parameters in the ``__init__()`` method.  Above, the
+    "choices" attribute becomes part of the cache key but "internal_only"
+    does not, because there is no parameter named "internal_only".
+
+    The requirements for cacheable elements is that they are hashable
+    and also that they indicate the same SQL rendered for expressions using
+    this type every time for a given cache value.
+
+    .. versionadded:: 1.4.14 - added the ``cache_ok`` flag to allow
+       some configurability of caching for :class:`.TypeDecorator` classes.
+
+    .. seealso::
+
+        :ref:`sql_caching`
+
+    """
+
     class Comparator(TypeEngine.Comparator):
         """A :class:`.TypeEngine.Comparator` that is specific to
         :class:`.TypeDecorator`.
@@ -1034,6 +1093,21 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
                 {},
             )
 
+    @property
+    def _static_cache_key(self):
+        if self.cache_ok is None:
+            util.warn(
+                "TypeDecorator %r will not produce a cache key because "
+                "the ``cache_ok`` flag is not set to True.  "
+                "Set this flag to True if this type object's "
+                "state is safe to use in a cache key, or False to "
+                "disable this warning." % self
+            )
+        elif self.cache_ok is True:
+            return super(TypeDecorator, self)._static_cache_key
+
+        return NO_CACHE
+
     def _gen_dialect_impl(self, dialect):
         """
         #todo
@@ -1063,18 +1137,20 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
         """
         return self.impl._type_affinity
 
-    def _set_parent(self, column):
+    def _set_parent(self, column, outer=False, **kw):
         """Support SchemaEventTarget"""
 
         super(TypeDecorator, self)._set_parent(column)
 
-        if isinstance(self.impl, SchemaEventTarget):
-            self.impl._set_parent(column)
+        if not outer and isinstance(self.impl, SchemaEventTarget):
+            self.impl._set_parent(column, outer=False, **kw)
 
     def _set_parent_with_dispatch(self, parent):
         """Support SchemaEventTarget"""
 
-        super(TypeDecorator, self)._set_parent_with_dispatch(parent)
+        super(TypeDecorator, self)._set_parent_with_dispatch(
+            parent, outer=True
+        )
 
         if isinstance(self.impl, SchemaEventTarget):
             self.impl._set_parent_with_dispatch(parent)
@@ -1460,6 +1536,8 @@ class Variant(TypeDecorator):
 
     """
 
+    cache_ok = True
+
     def __init__(self, base, mapping):
         """Construct a new :class:`.Variant`.
 
@@ -1495,14 +1573,14 @@ class Variant(TypeDecorator):
         else:
             return self.impl
 
-    def _set_parent(self, column):
+    def _set_parent(self, column, outer=False, **kw):
         """Support SchemaEventTarget"""
 
         if isinstance(self.impl, SchemaEventTarget):
-            self.impl._set_parent(column)
+            self.impl._set_parent(column, **kw)
         for impl in self.mapping.values():
             if isinstance(impl, SchemaEventTarget):
-                impl._set_parent(column)
+                impl._set_parent(column, **kw)
 
     def _set_parent_with_dispatch(self, parent):
         """Support SchemaEventTarget"""

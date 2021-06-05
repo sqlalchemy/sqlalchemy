@@ -55,6 +55,7 @@ class MySQLExecutionContext_oursql(MySQLExecutionContext):
 
 class MySQLDialect_oursql(MySQLDialect):
     driver = "oursql"
+    supports_statement_cache = True
 
     if util.py2k:
         supports_unicode_binds = True

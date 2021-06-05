@@ -57,6 +57,13 @@ and using it in conjunction with ``delete-orphan`` indicates that the child
 object should follow along with its parent in all cases, and be deleted once
 it is no longer associated with that parent.
 
+.. warning:: The ``all`` cascade option implies the
+   :ref:`cascade_refresh_expire`
+   cascade setting which may not be desirable when using the
+   :ref:`asyncio_toplevel` extension, as it will expire related objects
+   more aggressively than is typically appropriate in an explicit IO context.
+   See the notes at :ref:`asyncio_orm_avoid_lazyloads` for further background.
+
 The list of available values which can be specified for
 the :paramref:`_orm.relationship.cascade` parameter are described in the following subsections.
 
@@ -89,7 +96,7 @@ object, ``address3`` to the ``user1.addresses`` collection, it
 becomes part of the state of that :class:`.Session`::
 
     >>> address3 = Address()
-    >>> user1.append(address3)
+    >>> user1.addresses.append(address3)
     >>> address3 in sess
     >>> True
 
@@ -603,7 +610,19 @@ option may be helpful for situations where an object needs to be kept out of a
 session until it's construction is completed, but still needs to be given
 associations to objects which are already persistent in the target session.
 
+When relationships are created by the :paramref:`_orm.relationship.backref`
+parameter on :func:`_orm.relationship`, the :paramref:`_orm.cascade_backrefs`
+parameter may be set to ``False`` on the backref side by using the
+:func:`_orm.backref` function instead of a string. For example, the above relationship
+could be declared::
 
+    mapper_registry.map_imperatively(Order, order_table, properties={
+        'items' : relationship(
+            Item, backref=backref('order', cascade_backrefs=False), cascade_backrefs=False
+        )
+    })
+
+This sets the ``cascade_backrefs=False`` behavior on both relationships.
 
 .. _session_deleting_from_collections:
 

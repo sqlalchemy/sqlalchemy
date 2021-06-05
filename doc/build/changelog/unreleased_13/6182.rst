@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, postgresql, regression
+    :tickets: 6182
+    :versions: 1.4.5
+
+    Fixed regression caused by :ticket:`6023` where the PostgreSQL cast
+    operator applied to elements within an :class:`_types.ARRAY` when using
+    psycopg2 would fail to use the correct type in the case that the datatype
+    were also embedded within an instance of the :class:`_types.Variant`
+    adapter.
+
+    Additionally, repairs support for the correct CREATE TYPE to be emitted
+    when using a ``Variant(ARRAY(some_schema_type))``.

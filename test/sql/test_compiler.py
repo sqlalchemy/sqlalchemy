@@ -3026,7 +3026,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             func.lala(table1.c.name).label("gg"),
         )
 
-        eq_(list(s1.subquery().c.keys()), ["myid", "foobar", str(f1), "gg"])
+        eq_(list(s1.subquery().c.keys()), ["myid", "foobar", "hoho", "gg"])
 
         meta = MetaData()
         t1 = Table("mytable", meta, Column("col1", Integer))
@@ -3039,11 +3039,16 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         for col, key, expr, lbl in (
             (table1.c.name, "name", "mytable.name", None),
-            (exprs[0], str(exprs[0]), "mytable.myid = :myid_1", "anon_1"),
-            (exprs[1], str(exprs[1]), "hoho(mytable.myid)", "hoho_1"),
+            (
+                exprs[0],
+                "_no_label",
+                "mytable.myid = :myid_1",
+                "anon_1",
+            ),
+            (exprs[1], "hoho", "hoho(mytable.myid)", "hoho_1"),
             (
                 exprs[2],
-                str(exprs[2]),
+                "_no_label",
                 "CAST(mytable.name AS NUMERIC)",
                 "name",  # due to [ticket:4449]
             ),
@@ -3062,7 +3067,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 t = table1
 
             s1 = select(col).select_from(t)
-            assert list(s1.subquery().c.keys()) == [key], list(s1.c.keys())
+            eq_(list(s1.subquery().c.keys()), [key])
 
             if lbl:
                 self.assert_compile(
@@ -3830,6 +3835,104 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             {"myid_1": 10},
         )
 
+    def test_construct_duped_params_w_bind_clones_post(self):
+        """same as previous test_construct_params_w_bind_clones_post but
+        where the binds have been used
+        repeatedly, and the adaption occurs on a per-subquery basis.
+        test for #6391
+
+        """
+
+        inner_stmt = select(table1.c.myid).where(table1.c.myid == 5)
+
+        stmt = union(inner_stmt, inner_stmt, inner_stmt)
+
+        # get the original bindparam.
+        original_bind = inner_stmt._where_criteria[0].right
+
+        # same bind three times
+        is_(stmt.selects[0]._where_criteria[0].right, original_bind)
+        is_(stmt.selects[1]._where_criteria[0].right, original_bind)
+        is_(stmt.selects[2]._where_criteria[0].right, original_bind)
+
+        # it's anonymous so unique=True
+        is_true(original_bind.unique)
+
+        # cache key against hte original param
+        cache_key = stmt._generate_cache_key()
+
+        # now adapt the statement and separately adapt the inner
+        # SELECTs, since if these subqueries are also ORM then they get adapted
+        # separately.
+        stmt_adapted = sql_util.ClauseAdapter(table1).traverse(stmt)
+        stmt_adapted.selects[0] = sql_util.ClauseAdapter(table1).traverse(
+            stmt_adapted.selects[0]
+        )
+        stmt_adapted.selects[1] = sql_util.ClauseAdapter(table1).traverse(
+            stmt_adapted.selects[1]
+        )
+        stmt_adapted.selects[2] = sql_util.ClauseAdapter(table1).traverse(
+            stmt_adapted.selects[2]
+        )
+
+        # new bind parameter has a different key but same
+        # identifying key
+
+        new_bind_one = stmt_adapted.selects[0]._where_criteria[0].right
+        new_bind_two = stmt_adapted.selects[1]._where_criteria[0].right
+        new_bind_three = stmt_adapted.selects[2]._where_criteria[0].right
+
+        for new_bind in (new_bind_one, new_bind_two, new_bind_three):
+            eq_(original_bind._identifying_key, new_bind._identifying_key)
+            ne_(original_bind.key, new_bind.key)
+
+        # compile the adapted statement but set the cache key to the one
+        # generated from the unadapted statement.  this will look like
+        # when the ORM runs clause adaption inside of visit_select, after
+        # the cache key is generated but before the compiler is given the
+        # core select statement to actually render.
+        compiled = stmt_adapted.compile(cache_key=cache_key)
+
+        # the same parameter was split into three distinct ones, due to
+        # the separate adaption on a per-subquery basis.  but they still
+        # refer to the original in their _cloned_set and this is what
+        # has to match up to what's in the cache key.
+        # params set up as 5
+        eq_(
+            compiled.construct_params(
+                params={},
+            ),
+            {"myid_1": 5, "myid_2": 5, "myid_3": 5},
+        )
+
+        # also works w the original cache key
+        eq_(
+            compiled.construct_params(
+                params={}, extracted_parameters=cache_key[1]
+            ),
+            {"myid_1": 5, "myid_2": 5, "myid_3": 5},
+        )
+
+        # now make a totally new statement with the same cache key
+        new_inner_stmt = select(table1.c.myid).where(table1.c.myid == 10)
+        new_stmt = union(new_inner_stmt, new_inner_stmt, new_inner_stmt)
+
+        new_cache_key = new_stmt._generate_cache_key()
+
+        # cache keys match
+        eq_(cache_key.key, new_cache_key.key)
+
+        # ensure we get "10" from construct params.   if it matched
+        # based on .key and not ._identifying_key, it would not see that
+        # the bind parameter is part of the cache key.
+        # before #6391 was fixed you would see 5, 5, 10
+        eq_(
+            compiled.construct_params(
+                params={}, extracted_parameters=new_cache_key[1]
+            ),
+            {"myid_1": 10, "myid_2": 10, "myid_3": 10},
+        )
+
     def test_construct_params_w_bind_clones_pre(self):
         """test that a BindParameter that has been cloned before the cache
         key was generated, and was doubled up just to make sure it has to
@@ -3963,6 +4066,91 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             "VALUES (:param_1_1_1, :param_1_1_2), "
             "(:param_1_2_1, :param_1_2_2)",
         )
+
+    def test_construct_params_repeated_postcompile_params_one(self):
+        """test for :ticket:`6202` one - name repeated in positiontup
+        (e.g. SQL Server using TOP)
+
+        """
+
+        t = table("t", column("x"))
+        stmt = (
+            select(1)
+            .where(t.c.x == bindparam(None, value="10", literal_execute=True))
+            .scalar_subquery()
+        )
+
+        u = union(select(stmt), select(stmt)).subquery().select()
+
+        compiled = u.compile(
+            dialect=default.DefaultDialect(paramstyle="format"),
+            compile_kwargs={"render_postcompile": True},
+        )
+        eq_ignore_whitespace(
+            compiled.string,
+            "SELECT anon_2.anon_1 FROM (SELECT (SELECT 1 FROM t "
+            "WHERE t.x = '10') AS anon_1 UNION SELECT "
+            "(SELECT 1 FROM t WHERE t.x = '10') AS anon_1) AS anon_2",
+        )
+        eq_(compiled.construct_params(), {"param_1": "10"})
+
+    def test_construct_params_repeated_postcompile_params_two(self):
+        """test for :ticket:`6202` two - same param name used twice
+        (e.g. Oracle LIMIT)
+
+        """
+        t = table("t", column("x"))
+
+        bp = bindparam(None, value="10")
+        stmt = (
+            select(1)
+            .where(t.c.x == bp.render_literal_execute())
+            .scalar_subquery()
+        )
+        stmt2 = (
+            select(1)
+            .where(t.c.x == bp.render_literal_execute())
+            .scalar_subquery()
+        )
+
+        u = union(select(stmt), select(stmt2)).subquery().select()
+
+        compiled = u.compile(
+            dialect=default.DefaultDialect(paramstyle="named"),
+            compile_kwargs={"render_postcompile": True},
+        )
+        eq_ignore_whitespace(
+            compiled.string,
+            "SELECT anon_2.anon_1 FROM (SELECT (SELECT 1 "
+            "FROM t WHERE t.x = '10') AS anon_1 UNION SELECT "
+            "(SELECT 1 FROM t WHERE t.x = '10') AS anon_3) AS anon_2",
+        )
+        eq_(compiled.construct_params(), {"param_1": "10"})
+
+    def test_construct_params_positional_plain_repeated(self):
+        t = table("t", column("x"))
+        stmt = (
+            select(1)
+            .where(t.c.x == bindparam(None, value="10"))
+            .where(t.c.x == bindparam(None, value="12", literal_execute=True))
+            .scalar_subquery()
+        )
+
+        u = union(select(stmt), select(stmt)).subquery().select()
+
+        compiled = u.compile(
+            dialect=default.DefaultDialect(paramstyle="format"),
+            compile_kwargs={"render_postcompile": True},
+        )
+        eq_ignore_whitespace(
+            compiled.string,
+            "SELECT anon_2.anon_1 FROM (SELECT (SELECT 1 FROM t "
+            "WHERE t.x = %s AND t.x = '12') AS anon_1 "
+            "UNION SELECT (SELECT 1 FROM t WHERE t.x = %s AND t.x = '12') "
+            "AS anon_1) AS anon_2",
+        )
+        eq_(compiled.construct_params(), {"param_1": "10", "param_2": "12"})
+        eq_(compiled.positiontup, ["param_1", "param_1"])
 
     def test_tuple_clauselist_in(self):
         self.assert_compile(
@@ -4330,6 +4518,17 @@ class StringifySpecialTest(fixtures.TestBase):
         stmt = Column(Integer) == 5
         eq_ignore_whitespace(str(stmt), '"<name unknown>" = :param_1')
 
+    def test_empty_insert(self):
+        stmt = table1.insert().values()
+        eq_ignore_whitespace(str(stmt), "INSERT INTO mytable () VALUES ()")
+
+    def test_multirow_insert(self):
+        stmt = table1.insert().values([{"myid": 1}, {"myid": 2}])
+        eq_ignore_whitespace(
+            str(stmt),
+            "INSERT INTO mytable (myid) VALUES (:myid_m0), (:myid_m1)",
+        )
+
     def test_cte(self):
         # stringify of these was supported anyway by defaultdialect.
         stmt = select(table1.c.myid).cte()
@@ -4550,20 +4749,20 @@ class ExecutionOptionsTest(fixtures.TestBase):
         eq_(compiled.execution_options, {"autocommit": True})
 
     def test_embedded_element_true_to_none(self):
-        stmt = table1.insert().cte()
+        stmt = table1.insert()
         eq_(stmt._execution_options, {"autocommit": True})
-        s2 = select(table1).select_from(stmt)
+        s2 = select(table1).select_from(stmt.cte())
         eq_(s2._execution_options, {})
 
         compiled = s2.compile()
         eq_(compiled.execution_options, {"autocommit": True})
 
     def test_embedded_element_true_to_false(self):
-        stmt = table1.insert().cte()
+        stmt = table1.insert()
         eq_(stmt._execution_options, {"autocommit": True})
         s2 = (
             select(table1)
-            .select_from(stmt)
+            .select_from(stmt.cte())
             .execution_options(autocommit=False)
         )
         eq_(s2._execution_options, {"autocommit": False})
@@ -4767,6 +4966,76 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
             schema_translate_map=schema_translate_map,
             render_schema_translate=True,
             default_schema_name="main",
+        )
+
+    def test_schema_translate_map_special_chars(self):
+        m = MetaData()
+        t1 = Table("t1", m, Column("q", Integer))
+        t2 = Table("t2", m, Column("q", Integer), schema="foo % ^ #")
+        t3 = Table("t3", m, Column("q", Integer), schema="bar {}")
+
+        schema_translate_map = {None: "z", "bar {}": None, "foo % ^ #": "bat"}
+
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE [SCHEMA__none].t1 (q INTEGER)",
+            schema_translate_map=schema_translate_map,
+        )
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE z.t1 (q INTEGER)",
+            schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
+        )
+
+        self.assert_compile(
+            schema.CreateTable(t2),
+            "CREATE TABLE [SCHEMA_foo % ^ #].t2 (q INTEGER)",
+            schema_translate_map=schema_translate_map,
+        )
+        self.assert_compile(
+            schema.CreateTable(t2),
+            "CREATE TABLE bat.t2 (q INTEGER)",
+            schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
+        )
+
+        self.assert_compile(
+            schema.CreateTable(t3),
+            "CREATE TABLE [SCHEMA_bar {}].t3 (q INTEGER)",
+            schema_translate_map=schema_translate_map,
+        )
+        self.assert_compile(
+            schema.CreateTable(t3),
+            "CREATE TABLE main.t3 (q INTEGER)",
+            schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
+            default_schema_name="main",
+        )
+
+    def test_schema_translate_map_no_square_brackets(self):
+        m = MetaData()
+        t2 = Table("t2", m, Column("q", Integer), schema="bar [")
+        t3 = Table("t3", m, Column("q", Integer), schema="foo ]")
+
+        schema_translate_map = {None: "z", "bar [": None, "foo ]": "bat"}
+
+        assert_raises_message(
+            exc.CompileError,
+            r"Square bracket characters .* not supported "
+            r"in schema translate name 'bar \['",
+            schema.CreateTable(t2).compile,
+            schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
+        )
+
+        assert_raises_message(
+            exc.CompileError,
+            r"Square bracket characters .* not supported "
+            r"in schema translate name 'foo \]'",
+            schema.CreateTable(t3).compile,
+            schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
         )
 
     def test_schema_translate_map_sequence(self):
@@ -5766,7 +6035,7 @@ class ResultMapTest(fixtures.TestBase):
                 "a": ("a", (t.c.a, "a", "a", "t_a"), t.c.a.type, 0),
                 "bar": ("bar", (l1, "bar"), l1.type, 1),
                 "anon_1": (
-                    tc.anon_label,
+                    tc._anon_name_label,
                     (tc_anon_label, "anon_1", tc),
                     tc.type,
                     2,

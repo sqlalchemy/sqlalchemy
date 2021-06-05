@@ -1,5 +1,6 @@
 import os
 import re
+import shutil
 import tempfile
 
 from sqlalchemy import testing
@@ -10,8 +11,17 @@ from sqlalchemy.testing import fixtures
 class MypyPluginTest(fixtures.TestBase):
     __requires__ = ("sqlalchemy2_stubs",)
 
+    @testing.fixture(scope="function")
+    def per_func_cachedir(self):
+        for item in self._cachedir():
+            yield item
+
     @testing.fixture(scope="class")
     def cachedir(self):
+        for item in self._cachedir():
+            yield item
+
+    def _cachedir(self):
         with tempfile.TemporaryDirectory() as cachedir:
             with open(
                 os.path.join(cachedir, "sqla_mypy_config.cfg"), "w"
@@ -36,9 +46,7 @@ class MypyPluginTest(fixtures.TestBase):
     def mypy_runner(self, cachedir):
         from mypy import api
 
-        def run(filename, use_plugin=True):
-            path = os.path.join(os.path.dirname(__file__), "files", filename)
-
+        def run(path, use_plugin=True, incremental=False):
             args = [
                 "--strict",
                 "--raise-exceptions",
@@ -59,17 +67,88 @@ class MypyPluginTest(fixtures.TestBase):
 
         return run
 
-    def _file_combinations():
-        path = os.path.join(os.path.dirname(__file__), "files")
-        return [f for f in os.listdir(path) if f.endswith(".py")]
+    def _incremental_dirs():
+        path = os.path.join(os.path.dirname(__file__), "incremental")
+        files = []
+        for d in os.listdir(path):
+            if os.path.isdir(os.path.join(path, d)):
+                files.append(
+                    os.path.join(os.path.dirname(__file__), "incremental", d)
+                )
+
+        for extra_dir in testing.config.options.mypy_extra_test_paths:
+            if extra_dir and os.path.isdir(extra_dir):
+                for d in os.listdir(os.path.join(extra_dir, "incremental")):
+                    if os.path.isdir(os.path.join(path, d)):
+                        files.append(os.path.join(extra_dir, "incremental", d))
+        return files
 
     @testing.combinations(
-        *[(filename,) for filename in _file_combinations()],
-        argnames="filename"
+        *[(pathname,) for pathname in _incremental_dirs()], argnames="pathname"
     )
-    def test_mypy(self, mypy_runner, filename):
-        path = os.path.join(os.path.dirname(__file__), "files", filename)
+    @testing.requires.patch_library
+    def test_incremental(self, mypy_runner, per_func_cachedir, pathname):
+        import patch
 
+        cachedir = per_func_cachedir
+
+        dest = os.path.join(cachedir, "mymodel")
+        os.mkdir(dest)
+
+        patches = set()
+
+        print("incremental test: %s" % pathname)
+
+        for fname in os.listdir(pathname):
+            if fname.endswith(".py"):
+                shutil.copy(
+                    os.path.join(pathname, fname), os.path.join(dest, fname)
+                )
+                print("copying to: %s" % os.path.join(dest, fname))
+            elif fname.endswith(".testpatch"):
+                patches.add(fname)
+
+        for patchfile in [None] + sorted(patches):
+            if patchfile is not None:
+                print("Applying patchfile %s" % patchfile)
+                patch_obj = patch.fromfile(os.path.join(pathname, patchfile))
+                assert patch_obj.apply(1, dest), (
+                    "pathfile %s failed" % patchfile
+                )
+            print("running mypy against %s" % dest)
+            result = mypy_runner(
+                dest,
+                use_plugin=True,
+                incremental=True,
+            )
+            eq_(
+                result[2],
+                0,
+                msg="Failure after applying patch %s: %s"
+                % (patchfile, result[0]),
+            )
+
+    def _file_combinations():
+        path = os.path.join(os.path.dirname(__file__), "files")
+        files = []
+        for f in os.listdir(path):
+            if f.endswith(".py"):
+                files.append(
+                    os.path.join(os.path.dirname(__file__), "files", f)
+                )
+
+        for extra_dir in testing.config.options.mypy_extra_test_paths:
+            if extra_dir and os.path.isdir(extra_dir):
+                for f in os.listdir(os.path.join(extra_dir, "files")):
+                    if f.endswith(".py"):
+                        files.append(os.path.join(extra_dir, "files", f))
+        return files
+
+    @testing.combinations(
+        *[(filename,) for filename in _file_combinations()], argnames="path"
+    )
+    def test_mypy(self, mypy_runner, path):
+        filename = os.path.basename(path)
         use_plugin = True
 
         expected_errors = []
@@ -88,10 +167,10 @@ class MypyPluginTest(fixtures.TestBase):
                         (num, is_mypy, expected_msg.strip())
                     )
 
-        result = mypy_runner(filename, use_plugin=use_plugin)
+        result = mypy_runner(path, use_plugin=use_plugin)
 
         if expected_errors:
-            eq_(result[2], 1)
+            eq_(result[2], 1, msg=result)
 
             print(result[0])
 
@@ -101,9 +180,13 @@ class MypyPluginTest(fixtures.TestBase):
                     errors.append(e)
 
             for num, is_mypy, msg in expected_errors:
+                msg = msg.replace("'", '"')
                 prefix = "[SQLAlchemy Mypy plugin] " if not is_mypy else ""
                 for idx, errmsg in enumerate(errors):
-                    if f"{filename}:{num + 1}: error: {prefix}{msg}" in errmsg:
+                    if (
+                        f"{filename}:{num + 1}: error: {prefix}{msg}"
+                        in errmsg.replace("'", '"')
+                    ):
                         break
                 else:
                     continue
@@ -112,4 +195,4 @@ class MypyPluginTest(fixtures.TestBase):
             assert not errors, "errors remain: %s" % "\n".join(errors)
 
         else:
-            eq_(result[2], 0, msg=result[0])
+            eq_(result[2], 0, msg=result)

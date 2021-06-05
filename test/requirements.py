@@ -407,6 +407,17 @@ class DefaultRequirements(SuiteRequirements):
             "pypostgresql bombs on multiple isolation level calls",
         )
 
+    @property
+    def legacy_isolation_level(self):
+        # refers to the engine isolation_level setting
+        return only_on(
+            ("postgresql", "sqlite", "mysql", "mariadb", "mssql"),
+            "DBAPI has no isolation level support",
+        ) + fails_on(
+            "postgresql+pypostgresql",
+            "pypostgresql bombs on multiple isolation level calls",
+        )
+
     def get_isolation_levels(self, config):
         levels = set(config.db.dialect._isolation_lookup)
 
@@ -459,8 +470,9 @@ class DefaultRequirements(SuiteRequirements):
     def sequences_as_server_defaults(self):
         """Target database must support SEQUENCE as a server side default."""
 
-        return only_on(
-            "postgresql", "doesn't support sequences as a server side default."
+        return self.sequences + only_on(
+            ["postgresql", "mariadb", "oracle >= 18"],
+            "doesn't support sequences as a server side default.",
         )
 
     @property
@@ -540,7 +552,7 @@ class DefaultRequirements(SuiteRequirements):
         """Target database must support external schemas, and have one
         named 'test_schema'."""
 
-        return skip_if(["firebird"], "no schema support")
+        return exclusions.open()
 
     @property
     def cross_schema_fk_reflection(self):
@@ -692,6 +704,15 @@ class DefaultRequirements(SuiteRequirements):
             ["firebird", self._mysql_not_mariadb_103, "sybase"],
             "no support for EXCEPT",
         )
+
+    @property
+    def dupe_order_by_ok(self):
+        """target db wont choke if ORDER BY specifies the same expression
+        more than once
+
+        """
+
+        return skip_if("mssql")
 
     @property
     def order_by_col_from_union(self):
@@ -846,6 +867,11 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def empty_inserts_executemany(self):
+        # waiting on https://jira.mariadb.org/browse/CONPY-152
+        return skip_if(["mariadb+mariadbconnector"]) + self.empty_inserts
+
+    @property
     def expressions_against_unbounded_text(self):
         """target database supports use of an unbounded textual field in a
         WHERE clause."""
@@ -927,15 +953,15 @@ class DefaultRequirements(SuiteRequirements):
         cursor object.
 
         """
-        return skip_if(
-            "mssql+pymssql", "crashes on pymssql"
-        ) + fails_on_everything_except(
-            "mysql",
-            "mariadb",
-            "sqlite+pysqlite",
-            "sqlite+aiosqlite",
-            "sqlite+pysqlcipher",
-            "mssql",
+        return skip_if("mssql+pymssql", "crashes on pymssql") + only_on(
+            [
+                "mysql",
+                "mariadb",
+                "sqlite+pysqlite",
+                "sqlite+aiosqlite",
+                "sqlite+pysqlcipher",
+                "mssql",
+            ]
         )
 
     @property
@@ -1047,6 +1073,10 @@ class DefaultRequirements(SuiteRequirements):
                     )
                 except exc.DBAPIError:
                     return False
+
+    @property
+    def sqlite_memory(self):
+        return only_on(self._sqlite_memory_db)
 
     @property
     def reflects_json_type(self):
@@ -1448,14 +1478,14 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def ad_hoc_engines(self):
-        return (
-            exclusions.skip_if(
-                ["oracle"],
-                "works, but Oracle just gets tired with "
-                "this much connection activity",
-            )
-            + skip_if(self._sqlite_file_db)
-        )
+        return skip_if(self._sqlite_file_db)
+
+    @property
+    def no_asyncio(self):
+        def go(config):
+            return config.db.dialect.is_async
+
+        return skip_if(go)
 
     @property
     def no_mssql_freetds(self):
@@ -1755,3 +1785,7 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def fetch_offset_with_options(self):
         return skip_if("mssql")
+
+    @property
+    def autoincrement_without_sequence(self):
+        return skip_if("oracle")

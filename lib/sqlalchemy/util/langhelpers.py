@@ -193,7 +193,7 @@ def %(name)s(%(args)s):
 """
             % metadata
         )
-        env.update({targ_name: target, fn_name: fn})
+        env.update({targ_name: target, fn_name: fn, "__name__": fn.__module__})
 
         decorated = _exec_code_in_env(code, env, fn.__name__)
         decorated.__defaults__ = getattr(fn, "__func__", fn).__defaults__
@@ -269,7 +269,11 @@ def %(name)s(%(args)s):
 """
         % metadata
     )
-    env = {"cls": callable_, "symbol": symbol}
+    env = {
+        "cls": callable_,
+        "symbol": symbol,
+        "__name__": callable_.__module__,
+    }
     exec(code, env)
     decorated = env[location_name]
 
@@ -331,9 +335,7 @@ class PluginLoader(object):
                 self.impls[name] = loader
                 return loader()
 
-        for impl in compat.importlib_metadata.entry_points().get(
-            self.group, ()
-        ):
+        for impl in compat.importlib_metadata_get(self.group):
             if impl.name == name:
                 self.impls[name] = impl.load
                 return impl.load()
@@ -560,6 +562,18 @@ def format_argspec_plus(fn, grouped=True):
         defaulted_vals,
         formatvalue=lambda x: "=" + x,
     )
+
+    if spec[0]:
+        apply_kw_proxied = compat.inspect_formatargspec(
+            name_args[1:],
+            spec[1],
+            spec[2],
+            defaulted_vals,
+            formatvalue=lambda x: "=" + x,
+        )
+    else:
+        apply_kw_proxied = apply_kw
+
     if grouped:
         return dict(
             args=args,
@@ -567,6 +581,7 @@ def format_argspec_plus(fn, grouped=True):
             apply_pos=apply_pos,
             apply_kw=apply_kw,
             apply_pos_proxied=apply_pos_proxied,
+            apply_kw_proxied=apply_kw_proxied,
         )
     else:
         return dict(
@@ -575,6 +590,7 @@ def format_argspec_plus(fn, grouped=True):
             apply_pos=apply_pos[1:-1],
             apply_kw=apply_kw[1:-1],
             apply_pos_proxied=apply_pos_proxied[1:-1],
+            apply_kw_proxied=apply_kw_proxied[1:-1],
         )
 
 
@@ -607,6 +623,7 @@ def format_argspec_init(method, grouped=True):
         apply_pos=args,
         apply_kw=args,
         apply_pos_proxied=proxied,
+        apply_kw_proxied=proxied,
     )
 
 
@@ -628,7 +645,7 @@ def create_proxy_methods(
         def instrument(name, clslevel=False):
             fn = getattr(target_cls, name)
             spec = compat.inspect_getfullargspec(fn)
-            env = {}
+            env = {"__name__": fn.__module__}
 
             spec = _update_argspec_defaults_into_env(spec, env)
             caller_argspec = format_argspec_plus(spec, grouped=False)
@@ -636,6 +653,7 @@ def create_proxy_methods(
             metadata = {
                 "name": fn.__name__,
                 "apply_pos_proxied": caller_argspec["apply_pos_proxied"],
+                "apply_kw_proxied": caller_argspec["apply_kw_proxied"],
                 "args": caller_argspec["args"],
                 "self_arg": caller_argspec["self_arg"],
             }
@@ -643,14 +661,14 @@ def create_proxy_methods(
             if clslevel:
                 code = (
                     "def %(name)s(%(args)s):\n"
-                    "    return target_cls.%(name)s(%(apply_pos_proxied)s)"
+                    "    return target_cls.%(name)s(%(apply_kw_proxied)s)"
                     % metadata
                 )
                 env["target_cls"] = target_cls
             else:
                 code = (
                     "def %(name)s(%(args)s):\n"
-                    "    return %(self_arg)s._proxied.%(name)s(%(apply_pos_proxied)s)"  # noqa E501
+                    "    return %(self_arg)s._proxied.%(name)s(%(apply_kw_proxied)s)"  # noqa E501
                     % metadata
                 )
 
@@ -1606,14 +1624,17 @@ class _hash_limit_string(compat.text_type):
         return hash(self) == hash(other)
 
 
-def warn(msg):
+def warn(msg, code=None):
     """Issue a warning.
 
     If msg is a string, :class:`.exc.SAWarning` is used as
     the category.
 
     """
-    warnings.warn(msg, exc.SAWarning, stacklevel=2)
+    if code:
+        _warnings_warn(exc.SAWarning(msg, code=code))
+    else:
+        _warnings_warn(msg, exc.SAWarning)
 
 
 def warn_limited(msg, args):
@@ -1623,7 +1644,36 @@ def warn_limited(msg, args):
     """
     if args:
         msg = _hash_limit_string(msg, 10, args)
-    warnings.warn(msg, exc.SAWarning, stacklevel=2)
+    _warnings_warn(msg, exc.SAWarning)
+
+
+def _warnings_warn(message, category=None, stacklevel=2):
+
+    # adjust the given stacklevel to be outside of SQLAlchemy
+    try:
+        frame = sys._getframe(stacklevel)
+    except ValueError:
+        # being called from less than 3 (or given) stacklevels, weird,
+        # but don't crash
+        stacklevel = 0
+    except:
+        # _getframe() doesn't work, weird interpreter issue, weird,
+        # ok, but don't crash
+        stacklevel = 0
+    else:
+        # using __name__ here requires that we have __name__ in the
+        # __globals__ of the decorated string functions we make also.
+        # we generate this using {"__name__": fn.__module__}
+        while frame is not None and re.match(
+            r"^(?:sqlalchemy\.|alembic\.)", frame.f_globals.get("__name__", "")
+        ):
+            frame = frame.f_back
+            stacklevel += 1
+
+    if category is not None:
+        warnings.warn(message, category, stacklevel=stacklevel + 1)
+    else:
+        warnings.warn(message, stacklevel=stacklevel + 1)
 
 
 def only_once(fn, retry_on_exception):

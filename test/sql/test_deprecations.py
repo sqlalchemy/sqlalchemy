@@ -58,6 +58,7 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing import not_in
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
+from sqlalchemy.util import compat
 from .test_update import _UpdateFromTestBase
 
 
@@ -193,6 +194,28 @@ class DeprecationWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
             r"and_\(\) construct, use and_\(True, \*args\)"
         ):
             self.assert_compile(or_(and_()), "")
+
+    @testing.combinations(
+        (schema.Column),
+        (schema.UniqueConstraint,),
+        (schema.PrimaryKeyConstraint,),
+        (schema.CheckConstraint,),
+        (schema.ForeignKeyConstraint,),
+        (schema.ForeignKey,),
+        (schema.Identity,),
+    )
+    def test_copy_dep_warning(self, cls):
+        obj = cls.__new__(cls)
+        with mock.patch.object(cls, "_copy") as _copy:
+            with testing.expect_deprecated(
+                r"The %s\(\) method is deprecated" % compat._qualname(cls.copy)
+            ):
+                obj.copy(schema="s", target_table="tt", arbitrary="arb")
+
+        eq_(
+            _copy.mock_calls,
+            [mock.call(target_table="tt", schema="s", arbitrary="arb")],
+        )
 
 
 class ConvertUnicodeDeprecationTest(fixtures.TestBase):
@@ -1444,11 +1467,11 @@ class ConnectionlessCursorResultTest(fixtures.TablesTest):
             "This result object does not return rows.",
             result.fetchone,
         )
-        assert_raises_message(
-            exc.ResourceClosedError,
-            "This result object does not return rows.",
-            result.keys,
-        )
+
+        with testing.expect_deprecated_20(
+            r"Calling the .keys\(\) method on a result set that does not "
+        ):
+            eq_(result.keys(), [])
 
 
 class CursorResultTest(fixtures.TablesTest):
@@ -1530,6 +1553,22 @@ class CursorResultTest(fixtures.TablesTest):
             "with only matching names"
         ):
             eq_(r._mapping[users.c.user_name], "jack")
+
+    def test_keys_no_rows(self, connection):
+
+        for i in range(2):
+            r = connection.execute(
+                text("update users set user_name='new' where user_id=10")
+            )
+
+            with testing.expect_deprecated(
+                r"Calling the .keys\(\) method on a result set that does not "
+                r"return rows is deprecated and will raise "
+                r"ResourceClosedError in SQLAlchemy 2.0."
+            ):
+                list_ = r.keys()
+                eq_(list_, [])
+                list_.append("Don't cache me")
 
     def test_column_accessor_basic_text(self, connection):
         users = self.tables.users
@@ -2364,7 +2403,8 @@ class LegacyOperatorTest(AssertsCompiledSQL, fixtures.TestBase):
         self.assert_compile(column("x").isnot("foo"), "x IS NOT :x_1")
 
         self.assert_compile(
-            column("x").notin_(["foo", "bar"]), "x NOT IN ([POSTCOMPILE_x_1])"
+            column("x").notin_(["foo", "bar"]),
+            "(x NOT IN ([POSTCOMPILE_x_1]))",
         )
 
     def test_issue_5429_operators(self):
@@ -2578,7 +2618,7 @@ class LegacySequenceExecTest(fixtures.TestBase):
             self._assert_seq_result(testing.db.scalar(s.next_value()))
 
     def test_func_implicit_connectionless_scalar(self):
-        """test func.next_value().execute()/.scalar() works. """
+        """test func.next_value().execute()/.scalar() works."""
 
         with testing.expect_deprecated_20(
             r"The MetaData.bind argument is deprecated"

@@ -184,7 +184,8 @@ class TestAsyncAdaptedQueue(fixtures.TestBase):
 
         is_true(run[0])
 
-    def test_error_other_loop(self):
+    @async_test
+    async def test_error_other_loop(self):
         run = [False]
 
         def thread_go(q):
@@ -193,13 +194,19 @@ class TestAsyncAdaptedQueue(fixtures.TestBase):
                 q.get(timeout=0.1)
 
             with expect_raises_message(
-                RuntimeError, "Task .* attached to a different loop"
+                RuntimeError, ".* to a different .*loop"
             ):
                 asyncio.run(greenlet_spawn(go))
 
             run[0] = True
 
         q = queue.AsyncAdaptedQueue()
+
+        def prime():
+            with expect_raises(queue.Empty):
+                q.get(timeout=0.1)
+
+        await greenlet_spawn(prime)
         q.put_nowait(1)
         t = threading.Thread(target=thread_go, args=[q])
         t.start()

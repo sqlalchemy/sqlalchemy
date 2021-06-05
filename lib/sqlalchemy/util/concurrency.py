@@ -24,6 +24,11 @@ if not have_greenlet:
     asyncio = None  # noqa F811
 
     def _not_implemented():
+        # this conditional is to prevent pylance from considering
+        # greenlet_spawn() etc as "no return" and dimming out code below it
+        if have_greenlet:
+            return None
+
         if not compat.py3k:
             raise ValueError("Cannot use this function in py2.")
         else:

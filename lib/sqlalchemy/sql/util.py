@@ -829,6 +829,7 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
     def _corresponding_column(
         self, col, require_embedded, _seen=util.EMPTY_SET
     ):
+
         newcol = self.selectable.corresponding_column(
             col, require_embedded=require_embedded
         )
