@@ -3,10 +3,7 @@ from functools import wraps
 from sqlalchemy import exc
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import operators
-from sqlalchemy.sql.elements import (
-    ColumnElement,
-    BooleanClauseList,
-)
+from sqlalchemy.sql import elements
 
 
 def property_enables_flag(flag_name):
@@ -27,7 +24,7 @@ def property_enables_flag(flag_name):
     return wrapper
 
 
-class match_(ColumnElement):
+class match_(elements.ColumnElement):
     """Produce a ``MATCH (X, Y) AGAINST ('TEXT')`` clause.
 
     E.g.::
@@ -114,7 +111,7 @@ class match_(ColumnElement):
         elif clauselist_len == 1:
             self.clause = clauselist[0]
         else:
-            clause = BooleanClauseList._construct_raw(
+            clause = elements.BooleanClauseList._construct_raw(
                 operators.comma_op,
                 clauses=clauselist,
             )
