@@ -33,9 +33,9 @@ class match_(ColumnElement):
     E.g.::
 
         from sqlalchemy import desc
-        from sqlalchemy.mysql.dialects.mysql.expression import match
+        from sqlalchemy.mysql.dialects.mysql import match_
 
-        match_expr = match(
+        match_expr = match_(
             users_table.c.firstname,
             users_table.c.lastname,
             against="John Connor",
@@ -52,12 +52,12 @@ class match_(ColumnElement):
         WHERE MATCH(firstname, lastname) AGAINST (:param_1 IN BOOLEAN MODE)
         ORDER BY MATCH(firstname, lastname) AGAINST (:param_2) DESC
 
-    The :func:`.match` function is a standalone version of the
-    :meth:`_expression.ColumnElement.match` method available on all
-    SQL expressions, as when :meth:`_expression.ColumnElement.match` is
+    The :func:`.match_` function is a standalone version of the
+    :meth:`_expression.ColumnElement.match_` method available on all
+    SQL expressions, as when :meth:`_expression.ColumnElement.match_` is
     used, but allows to pass multiple columns
 
-    All positional arguments passed to :func:`.match`, typically should be a
+    All positional arguments passed to :func:`.match_`, typically should be a
      :class:`_expression.ColumnElement` instances
 
     :param: against typically scalar expression to be coerced into a ``str``
@@ -65,7 +65,7 @@ class match_(ColumnElement):
     :param: flags optional ``dict``. Use properties ``in_boolean_mode``,
      ``in_natural_language_mode`` and ``with_query_expansion`` to control it:
 
-        match_expr = match(
+        match_expr = match_(
             users_table.c.firstname,
             users_table.c.lastname,
             against="John Connor",
@@ -84,20 +84,20 @@ class match_(ColumnElement):
         # MATCH(firstname, lastname) AGAINST
         # (:param_1 IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION)
 
-    :property: ``in_boolean_mode`` returns new ``match`` object with
+    :property: ``in_boolean_mode`` returns new ``match_`` object with
      set to ``True`` the ``mysql_boolean_mode`` flag
 
-    :property: ``in_natural_language_mode`` returns new ``match`` object with
+    :property: ``in_natural_language_mode`` returns new ``match_`` object with
      set to ``True`` the ``mysql_natural_language`` flag
 
-    :property: ``with_query_expansion`` returns new ``match`` object with
+    :property: ``with_query_expansion`` returns new ``match_`` object with
      set to ``True`` the ``mysql_query_expansion`` flag
 
      .. versionadded:: 1.4.4
 
     .. seealso::
 
-        :meth:`_expression.ColumnElement.match`
+        :meth:`_expression.ColumnElement.match_`
 
     """
 
@@ -125,14 +125,16 @@ class match_(ColumnElement):
         self.flags = flags or self.default_flags.copy()
 
     @property_enables_flag('mysql_boolean_mode')
-    def in_boolean_mode(self): pass
+    def in_boolean_mode(self):
+        pass
 
     @property_enables_flag('mysql_natural_language')
-    def in_natural_language_mode(self): pass
+    def in_natural_language_mode(self):
+        pass
 
     @property_enables_flag('mysql_query_expansion')
-    def with_query_expansion(self): pass
-
+    def with_query_expansion(self):
+        pass
 
 
 @compiles(match_, "mysql")
