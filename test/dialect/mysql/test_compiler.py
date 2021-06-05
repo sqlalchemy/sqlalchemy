@@ -513,6 +513,22 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=self.__dialect__,
         )
 
+    def test_match_additional_cols(self):
+        matchtable = table(
+            "matchtable",
+            column("title", String),
+            column("comment", String),
+        )
+
+        self.assert_compile(
+            matchtable.c.title.match(
+                "somstr",
+                mysql_additional_cols=[matchtable.c.comment],
+            ),
+            "MATCH (matchtable.title, matchtable.comment) "
+            "AGAINST (%s IN BOOLEAN MODE)",
+        )
+
     def test_concat_compile_kw(self):
         expr = literal("x", type_=String) + literal("y", type_=String)
         self.assert_compile(expr, "concat('x', 'y')", literal_binds=True)

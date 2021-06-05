@@ -1626,7 +1626,18 @@ class MySQLCompiler(compiler.SQLCompiler):
                 "Flag combination does not make sence: %s" % flags
             )
 
-        match_clause = self.process(binary.left, **kw)
+        match_clause = binary.left
+        mysql_additional_cols = modifiers.get('mysql_additional_cols')
+
+        if mysql_additional_cols:
+            match_clause = (match_clause, *mysql_additional_cols)
+            match_clause = elements.BooleanClauseList._construct_raw(
+                operators.comma_op,
+                clauses=match_clause,
+            )
+            match_clause.group = False
+
+        match_clause = self.process(match_clause, **kw)
         against_clause = self.process(binary.right, **kw)
 
         if any(flag_combination):
