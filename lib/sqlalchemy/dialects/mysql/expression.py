@@ -107,7 +107,7 @@ class match_(ColumnElement):
         'mysql_query_expansion': False,
     }
 
-    def __init__(self, *clauselist, against, flags=None):
+    def __init__(self, *clauselist, **kwargs):
         clauselist_len = len(clauselist)
         if clauselist_len == 0:
             raise exc.CompileError("Can not match with no columns")
@@ -120,6 +120,12 @@ class match_(ColumnElement):
             )
             clause.group = False
             self.clause = clause
+
+        against = kwargs.get('against')
+        flags = kwargs.get('flags')
+
+        if against is None:
+            raise exc.CompileError("Can not match without against")
 
         self.against = against
         self.flags = flags or self.default_flags.copy()
