@@ -1630,10 +1630,12 @@ class MySQLCompiler(compiler.SQLCompiler):
         mysql_additional_cols = modifiers.get('mysql_additional_cols')
 
         if mysql_additional_cols:
-            match_clause = (match_clause, *mysql_additional_cols)
+            mysql_additional_cols = list(mysql_additional_cols)
+            mysql_additional_cols.insert(0, match_clause)
+
             match_clause = elements.BooleanClauseList._construct_raw(
                 operators.comma_op,
-                clauses=match_clause,
+                clauses=mysql_additional_cols,
             )
             match_clause.group = False
 
@@ -1645,8 +1647,10 @@ class MySQLCompiler(compiler.SQLCompiler):
                 self.match_flag_expressions,
                 flag_combination,
             )
-            against_clause = (against_clause, *flag_expressions)
-            against_clause = ' '.join(against_clause)
+            flag_expressions = list(flag_expressions)
+            flag_expressions.insert(0, against_clause)
+
+            against_clause = ' '.join(flag_expressions)
 
         return "MATCH (%s) AGAINST (%s)" % (match_clause, against_clause)
 
