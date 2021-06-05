@@ -2,9 +2,10 @@ from functools import wraps
 
 from sqlalchemy import exc
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql import operators
 from sqlalchemy.sql.elements import (
     ColumnElement,
-    ClauseElementBatch,
+    BooleanClauseList,
 )
 
 
@@ -16,7 +17,7 @@ def property_enables_flag(flag_name):
             new_flags = self.flags.copy()
             new_flags[flag_name] = True
 
-            return match(
+            return match_(
                 self.clause,
                 against=self.against,
                 flags=new_flags,
@@ -26,7 +27,7 @@ def property_enables_flag(flag_name):
     return wrapper
 
 
-class match(ColumnElement):
+class match_(ColumnElement):
     """Produce a ``MATCH (X, Y) AGAINST ('TEXT')`` clause.
 
     E.g.::
@@ -113,23 +114,29 @@ class match(ColumnElement):
         elif clauselist_len == 1:
             self.clause = clauselist[0]
         else:
-            self.clause = ClauseElementBatch(*clauselist, group=False)
+            clause = BooleanClauseList._construct_raw(
+                operators.comma_op,
+                clauses=clauselist,
+            )
+            clause.group = False
+            self.clause = clause
 
         self.against = against
         self.flags = flags or self.default_flags.copy()
 
     @property_enables_flag('mysql_boolean_mode')
-    def in_boolean_mode(self): ...
+    def in_boolean_mode(self): pass
 
     @property_enables_flag('mysql_natural_language')
-    def in_natural_language_mode(self): ...
+    def in_natural_language_mode(self): pass
 
     @property_enables_flag('mysql_query_expansion')
-    def with_query_expansion(self): ...
+    def with_query_expansion(self): pass
 
 
-@compiles(match, "mysql")
-def visit_match(element: match, compiler, **kw):
+
+@compiles(match_, "mysql")
+def visit_match(element, compiler, **kw):
     target = element.clause.match(
         element.against,
         **element.flags

@@ -49,7 +49,7 @@ from .base import VARCHAR
 from .base import YEAR
 from .dml import Insert
 from .dml import insert
-from .expression import match
+from .expression import match_
 from ...util import compat
 
 if compat.py3k:
@@ -100,5 +100,5 @@ __all__ = (
     "dialect",
     "insert",
     "Insert",
-    "match",
+    "match_",
 )

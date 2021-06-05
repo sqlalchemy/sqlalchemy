@@ -2226,15 +2226,6 @@ class ClauseList(
             return self
 
 
-class ClauseElementBatch(ClauseList, ColumnElement):
-    """Describe a batch of clauses, separated by an operator, but processing
-    as single column.
-
-    By default, is comma-separated, such as a column listing.
-
-    """
-
-
 class BooleanClauseList(ClauseList, ColumnElement):
     __visit_name__ = "clauselist"
     inherit_cache = True
