@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, sqlite, regression
+    :tickets: 6586
+
+    The fix for pysqlcipher released in version 1.4.3 :ticket:`5848` was
+    unfortunately non-working, in that the new ``on_connect_url`` hook was
+    erroneously not receiving a ``URL`` object under normal usage of
+    :func:`_sa.create_engine` and instead received a string that was unhandled;
+    the test suite failed to fully set up the actual conditions under which
+    this hook is called. This has been fixed.

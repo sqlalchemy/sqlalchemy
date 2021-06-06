@@ -485,6 +485,39 @@ class CreateEngineTest(fixtures.TestBase):
         eq_(e.dialect.foobar, 5)
         eq_(e.dialect.bathoho, False)
 
+    def test_on_connect_url(self):
+        """test #6586"""
+
+        tokens = __name__.split(".")
+
+        canary = mock.Mock()
+
+        class MyDialect(MockDialect):
+            def on_connect_url(self, url):
+                canary.on_connect_url(url)
+
+        global dialect
+        dialect = MyDialect
+        registry.register(
+            "mockdialect.ocu", ".".join(tokens[0:-1]), tokens[-1]
+        )
+
+        create_engine("mockdialect+ocu://foo:bar@host/test")
+        eq_(
+            canary.mock_calls,
+            [
+                mock.call.on_connect_url(
+                    url.URL.create(
+                        drivername="mockdialect+ocu",
+                        username="foo",
+                        password="bar",
+                        host="host",
+                        database="test",
+                    )
+                )
+            ],
+        )
+
     def test_custom(self):
         dbapi = MockDBAPI(
             foober=12, lala=18, hoho={"this": "dict"}, fooz="somevalue"

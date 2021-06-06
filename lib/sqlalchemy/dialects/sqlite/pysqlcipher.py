@@ -9,7 +9,7 @@
 .. dialect:: sqlite+pysqlcipher
     :name: pysqlcipher
     :dbapi: sqlcipher 3 or pysqlcipher
-    :connectstring: sqlite+pysqlcipher://:passphrase/file_path[?kdf_iter=<iter>]
+    :connectstring: sqlite+pysqlcipher://:passphrase@/file_path[?kdf_iter=<iter>]
 
     Dialect for support of DBAPIs that make use of the
     `SQLCipher <https://www.zetetic.net/sqlcipher>`_ backend.

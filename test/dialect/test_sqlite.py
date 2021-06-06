@@ -596,6 +596,15 @@ class DialectTest(
                 )
             )
 
+    @testing.only_on("sqlite+pysqlcipher")
+    def test_pysqlcipher_connects(self):
+        """test #6586"""
+        str_url = str(testing.db.url)
+        e = create_engine(str_url)
+
+        with e.connect() as conn:
+            eq_(conn.scalar(text("select 1")), 1)
+
     @testing.provide_metadata
     def test_extra_reserved_words(self, connection):
         """Tests reserved words in identifiers.

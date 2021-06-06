@@ -649,8 +649,7 @@ def create_engine(url, **kwargs):
     engine = engineclass(pool, dialect, u, **engine_args)
 
     if _initialize:
-
-        do_on_connect = dialect.on_connect_url(url)
+        do_on_connect = dialect.on_connect_url(u)
         if do_on_connect:
             if _wrap_do_on_connect:
                 do_on_connect = _wrap_do_on_connect(do_on_connect)
