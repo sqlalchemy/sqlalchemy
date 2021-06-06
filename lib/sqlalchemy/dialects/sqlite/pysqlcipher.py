@@ -92,6 +92,7 @@ time, at the expense of slower startup time for new connections.
 from __future__ import absolute_import
 
 from .pysqlite import SQLiteDialect_pysqlite
+from ... import engine
 from ... import pool
 from ... import util
 
@@ -124,6 +125,7 @@ class SQLiteDialect_pysqlcipher(SQLiteDialect_pysqlite):
         return pool.SingletonThreadPool
 
     def on_connect_url(self, url):
+        url = engine.make_url(url)
         super_on_connect = super(
             SQLiteDialect_pysqlcipher, self
         ).on_connect_url(url)
