@@ -477,10 +477,12 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         matchtable = table("matchtable", column("title", String))
         title = matchtable.c.title
 
-        msg = "Flag combination does not make sence: " \
-            "mysql_boolean_mode=%s, " \
-            "mysql_natural_language=%s, " \
+        msg = (
+            "Flag combination does not make sence: "
+            "mysql_boolean_mode=%s, "
+            "mysql_natural_language=%s, "
             "mysql_query_expansion=%s"
+        )
 
         assert_raises_message(
             exc.CompileError,
@@ -1371,31 +1373,38 @@ class MatchExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         expr = match_(firstname, lastname, against="John Connor")
 
-        msg = "Flag combination does not make sence: " \
-            "mysql_boolean_mode=%s, " \
-            "mysql_natural_language=%s, " \
+        msg = (
+            "Flag combination does not make sence: "
+            "mysql_boolean_mode=%s, "
+            "mysql_natural_language=%s, "
             "mysql_query_expansion=%s"
+        )
 
         assert_raises_message(
             exc.CompileError,
             msg % (True, False, True),
-            expr.in_boolean_mode.with_query_expansion
-            .compile,
+            expr.in_boolean_mode.with_query_expansion.compile,
             dialect=self.__dialect__,
         )
 
         assert_raises_message(
             exc.CompileError,
             msg % (True, True, False),
-            expr.in_boolean_mode.in_natural_language_mode
-            .compile,
+            expr.in_boolean_mode.in_natural_language_mode.compile,
             dialect=self.__dialect__,
         )
+
+        # fmt: off
+        callback = expr\
+            .in_boolean_mode\
+            .in_natural_language_mode\
+            .with_query_expansion\
+            .compile
+        # fmt: on
 
         assert_raises_message(
             exc.CompileError,
             msg % (True, True, True),
-            expr.in_boolean_mode.in_natural_language_mode.with_query_expansion
-            .compile,
+            callback,
             dialect=self.__dialect__,
         )

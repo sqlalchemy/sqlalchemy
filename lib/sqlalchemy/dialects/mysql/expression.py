@@ -2,8 +2,8 @@ from functools import wraps
 
 from sqlalchemy import exc
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql import operators
 from sqlalchemy.sql import elements
+from sqlalchemy.sql import operators
 
 
 def property_enables_flag(flag_name):
@@ -21,6 +21,7 @@ def property_enables_flag(flag_name):
             )
 
         return inner
+
     return wrapper
 
 
@@ -60,7 +61,7 @@ class match_(elements.ColumnElement):
     :param: against typically scalar expression to be coerced into a ``str``
 
     :param: flags optional ``dict``. Use properties ``in_boolean_mode``,
-     ``in_natural_language_mode`` and ``with_query_expansion`` to control it:
+     ``in_natural_language_mode`` and ``with_query_expansion`` to control it::
 
         match_expr = match_(
             users_table.c.firstname,
@@ -90,7 +91,7 @@ class match_(elements.ColumnElement):
     :property: ``with_query_expansion`` returns new ``match_`` object with
      set to ``True`` the ``mysql_query_expansion`` flag
 
-     .. versionadded:: 1.4.4
+    .. versionadded:: 1.4.20
 
     .. seealso::
 
@@ -99,9 +100,9 @@ class match_(elements.ColumnElement):
     """
 
     default_flags = {
-        'mysql_boolean_mode': False,
-        'mysql_natural_language': False,
-        'mysql_query_expansion': False,
+        "mysql_boolean_mode": False,
+        "mysql_natural_language": False,
+        "mysql_query_expansion": False,
     }
 
     def __init__(self, *clauselist, **kwargs):
@@ -118,8 +119,8 @@ class match_(elements.ColumnElement):
             clause.group = False
             self.clause = clause
 
-        against = kwargs.get('against')
-        flags = kwargs.get('flags')
+        against = kwargs.get("against")
+        flags = kwargs.get("flags")
 
         if against is None:
             raise exc.CompileError("Can not match without against")
@@ -127,24 +128,21 @@ class match_(elements.ColumnElement):
         self.against = against
         self.flags = flags or self.default_flags.copy()
 
-    @property_enables_flag('mysql_boolean_mode')
+    @property_enables_flag("mysql_boolean_mode")
     def in_boolean_mode(self):
         pass
 
-    @property_enables_flag('mysql_natural_language')
+    @property_enables_flag("mysql_natural_language")
     def in_natural_language_mode(self):
         pass
 
-    @property_enables_flag('mysql_query_expansion')
+    @property_enables_flag("mysql_query_expansion")
     def with_query_expansion(self):
         pass
 
 
 @compiles(match_, "mysql")
 def visit_match(element, compiler, **kw):
-    target = element.clause.match(
-        element.against,
-        **element.flags
-    )
+    target = element.clause.match(element.against, **element.flags)
 
     return compiler.process(target, **kw)

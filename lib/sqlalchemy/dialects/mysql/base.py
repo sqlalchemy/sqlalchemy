@@ -1584,19 +1584,21 @@ class MySQLCompiler(compiler.SQLCompiler):
             self.process(binary.right, **kw),
         )
 
-    match_valid_flag_combinations = frozenset((
-        # (boolean_mode, natural_language, query_expansion)
-        (False, False, False),
-        (True, False, False),
-        (False, True, False),
-        (False, False, True),
-        (False, True, True),
-    ))
+    match_valid_flag_combinations = frozenset(
+        (
+            # (boolean_mode, natural_language, query_expansion)
+            (False, False, False),
+            (True, False, False),
+            (False, True, False),
+            (False, False, True),
+            (False, True, True),
+        )
+    )
 
     match_flag_expressions = (
-        'IN BOOLEAN MODE',
-        'IN NATURAL LANGUAGE MODE',
-        'WITH QUERY EXPANSION',
+        "IN BOOLEAN MODE",
+        "IN NATURAL LANGUAGE MODE",
+        "WITH QUERY EXPANSION",
     )
 
     def visit_match_op_binary(self, binary, operator, **kw):
@@ -1607,17 +1609,17 @@ class MySQLCompiler(compiler.SQLCompiler):
 
         modifiers = binary.modifiers
 
-        boolean_mode = modifiers.get('mysql_boolean_mode', True)
-        natural_language = modifiers.get('mysql_natural_language', False)
-        query_expansion = modifiers.get('mysql_query_expansion', False)
+        boolean_mode = modifiers.get("mysql_boolean_mode", True)
+        natural_language = modifiers.get("mysql_natural_language", False)
+        query_expansion = modifiers.get("mysql_query_expansion", False)
 
         flag_combination = (boolean_mode, natural_language, query_expansion)
 
         if flag_combination not in self.match_valid_flag_combinations:
             flags = (
-                'mysql_boolean_mode=%s' % boolean_mode,
-                'mysql_natural_language=%s' % natural_language,
-                'mysql_query_expansion=%s' % query_expansion,
+                "mysql_boolean_mode=%s" % boolean_mode,
+                "mysql_natural_language=%s" % natural_language,
+                "mysql_query_expansion=%s" % query_expansion,
             )
 
             flags = ", ".join(flags)
@@ -1627,7 +1629,7 @@ class MySQLCompiler(compiler.SQLCompiler):
             )
 
         match_clause = binary.left
-        mysql_additional_cols = modifiers.get('mysql_additional_cols')
+        mysql_additional_cols = modifiers.get("mysql_additional_cols")
 
         if mysql_additional_cols:
             match_clause = [match_clause]
@@ -1652,7 +1654,7 @@ class MySQLCompiler(compiler.SQLCompiler):
             against_clause = [against_clause]
             against_clause.extend(flag_expressions)
 
-            against_clause = ' '.join(against_clause)
+            against_clause = " ".join(against_clause)
 
         return "MATCH (%s) AGAINST (%s)" % (match_clause, against_clause)
 
