@@ -1491,6 +1491,9 @@ class Session(_SessionClassMethods):
           configured with ``autocommit=True`` and does not already have a
           transaction in progress.
 
+          .. deprecated:: 1.4  this parameter is deprecated and will be removed
+             in SQLAlchemy 2.0
+
         :param execution_options: a dictionary of execution options that will
          be passed to :meth:`_engine.Connection.execution_options`, **when the
          connection is first procured only**.   If the connection is already
@@ -1673,7 +1676,16 @@ class Session(_SessionClassMethods):
 
         bind = self.get_bind(**bind_arguments)
 
-        conn = self._connection_for_bind(bind, close_with_result=True)
+        if self.autocommit:
+            # legacy stuff, we can't use future_result w/ autocommit because
+            # we rely upon close_with_result, also legacy.  it's all
+            # interrelated
+            conn = self._connection_for_bind(bind, close_with_result=True)
+            execution_options = execution_options.union(
+                dict(future_result=False)
+            )
+        else:
+            conn = self._connection_for_bind(bind)
         result = conn._execute_20(statement, params or {}, execution_options)
 
         if compile_state_cls:

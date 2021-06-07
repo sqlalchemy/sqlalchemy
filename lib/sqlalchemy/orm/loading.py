@@ -741,6 +741,30 @@ def _instance_processor(
                     )
                 else:
                     getter = None
+                    if adapter:
+                        # this logic had been removed for all 1.4 releases
+                        # up until 1.4.18; the adapter here is particularly
+                        # the compound eager adapter which isn't accommodated
+                        # in the quick_populators right now.  The "fallback"
+                        # logic below instead took over in many more cases
+                        # until issue #6596 was identified.
+
+                        # note there is still an issue where this codepath
+                        # produces no "getter" for cases where a joined-inh
+                        # mapping includes a labeled column property, meaning
+                        # KeyError is caught internally and we fall back to
+                        # _getter(col), which works anyway.   The adapter
+                        # here for joined inh without any aliasing might not
+                        # be useful.  Tests which see this include
+                        # test.orm.inheritance.test_basic ->
+                        # EagerTargetingTest.test_adapt_stringency
+                        # OptimizedLoadTest.test_column_expression_joined
+                        # PolymorphicOnNotLocalTest.test_polymorphic_on_column_prop  # noqa E501
+                        #
+
+                        adapted_col = adapter.columns[col]
+                        if adapted_col is not None:
+                            getter = result._getter(adapted_col, False)
                     if not getter:
                         getter = result._getter(col, False)
                     if getter:

@@ -127,8 +127,8 @@ class QueryContext(object):
             )
 
 
-_result_disable_adapt_to_context = util.immutabledict(
-    {"_result_disable_adapt_to_context": True}
+_orm_load_exec_options = util.immutabledict(
+    {"_result_disable_adapt_to_context": True, "future_result": True}
 )
 
 
@@ -239,16 +239,20 @@ class ORMCompileState(CompileState):
             statement._execution_options,
         )
 
-        # add _result_disable_adapt_to_context=True to execution options.
-        # this will disable the ResultSetMetadata._adapt_to_context()
-        # step which we don't need, as we have result processors cached
-        # against the original SELECT statement before caching.
+        # default execution options for ORM results:
+        # 1. _result_disable_adapt_to_context=True
+        #    this will disable the ResultSetMetadata._adapt_to_context()
+        #    step which we don't need, as we have result processors cached
+        #    against the original SELECT statement before caching.
+        # 2. future_result=True.  The ORM should **never** resolve columns
+        #    in a result set based on names, only on Column objects that
+        #    are correctly adapted to the context.   W the legacy result
+        #    it will still attempt name-based resolution and also emit a
+        #    warning.
         if not execution_options:
-            execution_options = _result_disable_adapt_to_context
+            execution_options = _orm_load_exec_options
         else:
-            execution_options = execution_options.union(
-                _result_disable_adapt_to_context
-            )
+            execution_options = execution_options.union(_orm_load_exec_options)
 
         if "yield_per" in execution_options or load_options._yield_per:
             execution_options = execution_options.union(
