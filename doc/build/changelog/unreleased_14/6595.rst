@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 6595
+
+    Fixed issue where query production for joinedload against a complex left
+    hand side involving joined-table inheritance could fail to produce a
+    correct query, due to a clause adaption issue.

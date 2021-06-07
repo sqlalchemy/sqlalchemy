@@ -5488,6 +5488,109 @@ class CyclicalInheritingEagerTestThree(
         )
 
 
+class LoadFromJoinedInhWUnion(
+    fixtures.DeclarativeMappedTest, testing.AssertsCompiledSQL
+):
+    """test for #6595"""
+
+    __dialect__ = "default"
+    run_create_tables = None
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Tag(Base):
+            __tablename__ = "tags"
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50), primary_key=True)
+
+            sample_id = Column("sample_id", Integer, ForeignKey("sample.id"))
+
+        class BaseDataFile(Base):
+            __tablename__ = "base_data_file"
+            id = Column(Integer, primary_key=True)
+            type = Column(String(50))
+            __mapper_args__ = {
+                "polymorphic_identity": "base_data_file",
+                "polymorphic_on": type,
+            }
+
+        class Sample(BaseDataFile):
+            __tablename__ = "sample"
+            __mapper_args__ = {"polymorphic_identity": "sample"}
+            id = Column(
+                Integer,
+                ForeignKey("base_data_file.id"),
+                primary_key=True,
+            )
+            tags = relationship(
+                "Tag",
+            )
+
+    def test_one(self):
+        Sample = self.classes.Sample
+
+        session = fixture_session()
+        user_sample_query = session.query(Sample)
+
+        unioned = user_sample_query.union(user_sample_query)
+
+        q = unioned.options(joinedload(Sample.tags)).limit(10)
+
+        self.assert_compile(
+            q,
+            "SELECT anon_1.anon_2_sample_id AS anon_1_anon_2_sample_id, "
+            "anon_1.anon_2_base_data_file_type "
+            "AS anon_1_anon_2_base_data_file_type, "
+            "tags_1.id AS tags_1_id, tags_1.name AS tags_1_name, "
+            "tags_1.sample_id AS tags_1_sample_id FROM "
+            "(SELECT anon_2.sample_id AS anon_2_sample_id, "
+            "anon_2.base_data_file_type AS anon_2_base_data_file_type "
+            "FROM (SELECT sample.id AS sample_id, "
+            "base_data_file.id AS base_data_file_id, "
+            "base_data_file.type AS base_data_file_type "
+            "FROM base_data_file JOIN sample ON base_data_file.id = sample.id "
+            "UNION SELECT sample.id AS sample_id, "
+            "base_data_file.id AS base_data_file_id, "
+            "base_data_file.type AS base_data_file_type "
+            "FROM base_data_file "
+            "JOIN sample ON base_data_file.id = sample.id) AS anon_2 "
+            "LIMIT :param_1) AS anon_1 "
+            "LEFT OUTER JOIN tags AS tags_1 "
+            "ON anon_1.anon_2_sample_id = tags_1.sample_id",
+        )
+
+    def test_two(self):
+        Sample = self.classes.Sample
+
+        session = fixture_session()
+        user_sample_query = session.query(Sample)
+
+        unioned = user_sample_query.union(user_sample_query)
+
+        q = unioned.options(joinedload(Sample.tags))
+
+        self.assert_compile(
+            q,
+            "SELECT anon_1.sample_id AS anon_1_sample_id, "
+            "anon_1.base_data_file_type AS anon_1_base_data_file_type, "
+            "tags_1.id AS tags_1_id, tags_1.name AS tags_1_name, "
+            "tags_1.sample_id AS tags_1_sample_id "
+            "FROM (SELECT sample.id AS sample_id, "
+            "base_data_file.id AS base_data_file_id, "
+            "base_data_file.type AS base_data_file_type "
+            "FROM base_data_file JOIN sample ON base_data_file.id = sample.id "
+            "UNION SELECT sample.id AS sample_id, "
+            "base_data_file.id AS base_data_file_id, "
+            "base_data_file.type AS base_data_file_type "
+            "FROM base_data_file "
+            "JOIN sample ON base_data_file.id = sample.id) "
+            "AS anon_1 LEFT OUTER JOIN tags AS tags_1 "
+            "ON anon_1.sample_id = tags_1.sample_id",
+        )
+
+
 class EnsureColumnsAddedTest(
     fixtures.DeclarativeMappedTest, testing.AssertsCompiledSQL
 ):
