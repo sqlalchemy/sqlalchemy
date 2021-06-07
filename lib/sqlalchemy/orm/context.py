@@ -431,6 +431,9 @@ class ORMFromStatementCompileState(ORMCompileState):
         if isinstance(
             self.statement, (expression.TextClause, expression.UpdateBase)
         ):
+
+            self.extra_criteria_entities = {}
+
             # setup for all entities. Currently, this is not useful
             # for eager loaders, as the eager loaders that work are able
             # to do their work entirely in row_processor.
@@ -709,7 +712,6 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         # i.e. when each _MappedEntity has its own FROM
 
         if self.compile_options._enable_single_crit:
-
             self._adjust_for_extra_criteria()
 
         if not self.primary_columns:

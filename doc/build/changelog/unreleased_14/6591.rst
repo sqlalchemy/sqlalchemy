@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 6591
+
+    Fixed issue in experimental "select ORM objects from INSERT/UPDATE" use
+    case where an error was raised if the statement were against a
+    single-table-inheritance subclass.

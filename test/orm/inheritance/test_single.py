@@ -369,6 +369,44 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             "WHERE employees_1.type IN ([POSTCOMPILE_type_1])",
         )
 
+    def test_from_statement_select(self):
+        Engineer = self.classes.Engineer
+
+        stmt = select(Engineer)
+
+        q = select(Engineer).from_statement(stmt)
+
+        self.assert_compile(
+            q,
+            "SELECT employees.employee_id, employees.name, "
+            "employees.manager_data, employees.engineer_info, "
+            "employees.type FROM employees WHERE employees.type "
+            "IN ([POSTCOMPILE_type_1])",
+        )
+
+    def test_from_statement_update(self):
+        """test #6591"""
+
+        Engineer = self.classes.Engineer
+
+        from sqlalchemy import update
+
+        stmt = (
+            update(Engineer)
+            .values(engineer_info="bar")
+            .returning(Engineer.employee_id)
+        )
+
+        q = select(Engineer).from_statement(stmt)
+
+        self.assert_compile(
+            q,
+            "UPDATE employees SET engineer_info=:engineer_info "
+            "WHERE employees.type IN ([POSTCOMPILE_type_1]) "
+            "RETURNING employees.employee_id",
+            dialect="default_enhanced",
+        )
+
     def test_union_modifiers(self):
         Engineer, Manager = self.classes("Engineer", "Manager")
 

@@ -487,15 +487,15 @@ class AssertsCompiledSQL(object):
                 self.supports_execution = getattr(
                     test_statement, "supports_execution", False
                 )
+
                 if self.supports_execution:
                     self._execution_options = test_statement._execution_options
 
-                    if isinstance(
-                        test_statement, (sql.Insert, sql.Update, sql.Delete)
-                    ):
+                    if hasattr(test_statement, "_returning"):
                         self._returning = test_statement._returning
-                    if isinstance(test_statement, (sql.Insert, sql.Update)):
+                    if hasattr(test_statement, "_inline"):
                         self._inline = test_statement._inline
+                    if hasattr(test_statement, "_return_defaults"):
                         self._return_defaults = test_statement._return_defaults
 
             def _default_dialect(self):
