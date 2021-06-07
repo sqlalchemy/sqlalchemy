@@ -101,6 +101,7 @@ from .concurrency import asyncio
 from .concurrency import await_fallback
 from .concurrency import await_only
 from .concurrency import greenlet_spawn
+from .concurrency import is_exit_exception
 from .deprecations import deprecated
 from .deprecations import deprecated_20
 from .deprecations import deprecated_20_cls

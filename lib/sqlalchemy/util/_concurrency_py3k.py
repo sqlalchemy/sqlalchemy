@@ -10,7 +10,6 @@ from . import compat
 from .langhelpers import memoized_property
 from .. import exc
 
-
 if compat.py37:
     try:
         from contextvars import copy_context as _copy_context
@@ -23,6 +22,12 @@ if compat.py37:
         _copy_context = None
 else:
     _copy_context = None
+
+
+def is_exit_exception(e):
+    return not isinstance(e, Exception) or isinstance(
+        e, (asyncio.TimeoutError, asyncio.CancelledError)
+    )
 
 
 # implementation based on snaury gist at

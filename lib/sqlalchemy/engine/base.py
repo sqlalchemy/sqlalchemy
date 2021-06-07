@@ -1877,7 +1877,7 @@ class Connection(Connectable):
     ):
         exc_info = sys.exc_info()
 
-        is_exit_exception = not isinstance(e, Exception)
+        is_exit_exception = util.is_exit_exception(e)
 
         if not self._is_disconnect:
             self._is_disconnect = (
@@ -2325,7 +2325,6 @@ class Transaction(TransactionalContext):
           phase transactions may be used.
 
         """
-
         try:
             self._do_commit()
         finally:

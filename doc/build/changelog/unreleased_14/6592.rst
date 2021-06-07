@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, asyncio
+    :tickets: 6592
+
+    Added ``asyncio.exceptions.TimeoutError``,
+    ``asyncio.exceptions.CancelledError`` as so-called "exit exceptions", a
+    class of exceptions that include things like ``GreenletExit`` and
+    ``KeyboardInterrupt``, which are considered to be events that warrant
+    considering a DBAPI connection to be in an unusable state where it should
+    be recycled.

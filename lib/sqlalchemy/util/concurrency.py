@@ -12,6 +12,7 @@ if compat.py3k:
         from ._concurrency_py3k import await_only
         from ._concurrency_py3k import await_fallback
         from ._concurrency_py3k import greenlet_spawn
+        from ._concurrency_py3k import is_exit_exception
         from ._concurrency_py3k import AsyncAdaptedLock
         from ._concurrency_py3k import _util_async_run  # noqa F401
         from ._concurrency_py3k import (
@@ -35,6 +36,9 @@ if not have_greenlet:
             raise ValueError(
                 "the greenlet library is required to use this function."
             )
+
+    def is_exit_exception(e):  # noqa F811
+        return not isinstance(e, Exception)
 
     def await_only(thing):  # noqa F811
         _not_implemented()
