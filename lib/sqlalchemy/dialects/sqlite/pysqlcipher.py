@@ -68,6 +68,11 @@ new connection.  Currently, ``cipher``, ``kdf_iter``
 
     e = create_engine('sqlite+pysqlcipher://:testing@/foo.db?cipher=aes-256-cfb&kdf_iter=64000')
 
+.. warning:: Previous versions of sqlalchemy did not take into consideration
+   the encryption-related pragmas passed in the url string, that were silently
+   ignored. This may cause errors when opening files saved by a
+   previous sqlalchemy version if the encryption options do not match.
+
 
 Pooling Behavior
 ----------------
