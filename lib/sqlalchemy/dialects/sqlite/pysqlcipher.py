@@ -132,6 +132,7 @@ class SQLiteDialect_pysqlcipher(SQLiteDialect_pysqlite):
             SQLiteDialect_pysqlcipher, self
         ).create_connect_args(super_url)
         opts["passphrase"] = url.password
+        opts.update(url.query)
         return c_args, opts
 
 
