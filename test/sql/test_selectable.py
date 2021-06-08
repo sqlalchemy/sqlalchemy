@@ -2594,6 +2594,38 @@ class DerivedTest(fixtures.TestBase, AssertsExecutionResults):
         assert select(t1, t2).alias("foo").is_derived_from(t1)
         assert not t2.select().alias("foo").is_derived_from(t1)
 
+    def test_join(self):
+        meta = MetaData()
+
+        t1 = Table(
+            "t1",
+            meta,
+            Column("c1", Integer, primary_key=True),
+            Column("c2", String(30)),
+        )
+        t2 = Table(
+            "t2",
+            meta,
+            Column("c1", Integer, primary_key=True),
+            Column("c2", String(30)),
+        )
+        t3 = Table(
+            "t3",
+            meta,
+            Column("c1", Integer, primary_key=True),
+            Column("c2", String(30)),
+        )
+
+        j1 = t1.join(t2, t1.c.c1 == t2.c.c1)
+
+        assert j1.is_derived_from(j1)
+
+        assert j1.is_derived_from(t1)
+
+        assert j1._annotate({"foo": "bar"}).is_derived_from(j1)
+
+        assert not j1.is_derived_from(t3)
+
 
 class AnnotationsTest(fixtures.TestBase):
     def test_hashing(self):

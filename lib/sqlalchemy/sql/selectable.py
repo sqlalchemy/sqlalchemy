@@ -1115,7 +1115,9 @@ class Join(roles.DMLTableRole, FromClause):
 
     def is_derived_from(self, fromclause):
         return (
-            fromclause is self
+            # use hash() to ensure direct comparison to annotated works
+            # as well
+            hash(fromclause) == hash(self)
             or self.left.is_derived_from(fromclause)
             or self.right.is_derived_from(fromclause)
         )
