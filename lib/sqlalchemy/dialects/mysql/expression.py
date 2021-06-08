@@ -107,9 +107,11 @@ class match_(elements.ColumnElement):
     )
 
     default_flags = immutabledict(
-        mysql_boolean_mode=False,
-        mysql_natural_language=False,
-        mysql_query_expansion=False,
+        {
+            "mysql_boolean_mode": False,
+            "mysql_natural_language": False,
+            "mysql_query_expansion": False,
+        }
     )
 
     def __init__(self, *clauselist, **kwargs):
