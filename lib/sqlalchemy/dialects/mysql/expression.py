@@ -4,6 +4,7 @@ from sqlalchemy import exc
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import elements
 from sqlalchemy.sql import operators
+from sqlalchemy.util import immutabledict
 
 
 def property_enables_flag(flag_name):
@@ -11,8 +12,8 @@ def property_enables_flag(flag_name):
         @property
         @wraps(target)
         def inner(self):
-            new_flags = self.flags.copy()
-            new_flags[flag_name] = True
+            update = {flag_name: True}
+            new_flags = self.flags.union(update)
 
             return match_(
                 self.clause,
@@ -99,11 +100,11 @@ class match_(elements.ColumnElement):
 
     """
 
-    default_flags = {
-        "mysql_boolean_mode": False,
-        "mysql_natural_language": False,
-        "mysql_query_expansion": False,
-    }
+    default_flags = immutabledict(
+        mysql_boolean_mode=False,
+        mysql_natural_language=False,
+        mysql_query_expansion=False,
+    )
 
     def __init__(self, *clauselist, **kwargs):
         clauselist_len = len(clauselist)
@@ -126,7 +127,7 @@ class match_(elements.ColumnElement):
             raise exc.CompileError("Can not match without against")
 
         self.against = against
-        self.flags = flags or self.default_flags.copy()
+        self.flags = flags or self.default_flags
 
     @property_enables_flag("mysql_boolean_mode")
     def in_boolean_mode(self):
