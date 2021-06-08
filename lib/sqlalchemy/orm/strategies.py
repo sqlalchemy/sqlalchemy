@@ -547,9 +547,6 @@ class AbstractRelationshipLoader(LoaderStrategy):
         self.target = self.parent_property.target
         self.uselist = self.parent_property.uselist
 
-    def _size_alert(self, lru_cache):
-        util.warn("LRU cache size alert for loader strategy: %s" % self)
-
 
 @log.class_logger
 @relationships.RelationshipProperty.strategy_for(do_nothing=True)
@@ -630,7 +627,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         "_simple_lazy_clause",
         "_raise_always",
         "_raise_on_sql",
-        "_query_cache",
+        "_lambda_cache",
     )
 
     def __init__(self, parent, strategy_key):
@@ -899,12 +896,12 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             for pk in self.mapper.primary_key
         ]
 
-    def _memoized_attr__query_cache(self):
-        # cache is per lazy loader; stores not only cached SQL but also
+    def _memoized_attr__lambda_cache(self):
+        # cache is per lazy loader, and is used for caching of
         # sqlalchemy.sql.lambdas.AnalyzedCode and
         # sqlalchemy.sql.lambdas.AnalyzedFunction objects which are generated
         # from the StatementLambda used.
-        return util.LRUCache(30, size_alert=self._size_alert)
+        return util.LRUCache(30)
 
     @util.preload_module("sqlalchemy.orm.strategy_options")
     def _emit_lazyload(
@@ -923,7 +920,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             ._set_compile_options(ORMCompileState.default_compile_options),
             global_track_bound_values=False,
-            lambda_cache=self._query_cache,
+            lambda_cache=self._lambda_cache,
             track_on=(self,),
         )
 
@@ -979,11 +976,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                 self._invoke_raise_load(state, passive, "raise_on_sql")
 
             return loading.load_on_pk_identity(
-                session,
-                stmt,
-                primary_key_identity,
-                load_options=load_options,
-                execution_options={"compiled_cache": self._query_cache},
+                session, stmt, primary_key_identity, load_options=load_options
             )
 
         if self._order_by:
@@ -1018,8 +1011,6 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         execution_options = {
             "_sa_orm_load_options": load_options,
         }
-        if not self.parent_property.bake_queries:
-            execution_options["compiled_cache"] = None
 
         if self.key in state.dict:
             return attributes.ATTR_WAS_SET
@@ -1592,10 +1583,7 @@ class SubqueryLoader(PostLoader):
 
             q = self.subq
             assert q.session is None
-            if "compiled_cache" in self.execution_options:
-                q = q.execution_options(
-                    compiled_cache=self.execution_options["compiled_cache"]
-                )
+
             q = q.with_session(self.session)
 
             if self.load_options._populate_existing:
@@ -2626,7 +2614,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         "_parent_alias",
         "_query_info",
         "_fallback_query_info",
-        "_query_cache",
+        "_lambda_cache",
     )
 
     query_info = collections.namedtuple(
@@ -2730,8 +2718,12 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
             (("lazy", "select"),)
         ).init_class_attribute(mapper)
 
-    def _memoized_attr__query_cache(self):
-        return util.LRUCache(30, size_alert=self._size_alert)
+    def _memoized_attr__lambda_cache(self):
+        # cache is per lazy loader, and is used for caching of
+        # sqlalchemy.sql.lambdas.AnalyzedCode and
+        # sqlalchemy.sql.lambdas.AnalyzedFunction objects which are generated
+        # from the StatementLambda used.
+        return util.LRUCache(30)
 
     def create_row_processor(
         self,
@@ -2879,7 +2871,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                     "plugin_subject": effective_entity,
                 }
             ),
-            lambda_cache=self._query_cache,
+            lambda_cache=self._lambda_cache,
             global_track_bound_values=False,
             track_on=(self, effective_entity) + (tuple(pk_cols),),
         )

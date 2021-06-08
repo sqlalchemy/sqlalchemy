@@ -712,9 +712,9 @@ class RoundTripTest(QueryTest, AssertsCompiledSQL):
         sess = Session(connection)
 
         with mock.patch(
-            "sqlalchemy.orm.strategies.LazyLoader._query_cache", cache
+            "sqlalchemy.orm.strategies.LazyLoader._lambda_cache", cache
         ), mock.patch(
-            "sqlalchemy.orm.strategies.SelectInLoader._query_cache", cache
+            "sqlalchemy.orm.strategies.SelectInLoader._lambda_cache", cache
         ):
 
             def go():
