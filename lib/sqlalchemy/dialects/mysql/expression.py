@@ -100,6 +100,12 @@ class match_(elements.ColumnElement):
 
     """
 
+    __slots__ = (
+        "clause",
+        "against",
+        "flags",
+    )
+
     default_flags = immutabledict(
         mysql_boolean_mode=False,
         mysql_natural_language=False,
@@ -121,13 +127,12 @@ class match_(elements.ColumnElement):
             self.clause = clause
 
         against = kwargs.get("against")
-        flags = kwargs.get("flags")
 
         if against is None:
             raise exc.CompileError("Can not match without against")
 
         self.against = against
-        self.flags = flags or self.default_flags
+        self.flags = kwargs.get("flags", self.default_flags)
 
     @property_enables_flag("mysql_boolean_mode")
     def in_boolean_mode(self):
