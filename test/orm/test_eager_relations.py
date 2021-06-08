@@ -1,6 +1,7 @@
 """tests of joined-eager loaded attributes"""
 
 import datetime
+import operator
 
 import sqlalchemy as sa
 from sqlalchemy import and_
@@ -37,6 +38,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
+from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -555,6 +557,52 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         )
 
         eq_(q.first(), (User(id=7), 1))
+
+    def test_we_adapt_for_compound_for_getter(self):
+        """test #6596.
+
+        Ensure loading.py uses the compound eager adapter on the target
+        column before looking for a populator, rather than creating
+        a new populator.
+
+        """
+
+        User, Address = self.classes("User", "Address")
+        users, addresses = self.tables("users", "addresses")
+        mapper(
+            User,
+            users,
+            properties={
+                "addresses": relationship(Address, order_by=addresses.c.id)
+            },
+        )
+        mapper(Address, addresses)
+
+        s = fixture_session()
+
+        q = (
+            select(User)
+            .options(joinedload(User.addresses))
+            .order_by(User.id)
+            .limit(2)
+        )
+
+        def strict_getter(self, key, raiseerr=True):
+            try:
+                rec = self._keymap[key]
+            except KeyError:
+                assert False
+
+            index = rec[0]
+
+            return operator.itemgetter(index)
+
+        with mock.patch(
+            "sqlalchemy.engine.result.ResultMetaData._getter", strict_getter
+        ):
+            result = s.execute(q).unique().scalars().all()
+
+        eq_(result, self.static.user_address_result[0:2])
 
     def test_options_pathing(self):
         (

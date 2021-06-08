@@ -1418,6 +1418,10 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                 strategy = _cursor._NO_CURSOR_DQL
 
             if self._is_future_result:
+                if self.root_connection.should_close_with_result:
+                    raise exc.InvalidRequestError(
+                        "can't use future_result=True with close_with_result"
+                    )
                 result = _cursor.CursorResult(
                     self, strategy, cursor_description
                 )

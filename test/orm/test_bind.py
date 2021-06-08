@@ -377,7 +377,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
             canary.mock_calls,
             [
                 mock.call.get_bind(**expected_get_bind_args),
-                mock.call._connection_for_bind(engine, close_with_result=True),
+                mock.call._connection_for_bind(engine),
             ],
         )
         sess.close()

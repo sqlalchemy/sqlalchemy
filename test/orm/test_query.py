@@ -4930,7 +4930,12 @@ class YieldTest(_fixtures.FixtureTest):
                     for k, v in ctx.execution_options.items()
                     if not k.startswith("_")
                 },
-                {"max_row_buffer": 15, "stream_results": True, "foo": "bar"},
+                {
+                    "max_row_buffer": 15,
+                    "stream_results": True,
+                    "foo": "bar",
+                    "future_result": True,
+                },
             )
 
         q = sess.query(User).yield_per(15)
@@ -4958,6 +4963,7 @@ class YieldTest(_fixtures.FixtureTest):
                     "max_row_buffer": 15,
                     "stream_results": True,
                     "yield_per": 15,
+                    "future_result": True,
                 },
             )
 
