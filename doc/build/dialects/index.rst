@@ -88,7 +88,10 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +---------------------------------------+---------------------------------------+
 | Teradata Vantage                      | teradatasqlalchemy_                   |
 +---------------------------------------+---------------------------------------+
+| IBM Netezza Performance Server        | nzalchemy_                            |
++---------------------------------------+---------------------------------------+
 
+.. _nzalchemy: https://pypi.org/project/nzalchemy/
 .. _ibm-db-sa: https://pypi.org/project/ibm-db-sa/
 .. _PyHive: https://github.com/dropbox/PyHive#sqlalchemy
 .. _teradatasqlalchemy: https://pypi.org/project/teradatasqlalchemy/
