@@ -1440,7 +1440,6 @@ class hybridproperty(object):
     def __get__(self, instance, owner):
         if instance is None:
             clsval = self.clslevel(owner)
-            clsval.__doc__ = self.func.__doc__
             return clsval
         else:
             return self.func(instance)

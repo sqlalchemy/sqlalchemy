@@ -13,7 +13,7 @@
 import traceback
 import weakref
 
-from .base import _ConnDialect
+from .base import _AsyncConnDialect
 from .base import _ConnectionFairy
 from .base import _ConnectionRecord
 from .base import Pool
@@ -34,6 +34,7 @@ class QueuePool(Pool):
 
     """
 
+    _is_asyncio = False
     _queue_class = sqla_queue.Queue
 
     def __init__(
@@ -222,10 +223,6 @@ class QueuePool(Pool):
         return self._pool.maxsize - self._pool.qsize() + self._overflow
 
 
-class _AsyncConnDialect(_ConnDialect):
-    is_async = True
-
-
 class AsyncAdaptedQueuePool(QueuePool):
     _is_asyncio = True
     _queue_class = sqla_queue.AsyncAdaptedQueue
@@ -306,6 +303,8 @@ class SingletonThreadPool(Pool):
     See :ref:`sqlite_toplevel`.
 
     """
+
+    _is_asyncio = False
 
     def __init__(self, creator, pool_size=5, **kw):
         Pool.__init__(self, creator, **kw)

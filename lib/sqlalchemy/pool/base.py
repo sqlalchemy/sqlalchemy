@@ -53,13 +53,15 @@ class _ConnDialect(object):
         )
 
 
+class _AsyncConnDialect(_ConnDialect):
+    is_async = True
+
+
 class Pool(log.Identified):
 
     """Abstract base class for connection pools."""
 
     _dialect = _ConnDialect()
-
-    _is_asyncio = False
 
     def __init__(
         self,
@@ -195,6 +197,10 @@ class Pool(log.Identified):
         if events:
             for fn, target in events:
                 event.listen(self, target, fn)
+
+    @util.hybridproperty
+    def _is_asyncio(self):
+        return self._dialect.is_async
 
     @property
     def _creator(self):
