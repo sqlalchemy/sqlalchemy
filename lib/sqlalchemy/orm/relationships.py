@@ -364,20 +364,20 @@ class RelationshipProperty(StrategizedProperty):
                 :ref:`error_qzyx` - usage example
 
         :param bake_queries=True:
-          Use the :class:`.BakedQuery` cache to cache the construction of SQL
-          used in lazy loads.  True by default.   Set to False if the
-          join condition of the relationship has unusual features that
-          might not respond well to statement caching.
+          Enable :ref:`lambda caching <engine_lambda_caching>`_ for loader
+          strategies, if applicable, which adds a performance gain to the
+          construction of SQL constructs used by loader strategies, in addition
+          to the usual SQL statement caching used throughout SQLAlchemy. This
+          parameter currently applies only to the "lazy" and "selectin" loader
+          strategies. There is generally no reason to set this parameter to
+          False.
 
-          .. versionchanged:: 1.2
-             "Baked" loading is the default implementation for the "select",
-             a.k.a. "lazy" loading strategy for relationships.
-
-          .. versionadded:: 1.0.0
-
-          .. seealso::
-
-            :ref:`baked_toplevel`
+          .. versionchanged:: 1.4  Relationship loaders no longer use the
+             previous "baked query" system of query caching.   The "lazy"
+             and "selectin" loaders make use of the "lambda cache" system
+             for the construction of SQL constructs,
+             as well as the usual SQL caching system that is throughout
+             SQLAlchemy as of the 1.4 series.
 
         :param cascade:
           A comma-separated list of cascade rules which determines how

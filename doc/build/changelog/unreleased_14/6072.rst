@@ -1,0 +1,20 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 6072, 6487
+
+    Clarified the current purpose of the
+    :paramref:`_orm.relationship.bake_queries` flag, which in 1.4 is to enable
+    or disable "lambda caching" of statements within the "lazyload" and
+    "selectinload" loader strategies; this is separate from the more
+    foundational SQL query cache that is used for most statements.
+    Additionally, the lazy loader no longer uses its own cache for many-to-one
+    SQL queries, which was an implementation quirk that doesn't exist for any
+    other loader scenario. Finally, the "lru cache" warning that the lazyloader
+    and selectinloader strategies could emit when handling a wide array of
+    class/relationship combinations has been removed; based on analysis of some
+    end-user cases, this warning doesn't suggest any significant issue. While
+    setting ``bake_queries=False`` for such a relationship will remove this
+    cache from being used, there's no particular performance gain in this case
+    as using no caching vs. using a cache that needs to refresh often likely
+    still wins out on the caching being used side.
+

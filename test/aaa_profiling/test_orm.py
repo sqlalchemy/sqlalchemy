@@ -155,7 +155,7 @@ class MergeTest(NoCache, fixtures.MappedTest):
         self.assert_sql_count(testing.db, go2, 2)
 
 
-class LoadManyToOneFromIdentityTest(NoCache, fixtures.MappedTest):
+class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
 
     """test overhead associated with many-to-one fetches.
 

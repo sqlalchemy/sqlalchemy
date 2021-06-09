@@ -89,47 +89,6 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         self.assert_sql_count(testing.db, go, 2)
 
-    def test_query_is_cached(self):
-        users, Address, addresses, User = (
-            self.tables.users,
-            self.classes.Address,
-            self.tables.addresses,
-            self.classes.User,
-        )
-
-        mapper(
-            User,
-            users,
-            properties={
-                "addresses": relationship(
-                    mapper(Address, addresses),
-                    lazy="subquery",
-                    order_by=Address.id,
-                )
-            },
-        )
-        query_cache = {}
-        sess = fixture_session()
-
-        def go():
-            sess.close()
-
-            stmt = select(User).filter(User.id == 7)
-
-            sess.execute(
-                stmt, execution_options={"compiled_cache": query_cache}
-            ).one()
-
-        for i in range(3):
-            go()
-
-        qclen = len(query_cache)
-
-        for i in range(5):
-            go()
-
-        eq_(len(query_cache), qclen)
-
     def test_params_arent_cached(self):
         users, Address, addresses, User = (
             self.tables.users,
