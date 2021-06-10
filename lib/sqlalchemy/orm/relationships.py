@@ -364,7 +364,7 @@ class RelationshipProperty(StrategizedProperty):
                 :ref:`error_qzyx` - usage example
 
         :param bake_queries=True:
-          Enable :ref:`lambda caching <engine_lambda_caching>`_ for loader
+          Enable :ref:`lambda caching <engine_lambda_caching>` for loader
           strategies, if applicable, which adds a performance gain to the
           construction of SQL constructs used by loader strategies, in addition
           to the usual SQL statement caching used throughout SQLAlchemy. This
