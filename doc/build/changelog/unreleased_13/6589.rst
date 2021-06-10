@@ -1,6 +1,7 @@
 .. change::
-    :tags: bug, pysqlcipher
+    :tags: bug, sqlite
     :tickets: 6589
     :versions: 1.4.18
 
-    Add note regarding encryption-related pragmas passed in the url.
+    Add note regarding encryption-related pragmas for pysqlcipher passed in the
+    url.

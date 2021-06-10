@@ -1,11 +1,12 @@
 .. change::
-    :tags: bug, postgresql
+    :tags: bug, postgresql, regression
     :tickets: 6581
 
-    Fixed issue where using the PostgreSQL "INSERT..ON CONFLICT" structure
+    Fixed regression where using the PostgreSQL "INSERT..ON CONFLICT" structure
     would fail to work with the psycopg2 driver if it were used in an
     "executemany" context along with bound parameters in the "SET" clause, due
     to the implicit use of the psycopg2 fast execution helpers which are not
-    appropriate for this style of INSERT statement. Additional checks to
+    appropriate for this style of INSERT statement; as these helpers are the
+    default in 1.4 this is effectively a regression.  Additional checks to
     exclude this kind of statement from that particular extension have been
     added.
