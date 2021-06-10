@@ -15,7 +15,144 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.18
-    :include_notes_from: unreleased_14
+    :released: June 10, 2021
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6072, 6487
+
+        Clarified the current purpose of the
+        :paramref:`_orm.relationship.bake_queries` flag, which in 1.4 is to enable
+        or disable "lambda caching" of statements within the "lazyload" and
+        "selectinload" loader strategies; this is separate from the more
+        foundational SQL query cache that is used for most statements.
+        Additionally, the lazy loader no longer uses its own cache for many-to-one
+        SQL queries, which was an implementation quirk that doesn't exist for any
+        other loader scenario. Finally, the "lru cache" warning that the lazyloader
+        and selectinloader strategies could emit when handling a wide array of
+        class/relationship combinations has been removed; based on analysis of some
+        end-user cases, this warning doesn't suggest any significant issue. While
+        setting ``bake_queries=False`` for such a relationship will remove this
+        cache from being used, there's no particular performance gain in this case
+        as using no caching vs. using a cache that needs to refresh often likely
+        still wins out on the caching being used side.
+
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 6575
+
+        Fixed an issue that presented itself when using the :class:`_pool.NullPool`
+        or the :class:`_pool.StaticPool` with an async engine. This mostly affected
+        the aiosqlite dialect.
+
+    .. change::
+        :tags: bug, sqlite, regression
+        :tickets: 6586
+
+        The fix for pysqlcipher released in version 1.4.3 :ticket:`5848` was
+        unfortunately non-working, in that the new ``on_connect_url`` hook was
+        erroneously not receiving a ``URL`` object under normal usage of
+        :func:`_sa.create_engine` and instead received a string that was unhandled;
+        the test suite failed to fully set up the actual conditions under which
+        this hook is called. This has been fixed.
+
+    .. change::
+        :tags: bug, postgresql, regression
+        :tickets: 6581
+
+        Fixed regression where using the PostgreSQL "INSERT..ON CONFLICT" structure
+        would fail to work with the psycopg2 driver if it were used in an
+        "executemany" context along with bound parameters in the "SET" clause, due
+        to the implicit use of the psycopg2 fast execution helpers which are not
+        appropriate for this style of INSERT statement; as these helpers are the
+        default in 1.4 this is effectively a regression.  Additional checks to
+        exclude this kind of statement from that particular extension have been
+        added.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6285
+
+        Adjusted the means by which classes such as :class:`_orm.scoped_session`
+        and :class:`_asyncio.AsyncSession` are generated from the base
+        :class:`_orm.Session` class, such that custom :class:`_orm.Session`
+        subclasses such as that used by Flask-SQLAlchemy don't need to implement
+        positional arguments when they call into the superclass method, and can
+        continue using the same argument styles as in previous releases.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6595
+
+        Fixed issue where query production for joinedload against a complex left
+        hand side involving joined-table inheritance could fail to produce a
+        correct query, due to a clause adaption issue.
+
+    .. change::
+        :tags: bug, orm, regression, performance
+        :tickets: 6596
+
+        Fixed regression involving how the ORM would resolve a given mapped column
+        to a result row, where under cases such as joined eager loading, a slightly
+        more expensive "fallback" could take place to set up this resolution due to
+        some logic that was removed since 1.3. The issue could also cause
+        deprecation warnings involving column resolution to be emitted when using a
+        1.4 style query with joined eager loading.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6591
+
+        Fixed issue in experimental "select ORM objects from INSERT/UPDATE" use
+        case where an error was raised if the statement were against a
+        single-table-inheritance subclass.
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 6592
+
+        Added ``asyncio.exceptions.TimeoutError``,
+        ``asyncio.exceptions.CancelledError`` as so-called "exit exceptions", a
+        class of exceptions that include things like ``GreenletExit`` and
+        ``KeyboardInterrupt``, which are considered to be events that warrant
+        considering a DBAPI connection to be in an unusable state where it should
+        be recycled.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6400
+
+        The warning that's emitted for :func:`_orm.relationship` when multiple
+        relationships would overlap with each other as far as foreign key
+        attributes written towards, now includes the specific "overlaps" argument
+        to use for each warning in order to silence the warning without changing
+        the mapping.
+
+    .. change::
+        :tags: usecase, asyncio
+        :tickets: 6319
+
+        Implemented a new registry architecture that allows the ``Async`` version
+        of an object, like ``AsyncSession``, ``AsyncConnection``, etc., to be
+        locatable given the proxied "sync" object, i.e. ``Session``,
+        ``Connection``. Previously, to the degree such lookup functions were used,
+        an ``Async`` object would be re-created each time, which was less than
+        ideal as the identity and state of the "async" object would not be
+        preserved across calls.
+
+        From there, new helper functions :func:`_asyncio.async_object_session`,
+        :func:`_asyncio.async_session` as well as a new :class:`_orm.InstanceState`
+        attribute :attr:`_orm.InstanceState.async_session` have been added, which
+        are used to retrieve the original :class:`_asyncio.AsyncSession` associated
+        with an ORM mapped object, a :class:`_orm.Session` associated with an
+        :class:`_asyncio.AsyncSession`, and an :class:`_asyncio.AsyncSession`
+        associated with an :class:`_orm.InstanceState`, respectively.
+
+        This patch also implements new methods
+        :meth:`_asyncio.AsyncSession.in_nested_transaction`,
+        :meth:`_asyncio.AsyncSession.get_transaction`,
+        :meth:`_asyncio.AsyncSession.get_nested_transaction`.
 
 .. changelog::
     :version: 1.4.17

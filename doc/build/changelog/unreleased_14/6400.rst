@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 6400
-
-    The warning that's emitted for :func:`_orm.relationship` when multiple
-    relationships would overlap with each other as far as foreign key
-    attributes written towards, now includes the specific "overlaps" argument
-    to use for each warning in order to silence the warning without changing
-    the mapping.
