@@ -79,6 +79,27 @@ At the moment, our two objects above are said to be in a state called
 to be associated with a :class:`_orm.Session` object that can generate
 INSERT statements for them.
 
+You can also supply statements that inherit from :class:`_expression.FromClause`
+to ORM objects which return scalar (singular) values to use subqueries or SQL
+functions when inserting.
+
+.. sourcecode:: pycon+sql
+
+    >>> from sqlalchemy import func
+    >>> squidward = User(name="squidward", fullname="Squidward Tentacles", created_at=func.now())
+    >>> session.add(squidward)
+    >>> session.flush()
+    {opensql}BEGIN (implicit)
+    INSERT INTO user_account (name, fullname, created_at) VALUES (?, ?, >?)
+    [...] ('squidward', 'Squidward Tentacles', now())   
+    >>> other_user = User(name=select(User.name).where(id=2).limit(1), fullname="Subquery User")
+    >>> session.add(other_user)
+    >>> session.flush()
+    {opensql}BEGIN (implicit)
+    INSERT INTO user_account (name, fullname) VALUES ((SELECT user_account.name WHERE user_account.id = 2 LIMIT 1), ?)
+    [...] ('Subquery User'))   
+
+
 Adding objects to a Session
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
