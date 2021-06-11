@@ -844,6 +844,25 @@ class PGDialect_psycopg2(PGDialect):
     def get_deferrable(self, connection):
         return connection.deferrable
 
+    def do_ping(self, dbapi_connection):
+        cursor = None
+        try:
+            dbapi_connection.autocommit = True
+            cursor = dbapi_connection.cursor()
+            try:
+                cursor.execute(self._dialect_specific_select_one)
+            finally:
+                cursor.close()
+                if not dbapi_connection.closed:
+                    dbapi_connection.autocommit = False
+        except self.dbapi.Error as err:
+            if self.is_disconnect(err, dbapi_connection, cursor):
+                return False
+            else:
+                raise
+        else:
+            return True
+
     def on_connect(self):
         extras = self._psycopg2_extras()
         extensions = self._psycopg2_extensions()

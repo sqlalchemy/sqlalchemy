@@ -895,21 +895,30 @@ class MiscBackendTest(
                 txid2 = conn.exec_driver_sql("select txid_current()").scalar()
                 eq_(txid1, txid2)
 
-    def test_readonly_flag_connection(self):
-        with testing.db.connect() as conn:
-            # asyncpg requires serializable for readonly..
-            conn = conn.execution_options(
-                isolation_level="SERIALIZABLE", postgresql_readonly=True
-            )
+    @testing.combinations((True,), (False,), argnames="pre_ping")
+    def test_readonly_flag_connection(self, testing_engine, pre_ping):
+        if pre_ping:
+            engine = testing_engine(options={"pool_pre_ping": True})
+        else:
+            engine = testing_engine()
 
-            dbapi_conn = conn.connection.connection
+        for i in range(2):
+            with engine.connect() as conn:
+                # asyncpg requires serializable for readonly..
+                conn = conn.execution_options(
+                    isolation_level="SERIALIZABLE", postgresql_readonly=True
+                )
 
-            cursor = dbapi_conn.cursor()
-            cursor.execute("show transaction_read_only")
-            val = cursor.fetchone()[0]
-            cursor.close()
-            eq_(val, "on")
-            is_true(testing.db.dialect.get_readonly(dbapi_conn))
+                conn.execute(text("select 1")).scalar()
+
+                dbapi_conn = conn.connection.connection
+
+                cursor = dbapi_conn.cursor()
+                cursor.execute("show transaction_read_only")
+                val = cursor.fetchone()[0]
+                cursor.close()
+                eq_(val, "on")
+                is_true(testing.db.dialect.get_readonly(dbapi_conn))
 
         cursor = dbapi_conn.cursor()
         try:
@@ -920,22 +929,31 @@ class MiscBackendTest(
             dbapi_conn.rollback()
         eq_(val, "off")
 
-    def test_deferrable_flag_connection(self):
-        with testing.db.connect() as conn:
-            # asyncpg but not for deferrable?  which the PG docs actually
-            # state.  weird
-            conn = conn.execution_options(
-                isolation_level="SERIALIZABLE", postgresql_deferrable=True
-            )
+    @testing.combinations((True,), (False,), argnames="pre_ping")
+    def test_deferrable_flag_connection(self, testing_engine, pre_ping):
+        if pre_ping:
+            engine = testing_engine(options={"pool_pre_ping": True})
+        else:
+            engine = testing_engine()
 
-            dbapi_conn = conn.connection.connection
+        for i in range(2):
+            with engine.connect() as conn:
+                # asyncpg but not for deferrable?  which the PG docs actually
+                # state.  weird
+                conn = conn.execution_options(
+                    isolation_level="SERIALIZABLE", postgresql_deferrable=True
+                )
 
-            cursor = dbapi_conn.cursor()
-            cursor.execute("show transaction_deferrable")
-            val = cursor.fetchone()[0]
-            cursor.close()
-            eq_(val, "on")
-            is_true(testing.db.dialect.get_deferrable(dbapi_conn))
+                conn.execute(text("Select 1")).scalar()
+
+                dbapi_conn = conn.connection.connection
+
+                cursor = dbapi_conn.cursor()
+                cursor.execute("show transaction_deferrable")
+                val = cursor.fetchone()[0]
+                cursor.close()
+                eq_(val, "on")
+                is_true(testing.db.dialect.get_deferrable(dbapi_conn))
 
         cursor = dbapi_conn.cursor()
         try:
@@ -946,16 +964,20 @@ class MiscBackendTest(
             dbapi_conn.rollback()
         eq_(val, "off")
 
-    def test_readonly_flag_engine(self):
-        engine = engines.testing_engine(
+    @testing.combinations((True,), (False,), argnames="pre_ping")
+    def test_readonly_flag_engine(self, testing_engine, pre_ping):
+        engine = testing_engine(
             options={
                 "execution_options": dict(
                     isolation_level="SERIALIZABLE", postgresql_readonly=True
-                )
+                ),
+                "pool_pre_ping": pre_ping,
             }
         )
         for i in range(2):
             with engine.connect() as conn:
+                conn.execute(text("select 1")).scalar()
+
                 dbapi_conn = conn.connection.connection
 
                 cursor = dbapi_conn.cursor()

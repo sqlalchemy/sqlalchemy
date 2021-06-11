@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 6621
+
+    Fixed issue where the pool "pre ping" feature would implicitly start a
+    transaction, which would then interfere with custom transactional flags
+    such as PostgreSQL's "read only" mode when used with the psycopg2 driver.
+
