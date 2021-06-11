@@ -90,7 +90,7 @@ functions when inserting.
     >>> session.add(squidward)
     >>> session.flush()
     {opensql}BEGIN (implicit)
-    INSERT INTO user_account (name, fullname, created_at) VALUES (?, ?, >?)
+    INSERT INTO user_account (name, fullname, created_at) VALUES (?, ?, ?)
     [...] ('squidward', 'Squidward Tentacles', now())   
     >>> other_user = User(name=select(User.name).where(id=2).limit(1), fullname="Subquery User")
     >>> session.add(other_user)
