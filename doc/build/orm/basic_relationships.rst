@@ -14,6 +14,8 @@ The imports used for each of the following sections is as follows::
     Base = declarative_base()
 
 
+.. _relationship_patterns_o2m:
+
 One To Many
 ~~~~~~~~~~~
 
@@ -76,6 +78,8 @@ it is deassociated from its parent.  This behavior is described at
     :ref:`cascade_delete_orphan`
 
 
+.. _relationship_patterns_m2o:
+
 Many To One
 ~~~~~~~~~~~
 
@@ -123,14 +127,22 @@ One To One
 ~~~~~~~~~~
 
 One To One is essentially a bidirectional relationship with a scalar
-attribute on both sides. To achieve this, the :paramref:`_orm.relationship.uselist` flag indicates
+attribute on both sides. To achieve this, the :paramref:`_orm.relationship.uselist` flag
+set to a value of ``False`` indicates
 the placement of a scalar attribute instead of a collection on the "many" side
-of the relationship. To convert one-to-many into one-to-one::
+of the relationship.
+
+For example, to convert a :ref:`one-to-many <relationship_patterns_o2m>`
+relationship into one-to-one, we add ``uselist=False`` to what would normally
+be the "many" side of the relationship, renaming ``Parent.children`` to
+``Parent.child`` for clarity::
 
     class Parent(Base):
         __tablename__ = 'parent'
         id = Column(Integer, primary_key=True)
-        child = relationship("Child", uselist=False, back_populates="parent")
+
+        # this was previously Parent.children
+        child = relationship("Child", back_populates="parent", uselist=False)
 
     class Child(Base):
         __tablename__ = 'child'
@@ -138,7 +150,9 @@ of the relationship. To convert one-to-many into one-to-one::
         parent_id = Column(Integer, ForeignKey('parent.id'))
         parent = relationship("Parent", back_populates="child")
 
-Or for many-to-one::
+Similarly, to convert a :ref:`many-to-one <relationship_patterns_m2o>`
+relationship into one-to-one, we again apply ``uselist=False`` to the
+"many" side, in the below example renaming ``Child.parents`` to ``Child.parent``::
 
     class Parent(Base):
         __tablename__ = 'parent'
@@ -149,6 +163,8 @@ Or for many-to-one::
     class Child(Base):
         __tablename__ = 'child'
         id = Column(Integer, primary_key=True)
+
+        # this was previously Child.parents
         parent = relationship("Parent", back_populates="child", uselist=False)
 
 As always, the :paramref:`_orm.relationship.backref` and :func:`.backref` functions
