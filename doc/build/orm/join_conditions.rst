@@ -777,12 +777,16 @@ the rows in both ``A`` and ``B`` simultaneously::
         id = Column(Integer, primary_key=True)
         a_id = Column(ForeignKey('a.id'))
 
+        some_c_value = Column(String)
+
     class D(Base):
         __tablename__ = 'd'
 
         id = Column(Integer, primary_key=True)
         c_id = Column(ForeignKey('c.id'))
         b_id = Column(ForeignKey('b.id'))
+
+        some_d_value = Column(String)
 
     # 1. set up the join() as a variable, so we can refer
     # to it in the mapping multiple times.
@@ -801,6 +805,49 @@ With the above mapping, a simple join looks like:
 
     {opensql}SELECT a.id AS a_id, a.b_id AS a_b_id
     FROM a JOIN (b JOIN d ON d.b_id = b.id JOIN c ON c.id = d.c_id) ON a.b_id = b.id
+
+Using the AliasedClass target in Queries
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In the previous example, the ``A.b`` relationship refers to the ``B_viacd``
+entity as the target, and **not** the ``B`` class directly. To add additional
+criteria involving the ``A.b`` relationship, it's typically necessary to
+reference the ``B_viacd`` directly rather than using ``B``, especially in a
+case where the target entity of ``A.b`` is to be transformed into an alias or a
+subquery. Below illustrates the same relationship using a subquery, rather than
+a join::
+
+    subq = select(B).join(D, D.b_id == B.id).join(C, C.id == D.c_id).subquery()
+
+    B_viacd_subquery = aliased(B, subq)
+
+    A.b = relationship(B_viacd_subquery, primaryjoin=A.b_id == subq.c.id)
+
+A query using the above ``A.b`` relationship will render a subquery:
+
+.. sourcecode:: python+sql
+
+    sess.query(A).join(A.b).all()
+
+    {opensql}SELECT a.id AS a_id, a.b_id AS a_b_id
+    FROM a JOIN (SELECT b.id AS id, b.some_b_column AS some_b_column
+    FROM b JOIN d ON d.b_id = b.id JOIN c ON c.id = d.c_id) AS anon_1 ON a.b_id = anon_1.id
+
+If we want to add additional criteria based on the ``A.b`` join, we must do
+so in terms of ``B_viacd_subquery`` rather than ``B`` directly:
+
+.. sourcecode:: python+sql
+
+    (
+      sess.query(A).join(A.b).
+      filter(B_viacd_subquery.some_b_column == "some b").
+      order_by(B_viacd_subquery.id)
+    ).all()
+
+    {opensql}SELECT a.id AS a_id, a.b_id AS a_b_id
+    FROM a JOIN (SELECT b.id AS id, b.some_b_column AS some_b_column
+    FROM b JOIN d ON d.b_id = b.id JOIN c ON c.id = d.c_id) AS anon_1 ON a.b_id = anon_1.id
+    WHERE anon_1.some_b_column = ? ORDER BY anon_1.id
 
 .. _relationship_to_window_function:
 
