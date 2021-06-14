@@ -38,6 +38,17 @@ class Insert(StandardInsert):
         so as not to conflict with the existing
         :meth:`_expression.Insert.values` method.
 
+        .. tip::  The :attr:`_mysql.Insert.inserted` attribute is an instance
+            of :class:`_expression.ColumnCollection`, which provides an
+            interface the same as that of the :attr:`_schema.Table.c`
+            collection described at :ref:`metadata_tables_and_columns`.
+            With this collection, ordinary names are accessible like attributes
+            (e.g. ``stmt.inserted.some_column``), but special names and
+            dictionary method names should be accessed using indexed access,
+            such as ``stmt.inserted["column name"]`` or
+            ``stmt.inserted["values"]``.  See the docstring for
+            :class:`_expression.ColumnCollection` for further examples.
+
         .. seealso::
 
             :ref:`mysql_insert_on_duplicate_key_update` - example of how

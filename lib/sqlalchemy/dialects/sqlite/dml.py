@@ -45,6 +45,17 @@ class Insert(StandardInsert):
         be inserted, known as ``excluded``.  This attribute provides
         all columns in this row to be referenceable.
 
+        .. tip::  The :attr:`_sqlite.Insert.excluded` attribute is an instance
+            of :class:`_expression.ColumnCollection`, which provides an
+            interface the same as that of the :attr:`_schema.Table.c`
+            collection described at :ref:`metadata_tables_and_columns`.
+            With this collection, ordinary names are accessible like attributes
+            (e.g. ``stmt.excluded.some_column``), but special names and
+            dictionary method names should be accessed using indexed access,
+            such as ``stmt.excluded["column name"]`` or
+            ``stmt.excluded["values"]``.  See the docstring for
+            :class:`_expression.ColumnCollection` for further examples.
+
         """
         return alias(self.table, name="excluded").columns
 

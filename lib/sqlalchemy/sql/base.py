@@ -1035,31 +1035,54 @@ class SchemaVisitor(ClauseVisitor):
 class ColumnCollection(object):
     """Collection of :class:`_expression.ColumnElement` instances,
     typically for
-    selectables.
+    :class:`_sql.FromClause` objects.
 
-    The :class:`_expression.ColumnCollection`
-    has both mapping- and sequence- like
-    behaviors.   A :class:`_expression.ColumnCollection` usually stores
-    :class:`_schema.Column`
-    objects, which are then accessible both via mapping style access as well
-    as attribute access style.  The name for which a :class:`_schema.Column`
-    would
-    be present is normally that of the :paramref:`_schema.Column.key`
-    parameter,
-    however depending on the context, it may be stored under a special label
-    name::
+    The :class:`_sql.ColumnCollection` object is most commonly available
+    as the :attr:`_schema.Table.c` or :attr:`_schema.Table.columns` collection
+    on the :class:`_schema.Table` object, introduced at
+    :ref:`metadata_tables_and_columns`.
 
-        >>> from sqlalchemy import Column, Integer
-        >>> from sqlalchemy.sql import ColumnCollection
-        >>> x, y = Column('x', Integer), Column('y', Integer)
-        >>> cc = ColumnCollection(columns=[(x.name, x), (y.name, y)])
-        >>> cc.x
-        Column('x', Integer(), table=None)
-        >>> cc.y
-        Column('y', Integer(), table=None)
-        >>> cc['x']
-        Column('x', Integer(), table=None)
-        >>> cc['y']
+    The :class:`_expression.ColumnCollection` has both mapping- and sequence-
+    like behaviors. A :class:`_expression.ColumnCollection` usually stores
+    :class:`_schema.Column` objects, which are then accessible both via mapping
+    style access as well as attribute access style.
+
+    To access :class:`_schema.Column` objects using ordinary attribute-style
+    access, specify the name like any other object attribute, such as below
+    a column named ``employee_name`` is accessed::
+
+        >>> employee_table.c.employee_name
+
+    To access columns that have names with special characters or spaces,
+    index-style access is used, such as below which illustrates a column named
+    ``employee ' payment`` is accessed::
+
+        >>> employee_table.c["employee ' payment"]
+
+    As the :class:`_sql.ColumnCollection` object provides a Python dictionary
+    interface, common dictionary method names like
+    :meth:`_sql.ColumnCollection.keys`, :meth:`_sql.ColumnCollection.values`,
+    and :meth:`_sql.ColumnCollection.items` are available, which means that
+    database columns that are keyed under these names also need to use indexed
+    access::
+
+        >>> employee_table.c["values"]
+
+
+    The name for which a :class:`_schema.Column` would be present is normally
+    that of the :paramref:`_schema.Column.key` parameter.  In some contexts,
+    such as a :class:`_sql.Select` object that uses a label style set
+    using the :meth:`_sql.Select.set_label_style` method, a column of a certain
+    key may instead be represented under a particular label name such
+    as ``tablename_columnname``::
+
+        >>> from sqlalchemy import select, column, table
+        >>> from sqlalchemy import LABEL_STYLE_TABLENAME_PLUS_COL
+        >>> t = table("t", column("c"))
+        >>> stmt = select(t).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+        >>> subq = stmt.subquery()
+        >>> subq.c.t_c
+        <sqlalchemy.sql.elements.ColumnClause at 0x7f59dcf04fa0; t_c>
 
     :class:`.ColumnCollection` also indexes the columns in order and allows
     them to be accessible by their integer position::
@@ -1135,12 +1158,23 @@ class ColumnCollection(object):
         return [col for (k, col) in self._collection]
 
     def keys(self):
+        """Return a sequence of string key names for all columns in this
+        collection."""
         return [k for (k, col) in self._collection]
 
     def values(self):
+        """Return a sequence of :class:`_sql.ColumnClause` or
+        :class:`_schema.Column` objects for all columns in this
+        collection."""
         return [col for (k, col) in self._collection]
 
     def items(self):
+        """Return a sequence of (key, column) tuples for all columns in this
+        collection each consisting of a string key name and a
+        :class:`_sql.ColumnClause` or
+        :class:`_schema.Column` object.
+        """
+
         return list(self._collection)
 
     def __bool__(self):
@@ -1179,6 +1213,9 @@ class ColumnCollection(object):
             return True
 
     def compare(self, other):
+        """Compare this :class:`_expression.ColumnCollection` to another
+        based on the names of the keys"""
+
         for l, r in util.zip_longest(self, other):
             if l is not r:
                 return False
@@ -1189,6 +1226,10 @@ class ColumnCollection(object):
         return self.compare(other)
 
     def get(self, key, default=None):
+        """Get a :class:`_sql.ColumnClause` or :class:`_schema.Column` object
+        based on a string key name from this
+        :class:`_expression.ColumnCollection`."""
+
         if key in self._index:
             return self._index[key]
         else:
@@ -1210,12 +1251,18 @@ class ColumnCollection(object):
         raise NotImplementedError()
 
     def clear(self):
+        """Dictionary clear() is not implemented for
+        :class:`_sql.ColumnCollection`."""
         raise NotImplementedError()
 
     def remove(self, column):
+        """Dictionary remove() is not implemented for
+        :class:`_sql.ColumnCollection`."""
         raise NotImplementedError()
 
     def update(self, iter_):
+        """Dictionary update() is not implemented for
+        :class:`_sql.ColumnCollection`."""
         raise NotImplementedError()
 
     __hash__ = None
@@ -1231,6 +1278,17 @@ class ColumnCollection(object):
         self._index.update({k: col for k, col in reversed(self._collection)})
 
     def add(self, column, key=None):
+        """Add a column to this :class:`_sql.ColumnCollection`.
+
+        .. note::
+
+            This method is **not normally used by user-facing code**, as the
+            :class:`_sql.ColumnCollection` is usually part of an existing
+            object such as a :class:`_schema.Table`. To add a
+            :class:`_schema.Column` to an existing :class:`_schema.Table`
+            object, use the :meth:`_schema.Table.append_column` method.
+
+        """
         if key is None:
             key = column.key
 
@@ -1264,6 +1322,9 @@ class ColumnCollection(object):
             return True
 
     def as_immutable(self):
+        """Return an "immutable" form of this
+        :class:`_sql.ColumnCollection`."""
+
         return ImmutableColumnCollection(self)
 
     def corresponding_column(self, column, require_embedded=False):

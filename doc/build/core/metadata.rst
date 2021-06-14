@@ -47,6 +47,8 @@ to genericized types, such as :class:`~sqlalchemy.types.Integer` and
 varying levels of specificity as well as the ability to create custom types.
 Documentation on the type system can be found at :ref:`types_toplevel`.
 
+.. _metadata_tables_and_columns:
+
 Accessing Tables and Columns
 ----------------------------
 
@@ -82,7 +84,7 @@ this construct defines a reference to a remote table, and is fully described
 in :ref:`metadata_foreignkeys`. Methods of accessing information about this
 table include::
 
-    # access the column "EMPLOYEE_ID":
+    # access the column "employee_id":
     employees.columns.employee_id
 
     # or just
@@ -125,6 +127,20 @@ table include::
 
     # get the table related by a foreign key
     list(employees.c.employee_dept.foreign_keys)[0].column.table
+
+.. tip::
+
+  The :attr:`_sql.FromClause.c` collection, synonymous with the
+  :attr:`_sql.FromClause.columns` collection, is an instance of
+  :class:`_sql.ColumnCollection`, which provides a **dictionary-like interface**
+  to the collection of columns.   Names are ordinarily accessed like
+  attribute names, e.g. ``employees.c.employee_name``.  However for special names
+  with spaces or those that match the names of dictionary methods such as
+  :meth:`_sql.ColumnCollection.keys` or :meth:`_sql.ColumnCollection.values`,
+  indexed access must be used, such as ``employees.c['values']`` or
+  ``employees.c["some column"]``.  See :class:`_sql.ColumnCollection` for
+  further information.
+
 
 Creating and Dropping Database Tables
 -------------------------------------
