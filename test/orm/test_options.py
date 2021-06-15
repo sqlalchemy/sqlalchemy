@@ -3,6 +3,7 @@ from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import aliased
@@ -24,6 +25,7 @@ from sqlalchemy.orm import util as orm_util
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import assert_raises_message
+from sqlalchemy.testing.assertions import AssertsCompiledSQL
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
@@ -95,7 +97,7 @@ class PathTest(object):
                 val._bind_loader(
                     [
                         ent.entity_zero
-                        for ent in q._compile_state()._mapper_entities
+                        for ent in q._compile_state()._lead_mapper_entities
                     ],
                     q._compile_options._current_path,
                     attr,
@@ -104,7 +106,7 @@ class PathTest(object):
         else:
             compile_state = q._compile_state()
             compile_state.attributes = attr = {}
-            opt._process(compile_state, True)
+            opt._process(compile_state, [], True)
 
         assert_paths = [k[1] for k in attr]
         eq_(
@@ -398,6 +400,92 @@ class OfTypePathingTest(PathTest, QueryTest):
             l1,
             q,
             [(User, "addresses"), (User, "addresses", SubAddr, "sub_attr")],
+        )
+
+
+class WithEntitiesTest(QueryTest, AssertsCompiledSQL):
+    def test_options_legacy_with_entities_onelevel(self):
+        """test issue #6253 (part of #6503)"""
+
+        User = self.classes.User
+        sess = fixture_session()
+
+        q = (
+            sess.query(User)
+            .options(joinedload(User.addresses))
+            .with_entities(User.id)
+        )
+        self.assert_compile(q, "SELECT users.id AS users_id FROM users")
+
+    def test_options_with_only_cols_onelevel(self):
+        """test issue #6253 (part of #6503)"""
+
+        User = self.classes.User
+
+        q = (
+            select(User)
+            .options(joinedload(User.addresses))
+            .with_only_columns(User.id)
+        )
+        self.assert_compile(q, "SELECT users.id FROM users")
+
+    def test_options_entities_replaced_with_equivs_one(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        q = (
+            select(User, Address)
+            .options(joinedload(User.addresses))
+            .with_only_columns(User)
+        )
+        self.assert_compile(
+            q,
+            "SELECT users.id, users.name, addresses_1.id AS id_1, "
+            "addresses_1.user_id, addresses_1.email_address FROM users "
+            "LEFT OUTER JOIN addresses AS addresses_1 "
+            "ON users.id = addresses_1.user_id ORDER BY addresses_1.id",
+        )
+
+    def test_options_entities_replaced_with_equivs_two(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        q = (
+            select(User, Address)
+            .options(joinedload(User.addresses), joinedload(Address.dingaling))
+            .with_only_columns(User)
+        )
+        self.assert_compile(
+            q,
+            "SELECT users.id, users.name, addresses_1.id AS id_1, "
+            "addresses_1.user_id, addresses_1.email_address FROM users "
+            "LEFT OUTER JOIN addresses AS addresses_1 "
+            "ON users.id = addresses_1.user_id ORDER BY addresses_1.id",
+        )
+
+    def test_options_entities_replaced_with_equivs_three(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        q = (
+            select(User)
+            .options(joinedload(User.addresses))
+            .with_only_columns(User, Address)
+            .options(joinedload(Address.dingaling))
+        )
+        self.assert_compile(
+            q,
+            "SELECT users.id, users.name, addresses.id AS id_1, "
+            "addresses.user_id, addresses.email_address, "
+            "addresses_1.id AS id_2, addresses_1.user_id AS user_id_1, "
+            "addresses_1.email_address AS email_address_1, "
+            "dingalings_1.id AS id_3, dingalings_1.address_id, "
+            "dingalings_1.data "
+            "FROM users LEFT OUTER JOIN addresses AS addresses_1 "
+            "ON users.id = addresses_1.user_id, addresses "
+            "LEFT OUTER JOIN dingalings AS dingalings_1 "
+            "ON addresses.id = dingalings_1.address_id "
+            "ORDER BY addresses_1.id",
         )
 
 
@@ -1479,7 +1567,7 @@ class PickleTest(PathTest, QueryTest):
         load = opt._bind_loader(
             [
                 ent.entity_zero
-                for ent in query._compile_state()._mapper_entities
+                for ent in query._compile_state()._lead_mapper_entities
             ],
             query._compile_options._current_path,
             attr,
@@ -1516,7 +1604,7 @@ class PickleTest(PathTest, QueryTest):
         load = opt._bind_loader(
             [
                 ent.entity_zero
-                for ent in query._compile_state()._mapper_entities
+                for ent in query._compile_state()._lead_mapper_entities
             ],
             query._compile_options._current_path,
             attr,
@@ -1560,7 +1648,7 @@ class LocalOptsTest(PathTest, QueryTest):
                 ctx = query._compile_state()
                 for tb in opt._to_bind:
                     tb._bind_loader(
-                        [ent.entity_zero for ent in ctx._mapper_entities],
+                        [ent.entity_zero for ent in ctx._lead_mapper_entities],
                         query._compile_options._current_path,
                         attr,
                         False,
@@ -1658,7 +1746,7 @@ class SubOptionsTest(PathTest, QueryTest):
             val._bind_loader(
                 [
                     ent.entity_zero
-                    for ent in q._compile_state()._mapper_entities
+                    for ent in q._compile_state()._lead_mapper_entities
                 ],
                 q._compile_options._current_path,
                 attr_a,
@@ -1672,7 +1760,7 @@ class SubOptionsTest(PathTest, QueryTest):
                 val._bind_loader(
                     [
                         ent.entity_zero
-                        for ent in q._compile_state()._mapper_entities
+                        for ent in q._compile_state()._lead_mapper_entities
                     ],
                     q._compile_options._current_path,
                     attr_b,

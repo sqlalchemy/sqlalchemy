@@ -1747,6 +1747,29 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "addresses.user_id",
         )
 
+    def test_prev_entities_adapt(self):
+        """test #6503"""
+
+        m = MetaData()
+        users = Table("users", m, Column("id", Integer, primary_key=True))
+        addresses = Table(
+            "addresses",
+            m,
+            Column("id", Integer, primary_key=True),
+            Column("user_id", ForeignKey("users.id")),
+        )
+
+        ualias = users.alias()
+
+        s = select(users).join(addresses).with_only_columns(addresses.c.id)
+        s = sql_util.ClauseAdapter(ualias).traverse(s)
+
+        self.assert_compile(
+            s,
+            "SELECT addresses.id FROM users AS users_1 "
+            "JOIN addresses ON users_1.id = addresses.user_id",
+        )
+
     @testing.combinations((True,), (False,), argnames="use_adapt_from")
     def test_table_to_alias_1(self, use_adapt_from):
         t1alias = t1.alias("t1alias")

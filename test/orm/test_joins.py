@@ -327,6 +327,43 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "JOIN addresses ON users.id = addresses.user_id",
         )
 
+    @testing.combinations((True,), (False,), argnames="legacy")
+    @testing.combinations((True,), (False,), argnames="threelevel")
+    def test_join_with_entities(self, legacy, threelevel):
+        """test issue #6503"""
+
+        User, Address, Dingaling = self.classes("User", "Address", "Dingaling")
+
+        if legacy:
+            sess = fixture_session()
+            stmt = sess.query(User).join(Address).with_entities(Address.id)
+        else:
+            stmt = select(User).join(Address).with_only_columns(Address.id)
+
+            stmt = stmt.set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+
+        if threelevel:
+            if legacy:
+                stmt = stmt.join(Address.dingaling).with_entities(Dingaling.id)
+            else:
+                stmt = stmt.join(Address.dingaling).with_only_columns(
+                    Dingaling.id
+                )
+
+        if threelevel:
+            self.assert_compile(
+                stmt,
+                "SELECT dingalings.id AS dingalings_id "
+                "FROM users JOIN addresses ON users.id = addresses.user_id "
+                "JOIN dingalings ON addresses.id = dingalings.address_id",
+            )
+        else:
+            self.assert_compile(
+                stmt,
+                "SELECT addresses.id AS addresses_id FROM users "
+                "JOIN addresses ON users.id = addresses.user_id",
+            )
+
     def test_invalid_kwarg_join(self):
         User = self.classes.User
         sess = fixture_session()

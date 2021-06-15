@@ -30,6 +30,7 @@ from sqlalchemy.sql.visitors import InternalTraversal
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import mock
+from sqlalchemy.testing import ne_
 from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
 from .inheritance import _poly_fixtures
@@ -312,6 +313,111 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
             ),
             compare_values=True,
         )
+
+    def test_orm_query_using_with_entities(self):
+        """test issue #6503"""
+        User, Address, Keyword, Order, Item = self.classes(
+            "User", "Address", "Keyword", "Order", "Item"
+        )
+
+        self._run_cache_key_fixture(
+            lambda: stmt_20(
+                fixture_session()
+                .query(User)
+                .join(User.addresses)
+                .with_entities(Address.id),
+                #
+                fixture_session().query(Address.id).join(User.addresses),
+                #
+                fixture_session()
+                .query(User)
+                .options(selectinload(User.addresses))
+                .with_entities(User.id),
+                #
+                fixture_session()
+                .query(User)
+                .options(selectinload(User.addresses)),
+                #
+                fixture_session().query(User).with_entities(User.id),
+                #
+                # here, propagate_attr->orm is Address, entity is Address.id,
+                # but the join() + with_entities() will log a
+                # _MemoizedSelectEntities to differentiate
+                fixture_session()
+                .query(Address, Order)
+                .join(Address.dingaling)
+                .with_entities(Address.id),
+                #
+                # same, propagate_attr->orm is Address, entity is Address.id,
+                # but the join() + with_entities() will log a
+                # _MemoizedSelectEntities to differentiate
+                fixture_session()
+                .query(Address, User)
+                .join(Address.dingaling)
+                .with_entities(Address.id),
+            ),
+            compare_values=True,
+        )
+
+    def test_more_with_entities_sanity_checks(self):
+        """test issue #6503"""
+        User, Address, Keyword, Order, Item = self.classes(
+            "User", "Address", "Keyword", "Order", "Item"
+        )
+
+        sess = fixture_session()
+
+        q1 = (
+            sess.query(Address, Order)
+            .with_entities(Address.id)
+            ._statement_20()
+        )
+        q2 = (
+            sess.query(Address, User).with_entities(Address.id)._statement_20()
+        )
+
+        assert not q1._memoized_select_entities
+        assert not q2._memoized_select_entities
+
+        # no joins or options, so q1 and q2 have the same cache key as Order/
+        # User are discarded.  Note Address is first so propagate_attrs->orm is
+        # Address.
+        eq_(q1._generate_cache_key(), q2._generate_cache_key())
+
+        q3 = sess.query(Order).with_entities(Address.id)._statement_20()
+        q4 = sess.query(User).with_entities(Address.id)._statement_20()
+
+        # with Order/User as lead entity, this affects propagate_attrs->orm
+        # so keys are different
+        ne_(q3._generate_cache_key(), q4._generate_cache_key())
+
+        # confirm by deleting propagate attrs and memoized key and
+        # running again
+        q3._propagate_attrs = None
+        q4._propagate_attrs = None
+        del q3.__dict__["_generate_cache_key"]
+        del q4.__dict__["_generate_cache_key"]
+        eq_(q3._generate_cache_key(), q4._generate_cache_key())
+
+        # once there's a join() or options() prior to with_entities, now they
+        # are not discarded from the key; Order and User are in the
+        # _MemoizedSelectEntities
+        q5 = (
+            sess.query(Address, Order)
+            .join(Address.dingaling)
+            .with_entities(Address.id)
+            ._statement_20()
+        )
+        q6 = (
+            sess.query(Address, User)
+            .join(Address.dingaling)
+            .with_entities(Address.id)
+            ._statement_20()
+        )
+
+        assert q5._memoized_select_entities
+        assert q6._memoized_select_entities
+        ne_(q5._generate_cache_key(), q6._generate_cache_key())
 
     def test_orm_query_from_statement(self):
         User, Address, Keyword, Order, Item = self.classes(

@@ -514,6 +514,14 @@ class CoreFixtures(object):
             ),
         ),
         lambda: (
+            # test issue #6503
+            # join from table_a -> table_c, select table_b.c.a
+            select(table_a).join(table_c).with_only_columns(table_b.c.a),
+            # join from table_b -> table_c, select table_b.c.a
+            select(table_b.c.a).join(table_c).with_only_columns(table_b.c.a),
+            select(table_a).with_only_columns(table_b.c.a),
+        ),
+        lambda: (
             table_a.insert(),
             table_a.insert().values({})._annotate({"nocache": True}),
             table_b.insert(),
