@@ -72,6 +72,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +---------------------------------------+---------------------------------------+
 | IBM DB2 and Informix                  | ibm-db-sa_                            |
 +---------------------------------------+---------------------------------------+
+| IBM Netezza Performance Server        | nzalchemy_                            |
++---------------------------------------+---------------------------------------+
 | Microsoft Access (via pyodbc)         | sqlalchemy-access_                    |
 +---------------------------------------+---------------------------------------+
 | Microsoft SQL Server (via python-tds) | sqlalchemy-tds_                       |
@@ -89,6 +91,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 | Teradata Vantage                      | teradatasqlalchemy_                   |
 +---------------------------------------+---------------------------------------+
 
+.. _nzalchemy: https://pypi.org/project/nzalchemy/
 .. _ibm-db-sa: https://pypi.org/project/ibm-db-sa/
 .. _PyHive: https://github.com/dropbox/PyHive#sqlalchemy
 .. _teradatasqlalchemy: https://pypi.org/project/teradatasqlalchemy/
