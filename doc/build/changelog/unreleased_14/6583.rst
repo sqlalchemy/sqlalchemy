@@ -1,0 +1,9 @@
+.. change::
+    :tags: usecase, asyncio
+    :tickets: 6583
+
+    Implement a new :class:`_asyncio.async_scoped_session` to address some incompatible method interface
+    between :class:`.scoped_session` and :class:`_asyncio.AsyncSession`, in which some
+    method (e.g. remove) should be used with the async keyword async/await. Additionally, In order to avoid code
+    redundancy, a :class:`_ScopedSessionMixin` is created and inherited in both :class:`.scoped_session`
+    and :class:`_asyncio.async_scoped_session`.
