@@ -415,7 +415,47 @@ from using any connection more than once::
     )
 
 
+.. _asyncio_scoped_session:
+
+Using asyncio scoped session
+----------------------------
+
+The usage of :class:`_asyncio.async_scoped_session` is mostly similar to
+:class:`.scoped_session`. However, since there's no "thread-local" concept in
+the asyncio context, the "scopefunc" paramater must be provided to the
+constructor::
+
+    from asyncio import current_task
+
+    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.ext.asyncio import async_scoped_session
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    async_session_factory = sessionmaker(some_async_engine, class_=_AsyncSession)
+    AsyncSession = async_scoped_session(async_session_factory, scopefunc=current_task)
+
+    some_async_session = AsyncSession()
+
+:class:`_asyncio.async_scoped_session` also includes **proxy
+behavior** similar to that of :class:`.scoped_session`, which means it can be
+treated as a :class:`_asyncio.AsyncSession` directly, keeping in mind that
+the usual ``await`` keywords are necessary, including for the
+:meth:`_asyncio.async_scoped_session.remove` method::
+
+    async def some_function(some_async_session, some_object):
+       # use the AsyncSession directly
+       some_async_session.add(some_object)
+
+       # use the AsyncSession via the context-local proxy
+       await AsyncSession.commit()
+
+       # "remove" the current proxied AsyncSession for the local context
+       await AsyncSession.remove()
+
+.. versionadded:: 1.4.19
+
 .. currentmodule:: sqlalchemy.ext.asyncio
+
 
 Engine API Documentation
 -------------------------
@@ -455,6 +495,10 @@ ORM Session API Documentation
 .. autofunction:: async_object_session
 
 .. autofunction:: async_session
+
+.. autoclass:: async_scoped_session
+   :members:
+   :inherited-members:
 
 .. autoclass:: AsyncSession
    :members:

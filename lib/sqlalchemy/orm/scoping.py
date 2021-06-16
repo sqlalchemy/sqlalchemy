@@ -14,7 +14,54 @@ from ..util import ScopedRegistry
 from ..util import ThreadLocalRegistry
 from ..util import warn
 
-__all__ = ["scoped_session"]
+__all__ = ["scoped_session", "ScopedSessionMixin"]
+
+
+class ScopedSessionMixin(object):
+    @property
+    def _proxied(self):
+        return self.registry()
+
+    def __call__(self, **kw):
+        r"""Return the current :class:`.Session`, creating it
+        using the :attr:`.scoped_session.session_factory` if not present.
+
+        :param \**kw: Keyword arguments will be passed to the
+         :attr:`.scoped_session.session_factory` callable, if an existing
+         :class:`.Session` is not present.  If the :class:`.Session` is present
+         and keyword arguments have been passed,
+         :exc:`~sqlalchemy.exc.InvalidRequestError` is raised.
+
+        """
+        if kw:
+            if self.registry.has():
+                raise sa_exc.InvalidRequestError(
+                    "Scoped session is already present; "
+                    "no new arguments may be specified."
+                )
+            else:
+                sess = self.session_factory(**kw)
+                self.registry.set(sess)
+                return sess
+        else:
+            return self.registry()
+
+    def configure(self, **kwargs):
+        """reconfigure the :class:`.sessionmaker` used by this
+        :class:`.scoped_session`.
+
+        See :meth:`.sessionmaker.configure`.
+
+        """
+
+        if self.registry.has():
+            warn(
+                "At least one scoped session is already present. "
+                " configure() can not affect sessions that have "
+                "already been created."
+            )
+
+        self.session_factory.configure(**kwargs)
 
 
 @create_proxy_methods(
@@ -64,7 +111,7 @@ __all__ = ["scoped_session"]
         "autocommit",
     ],
 )
-class scoped_session(object):
+class scoped_session(ScopedSessionMixin):
     """Provides scoped management of :class:`.Session` objects.
 
     See :ref:`unitofwork_contextual` for a tutorial.
@@ -100,34 +147,6 @@ class scoped_session(object):
         else:
             self.registry = ThreadLocalRegistry(session_factory)
 
-    @property
-    def _proxied(self):
-        return self.registry()
-
-    def __call__(self, **kw):
-        r"""Return the current :class:`.Session`, creating it
-        using the :attr:`.scoped_session.session_factory` if not present.
-
-        :param \**kw: Keyword arguments will be passed to the
-         :attr:`.scoped_session.session_factory` callable, if an existing
-         :class:`.Session` is not present.  If the :class:`.Session` is present
-         and keyword arguments have been passed,
-         :exc:`~sqlalchemy.exc.InvalidRequestError` is raised.
-
-        """
-        if kw:
-            if self.registry.has():
-                raise sa_exc.InvalidRequestError(
-                    "Scoped session is already present; "
-                    "no new arguments may be specified."
-                )
-            else:
-                sess = self.session_factory(**kw)
-                self.registry.set(sess)
-                return sess
-        else:
-            return self.registry()
-
     def remove(self):
         """Dispose of the current :class:`.Session`, if present.
 
@@ -144,23 +163,6 @@ class scoped_session(object):
         if self.registry.has():
             self.registry().close()
         self.registry.clear()
-
-    def configure(self, **kwargs):
-        """reconfigure the :class:`.sessionmaker` used by this
-        :class:`.scoped_session`.
-
-        See :meth:`.sessionmaker.configure`.
-
-        """
-
-        if self.registry.has():
-            warn(
-                "At least one scoped session is already present. "
-                " configure() can not affect sessions that have "
-                "already been created."
-            )
-
-        self.session_factory.configure(**kwargs)
 
     def query_property(self, query_cls=None):
         """return a class property which produces a :class:`_query.Query`

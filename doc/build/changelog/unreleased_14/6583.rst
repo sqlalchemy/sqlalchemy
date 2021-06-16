@@ -1,0 +1,13 @@
+.. change::
+    :tags: usecase, asyncio
+    :tickets: 6583
+
+    Implemented :class:`_asyncio.async_scoped_session` to address some
+    asyncio-related incompatibilities between :class:`_orm.scoped_session` and
+    :class:`_asyncio.AsyncSession`, in which some methods (notably the
+    :meth:`_asyncio.async_scoped_session.remove` method) should be used with
+    the ``await`` keyword.
+
+    .. seealso::
+
+        :ref:`asyncio_scoped_session`

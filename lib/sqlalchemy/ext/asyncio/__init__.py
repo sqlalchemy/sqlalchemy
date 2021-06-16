@@ -14,6 +14,7 @@ from .events import AsyncSessionEvents
 from .result import AsyncMappingResult
 from .result import AsyncResult
 from .result import AsyncScalarResult
+from .scoping import async_scoped_session
 from .session import async_object_session
 from .session import async_session
 from .session import AsyncSession

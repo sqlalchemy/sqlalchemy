@@ -252,7 +252,8 @@ Contextual Session API
 ----------------------
 
 .. autoclass:: sqlalchemy.orm.scoping.scoped_session
-   :members:
+    :members:
+    :inherited-members:
 
 .. autoclass:: sqlalchemy.util.ScopedRegistry
     :members:
