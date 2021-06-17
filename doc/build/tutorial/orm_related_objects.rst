@@ -122,7 +122,7 @@ to its ``Address.user`` attribute, that ``Address`` becomes part of the
   [Address(id=None, email_address='pearl.krabs@gmail.com'), Address(id=None, email_address='pearl@aol.com')]
 
 We actually made use of the ``user`` parameter as a keyword argument in the
-``Address`` consructor, which is accepted just like any other mapped attribute
+``Address`` constructor, which is accepted just like any other mapped attribute
 that was declared on the ``Address`` class.  It is equivalent to assignment
 of the ``Address.user`` attribute after the fact::
 
