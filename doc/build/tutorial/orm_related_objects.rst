@@ -159,7 +159,7 @@ The three objects are now in the :term:`pending` state; this means they are
 ready to be the subject of an INSERT operation but this has not yet proceeded;
 all three objects have no primary key assigned yet, and in addition, the ``a1``
 and ``a2`` objects have an attribute called ``user_id`` which refers to the
-:class:`_schema.Column` that has a :class:`_schema.ForeignKeyConsraint`
+:class:`_schema.Column` that has a :class:`_schema.ForeignKeyConstraint`
 referring to the ``user_account.id`` column; these are also ``None`` as the
 objects are not yet associated with a real database row::
 
