@@ -122,7 +122,7 @@ to its ``Address.user`` attribute, that ``Address`` becomes part of the
   [Address(id=None, email_address='pearl.krabs@gmail.com'), Address(id=None, email_address='pearl@aol.com')]
 
 We actually made use of the ``user`` parameter as a keyword argument in the
-``Address`` consructor, which is accepted just like any other mapped attribute
+``Address`` constructor, which is accepted just like any other mapped attribute
 that was declared on the ``Address`` class.  It is equivalent to assignment
 of the ``Address.user`` attribute after the fact::
 
@@ -159,7 +159,7 @@ The three objects are now in the :term:`pending` state; this means they are
 ready to be the subject of an INSERT operation but this has not yet proceeded;
 all three objects have no primary key assigned yet, and in addition, the ``a1``
 and ``a2`` objects have an attribute called ``user_id`` which refers to the
-:class:`_schema.Column` that has a :class:`_schema.ForeignKeyConsraint`
+:class:`_schema.Column` that has a :class:`_schema.ForeignKeyConstraint`
 referring to the ``user_account.id`` column; these are also ``None`` as the
 objects are not yet associated with a real database row::
 
