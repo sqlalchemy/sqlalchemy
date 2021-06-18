@@ -25,6 +25,8 @@ else:
 
 
 def is_exit_exception(e):
+    # note asyncio.CancelledError is already BaseException
+    # so was an exit exception in any case
     return not isinstance(e, Exception) or isinstance(
         e, (asyncio.TimeoutError, asyncio.CancelledError)
     )
@@ -118,7 +120,7 @@ async def greenlet_spawn(
                 # wait for a coroutine from await_ and then return its
                 # result back to it.
                 value = await result
-            except Exception:
+            except BaseException:
                 # this allows an exception to be raised within
                 # the moderated greenlet so that it can continue
                 # its expected flow.

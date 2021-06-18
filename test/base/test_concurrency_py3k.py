@@ -47,6 +47,29 @@ class TestAsyncioCompat(fixtures.TestBase):
             await greenlet_spawn(go, run1, err)
 
     @async_test
+    async def test_propagate_cancelled(self):
+        """test #6652"""
+        cleanup = []
+
+        async def async_meth_raise():
+            raise asyncio.CancelledError()
+
+        def sync_meth():
+            try:
+                await_only(async_meth_raise())
+            except:
+                cleanup.append(True)
+                raise
+
+        async def run_w_cancel():
+            await greenlet_spawn(sync_meth)
+
+        with expect_raises(asyncio.CancelledError, check_context=False):
+            await run_w_cancel()
+
+        assert cleanup
+
+    @async_test
     async def test_sync_error(self):
         def go():
             await_only(run1())

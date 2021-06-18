@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, asyncio, postgresql
+    :tickets: 6652
+
+    Fixed bug in asyncio implementation where the greenlet adaptation system
+    failed to propagate ``BaseException`` subclasses, most notably including
+    ``asyncio.CancelledError``, to the exception handling logic used by the
+    engine to invalidate and clean up the connection, thus preventing
+    connections from being correctly disposed when a task was cancelled.
+
+
