@@ -1655,9 +1655,8 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
     def python_type(self):
         return dt.timedelta
 
-    @property
-    def impl(self):
-        return self._type_affinity().impl
+    def coerce_compared_value(self, op, value):
+        return self
 
 PGInterval = INTERVAL
 
