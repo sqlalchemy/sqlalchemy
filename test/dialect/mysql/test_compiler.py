@@ -1333,28 +1333,28 @@ class MatchExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            expr.in_boolean_mode,
+            expr.in_boolean_mode(),
             "MATCH (user.firstname, user.lastname) AGAINST "
             "(%s IN BOOLEAN MODE)",
             dialect=self.__dialect__,
         )
 
         self.assert_compile(
-            expr.in_natural_language_mode,
+            expr.in_natural_language_mode(),
             "MATCH (user.firstname, user.lastname) AGAINST "
             "(%s IN NATURAL LANGUAGE MODE)",
             dialect=self.__dialect__,
         )
 
         self.assert_compile(
-            expr.with_query_expansion,
+            expr.with_query_expansion(),
             "MATCH (user.firstname, user.lastname) AGAINST "
             "(%s WITH QUERY EXPANSION)",
             dialect=self.__dialect__,
         )
 
         self.assert_compile(
-            expr.in_natural_language_mode.with_query_expansion,
+            expr.in_natural_language_mode().with_query_expansion(),
             "MATCH (user.firstname, user.lastname) AGAINST "
             "(%s IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION)",
             dialect=self.__dialect__,
@@ -1383,22 +1383,22 @@ class MatchExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
         assert_raises_message(
             exc.CompileError,
             msg % (True, False, True),
-            expr.in_boolean_mode.with_query_expansion.compile,
+            expr.in_boolean_mode().with_query_expansion().compile,
             dialect=self.__dialect__,
         )
 
         assert_raises_message(
             exc.CompileError,
             msg % (True, True, False),
-            expr.in_boolean_mode.in_natural_language_mode.compile,
+            expr.in_boolean_mode().in_natural_language_mode().compile,
             dialect=self.__dialect__,
         )
 
         # fmt: off
         callback = expr\
-            .in_boolean_mode\
-            .in_natural_language_mode\
-            .with_query_expansion\
+            .in_boolean_mode()\
+            .in_natural_language_mode()\
+            .with_query_expansion()\
             .compile
         # fmt: on
 

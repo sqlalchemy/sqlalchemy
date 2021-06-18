@@ -7,9 +7,8 @@ from sqlalchemy.sql import operators
 from sqlalchemy.util import immutabledict
 
 
-def property_enables_flag(flag_name):
+def enables_flag(flag_name):
     def wrapper(target):
-        @property
         @wraps(target)
         def inner(self):
             update = {flag_name: True}
@@ -41,7 +40,7 @@ class match_(elements.ColumnElement):
         )
 
         stmt = select(users_table)\
-            .where(match_expr.in_boolean_mode)\
+            .where(match_expr.in_boolean_mode())\
             .order_by(desc(match_expr))
 
     Would produce SQL resembling::
@@ -61,8 +60,9 @@ class match_(elements.ColumnElement):
 
     :param: against typically scalar expression to be coerced into a ``str``
 
-    :param: flags optional ``dict``. Use properties ``in_boolean_mode``,
-     ``in_natural_language_mode`` and ``with_query_expansion`` to control it::
+    :param: flags optional ``sqlalchemy.util.immutabledict``. Use methods
+     `in_boolean_mode``, ``in_natural_language_mode`` and
+     ``with_query_expansion`` to control it::
 
         match_expr = match_(
             users_table.c.firstname,
@@ -74,22 +74,22 @@ class match_(elements.ColumnElement):
 
         # MATCH(firstname, lastname) AGAINST (:param_1)
 
-        print(match_expr.in_boolean_mode)
+        print(match_expr.in_boolean_mode())
 
         # MATCH(firstname, lastname) AGAINST (:param_1 IN BOOLEAN MODE)
 
-        print(match_expr.in_natural_language_mode.with_query_expansion)
+        print(match_expr.in_natural_language_mode().with_query_expansion())
 
         # MATCH(firstname, lastname) AGAINST
         # (:param_1 IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION)
 
-    :property: ``in_boolean_mode`` returns new ``match_`` object with
+    :meth: ``in_boolean_mode`` returns new ``match_`` object with
      set to ``True`` the ``mysql_boolean_mode`` flag
 
-    :property: ``in_natural_language_mode`` returns new ``match_`` object with
+    :meth: ``in_natural_language_mode`` returns new ``match_`` object with
      set to ``True`` the ``mysql_natural_language`` flag
 
-    :property: ``with_query_expansion`` returns new ``match_`` object with
+    :meth: ``with_query_expansion`` returns new ``match_`` object with
      set to ``True`` the ``mysql_query_expansion`` flag
 
     .. versionadded:: 1.4.20
@@ -136,15 +136,15 @@ class match_(elements.ColumnElement):
         self.against = against
         self.flags = kwargs.get("flags", self.default_flags)
 
-    @property_enables_flag("mysql_boolean_mode")
+    @enables_flag("mysql_boolean_mode")
     def in_boolean_mode(self):
         pass
 
-    @property_enables_flag("mysql_natural_language")
+    @enables_flag("mysql_natural_language")
     def in_natural_language_mode(self):
         pass
 
-    @property_enables_flag("mysql_query_expansion")
+    @enables_flag("mysql_query_expansion")
     def with_query_expansion(self):
         pass
 
