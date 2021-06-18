@@ -50,6 +50,7 @@ from sqlalchemy import UnicodeText
 from sqlalchemy import VARCHAR
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.dialects.mysql import insert
+from sqlalchemy.dialects.mysql import match
 from sqlalchemy.sql import column
 from sqlalchemy.sql import table
 from sqlalchemy.sql.expression import literal_column
@@ -413,21 +414,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "ON UPDATE/ON DELETE clauses to be ignored.",
             schema.CreateTable(t2).compile,
             dialect=mysql.dialect(),
-        )
-
-    def test_match(self):
-        matchtable = table("matchtable", column("title", String))
-        self.assert_compile(
-            matchtable.c.title.match("somstr"),
-            "MATCH (matchtable.title) AGAINST (%s IN BOOLEAN MODE)",
-        )
-
-    def test_match_compile_kw(self):
-        expr = literal("x").match(literal("y"))
-        self.assert_compile(
-            expr,
-            "MATCH ('x') AGAINST ('y' IN BOOLEAN MODE)",
-            literal_binds=True,
         )
 
     def test_concat_compile_kw(self):
@@ -1206,4 +1192,152 @@ class RegexpTestMariaDb(fixtures.TestBase, RegexpCommon):
             ),
             "REGEXP_REPLACE(mytable.myid, CONCAT('(?', %s, ')', %s), %s)",
             checkpositional=("ig", "pattern", "replacement"),
+        )
+
+
+class MatchExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
+
+    __dialect__ = mysql.dialect()
+
+    match_table = table(
+        "user",
+        column("firstname", String),
+        column("lastname", String),
+    )
+
+    @testing.combinations(
+        (
+            lambda title: title.match("somstr", mysql_boolean_mode=False),
+            "MATCH (matchtable.title) AGAINST (%s)",
+        ),
+        (
+            lambda title: title.match(
+                "somstr",
+                mysql_boolean_mode=False,
+                mysql_natural_language=True,
+            ),
+            "MATCH (matchtable.title) AGAINST (%s IN NATURAL LANGUAGE MODE)",
+        ),
+        (
+            lambda title: title.match(
+                "somstr",
+                mysql_boolean_mode=False,
+                mysql_query_expansion=True,
+            ),
+            "MATCH (matchtable.title) AGAINST (%s WITH QUERY EXPANSION)",
+        ),
+        (
+            lambda title: title.match(
+                "somstr",
+                mysql_boolean_mode=False,
+                mysql_natural_language=True,
+                mysql_query_expansion=True,
+            ),
+            "MATCH (matchtable.title) AGAINST "
+            "(%s IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION)",
+        ),
+    )
+    def test_match_expression_single_col(self, case, expected):
+        matchtable = table("matchtable", column("title", String))
+        title = matchtable.c.title
+
+        expr = case(title)
+        self.assert_compile(expr, expected)
+
+    @testing.combinations(
+        (
+            lambda expr: expr,
+            "MATCH (user.firstname, user.lastname) AGAINST (%s)",
+        ),
+        (
+            lambda expr: expr.in_boolean_mode(),
+            "MATCH (user.firstname, user.lastname) AGAINST "
+            "(%s IN BOOLEAN MODE)",
+        ),
+        (
+            lambda expr: expr.in_natural_language_mode(),
+            "MATCH (user.firstname, user.lastname) AGAINST "
+            "(%s IN NATURAL LANGUAGE MODE)",
+        ),
+        (
+            lambda expr: expr.with_query_expansion(),
+            "MATCH (user.firstname, user.lastname) AGAINST "
+            "(%s WITH QUERY EXPANSION)",
+        ),
+        (
+            lambda expr: (
+                expr.in_natural_language_mode().with_query_expansion()
+            ),
+            "MATCH (user.firstname, user.lastname) AGAINST "
+            "(%s IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION)",
+        ),
+    )
+    def test_match_expression_multiple_cols(self, case, expected):
+        firstname = self.match_table.c.firstname
+        lastname = self.match_table.c.lastname
+
+        expr = match(firstname, lastname, against="Firstname Lastname")
+
+        expr = case(expr)
+        self.assert_compile(expr, expected)
+
+    def test_cols_required(self):
+        assert_raises_message(
+            exc.ArgumentError,
+            "columns are required",
+            match,
+            against="Firstname Lastname",
+        )
+
+    @testing.combinations(
+        (True, False, True), (True, True, False), (True, True, True)
+    )
+    def test_invalid_combinations(
+        self, boolean_mode, natural_language, query_expansion
+    ):
+        firstname = self.match_table.c.firstname
+        lastname = self.match_table.c.lastname
+
+        assert_raises_message(
+            exc.ArgumentError,
+            "columns are required",
+            match,
+            against="Firstname Lastname",
+        )
+
+        expr = match(
+            firstname,
+            lastname,
+            against="Firstname Lastname",
+            in_boolean_mode=boolean_mode,
+            in_natural_language_mode=natural_language,
+            with_query_expansion=query_expansion,
+        )
+        msg = (
+            "Invalid MySQL match flags: "
+            "in_boolean_mode=%s, "
+            "in_natural_language_mode=%s, "
+            "with_query_expansion=%s"
+        ) % (boolean_mode, natural_language, query_expansion)
+
+        assert_raises_message(
+            exc.CompileError,
+            msg,
+            expr.compile,
+            dialect=self.__dialect__,
+        )
+
+    def test_match_operator(self):
+        matchtable = table("matchtable", column("title", String))
+        self.assert_compile(
+            matchtable.c.title.match("somstr"),
+            "MATCH (matchtable.title) AGAINST (%s IN BOOLEAN MODE)",
+        )
+
+    def test_literal_binds(self):
+        expr = literal("x").match(literal("y"))
+        self.assert_compile(
+            expr,
+            "MATCH ('x') AGAINST ('y' IN BOOLEAN MODE)",
+            literal_binds=True,
         )

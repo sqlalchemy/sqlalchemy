@@ -443,6 +443,15 @@ available.
 
     select(...).with_hint(some_table, "USE INDEX xyz")
 
+* MATCH operator support::
+
+    from sqlalchemy.dialects.mysql import match
+    select(...).where(match(col1, col2, against="some expr").in_boolean_mode())
+
+    .. seealso::
+
+        :class:`_mysql.match`
+
 .. _mysql_insert_on_duplicate_key_update:
 
 INSERT...ON DUPLICATE KEY UPDATE (Upsert)
@@ -928,6 +937,7 @@ output::
 
 from array import array as _array
 from collections import defaultdict
+from itertools import compress
 import re
 
 from sqlalchemy import literal_column
@@ -1583,11 +1593,67 @@ class MySQLCompiler(compiler.SQLCompiler):
             self.process(binary.right, **kw),
         )
 
-    def visit_match_op_binary(self, binary, operator, **kw):
-        return "MATCH (%s) AGAINST (%s IN BOOLEAN MODE)" % (
-            self.process(binary.left, **kw),
-            self.process(binary.right, **kw),
+    _match_valid_flag_combinations = frozenset(
+        (
+            # (boolean_mode, natural_language, query_expansion)
+            (False, False, False),
+            (True, False, False),
+            (False, True, False),
+            (False, False, True),
+            (False, True, True),
         )
+    )
+
+    _match_flag_expressions = (
+        "IN BOOLEAN MODE",
+        "IN NATURAL LANGUAGE MODE",
+        "WITH QUERY EXPANSION",
+    )
+
+    def visit_mysql_match(self, element, **kw):
+        return self.visit_match_op_binary(element, element.operator, **kw)
+
+    def visit_match_op_binary(self, binary, operator, **kw):
+        """
+        Note that `mysql_boolean_mode` is enabled by default because of
+        backward compatibility
+        """
+
+        modifiers = binary.modifiers
+
+        boolean_mode = modifiers.get("mysql_boolean_mode", True)
+        natural_language = modifiers.get("mysql_natural_language", False)
+        query_expansion = modifiers.get("mysql_query_expansion", False)
+
+        flag_combination = (boolean_mode, natural_language, query_expansion)
+
+        if flag_combination not in self._match_valid_flag_combinations:
+            flags = (
+                "in_boolean_mode=%s" % boolean_mode,
+                "in_natural_language_mode=%s" % natural_language,
+                "with_query_expansion=%s" % query_expansion,
+            )
+
+            flags = ", ".join(flags)
+
+            raise exc.CompileError("Invalid MySQL match flags: %s" % flags)
+
+        match_clause = binary.left
+        match_clause = self.process(match_clause, **kw)
+        against_clause = self.process(binary.right, **kw)
+
+        if any(flag_combination):
+            flag_expressions = compress(
+                self._match_flag_expressions,
+                flag_combination,
+            )
+
+            against_clause = [against_clause]
+            against_clause.extend(flag_expressions)
+
+            against_clause = " ".join(against_clause)
+
+        return "MATCH (%s) AGAINST (%s)" % (match_clause, against_clause)
 
     def get_from_hint_text(self, table, text):
         return text

@@ -1,0 +1,11 @@
+.. change::
+    :tags: usecase, mysql
+    :tickets: 6132
+
+    Added new construct :class:`_mysql.match`, which provides for the full
+    range of MySQL's MATCH operator including multiple column support and
+    modifiers. Pull request courtesy Anton Kovalevich.
+
+    .. seealso::
+
+        :class:`_mysql.match`
