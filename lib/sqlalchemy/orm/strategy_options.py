@@ -172,13 +172,32 @@ class Load(Generative, LoaderOption):
     _of_type = None
     _extra_criteria = ()
 
+    def process_compile_state_replaced_entities(
+        self, compile_state, mapper_entities
+    ):
+        if not compile_state.compile_options._enable_eagerloads:
+            return
+
+        # process is being run here so that the options given are validated
+        # against what the lead entities were, as well as to accommodate
+        # for the entities having been replaced with equivalents
+        self._process(
+            compile_state,
+            mapper_entities,
+            not bool(compile_state.current_path),
+        )
+
     def process_compile_state(self, compile_state):
         if not compile_state.compile_options._enable_eagerloads:
             return
 
-        self._process(compile_state, not bool(compile_state.current_path))
+        self._process(
+            compile_state,
+            compile_state._lead_mapper_entities,
+            not bool(compile_state.current_path),
+        )
 
-    def _process(self, compile_state, raiseerr):
+    def _process(self, compile_state, mapper_entities, raiseerr):
         is_refresh = compile_state.compile_options._for_refresh_state
         current_path = compile_state.current_path
         if current_path:
@@ -700,7 +719,7 @@ class _UnboundLoad(Load):
         state["path"] = tuple(ret)
         self.__dict__ = state
 
-    def _process(self, compile_state, raiseerr):
+    def _process(self, compile_state, mapper_entities, raiseerr):
         dedupes = compile_state.attributes["_unbound_load_dedupes"]
         is_refresh = compile_state.compile_options._for_refresh_state
         for val in self._to_bind:
@@ -709,10 +728,7 @@ class _UnboundLoad(Load):
                 if is_refresh and not val.propagate_to_loaders:
                     continue
                 val._bind_loader(
-                    [
-                        ent.entity_zero
-                        for ent in compile_state._mapper_entities
-                    ],
+                    [ent.entity_zero for ent in mapper_entities],
                     compile_state.current_path,
                     compile_state.attributes,
                     raiseerr,

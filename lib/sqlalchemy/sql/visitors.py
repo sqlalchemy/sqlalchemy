@@ -24,6 +24,7 @@ http://techspot.zzzeek.org/2008/01/23/expression-transformations/ .
 """
 
 from collections import deque
+import itertools
 import operator
 
 from .. import exc
@@ -118,6 +119,38 @@ class Traversible(util.with_metaclass(TraversibleType)):
     :class:`.visitors.TraversibleType` metaclass.
 
     """
+
+    @util.preload_module("sqlalchemy.sql.traversals")
+    def get_children(self, omit_attrs=(), **kw):
+        r"""Return immediate child :class:`.visitors.Traversible`
+        elements of this :class:`.visitors.Traversible`.
+
+        This is used for visit traversal.
+
+        \**kw may contain flags that change the collection that is
+        returned, for example to return a subset of items in order to
+        cut down on larger traversals, or to return child items from a
+        different context (such as schema-level collections instead of
+        clause-level).
+
+        """
+
+        traversals = util.preloaded.sql_traversals
+
+        try:
+            traverse_internals = self._traverse_internals
+        except AttributeError:
+            # user-defined classes may not have a _traverse_internals
+            return []
+
+        dispatch = traversals._get_children.run_generated_dispatch
+        return itertools.chain.from_iterable(
+            meth(obj, **kw)
+            for attrname, obj, meth in dispatch(
+                self, traverse_internals, "_generated_get_children_traversal"
+            )
+            if attrname not in omit_attrs and obj is not None
+        )
 
 
 class _InternalTraversalType(type):
@@ -392,6 +425,8 @@ class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
     """
 
     dp_setup_join_tuple = symbol("SJ")
+
+    dp_memoized_select_entities = symbol("ME")
 
     dp_statement_hint_list = symbol("SH")
     """Visit the ``_statement_hints`` collection of a

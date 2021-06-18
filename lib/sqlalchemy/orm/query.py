@@ -57,6 +57,7 @@ from ..sql.annotation import SupportsCloneAnnotations
 from ..sql.base import _entity_namespace_key
 from ..sql.base import _generative
 from ..sql.base import Executable
+from ..sql.selectable import _MemoizedSelectEntities
 from ..sql.selectable import _SelectFromElements
 from ..sql.selectable import ForUpdateArg
 from ..sql.selectable import GroupedElement
@@ -124,6 +125,8 @@ class Query(
     _setup_joins = ()
     _legacy_setup_joins = ()
     _label_style = LABEL_STYLE_LEGACY_ORM
+
+    _memoized_select_entities = ()
 
     _compile_options = ORMCompileState.default_compile_options
 
@@ -1433,6 +1436,7 @@ class Query(
                         limit(1)
 
         """
+        _MemoizedSelectEntities._generate_for_statement(self)
         self._set_entities(entities)
 
     @_generative

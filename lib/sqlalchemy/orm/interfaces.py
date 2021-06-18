@@ -750,6 +750,18 @@ class LoaderOption(ORMOption):
 
     _is_compile_state = True
 
+    def process_compile_state_replaced_entities(
+        self, compile_state, mapper_entities
+    ):
+        """Apply a modification to a given :class:`.CompileState`,
+        given entities that were replaced by with_only_columns() or
+        with_entities().
+
+        .. versionadded:: 1.4.19
+
+        """
+        self.process_compile_state(compile_state)
+
     def process_compile_state(self, compile_state):
         """Apply a modification to a given :class:`.CompileState`."""
 

@@ -32,7 +32,6 @@ from .base import NO_ARG
 from .base import PARSE_AUTOCOMMIT
 from .base import SingletonConstant
 from .coercions import _document_text_coercion
-from .traversals import _get_children
 from .traversals import HasCopyInternals
 from .traversals import MemoizedHasCacheKey
 from .traversals import NO_CACHE
@@ -388,33 +387,6 @@ class ClauseElement(
 
         """
         return traversals.compare(self, other, **kw)
-
-    def get_children(self, omit_attrs=(), **kw):
-        r"""Return immediate child :class:`.visitors.Traversible`
-        elements of this :class:`.visitors.Traversible`.
-
-        This is used for visit traversal.
-
-        \**kw may contain flags that change the collection that is
-        returned, for example to return a subset of items in order to
-        cut down on larger traversals, or to return child items from a
-        different context (such as schema-level collections instead of
-        clause-level).
-
-        """
-        try:
-            traverse_internals = self._traverse_internals
-        except AttributeError:
-            # user-defined classes may not have a _traverse_internals
-            return []
-
-        return itertools.chain.from_iterable(
-            meth(obj, **kw)
-            for attrname, obj, meth in _get_children.run_generated_dispatch(
-                self, traverse_internals, "_generated_get_children_traversal"
-            )
-            if attrname not in omit_attrs and obj is not None
-        )
 
     def self_group(self, against=None):
         """Apply a 'grouping' to this :class:`_expression.ClauseElement`.

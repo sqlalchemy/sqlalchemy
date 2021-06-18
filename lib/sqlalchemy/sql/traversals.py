@@ -194,6 +194,8 @@ class HasCacheKey(object):
                     elif (
                         meth is InternalTraversal.dp_clauseelement_list
                         or meth is InternalTraversal.dp_clauseelement_tuple
+                        or meth
+                        is InternalTraversal.dp_memoized_select_entities
                     ):
                         result += (
                             attrname,
@@ -409,6 +411,9 @@ class _CacheKey(ExtendedInternalTraversal):
     visit_clauseelement_list = InternalTraversal.dp_clauseelement_list
     visit_annotations_key = InternalTraversal.dp_annotations_key
     visit_clauseelement_tuple = InternalTraversal.dp_clauseelement_tuple
+    visit_memoized_select_entities = (
+        InternalTraversal.dp_memoized_select_entities
+    )
 
     visit_string = (
         visit_boolean
@@ -799,6 +804,9 @@ class _CopyInternals(InternalTraversal):
             for (target, onclause, from_, flags) in element
         )
 
+    def visit_memoized_select_entities(self, attrname, parent, element, **kw):
+        return self.visit_clauseelement_tuple(attrname, parent, element, **kw)
+
     def visit_dml_ordered_values(
         self, attrname, parent, element, clone=_clone, **kw
     ):
@@ -918,6 +926,9 @@ class _GetChildren(InternalTraversal):
 
             if onclause is not None and not isinstance(onclause, str):
                 yield _flatten_clauseelement(onclause)
+
+    def visit_memoized_select_entities(self, element, **kw):
+        return self.visit_clauseelement_tuple(element, **kw)
 
     def visit_dml_ordered_values(self, element, **kw):
         for k, v in element:
@@ -1264,6 +1275,13 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
             self.stack.append((l_target, r_target))
             self.stack.append((l_onclause, r_onclause))
             self.stack.append((l_from, r_from))
+
+    def visit_memoized_select_entities(
+        self, attrname, left_parent, left, right_parent, right, **kw
+    ):
+        return self.visit_clauseelement_tuple(
+            attrname, left_parent, left, right_parent, right, **kw
+        )
 
     def visit_table_hint_list(
         self, attrname, left_parent, left, right_parent, right, **kw

@@ -266,6 +266,33 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "ON parent.id = child.parent_id",
         )
 
+    def test_join_implicit_left_side_wo_cols_onelevel(self):
+        """test issue #6503"""
+        stmt = select(parent).join(child).with_only_columns(child.c.id)
+
+        self.assert_compile(
+            stmt,
+            "SELECT child.id FROM parent "
+            "JOIN child ON parent.id = child.parent_id",
+        )
+
+    def test_join_implicit_left_side_wo_cols_twolevel(self):
+        """test issue #6503"""
+        stmt = (
+            select(parent)
+            .join(child)
+            .with_only_columns(child.c.id)
+            .join(grandchild)
+            .with_only_columns(grandchild.c.id)
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT grandchild.id FROM parent "
+            "JOIN child ON parent.id = child.parent_id "
+            "JOIN grandchild ON child.id = grandchild.child_id",
+        )
+
     def test_right_nested_inner_join(self):
         inner = child.join(grandchild)
 
