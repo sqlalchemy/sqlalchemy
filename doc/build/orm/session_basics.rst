@@ -380,7 +380,7 @@ ntextlib.html#contextlib.contextmanager>`_::
         try:
             yield session
             session.commit()
-        except:
+        except BaseException:
             session.rollback()
             raise
         finally:
