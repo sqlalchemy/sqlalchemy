@@ -88,7 +88,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +---------------------------------------+---------------------------------------+
 | CockroachDB                           | sqlalchemy-cockroachdb_               |
 +---------------------------------------+---------------------------------------+
-| CrateDB                               | crate-python_                         |
+| CrateDB  [1]_                         | crate-python_                         |
 +---------------------------------------+---------------------------------------+
 | EXASolution                           | sqlalchemy_exasol_                    |
 +---------------------------------------+---------------------------------------+
@@ -102,15 +102,17 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +---------------------------------------+---------------------------------------+
 | IBM DB2 and Informix                  | ibm-db-sa_                            |
 +---------------------------------------+---------------------------------------+
+| IBM Netezza Performance Server [1]_   | nzalchemy_                            |
++---------------------------------------+---------------------------------------+
 | Microsoft Access (via pyodbc)         | sqlalchemy-access_                    |
 +---------------------------------------+---------------------------------------+
 | Microsoft SQL Server (via python-tds) | sqlalchemy-tds_                       |
 +---------------------------------------+---------------------------------------+
 | Microsoft SQL Server (via turbodbc)   | sqlalchemy-turbodbc_                  |
 +---------------------------------------+---------------------------------------+
-| MonetDB                               | sqlalchemy-monetdb_                   |
+| MonetDB [1]_                          | sqlalchemy-monetdb_                   |
 +---------------------------------------+---------------------------------------+
-| SAP Hana                              | sqlalchemy-hana_                      |
+| SAP Hana [1]_                         | sqlalchemy-hana_                      |
 +---------------------------------------+---------------------------------------+
 | SAP Sybase SQL Anywhere               | sqlalchemy-sqlany_                    |
 +---------------------------------------+---------------------------------------+
@@ -119,6 +121,9 @@ Currently maintained external dialect projects for SQLAlchemy include:
 | Teradata Vantage                      | teradatasqlalchemy_                   |
 +---------------------------------------+---------------------------------------+
 
+.. [1] Supports version 1.3.x only at the moment.
+
+.. _nzalchemy: https://pypi.org/project/nzalchemy/
 .. _ibm-db-sa: https://pypi.org/project/ibm-db-sa/
 .. _PyHive: https://github.com/dropbox/PyHive#sqlalchemy
 .. _teradatasqlalchemy: https://pypi.org/project/teradatasqlalchemy/
