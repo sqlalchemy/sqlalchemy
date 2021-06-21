@@ -50,7 +50,10 @@ def _scan_declarative_assignments_and_apply_types(
 
     info = util._info_for_cls(cls, api)
 
-    if cls.fullname.startswith("builtins"):
+    if info is None:
+        # this can occur during cached passes
+        return None
+    elif cls.fullname.startswith("builtins"):
         return None
     elif "_sa_decl_class_applied" in info.metadata:
         cls_metadata = util.DeclClassApplied.deserialize(

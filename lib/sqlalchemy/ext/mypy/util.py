@@ -208,6 +208,8 @@ def _info_for_cls(
 ) -> TypeInfo:
     if cls.info is CLASSDEF_NO_INFO:
         sym = api.lookup_qualified(cls.name, cls)
+        if sym is None:
+            return None
         assert sym and isinstance(sym.node, TypeInfo)
         return sym.node
 

@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, mypy
+    :tickets: 6476
+
+    Fixed issue in mypy plugin where class info for a custom declarative base
+    would not be handled correctly on a cached mypy pass, leading to an
+    AssertionError being raised.
