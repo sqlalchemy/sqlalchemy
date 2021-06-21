@@ -404,6 +404,8 @@ class OfTypePathingTest(PathTest, QueryTest):
 
 
 class WithEntitiesTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = "default"
+
     def test_options_legacy_with_entities_onelevel(self):
         """test issue #6253 (part of #6503)"""
 
