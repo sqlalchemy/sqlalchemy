@@ -1803,9 +1803,10 @@ class PickleType(TypeDecorator):
           the Python "equals" operator is used to compare values.
 
         :param impl: Any implementation class that support storing
-          binary object. (e.g. :class: `.mysql.LONGBLOB`).
-          If let as ``None``, the impl would use class's default impl
+          binary object. (e.g. :class: `_mysql.LONGBLOB`).
+          If left as ``None``, the impl would use class's default impl
           `:class:`.LargeBinary`
+          .. versionadded:: 1.4.20
 
         """
         self.protocol = protocol
