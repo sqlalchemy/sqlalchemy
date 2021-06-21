@@ -954,6 +954,12 @@ class ColumnOperators(Operators):
 
         * PostgreSQL - renders ``x @@ to_tsquery(y)``
         * MySQL - renders ``MATCH (x) AGAINST (y IN BOOLEAN MODE)``
+
+          .. seealso::
+
+                :class:`_mysql.match` - MySQL specific construct with
+                additional features.
+
         * Oracle - renders ``CONTAINS(x, y)``
         * other backends may provide special implementations.
         * Backends without any special implementation will emit

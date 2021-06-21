@@ -5,6 +5,14 @@ MySQL and MariaDB
 
 .. automodule:: sqlalchemy.dialects.mysql.base
 
+MySQL SQL Constructs
+--------------------
+
+.. currentmodule:: sqlalchemy.dialects.mysql
+
+.. autoclass:: match
+    :members:
+
 MySQL Data Types
 ----------------
 
