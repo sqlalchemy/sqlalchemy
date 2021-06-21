@@ -1,0 +1,8 @@
+.. change::
+    :tags: usecase, type
+    :tickets: 6646
+
+    Add a impl parameter to :class:`.PickleType` constructor, so the user
+    can customize the default implementation to avoid the issue that the
+    default LargeBinary impl might not be big enough to store the binary
+    object.
