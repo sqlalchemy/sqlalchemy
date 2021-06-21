@@ -472,6 +472,7 @@ class WithEntitiesTest(QueryTest, AssertsCompiledSQL):
             .options(joinedload(User.addresses))
             .with_only_columns(User, Address)
             .options(joinedload(Address.dingaling))
+            .join_from(User, Address)
         )
         self.assert_compile(
             q,
@@ -481,8 +482,9 @@ class WithEntitiesTest(QueryTest, AssertsCompiledSQL):
             "addresses_1.email_address AS email_address_1, "
             "dingalings_1.id AS id_3, dingalings_1.address_id, "
             "dingalings_1.data "
-            "FROM users LEFT OUTER JOIN addresses AS addresses_1 "
-            "ON users.id = addresses_1.user_id, addresses "
+            "FROM users JOIN addresses ON users.id = addresses.user_id "
+            "LEFT OUTER JOIN addresses AS addresses_1 "
+            "ON users.id = addresses_1.user_id "
             "LEFT OUTER JOIN dingalings AS dingalings_1 "
             "ON addresses.id = dingalings_1.address_id "
             "ORDER BY addresses_1.id",
