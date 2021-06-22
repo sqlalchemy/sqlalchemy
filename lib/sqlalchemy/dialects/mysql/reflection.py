@@ -416,7 +416,7 @@ class MySQLTableDefinitionParser(object):
             r"(?: +KEY_BLOCK_SIZE *[ =]? *(?P<keyblock>\S+))?"
             r"(?: +WITH PARSER +(?P<parser>\S+))?"
             r"(?: +COMMENT +(?P<comment>(\x27\x27|\x27([^\x27])*?\x27)+))?"
-            r"(?: +/\*(?P<version_sql>.+)\*/ +)?"
+            r"(?: +/\*(?P<version_sql>.+)\*/ *)?"
             r",?$" % quotes
         )
 
