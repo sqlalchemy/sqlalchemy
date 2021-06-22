@@ -2427,6 +2427,10 @@ class TimestampTest(fixtures.TestBase, AssertsExecutionResults):
         eq_(expr.type._type_affinity, types.Interval)
         assert isinstance(expr.type, postgresql.INTERVAL)
 
+    def test_interval_coercion_literal(self):
+        expr = column("bar", postgresql.INTERVAL) == datetime.timedelta(days=1)
+        eq_(expr.right.type._type_affinity, types.Interval)
+
 
 class SpecialTypesCompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "postgresql"
