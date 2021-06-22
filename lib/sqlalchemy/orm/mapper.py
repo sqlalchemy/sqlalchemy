@@ -2311,6 +2311,7 @@ class Mapper(
             adapter.columns[prop.columns[0]] if adapter else prop.columns[0]
             for prop in poly_properties
             if isinstance(prop, properties.ColumnProperty)
+            and prop._renders_in_subqueries
         ]
 
     def _columns_plus_keys(self, polymorphic_mappers=()):

@@ -132,9 +132,7 @@ class CursorResultMetaData(ResultMetaData):
 
         keymap_by_position = self._keymap_by_result_column_idx
 
-        for idx, new in enumerate(
-            invoked_statement._exported_columns_iterator()
-        ):
+        for idx, new in enumerate(invoked_statement._all_selected_columns):
             try:
                 rec = keymap_by_position[idx]
             except KeyError:

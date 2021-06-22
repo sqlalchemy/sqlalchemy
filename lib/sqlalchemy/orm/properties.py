@@ -65,6 +65,7 @@ class ColumnProperty(StrategizedProperty):
         "_mapped_by_synonym",
         "_deferred_column_loader",
         "_raise_column_loader",
+        "_renders_in_subqueries",
         "raiseload",
     )
 
@@ -201,6 +202,11 @@ class ColumnProperty(StrategizedProperty):
         )
         if self.raiseload:
             self.strategy_key += (("raiseload", True),)
+
+    def _memoized_attr__renders_in_subqueries(self):
+        return ("deferred", True) not in self.strategy_key or (
+            self not in self.parent._readonly_props
+        )
 
     @util.preload_module("sqlalchemy.orm.state", "sqlalchemy.orm.strategies")
     def _memoized_attr__deferred_column_loader(self):

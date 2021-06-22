@@ -153,6 +153,7 @@ class ORMCompileState(CompileState):
             ("_only_load_props", InternalTraversal.dp_plain_obj),
             ("_set_base_alias", InternalTraversal.dp_boolean),
             ("_for_refresh_state", InternalTraversal.dp_boolean),
+            ("_render_for_subquery", InternalTraversal.dp_boolean),
         ]
 
         # set to True by default from Query._statement_20(), to indicate
@@ -176,6 +177,7 @@ class ORMCompileState(CompileState):
         _only_load_props = None
         _set_base_alias = False
         _for_refresh_state = False
+        _render_for_subquery = False
 
     current_path = _path_registry
 
@@ -530,9 +532,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             self.select_statement = select_statement
 
         # indicates this select() came from Query.statement
-        self.for_statement = (
-            for_statement
-        ) = select_statement._compile_options._for_statement
+        self.for_statement = select_statement._compile_options._for_statement
 
         # generally if we are from Query or directly from a select()
         self.use_legacy_query_style = (
@@ -554,13 +554,12 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         self.compile_options = select_statement._compile_options
 
-        if not for_statement and not toplevel:
-            # for subqueries, turn off eagerloads.
-            # if "for_statement" mode is set, Query.subquery()
-            # would have set this flag to False already if that's what's
-            # desired
+        if not toplevel:
+            # for subqueries, turn off eagerloads and set
+            # "render_for_subquery".
             self.compile_options += {
                 "_enable_eagerloads": False,
+                "_render_for_subquery": True,
             }
 
         # determine label style.   we can make different decisions here.
@@ -853,14 +852,6 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             return target.entity
         else:
             return target
-
-    @classmethod
-    def exported_columns_iterator(cls, statement):
-        return (
-            elem
-            for elem in cls.all_selected_columns(statement)
-            if not elem._is_text_clause
-        )
 
     @classmethod
     def all_selected_columns(cls, statement):

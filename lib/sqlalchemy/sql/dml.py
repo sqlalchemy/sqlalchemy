@@ -27,6 +27,7 @@ from .elements import ClauseElement
 from .elements import Null
 from .selectable import HasCTE
 from .selectable import HasPrefixes
+from .selectable import ReturnsRows
 from .visitors import InternalTraversal
 from .. import exc
 from .. import util
@@ -199,6 +200,7 @@ class UpdateBase(
     HasCompileState,
     DialectKWArgs,
     HasPrefixes,
+    ReturnsRows,
     Executable,
     ClauseElement,
 ):
@@ -415,13 +417,8 @@ class UpdateBase(
             coercions.expect(roles.ColumnsClauseRole, c) for c in cols
         )
 
-    def _exported_columns_iterator(self):
-        """Return the RETURNING columns as a sequence for this statement.
-
-        .. versionadded:: 1.4
-
-        """
-
+    @property
+    def _all_selected_columns(self):
         return self._returning
 
     @property
@@ -434,7 +431,7 @@ class UpdateBase(
         """
         # TODO: no coverage here
         return ColumnCollection(
-            (c.key, c) for c in self._exported_columns_iterator()
+            (c.key, c) for c in self._all_selected_columns
         ).as_immutable()
 
     @_generative

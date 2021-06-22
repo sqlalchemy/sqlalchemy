@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 6663
+
+    Fixed issue in CTE constructs mostly relevant to ORM use cases where a
+    recursive CTE against "anonymous" labels such as those seen in ORM
+    ``column_property()`` mappings would render in the
+    ``WITH RECURSIVE xyz(...)`` section as their raw internal label and not a
+    cleanly anonymized name.

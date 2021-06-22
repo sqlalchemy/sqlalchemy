@@ -2562,18 +2562,20 @@ class SQLCompiler(Compiled):
                     elif isinstance(cte.element, selectable.CompoundSelect):
                         col_source = cte.element.selects[0]
                     else:
-                        assert False
+                        assert False, "cte should only be against SelectBase"
                     recur_cols = [
                         c
                         for c in util.unique_list(
-                            col_source._exported_columns_iterator()
+                            col_source._all_selected_columns
                         )
                         if c is not None
                     ]
 
                     text += "(%s)" % (
                         ", ".join(
-                            self.preparer.format_column(ident)
+                            self.preparer.format_column(
+                                ident, anon_map=self.anon_map
+                            )
                             for ident in recur_cols
                         )
                     )
@@ -5012,11 +5014,18 @@ class IdentifierPreparer(object):
         name=None,
         table_name=None,
         use_schema=False,
+        anon_map=None,
     ):
         """Prepare a quoted column name."""
 
         if name is None:
             name = column.name
+
+        if anon_map is not None and isinstance(
+            name, elements._truncated_label
+        ):
+            name = name.apply_map(anon_map)
+
         if not getattr(column, "is_literal", False):
             if use_table:
                 return (
