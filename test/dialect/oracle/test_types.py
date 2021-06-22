@@ -183,6 +183,10 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_interval(self, type_, expected):
         self.assert_compile(type_, expected)
 
+    def test_interval_coercion_literal(self):
+        expr = column("bar", oracle.INTERVAL) == datetime.timedelta(days=1)
+        eq_(expr.right.type._type_affinity, sqltypes.Interval)
+
 
 class TypesTest(fixtures.TestBase):
     __only_on__ = "oracle"
