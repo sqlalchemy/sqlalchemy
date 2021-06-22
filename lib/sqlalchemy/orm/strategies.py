@@ -421,6 +421,10 @@ class DeferredColumnLoader(LoaderStrategy):
 
         if (
             (
+                compile_state.compile_options._render_for_subquery
+                and self.parent_property._renders_in_subqueries
+            )
+            or (
                 loadopt
                 and "undefer_pks" in loadopt.local_opts
                 and set(self.columns).intersection(

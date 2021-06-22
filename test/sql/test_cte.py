@@ -155,6 +155,57 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             dialect=mssql.dialect(),
         )
 
+    def test_recursive_w_anon_labels(self):
+        parts = table(
+            "parts", column("part"), column("sub_part"), column("quantity")
+        )
+
+        included_parts = (
+            select(
+                parts.c.sub_part.label(None),
+                parts.c.part.label(None),
+                parts.c.quantity,
+            )
+            .where(parts.c.part == "our part")
+            .cte(recursive=True)
+        )
+
+        incl_alias = included_parts.alias()
+        parts_alias = parts.alias()
+        included_parts = included_parts.union(
+            select(
+                parts_alias.c.sub_part,
+                parts_alias.c.part,
+                parts_alias.c.quantity,
+            ).where(parts_alias.c.part == incl_alias.c[0])
+        )
+
+        s = (
+            select(
+                included_parts.c[0],
+                func.sum(included_parts.c.quantity).label("total_quantity"),
+            )
+            .select_from(
+                included_parts.join(parts, included_parts.c[1] == parts.c.part)
+            )
+            .group_by(included_parts.c[0])
+        )
+        self.assert_compile(
+            s,
+            "WITH RECURSIVE anon_1(sub_part_1, part_1, quantity) "
+            "AS (SELECT parts.sub_part AS sub_part_1, parts.part "
+            "AS part_1, parts.quantity AS quantity FROM parts "
+            "WHERE parts.part = :part_2 UNION "
+            "SELECT parts_1.sub_part AS sub_part, "
+            "parts_1.part AS part, parts_1.quantity "
+            "AS quantity FROM parts AS parts_1, anon_1 AS anon_2 "
+            "WHERE parts_1.part = anon_2.sub_part_1) "
+            "SELECT anon_1.sub_part_1, "
+            "sum(anon_1.quantity) AS total_quantity FROM anon_1 "
+            "JOIN parts ON anon_1.part_1 = parts.part "
+            "GROUP BY anon_1.sub_part_1",
+        )
+
     def test_recursive_inner_cte_unioned_to_alias(self):
         parts = table(
             "parts", column("part"), column("sub_part"), column("quantity")

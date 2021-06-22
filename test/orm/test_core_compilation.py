@@ -12,11 +12,13 @@ from sqlalchemy import util
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import contains_eager
+from sqlalchemy.orm import deferred
 from sqlalchemy.orm import join as orm_join
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import query_expression
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import undefer
 from sqlalchemy.orm import with_expression
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.sql import and_
@@ -383,6 +385,39 @@ class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):
 
         return User, Address
 
+    @testing.fixture
+    def deferred_fixture(self):
+        User = self.classes.User
+        users = self.tables.users
+
+        mapper(
+            User,
+            users,
+            properties={
+                "name": deferred(users.c.name),
+                "name_upper": column_property(
+                    func.upper(users.c.name), deferred=True
+                ),
+            },
+        )
+
+        return User
+
+    @testing.fixture
+    def non_deferred_fixture(self):
+        User = self.classes.User
+        users = self.tables.users
+
+        mapper(
+            User,
+            users,
+            properties={
+                "name_upper": column_property(func.upper(users.c.name))
+            },
+        )
+
+        return User
+
     def test_no_joinedload_in_subquery_select_rows(self, joinedload_fixture):
         User, Address = joinedload_fixture
 
@@ -434,9 +469,147 @@ class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(stmt2, expected)
 
-    # TODO: need to test joinedload options, deferred mappings, deferred
-    # options.  these are all loader options that should *only* have an
-    # effect on the outermost statement, never a subquery.
+    def test_deferred_subq_one(self, deferred_fixture):
+        """test for #6661"""
+        User = deferred_fixture
+
+        subq = select(User).subquery()
+
+        u1 = aliased(User, subq)
+        q = select(u1)
+
+        self.assert_compile(
+            q,
+            "SELECT anon_1.id "
+            "FROM (SELECT users.name AS name, "
+            "users.id AS id FROM users) AS anon_1",
+        )
+
+        # testing deferred opts separately for deterministic SQL generation
+
+        q = select(u1).options(undefer(u1.name))
+
+        self.assert_compile(
+            q,
+            "SELECT anon_1.name, anon_1.id "
+            "FROM (SELECT users.name AS name, "
+            "users.id AS id FROM users) AS anon_1",
+        )
+
+        q = select(u1).options(undefer(u1.name_upper))
+
+        self.assert_compile(
+            q,
+            "SELECT upper(anon_1.name) AS upper_1, anon_1.id "
+            "FROM (SELECT users.name AS name, "
+            "users.id AS id FROM users) AS anon_1",
+        )
+
+    def test_non_deferred_subq_one(self, non_deferred_fixture):
+        """test for #6661
+
+        cols that aren't deferred go into subqueries.  1.3 did this also.
+
+        """
+        User = non_deferred_fixture
+
+        subq = select(User).subquery()
+
+        u1 = aliased(User, subq)
+        q = select(u1)
+
+        self.assert_compile(
+            q,
+            "SELECT upper(anon_1.name) AS upper_1, anon_1.id, anon_1.name "
+            "FROM (SELECT upper(users.name) AS upper_2, users.id AS id, "
+            "users.name AS name FROM users) AS anon_1",
+        )
+
+    def test_deferred_subq_two(self, deferred_fixture):
+        """test for #6661
+
+        in this test, we are only confirming the current contract of ORM
+        subqueries which is that deferred + derived column_property's don't
+        export themselves into the .c. collection of a subquery.
+        We might want to revisit this in some way.
+
+        """
+        User = deferred_fixture
+
+        subq = select(User).subquery()
+
+        assert not hasattr(subq.c, "name_upper")
+
+        # "undefer" it by including it
+        subq = select(User, User.name_upper).subquery()
+
+        assert hasattr(subq.c, "name_upper")
+
+    def test_non_deferred_col_prop_targetable_in_subq(
+        self, non_deferred_fixture
+    ):
+        """test for #6661"""
+        User = non_deferred_fixture
+
+        subq = select(User).subquery()
+
+        assert hasattr(subq.c, "name_upper")
+
+    def test_recursive_cte_render_on_deferred(self, deferred_fixture):
+        """test for #6661.
+
+        this test is most directly the bug reported in #6661,
+        as the CTE uses stmt._exported_columns_iterator() ahead of compiling
+        the SELECT in order to get the list of columns that will be selected,
+        this has to match what the subquery is going to render.
+
+        This is also pretty fundamental to why deferred() as an option
+        can't be honored in a subquery; the subquery needs to export the
+        correct columns and it needs to do so without having to process
+        all the loader options.  1.3 OTOH when you got a subquery from
+        Query, it did a full compile_context.  1.4/2.0 we don't do that
+        anymore.
+
+        """
+
+        User = deferred_fixture
+
+        cte = select(User).cte(recursive=True)
+
+        # nonsensical, but we are just testing form
+        cte = cte.union_all(select(User).join(cte, cte.c.id == User.id))
+
+        stmt = select(User).join(cte, User.id == cte.c.id)
+
+        self.assert_compile(
+            stmt,
+            "WITH RECURSIVE anon_1(name, id) AS "
+            "(SELECT users.name AS name, users.id AS id FROM users "
+            "UNION ALL SELECT users.name AS name, users.id AS id "
+            "FROM users JOIN anon_1 ON anon_1.id = users.id) "
+            "SELECT users.id FROM users JOIN anon_1 ON users.id = anon_1.id",
+        )
+
+        # testing deferred opts separately for deterministic SQL generation
+        self.assert_compile(
+            stmt.options(undefer(User.name_upper)),
+            "WITH RECURSIVE anon_1(name, id) AS "
+            "(SELECT users.name AS name, users.id AS id FROM users "
+            "UNION ALL SELECT users.name AS name, users.id AS id "
+            "FROM users JOIN anon_1 ON anon_1.id = users.id) "
+            "SELECT upper(users.name) AS upper_1, users.id "
+            "FROM users JOIN anon_1 ON users.id = anon_1.id",
+        )
+
+        self.assert_compile(
+            stmt.options(undefer(User.name)),
+            "WITH RECURSIVE anon_1(name, id) AS "
+            "(SELECT users.name AS name, users.id AS id FROM users "
+            "UNION ALL SELECT users.name AS name, users.id AS id "
+            "FROM users JOIN anon_1 ON anon_1.id = users.id) "
+            "SELECT users.name, users.id "
+            "FROM users JOIN anon_1 ON users.id = anon_1.id",
+        )
 
 
 class ExtraColsTest(QueryTest, AssertsCompiledSQL):

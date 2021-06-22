@@ -109,23 +109,19 @@ class ReturnsRows(roles.ReturnsRowsRole, ClauseElement):
 
     @property
     def selectable(self):
-        raise NotImplementedError()
+        return self
 
-    def _exported_columns_iterator(self):
-        """An iterator of column objects that represents the "exported"
-        columns of this :class:`_expression.ReturnsRows`.
+    @property
+    def _all_selected_columns(self):
+        """A sequence of column expression objects that represents the
+        "selected" columns of this :class:`_expression.ReturnsRows`.
 
-        This is the same set of columns as are returned by
-        :meth:`_expression.ReturnsRows.exported_columns`
-        except they are returned
-        as a simple iterator or sequence, rather than as a
-        :class:`_expression.ColumnCollection` namespace.
-
-        Subclasses should re-implement this method to bypass the interim
-        creation of the :class:`_expression.ColumnCollection` if appropriate.
+        This is typically equivalent to .exported_columns except it is
+        delivered in the form of a straight sequence and not  keyed
+        :class:`_expression.ColumnCollection`.
 
         """
-        return iter(self.exported_columns)
+        raise NotImplementedError()
 
     @property
     def exported_columns(self):
@@ -160,10 +156,6 @@ class Selectable(ReturnsRows):
     __visit_name__ = "selectable"
 
     is_selectable = True
-
-    @property
-    def selectable(self):
-        return self
 
     def _refresh_for_new_column(self, column):
         raise NotImplementedError()
@@ -3113,9 +3105,6 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
     def _generate_proxy_for_new_column(self, column, subquery):
         return self.element._generate_proxy_for_new_column(subquery)
 
-    def _exported_columns_iterator(self):
-        return self.element._exported_columns_iterator()
-
     @property
     def _all_selected_columns(self):
         return self.element._all_selected_columns
@@ -3935,9 +3924,6 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         for select in self.selects:
             select._refresh_for_new_column(column)
 
-    def _exported_columns_iterator(self):
-        return self.selects[0]._exported_columns_iterator()
-
     @property
     def _all_selected_columns(self):
         return self.selects[0]._all_selected_columns
@@ -4335,7 +4321,7 @@ class SelectState(util.MemoizedSlots, CompileState):
     def _memoized_attr__label_resolve_dict(self):
         with_cols = dict(
             (c._resolve_label or c._label or c.key, c)
-            for c in self.statement._exported_columns_iterator()
+            for c in self.statement._all_selected_columns
             if c._allow_label_resolve
         )
         only_froms = dict(
@@ -4355,14 +4341,6 @@ class SelectState(util.MemoizedSlots, CompileState):
             return stmt._setup_joins[-1][0]
         else:
             return None
-
-    @classmethod
-    def exported_columns_iterator(cls, statement):
-        return [
-            c
-            for c in _select_iterables(statement._raw_columns)
-            if not c._is_text_clause
-        ]
 
     @classmethod
     def all_selected_columns(cls, statement):
@@ -5318,7 +5296,7 @@ class Select(
 
         """
 
-        return self._exported_columns_iterator()
+        return iter(self._all_selected_columns)
 
     def is_derived_from(self, fromclause):
         if self in fromclause._cloned_set:
@@ -5470,7 +5448,7 @@ class Select(
         """
         return self.with_only_columns(
             *util.preloaded.sql_util.reduce_columns(
-                self._exported_columns_iterator(),
+                self._all_selected_columns,
                 only_synonyms=only_synonyms,
                 *(self._where_criteria + self._from_obj)
             )
@@ -5779,17 +5757,17 @@ class Select(
         conv = SelectState._column_naming_convention(self._label_style)
 
         return ColumnCollection(
-            [(conv(c), c) for c in self._exported_columns_iterator()]
+            [
+                (conv(c), c)
+                for c in self._all_selected_columns
+                if not c._is_text_clause
+            ]
         ).as_immutable()
 
     @HasMemoized.memoized_attribute
     def _all_selected_columns(self):
         meth = SelectState.get_plugin_class(self).all_selected_columns
         return list(meth(self))
-
-    def _exported_columns_iterator(self):
-        meth = SelectState.get_plugin_class(self).exported_columns_iterator
-        return meth(self)
 
     def _ensure_disambiguated_names(self):
         if self._label_style is LABEL_STYLE_NONE:
@@ -5912,7 +5890,7 @@ class Select(
         disambiguate_only = self._label_style is LABEL_STYLE_DISAMBIGUATE_ONLY
 
         for name, c, repeated in self._generate_columns_plus_names(False):
-            if not hasattr(c, "_make_proxy"):
+            if c._is_text_clause:
                 continue
             elif tablename_plus_col:
                 key = c._key_label
@@ -6404,6 +6382,10 @@ class TextualSelect(SelectBase):
         return ColumnCollection(
             (c.key, c) for c in self.column_args
         ).as_immutable()
+
+    @property
+    def _all_selected_columns(self):
+        return self.column_args
 
     def _set_label_style(self, style):
         return self
