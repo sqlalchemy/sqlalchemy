@@ -48,15 +48,25 @@ class ExecutionTest(_fixtures.FixtureTest):
     run_inserts = None
     __backend__ = True
 
+    @testing.combinations(
+        (True,), (False,), argnames="add_do_orm_execute_event"
+    )
     @testing.requires.sequences
-    def test_sequence_execute(self, connection):
-        seq = Sequence("some_sequence")
-        seq.create(connection)
-        try:
-            sess = Session(connection)
-            eq_(sess.execute(seq), connection.dialect.default_sequence_base)
-        finally:
-            seq.drop(connection)
+    def test_sequence_execute(
+        self, connection, metadata, add_do_orm_execute_event
+    ):
+        seq = Sequence("some_sequence", metadata=metadata)
+        metadata.create_all(connection)
+        sess = Session(connection)
+
+        if add_do_orm_execute_event:
+            evt = mock.Mock(return_value=None)
+            event.listen(
+                sess, "do_orm_execute", lambda ctx: evt(ctx.statement)
+            )
+        eq_(sess.execute(seq), connection.dialect.default_sequence_base)
+        if add_do_orm_execute_event:
+            eq_(evt.mock_calls, [mock.call(seq)])
 
     def test_parameter_execute(self):
         users = self.tables.users

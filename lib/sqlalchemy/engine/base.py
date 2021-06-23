@@ -1835,7 +1835,7 @@ class Connection(Connectable):
 
         if self._echo:
             self._log_info(statement)
-            self._log_info("%r", parameters)
+            self._log_info("[raw sql] %r", parameters)
         try:
             for fn in (
                 ()
