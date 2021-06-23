@@ -5,7 +5,7 @@
     Refined the behavior of ORM subquery rendering with regards to deferred
     columns and column properties to be more compatible with that of 1.3 while
     also providing for 1.4's newer features. As a subquery in 1.4 does not make
-    use of loader options, including :func:`_orm.deferred`, a subquery that is
+    use of loader options, including :func:`_orm.undefer`, a subquery that is
     against an ORM entity with deferred attributes will now render those
     deferred attributes that refer directly to mapped table columns, as these
     are needed in the outer SELECT if that outer SELECT makes use of these
