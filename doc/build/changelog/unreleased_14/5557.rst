@@ -1,6 +1,0 @@
-.. change::
-    :tags: mssql, change
-    :tickets: 6503, 6253
-
-    Made improvements to the server version regexp used by the pymssql dialect
-    to prevent a regexp overflow in case of an invalid version string.

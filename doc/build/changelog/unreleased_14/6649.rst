@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, postgresql, oracle
-    :tickets: 6649
-
-    Fixed issue where the ``INTERVAL`` datatype on PostgreSQL and Oracle would
-    produce an ``AttributeError`` when used in the context of a comparison
-    operation against a ``timedelta()`` object. Pull request courtesy
-    MajorDallas.

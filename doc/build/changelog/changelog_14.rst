@@ -15,7 +15,137 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.19
-    :include_notes_from: unreleased_14
+    :released: June 22, 2021
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 6658
+
+        Fixed bug where the "schema_translate_map" feature would fail to function
+        correctly in conjunction with an INSERT into a table that has an IDENTITY
+        column, where the value of the IDENTITY column were specified in the values
+        of the INSERT thus triggering SQLAlchemy's feature of setting IDENTITY
+        INSERT to "on"; it's in this directive where the schema translate map would
+        fail to be honored.
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 6663
+
+        Fixed issue in CTE constructs mostly relevant to ORM use cases where a
+        recursive CTE against "anonymous" labels such as those seen in ORM
+        ``column_property()`` mappings would render in the
+        ``WITH RECURSIVE xyz(...)`` section as their raw internal label and not a
+        cleanly anonymized name.
+
+    .. change::
+        :tags: mssql, change
+        :tickets: 6503, 6253
+
+        Made improvements to the server version regexp used by the pymssql dialect
+        to prevent a regexp overflow in case of an invalid version string.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6503, 6253
+
+        Fixed further regressions in the same area as that of :ticket:`6052` where
+        loader options as well as invocations of methods like
+        :meth:`_orm.Query.join` would fail if the left side of the statement for
+        which the option/join depends upon were replaced by using the
+        :meth:`_orm.Query.with_entities` method, or when using 2.0 style queries
+        when using the :meth:`_sql.Select.with_only_columns` method. A new set of
+        state has been added to the objects which tracks the "left" entities that
+        the options / join were made against which is memoized when the lead
+        entities are changed.
+
+    .. change::
+        :tags: bug, asyncio, postgresql
+        :tickets: 6652
+
+        Fixed bug in asyncio implementation where the greenlet adaptation system
+        failed to propagate ``BaseException`` subclasses, most notably including
+        ``asyncio.CancelledError``, to the exception handling logic used by the
+        engine to invalidate and clean up the connection, thus preventing
+        connections from being correctly disposed when a task was cancelled.
+
+
+
+    .. change::
+        :tags: usecase, asyncio
+        :tickets: 6583
+
+        Implemented :class:`_asyncio.async_scoped_session` to address some
+        asyncio-related incompatibilities between :class:`_orm.scoped_session` and
+        :class:`_asyncio.AsyncSession`, in which some methods (notably the
+        :meth:`_asyncio.async_scoped_session.remove` method) should be used with
+        the ``await`` keyword.
+
+        .. seealso::
+
+            :ref:`asyncio_scoped_session`
+
+    .. change::
+        :tags: usecase, mysql
+        :tickets: 6132
+
+        Added new construct :class:`_mysql.match`, which provides for the full
+        range of MySQL's MATCH operator including multiple column support and
+        modifiers. Pull request courtesy Anton Kovalevich.
+
+        .. seealso::
+
+            :class:`_mysql.match`
+
+    .. change::
+        :tags: bug, postgresql, oracle
+        :tickets: 6649
+
+        Fixed issue where the ``INTERVAL`` datatype on PostgreSQL and Oracle would
+        produce an ``AttributeError`` when used in the context of a comparison
+        operation against a ``timedelta()`` object. Pull request courtesy
+        MajorDallas.
+
+    .. change::
+        :tags: bug, mypy
+        :tickets: 6476
+
+        Fixed issue in mypy plugin where class info for a custom declarative base
+        would not be handled correctly on a cached mypy pass, leading to an
+        AssertionError being raised.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6661
+
+        Refined the behavior of ORM subquery rendering with regards to deferred
+        columns and column properties to be more compatible with that of 1.3 while
+        also providing for 1.4's newer features. As a subquery in 1.4 does not make
+        use of loader options, including :func:`_orm.undefer`, a subquery that is
+        against an ORM entity with deferred attributes will now render those
+        deferred attributes that refer directly to mapped table columns, as these
+        are needed in the outer SELECT if that outer SELECT makes use of these
+        columns; however a deferred attribute that refers to a composed SQL
+        expression as we normally do with :func:`_orm.column_property` will not be
+        part of the subquery, as these can be selected explicitly if needed in the
+        subquery. If the entity is being SELECTed from this subquery, the column
+        expression can still render on "the outside" in terms of the derived
+        subquery columns. This produces essentially the same behavior as when
+        working with 1.3. However in this case the fix has to also make sure that
+        the ``.selected_columns`` collection of an ORM-enabled :func:`_sql.select`
+        also follows these rules, which in particular allows recursive CTEs to
+        render correctly in this scenario, which were previously failing to render
+        correctly due to this issue.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 6621
+
+        Fixed issue where the pool "pre ping" feature would implicitly start a
+        transaction, which would then interfere with custom transactional flags
+        such as PostgreSQL's "read only" mode when used with the psycopg2 driver.
+
 
 .. changelog::
     :version: 1.4.18
