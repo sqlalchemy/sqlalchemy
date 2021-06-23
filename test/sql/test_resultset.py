@@ -421,6 +421,28 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(r._mapping["user_name"], "jack")
         eq_(r._mapping[users.c.user_name], "jack")
 
+    @testing.combinations(
+        (select(literal_column("1").label("col1")), ("col1",)),
+        (
+            select(
+                literal_column("1").label("col1"),
+                literal_column("2").label("col2"),
+            ),
+            ("col1", "col2"),
+        ),
+        argnames="sql,cols",
+    )
+    def test_compiled_star_doesnt_interfere_w_description(
+        self, connection, sql, cols
+    ):
+        """test #6665"""
+
+        row = connection.execute(
+            select("*").select_from(sql.subquery())
+        ).first()
+        eq_(row._fields, cols)
+        eq_(row._mapping["col1"], 1)
+
     def test_row_getitem_string(self, connection):
         users = self.tables.users
 
