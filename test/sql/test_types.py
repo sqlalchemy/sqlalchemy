@@ -3810,8 +3810,10 @@ class PickleTest(fixtures.TestBase):
             assert p1.compare_values(p1.copy_value(obj), obj)
 
     def test_customized_impl(self):
-        p1 = PickleType(impl=mysql.LONGBLOB)
+        p1 = PickleType()
+        assert isinstance(p1.impl, LargeBinary)
 
+        p1 = PickleType(impl=mysql.LONGBLOB)
         assert isinstance(p1.impl, mysql.LONGBLOB)
 
 
