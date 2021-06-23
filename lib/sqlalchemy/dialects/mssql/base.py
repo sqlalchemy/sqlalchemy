@@ -1533,10 +1533,18 @@ class MSExecutionContext(default.DefaultExecutionContext):
     _result_strategy = None
 
     def _opt_encode(self, statement):
+
         if not self.dialect.supports_unicode_statements:
-            return self.dialect._encoder(statement)[0]
+            encoded = self.dialect._encoder(statement)[0]
         else:
-            return statement
+            encoded = statement
+
+        if self.compiled and self.compiled.schema_translate_map:
+
+            rst = self.compiled.preparer._render_schema_translates
+            encoded = rst(encoded, self.compiled.schema_translate_map)
+
+        return encoded
 
     def pre_exec(self):
         """Activate IDENTITY_INSERT if needed."""

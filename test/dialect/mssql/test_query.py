@@ -18,6 +18,7 @@ from sqlalchemy import testing
 from sqlalchemy import util
 from sqlalchemy.dialects.mssql import base as mssql
 from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -117,6 +118,26 @@ class IdentityInsertTest(fixtures.TablesTest, AssertsCompiledSQL):
         cattable = self.tables.cattable
         conn.execute(cattable.insert().values({cattable.c.id: literal(5)}))
         eq_(conn.scalar(select(cattable.c.id)), 5)
+
+    @testing.requires.schemas
+    def test_insert_using_schema_translate(self, connection, metadata):
+
+        t = Table(
+            "t",
+            metadata,
+            Column("id", Integer),
+            Column("description", String(50)),
+            PrimaryKeyConstraint("id", name="PK_cattable"),
+            schema=None,
+        )
+        conn = connection.execution_options(
+            schema_translate_map={None: config.test_schema}
+        )
+        metadata.create_all(conn)
+
+        conn.execute(t.insert().values({"id": 1, "description": "descrip"}))
+
+        eq_(conn.execute(select(t)).first(), (1, "descrip"))
 
 
 class QueryUnicodeTest(fixtures.TestBase):

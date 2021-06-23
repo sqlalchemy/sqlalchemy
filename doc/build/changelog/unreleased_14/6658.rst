@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 6658
+
+    Fixed bug where the "schema_translate_map" feature would fail to function
+    correctly in conjunction with an INSERT into a table that has an IDENTITY
+    column, where the value of the IDENTITY column were specified in the values
+    of the INSERT thus triggering SQLAlchemy's feature of setting IDENTITY
+    INSERT to "on"; it's in this directive where the schema translate map would
+    fail to be honored.
+
