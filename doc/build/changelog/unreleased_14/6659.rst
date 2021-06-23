@@ -1,0 +1,10 @@
+.. change::
+    :tags: usecase, mysql
+    :tickets: 6659
+
+    Made a small adjustment in the table reflection feature of the MySQL
+    dialect to accommodate for alternate MySQL-oriented databases such as TiDB
+    which include their own "comment" directives at the end of a constraint
+    directive within "CREATE TABLE" where the format doesn't have the
+    additional space character after the comment, in this case the TiDB
+    "clustered index" feature. Pull request courtesy Daniël van Eeden.

@@ -1148,6 +1148,10 @@ class RawReflectionTest(fixtures.TestBase):
         assert not regex.match(
             "  PRIMARY KEY (`id`) USING BTREE KEY_BLOCK_SIZE = = 16"
         )
+        # test #6659  (TiDB)
+        assert regex.match(
+            "  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */"
+        )
         assert regex.match("  KEY (`id`) USING BTREE COMMENT 'comment'")
         # `SHOW CREATE TABLE` returns COMMENT '''comment'
         # after creating table with COMMENT '\'comment'
@@ -1163,6 +1167,10 @@ class RawReflectionTest(fixtures.TestBase):
             "  FULLTEXT KEY `ix_fulltext_oi_g_name` (`oi_g_name`) "
             "/*!50100 WITH PARSER `ngram` */ "
         )
+
+        m = regex.match("  PRIMARY KEY (`id`)")
+        eq_(m.group("type"), "PRIMARY")
+        eq_(m.group("columns"), "`id`")
 
     def test_key_reflection_columns(self):
         regex = self.parser._re_key
