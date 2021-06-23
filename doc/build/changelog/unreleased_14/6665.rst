@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 6665
+
+    Fixed old issue where a :func:`_sql.select()` made against the token "*",
+    which then yielded exactly one column, would fail to correctly organize the
+    ``cursor.description`` column name into the keys of the result object.
+
+

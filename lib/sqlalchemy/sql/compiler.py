@@ -2805,7 +2805,7 @@ class SQLCompiler(Compiled):
         return " AS " + alias_name_text
 
     def _add_to_result_map(self, keyname, name, objects, type_):
-        if keyname is None:
+        if keyname is None or keyname == "*":
             self._ordered_columns = False
             self._textual_ordered_columns = True
         if type_._is_tuple_type:
