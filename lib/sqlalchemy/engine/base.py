@@ -1094,7 +1094,7 @@ class Connection(Connectable):
             "dictionary or a "
             "single sequence of dictionaries only. "
             "Parameters passed as keyword arguments, tuples or positionally "
-            "oriened dictionaries and/or tuples "
+            "oriented dictionaries and/or tuples "
             "will no longer be accepted."
         )
 
