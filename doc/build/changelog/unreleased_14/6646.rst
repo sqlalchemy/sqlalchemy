@@ -1,0 +1,7 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 6646
+
+    Add a impl parameter to :class:`_types.PickleType` constructor, allowing
+    any arbitary type to be used in place of the default implementation of
+    :class:`_types.LargeBinary`. Pull request courtesy jason3gb.

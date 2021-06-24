@@ -3809,6 +3809,23 @@ class PickleTest(fixtures.TestBase):
         ):
             assert p1.compare_values(p1.copy_value(obj), obj)
 
+    @testing.combinations(
+        None, mysql.LONGBLOB, LargeBinary, mysql.LONGBLOB(), LargeBinary()
+    )
+    def test_customized_impl(self, impl):
+        """test #6646"""
+
+        if impl is None:
+            p1 = PickleType()
+            assert isinstance(p1.impl, LargeBinary)
+        else:
+            p1 = PickleType(impl=impl)
+
+            if not isinstance(impl, type):
+                impl = type(impl)
+
+            assert isinstance(p1.impl, impl)
+
 
 class CallableTest(fixtures.TestBase):
     @testing.provide_metadata

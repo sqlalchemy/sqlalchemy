@@ -1783,7 +1783,11 @@ class PickleType(TypeDecorator):
     cache_ok = True
 
     def __init__(
-        self, protocol=pickle.HIGHEST_PROTOCOL, pickler=None, comparator=None
+        self,
+        protocol=pickle.HIGHEST_PROTOCOL,
+        pickler=None,
+        comparator=None,
+        impl=None,
     ):
         """
         Construct a PickleType.
@@ -1798,11 +1802,21 @@ class PickleType(TypeDecorator):
           to compare values of this type.  If left as ``None``,
           the Python "equals" operator is used to compare values.
 
+        :param impl: A binary-storing :class:`_types.TypeEngine` class or
+          instance to use in place of the default :class:`_types.LargeBinary`.
+          For example the :class: `_mysql.LONGBLOB` class may be more effective
+          when using MySQL.
+
+          .. versionadded:: 1.4.20
+
         """
         self.protocol = protocol
         self.pickler = pickler or pickle
         self.comparator = comparator
         super(PickleType, self).__init__()
+
+        if impl:
+            self.impl = to_instance(impl)
 
     def __reduce__(self):
         return PickleType, (self.protocol, None, self.comparator)
