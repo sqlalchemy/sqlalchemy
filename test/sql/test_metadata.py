@@ -5540,3 +5540,7 @@ class CopyDialectOptionsTest(fixtures.TestBase):
             m2 = MetaData()
             t2 = t1.to_metadata(m2)  # make a copy
             self.check_dialect_options_(t2)
+
+    def test_prefixes_set_to_none(self):
+        table = Table("foo", Column("bar", Integer), prefixes=None)
+        assert table._prefixes == []
