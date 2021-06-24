@@ -660,7 +660,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             for evt, fn in listeners:
                 event.listen(self, evt, fn)
 
-        self._prefixes = kwargs.pop("prefixes", [])
+        self._prefixes = kwargs.pop("prefixes", None) or []
 
         self._extra_kwargs(**kwargs)
 

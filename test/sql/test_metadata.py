@@ -1622,6 +1622,12 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE VIRTUAL TABLE temporary_table_2 (col1 INTEGER)",
         )
 
+    @testing.combinations((None, []), ((), []), ([], []), (["foo"], ["foo"]))
+    def test_prefixes_parameter_parsing(self, arg, expected):
+        """test #6685"""
+        table = Table("foo", MetaData(), Column("bar", Integer), prefixes=arg)
+        eq_(table._prefixes, expected)
+
     def test_table_info(self):
         metadata = MetaData()
         t1 = Table("foo", metadata, info={"x": "y"})
