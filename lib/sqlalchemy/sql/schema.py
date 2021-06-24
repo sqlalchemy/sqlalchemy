@@ -41,6 +41,7 @@ from . import visitors
 from .base import _bind_or_error
 from .base import DedupeColumnCollection
 from .base import DialectKWArgs
+from .base import Executable
 from .base import SchemaEventTarget
 from .coercions import _document_text_coercion
 from .elements import ClauseElement
@@ -2464,7 +2465,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             self._set_target_column(_column)
 
 
-class DefaultGenerator(SchemaItem):
+class DefaultGenerator(Executable, SchemaItem):
     """Base class for column *default* values."""
 
     __visit_name__ = "default_generator"
@@ -2678,7 +2679,7 @@ class IdentityOptions(object):
         self.order = order
 
 
-class Sequence(IdentityOptions, roles.StatementRole, DefaultGenerator):
+class Sequence(IdentityOptions, DefaultGenerator):
     """Represents a named database sequence.
 
     The :class:`.Sequence` object represents the name and configurational
