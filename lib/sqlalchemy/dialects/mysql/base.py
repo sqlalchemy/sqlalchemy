@@ -3358,10 +3358,11 @@ class MySQLDialect(default.DefaultDialect):
         # https://dev.mysql.com/doc/refman/en/identifier-case-sensitivity.html
 
         charset = self._connection_charset
+        show_var = connection.execute(
+            sql.text("SHOW VARIABLES LIKE 'lower_case_table_names'")
+        )
         row = self._compat_first(
-            connection.execute(
-                sql.text("SHOW VARIABLES LIKE 'lower_case_table_names'")
-            ),
+            show_var,
             charset=charset,
         )
         if not row:

@@ -68,7 +68,6 @@ def setup_filters():
         #
         # Core execution
         #
-        r"The (?:Executable|Engine)\.(?:execute|scalar)\(\) method",
         #        r".*DefaultGenerator.execute\(\)",
         #
         #

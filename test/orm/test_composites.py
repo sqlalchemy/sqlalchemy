@@ -775,7 +775,7 @@ class MappedSelectTest(fixtures.MappedTest):
             },
         )
 
-    def test_set_composite_attrs_via_selectable(self):
+    def test_set_composite_attrs_via_selectable(self, connection):
         Values, CustomValues, values, Descriptions, descriptions = (
             self.classes.Values,
             self.classes.CustomValues,
@@ -796,11 +796,11 @@ class MappedSelectTest(fixtures.MappedTest):
         session.add(d)
         session.commit()
         eq_(
-            testing.db.execute(descriptions.select()).fetchall(),
+            connection.execute(descriptions.select()).fetchall(),
             [(1, "Color", "Number")],
         )
         eq_(
-            testing.db.execute(values.select()).fetchall(),
+            connection.execute(values.select()).fetchall(),
             [(1, 1, "Red", "5"), (2, 1, "Blue", "1")],
         )
 

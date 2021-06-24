@@ -738,7 +738,8 @@ class PoolEventsTest(PoolTestBase):
         event.listen(engine, "connect", listen_three)
         event.listen(engine.__class__, "connect", listen_four)
 
-        engine.execute(select(1)).close()
+        with engine.connect() as conn:
+            conn.execute(select(1))
         eq_(
             canary, ["listen_one", "listen_four", "listen_two", "listen_three"]
         )

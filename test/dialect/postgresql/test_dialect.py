@@ -1117,9 +1117,9 @@ $$ LANGUAGE plpgsql;
         )
 
     def test_extract(self, connection):
-        fivedaysago = testing.db.scalar(
+        fivedaysago = connection.execute(
             select(func.now().op("at time zone")("UTC"))
-        ) - datetime.timedelta(days=5)
+        ).scalar() - datetime.timedelta(days=5)
 
         for field, exp in (
             ("year", fivedaysago.year),

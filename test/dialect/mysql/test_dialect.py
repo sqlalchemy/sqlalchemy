@@ -499,8 +499,8 @@ class ExecutionTest(fixtures.TestBase):
         eq_(cx.dialect._connection_charset, charset)
         cx.close()
 
-    def test_sysdate(self):
-        d = testing.db.scalar(func.sysdate())
+    def test_sysdate(self, connection):
+        d = connection.execute(func.sysdate()).scalar()
         assert isinstance(d, datetime.datetime)
 
 
