@@ -5542,5 +5542,5 @@ class CopyDialectOptionsTest(fixtures.TestBase):
             self.check_dialect_options_(t2)
 
     def test_prefixes_set_to_none(self):
-        table = Table("foo", Column("bar", Integer), prefixes=None)
+        table = Table("foo", MetaData(), Column("bar", Integer), prefixes=None)
         assert table._prefixes == []
