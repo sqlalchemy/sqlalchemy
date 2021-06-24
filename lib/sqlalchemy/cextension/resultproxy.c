@@ -178,6 +178,22 @@ BaseRow_init(BaseRow *self, PyObject *args, PyObject *kwds)
     Py_INCREF(keymap);
     self->keymap = keymap;
     self->key_style = PyLong_AsLong(key_style);
+
+    // observation: because we have not implemented our own new method,
+    // cPython is apparently already calling PyObject_GC_Track for us.
+    // We assume it also called PyObject_GC_New since prior to #5348 we
+    // were already relying upon it to call PyObject_New, and we have now
+    // set Py_TPFLAGS_HAVE_GC.
+
+    return 0;
+}
+
+static int
+BaseRow_traverse(BaseRow *self, visitproc visit, void *arg)
+{
+    Py_VISIT(self->parent);
+    Py_VISIT(self->row);
+    Py_VISIT(self->keymap);
     return 0;
 }
 
@@ -258,14 +274,12 @@ BaseRow_filter_on_values(BaseRow *self, PyObject *filters)
 static void
 BaseRow_dealloc(BaseRow *self)
 {
+    PyObject_GC_UnTrack(self);
     Py_XDECREF(self->parent);
     Py_XDECREF(self->row);
     Py_XDECREF(self->keymap);
-#if PY_MAJOR_VERSION >= 3
-    Py_TYPE(self)->tp_free((PyObject *)self);
-#else
-    self->ob_type->tp_free((PyObject *)self);
-#endif
+    PyObject_GC_Del(self);
+
 }
 
 static PyObject *
@@ -760,9 +774,9 @@ static PyTypeObject BaseRowType = {
     (getattrofunc)BaseRow_getattro,/* tp_getattro */
     0,                                  /* tp_setattro */
     0,                                  /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,               /* tp_flags */
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE | Py_TPFLAGS_HAVE_GC, /* tp_flags */
     "BaseRow is a abstract base class for Row",   /* tp_doc */
-    0,                                  /* tp_traverse */
+    (traverseproc)BaseRow_traverse,           /* tp_traverse */
     0,                                  /* tp_clear */
     0,                                  /* tp_richcompare */
     0,                                  /* tp_weaklistoffset */
