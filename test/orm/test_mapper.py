@@ -1928,6 +1928,65 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         fixture_session().query(User).first()
         eq_(recon, ["go"])
 
+    def test_reconstructor_init_callable_object(self):
+        """test #6538"""
+
+        users = self.tables.users
+
+        recon = []
+
+        class recon_obj(object):
+            def __call__(self, obj):
+                recon.append("go")
+
+        class User(object):
+            __init__ = reconstructor(recon_obj())
+
+        self.mapper(User, users)
+
+        User()
+        eq_(recon, ["go"])
+
+        recon[:] = []
+        fixture_session().query(User).first()
+        eq_(recon, ["go"])
+
+    def test_reconstructor_init_simulate_cython(self):
+        """test #6538
+
+        This test is pretty contrived in order to ensure we aren't using
+        ``isinstance(obj, MethodType)`` within the mapper.
+
+        """
+
+        users = self.tables.users
+
+        recon = []
+
+        class recon_obj(object):
+            def __call__(self, obj):
+                recon.append("go")
+
+            __sa_reconstructor__ = True
+
+        class recon_meth(object):
+            __func__ = recon_obj()
+
+            def __call__(self, *arg, **kw):
+                return self.__func__.__call__(*arg, **kw)
+
+        class User(object):
+            __init__ = recon_meth()
+
+        self.mapper(User, users)
+
+        User()
+        eq_(recon, ["go"])
+
+        recon[:] = []
+        fixture_session().query(User).first()
+        eq_(recon, ["go"])
+
     def test_reconstructor_init_inheritance(self):
         users = self.tables.users
 

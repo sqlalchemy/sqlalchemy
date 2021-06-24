@@ -246,6 +246,24 @@ class ValidatorTest(_fixtures.FixtureTest):
             },
         )
 
+    def test_validator_as_callable_object(self):
+        """test #6538"""
+        users = self.tables.users
+        canary = Mock()
+
+        class SomeValidator(object):
+            def __call__(self, obj, key, name):
+                canary(key, name)
+                ne_(name, "fred")
+                return name + " modified"
+
+        class User(fixtures.ComparableEntity):
+            sv = validates("name")(SomeValidator())
+
+        mapper(User, users)
+        u1 = User(name="ed")
+        eq_(u1.name, "ed modified")
+
     def test_validator_multi_warning(self):
         users = self.tables.users
 
