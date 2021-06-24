@@ -14,6 +14,7 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import Unicode
 from sqlalchemy import util
+from sqlalchemy.engine import result
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import configure_mappers
@@ -290,6 +291,24 @@ class MemUsageTest(EnsureZeroed):
         @profile_memory()
         def go():
             to_unicode_processor_factory("utf8")
+
+        go()
+
+    @testing.requires.cextensions
+    def test_cycles_in_row(self):
+
+        tup = result.result_tuple(["a", "b", "c"])
+
+        @profile_memory()
+        def go():
+            obj = {"foo": {}}
+            obj["foo"]["bar"] = obj
+
+            row = tup([1, 2, obj])
+
+            obj["foo"]["row"] = row
+
+            del row
 
         go()
 

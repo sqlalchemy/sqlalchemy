@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 5348
+
+    Fixed an issue in the C extension for the :class:`_result.Row` class which
+    could lead to a memory leak in the unlikely case of a :class:`_result.Row`
+    object which referred to an ORM object that then was mutated to refer back
+    to the ``Row`` itself, creating a cycle. The Python C APIs for tracking GC
+    cycles has been added to the native :class:`_result.Row` implementation to
+    accommodate for this case.
+
