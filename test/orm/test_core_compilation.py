@@ -8,6 +8,7 @@ from sqlalchemy import or_
 from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import union
 from sqlalchemy import util
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import column_property
@@ -609,6 +610,57 @@ class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):
             "FROM users JOIN anon_1 ON anon_1.id = users.id) "
             "SELECT users.name, users.id "
             "FROM users JOIN anon_1 ON users.id = anon_1.id",
+        )
+
+    def test_nested_union_deferred(self, deferred_fixture):
+        """test #6678"""
+        User = deferred_fixture
+
+        s1 = select(User).where(User.id == 5)
+        s2 = select(User).where(User.id == 6)
+
+        s3 = select(User).where(User.id == 7)
+
+        stmt = union(s1.union(s2), s3)
+
+        u_alias = aliased(User, stmt.subquery())
+
+        self.assert_compile(
+            select(u_alias),
+            "SELECT anon_1.id FROM ((SELECT users.name, users.id FROM users "
+            "WHERE users.id = :id_1 UNION SELECT users.name, users.id "
+            "FROM users WHERE users.id = :id_2) "
+            "UNION SELECT users.name AS name, users.id AS id "
+            "FROM users WHERE users.id = :id_3) AS anon_1",
+        )
+
+    def test_nested_union_undefer_option(self, deferred_fixture):
+        """test #6678
+
+        in this case we want to see that the unions include the deferred
+        columns so that if we undefer on the outside we can get the
+        column.
+
+        """
+        User = deferred_fixture
+
+        s1 = select(User).where(User.id == 5)
+        s2 = select(User).where(User.id == 6)
+
+        s3 = select(User).where(User.id == 7)
+
+        stmt = union(s1.union(s2), s3)
+
+        u_alias = aliased(User, stmt.subquery())
+
+        self.assert_compile(
+            select(u_alias).options(undefer(u_alias.name)),
+            "SELECT anon_1.name, anon_1.id FROM "
+            "((SELECT users.name, users.id FROM users "
+            "WHERE users.id = :id_1 UNION SELECT users.name, users.id "
+            "FROM users WHERE users.id = :id_2) "
+            "UNION SELECT users.name AS name, users.id AS id "
+            "FROM users WHERE users.id = :id_3) AS anon_1",
         )
 
 

@@ -611,7 +611,9 @@ class Query(
 
     def __clause_element__(self):
         return (
-            self.enable_eagerloads(False)
+            self._with_compile_options(
+                _enable_eagerloads=False, _render_for_subquery=True
+            )
             .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .statement
         )
@@ -674,6 +676,10 @@ class Query(
 
         """
         self._compile_options += {"_enable_eagerloads": value}
+
+    @_generative
+    def _with_compile_options(self, **opt):
+        self._compile_options += opt
 
     @util.deprecated_20(
         ":meth:`_orm.Query.with_labels` and :meth:`_orm.Query.apply_labels`",
