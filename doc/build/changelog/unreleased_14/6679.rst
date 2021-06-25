@@ -1,0 +1,16 @@
+.. change::
+    :tags: bug, regression, ext
+    :tickets: 6679
+
+    Fixed regression in :mod:`sqlalchemy.ext.automap` extension such that the
+    use case of creating an explicit mapped class to a table that is also the
+    :paramref:`_orm.relationship.secondary` element of a
+    :func:`_orm.relationship` that automap will be generating would emit the
+    "overlaps" warnings introduced in 1.4 and discussed at :ref:`error_qzyx`.
+    While generating this case from automap is still subject to the same
+    caveats that the "overlaps" warning refers towards, as automap is intended
+    for more ad-hoc use cases, the condition which produces the warning is
+    disabled when a many-to-many relationship with this particular pattern is
+    generated.
+
+

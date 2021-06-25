@@ -3427,6 +3427,14 @@ class JoinCondition(object):
                         and pr not in self.prop._reverse_property
                         and pr.key not in self.prop._overlaps
                         and self.prop.key not in pr._overlaps
+                        # note: the "__*" symbol is used internally by
+                        # SQLAlchemy as a general means of supressing the
+                        # overlaps warning for some extension cases, however
+                        # this is not currently
+                        # a publicly supported symbol and may change at
+                        # any time.
+                        and "__*" not in self.prop._overlaps
+                        and "__*" not in pr._overlaps
                         and not self.prop.parent.is_sibling(pr.parent)
                         and not self.prop.mapper.is_sibling(pr.mapper)
                         and not self.prop.parent.is_sibling(pr.mapper)

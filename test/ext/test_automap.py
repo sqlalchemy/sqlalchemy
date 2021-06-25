@@ -6,6 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
+from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.ext.automap import automap_base
@@ -17,6 +18,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.mock import patch
 from sqlalchemy.testing.schema import Column
@@ -229,6 +231,45 @@ class AutomapTest(fixtures.MappedTest):
         # "Order" !
         assert isinstance(i1.order_collection, list)
         assert o1 in i1.order_collection
+
+    def test_m2m_relationship_also_map_the_secondary(self):
+        """test #6679"""
+
+        Base = automap_base(metadata=self.tables_test_metadata)
+
+        # extend the table to have pk cols
+        Table(
+            "order_items",
+            self.tables_test_metadata,
+            Column("item_id", None, ForeignKey("items.id"), primary_key=True),
+            Column(
+                "order_id", None, ForeignKey("orders.id"), primary_key=True
+            ),
+            extend_existing=True,
+        )
+
+        # then also map to it
+        class OrderItem(Base):
+            __tablename__ = "order_items"
+
+        Base.prepare()
+
+        Order = Base.classes["orders"]
+        Item = Base.classes["items"]
+
+        o1 = Order()
+        i1 = Item(description="x")
+        o1.items_collection.append(i1)
+
+        s = fixtures.fixture_session()
+
+        s.add(o1)
+        s.flush()
+
+        oi = s.execute(select(OrderItem)).scalars().one()
+
+        is_(oi.items, i1)
+        is_(oi.orders, o1)
 
     def test_relationship_pass_params(self):
         Base = automap_base(metadata=self.tables_test_metadata)

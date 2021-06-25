@@ -1153,6 +1153,11 @@ def _m2m_relationship(
 
     create_backref = backref_name not in referred_cfg.properties
 
+    if table in table_to_map_config:
+        overlaps = "__*"
+    else:
+        overlaps = None
+
     if relationship_name not in map_config.properties:
         if create_backref:
             backref_obj = generate_relationship(
@@ -1163,9 +1168,11 @@ def _m2m_relationship(
                 referred_cls,
                 local_cls,
                 collection_class=collection_class,
+                overlaps=overlaps,
             )
         else:
             backref_obj = None
+
         rel = generate_relationship(
             automap_base,
             interfaces.MANYTOMANY,
@@ -1173,6 +1180,7 @@ def _m2m_relationship(
             relationship_name,
             local_cls,
             referred_cls,
+            overlaps=overlaps,
             secondary=table,
             primaryjoin=and_(
                 fk.column == fk.parent for fk in m2m_const[0].elements
@@ -1198,6 +1206,7 @@ def _m2m_relationship(
             backref_name,
             referred_cls,
             local_cls,
+            overlaps=overlaps,
             secondary=table,
             primaryjoin=and_(
                 fk.column == fk.parent for fk in m2m_const[1].elements
