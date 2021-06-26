@@ -11,6 +11,15 @@ import warnings
 
 from . import assertions
 from .. import exc as sa_exc
+from ..util.langhelpers import _warnings_warn
+
+
+class SATestSuiteWarning(sa_exc.SAWarning):
+    """warning for a condition detected during tests that is non-fatal"""
+
+
+def warn_test_suite(message):
+    _warnings_warn(message, category=SATestSuiteWarning)
 
 
 def setup_filters():
@@ -21,6 +30,7 @@ def setup_filters():
     )
     warnings.filterwarnings("error", category=sa_exc.SADeprecationWarning)
     warnings.filterwarnings("error", category=sa_exc.SAWarning)
+    warnings.filterwarnings("always", category=SATestSuiteWarning)
 
     # some selected deprecations...
     warnings.filterwarnings("error", category=DeprecationWarning)

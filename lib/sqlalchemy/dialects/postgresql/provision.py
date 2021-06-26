@@ -3,6 +3,7 @@ import time
 from ... import exc
 from ... import inspect
 from ... import text
+from ...testing import warn_test_suite
 from ...testing.provision import create_db
 from ...testing.provision import drop_all_schema_objects_post_tables
 from ...testing.provision import drop_all_schema_objects_pre_tables
@@ -118,8 +119,9 @@ def prepare_for_drop_tables(config, connection):
         "and pid != pg_backend_pid()"
     )
     rows = result.all()  # noqa
-    assert not rows, (
-        "PostgreSQL may not be able to DROP tables due to "
-        "idle in transaction: %s"
-        % ("; ".join(row._mapping["query"] for row in rows))
-    )
+    if rows:
+        warn_test_suite(
+            "PostgreSQL may not be able to DROP tables due to "
+            "idle in transaction: %s"
+            % ("; ".join(row._mapping["query"] for row in rows))
+        )
