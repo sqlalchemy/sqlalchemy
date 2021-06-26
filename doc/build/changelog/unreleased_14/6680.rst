@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, regression, orm
+    :tickets: 6680
+
+    Fixed regression in ORM regarding an internal reconstitution step for the
+    func:`_orm.with_polymorphic` construct, when the user-facing object is
+    garbage collected as the query is processed. The reconstitution was not
+    ensuring the sub-entities for the "polymorphic" case were handled, leading
+    to an ``AttributeError``.

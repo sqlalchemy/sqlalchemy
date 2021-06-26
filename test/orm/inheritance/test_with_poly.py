@@ -1,6 +1,7 @@
 from sqlalchemy import and_
 from sqlalchemy import exc
 from sqlalchemy import or_
+from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import eq_
@@ -50,9 +51,14 @@ class _WithPolymorphicBase(_PolymorphicFixtureBase):
 
         self.assert_sql_count(testing.db, go, 1)
 
-    def test_col_expression_base_plus_two_subs(self):
+    @testing.combinations((True,), (False,), argnames="use_star")
+    def test_col_expression_base_plus_two_subs(self, use_star):
         sess = fixture_session()
-        pa = with_polymorphic(Person, [Engineer, Manager])
+
+        if use_star:
+            pa = with_polymorphic(Person, "*")
+        else:
+            pa = with_polymorphic(Person, [Engineer, Manager])
 
         eq_(
             sess.query(
@@ -68,6 +74,14 @@ class _WithPolymorphicBase(_PolymorphicFixtureBase):
             .all(),
             [("dilbert", "java", None), ("dogbert", None, "dogbert")],
         )
+
+    def test_orm_entity_w_gc(self):
+        """test #6680"""
+        sess = fixture_session()
+
+        stmt = select(with_polymorphic(Person, "*"))
+
+        eq_(len(sess.execute(stmt).all()), 5)
 
     def test_join_to_join_entities(self):
         sess = fixture_session()

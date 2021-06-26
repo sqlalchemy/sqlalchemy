@@ -524,6 +524,15 @@ class AliasedClass(object):
         obj = cls.__new__(cls)
         obj.__name__ = "AliasedClass_%s" % aliased_insp.mapper.class_.__name__
         obj._aliased_insp = aliased_insp
+
+        if aliased_insp._is_with_polymorphic:
+            for sub_aliased_insp in aliased_insp._with_polymorphic_entities:
+                if sub_aliased_insp is not aliased_insp:
+                    ent = AliasedClass._reconstitute_from_aliased_insp(
+                        sub_aliased_insp
+                    )
+                    setattr(obj, sub_aliased_insp.class_.__name__, ent)
+
         return obj
 
     def __getattr__(self, key):
