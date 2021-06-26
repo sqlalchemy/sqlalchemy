@@ -524,6 +524,17 @@ class AliasedClass(object):
         obj = cls.__new__(cls)
         obj.__name__ = "AliasedClass_%s" % aliased_insp.mapper.class_.__name__
         obj._aliased_insp = aliased_insp
+        for poly in aliased_insp.with_polymorphic_mappers:
+            if poly is not aliased_insp.mapper:
+                ent = AliasedClass(
+                    poly.class_,
+                    aliased_insp.local_table,
+                    base_alias=aliased_insp,
+                    adapt_on_names=aliased_insp._adapt_on_names,
+                    use_mapper_path=aliased_insp._use_mapper_path,
+                )
+
+                setattr(obj, poly.class_.__name__, ent)
         return obj
 
     def __getattr__(self, key):
