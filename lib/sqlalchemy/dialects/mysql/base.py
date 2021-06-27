@@ -3355,7 +3355,7 @@ class MySQLDialect(default.DefaultDialect):
         restart.
 
         """
-        # http://dev.mysql.com/doc/refman/5.0/en/name-case-sensitivity.html
+        # https://dev.mysql.com/doc/refman/en/identifier-case-sensitivity.html
 
         charset = self._connection_charset
         row = self._compat_first(
