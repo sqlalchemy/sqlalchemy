@@ -15,7 +15,126 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.20
-    :include_notes_from: unreleased_14
+    :released: June 28, 2021
+
+    .. change::
+        :tags: bug, regression, orm
+        :tickets: 6680
+
+        Fixed regression in ORM regarding an internal reconstitution step for the
+        :func:`_orm.with_polymorphic` construct, when the user-facing object is
+        garbage collected as the query is processed. The reconstitution was not
+        ensuring the sub-entities for the "polymorphic" case were handled, leading
+        to an ``AttributeError``.
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 6646
+
+        Add a impl parameter to :class:`_types.PickleType` constructor, allowing
+        any arbitary type to be used in place of the default implementation of
+        :class:`_types.LargeBinary`. Pull request courtesy jason3gb.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 5348
+
+        Fixed an issue in the C extension for the :class:`_result.Row` class which
+        could lead to a memory leak in the unlikely case of a :class:`_result.Row`
+        object which referred to an ORM object that then was mutated to refer back
+        to the ``Row`` itself, creating a cycle. The Python C APIs for tracking GC
+        cycles has been added to the native :class:`_result.Row` implementation to
+        accommodate for this case.
+
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 6665
+
+        Fixed old issue where a :func:`_sql.select()` made against the token "*",
+        which then yielded exactly one column, would fail to correctly organize the
+        ``cursor.description`` column name into the keys of the result object.
+
+
+
+    .. change::
+        :tags: usecase, mysql
+        :tickets: 6659
+
+        Made a small adjustment in the table reflection feature of the MySQL
+        dialect to accommodate for alternate MySQL-oriented databases such as TiDB
+        which include their own "comment" directives at the end of a constraint
+        directive within "CREATE TABLE" where the format doesn't have the
+        additional space character after the comment, in this case the TiDB
+        "clustered index" feature. Pull request courtesy Daniël van Eeden.
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 6685
+
+        Fixed issue where passing ``None`` for the value of
+        :paramref:`_schema.Table.prefixes` would not store an empty list, but
+        rather the constant ``None``, which may be unexpected by third party
+        dialects. The issue is revealed by a usage in recent versions of Alembic
+        that are passing ``None`` for this value. Pull request courtesy Kai
+        Mueller.
+
+    .. change::
+        :tags: bug, regression, ext
+        :tickets: 6679
+
+        Fixed regression in :mod:`sqlalchemy.ext.automap` extension such that the
+        use case of creating an explicit mapped class to a table that is also the
+        :paramref:`_orm.relationship.secondary` element of a
+        :func:`_orm.relationship` that automap will be generating would emit the
+        "overlaps" warnings introduced in 1.4 and discussed at :ref:`error_qzyx`.
+        While generating this case from automap is still subject to the same
+        caveats that the "overlaps" warning refers towards, as automap is intended
+        for more ad-hoc use cases, the condition which produces the warning is
+        disabled when a many-to-many relationship with this particular pattern is
+        generated.
+
+
+
+    .. change::
+        :tags: bug, regression, orm
+        :tickets: 6678
+
+        Adjusted :meth:`_orm.Query.union` and similar set operations to be
+        correctly compatible with the new capabilities just added in
+        :ticket:`6661`, with SQLAlchemy 1.4.19, such that the SELECT statements
+        rendered as elements of the UNION or other set operation will include
+        directly mapped columns that are mapped as deferred; this both fixes a
+        regression involving unions with multiple levels of nesting that would
+        produce a column mismatch, and also allows the :func:`_orm.undefer` option
+        to be used at the top level of such a :class:`_orm.Query` without having to
+        apply the option to each of the elements within the UNION.
+
+    .. change::
+        :tags: bug, sql, orm
+        :tickets: 6668
+
+        Fixed the class hierarchy for the :class:`_schema.Sequence` and the more
+        general :class:`_schema.DefaultGenerator` base, as these are "executable"
+        as statements they need to include :class:`_sql.Executable` in their
+        hierarchy, not just :class:`_roles.StatementRole` as was applied
+        arbitrarily to :class:`_schema.Sequence` previously. The fix allows
+        :class:`_schema.Sequence` to work in all ``.execute()`` methods including
+        with :meth:`_orm.Session.execute` which was not working in the case that a
+        :meth:`_orm.SessionEvents.do_orm_execute` handler was also established.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6538
+
+        Adjusted the check in the mapper for a callable object that is used as a
+        ``@validates`` validator function or a ``@reconstructor`` reconstruction
+        function, to check for "callable" more liberally such as to accommodate
+        objects based on fundamental attributes like ``__func__`` and
+        ``__call___``, rather than testing for ``MethodType`` / ``FunctionType``,
+        allowing things like cython functions to work properly. Pull request
+        courtesy Miłosz Stypiński.
 
 .. changelog::
     :version: 1.4.19
