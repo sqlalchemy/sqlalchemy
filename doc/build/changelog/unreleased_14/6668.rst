@@ -9,5 +9,5 @@
     arbitrarily to :class:`_schema.Sequence` previously. The fix allows
     :class:`_schema.Sequence` to work in all ``.execute()`` methods including
     with :meth:`_orm.Session.execute` which was not working in the case that a
-    ``do_orm_execute()`` handler was also established.
+    :meth:`_orm.SessionEvents.do_orm_execute` handler was also established.
 

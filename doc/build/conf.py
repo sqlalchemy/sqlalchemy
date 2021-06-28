@@ -159,6 +159,7 @@ zzzeeksphinx_module_prefixes = {
     "_query": "sqlalchemy.orm",
     "_ormevent": "sqlalchemy.orm.event",
     "_ormexc": "sqlalchemy.orm.exc",
+    "_roles": "sqlalchemy.sql.roles",
     "_baked": "sqlalchemy.ext.baked",
     "_horizontal": "sqlalchemy.ext.horizontal_shard",
     "_associationproxy": "sqlalchemy.ext.associationproxy",
