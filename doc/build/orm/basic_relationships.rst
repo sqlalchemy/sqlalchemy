@@ -127,57 +127,100 @@ One To One
 ~~~~~~~~~~
 
 One To One is essentially a bidirectional relationship with a scalar
-attribute on both sides. To achieve this, the :paramref:`_orm.relationship.uselist` flag
-set to a value of ``False`` indicates
-the placement of a scalar attribute instead of a collection on the "many" side
-of the relationship.
+attribute on both sides.  Within the ORM, "one-to-one" is considered as a
+convention where the ORM expects that only one related row will exist
+for any parent row.
 
-For example, to convert a :ref:`one-to-many <relationship_patterns_o2m>`
-relationship into one-to-one, we add ``uselist=False`` to what would normally
-be the "many" side of the relationship, renaming ``Parent.children`` to
-``Parent.child`` for clarity::
+The "one-to-one" convention is achieved by applying a value of
+``False`` to the :paramref:`_orm.relationship.uselist` parameter of the
+:func:`_orm.relationship` construct, or in some cases the :func:`_orm.backref`
+construct, applying it on the "one-to-many" or "collection" side of a
+relationship.
+
+In the example below we present a bidirectional relationship that includes
+both :ref:`one-to-many <relationship_patterns_o2m>` (``Parent.children``) and
+a :ref:`many-to-one <relationship_patterns_m2o>` (``Child.parent``)
+relationships::
 
     class Parent(Base):
         __tablename__ = 'parent'
         id = Column(Integer, primary_key=True)
 
-        # this was previously Parent.children
+        # one-to-many collection
+        children = relationship("Child", back_populates="parent")
+
+    class Child(Base):
+        __tablename__ = 'child'
+        id = Column(Integer, primary_key=True)
+        parent_id = Column(Integer, ForeignKey('parent.id'))
+
+        # many-to-one scalar
+        parent = relationship("Parent", back_populates="children")
+
+Above, ``Parent.children`` is the "one-to-many" side referring to a collection,
+and ``Child.parent`` is the "many-to-one" side referring to a single object.
+To convert this to "one-to-one", the "one-to-many" or "collection" side
+is converted into a scalar relationship using the ``uselist=False`` flag,
+renaming ``Parent.children`` to ``Parent.child`` for clarity::
+
+    class Parent(Base):
+        __tablename__ = 'parent'
+        id = Column(Integer, primary_key=True)
+
+        # previously one-to-many Parent.children is now
+        # one-to-one Parent.child
         child = relationship("Child", back_populates="parent", uselist=False)
 
     class Child(Base):
         __tablename__ = 'child'
         id = Column(Integer, primary_key=True)
         parent_id = Column(Integer, ForeignKey('parent.id'))
+
+        # many-to-one side remains, see tip below
         parent = relationship("Parent", back_populates="child")
 
-Similarly, to convert a :ref:`many-to-one <relationship_patterns_m2o>`
-relationship into one-to-one, we again apply ``uselist=False`` to the
-"many" side, in the below example renaming ``Child.parents`` to ``Child.parent``::
+Above, when we load a ``Parent`` object, the ``Parent.child`` attribute
+will refer to a single ``Child`` object rather than a collection.  If we
+replace the value of ``Parent.child`` with a new ``Child`` object, the ORM's
+unit of work process will replace the previous ``Child`` row with the new one,
+setting the previous ``child.parent_id`` column to NULL by default unless there
+are specific :ref:`cascade <unitofwork_cascades>` behaviors set up.
 
-    class Parent(Base):
-        __tablename__ = 'parent'
-        id = Column(Integer, primary_key=True)
-        child_id = Column(Integer, ForeignKey('child.id'))
-        child = relationship("Child", back_populates="parent")
+.. tip::
 
-    class Child(Base):
-        __tablename__ = 'child'
-        id = Column(Integer, primary_key=True)
+  As mentioned previously, the ORM considers the "one-to-one" pattern as a
+  convention, where it makes the assumption that when it loads the
+  ``Parent.child`` attribute on a ``Parent`` object, it will get only one
+  row back.  If more than one row is returned, the ORM will emit a warning.
 
-        # this was previously Child.parents
-        parent = relationship("Parent", back_populates="child", uselist=False)
+  However, the ``Child.parent`` side of the above relationship remains as a
+  "many-to-one" relationship and is unchanged, and there is no intrinsic system
+  within the ORM itself that prevents more than one ``Child`` object to be
+  created against the same ``Parent`` during persistence.  Instead, techniques
+  such as :ref:`unique constraints <schema_unique_constraint>` may be used in
+  the actual database schema to enforce this arrangement, where a unique
+  constraint on the ``Child.parent_id`` column would ensure that only
+  one ``Child`` row may refer to a particular ``Parent`` row at a time.
 
-As always, the :paramref:`_orm.relationship.backref` and :func:`.backref` functions
-may be used in lieu of the :paramref:`_orm.relationship.back_populates` approach;
-to specify ``uselist`` on a backref, use the :func:`.backref` function::
+
+In the case where the :paramref:`_orm.relationship.backref`
+parameter is used to define the "one-to-many" side, this can be converted
+to the "one-to-one" convention using the :func:`_orm.backref`
+function which allows the relationship generated by the
+:paramref:`_orm.relationship.backref` parameter to receive custom parameters,
+in this case the ``uselist`` parameter::
 
     from sqlalchemy.orm import backref
 
     class Parent(Base):
         __tablename__ = 'parent'
         id = Column(Integer, primary_key=True)
-        child_id = Column(Integer, ForeignKey('child.id'))
-        child = relationship("Child", backref=backref("parent", uselist=False))
+
+    class Child(Base):
+        __tablename__ = 'child'
+        id = Column(Integer, primary_key=True)
+        parent_id = Column(Integer, ForeignKey('parent.id'))
+        parent = relationship("Parent", backref=backref("child", uselist=False))
 
 
 .. _relationships_many_to_many:
