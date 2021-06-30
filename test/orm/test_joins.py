@@ -18,6 +18,7 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import true
+from sqlalchemy import union
 from sqlalchemy.engine import default
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
@@ -362,6 +363,73 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
                 stmt,
                 "SELECT addresses.id AS addresses_id FROM users "
                 "JOIN addresses ON users.id = addresses.user_id",
+            )
+
+    @testing.combinations((True,), (False,), argnames="legacy")
+    @testing.combinations((True,), (False,), argnames="threelevel")
+    def test_join_and_union_with_entities(self, legacy, threelevel):
+        """test issue #6698, regression caused by #6503"""
+
+        User, Address, Dingaling = self.classes("User", "Address", "Dingaling")
+
+        if legacy:
+            sess = fixture_session()
+            stmt = sess.query(User).join(Address).with_entities(Address.id)
+        else:
+            stmt = select(User).join(Address).with_only_columns(Address.id)
+
+            stmt = stmt.set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+
+        if threelevel:
+            if legacy:
+                stmt = stmt.join(Address.dingaling).with_entities(Dingaling.id)
+
+                to_union = sess.query(Dingaling.id)
+            else:
+                stmt = stmt.join(Address.dingaling).with_only_columns(
+                    Dingaling.id
+                )
+                to_union = select(Dingaling.id).set_label_style(
+                    LABEL_STYLE_TABLENAME_PLUS_COL
+                )
+        else:
+            if legacy:
+                to_union = sess.query(Address.id)
+            else:
+                to_union = select(Address.id).set_label_style(
+                    LABEL_STYLE_TABLENAME_PLUS_COL
+                )
+
+        if legacy:
+            stmt = stmt.union(to_union)
+        else:
+            stmt = (
+                union(stmt, to_union)
+                .subquery()
+                .select()
+                .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            )
+
+        if threelevel:
+            self.assert_compile(
+                stmt,
+                "SELECT anon_1.dingalings_id AS anon_1_dingalings_id FROM "
+                "(SELECT dingalings.id AS dingalings_id "
+                "FROM users JOIN addresses ON users.id = addresses.user_id "
+                "JOIN dingalings ON addresses.id = dingalings.address_id "
+                "UNION "
+                "SELECT dingalings.id AS dingalings_id FROM dingalings) "
+                "AS anon_1",
+            )
+        else:
+            self.assert_compile(
+                stmt,
+                "SELECT anon_1.addresses_id AS anon_1_addresses_id FROM "
+                "(SELECT addresses.id AS addresses_id FROM users "
+                "JOIN addresses ON users.id = addresses.user_id "
+                "UNION "
+                "SELECT addresses.id AS addresses_id FROM addresses) "
+                "AS anon_1",
             )
 
     def test_invalid_kwarg_join(self):

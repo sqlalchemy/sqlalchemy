@@ -1359,6 +1359,7 @@ class Query(
             "_offset_clause",
             "_last_joined_entity",
             "_legacy_setup_joins",
+            "_memoized_select_entities",
             "_distinct",
             "_distinct_on",
             "_having_criteria",

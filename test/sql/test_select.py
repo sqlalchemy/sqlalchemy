@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import tuple_
+from sqlalchemy import union
 from sqlalchemy.sql import column
 from sqlalchemy.sql import table
 from sqlalchemy.testing import assert_raises_message
@@ -276,6 +277,21 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "JOIN child ON parent.id = child.parent_id",
         )
 
+    def test_join_implicit_left_side_wo_cols_onelevel_union(self):
+        """test issue #6698, regression from #6503.
+
+        this issue didn't affect Core but testing it here anyway."""
+        stmt = select(parent).join(child).with_only_columns(child.c.id)
+
+        stmt = stmt.union(select(child.c.id))
+        self.assert_compile(
+            stmt,
+            "SELECT child.id FROM parent "
+            "JOIN child ON parent.id = child.parent_id "
+            "UNION "
+            "SELECT child.id FROM child",
+        )
+
     def test_join_implicit_left_side_wo_cols_twolevel(self):
         """test issue #6503"""
         stmt = (
@@ -291,6 +307,28 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT grandchild.id FROM parent "
             "JOIN child ON parent.id = child.parent_id "
             "JOIN grandchild ON child.id = grandchild.child_id",
+        )
+
+    def test_join_implicit_left_side_wo_cols_twolevel_union(self):
+        """test issue #6698, regression from #6503.
+
+        this issue didn't affect Core but testing it here anyway."""
+        stmt = (
+            select(parent)
+            .join(child)
+            .with_only_columns(child.c.id)
+            .join(grandchild)
+            .with_only_columns(grandchild.c.id)
+        )
+
+        stmt = union(stmt, select(grandchild.c.id))
+        self.assert_compile(
+            stmt,
+            "SELECT grandchild.id FROM parent "
+            "JOIN child ON parent.id = child.parent_id "
+            "JOIN grandchild ON child.id = grandchild.child_id "
+            "UNION "
+            "SELECT grandchild.id FROM grandchild",
         )
 
     def test_right_nested_inner_join(self):
