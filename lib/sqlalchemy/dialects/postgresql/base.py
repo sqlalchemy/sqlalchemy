@@ -2322,7 +2322,9 @@ class PGCompiler(compiler.SQLCompiler):
     def _on_conflict_target(self, clause, **kw):
 
         if clause.constraint_target is not None:
-            target_text = "ON CONSTRAINT %s" % clause.constraint_target
+            target_text = "ON CONSTRAINT %s" % self.preparer.quote(
+                clause.constraint_target
+            )
         elif clause.inferred_target_elements is not None:
             target_text = "(%s)" % ", ".join(
                 (

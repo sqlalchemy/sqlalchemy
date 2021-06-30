@@ -28,6 +28,7 @@ from sqlalchemy import Text
 from sqlalchemy import text
 from sqlalchemy import tuple_
 from sqlalchemy import types as sqltypes
+from sqlalchemy import UniqueConstraint
 from sqlalchemy import update
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import aggregate_order_by
@@ -2337,6 +2338,31 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
             "INSERT INTO mytable (name) VALUES "
             "(%(name)s) ON CONFLICT ON CONSTRAINT uq_name "
             "DO UPDATE SET myid = excluded.myid",
+        )
+
+    def test_do_nothing_quoted_string_constraint_target(self):
+        """test #6696"""
+        i = insert(self.table1, values=dict(name="foo"))
+        i = i.on_conflict_do_nothing(constraint="Some Constraint Name")
+        self.assert_compile(
+            i,
+            "INSERT INTO mytable (name) VALUES "
+            '(%(name)s) ON CONFLICT ON CONSTRAINT "Some Constraint Name" '
+            "DO NOTHING",
+        )
+
+    def test_do_nothing_quoted_named_constraint_target(self):
+        """test #6696"""
+        i = insert(self.table1, values=dict(name="foo"))
+        unique_constr = UniqueConstraint(
+            self.table1.c.myid, name="Some Constraint Name"
+        )
+        i = i.on_conflict_do_nothing(constraint=unique_constr)
+        self.assert_compile(
+            i,
+            "INSERT INTO mytable (name) VALUES "
+            '(%(name)s) ON CONFLICT ON CONSTRAINT "Some Constraint Name" '
+            "DO NOTHING",
         )
 
     def test_do_update_index_elements_where_target(self):
