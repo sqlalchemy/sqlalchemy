@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, regression, mssql
+    :tickets: 6697
+
+    Fixed regression where the special dotted-schema name handling for the SQL
+    Server dialect would not function correctly if the dotted schema name were
+    used within the ``schema_translate_map`` feature.

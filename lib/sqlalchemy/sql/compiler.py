@@ -4751,7 +4751,7 @@ class IdentifierPreparer(object):
                         "Dialect has no default schema name; can't "
                         "use None as dynamic schema target."
                     )
-            return self.quote(effective_schema)
+            return self.quote_schema(effective_schema)
 
         return re.sub(r"(\[SCHEMA_([^\]]+)\])", replace, statement)
 
