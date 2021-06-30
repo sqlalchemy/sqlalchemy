@@ -27,7 +27,7 @@ Architecture <https://martinfowler.com/eaaCatalog/registry.html>`_.
    management.  If you're new to SQLAlchemy, and especially if the
    term "thread-local variable" seems strange to you, we recommend that
    if possible you familiarize first with an off-the-shelf integration
-   system such as `Flask-SQLAlchemy <https://packages.python.org/Flask-SQLAlchemy/>`_
+   system such as `Flask-SQLAlchemy <https://pypi.org/project/Flask-SQLAlchemy/>`_
    or `zope.sqlalchemy <https://pypi.org/project/zope.sqlalchemy>`_.
 
 A :class:`.scoped_session` is constructed by calling it, passing it a
