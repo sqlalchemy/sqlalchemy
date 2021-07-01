@@ -102,7 +102,7 @@ SQLAlchemy Documentation
 
     * **Engines, Connections, Pools:**
       :doc:`Engine Configuration <core/engines>` |
-      :doc:`Connections, Transactions <core/connections>` |
+      :doc:`Connections, Transactions, Results <core/connections>` |
       :doc:`AsyncIO Support <orm/extensions/asyncio>` |
       :doc:`Connection Pooling <core/pooling>`
 
