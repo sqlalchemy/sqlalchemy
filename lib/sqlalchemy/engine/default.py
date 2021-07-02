@@ -81,6 +81,7 @@ class DefaultDialect(interfaces.Dialect):
     insert_executemany_returning = False
 
     cte_follows_insert = False
+    supports_nesting_cte = False
 
     supports_native_enum = False
     supports_native_boolean = False

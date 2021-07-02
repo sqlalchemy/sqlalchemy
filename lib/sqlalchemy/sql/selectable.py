@@ -2039,12 +2039,14 @@ class CTE(
         selectable,
         name=None,
         recursive=False,
+        nesting=False,
         _cte_alias=None,
         _restates=(),
         _prefixes=None,
         _suffixes=None,
     ):
         self.recursive = recursive
+        self.nesting = nesting
         self._cte_alias = _cte_alias
         self._restates = _restates
         if _prefixes:
@@ -2077,6 +2079,7 @@ class CTE(
             self.element,
             name=name,
             recursive=self.recursive,
+            nesting=self.nesting,
             _cte_alias=self,
             _prefixes=self._prefixes,
             _suffixes=self._suffixes,
@@ -2087,6 +2090,7 @@ class CTE(
             self.element.union(other),
             name=self.name,
             recursive=self.recursive,
+            nesting=self.nesting,
             _restates=self._restates + (self,),
             _prefixes=self._prefixes,
             _suffixes=self._suffixes,
@@ -2097,6 +2101,7 @@ class CTE(
             self.element.union_all(other),
             name=self.name,
             recursive=self.recursive,
+            nesting=self.nesting,
             _restates=self._restates + (self,),
             _prefixes=self._prefixes,
             _suffixes=self._suffixes,
@@ -2110,7 +2115,7 @@ class HasCTE(roles.HasCTERole):
 
     """
 
-    def cte(self, name=None, recursive=False):
+    def cte(self, name=None, recursive=False, nesting=False):
         r"""Return a new :class:`_expression.CTE`,
         or Common Table Expression instance.
 
@@ -2276,7 +2281,9 @@ class HasCTE(roles.HasCTERole):
             :meth:`_expression.HasCTE.cte`.
 
         """
-        return CTE._construct(self, name=name, recursive=recursive)
+        return CTE._construct(
+            self, name=name, recursive=recursive, nesting=nesting
+        )
 
 
 class Subquery(AliasedReturnsRows):

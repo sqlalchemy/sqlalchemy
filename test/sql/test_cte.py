@@ -1,8 +1,10 @@
+import functools
+import pytest
 from sqlalchemy import delete
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import update
-from sqlalchemy.dialects import mssql
+from sqlalchemy.dialects import mssql, mysql
 from sqlalchemy.engine import default
 from sqlalchemy.exc import CompileError
 from sqlalchemy.sql import and_
@@ -1376,4 +1378,99 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             CTE,
             a_stmt,
             "foo",
+        )
+
+    def test_nesting_cte_in_cte(self):
+        nesting_cte = select([literal(1).label("inner")]).cte(
+            "nesting", nesting=True
+        )
+        stmt = select(
+            [select([nesting_cte.c.inner.label("outer")]).cte("cte")]
+        )
+
+        self.assert_compile(
+            stmt,
+            'WITH cte AS (WITH nesting AS (SELECT %(param_1)s AS "inner") '
+            'SELECT nesting."inner" AS "outer" FROM nesting) '
+            'SELECT cte."outer" FROM cte',
+            dialect="postgresql",
+        )
+
+    def test_nesting_cte_in_recursive_cte(self):
+        nesting_cte = select([literal(1).label("inner")]).cte(
+            "nesting", nesting=True
+        )
+        stmt = select(
+            [
+                select([nesting_cte.c.inner.label("outer")]).cte(
+                    "cte", recursive=True
+                )
+            ]
+        )
+
+        self.assert_compile(
+            stmt,
+            'WITH RECURSIVE cte("outer") AS (WITH nesting AS '
+            '(SELECT %(param_1)s AS "inner") '
+            'SELECT nesting."inner" AS "outer" FROM nesting) '
+            'SELECT cte."outer" FROM cte',
+            dialect="postgresql",
+        )
+
+    def test_recursive_nesting_cte_in_cte(self):
+        nesting_cte = select([literal(1).label("inner")]).cte(
+            "nesting", nesting=True, recursive=True
+        )
+        stmt = select(
+            [select([nesting_cte.c.inner.label("outer")]).cte("cte")]
+        )
+
+        self.assert_compile(
+            stmt,
+            'WITH cte AS (WITH RECURSIVE nesting("inner") AS '
+            '(SELECT %(param_1)s AS "inner") '
+            'SELECT nesting."inner" AS "outer" FROM nesting) '
+            'SELECT cte."outer" FROM cte',
+            dialect="postgresql",
+        )
+
+    def test_recursive_nesting_cte_in_recursive_cte(self):
+        nesting_cte = select([literal(1).label("inner")]).cte(
+            "nesting", nesting=True, recursive=True
+        )
+        stmt = select(
+            [
+                select([nesting_cte.c.inner.label("outer")]).cte(
+                    "cte", recursive=True
+                )
+            ]
+        )
+
+        self.assert_compile(
+            stmt,
+            'WITH RECURSIVE cte("outer") AS (WITH RECURSIVE nesting("inner") '
+            'AS (SELECT %(param_1)s AS "inner") '
+            'SELECT nesting."inner" AS "outer" FROM nesting) '
+            'SELECT cte."outer" FROM cte',
+            dialect="postgresql",
+        )
+
+    @pytest.mark.parametrize(
+        "dialect",
+        [mysql],
+    )
+    def test_nesting_cte_unsupported_backend_raise(self, dialect):
+        stmt = select(
+            [
+                select(
+                    [select([literal(1).label("one")]).cte("t2", nesting=True)]
+                ).cte("t")
+            ]
+        )
+
+        assert_raises_message(
+            CompileError,
+            "Nesting CTE is not supported by this "
+            "dialect's statement compiler.",
+            functools.partial(stmt.compile, dialect=dialect.dialect()),
         )

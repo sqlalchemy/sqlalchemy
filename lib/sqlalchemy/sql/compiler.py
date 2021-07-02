@@ -3150,8 +3150,8 @@ class SQLCompiler(Compiled):
             if per_dialect:
                 text += " " + self.get_statement_hint_text(per_dialect)
 
-        if self.ctes and toplevel:
-            text = self._render_cte_clause() + text
+        if self.ctes:
+            text = self._render_cte_clause(nesting_only=(not toplevel)) + text
 
         if select_stmt._suffixes:
             text += " " + self._generate_prefixes(
@@ -3323,14 +3323,37 @@ class SQLCompiler(Compiled):
             clause += " "
         return clause
 
-    def _render_cte_clause(self):
+    def _render_cte_clause(
+        self,
+        nesting_only: bool = False,
+    ):
+        ctes = self.ctes
+
+        if nesting_only:
+            ctes = {cte: ctes[cte] for cte in ctes if cte.nesting}
+            # Remove them from the visible CTEs
+            self.ctes = {
+                cte: self.ctes[cte] for cte in self.ctes if not cte.nesting
+            }
+
+            if ctes and not self.dialect.supports_nesting_cte:
+                raise exc.CompileError(
+                    "Nesting CTE is not supported by this "
+                    "dialect's statement compiler."
+                )
+
+        ctes_recursive = any([cte.recursive for cte in ctes])
+
+        if not ctes:
+            return ""
+
         if self.positional:
             self.positiontup = (
-                sum([self.cte_positional[cte] for cte in self.ctes], [])
+                sum([self.cte_positional[cte] for cte in ctes], [])
                 + self.positiontup
             )
-        cte_text = self.get_cte_preamble(self.ctes_recursive) + " "
-        cte_text += ", \n".join([txt for txt in self.ctes.values()])
+        cte_text = self.get_cte_preamble(ctes_recursive) + " "
+        cte_text += ", \n".join([txt for txt in ctes.values()])
         cte_text += "\n "
         return cte_text
 
