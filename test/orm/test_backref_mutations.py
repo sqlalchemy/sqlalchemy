@@ -373,6 +373,18 @@ class O2MCollectionTest(_fixtures.FixtureTest):
         eq_(u1.addresses, [a1, a2, a1])
 
 
+@testing.combinations(
+    (
+        "legacy_style",
+        True,
+    ),
+    (
+        "new_style",
+        False,
+    ),
+    argnames="name, _legacy_inactive_history_style",
+    id_="sa",
+)
 class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
     run_inserts = None
 
@@ -391,7 +403,12 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
             users,
             properties={
                 "address": relationship(
-                    Address, backref=backref("user"), uselist=False
+                    Address,
+                    backref=backref("user"),
+                    uselist=False,
+                    _legacy_inactive_history_style=(
+                        cls._legacy_inactive_history_style
+                    ),
                 )
             },
         )
@@ -485,9 +502,18 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
         # backref fires
         assert u1.address is a2
 
-        # stays on both sides
-        assert a1.user is u1
-        assert a2.user is u1
+        eq_(
+            a2._sa_instance_state.committed_state["user"],
+            attributes.PASSIVE_NO_RESULT,
+        )
+        if not self._legacy_inactive_history_style:
+            # autoflush during the a2.user
+            assert a1.user is None
+            assert a2.user is u1
+        else:
+            # stays on both sides
+            assert a1.user is u1
+            assert a2.user is u1
 
     def test_collection_move_commitfirst(self):
         User, Address = self.classes.User, self.classes.Address
@@ -546,6 +572,18 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
         assert a2.user is u1
 
 
+@testing.combinations(
+    (
+        "legacy_style",
+        True,
+    ),
+    (
+        "new_style",
+        False,
+    ),
+    argnames="name, _legacy_inactive_history_style",
+    id_="sa",
+)
 class O2OScalarMoveTest(_fixtures.FixtureTest):
     run_inserts = None
 
@@ -562,7 +600,15 @@ class O2OScalarMoveTest(_fixtures.FixtureTest):
         mapper(
             User,
             users,
-            properties={"address": relationship(Address, uselist=False)},
+            properties={
+                "address": relationship(
+                    Address,
+                    uselist=False,
+                    _legacy_inactive_history_style=(
+                        cls._legacy_inactive_history_style
+                    ),
+                )
+            },
         )
 
     def test_collection_move_commitfirst(self):

@@ -1753,6 +1753,18 @@ class NoSaveCascadeBackrefTest(_fixtures.FixtureTest):
         assert k1 not in sess
 
 
+@testing.combinations(
+    (
+        "legacy_style",
+        True,
+    ),
+    (
+        "new_style",
+        False,
+    ),
+    argnames="name, _legacy_inactive_history_style",
+    id_="sa",
+)
 class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
@@ -1824,6 +1836,7 @@ class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
             prefs,
             properties=dict(extra=relationship(Extra, cascade="all, delete")),
         )
+
         mapper(
             User,
             users,
@@ -1834,7 +1847,13 @@ class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
                     cascade="all, delete-orphan",
                     single_parent=True,
                 ),
-                foo=relationship(Foo),
+                foo=relationship(
+                    Foo,
+                    active_history=False,
+                    _legacy_inactive_history_style=(
+                        cls._legacy_inactive_history_style
+                    ),
+                ),
             ),
         )  # straight m2o
         mapper(Foo, foo)
@@ -1884,7 +1903,7 @@ class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
         )
 
     def test_cascade_on_deleted(self):
-        """test a bug introduced by r6711"""
+        """test a bug introduced by #6711"""
 
         Foo, User = self.classes.Foo, self.classes.User
 
@@ -1899,6 +1918,7 @@ class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
         # the error condition relies upon
         # these things being true
         assert User.foo.dispatch._active_history is False
+
         eq_(attributes.get_history(u1, "foo"), ([None], (), ()))
 
         sess.add(u1)

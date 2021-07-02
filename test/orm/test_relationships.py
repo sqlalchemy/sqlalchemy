@@ -5559,6 +5559,7 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             backref=False,
             delete=False,
             active_history=False,
+            legacy_inactive_history_style=True,
         ),
         dict(
             detached=True,
@@ -5566,6 +5567,7 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             backref=False,
             delete=False,
             active_history=False,
+            legacy_inactive_history_style=True,
         ),
         dict(
             detached=False,
@@ -5573,6 +5575,7 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             backref=False,
             delete=False,
             active_history=False,
+            legacy_inactive_history_style=True,
         ),
         dict(
             detached=True,
@@ -5580,6 +5583,7 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             backref=False,
             delete=False,
             active_history=False,
+            legacy_inactive_history_style=True,
         ),
         dict(
             detached=False,
@@ -5587,6 +5591,7 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             backref=True,
             delete=False,
             active_history=False,
+            legacy_inactive_history_style=True,
         ),
         dict(
             detached=True,
@@ -5594,6 +5599,7 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             backref=True,
             delete=False,
             active_history=False,
+            legacy_inactive_history_style=True,
         ),
         dict(
             detached=False,
@@ -5601,6 +5607,7 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             backref=True,
             delete=False,
             active_history=False,
+            legacy_inactive_history_style=True,
         ),
         dict(
             detached=True,
@@ -5608,6 +5615,72 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             backref=True,
             delete=False,
             active_history=False,
+            legacy_inactive_history_style=True,
+        ),
+        #####
+        dict(
+            detached=False,
+            raiseload=False,
+            backref=False,
+            delete=False,
+            active_history=False,
+            legacy_inactive_history_style=False,
+        ),
+        dict(
+            detached=True,
+            raiseload=False,
+            backref=False,
+            delete=False,
+            active_history=False,
+            legacy_inactive_history_style=False,
+        ),
+        dict(
+            detached=False,
+            raiseload=True,
+            backref=False,
+            delete=False,
+            active_history=False,
+            legacy_inactive_history_style=False,
+        ),
+        dict(
+            detached=True,
+            raiseload=True,
+            backref=False,
+            delete=False,
+            active_history=False,
+            legacy_inactive_history_style=False,
+        ),
+        dict(
+            detached=False,
+            raiseload=False,
+            backref=True,
+            delete=False,
+            active_history=False,
+            legacy_inactive_history_style=False,
+        ),
+        dict(
+            detached=True,
+            raiseload=False,
+            backref=True,
+            delete=False,
+            active_history=False,
+            legacy_inactive_history_style=False,
+        ),
+        dict(
+            detached=False,
+            raiseload=True,
+            backref=True,
+            delete=False,
+            active_history=False,
+            legacy_inactive_history_style=False,
+        ),
+        dict(
+            detached=True,
+            raiseload=True,
+            backref=True,
+            delete=False,
+            active_history=False,
+            legacy_inactive_history_style=False,
         ),
         dict(
             detached=False,
@@ -5615,6 +5688,7 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             backref=False,
             delete=False,
             active_history=True,
+            legacy_inactive_history_style=True,
         ),
         dict(
             detached=True,
@@ -5622,6 +5696,7 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             backref=False,
             delete=False,
             active_history=True,
+            legacy_inactive_history_style=True,
         ),
         dict(
             detached=False,
@@ -5629,6 +5704,7 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             backref=False,
             delete=False,
             active_history=True,
+            legacy_inactive_history_style=True,
         ),
         dict(
             detached=True,
@@ -5636,6 +5712,7 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             backref=False,
             delete=False,
             active_history=True,
+            legacy_inactive_history_style=True,
         ),
         dict(
             detached=False,
@@ -5643,6 +5720,7 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             backref=True,
             delete=False,
             active_history=True,
+            legacy_inactive_history_style=True,
         ),
         dict(
             detached=True,
@@ -5650,6 +5728,7 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             backref=True,
             delete=False,
             active_history=True,
+            legacy_inactive_history_style=True,
         ),
         dict(
             detached=False,
@@ -5657,6 +5736,7 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             backref=True,
             delete=False,
             active_history=True,
+            legacy_inactive_history_style=True,
         ),
         dict(
             detached=True,
@@ -5664,13 +5744,16 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             backref=True,
             delete=False,
             active_history=True,
+            legacy_inactive_history_style=True,
         ),
+        ####
         dict(
             detached=False,
             raiseload=False,
             backref=False,
             delete=True,
             active_history=False,
+            legacy_inactive_history_style=True,
         ),
         dict(
             detached=True,
@@ -5678,6 +5761,7 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             backref=False,
             delete=True,
             active_history=False,
+            legacy_inactive_history_style=True,
         ),
         dict(
             detached=False,
@@ -5685,6 +5769,7 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             backref=False,
             delete=True,
             active_history=False,
+            legacy_inactive_history_style=True,
         ),
         dict(
             detached=True,
@@ -5692,7 +5777,42 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             backref=False,
             delete=True,
             active_history=False,
+            legacy_inactive_history_style=True,
         ),
+        ###
+        dict(
+            detached=False,
+            raiseload=False,
+            backref=False,
+            delete=True,
+            active_history=False,
+            legacy_inactive_history_style=False,
+        ),
+        dict(
+            detached=True,
+            raiseload=False,
+            backref=False,
+            delete=True,
+            active_history=False,
+            legacy_inactive_history_style=False,
+        ),
+        dict(
+            detached=False,
+            raiseload=True,
+            backref=False,
+            delete=True,
+            active_history=False,
+            legacy_inactive_history_style=False,
+        ),
+        dict(
+            detached=True,
+            raiseload=True,
+            backref=False,
+            delete=True,
+            active_history=False,
+            legacy_inactive_history_style=False,
+        ),
+        #
         dict(
             detached=False,
             raiseload=False,
@@ -5722,7 +5842,15 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             active_history=True,
         ),
     )
-    def test_m2o(self, detached, raiseload, backref, active_history, delete):
+    def test_m2o(
+        self,
+        detached,
+        raiseload,
+        backref,
+        active_history,
+        delete,
+        legacy_inactive_history_style,
+    ):
 
         if delete:
             assert not backref, "delete and backref are mutually exclusive"
@@ -5739,6 +5867,7 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             opts["active_history"] = True
         if raiseload:
             opts["lazy"] = "raise"
+        opts["_legacy_inactive_history_style"] = legacy_inactive_history_style
 
         mapper(
             Address,
