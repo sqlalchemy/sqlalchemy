@@ -2941,7 +2941,10 @@ class LegacyBranchedJoinIntoAnExternalTransactionTest(
 
         # neutron is doing this inside of a migration
         # 1df244e556f5_add_unique_ha_router_agent_port_bindings.py
-        self.session = Session(bind=self.connection.connect())
+        with testing.expect_deprecated_20(
+            r"The Connection.connect\(\) method is considered legacy"
+        ):
+            self.session = Session(bind=self.connection.connect())
 
         if testing.requires.savepoints.enabled:
             # start the session in a SAVEPOINT...

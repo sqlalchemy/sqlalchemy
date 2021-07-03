@@ -69,7 +69,6 @@ def setup_filters():
         # Core execution
         #
         r"The (?:Executable|Engine)\.(?:execute|scalar)\(\) method",
-        r"The Connection.connect\(\) method is considered legacy",
         #        r".*DefaultGenerator.execute\(\)",
         #
         #

@@ -518,7 +518,10 @@ class TransactionTest(ResetFixture, fixtures.TablesTest):
         connection = local_connection
         users = self.tables.users
         connection.begin()
-        branched = connection.connect()
+        with testing.expect_deprecated_20(
+            r"The Connection.connect\(\) method is considered legacy"
+        ):
+            branched = connection.connect()
         assert branched.in_transaction()
         branched.execute(users.insert(), dict(user_id=1, user_name="user1"))
         with testing.expect_deprecated_20(
@@ -872,7 +875,10 @@ class TransactionTest(ResetFixture, fixtures.TablesTest):
     def test_branch_autorollback(self, local_connection):
         connection = local_connection
         users = self.tables.users
-        branched = connection.connect()
+        with testing.expect_deprecated_20(
+            r"The Connection.connect\(\) method is considered legacy"
+        ):
+            branched = connection.connect()
         with testing.expect_deprecated_20(
             "The current statement is being autocommitted using "
             "implicit autocommit"
@@ -898,7 +904,10 @@ class TransactionTest(ResetFixture, fixtures.TablesTest):
     def test_branch_orig_rollback(self, local_connection):
         connection = local_connection
         users = self.tables.users
-        branched = connection.connect()
+        with testing.expect_deprecated_20(
+            r"The Connection.connect\(\) method is considered legacy"
+        ):
+            branched = connection.connect()
         with testing.expect_deprecated_20(
             "The current statement is being autocommitted using "
             "implicit autocommit"
@@ -919,7 +928,10 @@ class TransactionTest(ResetFixture, fixtures.TablesTest):
     def test_branch_autocommit(self, local_connection):
         users = self.tables.users
         with testing.db.connect() as connection:
-            branched = connection.connect()
+            with testing.expect_deprecated_20(
+                r"The Connection.connect\(\) method is considered legacy"
+            ):
+                branched = connection.connect()
             with testing.expect_deprecated_20(
                 "The current statement is being autocommitted using "
                 "implicit autocommit"
@@ -940,7 +952,10 @@ class TransactionTest(ResetFixture, fixtures.TablesTest):
         connection = local_connection
         users = self.tables.users
         trans = connection.begin()
-        branched = connection.connect()
+        with testing.expect_deprecated_20(
+            r"The Connection.connect\(\) method is considered legacy"
+        ):
+            branched = connection.connect()
         assert branched.in_transaction()
         branched.execute(users.insert(), dict(user_id=1, user_name="user1"))
         nested = branched.begin_nested()
@@ -957,7 +972,10 @@ class TransactionTest(ResetFixture, fixtures.TablesTest):
     def test_branch_twophase_rollback(self, local_connection):
         connection = local_connection
         users = self.tables.users
-        branched = connection.connect()
+        with testing.expect_deprecated_20(
+            r"The Connection.connect\(\) method is considered legacy"
+        ):
+            branched = connection.connect()
         assert not branched.in_transaction()
         with testing.expect_deprecated_20(
             r"The current statement is being autocommitted using "
