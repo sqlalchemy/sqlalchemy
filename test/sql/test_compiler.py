@@ -892,6 +892,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         "WITH RECURSIVE (colnames)" part.  This test shows that this isn't
         correct when keys are present.
 
+        See also test_cte ->
+        test_wrecur_ovlp_lbls_plus_dupes_separate_keys_use_labels
+
         """
         m = MetaData()
         foo = Table(

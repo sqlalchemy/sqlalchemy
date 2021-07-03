@@ -3139,7 +3139,7 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
 
     """
 
-    __visit_name__ = "grouping"
+    __visit_name__ = "select_statement_grouping"
     _traverse_internals = [("element", InternalTraversal.dp_clauseelement)]
 
     _is_select_container = True
@@ -3172,6 +3172,9 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
 
     def self_group(self, against=None):
         return self
+
+    def _generate_columns_plus_names(self, anon_for_dupe_key):
+        return self.element._generate_columns_plus_names(anon_for_dupe_key)
 
     def _generate_fromclause_column_proxies(self, subquery):
         self.element._generate_fromclause_column_proxies(subquery)
