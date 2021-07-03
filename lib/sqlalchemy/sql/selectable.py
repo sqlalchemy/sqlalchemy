@@ -3929,6 +3929,10 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         return self.selects[0]._all_selected_columns
 
     @property
+    def _all_selected_column_labels(self):
+        return self.selects[0]._all_selected_column_labels
+
+    @property
     def selected_columns(self):
         """A :class:`_expression.ColumnCollection`
         representing the columns that
@@ -5768,6 +5772,16 @@ class Select(
     def _all_selected_columns(self):
         meth = SelectState.get_plugin_class(self).all_selected_columns
         return list(meth(self))
+
+    @HasMemoized.memoized_attribute
+    def _all_selected_column_labels(self):
+        conv = SelectState._column_naming_convention(self._label_style)
+
+        return [
+            conv(c)
+            for c in self._all_selected_columns
+            if not c._is_text_clause
+        ]
 
     def _ensure_disambiguated_names(self):
         if self._label_style is LABEL_STYLE_NONE:

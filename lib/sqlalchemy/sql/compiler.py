@@ -2563,17 +2563,12 @@ class SQLCompiler(Compiled):
                         col_source = cte.element.selects[0]
                     else:
                         assert False, "cte should only be against SelectBase"
-                    recur_cols = [
-                        c
-                        for c in util.unique_list(
-                            col_source._all_selected_columns
-                        )
-                        if c is not None
-                    ]
+
+                    recur_cols = col_source._all_selected_column_labels
 
                     text += "(%s)" % (
                         ", ".join(
-                            self.preparer.format_column(
+                            self.preparer.format_label_name(
                                 ident, anon_map=self.anon_map
                             )
                             for ident in recur_cols
@@ -5004,6 +4999,20 @@ class IdentifierPreparer(object):
 
     def format_schema(self, name):
         """Prepare a quoted schema name."""
+
+        return self.quote(name)
+
+    def format_label_name(
+        self,
+        name,
+        anon_map=None,
+    ):
+        """Prepare a quoted column name."""
+
+        if anon_map is not None and isinstance(
+            name, elements._truncated_label
+        ):
+            name = name.apply_map(anon_map)
 
         return self.quote(name)
 
