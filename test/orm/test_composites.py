@@ -377,7 +377,7 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         """test saving a null composite value
 
         See google groups thread for more context:
-        http://groups.google.com/group/sqlalchemy/browse_thread/thread/0c6580a1761b2c29
+        https://groups.google.com/group/sqlalchemy/browse_thread/thread/0c6580a1761b2c29
 
         """
 

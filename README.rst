@@ -129,18 +129,18 @@ Documentation
 
 Latest documentation is at:
 
-http://www.sqlalchemy.org/docs/
+https://www.sqlalchemy.org/docs/
 
 Installation / Requirements
 ---------------------------
 
 Full documentation for installation is at
-`Installation <http://www.sqlalchemy.org/docs/intro.html#installation>`_.
+`Installation <https://www.sqlalchemy.org/docs/intro.html#installation>`_.
 
 Getting Help / Development / Bug reporting
 ------------------------------------------
 
-Please refer to the `SQLAlchemy Community Guide <http://www.sqlalchemy.org/support.html>`_.
+Please refer to the `SQLAlchemy Community Guide <https://www.sqlalchemy.org/support.html>`_.
 
 Code of Conduct
 ---------------
@@ -148,11 +148,11 @@ Code of Conduct
 Above all, SQLAlchemy places great emphasis on polite, thoughtful, and
 constructive communication between users and developers.
 Please see our current Code of Conduct at
-`Code of Conduct <http://www.sqlalchemy.org/codeofconduct.html>`_.
+`Code of Conduct <https://www.sqlalchemy.org/codeofconduct.html>`_.
 
 License
 -------
 
 SQLAlchemy is distributed under the `MIT license
-<http://www.opensource.org/licenses/mit-license.php>`_.
+<https://www.opensource.org/licenses/mit-license.php>`_.
 

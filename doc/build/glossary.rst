@@ -227,7 +227,7 @@ Glossary
 
         In Python, a descriptor is an object attribute with “binding behavior”,
         one whose attribute access has been overridden by methods in the
-        `descriptor protocol <http://docs.python.org/howto/descriptor.html>`_.
+        `descriptor protocol <https://docs.python.org/howto/descriptor.html>`_.
         Those methods are ``__get__()``, ``__set__()``, and ``__delete__()``.
         If any of those methods are defined for an object, it is said to be a
         descriptor.
@@ -275,7 +275,7 @@ Glossary
 
             :ref:`metadata_toplevel`
 
-            `DDL (via Wikipedia) <http://en.wikipedia.org/wiki/Data_definition_language>`_
+            `DDL (via Wikipedia) <https://en.wikipedia.org/wiki/Data_definition_language>`_
 
             :term:`DML`
 
@@ -290,7 +290,7 @@ Glossary
 
         .. seealso::
 
-            `DML (via Wikipedia) <http://en.wikipedia.org/wiki/Data_manipulation_language>`_
+            `DML (via Wikipedia) <https://en.wikipedia.org/wiki/Data_manipulation_language>`_
 
             :term:`DDL`
 
@@ -422,7 +422,7 @@ Glossary
 
         .. seealso::
 
-            `Identity Map (via Martin Fowler) <http://martinfowler.com/eaaCatalog/identityMap.html>`_
+            `Identity Map (via Martin Fowler) <https://martinfowler.com/eaaCatalog/identityMap.html>`_
 
     lazy initialization
         A tactic of delaying some initialization action, such as creating objects,
@@ -450,7 +450,7 @@ Glossary
 
         .. seealso::
 
-            `Lazy Load (via Martin Fowler) <http://martinfowler.com/eaaCatalog/lazyLoad.html>`_
+            `Lazy Load (via Martin Fowler) <https://martinfowler.com/eaaCatalog/lazyLoad.html>`_
 
             :term:`N plus one problem`
 
@@ -611,7 +611,7 @@ Glossary
 
         .. seealso::
 
-            `PEP 249 - Python Database API Specification v2.0 <http://www.python.org/dev/peps/pep-0249/>`_
+            `PEP 249 - Python Database API Specification v2.0 <https://www.python.org/dev/peps/pep-0249/>`_
 
     domain model
 
@@ -621,7 +621,7 @@ Glossary
 
         .. seealso::
 
-            `Domain Model (via Wikipedia) <http://en.wikipedia.org/wiki/Domain_model>`_
+            `Domain Model (via Wikipedia) <https://en.wikipedia.org/wiki/Domain_model>`_
 
     unit of work
         This pattern is where the system transparently keeps
@@ -632,7 +632,7 @@ Glossary
 
         .. seealso::
 
-            `Unit of Work (via Martin Fowler) <http://martinfowler.com/eaaCatalog/unitOfWork.html>`_
+            `Unit of Work (via Martin Fowler) <https://martinfowler.com/eaaCatalog/unitOfWork.html>`_
 
             :doc:`orm/session`
 
@@ -829,7 +829,7 @@ Glossary
 
             :term:`durability`
 
-            `ACID Model (via Wikipedia) <http://en.wikipedia.org/wiki/ACID_Model>`_
+            `ACID Model (via Wikipedia) <https://en.wikipedia.org/wiki/ACID_Model>`_
 
     atomicity
         Atomicity is one of the components of the :term:`ACID` model,
@@ -844,7 +844,7 @@ Glossary
 
             :term:`ACID`
 
-            `Atomicity (via Wikipedia) <http://en.wikipedia.org/wiki/Atomicity_(database_systems)>`_
+            `Atomicity (via Wikipedia) <https://en.wikipedia.org/wiki/Atomicity_(database_systems)>`_
 
     consistency
         Consistency is one of the components of the :term:`ACID` model,
@@ -859,7 +859,7 @@ Glossary
 
             :term:`ACID`
 
-            `Consistency (via Wikipedia) <http://en.wikipedia.org/wiki/Consistency_(database_systems)>`_
+            `Consistency (via Wikipedia) <https://en.wikipedia.org/wiki/Consistency_(database_systems)>`_
 
     isolation
     isolated
@@ -878,7 +878,7 @@ Glossary
 
             :term:`ACID`
 
-            `Isolation (via Wikipedia) <http://en.wikipedia.org/wiki/Isolation_(database_systems)>`_
+            `Isolation (via Wikipedia) <https://en.wikipedia.org/wiki/Isolation_(database_systems)>`_
 
             :term:`read uncommitted`
 
@@ -944,7 +944,7 @@ Glossary
 
             :term:`ACID`
 
-            `Durability (via Wikipedia) <http://en.wikipedia.org/wiki/Durability_(database_systems)>`_
+            `Durability (via Wikipedia) <https://en.wikipedia.org/wiki/Durability_(database_systems)>`_
 
     RETURNING
         This is a non-SQL standard clause provided in various forms by
@@ -1334,7 +1334,7 @@ Glossary
 
             :term:`primary key`
 
-            `Candidate key (via Wikipedia) <http://en.wikipedia.org/wiki/Candidate_key>`_
+            `Candidate key (via Wikipedia) <https://en.wikipedia.org/wiki/Candidate_key>`_
 
             https://www.databasestar.com/database-keys/
 
@@ -1364,7 +1364,7 @@ Glossary
 
             :term:`composite primary key`
 
-            `Primary key (via Wikipedia) <http://en.wikipedia.org/wiki/Primary_Key>`_
+            `Primary key (via Wikipedia) <https://en.wikipedia.org/wiki/Primary_Key>`_
 
     composite primary key
 
@@ -1392,7 +1392,7 @@ Glossary
 
         .. seealso::
 
-            `Foreign Key Constraint (via Wikipedia) <http://en.wikipedia.org/wiki/Foreign_key_constraint>`_
+            `Foreign Key Constraint (via Wikipedia) <https://en.wikipedia.org/wiki/Foreign_key_constraint>`_
 
     check constraint
 
@@ -1412,7 +1412,7 @@ Glossary
 
         .. seealso::
 
-            `CHECK constraint (via Wikipedia) <http://en.wikipedia.org/wiki/Check_constraint>`_
+            `CHECK constraint (via Wikipedia) <https://en.wikipedia.org/wiki/Check_constraint>`_
 
     unique constraint
     unique key index
@@ -1429,7 +1429,7 @@ Glossary
 
         .. seealso::
 
-            `Unique key (via Wikipedia) <http://en.wikipedia.org/wiki/Unique_key#Defining_unique_keys>`_
+            `Unique key (via Wikipedia) <https://en.wikipedia.org/wiki/Unique_key#Defining_unique_keys>`_
 
     transient
         This describes one of the major object states which

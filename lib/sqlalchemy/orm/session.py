@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 """Provides the Session class and related utilities."""
 
 
@@ -1770,7 +1770,7 @@ class Session(_SessionClassMethods):
         the connections are no longer safe to be used.
 
         Below illustrates a scenario when using `gevent
-        <http://www.gevent.org/>`_, which can produce ``Timeout`` exceptions
+        <https://www.gevent.org/>`_, which can produce ``Timeout`` exceptions
         that may mean the underlying connection should be discarded::
 
             import gevent

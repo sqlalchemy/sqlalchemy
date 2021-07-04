@@ -520,7 +520,7 @@ The "password" portion of a ``create_engine()`` no longer considers the ``+`` si
 
 For whatever reason, the Python function ``unquote_plus()`` was applied to the
 "password" field of a URL, which is an incorrect application of the
-encoding rules described in `RFC 1738 <http://www.ietf.org/rfc/rfc1738.txt>`_
+encoding rules described in `RFC 1738 <https://www.ietf.org/rfc/rfc1738.txt>`_
 in that it escaped spaces as plus signs.  The stringification of a URL
 now only encodes ":", "@", or "/" and nothing else, and is now applied to both the
 ``username`` and ``password`` fields (previously it only applied to the
@@ -1810,7 +1810,7 @@ as desired.
 
     :mod:`sqlalchemy.dialects.firebird.kinterbasdb`
 
-    http://pythonhosted.org/fdb/usage-guide.html#retaining-transactions - information
+    https://pythonhosted.org/fdb/usage-guide.html#retaining-transactions - information
     on the "retaining" flag.
 
 :ticket:`2763`

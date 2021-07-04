@@ -96,7 +96,7 @@ for us transparently::
     [<__main__.Keyword object at 0x12cdd30>, <__main__.Keyword object at 0x12cde30>]
 
 The :class:`.AssociationProxy` object produced by the :func:`.association_proxy` function
-is an instance of a `Python descriptor <http://docs.python.org/howto/descriptor.html>`_.
+is an instance of a `Python descriptor <https://docs.python.org/howto/descriptor.html>`_.
 It is always declared with the user-defined class being mapped, regardless of
 whether Declarative or classical mappings via the :func:`.mapper` function are used.
 
@@ -432,7 +432,7 @@ One caveat with our example above is that because ``Keyword`` objects are create
 for each dictionary set operation, the example fails to maintain uniqueness for
 the ``Keyword`` objects on their string name, which is a typical requirement for
 a tagging scenario such as this one.  For this use case the recipe
-`UniqueObject <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/UniqueObject>`_, or
+`UniqueObject <https://www.sqlalchemy.org/trac/wiki/UsageRecipes/UniqueObject>`_, or
 a comparable creational strategy, is
 recommended, which will apply a "lookup first, then create" strategy to the constructor
 of the ``Keyword`` class, so that an already existing ``Keyword`` is returned if the

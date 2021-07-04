@@ -17,7 +17,7 @@ integration systems to help construct their integration schemes.
 The object is the :class:`.scoped_session` object, and it represents a
 **registry** of :class:`.Session` objects.  If you're not familiar with the
 registry pattern, a good introduction can be found in `Patterns of Enterprise
-Architecture <http://martinfowler.com/eaaCatalog/registry.html>`_.
+Architecture <https://martinfowler.com/eaaCatalog/registry.html>`_.
 
 .. note::
 
@@ -27,8 +27,8 @@ Architecture <http://martinfowler.com/eaaCatalog/registry.html>`_.
    management.  If you're new to SQLAlchemy, and especially if the
    term "thread-local variable" seems strange to you, we recommend that
    if possible you familiarize first with an off-the-shelf integration
-   system such as `Flask-SQLAlchemy <http://packages.python.org/Flask-SQLAlchemy/>`_
-   or `zope.sqlalchemy <http://pypi.python.org/pypi/zope.sqlalchemy>`_.
+   system such as `Flask-SQLAlchemy <https://packages.python.org/Flask-SQLAlchemy/>`_
+   or `zope.sqlalchemy <https://pypi.org/project/zope.sqlalchemy>`_.
 
 A :class:`.scoped_session` is constructed by calling it, passing it a
 **factory** which can create new :class:`.Session` objects.   A factory
@@ -117,7 +117,7 @@ to be in place such that multiple calls across many threads don't actually get
 a handle to the same session.   We call this notion **thread local storage**,
 which means, a special object is used that will maintain a distinct object
 per each application thread.   Python provides this via the
-`threading.local() <http://docs.python.org/library/threading.html#threading.local>`_
+`threading.local() <https://docs.python.org/library/threading.html#threading.local>`_
 construct.  The :class:`.scoped_session` object by default uses this object
 as storage, so that a single :class:`.Session` is maintained for all who call
 upon the :class:`.scoped_session` registry, but only within the scope of a single

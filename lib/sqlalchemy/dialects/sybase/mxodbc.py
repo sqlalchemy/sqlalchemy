@@ -3,14 +3,14 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 """
 
 .. dialect:: sybase+mxodbc
     :name: mxODBC
     :dbapi: mxodbc
     :connectstring: sybase+mxodbc://<username>:<password>@<dsnname>
-    :url: http://www.egenix.com/
+    :url: https://www.egenix.com/
 
 .. note::
 

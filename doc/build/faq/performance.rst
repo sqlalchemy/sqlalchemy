@@ -322,7 +322,7 @@ With cPython 2.7, runtimes observed::
     SQLAlchemy Core: Total time for 100000 records 0.21024107933 secs
     sqlite3: Total time for 100000 records 0.137335062027 sec
 
-We can reduce the time by a factor of nearly three using recent versions of `PyPy <http://pypy.org/>`_::
+We can reduce the time by a factor of nearly three using recent versions of `PyPy <https://pypy.org/>`_::
 
     SQLAlchemy ORM: Total time for 100000 records 2.39429616928 secs
     SQLAlchemy ORM pk given: Total time for 100000 records 1.51412987709 secs

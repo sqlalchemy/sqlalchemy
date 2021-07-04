@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """An adaptation of Py2.3/2.4's Queue module which supports reentrant
 behavior, using RLock instead of Lock for its mutex object.  The

@@ -32,7 +32,7 @@ to the issue of organizing instances among multiple databases.   For a
 more plain-spoken alternative, the "distinct entity" approach
 is a simple method of assigning objects to different tables (and potentially
 database nodes) in an explicit way - described on the wiki at
-`EntityName <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/EntityName>`_.
+`EntityName <https://www.sqlalchemy.org/trac/wiki/UsageRecipes/EntityName>`_.
 
 .. autosource::
 

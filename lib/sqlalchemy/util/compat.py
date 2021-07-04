@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """Handle Python version/platform incompatibilities."""
 
@@ -502,7 +502,7 @@ def with_metaclass(meta, *bases, **kw):
 
     Drops the middle class upon creation.
 
-    Source: http://lucumr.pocoo.org/2013/5/21/porting-to-python-3-redux/
+    Source: https://lucumr.pocoo.org/2013/5/21/porting-to-python-3-redux/
 
     """
 

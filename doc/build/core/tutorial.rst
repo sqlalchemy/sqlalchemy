@@ -56,7 +56,7 @@ While there is overlap among the usage patterns of the ORM and the Expression
 Language, the similarities are more superficial than they may at first appear.
 One approaches the structure and content of data from the perspective of a
 user-defined `domain model
-<http://en.wikipedia.org/wiki/Domain_model>`_ which is transparently
+<https://en.wikipedia.org/wiki/Domain_model>`_ which is transparently
 persisted and refreshed from its underlying storage model. The other
 approaches it from the perspective of literal schema and SQL expression
 representations which are explicitly composed into messages consumed

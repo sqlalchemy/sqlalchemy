@@ -473,7 +473,7 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
     __backend__ = True
 
     # fixed in mysql-connector as of 2.0.1,
-    # see http://bugs.mysql.com/bug.php?id=73266
+    # see https://bugs.mysql.com/bug.php?id=73266
     def test_precision_float_roundtrip(self, metadata, connection):
         t = Table(
             "t",
@@ -675,7 +675,7 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
         # TIMESTAMP without NULL inserts current time when passed
         # NULL.  when not passed, generates 0000-00-00 quite
         # annoyingly.
-        # the flag http://dev.mysql.com/doc/refman/5.6/en/\
+        # the flag https://dev.mysql.com/doc/refman/5.6/en/\
         # server-system-variables.html#sysvar_explicit_defaults_for_timestamp
         # changes this for 5.6 if set.
 

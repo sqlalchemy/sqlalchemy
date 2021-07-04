@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 """
 Provides the hierarchy of DDL-defining schema items as well as routines
 to invoke them for a create/drop call.
@@ -1098,7 +1098,7 @@ class SchemaDropper(DDLBase):
 
         # traverse client side defaults which may refer to server-side
         # sequences. noting that some of these client side defaults may also be
-        # set up as server side defaults (see http://docs.sqlalchemy.org/en/
+        # set up as server side defaults (see https://docs.sqlalchemy.org/en/
         # latest/core/defaults.html#associating-a-sequence-as-the-server-side-
         # default), so have to be dropped after the table is dropped.
         for column in table.columns:

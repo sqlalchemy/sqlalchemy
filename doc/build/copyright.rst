@@ -4,7 +4,7 @@
 Appendix:  Copyright
 ====================
 
-This is the MIT license: `<http://www.opensource.org/licenses/mit-license.php>`_
+This is the MIT license: `<https://www.opensource.org/licenses/mit-license.php>`_
 
 Copyright (c) 2005-2021 Michael Bayer and contributors.
 SQLAlchemy is a trademark of Michael Bayer.

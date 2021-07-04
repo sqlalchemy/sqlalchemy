@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """
 .. dialect:: mssql+pymssql
@@ -12,7 +12,7 @@
     :connectstring: mssql+pymssql://<username>:<password>@<freetds_name>/?charset=utf8
 
 pymssql is a Python module that provides a Python DBAPI interface around
-`FreeTDS <http://www.freetds.org/>`_.
+`FreeTDS <https://www.freetds.org/>`_.
 
 .. note::
 

@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 r"""
 .. dialect:: oracle
@@ -331,7 +331,7 @@ ON UPDATE CASCADE
 
 Oracle doesn't have native ON UPDATE CASCADE functionality.  A trigger based
 solution is available at
-http://asktom.oracle.com/tkyte/update_cascade/index.html .
+https://asktom.oracle.com/tkyte/update_cascade/index.html .
 
 When using the SQLAlchemy ORM, the ORM has limited ability to manually issue
 cascading updates - specify ForeignKey objects using the
@@ -1304,7 +1304,7 @@ class OracleDDLCompiler(compiler.DDLCompiler):
 
         # oracle has no ON UPDATE CASCADE -
         # its only available via triggers
-        # http://asktom.oracle.com/tkyte/update_cascade/index.html
+        # https://asktom.oracle.com/tkyte/update_cascade/index.html
         if constraint.onupdate is not None:
             util.warn(
                 "Oracle does not contain native UPDATE CASCADE "
@@ -1733,7 +1733,7 @@ class OracleDialect(default.DefaultDialect):
         if dblink:
             # using user_db_links here since all_db_links appears
             # to have more restricted permissions.
-            # http://docs.oracle.com/cd/B28359_01/server.111/b28310/ds_admin005.htm
+            # https://docs.oracle.com/cd/B28359_01/server.111/b28310/ds_admin005.htm
             # will need to hear from more users if we are doing
             # the right thing here.  See [ticket:2619]
             owner = connection.scalar(

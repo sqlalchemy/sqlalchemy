@@ -133,7 +133,7 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _PyHive: https://github.com/dropbox/PyHive#sqlalchemy
 .. _teradatasqlalchemy: https://pypi.org/project/teradatasqlalchemy/
 .. _pybigquery: https://github.com/mxmzdlv/pybigquery/
-.. _sqlalchemy-redshift: https://pypi.python.org/pypi/sqlalchemy-redshift
+.. _sqlalchemy-redshift: https://pypi.org/project/sqlalchemy-redshift
 .. _sqlalchemy-drill: https://github.com/JohnOmernik/sqlalchemy-drill
 .. _sqlalchemy-hana: https://github.com/SAP/sqlalchemy-hana
 .. _sqlalchemy-solr: https://github.com/aadel/sqlalchemy-solr

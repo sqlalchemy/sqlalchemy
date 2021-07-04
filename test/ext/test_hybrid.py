@@ -943,7 +943,7 @@ class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
     """tests against hybrids that return a non-ClauseElement.
 
     use cases derived from the example at
-    http://techspot.zzzeek.org/2011/10/21/hybrids-and-value-agnostic-types/
+    https://techspot.zzzeek.org/2011/10/21/hybrids-and-value-agnostic-types/
 
     """
 

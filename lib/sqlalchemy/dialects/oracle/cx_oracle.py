@@ -2,7 +2,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 r"""
 .. dialect:: oracle+cx_oracle
@@ -237,7 +237,7 @@ altering the type coercion behavior at the same time.
 
 Users of the cx_Oracle dialect are **strongly encouraged** to read through
 cx_Oracle's list of built-in datatype symbols at
-http://cx-oracle.readthedocs.io/en/latest/module.html#database-types.
+https://cx-oracle.readthedocs.io/en/latest/api_manual/module.html#database-types.
 Note that in some cases, significant performance degradation can occur when
 using these types vs. not, in particular when specifying ``cx_Oracle.CLOB``.
 

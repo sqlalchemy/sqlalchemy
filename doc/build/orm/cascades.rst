@@ -674,7 +674,7 @@ desired state::
     False
 
 There is a recipe for intercepting :meth:`.Session.delete` and invoking this
-expiration automatically; see `ExpireRelationshipOnFKChange <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/ExpireRelationshipOnFKChange>`_ for this.  However, the usual practice of
+expiration automatically; see `ExpireRelationshipOnFKChange <https://www.sqlalchemy.org/trac/wiki/UsageRecipes/ExpireRelationshipOnFKChange>`_ for this.  However, the usual practice of
 deleting items within collections is to forego the usage of
 :meth:`~.Session.delete` directly, and instead use cascade behavior to
 automatically invoke the deletion as a result of removing the object from the

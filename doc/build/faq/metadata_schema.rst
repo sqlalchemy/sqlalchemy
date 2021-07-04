@@ -104,4 +104,4 @@ However, there are simple ways to get on-construction behaviors using creation
 functions, and behaviors related to the linkages between schema objects such as
 constraint conventions or naming conventions using attachment events.
 An example of many of these
-techniques can be seen at `Naming Conventions <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/NamingConventions>`_.
+techniques can be seen at `Naming Conventions <https://www.sqlalchemy.org/trac/wiki/UsageRecipes/NamingConventions>`_.

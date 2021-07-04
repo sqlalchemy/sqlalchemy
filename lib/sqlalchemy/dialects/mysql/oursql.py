@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """
 
@@ -11,7 +11,7 @@
     :name: OurSQL
     :dbapi: oursql
     :connectstring: mysql+oursql://<user>:<password>@<host>[:<port>]/<dbname>
-    :url: http://packages.python.org/oursql/
+    :url: https://packages.python.org/oursql/
 
 .. note::
 

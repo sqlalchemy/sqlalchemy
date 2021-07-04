@@ -3,14 +3,14 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """
 .. dialect:: firebird+fdb
     :name: fdb
     :dbapi: pyodbc
     :connectstring: firebird+fdb://user:password@host:port/path/to/db[?key=value&key=value...]
-    :url: http://pypi.python.org/pypi/fdb/
+    :url: https://pypi.org/project/fdb/
 
     fdb is a kinterbasdb compatible DBAPI for Firebird.
 
@@ -56,7 +56,7 @@ accept every argument that Kinterbasdb does.
 
   .. seealso::
 
-    http://pythonhosted.org/fdb/usage-guide.html#retaining-transactions
+    https://pythonhosted.org/fdb/usage-guide.html#retaining-transactions
     - information on the "retaining" flag.
 
 """  # noqa

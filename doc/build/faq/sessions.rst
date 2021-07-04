@@ -225,7 +225,7 @@ above code is predictable and consistent.
 How do I make a Query that always adds a certain filter to every query?
 ------------------------------------------------------------------------------------------------
 
-See the recipe at `FilteredQuery <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/FilteredQuery>`_.
+See the recipe at `FilteredQuery <https://www.sqlalchemy.org/trac/wiki/UsageRecipes/FilteredQuery>`_.
 
 .. _faq_query_deduplicating:
 
@@ -462,7 +462,7 @@ have meaning until the row is inserted; otherwise there is no row yet::
     specific programming scenarios encountered by users which involve the repurposing
     of the ORM's usual object states.
 
-The recipe `ExpireRelationshipOnFKChange <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/ExpireRelationshipOnFKChange>`_ features an example using SQLAlchemy events
+The recipe `ExpireRelationshipOnFKChange <https://www.sqlalchemy.org/trac/wiki/UsageRecipes/ExpireRelationshipOnFKChange>`_ features an example using SQLAlchemy events
 in order to coordinate the setting of foreign key attributes with many-to-one
 relationships.
 
@@ -544,7 +544,7 @@ When people read the many-to-many example in the docs, they get hit with the
 fact that if you create the same ``Keyword`` twice, it gets put in the DB twice.
 Which is somewhat inconvenient.
 
-This `UniqueObject <http://www.sqlalchemy.org/trac/wiki/UsageRecipes/UniqueObject>`_ recipe was created to address this issue.
+This `UniqueObject <https://www.sqlalchemy.org/trac/wiki/UsageRecipes/UniqueObject>`_ recipe was created to address this issue.
 
 .. _faq_post_update_update:
 

@@ -86,10 +86,10 @@ sign "+":
 Important Dialect Links:
 
 * Documentation on connect arguments:
-  http://www.sqlalchemy.org/docs/06/dbengine.html#create-
+  https://www.sqlalchemy.org/docs/06/dbengine.html#create-
   engine-url-arguments.
 
-* Reference documentation for individual dialects: http://ww
+* Reference documentation for individual dialects: https://ww
   w.sqlalchemy.org/docs/06/reference/dialects/index.html
 
 * The tips and tricks at DatabaseNotes.
@@ -312,7 +312,7 @@ using complex composites with SQLite, you now need to turn
 the first element into a subquery (which is also compatible
 on PG).   A new example is in the SQL expression tutorial at
 the end of
-[http://www.sqlalchemy.org/docs/06/sqlexpression.html
+[https://www.sqlalchemy.org/docs/06/sqlexpression.html
 #unions-and-other-set-operations].  See :ticket:`1665` and
 r6690 for more background.
 
@@ -754,7 +754,7 @@ from Python Unicode to an encoded string, or when the
 Unicode type is used explicitly, a warning is raised if the
 object is a bytestring.   This warning can be suppressed or
 converted to an exception using the Python warnings filter
-documented at: http://docs.python.org/library/warnings.html
+documented at: https://docs.python.org/library/warnings.html
 
 Generic Enum Type
 -----------------
@@ -1190,7 +1190,7 @@ upon use.
   in favor of "load=False".
 
 * ``ScopedSession.mapper`` remains deprecated.  See the
-  usage recipe at   http://www.sqlalchemy.org/trac/wiki/Usag
+  usage recipe at   https://www.sqlalchemy.org/trac/wiki/Usag
   eRecipes/SessionAwareMapper
 
 * passing an ``InstanceState`` (internal SQLAlchemy state
@@ -1210,7 +1210,7 @@ SQLSoup
 
 SQLSoup has been modernized and updated to reflect common
 0.5/0.6 capabilities, including well defined session
-integration.  Please read the new docs at [http://www.sqlalc
+integration.  Please read the new docs at [https://www.sqlalc
 hemy.org/docs/06/reference/ext/sqlsoup.html].
 
 Declarative
@@ -1222,7 +1222,7 @@ modify ``dict_`` to add class attributes (e.g. columns).
 This no longer works, the ``DeclarativeMeta`` constructor
 now ignores ``dict_``. Instead, the class attributes should
 be assigned directly, e.g. ``cls.id=Column(...)``, or the
-`MixIn class <http://www.sqlalchemy.org/docs/reference/ext/d
+`MixIn class <https://www.sqlalchemy.org/docs/reference/ext/d
 eclarative.html#mix-in-classes>`_ approach should be used
 instead of the metaclass approach.
 

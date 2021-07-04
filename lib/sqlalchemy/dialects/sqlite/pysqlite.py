@@ -3,14 +3,14 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 r"""
 .. dialect:: sqlite+pysqlite
     :name: pysqlite
     :dbapi: sqlite3
     :connectstring: sqlite+pysqlite:///file_path
-    :url: http://docs.python.org/library/sqlite3.html
+    :url: https://docs.python.org/library/sqlite3.html
 
     Note that ``pysqlite`` is the same driver as the ``sqlite3``
     module included with the Python distribution.
@@ -381,7 +381,7 @@ scope is to begin, we emit ``"BEGIN"`` ourselves.
 
 When we take control of ``"BEGIN"``, we can also control directly SQLite's
 locking modes, introduced at
-`BEGIN TRANSACTION <http://sqlite.org/lang_transaction.html>`_,
+`BEGIN TRANSACTION <https://sqlite.org/lang_transaction.html>`_,
 by adding the desired locking mode to our ``"BEGIN"``::
 
     @event.listens_for(engine, "begin")
@@ -390,13 +390,13 @@ by adding the desired locking mode to our ``"BEGIN"``::
 
 .. seealso::
 
-    `BEGIN TRANSACTION <http://sqlite.org/lang_transaction.html>`_ -
+    `BEGIN TRANSACTION <https://sqlite.org/lang_transaction.html>`_ -
     on the SQLite site
 
-    `sqlite3 SELECT does not BEGIN a transaction <http://bugs.python.org/issue9924>`_ -
+    `sqlite3 SELECT does not BEGIN a transaction <https://bugs.python.org/issue9924>`_ -
     on the Python bug tracker
 
-    `sqlite3 module breaks transactions and potentially corrupts data <http://bugs.python.org/issue10740>`_ -
+    `sqlite3 module breaks transactions and potentially corrupts data <https://bugs.python.org/issue10740>`_ -
     on the Python bug tracker
 
 

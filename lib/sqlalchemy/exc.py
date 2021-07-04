@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """Exceptions used with SQLAlchemy.
 
@@ -36,7 +36,7 @@ class HasDescriptionCode(object):
         else:
             return (
                 "(Background on this error at: "
-                "http://sqlalche.me/e/%s/%s)"
+                "https://sqlalche.me/e/%s/%s)"
                 % (
                     _version_token,
                     self.code,
@@ -684,7 +684,7 @@ class RemovedIn20Warning(SADeprecationWarning):
     def __str__(self):
         return (
             super(RemovedIn20Warning, self).__str__()
-            + " (Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9)"
+            + " (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)"
         )
 
 
