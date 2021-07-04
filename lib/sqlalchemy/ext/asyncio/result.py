@@ -152,6 +152,14 @@ class AsyncResult(AsyncCommon):
 
         :return: a list of :class:`.Row` objects.
 
+        .. warning::  As opposed to :meth:`_query.Query.all`,
+           this method **will not** deduplicate entries
+           based on primary key.
+
+        .. seealso::
+
+            :ref:``
+
         """
 
         return await greenlet_spawn(self._allrows)
