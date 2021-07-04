@@ -3110,6 +3110,10 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
         return self.element._all_selected_columns
 
     @property
+    def _all_selected_column_labels(self):
+        return self.element._all_selected_column_labels
+
+    @property
     def selected_columns(self):
         """A :class:`_expression.ColumnCollection`
         representing the columns that
