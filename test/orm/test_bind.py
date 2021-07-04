@@ -73,13 +73,15 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         sess.execute(users_unbound.insert(), params=dict(id=2, name="jack"))
         eq_(
             sess.execute(
-                users_unbound.select(users_unbound.c.id == 2)
+                users_unbound.select().where(users_unbound.c.id == 2)
             ).fetchall(),
             [(2, "jack")],
         )
 
         eq_(
-            sess.execute(users_unbound.select(User.id == 2)).fetchall(),
+            sess.execute(
+                users_unbound.select().where(User.id == 2)
+            ).fetchall(),
             [(2, "jack")],
         )
 
@@ -133,13 +135,15 @@ class BindIntegrationTest(_fixtures.FixtureTest):
 
         eq_(
             sess.execute(
-                users_unbound.select(users_unbound.c.id == 2)
+                users_unbound.select().where(users_unbound.c.id == 2)
             ).fetchall(),
             [(2, "jack")],
         )
 
         eq_(
-            sess.execute(users_unbound.select(User.id == 2)).fetchall(),
+            sess.execute(
+                users_unbound.select().where(User.id == 2)
+            ).fetchall(),
             [(2, "jack")],
         )
 

@@ -426,7 +426,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(of=table1),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(of=table1),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
             "FOR UPDATE",

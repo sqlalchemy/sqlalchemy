@@ -1078,8 +1078,9 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         )
 
         query = (
-            users.select(users.c.id == 7)
-            .union(users.select(users.c.id > 7))
+            users.select()
+            .where(users.c.id == 7)
+            .union(users.select().where(users.c.id > 7))
             .alias("ulist")
             .outerjoin(addresses)
             .select(order_by=[text("ulist.id"), addresses.c.id])
@@ -1105,8 +1106,9 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         )
 
         query = (
-            users.select(users.c.id == 7)
-            .union(users.select(users.c.id > 7))
+            users.select()
+            .where(users.c.id == 7)
+            .union(users.select().where(users.c.id > 7))
             .alias("ulist")
             .outerjoin(addresses)
             .select(order_by=[text("ulist.id"), addresses.c.id])
@@ -1134,8 +1136,9 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         )
 
         query = (
-            users.select(users.c.id == 7)
-            .union(users.select(users.c.id > 7))
+            users.select()
+            .where(users.c.id == 7)
+            .union(users.select().where(users.c.id > 7))
             .alias("ulist")
             .outerjoin(addresses)
             .select(order_by=[text("ulist.id"), addresses.c.id])
@@ -1168,8 +1171,9 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         # the adapter created by contains_eager()
         adalias = addresses.alias()
         query = (
-            users.select(users.c.id == 7)
-            .union(users.select(users.c.id > 7))
+            users.select()
+            .where(users.c.id == 7)
+            .union(users.select().where(users.c.id > 7))
             .alias("ulist")
             .outerjoin(adalias)
             .select(order_by=[text("ulist.id"), adalias.c.id])
@@ -1704,7 +1708,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         )
 
         sess = fixture_session()
-        sel = users.select(User.id.in_([7, 8])).alias()
+        sel = users.select().where(User.id.in_([7, 8])).alias()
         q = sess.query(User.name)
         q2 = q.select_entity_from(sel).all()
         eq_(list(q2), [("jack",), ("ed",)])
@@ -2653,7 +2657,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         mapper(User, users, properties={"addresses": relationship(Address)})
         mapper(Address, addresses)
 
-        sel = users.select(users.c.id.in_([7, 8])).alias()
+        sel = users.select().where(users.c.id.in_([7, 8])).alias()
         sess = fixture_session()
 
         eq_(
@@ -2879,7 +2883,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
 
         mapper(User, users)
 
-        sel = users.select(users.c.id.in_([7, 8]))
+        sel = users.select().where(users.c.id.in_([7, 8]))
         sess = fixture_session()
 
         eq_(
@@ -2957,7 +2961,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         mapper(User, users, properties={"addresses": relationship(Address)})
         mapper(Address, addresses)
 
-        sel = users.select(users.c.id.in_([7, 8]))
+        sel = users.select().where(users.c.id.in_([7, 8]))
         sess = fixture_session()
 
         eq_(
@@ -3069,7 +3073,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         mapper(Keyword, keywords)
 
         sess = fixture_session()
-        sel = users.select(users.c.id.in_([7, 8]))
+        sel = users.select().where(users.c.id.in_([7, 8]))
 
         eq_(
             sess.query(User)
@@ -3132,7 +3136,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
 
         sess = fixture_session()
 
-        sel = users.select(users.c.id.in_([7, 8]))
+        sel = users.select().where(users.c.id.in_([7, 8]))
 
         def go():
             eq_(
@@ -3212,7 +3216,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 1)
 
         sess.expunge_all()
-        sel2 = orders.select(orders.c.id.in_([1, 2, 3]))
+        sel2 = orders.select().where(orders.c.id.in_([1, 2, 3]))
         eq_(
             sess.query(Order)
             .select_entity_from(sel2.subquery())
@@ -3244,7 +3248,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
         )
         mapper(Address, addresses)
 
-        sel = users.select(users.c.id.in_([7, 8]))
+        sel = users.select().where(users.c.id.in_([7, 8]))
         sess = fixture_session()
 
         def go():

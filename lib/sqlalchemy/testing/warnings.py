@@ -66,15 +66,8 @@ def setup_filters():
     # we are moving one at a time
     for msg in [
         #
-        # Core execution
-        #
-        #        r".*DefaultGenerator.execute\(\)",
-        #
-        #
-        #
         # Core SQL constructs
         #
-        r"The FromClause\.select\(\).whereclause parameter is deprecated",
         r"Set functions such as union\(\), union_all\(\), extract\(\),",
         r"The legacy calling style of select\(\) is deprecated and will be "
         "removed",
