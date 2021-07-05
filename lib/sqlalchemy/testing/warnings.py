@@ -68,7 +68,6 @@ def setup_filters():
         #
         # Core SQL constructs
         #
-        r"Set functions such as union\(\), union_all\(\), extract\(\),",
         r"The legacy calling style of select\(\) is deprecated and will be "
         "removed",
         r"The FromClause.select\(\) method will no longer accept keyword "
