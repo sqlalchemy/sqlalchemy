@@ -2010,11 +2010,9 @@ class MSSQLCompiler(compiler.SQLCompiler):
         # necessarily used an expensive KeyError in order to match.
 
         columns = [
-            self._label_select_column(
-                None,
+            self._label_returning_column(
+                stmt,
                 adapter.traverse(c),
-                True,
-                False,
                 {"result_map_targets": (c,)},
             )
             for c in expression._select_iterables(returning_cols)

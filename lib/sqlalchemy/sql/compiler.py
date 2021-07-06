@@ -35,7 +35,6 @@ from . import crud
 from . import elements
 from . import functions
 from . import operators
-from . import roles
 from . import schema
 from . import selectable
 from . import sqltypes
@@ -612,7 +611,7 @@ class SQLCompiler(Compiled):
 
     _loose_column_name_matching = False
     """tell the result object that the SQL staement is textual, wants to match
-    up to Column objects, and may be using the ._label in the SELECT rather
+    up to Column objects, and may be using the ._tq_label in the SELECT rather
     than the base name.
 
     """
@@ -1457,8 +1456,8 @@ class SQLCompiler(Compiled):
 
         if add_to_result_map is not None:
             targets = (column, name, column.key) + result_map_targets
-            if column._label:
-                targets += (column._label,)
+            if column._tq_label:
+                targets += (column._tq_label,)
 
             add_to_result_map(name, orig_name, targets, column.type)
 
@@ -2816,6 +2815,24 @@ class SQLCompiler(Compiled):
             )
         self._result_columns.append((keyname, name, objects, type_))
 
+    def _label_returning_column(self, stmt, column, column_clause_args=None):
+        """Render a column with necessary labels inside of a RETURNING clause.
+
+        This method is provided for individual dialects in place of calling
+        the _label_select_column method directly, so that the two use cases
+        of RETURNING vs. SELECT can be disambiguated going forward.
+
+        .. versionadded:: 1.4.21
+
+        """
+        return self._label_select_column(
+            None,
+            column,
+            True,
+            False,
+            {} if column_clause_args is None else column_clause_args,
+        )
+
     def _label_select_column(
         self,
         select,
@@ -2824,6 +2841,8 @@ class SQLCompiler(Compiled):
         asfrom,
         column_clause_args,
         name=None,
+        proxy_name=None,
+        fallback_label_name=None,
         within_columns_clause=True,
         column_is_repeated=False,
         need_column_expressions=False,
@@ -2867,9 +2886,17 @@ class SQLCompiler(Compiled):
         else:
             add_to_result_map = None
 
-        if not within_columns_clause:
-            result_expr = col_expr
-        elif isinstance(column, elements.Label):
+        # this method is used by some of the dialects for RETURNING,
+        # which has different inputs.  _label_returning_column was added
+        # as the better target for this now however for 1.4 we will keep
+        # _label_select_column directly compatible with this use case.
+        # these assertions right now set up the current expected inputs
+        assert within_columns_clause, (
+            "_label_select_column is only relevant within "
+            "the columns clause of a SELECT or RETURNING"
+        )
+
+        if isinstance(column, elements.Label):
             if col_expr is not column:
                 result_expr = _CompileLabel(
                     col_expr, column.name, alt_names=(column.element,)
@@ -2877,50 +2904,91 @@ class SQLCompiler(Compiled):
             else:
                 result_expr = col_expr
 
-        elif select is not None and name:
-            result_expr = _CompileLabel(
-                col_expr, name, alt_names=(column._key_label,)
-            )
-        elif (
-            asfrom
-            and isinstance(column, elements.ColumnClause)
-            and not column.is_literal
-            and column.table is not None
-            and not isinstance(column.table, selectable.Select)
-        ):
-            result_expr = _CompileLabel(
-                col_expr,
-                coercions.expect(roles.TruncatedLabelRole, column.name),
-                alt_names=(column.key,),
-            )
-        elif (
-            not isinstance(column, elements.TextClause)
-            and (
-                not isinstance(column, elements.UnaryExpression)
-                or column.wraps_column_expression
-                or asfrom
-            )
-            and (
-                not hasattr(column, "name")
-                or isinstance(column, functions.FunctionElement)
-            )
-        ):
+        elif name:
+            # here, _columns_plus_names has determined there's an explicit
+            # label name we need to use.  this is the default for
+            # tablenames_plus_columnnames as well as when columns are being
+            # deduplicated on name
+
+            assert (
+                proxy_name is not None
+            ), "proxy_name is required if 'name' is passed"
+
             result_expr = _CompileLabel(
                 col_expr,
-                column._anon_name_label
-                if not column_is_repeated
-                else column._dedupe_label_anon_label,
-            )
-        elif col_expr is not column:
-            # TODO: are we sure "column" has a .name and .key here ?
-            # assert isinstance(column, elements.ColumnClause)
-            result_expr = _CompileLabel(
-                col_expr,
-                coercions.expect(roles.TruncatedLabelRole, column.name),
-                alt_names=(column.key,),
+                name,
+                alt_names=(
+                    proxy_name,
+                    # this is a hack to allow legacy result column lookups
+                    # to work as they did before; this goes away in 2.0.
+                    # TODO: this only seems to be tested indirectly
+                    # via test/orm/test_deprecations.py.   should be a
+                    # resultset test for this
+                    column._tq_label,
+                ),
             )
         else:
-            result_expr = col_expr
+            # determine here whether this column should be rendered in
+            # a labelled context or not, as we were given no required label
+            # name from the caller. Here we apply heuristics based on the kind
+            # of SQL expression involved.
+
+            if col_expr is not column:
+                # type-specific expression wrapping the given column,
+                # so we render a label
+                render_with_label = True
+            elif isinstance(column, elements.ColumnClause):
+                # table-bound column, we render its name as a label if we are
+                # inside of a subquery only
+                render_with_label = (
+                    asfrom
+                    and not column.is_literal
+                    and column.table is not None
+                )
+            elif isinstance(column, elements.TextClause):
+                render_with_label = False
+            elif isinstance(column, elements.UnaryExpression):
+                render_with_label = column.wraps_column_expression or asfrom
+            elif (
+                # general class of expressions that don't have a SQL-column
+                # addressible name.  includes scalar selects, bind parameters,
+                # SQL functions, others
+                not isinstance(column, elements.NamedColumn)
+                # deeper check that indicates there's no natural "name" to
+                # this element, which accommodates for custom SQL constructs
+                # that might have a ".name" attribute (but aren't SQL
+                # functions) but are not implementing this more recently added
+                # base class.  in theory the "NamedColumn" check should be
+                # enough, however here we seek to maintain legacy behaviors
+                # as well.
+                and column._non_anon_label is None
+            ):
+                render_with_label = True
+            else:
+                render_with_label = False
+
+            if render_with_label:
+                if not fallback_label_name:
+                    # used by the RETURNING case right now.  we generate it
+                    # here as 3rd party dialects may be referring to
+                    # _label_select_column method directly instead of the
+                    # just-added _label_returning_column method
+                    assert not column_is_repeated
+                    fallback_label_name = column._anon_name_label
+
+                fallback_label_name = (
+                    elements._truncated_label(fallback_label_name)
+                    if not isinstance(
+                        fallback_label_name, elements._truncated_label
+                    )
+                    else fallback_label_name
+                )
+
+                result_expr = _CompileLabel(
+                    col_expr, fallback_label_name, alt_names=(proxy_name,)
+                )
+            else:
+                result_expr = col_expr
 
         column_clause_args.update(
             within_columns_clause=within_columns_clause,
@@ -3092,10 +3160,18 @@ class SQLCompiler(Compiled):
                     asfrom,
                     column_clause_args,
                     name=name,
+                    proxy_name=proxy_name,
+                    fallback_label_name=fallback_label_name,
                     column_is_repeated=repeated,
                     need_column_expressions=need_column_expressions,
                 )
-                for name, column, repeated in compile_state.columns_plus_names
+                for (
+                    name,
+                    proxy_name,
+                    fallback_label_name,
+                    column,
+                    repeated,
+                ) in compile_state.columns_plus_names
             ]
             if c is not None
         ]
@@ -3110,6 +3186,8 @@ class SQLCompiler(Compiled):
                         name
                         for (
                             key,
+                            proxy_name,
+                            fallback_label_name,
                             name,
                             repeated,
                         ) in compile_state.columns_plus_names
@@ -3118,6 +3196,8 @@ class SQLCompiler(Compiled):
                         name
                         for (
                             key,
+                            proxy_name,
+                            fallback_label_name,
                             name,
                             repeated,
                         ) in compile_state_wraps_for.columns_plus_names

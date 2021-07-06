@@ -1764,7 +1764,8 @@ class KeyTargetingTest(fixtures.TablesTest):
         @compiles(not_named_max)
         def visit_max(element, compiler, **kw):
             # explicit add
-            kw["add_to_result_map"](None, None, (element,), NULLTYPE)
+            if "add_to_result_map" in kw:
+                kw["add_to_result_map"](None, None, (element,), NULLTYPE)
             return "max(a)"
 
         # assert that there is no "AS max_" or any label of any kind.

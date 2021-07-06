@@ -1877,7 +1877,7 @@ class EngineEventsTest(fixtures.TestBase):
                     {"c2": "some data", "c1": 5},
                     (5, "some data"),
                 ),
-                ("SELECT lower", {"lower_1": "Foo"}, ("Foo",)),
+                ("SELECT lower", {"lower_2": "Foo"}, ("Foo",)),
                 (
                     "INSERT INTO t1 (c1, c2)",
                     {"c2": "foo", "c1": 6},

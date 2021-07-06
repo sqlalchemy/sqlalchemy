@@ -125,6 +125,14 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
             operator=operators.comma_op, group_contents=True, *args
         ).self_group()
 
+    _non_anon_label = None
+
+    @property
+    def _proxy_key(self):
+        return super(FunctionElement, self)._proxy_key or getattr(
+            self, "name", None
+        )
+
     def _execute_on_connection(
         self, connection, multiparams, params, execution_options
     ):

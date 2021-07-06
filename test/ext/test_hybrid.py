@@ -292,17 +292,15 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             stmt,
             "SELECT a.id AS a_id, a.firstname || :firstname_1 || "
-            "a.lastname AS anon_1 FROM a",
+            "a.lastname AS name FROM a",
         )
 
-        # but no ORM translate...
         eq_(stmt.subquery().c.keys(), ["a_id", "name"])
 
-        # then it comes out like this, not really sure if this is useful
         self.assert_compile(
             select(stmt.subquery()),
-            "SELECT anon_1.a_id, anon_1.anon_2 FROM (SELECT a.id AS a_id, "
-            "a.firstname || :firstname_1 || a.lastname AS anon_2 FROM a) "
+            "SELECT anon_1.a_id, anon_1.name FROM (SELECT a.id AS a_id, "
+            "a.firstname || :firstname_1 || a.lastname AS name FROM a) "
             "AS anon_1",
         )
 
@@ -313,12 +311,10 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         stmt = sess.query(A.id, A.name)
 
-        # TABLENAME_PLUS_COL uses anon label right now, this is a little
-        # awkward looking, but loading.py translates
         self.assert_compile(
             stmt,
             "SELECT a.id AS a_id, a.firstname || "
-            ":firstname_1 || a.lastname AS anon_1 FROM a",
+            ":firstname_1 || a.lastname AS name FROM a",
         )
 
         # for the subquery, we lose the "ORM-ness" from the subquery
