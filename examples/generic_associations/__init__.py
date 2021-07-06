@@ -11,7 +11,7 @@ which contains ``Address`` objects.
 
 The :viewsource:`.discriminator_on_association` and :viewsource:`.generic_fk` scripts
 are modernized versions of recipes presented in the 2007 blog post
-`Polymorphic Associations with SQLAlchemy <http://techspot.zzzeek.org/2007/05/29/polymorphic-associations-with-sqlalchemy/>`_.
+`Polymorphic Associations with SQLAlchemy <https://techspot.zzzeek.org/2007/05/29/polymorphic-associations-with-sqlalchemy/>`_.
 
 .. autosource::
 

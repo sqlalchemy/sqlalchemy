@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """The :class:`_expression.FromClause` class of SQL expression elements,
 representing
@@ -2152,7 +2152,7 @@ class HasCTE(roles.HasCTERole):
          from those already selected.
 
         The following examples include two from PostgreSQL's documentation at
-        http://www.postgresql.org/docs/current/static/queries-with.html,
+        https://www.postgresql.org/docs/current/static/queries-with.html,
         as well as additional examples.
 
         Example 1, non recursive::

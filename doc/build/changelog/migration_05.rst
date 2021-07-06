@@ -15,7 +15,7 @@ This guide documents API changes which affect users
 migrating their applications from the 0.4 series of
 SQLAlchemy to 0.5.   It's also recommended for those working
 from  `Essential SQLAlchemy
-<http://oreilly.com/catalog/9780596516147/>`_, which only
+<https://oreilly.com/catalog/9780596516147/>`_, which only
 covers 0.4 and seems to even have some old 0.3isms in it.
 Note that SQLAlchemy 0.5 removes many behaviors which were
 deprecated throughout the span of the 0.4 series, and also
@@ -34,10 +34,10 @@ highly customized ORM queries and dealing with stale session
 state, commits and rollbacks.
 
 * `ORM Tutorial
-  <http://www.sqlalchemy.org/docs/05/ormtutorial.html>`_
+  <https://www.sqlalchemy.org/docs/05/ormtutorial.html>`_
 
 * `Session Documentation
-  <http://www.sqlalchemy.org/docs/05/session.html>`_
+  <https://www.sqlalchemy.org/docs/05/session.html>`_
 
 Deprecations Source
 ===================
@@ -58,7 +58,7 @@ Object Relational Mapping
 
 * **Column level expressions within Query.** - as detailed
   in the `tutorial
-  <http://www.sqlalchemy.org/docs/05/ormtutorial.html>`_,
+  <https://www.sqlalchemy.org/docs/05/ormtutorial.html>`_,
   ``Query`` has the capability to create specific SELECT
   statements, not just those against full rows:
 
@@ -538,7 +538,7 @@ Removed
   single class, break the class into separate subclasses and
   map them separately.  An example of this is at
   [wiki:UsageRecipes/EntityName].  More information
-  regarding rationale is described at http://groups.google.c
+  regarding rationale is described at https://groups.google.c
   om/group/sqlalchemy/browse_thread/thread/9e23a0641a88b96d?
   hl=en .
 

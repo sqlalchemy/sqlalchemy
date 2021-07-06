@@ -651,7 +651,7 @@ keyword, described at :ref:`declarative_abstract`.
 
 .. seealso::
 
-    `Django-style Database Routers in SQLAlchemy <http://techspot.zzzeek.org/2012/01/11/django-style-database-routers-in-sqlalchemy/>`_  - blog post on a more comprehensive example of :meth:`.Session.get_bind`
+    `Django-style Database Routers in SQLAlchemy <https://techspot.zzzeek.org/2012/01/11/django-style-database-routers-in-sqlalchemy/>`_  - blog post on a more comprehensive example of :meth:`.Session.get_bind`
 
 Horizontal Partitioning
 -----------------------

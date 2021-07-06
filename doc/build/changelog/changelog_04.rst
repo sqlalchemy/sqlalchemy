@@ -60,7 +60,7 @@
       convert_unicode logic disabled in the sqlite dialect,
       to adjust for pysqlite 2.5.0's new requirement that
       only Python unicode objects are accepted;
-      http://itsystementwicklung.de/pipermail/list-pysqlite/2008-March/000018.html
+      https://itsystementwicklung.de/pipermail/list-pysqlite/2008-March/000018.html
 
     .. change::
         :tags: oracle
@@ -2751,7 +2751,7 @@
         :tickets: 
 
       (see 0.4.0beta1 for the start of major changes against 0.3,
-      as well as http://www.sqlalchemy.org/trac/wiki/WhatsNewIn04 )
+      as well as https://www.sqlalchemy.org/trac/wiki/WhatsNewIn04 )
 
     .. change::
         :tags: 

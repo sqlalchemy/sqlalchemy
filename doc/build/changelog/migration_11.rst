@@ -701,7 +701,7 @@ of its own ``QueryableAttribute`` wrapper::
 
 A lot of testing went into making sure this wrapper works correctly, including
 for elaborate schemes like that of the
-`Custom Value Object <http://techspot.zzzeek.org/2011/10/21/hybrids-and-value-agnostic-types/>`_
+`Custom Value Object <https://techspot.zzzeek.org/2011/10/21/hybrids-and-value-agnostic-types/>`_
 recipe, however we'll be looking to see that no other regressions occur for
 users.
 
@@ -2604,7 +2604,7 @@ in order to specify TABLESPACE, the same way as accepted by the
 Support for PyGreSQL
 --------------------
 
-The `PyGreSQL <https://pypi.python.org/pypi/PyGreSQL>`_ DBAPI is now supported.
+The `PyGreSQL <https://pypi.org/project/PyGreSQL>`_ DBAPI is now supported.
 
 .. seealso::
 

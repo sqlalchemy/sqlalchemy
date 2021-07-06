@@ -1751,7 +1751,7 @@ Calling Stored Procedures
 -------------------------
 
 For stored procedures with special syntactical or parameter concerns,
-DBAPI-level `callproc <http://legacy.python.org/dev/peps/pep-0249/#callproc>`_
+DBAPI-level `callproc <https://legacy.python.org/dev/peps/pep-0249/#callproc>`_
 may be used::
 
     connection = engine.raw_connection()
@@ -1768,7 +1768,7 @@ Multiple Result Sets
 --------------------
 
 Multiple result set support is available from a raw DBAPI cursor using the
-`nextset <http://legacy.python.org/dev/peps/pep-0249/#nextset>`_ method::
+`nextset <https://legacy.python.org/dev/peps/pep-0249/#nextset>`_ method::
 
     connection = engine.raw_connection()
     try:

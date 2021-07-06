@@ -2432,7 +2432,7 @@ The MySQL dialect has always worked around MySQL's implicit NOT NULL
 default associated with TIMESTAMP columns by emitting NULL for
 such a type, if the column is set up with ``nullable=True``.   However,
 MySQL 5.6.6 and above features a new flag
-`explicit_defaults_for_timestamp <http://dev.mysql.com/doc/refman/
+`explicit_defaults_for_timestamp <https://dev.mysql.com/doc/refman/
 5.6/en/server-system-variables.html
 #sysvar_explicit_defaults_for_timestamp>`_ which repairs MySQL's non-standard
 behavior to make it behave like any other type; to accommodate this,
@@ -2570,7 +2570,7 @@ on MySQL::
 Drizzle Dialect is now an External Dialect
 ------------------------------------------
 
-The dialect for `Drizzle <http://www.drizzle.org/>`_ is now an external
+The dialect for `Drizzle <https://www.drizzle.org/>`_ is now an external
 dialect, available at https://bitbucket.org/zzzeek/sqlalchemy-drizzle.
 This dialect was added to SQLAlchemy right before SQLAlchemy was able to
 accommodate third party dialects well; going forward, all databases that aren't

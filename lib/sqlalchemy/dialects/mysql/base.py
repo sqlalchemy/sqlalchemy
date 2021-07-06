@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 r"""
 
@@ -344,7 +344,7 @@ required.
 .. seealso::
 
     `The utf8mb4 Character Set \
-    <http://dev.mysql.com/doc/refman/5.5/en/charset-unicode-utf8mb4.html>`_ - \
+    <https://dev.mysql.com/doc/refman/5.5/en/charset-unicode-utf8mb4.html>`_ - \
     in the MySQL documentation
 
 .. _mysql_binary_introducer:
@@ -651,7 +651,7 @@ storage engine.
 
 .. seealso::
 
-    `CREATE INDEX <http://dev.mysql.com/doc/refman/5.0/en/create-index.html>`_ - MySQL documentation
+    `CREATE INDEX <https://dev.mysql.com/doc/refman/5.0/en/create-index.html>`_ - MySQL documentation
 
 Index Types
 ~~~~~~~~~~~~~
@@ -672,9 +672,9 @@ type for your MySQL storage engine.
 
 More information can be found at:
 
-http://dev.mysql.com/doc/refman/5.0/en/create-index.html
+https://dev.mysql.com/doc/refman/5.0/en/create-index.html
 
-http://dev.mysql.com/doc/refman/5.0/en/create-table.html
+https://dev.mysql.com/doc/refman/5.0/en/create-table.html
 
 Index Parsers
 ~~~~~~~~~~~~~
@@ -784,7 +784,7 @@ usual need to use a trigger in such a case where server-side update changes are
 desired.
 
 MySQL 5.6 introduced a new flag `explicit_defaults_for_timestamp
-<http://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html
+<https://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html
 #sysvar_explicit_defaults_for_timestamp>`_ which disables the above behavior,
 and in MySQL 8 this flag defaults to true, meaning in order to get a MySQL
 "on update timestamp" without changing this flag, the above DDL must be
@@ -891,7 +891,7 @@ to be a NOT NULL, even though we did not specify it as such.
 
 This behavior of MySQL can be changed on the MySQL side using the
 `explicit_defaults_for_timestamp
-<http://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html
+<https://dev.mysql.com/doc/refman/5.6/en/server-system-variables.html
 #sysvar_explicit_defaults_for_timestamp>`_ configuration flag introduced in
 MySQL 5.6.  With this server setting enabled, TIMESTAMP columns behave like
 any other datatype on the MySQL side with regards to defaults and nullability.
@@ -1816,7 +1816,7 @@ class MySQLCompiler(compiler.SQLCompiler):
         elif offset_clause is not None:
             # As suggested by the MySQL docs, need to apply an
             # artificial limit if one wasn't provided
-            # http://dev.mysql.com/doc/refman/5.0/en/select.html
+            # https://dev.mysql.com/doc/refman/5.0/en/select.html
             if limit_clause is None:
                 # hardwire the upper limit.  Currently
                 # needed by OurSQL with Python 3
@@ -1981,7 +1981,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         if not column.nullable:
             colspec.append("NOT NULL")
 
-        # see: http://docs.sqlalchemy.org/en/latest/dialects/mysql.html#mysql_timestamp_null  # noqa
+        # see: https://docs.sqlalchemy.org/en/latest/dialects/mysql.html#mysql_timestamp_null  # noqa
         elif column.nullable and is_timestamp:
             colspec.append("NULL")
 
@@ -3355,13 +3355,14 @@ class MySQLDialect(default.DefaultDialect):
         restart.
 
         """
-        # http://dev.mysql.com/doc/refman/5.0/en/name-case-sensitivity.html
+        # https://dev.mysql.com/doc/refman/en/identifier-case-sensitivity.html
 
         charset = self._connection_charset
+        show_var = connection.execute(
+            sql.text("SHOW VARIABLES LIKE 'lower_case_table_names'")
+        )
         row = self._compat_first(
-            connection.execute(
-                sql.text("SHOW VARIABLES LIKE 'lower_case_table_names'")
-            ),
+            show_var,
             charset=charset,
         )
         if not row:

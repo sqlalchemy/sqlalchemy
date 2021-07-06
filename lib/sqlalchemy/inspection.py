@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """The inspection module provides the :func:`_sa.inspect` function,
 which delivers runtime information about a wide variety

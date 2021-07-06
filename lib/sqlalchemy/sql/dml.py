@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 """
 Provide :class:`_expression.Insert`, :class:`_expression.Update` and
 :class:`_expression.Delete`.

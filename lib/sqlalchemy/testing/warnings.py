@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 from __future__ import absolute_import
 
@@ -68,8 +68,6 @@ def setup_filters():
         #
         # Core execution
         #
-        r"The (?:Executable|Engine)\.(?:execute|scalar)\(\) method",
-        r"The Connection.connect\(\) method is considered legacy",
         #        r".*DefaultGenerator.execute\(\)",
         #
         #

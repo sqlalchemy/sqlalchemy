@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 from sqlalchemy.dialects.firebird.base import BIGINT
 from sqlalchemy.dialects.firebird.base import BLOB

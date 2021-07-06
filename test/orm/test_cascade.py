@@ -1396,9 +1396,11 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
                 '"Address" object is being merged into a Session along '
                 'the backref cascade path for relationship "User.addresses"'
                 # link added to this specific warning
-                r".*Background on this error at: http://sqlalche.me/e/14/s9r1"
+                r".*Background on this error at: "
+                r"https://sqlalche.me/e/14/s9r1"
                 # link added to all RemovedIn20Warnings
-                r".*Background on SQLAlchemy 2.0 at: http://sqlalche.me/e/b8d9"
+                r".*Background on SQLAlchemy 2.0 at: "
+                r"https://sqlalche.me/e/b8d9"
             ):
                 a1.user = u1
             sess.add(a1)
@@ -3014,8 +3016,8 @@ class PendingOrphanTestSingleLevel(fixtures.MappedTest):
 class PendingOrphanTestTwoLevel(fixtures.MappedTest):
     """test usages stated at
 
-    http://article.gmane.org/gmane.comp.python.sqlalchemy.user/3085
-    http://article.gmane.org/gmane.comp.python.sqlalchemy.user/3119
+    https://article.gmane.org/gmane.comp.python.sqlalchemy.user/3085
+    https://article.gmane.org/gmane.comp.python.sqlalchemy.user/3119
     """
 
     @classmethod

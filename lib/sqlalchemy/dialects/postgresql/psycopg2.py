@@ -3,13 +3,13 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 r"""
 .. dialect:: postgresql+psycopg2
     :name: psycopg2
     :dbapi: psycopg2
     :connectstring: postgresql+psycopg2://user:password@host:port/dbname[?key=value&key=value...]
-    :url: http://pypi.python.org/pypi/psycopg2/
+    :url: https://pypi.org/project/psycopg2/
 
 psycopg2 Connect Arguments
 --------------------------
@@ -110,7 +110,7 @@ using ``host`` as an additional keyword argument::
 .. seealso::
 
     `PQconnectdbParams \
-    <http://www.postgresql.org/docs/9.1/static/libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
+    <https://www.postgresql.org/docs/9.1/static/libpq-connect.html#LIBPQ-PQCONNECTDBPARAMS>`_
 
 .. _psycopg2_multi_host:
 
@@ -202,7 +202,7 @@ Psycopg2 Fast Execution Helpers
 
 Modern versions of psycopg2 include a feature known as
 `Fast Execution Helpers \
-<http://initd.org/psycopg/docs/extras.html#fast-execution-helpers>`_, which
+<https://initd.org/psycopg/docs/extras.html#fast-execution-helpers>`_, which
 have been shown in benchmarking to improve psycopg2's executemany()
 performance, primarily with INSERT statements, by multiple orders of magnitude.
 SQLAlchemy internally makes use of these extensions for ``executemany()`` style
@@ -596,7 +596,7 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
 
     def create_server_side_cursor(self):
         # use server-side cursors:
-        # http://lists.initd.org/pipermail/psycopg/2007-January/005251.html
+        # https://lists.initd.org/pipermail/psycopg/2007-January/005251.html
         ident = "c_%s_%s" % (hex(id(self))[2:], hex(_server_side_id())[2:])
         return self._dbapi_connection.cursor(ident)
 

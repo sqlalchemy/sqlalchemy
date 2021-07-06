@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 r"""
 .. dialect:: postgresql
@@ -288,7 +288,7 @@ via foreign key constraint, a decision must be made as to how the ``.schema``
 is represented in those remote tables, in the case where that remote
 schema name is also a member of the current
 `PostgreSQL search path
-<http://www.postgresql.org/docs/current/static/ddl-schemas.html#DDL-SCHEMAS-PATH>`_.
+<https://www.postgresql.org/docs/current/static/ddl-schemas.html#DDL-SCHEMAS-PATH>`_.
 
 By default, the PostgreSQL dialect mimics the behavior encouraged by
 PostgreSQL's own ``pg_get_constraintdef()`` builtin procedure.  This function
@@ -409,7 +409,7 @@ which is in the ``public`` (i.e. default) schema will always have the
 .. seealso::
 
     `The Schema Search Path
-    <http://www.postgresql.org/docs/9.0/static/ddl-schemas.html#DDL-SCHEMAS-PATH>`_
+    <https://www.postgresql.org/docs/9.0/static/ddl-schemas.html#DDL-SCHEMAS-PATH>`_
     - on the PostgreSQL website.
 
 INSERT/UPDATE...RETURNING
@@ -486,7 +486,7 @@ and :meth:`~.postgresql.Insert.on_conflict_do_nothing`:
 .. seealso::
 
     `INSERT .. ON CONFLICT
-    <http://www.postgresql.org/docs/current/static/sql-insert.html#SQL-ON-CONFLICT>`_
+    <https://www.postgresql.org/docs/current/static/sql-insert.html#SQL-ON-CONFLICT>`_
     - in the PostgreSQL documentation.
 
 Specifying the Target
@@ -830,7 +830,7 @@ Operator Classes
 
 PostgreSQL allows the specification of an *operator class* for each column of
 an index (see
-http://www.postgresql.org/docs/8.3/interactive/indexes-opclass.html).
+https://www.postgresql.org/docs/8.3/interactive/indexes-opclass.html).
 The :class:`.Index` construct allows these to be specified via the
 ``postgresql_ops`` keyword argument::
 
@@ -872,7 +872,7 @@ Index Types
 
 PostgreSQL provides several index types: B-Tree, Hash, GiST, and GIN, as well
 as the ability for users to create their own (see
-http://www.postgresql.org/docs/8.3/static/indexes-types.html). These can be
+https://www.postgresql.org/docs/8.3/static/indexes-types.html). These can be
 specified on :class:`.Index` using the ``postgresql_using`` keyword argument::
 
     Index('my_index', my_table.c.data, postgresql_using='gin')
@@ -1039,7 +1039,7 @@ dialect in conjunction with the :class:`_schema.Table` construct:
 .. seealso::
 
     `PostgreSQL CREATE TABLE options
-    <http://www.postgresql.org/docs/current/static/sql-createtable.html>`_
+    <https://www.postgresql.org/docs/current/static/sql-createtable.html>`_
 
 .. _postgresql_table_valued_overview:
 
@@ -3185,7 +3185,7 @@ class PGDialect(default.DefaultDialect):
             # psycopg2, others may have placed ENUM here as well
             self.colspecs.pop(ENUM, None)
 
-        # http://www.postgresql.org/docs/9.3/static/release-9-2.html#AEN116689
+        # https://www.postgresql.org/docs/9.3/static/release-9-2.html#AEN116689
         self.supports_smallserial = self.server_version_info >= (9, 2)
 
         if self.server_version_info < (8, 2):
@@ -3942,7 +3942,7 @@ class PGDialect(default.DefaultDialect):
                 n.oid = c.relnamespace
           ORDER BY 1
         """
-        # http://www.postgresql.org/docs/9.0/static/sql-createtable.html
+        # https://www.postgresql.org/docs/9.0/static/sql-createtable.html
         FK_REGEX = re.compile(
             r"FOREIGN KEY \((.*?)\) REFERENCES (?:(.*?)\.)?(.*?)\((.*?)\)"
             r"[\s]?(MATCH (FULL|PARTIAL|SIMPLE)+)?"
@@ -4031,7 +4031,7 @@ class PGDialect(default.DefaultDialect):
 
     def _pg_index_any(self, col, compare_to):
         if self.server_version_info < (8, 1):
-            # http://www.postgresql.org/message-id/10279.1124395722@sss.pgh.pa.us
+            # https://www.postgresql.org/message-id/10279.1124395722@sss.pgh.pa.us
             # "In CVS tip you could replace this with "attnum = ANY (indkey)".
             # Unfortunately, most array support doesn't work on int2vector in
             # pre-8.1 releases, so I think you're kinda stuck with the above

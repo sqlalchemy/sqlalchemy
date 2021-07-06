@@ -86,7 +86,7 @@ applications is at :ref:`examples_toplevel`.
 
 There is also a wide variety of examples involving both core SQLAlchemy
 constructs as well as the ORM on the wiki.  See
-`Theatrum Chemicum <http://www.sqlalchemy.org/trac/wiki/UsageRecipes>`_.
+`Theatrum Chemicum <https://www.sqlalchemy.org/trac/wiki/UsageRecipes>`_.
 
 .. _installation:
 
@@ -100,7 +100,7 @@ SQLAlchemy has been tested against the following platforms:
 
 * cPython 2.7
 * cPython 3.6 and higher
-* `PyPy <http://pypy.org/>`_ 2.1 or greater
+* `PyPy <https://pypy.org/>`_ 2.1 or greater
 
 .. versionchanged:: 1.4
    Within the Python 3 series, 3.6 is now the minimum Python 3 version supported.
@@ -113,9 +113,9 @@ Supported Installation Methods
 -------------------------------
 
 SQLAlchemy installation is via standard Python methodologies that are
-based on `setuptools <http://pypi.python.org/pypi/setuptools/>`_, either
+based on `setuptools <https://pypi.org/project/setuptools/>`_, either
 by referring to ``setup.py`` directly or by using
-`pip <http://pypi.python.org/pypi/pip/>`_ or other setuptools-compatible
+`pip <https://pypi.org/project/pip/>`_ or other setuptools-compatible
 approaches.
 
 .. versionchanged:: 1.1 setuptools is now required by the setup.py file;
@@ -130,7 +130,7 @@ downloaded from PyPI and installed in one step::
     pip install SQLAlchemy
 
 This command will download the latest **released** version of SQLAlchemy from the `Python
-Cheese Shop <http://pypi.python.org/pypi/SQLAlchemy>`_ and install it to your system.
+Cheese Shop <https://pypi.org/project/SQLAlchemy>`_ and install it to your system.
 
 In order to install the latest **prerelease** version, such as ``1.4.0b1``,
 pip requires that the ``--pre`` flag be used::

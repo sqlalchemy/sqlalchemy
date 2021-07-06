@@ -1233,7 +1233,7 @@ See the docstring for :func:`_orm.relationship` for more detail on argument styl
       and is a built in function of the relational database.
     * FOREIGN KEY can refer to its own table.  This is referred to as a "self-referential"
       foreign key.
-    * Read more about foreign keys at `Foreign Key - Wikipedia <http://en.wikipedia.org/wiki/Foreign_key>`_.
+    * Read more about foreign keys at `Foreign Key - Wikipedia <https://en.wikipedia.org/wiki/Foreign_key>`_.
 
 We'll need to create the ``addresses`` table in the database, so we will issue
 another CREATE from our metadata, which will skip over tables which have
@@ -1351,7 +1351,7 @@ Querying with Joins
 Now that we have two tables, we can show some more features of :class:`_query.Query`,
 specifically how to create queries that deal with both tables at the same time.
 The `Wikipedia page on SQL JOIN
-<http://en.wikipedia.org/wiki/Join_%28SQL%29>`_ offers a good introduction to
+<https://en.wikipedia.org/wiki/Join_%28SQL%29>`_ offers a good introduction to
 join techniques, several of which we'll illustrate here.
 
 To construct a simple implicit join between ``User`` and ``Address``,

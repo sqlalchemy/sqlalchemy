@@ -672,14 +672,14 @@ Nested Session Transactions with SAVEPOINT
 
 Available at the Engine and ORM level.  ORM docs so far:
 
-http://www.sqlalchemy.org/docs/04/session.html#unitofwork_managing
+https://www.sqlalchemy.org/docs/04/session.html#unitofwork_managing
 
 Two-Phase Commit Sessions
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Available at the Engine and ORM level.  ORM docs so far:
 
-http://www.sqlalchemy.org/docs/04/session.html#unitofwork_managing
+https://www.sqlalchemy.org/docs/04/session.html#unitofwork_managing
 
 Inheritance
 -----------
@@ -687,7 +687,7 @@ Inheritance
 Polymorphic Inheritance with No Joins or Unions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-New docs for inheritance:  http://www.sqlalchemy.org/docs/04
+New docs for inheritance:  https://www.sqlalchemy.org/docs/04
 /mappers.html#advdatamapping_mapper_inheritance_joined
 
 Better Polymorphic Behavior with ``get()``
@@ -706,7 +706,7 @@ Types
 Custom Subclasses of ``sqlalchemy.types.TypeDecorator``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-There is a `New API <http://www.sqlalchemy.org/docs/04/types
+There is a `New API <https://www.sqlalchemy.org/docs/04/types
 .html#types_custom>`_ for subclassing a TypeDecorator.
 Using the 0.3 API causes compilation errors in some cases.
 
@@ -720,8 +720,8 @@ All the "anonymous" labels and aliases use a simple
 <name>_<number> format now.  SQL is much easier to read and
 is compatible with plan optimizer caches.  Just check out
 some of the examples in the tutorials:
-http://www.sqlalchemy.org/docs/04/ormtutorial.html
-http://www.sqlalchemy.org/docs/04/sqlexpression.html
+https://www.sqlalchemy.org/docs/04/ormtutorial.html
+https://www.sqlalchemy.org/docs/04/sqlexpression.html
 
 Generative select() Constructs
 ------------------------------
@@ -736,7 +736,7 @@ New Operator System
 SQL operators and more or less every SQL keyword there is
 are now abstracted into the compiler layer.  They now act
 intelligently and are type/backend aware, see:
-http://www.sqlalchemy.org/docs/04/sqlexpression.html#sql_operators
+https://www.sqlalchemy.org/docs/04/sqlexpression.html#sql_operators
 
 All ``type`` Keyword Arguments Renamed to ``type_``
 ---------------------------------------------------

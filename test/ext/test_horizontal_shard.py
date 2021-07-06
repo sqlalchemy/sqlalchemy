@@ -233,11 +233,11 @@ class ShardTest(object):
         self._fixture_data()
         # not sure what this is testing except the fixture data itself
         eq_(
-            db2.execute(weather_locations.select()).fetchall(),
+            db2.connect().execute(weather_locations.select()).fetchall(),
             [(1, "Asia", "Tokyo")],
         )
         eq_(
-            db1.execute(weather_locations.select()).fetchall(),
+            db1.connect().execute(weather_locations.select()).fetchall(),
             [
                 (2, "North America", "New York"),
                 (3, "North America", "Toronto"),

@@ -3843,7 +3843,7 @@
         :tickets:
 
       For the full set of feature descriptions, see
-      http://docs.sqlalchemy.org/en/latest/changelog/migration_06.html .
+      https://docs.sqlalchemy.org/en/latest/changelog/migration_06.html .
       This document is a work in progress.
 
     .. change::
@@ -4211,7 +4211,7 @@
          in favor of "load=False".
        * ScopedSession.mapper remains deprecated.  See the
          usage recipe at
-         http://www.sqlalchemy.org/trac/wiki/UsageRecipes/SessionAwareMapper
+         https://www.sqlalchemy.org/trac/wiki/UsageRecipes/SessionAwareMapper
        * passing an InstanceState (internal SQLAlchemy state object) to
          attributes.init_collection() or attributes.get_history() is
          deprecated.  These functions are public API and normally

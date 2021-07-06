@@ -1660,15 +1660,17 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     def _has_mysql_on_windows(self, config):
-        return (
-            against(config, ["mysql", "mariadb"])
-        ) and config.db.dialect._detect_casing(config.db) == 1
+        with config.db.connect() as conn:
+            return (
+                against(config, ["mysql", "mariadb"])
+            ) and config.db.dialect._detect_casing(conn) == 1
 
     def _has_mysql_fully_case_sensitive(self, config):
-        return (
-            against(config, "mysql")
-            and config.db.dialect._detect_casing(config.db) == 0
-        )
+        with config.db.connect() as conn:
+            return (
+                against(config, "mysql")
+                and config.db.dialect._detect_casing(conn) == 0
+            )
 
     @property
     def postgresql_utf8_server_encoding(self):

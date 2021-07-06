@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """Contain the ``AssociationProxy`` class.
 
@@ -1326,7 +1326,7 @@ class _AssociationDict(_AssociationCollection):
         elif len(a) == 1:
             seq_or_map = a[0]
             # discern dict from sequence - took the advice from
-            # http://www.voidspace.org.uk/python/articles/duck_typing.shtml
+            # https://www.voidspace.org.uk/python/articles/duck_typing.shtml
             # still not perfect :(
             if hasattr(seq_or_map, "keys"):
                 for item in seq_or_map:

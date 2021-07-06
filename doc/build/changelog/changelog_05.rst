@@ -430,7 +430,7 @@
       Added enable_assertions(False) to Query which disables
       the usual assertions for expected state - used
       by Query subclasses to engineer custom state..  See
-      http://www.sqlalchemy.org/trac/wiki/UsageRecipes/PreFilteredQuery
+      https://www.sqlalchemy.org/trac/wiki/UsageRecipes/PreFilteredQuery
       for an example.
 
     .. change::
@@ -590,7 +590,7 @@
       Call session.add() if you'd like a free-standing object to be
       part of your session.  Otherwise, a DIY version of
       Session.mapper is now documented at
-      http://www.sqlalchemy.org/trac/wiki/UsageRecipes/SessionAwareMapper
+      https://www.sqlalchemy.org/trac/wiki/UsageRecipes/SessionAwareMapper
       The method will remain deprecated throughout 0.6.
 
     .. change::
@@ -2873,7 +2873,7 @@
       logic disabled in the sqlite dialect, to adjust for pysqlite
       2.5.0's new requirement that only Python unicode objects are
       accepted;
-      http://itsystementwicklung.de/pipermail/list-pysqlite/2008-March/000018.html
+      https://itsystementwicklung.de/pipermail/list-pysqlite/2008-March/000018.html
 
     .. change::
         :tags: mysql
@@ -3254,7 +3254,7 @@
         :tickets: 
 
       The "entity_name" feature of SQLAlchemy mappers has been
-      removed.  For rationale, see http://tinyurl.com/6nm2ne
+      removed.  For rationale, see https://tinyurl.com/6nm2ne
 
     .. change::
         :tags: orm

@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """Topological sorting algorithms."""
 
@@ -58,7 +58,7 @@ def sort(tuples, allitems, deterministic_order=True):
 
 def find_cycles(tuples, allitems):
     # adapted from:
-    # http://neopythonic.blogspot.com/2009/01/detecting-cycles-in-directed-graph.html
+    # https://neopythonic.blogspot.com/2009/01/detecting-cycles-in-directed-graph.html
 
     edges = util.defaultdict(set)
     for parent, child in tuples:

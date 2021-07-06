@@ -903,6 +903,10 @@ class ExtractTest(fixtures.TablesTest):
     run_inserts = "once"
     run_deletes = None
 
+    class TZ(datetime.tzinfo):
+        def utcoffset(self, dt):
+            return datetime.timedelta(hours=4)
+
     @classmethod
     def setup_bind(cls):
         from sqlalchemy import event
@@ -932,11 +936,6 @@ class ExtractTest(fixtures.TablesTest):
 
     @classmethod
     def insert_data(cls, connection):
-        # TODO: why does setting hours to anything
-        # not affect the TZ in the DB col ?
-        class TZ(datetime.tzinfo):
-            def utcoffset(self, dt):
-                return datetime.timedelta(hours=4)
 
         connection.execute(
             cls.tables.t.insert(),
@@ -946,12 +945,12 @@ class ExtractTest(fixtures.TablesTest):
                 "tm": datetime.time(12, 15, 25),
                 "intv": datetime.timedelta(seconds=570),
                 "dttz": datetime.datetime(
-                    2012, 5, 10, 12, 15, 25, tzinfo=TZ()
+                    2012, 5, 10, 12, 15, 25, tzinfo=cls.TZ()
                 ),
             },
         )
 
-    def _test(self, expr, field="all", overrides=None):
+    def _test(self, connection, expr, field="all", overrides=None):
         t = self.tables.t
 
         if field == "all":
@@ -983,29 +982,31 @@ class ExtractTest(fixtures.TablesTest):
             fields.update(overrides)
 
         for field in fields:
-            result = self.bind.scalar(
+            result = connection.execute(
                 select(extract(field, expr)).select_from(t)
-            )
+            ).scalar()
             eq_(result, fields[field])
 
-    def test_one(self):
+    def test_one(self, connection):
         t = self.tables.t
-        self._test(t.c.dtme, "all")
+        self._test(connection, t.c.dtme, "all")
 
-    def test_two(self):
+    def test_two(self, connection):
         t = self.tables.t
         self._test(
+            connection,
             t.c.dtme + t.c.intv,
             overrides={"epoch": 1336652695.0, "minute": 24},
         )
 
-    def test_three(self):
+    def test_three(self, connection):
         self.tables.t
 
-        actual_ts = self.bind.scalar(
+        actual_ts = self.bind.connect().execute(
             func.current_timestamp()
-        ) - datetime.timedelta(days=5)
+        ).scalar() - datetime.timedelta(days=5)
         self._test(
+            connection,
             func.current_timestamp() - datetime.timedelta(days=5),
             {
                 "hour": actual_ts.hour,
@@ -1014,9 +1015,10 @@ class ExtractTest(fixtures.TablesTest):
             },
         )
 
-    def test_four(self):
+    def test_four(self, connection):
         t = self.tables.t
         self._test(
+            connection,
             datetime.timedelta(days=5) + t.c.dt,
             overrides={
                 "day": 15,
@@ -1026,23 +1028,26 @@ class ExtractTest(fixtures.TablesTest):
             },
         )
 
-    def test_five(self):
+    def test_five(self, connection):
         t = self.tables.t
         self._test(
+            connection,
             func.coalesce(t.c.dtme, func.current_timestamp()),
             overrides={"epoch": 1336652125.0},
         )
 
-    def test_six(self):
+    def test_six(self, connection):
         t = self.tables.t
         self._test(
+            connection,
             t.c.tm + datetime.timedelta(seconds=30),
             "time",
             overrides={"second": 55},
         )
 
-    def test_seven(self):
+    def test_seven(self, connection):
         self._test(
+            connection,
             literal(datetime.timedelta(seconds=10))
             - literal(datetime.timedelta(seconds=10)),
             "all",
@@ -1056,49 +1061,53 @@ class ExtractTest(fixtures.TablesTest):
             },
         )
 
-    def test_eight(self):
+    def test_eight(self, connection):
         t = self.tables.t
         self._test(
+            connection,
             t.c.tm + datetime.timedelta(seconds=30),
             {"hour": 12, "minute": 15, "second": 55},
         )
 
-    def test_nine(self):
-        self._test(text("t.dt + t.tm"))
+    def test_nine(self, connection):
+        self._test(connection, text("t.dt + t.tm"))
 
-    def test_ten(self):
+    def test_ten(self, connection):
         t = self.tables.t
-        self._test(t.c.dt + t.c.tm)
+        self._test(connection, t.c.dt + t.c.tm)
 
-    def test_eleven(self):
+    def test_eleven(self, connection):
         self._test(
+            connection,
             func.current_timestamp() - func.current_timestamp(),
             {"year": 0, "month": 0, "day": 0, "hour": 0},
         )
 
-    def test_twelve(self):
+    def test_twelve(self, connection):
         t = self.tables.t
-        actual_ts = self.bind.scalar(func.current_timestamp()).replace(
-            tzinfo=None
-        ) - datetime.datetime(2012, 5, 10, 12, 15, 25)
+
+        actual_ts = connection.scalar(
+            func.current_timestamp()
+        ) - datetime.datetime(2012, 5, 10, 12, 15, 25, tzinfo=self.TZ())
 
         self._test(
-            func.current_timestamp()
-            - func.coalesce(t.c.dtme, func.current_timestamp()),
+            connection,
+            func.current_timestamp() - t.c.dttz,
             {"day": actual_ts.days},
         )
 
-    def test_thirteen(self):
+    def test_thirteen(self, connection):
         t = self.tables.t
-        self._test(t.c.dttz, "all+tz")
+        self._test(connection, t.c.dttz, "all+tz")
 
-    def test_fourteen(self):
+    def test_fourteen(self, connection):
         t = self.tables.t
-        self._test(t.c.tm, "time")
+        self._test(connection, t.c.tm, "time")
 
-    def test_fifteen(self):
+    def test_fifteen(self, connection):
         t = self.tables.t
         self._test(
+            connection,
             datetime.timedelta(days=5) + t.c.dtme,
             overrides={"day": 15, "epoch": 1337084125.0},
         )

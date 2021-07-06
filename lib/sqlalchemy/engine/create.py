@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 
 from . import base
@@ -369,7 +369,7 @@ def create_engine(url, **kwargs):
         be used instead. Can be used for testing of DBAPIs as well as to
         inject "mock" DBAPI implementations into the :class:`_engine.Engine`.
 
-    :param paramstyle=None: The `paramstyle <http://legacy.python.org/dev/peps/pep-0249/#paramstyle>`_
+    :param paramstyle=None: The `paramstyle <https://legacy.python.org/dev/peps/pep-0249/#paramstyle>`_
         to use when rendering bound parameters.  This style defaults to the
         one recommended by the DBAPI itself, which is retrieved from the
         ``.paramstyle`` attribute of the DBAPI.  However, most DBAPIs accept

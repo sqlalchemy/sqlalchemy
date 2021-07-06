@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """The Query class and support.
 
@@ -510,7 +510,7 @@ class Query(
 
         Here is the `PostgreSQL WITH
         RECURSIVE example
-        <http://www.postgresql.org/docs/8.4/static/queries-with.html>`_.
+        <https://www.postgresql.org/docs/8.4/static/queries-with.html>`_.
         Note that, in this example, the ``included_parts`` cte and the
         ``incl_alias`` alias of it are Core selectables, which
         means the columns are accessed via the ``.c.`` attribute.  The

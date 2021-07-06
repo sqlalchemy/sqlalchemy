@@ -648,5 +648,5 @@ transactions, an understanding of the isolation behavior in effect is essential.
     :term:`isolation` - glossary explanation of isolation which includes links
     to Wikipedia.
 
-    `The SQLAlchemy Session In-Depth <http://techspot.zzzeek.org/2012/11/14/pycon-canada-the-sqlalchemy-session-in-depth/>`_ - a video + slides with an in-depth discussion of the object
+    `The SQLAlchemy Session In-Depth <https://techspot.zzzeek.org/2012/11/14/pycon-canada-the-sqlalchemy-session-in-depth/>`_ - a video + slides with an in-depth discussion of the object
     lifecycle including the role of data expiration.

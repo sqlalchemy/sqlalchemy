@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 r"""Define attributes on ORM-mapped classes that have "hybrid" behavior.
 
@@ -646,11 +646,11 @@ measurement, currencies and encrypted passwords.
 .. seealso::
 
     `Hybrids and Value Agnostic Types
-    <http://techspot.zzzeek.org/2011/10/21/hybrids-and-value-agnostic-types/>`_
+    <https://techspot.zzzeek.org/2011/10/21/hybrids-and-value-agnostic-types/>`_
     - on the techspot.zzzeek.org blog
 
     `Value Agnostic Types, Part II
-    <http://techspot.zzzeek.org/2011/10/29/value-agnostic-types-part-ii/>`_ -
+    <https://techspot.zzzeek.org/2011/10/29/value-agnostic-types-part-ii/>`_ -
     on the techspot.zzzeek.org blog
 
 .. _hybrid_transformers:

@@ -368,7 +368,7 @@ any database that has any kind of transaction isolation, including MySQL with
 InnoDB. Any connection that is still inside an old transaction will return
 stale data, if that data was already queried on that connection within
 isolation. For background on why you might see stale data even on MySQL, see
-http://dev.mysql.com/doc/refman/5.1/en/innodb-transaction-model.html
+https://dev.mysql.com/doc/refman/5.1/en/innodb-transaction-model.html
 
 I'm on MyISAM - how do I turn it off?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

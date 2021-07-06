@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """Visitor/traversal interface and library functions.
 
@@ -19,7 +19,7 @@ transformations to expressions.
 Examples of how the visit system is used can be seen in the source code
 of for example the ``sqlalchemy.sql.util`` and the ``sqlalchemy.sql.compiler``
 modules.  Some background on clause adaption is also at
-http://techspot.zzzeek.org/2008/01/23/expression-transformations/ .
+https://techspot.zzzeek.org/2008/01/23/expression-transformations/ .
 
 """
 

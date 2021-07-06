@@ -38,3 +38,4 @@ test/test_schema.db
 /querytest.db
 /.mypy_cache
 /.pytest_cache
+/db_idents.txt

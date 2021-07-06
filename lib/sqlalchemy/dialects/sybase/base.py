@@ -3,11 +3,11 @@
 # <see AUTHORS file>
 # get_select_precolumns(), limit_clause() implementation
 # copyright (C) 2007 Fisch Asset Management
-# AG http://www.fam.ch, with coding by Alexander Houben
+# AG https://www.fam.ch, with coding by Alexander Houben
 # alexander.houben@thor-solutions.ch
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """
 

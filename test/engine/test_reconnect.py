@@ -1051,7 +1051,10 @@ class RealReconnectTest(fixtures.TestBase):
         with self.engine.connect() as c1:
 
             with patch.object(self.engine.pool, "logger") as logger:
-                c1_branch = c1.connect()
+                with testing.expect_deprecated_20(
+                    r"The Connection.connect\(\) method is considered legacy"
+                ):
+                    c1_branch = c1.connect()
                 eq_(c1_branch.execute(select(1)).scalar(), 1)
 
                 self.engine.test_shutdown()
@@ -1068,8 +1071,10 @@ class RealReconnectTest(fixtures.TestBase):
 
     def test_branched_invalidate_parent_to_branch(self):
         with self.engine.connect() as c1:
-
-            c1_branch = c1.connect()
+            with testing.expect_deprecated_20(
+                r"The Connection.connect\(\) method is considered legacy"
+            ):
+                c1_branch = c1.connect()
             eq_(c1_branch.execute(select(1)).scalar(), 1)
 
             self.engine.test_shutdown()
@@ -1084,8 +1089,10 @@ class RealReconnectTest(fixtures.TestBase):
 
     def test_branch_invalidate_state(self):
         with self.engine.connect() as c1:
-
-            c1_branch = c1.connect()
+            with testing.expect_deprecated_20(
+                r"The Connection.connect\(\) method is considered legacy"
+            ):
+                c1_branch = c1.connect()
 
             eq_(c1_branch.execute(select(1)).scalar(), 1)
 

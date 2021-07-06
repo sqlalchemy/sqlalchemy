@@ -1056,7 +1056,7 @@ class MemUsageWBackendTest(EnsureZeroed):
 
     # fails on newer versions of pysqlite due to unusual memory behavior
     # in pysqlite itself. background at:
-    # http://thread.gmane.org/gmane.comp.python.db.pysqlite.user/2290
+    # https://thread.gmane.org/gmane.comp.python.db.pysqlite.user/2290
 
     @testing.crashes("mysql+cymysql", "blocking")
     def test_join_cache_deprecated_coercion(self):

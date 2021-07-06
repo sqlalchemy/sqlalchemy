@@ -54,7 +54,7 @@ class Engineer(Person):
     primary_language = Column(String(30))
 
     # illustrate a single-inh "conflicting" column declaration;
-    # see http://docs.sqlalchemy.org/en/latest/orm/extensions/
+    # see https://docs.sqlalchemy.org/en/latest/orm/extensions/
     #       declarative/inheritance.html#resolving-column-conflicts
     @declared_attr
     def status(cls):

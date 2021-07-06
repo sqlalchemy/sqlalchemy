@@ -1037,7 +1037,7 @@
         :tags: requirements
         :versions: 0.9.0b1
 
-        The Python `mock <https://pypi.python.org/pypi/mock>`_ library
+        The Python `mock <https://pypi.org/project/mock>`_ library
         is now required in order to run the unit test suite.  While part
         of the standard library as of Python 3.3, previous Python installations
         will need to install this in order to run unit tests or to

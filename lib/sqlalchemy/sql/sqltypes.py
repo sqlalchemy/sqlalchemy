@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """SQL specific types.
 
@@ -608,7 +608,7 @@ class Numeric(_LookupExpressionAdapter, TypeEngine):
 
        The Python ``decimal.Decimal`` class is generally slow
        performing; cPython 3.3 has now switched to use the `cdecimal
-       <http://pypi.python.org/pypi/cdecimal/>`_ library natively. For
+       <https://pypi.org/project/cdecimal/>`_ library natively. For
        older Python versions, the ``cdecimal`` library can be patched
        into any application where it will replace the ``decimal``
        library fully, however this needs to be applied globally and
@@ -874,7 +874,7 @@ class DateTime(_LookupExpressionAdapter, TypeEngine):
     @util.memoized_property
     def _expression_adaptations(self):
 
-        # Based on http://www.postgresql.org/docs/current/\
+        # Based on https://www.postgresql.org/docs/current/\
         # static/functions-datetime.html.
 
         return {
@@ -898,7 +898,7 @@ class Date(_LookupExpressionAdapter, TypeEngine):
 
     @util.memoized_property
     def _expression_adaptations(self):
-        # Based on http://www.postgresql.org/docs/current/\
+        # Based on https://www.postgresql.org/docs/current/\
         # static/functions-datetime.html.
 
         return {
@@ -939,7 +939,7 @@ class Time(_LookupExpressionAdapter, TypeEngine):
 
     @util.memoized_property
     def _expression_adaptations(self):
-        # Based on http://www.postgresql.org/docs/current/\
+        # Based on https://www.postgresql.org/docs/current/\
         # static/functions-datetime.html.
 
         return {
@@ -1997,7 +1997,7 @@ class Boolean(Emulated, TypeEngine, SchemaType):
 class _AbstractInterval(_LookupExpressionAdapter, TypeEngine):
     @util.memoized_property
     def _expression_adaptations(self):
-        # Based on http://www.postgresql.org/docs/current/\
+        # Based on https://www.postgresql.org/docs/current/\
         # static/functions-datetime.html.
 
         return {
