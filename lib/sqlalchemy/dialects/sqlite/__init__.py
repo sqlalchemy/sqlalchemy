@@ -31,6 +31,7 @@ from ...util import compat
 
 if compat.py3k:
     from . import aiosqlite
+
     # default dialect
     async_base.dialect = aiosqlite.dialect
 

@@ -592,7 +592,7 @@ class URL(
         is imported in order to get the driver name.
 
         """
-        
+
         if "+" not in self.drivername:
             return self.get_dialect(is_async).driver
         else:

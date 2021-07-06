@@ -55,6 +55,7 @@ from ...util import compat
 
 if compat.py3k:
     from . import aiomysql
+
     # default async dialect
     async_base.dialect = aiomysql.dialect
 

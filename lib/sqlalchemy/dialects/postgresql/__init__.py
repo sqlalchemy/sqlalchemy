@@ -62,6 +62,7 @@ from ...util import compat
 
 if compat.py3k:
     from . import asyncpg
+
     # default async dialect
     async_base.dialect = asyncpg.dialect
 

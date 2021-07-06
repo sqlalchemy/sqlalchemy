@@ -26,6 +26,7 @@ def _default_driver_importer(default_driver):
     as a first-hit system.
 
     """
+
     def auto_fn(name):
         if "." in name:
             dialect, driver = name.split(".")
@@ -38,7 +39,9 @@ def _default_driver_importer(default_driver):
                 try:
                     module = __import__("sqlalchemy_firebird")
                 except ImportError:
-                    module = __import__("sqlalchemy.dialects.firebird").dialects
+                    module = __import__(
+                        "sqlalchemy.dialects.firebird"
+                    ).dialects
                     module = getattr(module, dialect)
             elif dialect == "sybase":
                 try:
@@ -56,7 +59,9 @@ def _default_driver_importer(default_driver):
                 ).dialects.mysql.mariadb
                 return module.loader(driver)
             else:
-                module = __import__("sqlalchemy.dialects.%s" % (dialect,)).dialects
+                module = __import__(
+                    "sqlalchemy.dialects.%s" % (dialect,)
+                ).dialects
                 module = getattr(module, dialect)
         except ImportError:
             return None
@@ -70,7 +75,11 @@ def _default_driver_importer(default_driver):
     return auto_fn
 
 
-registry = util.PluginLoader("sqlalchemy.dialects", auto_fn=_default_driver_importer("base"))
-asyncio_registry = util.PluginLoader("sqlalchemy.dialects", auto_fn=_default_driver_importer("async_base"))
+registry = util.PluginLoader(
+    "sqlalchemy.dialects", auto_fn=_default_driver_importer("base")
+)
+asyncio_registry = util.PluginLoader(
+    "sqlalchemy.dialects", auto_fn=_default_driver_importer("async_base")
+)
 
 plugins = util.PluginLoader("sqlalchemy.plugins")
