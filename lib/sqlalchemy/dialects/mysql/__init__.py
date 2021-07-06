@@ -5,11 +5,12 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from . import base  # noqa
+from . import async_base
+from . import base
 from . import cymysql  # noqa
 from . import mariadbconnector  # noqa
 from . import mysqlconnector  # noqa
-from . import mysqldb  # noqa
+from . import mysqldb
 from . import oursql  # noqa
 from . import pymysql  # noqa
 from . import pyodbc  # noqa
@@ -53,7 +54,9 @@ from .expression import match
 from ...util import compat
 
 if compat.py3k:
-    from . import aiomysql  # noqa
+    from . import aiomysql
+    # default async dialect
+    async_base.dialect = aiomysql.dialect
 
 
 # default dialect

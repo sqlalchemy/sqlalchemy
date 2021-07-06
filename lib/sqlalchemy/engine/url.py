@@ -19,6 +19,7 @@ import re
 from .interfaces import Dialect
 from .. import exc
 from .. import util
+from ..dialects import asyncio_registry
 from ..dialects import plugins
 from ..dialects import registry
 from ..util import collections_abc
@@ -577,13 +578,10 @@ class URL(
         that is to the left of the plus sign.
 
         """
-        if "+" not in self.drivername:
-            return self.drivername
-        else:
-            return self.drivername.split("+")[0]
+        return self.drivername.split("+", maxsplit=1)[0]
 
-    def get_driver_name(self):
-        """Return the backend name.
+    def get_driver_name(self, is_async=False):
+        """Return the DBAPI name.
 
         This is the name that corresponds to the DBAPI driver in
         use, and is the portion of the :attr:`_engine.URL.drivername`
@@ -594,11 +592,11 @@ class URL(
         is imported in order to get the driver name.
 
         """
-
+        
         if "+" not in self.drivername:
-            return self.get_dialect().driver
+            return self.get_dialect(is_async).driver
         else:
-            return self.drivername.split("+")[1]
+            return self.drivername.split("+", maxsplit=1)[1]
 
     def _instantiate_plugins(self, kwargs):
         plugin_names = util.to_list(self.query.get("plugin", ()))
@@ -622,18 +620,20 @@ class URL(
 
         return u, loaded_plugins, kwargs
 
-    def _get_entrypoint(self):
+    def _get_entrypoint(self, is_async=False):
         """Return the "entry point" dialect class.
 
         This is normally the dialect itself except in the case when the
         returned class implements the get_dialect_cls() method.
 
         """
-        if "+" not in self.drivername:
-            name = self.drivername
+
+        name = self.drivername.replace("+", ".")
+
+        if not is_async:
+            cls = registry.load(name)
         else:
-            name = self.drivername.replace("+", ".")
-        cls = registry.load(name)
+            cls = asyncio_registry.load(name)
         # check for legacy dialects that
         # would return a module with 'dialect' as the
         # actual class
@@ -646,12 +646,11 @@ class URL(
         else:
             return cls
 
-    def get_dialect(self):
+    def get_dialect(self, is_async=False):
         """Return the SQLAlchemy :class:`_engine.Dialect` class corresponding
         to this URL's driver name.
-
         """
-        entrypoint = self._get_entrypoint()
+        entrypoint = self._get_entrypoint(is_async)
         dialect_cls = entrypoint.get_dialect_cls(self)
         return dialect_cls
 

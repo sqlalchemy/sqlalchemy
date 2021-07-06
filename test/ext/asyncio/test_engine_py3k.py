@@ -861,11 +861,11 @@ class TextSyncDBAPI(fixtures.TestBase):
             exc.InvalidRequestError,
             "The asyncio extension requires an async driver to be used.",
         ):
-            create_async_engine("sqlite:///:memory:")
+            create_async_engine("sqlite+pysqlite:///:memory:")
 
     @testing.fixture
     def async_engine(self):
-        engine = create_engine("sqlite:///:memory:", future=True)
+        engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
         engine.dialect.is_async = True
         return _async_engine.AsyncEngine(engine)
 

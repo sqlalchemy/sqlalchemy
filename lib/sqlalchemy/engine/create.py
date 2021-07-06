@@ -517,9 +517,10 @@ def create_engine(url, **kwargs):
     # create url.URL object
     u = _url.make_url(url)
 
+    is_async = kwargs.pop("_async", False)
     u, plugins, kwargs = u._instantiate_plugins(kwargs)
 
-    entrypoint = u._get_entrypoint()
+    entrypoint = u._get_entrypoint(is_async)
     dialect_cls = entrypoint.get_dialect_cls(u)
 
     if kwargs.pop("_coerce_config", False):

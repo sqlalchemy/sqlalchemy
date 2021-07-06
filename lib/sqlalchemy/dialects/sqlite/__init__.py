@@ -5,7 +5,8 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from . import base  # noqa
+from . import async_base
+from . import base
 from . import pysqlcipher  # noqa
 from . import pysqlite  # noqa
 from .base import BLOB
@@ -29,7 +30,9 @@ from .dml import insert
 from ...util import compat
 
 if compat.py3k:
-    from . import aiosqlite  # noqa
+    from . import aiosqlite
+    # default dialect
+    async_base.dialect = aiosqlite.dialect
 
 # default dialect
 base.dialect = dialect = pysqlite.dialect

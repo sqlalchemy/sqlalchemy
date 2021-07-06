@@ -755,15 +755,12 @@ class MockReconnectTest(fixtures.TestBase):
 
         dbapi = self.dbapi
 
-        class MyURL(URL):
-            def _get_entrypoint(self):
-                return Dialect
-
-            def get_dialect(self):
-                return Dialect
-
         class Dialect(DefaultDialect):
             initialize = Mock()
+
+        class MyURL(URL):
+            _get_entrypoint = Mock(return_value=Dialect)
+            get_dialect = Mock(return_value=Dialect)
 
         engine = create_engine(MyURL.create("foo://"), module=dbapi)
         engine.connect()
@@ -784,15 +781,12 @@ class MockReconnectTest(fixtures.TestBase):
 
         dbapi = self.dbapi
 
-        class MyURL(URL):
-            def _get_entrypoint(self):
-                return Dialect
-
-            def get_dialect(self):
-                return Dialect
-
         class Dialect(DefaultDialect):
             initialize = Mock()
+
+        class MyURL(URL):
+            _get_entrypoint = Mock(return_value=Dialect)
+            get_dialect = Mock(return_value=Dialect)
 
         # note that the first_connect hook is only invoked when the pool
         # makes a new DBAPI connection, and not when it checks out an existing
@@ -947,8 +941,8 @@ class CursorErrTest(fixtures.TestBase):
         from sqlalchemy.engine import default
 
         url = Mock(
-            get_dialect=lambda: default.DefaultDialect,
-            _get_entrypoint=lambda: default.DefaultDialect,
+            get_dialect=Mock(return_value=default.DefaultDialect),
+            _get_entrypoint=Mock(return_value=default.DefaultDialect),
             _instantiate_plugins=lambda kwargs: (url, [], kwargs),
             translate_connect_args=lambda: {},
             query={},
