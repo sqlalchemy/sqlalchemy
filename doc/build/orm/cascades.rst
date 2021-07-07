@@ -98,7 +98,7 @@ becomes part of the state of that :class:`.Session`::
     >>> address3 = Address()
     >>> user1.addresses.append(address3)
     >>> address3 in sess
-    >>> True
+    True
 
 A ``save-update`` cascade can exhibit surprising behavior when removing an item from
 a collection or de-associating an object from a scalar attribute. In some cases, the
