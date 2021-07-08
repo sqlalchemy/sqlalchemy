@@ -6,7 +6,6 @@ on:
     branches:
       - master
     paths-ignore:
-      - "doc/**"
       - "examples/**"
 
 env:
@@ -23,6 +22,7 @@ jobs:
         os:
           - "ubuntu-latest"
         python-version:
+          - "2.7"
           - "3.9"
         build-type:
           - "cext"
