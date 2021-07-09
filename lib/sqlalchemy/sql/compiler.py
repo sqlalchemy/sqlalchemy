@@ -3325,7 +3325,7 @@ class SQLCompiler(Compiled):
 
     def _render_cte_clause(
         self,
-        nesting_only: bool = False,
+        nesting_only=False,
     ):
         ctes = self.ctes
 
