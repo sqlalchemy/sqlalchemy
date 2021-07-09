@@ -2890,7 +2890,7 @@ class _ORMColumnEntity(_ColumnEntity):
                 ezero._adapter if ezero.is_aliased_class else None,
             )
 
-        if column._annotations:
+        if column._annotations and not column._expression_label:
             # annotated columns perform more slowly in compiler and
             # result due to the __eq__() method, so use deannotated
             column = column._deannotate()

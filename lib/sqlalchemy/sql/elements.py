@@ -887,6 +887,21 @@ class ColumnElement(
         else:
             return getattr(self, "name", "_no_label")
 
+    @util.memoized_property
+    def _expression_label(self):
+        """a suggested label to use in the case that the column has no name,
+        which should be used if possible as the explicit 'AS <label>'
+        where this expression would normally have an anon label.
+
+        """
+
+        if getattr(self, "name", None) is not None:
+            return None
+        elif self._annotations and "proxy_key" in self._annotations:
+            return self._annotations["proxy_key"]
+        else:
+            return None
+
     def _make_proxy(
         self, selectable, name=None, key=None, name_is_truncatable=False, **kw
     ):

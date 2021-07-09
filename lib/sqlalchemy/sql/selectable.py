@@ -5815,14 +5815,17 @@ class Select(
                         repeated = c._anon_name_label in names
                         names[c._anon_name_label] = c
                         return (None, c, repeated)
+                    else:
+                        name = effective_name = c._label
                 elif getattr(c, "name", None) is None:
                     # this is a scalar_select().  need to improve this case
-                    repeated = c._anon_name_label in names
-                    names[c._anon_name_label] = c
-                    return (None, c, repeated)
-
-                if use_tablename_labels:
-                    name = effective_name = c._label
+                    expr_label = c._expression_label
+                    if expr_label is None:
+                        repeated = c._anon_name_label in names
+                        names[c._anon_name_label] = c
+                        return (None, c, repeated)
+                    else:
+                        name = effective_name = expr_label
                 else:
                     name = None
                     effective_name = c.name
