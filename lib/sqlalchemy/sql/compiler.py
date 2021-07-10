@@ -2999,6 +2999,7 @@ class SQLCompiler(Compiled):
         self,
         select_stmt,
         asfrom=False,
+        insert_into=False,
         fromhints=None,
         compound_index=None,
         select_wraps_for=None,
@@ -3160,7 +3161,7 @@ class SQLCompiler(Compiled):
                 text += " " + self.get_statement_hint_text(per_dialect)
 
         # In compound query, CTEs are shared at the compound level
-        if self.ctes and compound_index is None:
+        if self.ctes and compound_index is None and not insert_into:
             nesting_level = len(self.stack) if not toplevel else None
             text = self._render_cte_clause(nesting_level=nesting_level) + text
 
@@ -3613,10 +3614,16 @@ class SQLCompiler(Compiled):
             returning_clause = None
 
         if insert_stmt.select is not None:
-            select_text = self.process(self._insert_from_select, **kw)
+            select_text = self.process(
+                self._insert_from_select, insert_into=True, **kw
+            )
 
-            if self.ctes and toplevel and self.dialect.cte_follows_insert:
-                text += " %s%s" % (self._render_cte_clause(), select_text)
+            if self.ctes and self.dialect.cte_follows_insert:
+                nesting_level = (len(self.stack) + 1) if not toplevel else None
+                text += " %s%s" % (
+                    self._render_cte_clause(nesting_level=nesting_level),
+                    select_text,
+                )
             else:
                 text += " %s" % select_text
         elif not crud_params and supports_default_values:
@@ -3654,8 +3661,9 @@ class SQLCompiler(Compiled):
         if returning_clause and not self.returning_precedes_values:
             text += " " + returning_clause
 
-        if self.ctes and toplevel and not self.dialect.cte_follows_insert:
-            text = self._render_cte_clause() + text
+        if self.ctes and not self.dialect.cte_follows_insert:
+            nesting_level = (len(self.stack) + 1) if not toplevel else None
+            text = self._render_cte_clause(nesting_level=nesting_level) + text
 
         self.stack.pop(-1)
 

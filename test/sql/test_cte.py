@@ -1585,3 +1585,41 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             "dialect's statement compiler.",
             functools.partial(stmt.compile, dialect=dialect.dialect()),
         )
+
+    def test_nesting_cte_for_insert_in_the_cte(self):
+        products = table("products", column("id"), column("price"))
+
+        generator_cte = select(
+            [literal(1).label("id"), literal(27.0).label("price")]
+        ).cte("generator", nesting=True)
+
+        cte = (
+            products.insert()
+            .from_select(
+                [products.c.id, products.c.price],
+                select([generator_cte]),
+            )
+            .returning(*products.c)
+            .cte("pd")
+        )
+
+        stmt = select(cte)
+
+        assert "autocommit" not in stmt._execution_options
+
+        compiled = stmt.compile(dialect=self.__dialect__)
+
+        eq_(compiled.execution_options["autocommit"], True)
+
+        self.assert_compile(
+            stmt,
+            "WITH pd AS "
+            "(WITH generator AS "
+            "(SELECT %(param_1)s AS id, %(param_2)s AS price) "
+            "INSERT INTO products (id, price) "
+            "SELECT generator.id AS id, generator.price AS price FROM generator "
+            "RETURNING products.id, products.price) "
+            "SELECT pd.id, pd.price "
+            "FROM pd",
+        )
+        eq_(compiled.isinsert, False)
