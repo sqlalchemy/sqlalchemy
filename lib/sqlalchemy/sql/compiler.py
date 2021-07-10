@@ -1822,8 +1822,12 @@ class SQLCompiler(Compiled):
         if cs._has_row_limiting_clause:
             text += self._row_limit_clause(cs, **kwargs)
 
-        if self.ctes and toplevel:
-            text = self._render_cte_clause() + text
+        if self.ctes:
+            # Nesting CTEs from deeper select
+            text = (
+                self._render_cte_clause(nesting_level=len(self.stack) + 1)
+                + text
+            )
 
         self.stack.pop(-1)
         return text
@@ -3153,8 +3157,11 @@ class SQLCompiler(Compiled):
             if per_dialect:
                 text += " " + self.get_statement_hint_text(per_dialect)
 
-        if self.ctes:
-            text = self._render_cte_clause(nesting_only=(not toplevel)) + text
+        # In compound query, CTEs are shared at the compound level
+        if self.ctes and compound_index is None:
+            text = (
+                self._render_cte_clause(nesting_level=len(self.stack)) + text
+            )
 
         if select_stmt._suffixes:
             text += " " + self._generate_prefixes(
@@ -3328,21 +3335,21 @@ class SQLCompiler(Compiled):
 
     def _render_cte_clause(
         self,
-        nesting_only=False,
+        nesting_level=None,
     ):
         ctes = self.ctes
 
-        if nesting_only:
+        if nesting_level and nesting_level > 1:
             ctes = {
                 cte: ctes[cte]
                 for cte in ctes
-                if cte.nesting and cte.nesting_level == len(self.stack)
+                if cte.nesting_level == nesting_level
             }
             # Remove them from the visible CTEs
             self.ctes = {
                 cte: self.ctes[cte]
                 for cte in self.ctes
-                if not (cte.nesting and cte.nesting_level == len(self.stack))
+                if not cte.nesting_level == nesting_level
             }
 
             if ctes and not self.dialect.supports_nesting_cte:
