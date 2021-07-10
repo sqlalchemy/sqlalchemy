@@ -1405,12 +1405,14 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
         nesting_cte = select([literal(1).label("val")]).cte(
             "nesting_cte", nesting=True
         )
-        stmt = select([nesting_cte.c.val])
+        cte = select([literal(2).label("val")]).cte("cte")
+        stmt = select([nesting_cte.c.val, cte.c.val])
 
         self.assert_compile(
             stmt,
-            "WITH nesting_cte AS (SELECT %(param_1)s AS val) "
-            "SELECT nesting_cte.val FROM nesting_cte",
+            "WITH nesting_cte AS (SELECT %(param_1)s AS val)"
+            ", cte AS (SELECT %(param_2)s AS val)"
+            " SELECT nesting_cte.val, cte.val AS val_1 FROM nesting_cte, cte",
             dialect="postgresql",
         )
 
