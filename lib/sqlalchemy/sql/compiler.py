@@ -2494,6 +2494,9 @@ class SQLCompiler(Compiled):
     ):
         self._init_cte_state()
 
+        if cte.nesting:
+            cte.nesting_level = len(self.stack)
+
         kwargs["visiting_cte"] = cte
         if isinstance(cte.name, elements._truncated_label):
             cte_name = self._truncated_identifier("alias", cte.name)
@@ -3330,10 +3333,16 @@ class SQLCompiler(Compiled):
         ctes = self.ctes
 
         if nesting_only:
-            ctes = {cte: ctes[cte] for cte in ctes if cte.nesting}
+            ctes = {
+                cte: ctes[cte]
+                for cte in ctes
+                if cte.nesting and cte.nesting_level == len(self.stack)
+            }
             # Remove them from the visible CTEs
             self.ctes = {
-                cte: self.ctes[cte] for cte in self.ctes if not cte.nesting
+                cte: self.ctes[cte]
+                for cte in self.ctes
+                if not (cte.nesting and cte.nesting_level == len(self.stack))
             }
 
             if ctes and not self.dialect.supports_nesting_cte:
