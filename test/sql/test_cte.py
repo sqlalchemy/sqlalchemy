@@ -1401,6 +1401,22 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             dialect="postgresql",
         )
 
+    def test_nesting_cte_in_cte_with_same_name(self):
+        nesting_cte = select([literal(1).label("inner")]).cte(
+            "some_cte", nesting=True
+        )
+        stmt = select(
+            [select([nesting_cte.c.inner.label("outer")]).cte("some_cte")]
+        )
+
+        self.assert_compile(
+            stmt,
+            'WITH some_cte AS (WITH some_cte AS (SELECT %(param_1)s AS "inner") '
+            'SELECT some_cte."inner" AS "outer" FROM some_cte) '
+            'SELECT some_cte."outer" FROM some_cte',
+            dialect="postgresql",
+        )
+
     def test_nesting_cte_at_top_level(self):
         nesting_cte = select([literal(1).label("val")]).cte(
             "nesting_cte", nesting=True

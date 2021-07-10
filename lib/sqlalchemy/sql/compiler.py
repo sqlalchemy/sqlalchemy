@@ -842,6 +842,7 @@ class SQLCompiler(Compiled):
         """
         # collect CTEs to tack on top of a SELECT
         self.ctes = util.OrderedDict()
+        # Detect same CTE references
         self.ctes_by_name = {}
         self.ctes_recursive = False
         if self.positional:
@@ -2498,8 +2499,9 @@ class SQLCompiler(Compiled):
     ):
         self._init_cte_state()
 
+        cte_level = len(self.stack)
         if cte.nesting:
-            cte.nesting_level = len(self.stack)
+            cte.nesting_level = cte_level
 
         kwargs["visiting_cte"] = cte
         if isinstance(cte.name, elements._truncated_label):
@@ -2510,8 +2512,9 @@ class SQLCompiler(Compiled):
         is_new_cte = True
         embedded_in_current_named_cte = False
 
-        if cte_name in self.ctes_by_name:
-            existing_cte = self.ctes_by_name[cte_name]
+        cte_level_name = (cte_level, cte_name)
+        if cte_level_name in self.ctes_by_name:
+            existing_cte = self.ctes_by_name[cte_level_name]
             embedded_in_current_named_cte = visiting_cte is existing_cte
 
             # we've generated a same-named CTE that we are enclosed in,
@@ -2542,7 +2545,7 @@ class SQLCompiler(Compiled):
                 cte_pre_alias_name = None
 
         if is_new_cte:
-            self.ctes_by_name[cte_name] = cte
+            self.ctes_by_name[cte_level_name] = cte
 
             if (
                 "autocommit" in cte.element._execution_options
