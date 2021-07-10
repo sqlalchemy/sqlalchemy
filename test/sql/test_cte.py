@@ -4,7 +4,7 @@ from sqlalchemy import delete
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import update
-from sqlalchemy.dialects import mssql, mysql
+from sqlalchemy.dialects import mssql, mysql, postgresql
 from sqlalchemy.engine import default
 from sqlalchemy.exc import CompileError
 from sqlalchemy.sql import and_
@@ -1383,7 +1383,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
 class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
 
-    __dialect__ = "default_enhanced"
+    __dialect__ = postgresql.dialect()
 
     def test_select_with_nesting_cte_in_cte(self):
         nesting_cte = select([literal(1).label("inner")]).cte(
@@ -1398,7 +1398,6 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             'WITH cte AS (WITH nesting AS (SELECT %(param_1)s AS "inner") '
             'SELECT nesting."inner" AS "outer" FROM nesting) '
             'SELECT cte."outer" FROM cte',
-            dialect="postgresql",
         )
 
     def test_nesting_cte_in_cte_with_same_name(self):
@@ -1414,7 +1413,6 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             'WITH some_cte AS (WITH some_cte AS (SELECT %(param_1)s AS "inner") '
             'SELECT some_cte."inner" AS "outer" FROM some_cte) '
             'SELECT some_cte."outer" FROM some_cte',
-            dialect="postgresql",
         )
 
     def test_nesting_cte_at_top_level(self):
@@ -1429,7 +1427,6 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             "WITH nesting_cte AS (SELECT %(param_1)s AS val)"
             ", cte AS (SELECT %(param_2)s AS val)"
             " SELECT nesting_cte.val, cte.val AS val_1 FROM nesting_cte, cte",
-            dialect="postgresql",
         )
 
     def test_double_nesting_cte_in_cte(self):
@@ -1460,7 +1457,6 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             ', nesting_2."inner" AS outer_2'
             " FROM nesting_1, nesting_2"
             ") SELECT cte.outer_1, cte.outer_2 FROM cte",
-            dialect="postgresql",
         )
 
     def test_nesting_cte_in_nesting_cte_in_cte(self):
@@ -1483,7 +1479,6 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             ' SELECT nesting_1."inner" AS inner_2 FROM nesting_1'
             ') SELECT nesting_2.inner_2 AS "outer" FROM nesting_2'
             ') SELECT cte."outer" FROM cte',
-            dialect="postgresql",
         )
 
     def test_compound_select_with_nesting_cte_in_cte(self):
@@ -1513,7 +1508,6 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             ' SELECT nesting_2."inner" AS "inner" FROM nesting_2'
             ") AS anon_1"
             ') SELECT cte."outer" FROM cte',
-            dialect="postgresql",
         )
 
     def test_nesting_cte_in_recursive_cte(self):
@@ -1534,7 +1528,6 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             '(SELECT %(param_1)s AS "inner") '
             'SELECT nesting."inner" AS "outer" FROM nesting) '
             'SELECT cte."outer" FROM cte',
-            dialect="postgresql",
         )
 
     def test_recursive_nesting_cte_in_cte(self):
@@ -1551,7 +1544,6 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             '(SELECT %(param_1)s AS "inner") '
             'SELECT nesting."inner" AS "outer" FROM nesting) '
             'SELECT cte."outer" FROM cte',
-            dialect="postgresql",
         )
 
     def test_recursive_nesting_cte_in_recursive_cte(self):
@@ -1572,7 +1564,6 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             'AS (SELECT %(param_1)s AS "inner") '
             'SELECT nesting."inner" AS "outer" FROM nesting) '
             'SELECT cte."outer" FROM cte',
-            dialect="postgresql",
         )
 
     @pytest.mark.parametrize(
