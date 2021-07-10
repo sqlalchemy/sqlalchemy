@@ -124,6 +124,12 @@ NO_RAISE = util.symbol(
     canonical=128,
 )
 
+DEFERRED_HISTORY_LOAD = util.symbol(
+    "DEFERRED_HISTORY_LOAD",
+    """indicates special load of the previous value of an attribute""",
+    canonical=256,
+)
+
 # pre-packaged sets of flags used as inputs
 PASSIVE_OFF = util.symbol(
     "PASSIVE_OFF",

@@ -1,6 +1,7 @@
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
+from sqlalchemy import testing
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import fixtures
@@ -42,7 +43,13 @@ class O2OTest(fixtures.MappedTest):
         class Port(cls.Basic):
             pass
 
-    def test_basic(self):
+    @testing.combinations(
+        (True, False),
+        (False, False),
+        (False, True),
+        argnames="_legacy_inactive_history_style, active_history",
+    )
+    def test_basic(self, _legacy_inactive_history_style, active_history):
         Port, port, jack, Jack = (
             self.classes.Port,
             self.tables.port,
@@ -55,7 +62,15 @@ class O2OTest(fixtures.MappedTest):
             Jack,
             jack,
             properties=dict(
-                port=relationship(Port, backref="jack", uselist=False)
+                port=relationship(
+                    Port,
+                    backref="jack",
+                    uselist=False,
+                    active_history=active_history,
+                    _legacy_inactive_history_style=(
+                        _legacy_inactive_history_style
+                    ),
+                )
             ),
         )
 
@@ -85,8 +100,91 @@ class O2OTest(fixtures.MappedTest):
         p = session.query(Port).get(pid)
 
         j.port = None
-        self.assert_(p.jack is None)
-        session.flush()
+
+        if not active_history and not _legacy_inactive_history_style:
+            session.flush()
+            self.assert_(p.jack is None)
+        else:
+            self.assert_(p.jack is None)
+            session.flush()
 
         session.delete(j)
         session.flush()
+
+    @testing.combinations(
+        (True,), (False,), argnames="_legacy_inactive_history_style"
+    )
+    def test_simple_replace(self, _legacy_inactive_history_style):
+        Port, port, jack, Jack = (
+            self.classes.Port,
+            self.tables.port,
+            self.tables.jack,
+            self.classes.Jack,
+        )
+
+        mapper(Port, port)
+        mapper(
+            Jack,
+            jack,
+            properties=dict(
+                port=relationship(
+                    Port,
+                    uselist=False,
+                    _legacy_inactive_history_style=(
+                        _legacy_inactive_history_style
+                    ),
+                )
+            ),
+        )
+
+        s = fixture_session()
+
+        p1 = Port(name="p1")
+        j1 = Jack(number="j1", port=p1)
+
+        s.add(j1)
+        s.commit()
+
+        j1.port = Port(name="p2")
+        s.commit()
+
+        assert s.query(Port).filter_by(name="p1").one().jack_id is None
+
+    @testing.combinations(
+        (True,), (False,), argnames="_legacy_inactive_history_style"
+    )
+    def test_simple_del(self, _legacy_inactive_history_style):
+        Port, port, jack, Jack = (
+            self.classes.Port,
+            self.tables.port,
+            self.tables.jack,
+            self.classes.Jack,
+        )
+
+        mapper(Port, port)
+        mapper(
+            Jack,
+            jack,
+            properties=dict(
+                port=relationship(
+                    Port,
+                    uselist=False,
+                    _legacy_inactive_history_style=(
+                        _legacy_inactive_history_style
+                    ),
+                )
+            ),
+        )
+
+        s = fixture_session()
+
+        p1 = Port(name="p1")
+        j1 = Jack(number="j1", port=p1)
+
+        s.add(j1)
+        s.commit()
+
+        del j1.port
+        s.commit()
+
+        assert s.query(Port).filter_by(name="p1").one().jack_id is None

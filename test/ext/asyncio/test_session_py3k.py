@@ -1,7 +1,10 @@
+from sqlalchemy import Column
 from sqlalchemy import event
 from sqlalchemy import exc
+from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import inspect
+from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import Table
 from sqlalchemy import testing
@@ -471,6 +474,93 @@ class AsyncCascadesTest(AsyncFixture):
             ).scalar(),
             0,
         )
+
+
+class AsyncORMBehaviorsTest(AsyncFixture):
+    @testing.fixture
+    def one_to_one_fixture(self, registry, async_engine):
+        async def go(legacy_inactive_history_style):
+            @registry.mapped
+            class A:
+                __tablename__ = "a"
+
+                id = Column(Integer, primary_key=True)
+                b = relationship(
+                    "B",
+                    uselist=False,
+                    _legacy_inactive_history_style=(
+                        legacy_inactive_history_style
+                    ),
+                )
+
+            @registry.mapped
+            class B:
+                __tablename__ = "b"
+                id = Column(Integer, primary_key=True)
+                a_id = Column(ForeignKey("a.id"))
+
+            async with async_engine.begin() as conn:
+                await conn.run_sync(registry.metadata.create_all)
+
+            return A, B
+
+        return go
+
+    @testing.combinations(
+        (
+            "legacy_style",
+            True,
+        ),
+        (
+            "new_style",
+            False,
+        ),
+        argnames="_legacy_inactive_history_style",
+        id_="ia",
+    )
+    @async_test
+    async def test_new_style_active_history(
+        self, async_session, one_to_one_fixture, _legacy_inactive_history_style
+    ):
+
+        A, B = await one_to_one_fixture(_legacy_inactive_history_style)
+
+        a1 = A()
+        b1 = B()
+
+        a1.b = b1
+        async_session.add(a1)
+
+        await async_session.commit()
+
+        b2 = B()
+
+        if _legacy_inactive_history_style:
+            # aiomysql dialect having problems here, emitting weird
+            # pytest warnings and we might need to just skip for aiomysql
+            # here, which is also raising StatementError w/ MissingGreenlet
+            # inside of it
+            with testing.expect_raises(
+                (exc.StatementError, exc.MissingGreenlet)
+            ):
+                a1.b = b2
+        else:
+            a1.b = b2
+
+            await async_session.flush()
+
+            await async_session.refresh(b1)
+
+            eq_(
+                (
+                    await async_session.execute(
+                        select(func.count())
+                        .where(B.id == b1.id)
+                        .where(B.a_id == None)
+                    )
+                ).scalar(),
+                1,
+            )
 
 
 class AsyncEventTest(AsyncFixture):

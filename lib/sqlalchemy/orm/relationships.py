@@ -151,6 +151,7 @@ class RelationshipProperty(StrategizedProperty):
         info=None,
         omit_join=None,
         sync_backref=None,
+        _legacy_inactive_history_style=False,
     ):
         """Provide a relationship between two mapped classes.
 
@@ -1014,6 +1015,8 @@ class RelationshipProperty(StrategizedProperty):
         self.distinct_target_key = distinct_target_key
         self.doc = doc
         self.active_history = active_history
+        self._legacy_inactive_history_style = _legacy_inactive_history_style
+
         self.join_depth = join_depth
         if omit_join:
             util.warn(
