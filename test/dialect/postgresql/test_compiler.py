@@ -249,6 +249,33 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "'y', 'z')))",
         )
 
+    def test_cast_enum_schema(self):
+        """test #6739"""
+        e1 = Enum("x", "y", "z", name="somename")
+        e2 = Enum("x", "y", "z", name="somename", schema="someschema")
+
+        stmt = select(cast(column("foo"), e1), cast(column("bar"), e2))
+        self.assert_compile(
+            stmt,
+            "SELECT CAST(foo AS somename) AS foo, "
+            "CAST(bar AS someschema.somename) AS bar",
+        )
+
+    def test_cast_enum_schema_translate(self):
+        """test #6739"""
+        e1 = Enum("x", "y", "z", name="somename")
+        e2 = Enum("x", "y", "z", name="somename", schema="someschema")
+        schema_translate_map = {None: "bat", "someschema": "hoho"}
+
+        stmt = select(cast(column("foo"), e1), cast(column("bar"), e2))
+        self.assert_compile(
+            stmt,
+            "SELECT CAST(foo AS bat.somename) AS foo, "
+            "CAST(bar AS hoho.somename) AS bar",
+            schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
+        )
+
     def test_create_type_schema_translate(self):
         e1 = Enum("x", "y", "z", name="somename")
         e2 = Enum("x", "y", "z", name="somename", schema="someschema")
@@ -281,6 +308,27 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             CreateTable(table),
             "CREATE TABLE foo.some_table (q foo.somename, p bar.somename)",
+            schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
+        )
+
+    def test_create_table_array_embedded_schema_type_schema_translate(self):
+        """test #6739"""
+        e1 = Enum("x", "y", "z", name="somename")
+        e2 = Enum("x", "y", "z", name="somename", schema="someschema")
+        schema_translate_map = {None: "foo", "someschema": "bar"}
+
+        table = Table(
+            "some_table",
+            MetaData(),
+            Column("q", PG_ARRAY(e1)),
+            Column("p", PG_ARRAY(e2)),
+        )
+        from sqlalchemy.schema import CreateTable
+
+        self.assert_compile(
+            CreateTable(table),
+            "CREATE TABLE foo.some_table (q foo.somename[], p bar.somename[])",
             schema_translate_map=schema_translate_map,
             render_schema_translate=True,
         )

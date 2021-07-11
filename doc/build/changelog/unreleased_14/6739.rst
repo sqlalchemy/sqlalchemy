@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 6739
+
+    Fixed issue where the PostgreSQL ``ENUM`` datatype as embedded in the
+    ``ARRAY`` datatype would fail to emit correctly in create/drop when the
+    ``schema_translate_map`` feature were also in use. Additionally repairs a
+    related issue where the same ``schema_translate_map`` feature would not
+    work for the ``ENUM`` datatype in combination with a ``CAST``, that's also
+    intrinsic to how the ``ARRAY(ENUM)`` combination works on the PostgreSQL
+    dialect.
+

@@ -2820,7 +2820,6 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_ENUM(self, type_, identifier_preparer=None, **kw):
         if identifier_preparer is None:
             identifier_preparer = self.dialect.identifier_preparer
-
         return identifier_preparer.format_type(type_)
 
     def visit_TIMESTAMP(self, type_, **kw):
@@ -2867,8 +2866,7 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_ARRAY(self, type_, **kw):
 
-        # TODO: pass **kw?
-        inner = self.process(type_.item_type)
+        inner = self.process(type_.item_type, **kw)
         return re.sub(
             r"((?: COLLATE.*)?)$",
             (
