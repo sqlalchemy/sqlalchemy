@@ -1497,6 +1497,7 @@ class SQLCompiler(Compiled):
 
     def visit_typeclause(self, typeclause, **kw):
         kw["type_expression"] = typeclause
+        kw["identifier_preparer"] = self.preparer
         return self.dialect.type_compiler.process(typeclause.type, **kw)
 
     def post_process_text(self, text):
