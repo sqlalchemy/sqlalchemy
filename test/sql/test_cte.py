@@ -1586,7 +1586,7 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             functools.partial(stmt.compile, dialect=dialect.dialect()),
         )
 
-    def test_nesting_cte_for_insert_in_the_cte(self):
+    def test_select_from_insert_cte_with_nesting(self):
         products = table("products", column("id"), column("price"))
 
         generator_cte = select(
@@ -1600,7 +1600,7 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
                 select([generator_cte]),
             )
             .returning(*products.c)
-            .cte("pd")
+            .cte("insert_cte")
         )
 
         stmt = select(cte)
@@ -1613,13 +1613,40 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "WITH pd AS "
+            "WITH insert_cte AS "
             "(WITH generator AS "
             "(SELECT %(param_1)s AS id, %(param_2)s AS price) "
             "INSERT INTO products (id, price) "
             "SELECT generator.id AS id, generator.price AS price FROM generator "
             "RETURNING products.id, products.price) "
-            "SELECT pd.id, pd.price "
-            "FROM pd",
+            "SELECT insert_cte.id, insert_cte.price "
+            "FROM insert_cte",
         )
         eq_(compiled.isinsert, False)
+
+    def test_select_from_update_cte_with_nesting(self):
+        t1 = table("table_1", column("id"), column("price"))
+
+        generator_cte = select(
+            [literal(1).label("id"), literal(27.0).label("price")]
+        ).cte("generator", nesting=True)
+
+        cte = (
+            t1.update()
+            .values(price=generator_cte.c.price)
+            .where(t1.c.id == generator_cte.c.id)
+            .returning(t1.c.id, t1.c.price)
+        ).cte("update_cte")
+
+        qry = select(cte)
+
+        self.assert_compile(
+            qry,
+            "WITH update_cte AS "
+            "(WITH generator AS "
+            "(SELECT %(param_1)s AS id, %(param_2)s AS price) "
+            "UPDATE table_1 SET price=generator.price "
+            "FROM generator WHERE table_1.id = generator.id "
+            "RETURNING table_1.id, table_1.price) "
+            "SELECT update_cte.id, update_cte.price FROM update_cte",
+        )
