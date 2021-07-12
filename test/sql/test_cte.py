@@ -1650,3 +1650,31 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             "RETURNING table_1.id, table_1.price) "
             "SELECT update_cte.id, update_cte.price FROM update_cte",
         )
+
+    def test_select_from_delete_cte_with_nesting(self):
+        t1 = table("table_1", column("id"), column("price"))
+
+        generator_cte = select([literal(1).label("id")]).cte(
+            "generator", nesting=True
+        )
+
+        dlt = (
+            t1.delete()
+            .where(t1.c.id == generator_cte.c.id)
+            .returning(t1.c.id, t1.c.price)
+        )
+
+        cte = dlt.cte("delete_cte")
+
+        qry = select(cte)
+
+        self.assert_compile(
+            qry,
+            "WITH delete_cte AS "
+            "(WITH generator AS "
+            "(SELECT %(param_1)s AS id) "
+            "DELETE FROM table_1 USING generator "
+            "WHERE table_1.id = generator.id RETURNING table_1.id, "
+            "table_1.price) SELECT delete_cte.id, delete_cte.price "
+            "FROM delete_cte",
+        )

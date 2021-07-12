@@ -3892,8 +3892,9 @@ class SQLCompiler(Compiled):
                 delete_stmt, delete_stmt._returning
             )
 
-        if self.ctes and toplevel:
-            text = self._render_cte_clause() + text
+        if self.ctes:
+            nesting_level = len(self.stack) if not toplevel else None
+            text = self._render_cte_clause(nesting_level=nesting_level) + text
 
         self.stack.pop(-1)
 
