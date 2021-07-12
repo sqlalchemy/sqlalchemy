@@ -829,6 +829,7 @@ class Insert(ValuesBase):
         + HasPrefixes._has_prefixes_traverse_internals
         + DialectKWArgs._dialect_kwargs_traverse_internals
         + Executable._executable_traverse_internals
+        + HasCTE._has_ctes_traverse_internals
     )
 
     @ValuesBase._constructor_20_deprecations(
@@ -1119,6 +1120,7 @@ class Update(DMLWhereBase, ValuesBase):
         + HasPrefixes._has_prefixes_traverse_internals
         + DialectKWArgs._dialect_kwargs_traverse_internals
         + Executable._executable_traverse_internals
+        + HasCTE._has_ctes_traverse_internals
     )
 
     @ValuesBase._constructor_20_deprecations(
@@ -1357,6 +1359,7 @@ class Delete(DMLWhereBase, UpdateBase):
         + HasPrefixes._has_prefixes_traverse_internals
         + DialectKWArgs._dialect_kwargs_traverse_internals
         + Executable._executable_traverse_internals
+        + HasCTE._has_ctes_traverse_internals
     )
 
     @ValuesBase._constructor_20_deprecations(

@@ -1,0 +1,12 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 6752
+
+    Added new method :meth:`_sql.HasCTE.add_cte` to each of the
+    :func:`_sql.select`, :func:`_sql.insert`, :func:`_sql.update` and
+    :func:`_sql.delete` constructs. This method will add the given
+    :class:`_sql.CTE` as an "independent" CTE of the statement, meaning it
+    renders in the WITH clause above the statement unconditionally even if it
+    is not otherwise referenced in the primary statement. This is a popular use
+    case on the PostgreSQL database where a CTE is used for a DML statement
+    that runs against database rows independently of the primary statement.

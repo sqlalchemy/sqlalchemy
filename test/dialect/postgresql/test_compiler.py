@@ -2518,13 +2518,37 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             stmt,
             "WITH i_upsert AS "
-            "(INSERT INTO mytable (name) VALUES (%(name)s) "
+            "(INSERT INTO mytable (name) VALUES (%(param_1)s) "
             "ON CONFLICT (name, description) "
             "WHERE description != %(description_1)s "
             "DO UPDATE SET name = excluded.name "
             "WHERE mytable.name != excluded.name RETURNING 1) "
             "SELECT i_upsert.1 "
             "FROM i_upsert",
+        )
+
+    def test_combined_with_cte(self):
+        t = table("t", column("c1"), column("c2"))
+
+        delete_statement_cte = t.delete().where(t.c.c1 < 1).cte("deletions")
+
+        insert_stmt = insert(t).values([{"c1": 1, "c2": 2}])
+        update_stmt = insert_stmt.on_conflict_do_update(
+            index_elements=[t.c.c1],
+            set_={
+                col.name: col
+                for col in insert_stmt.excluded
+                if col.name in ("c1", "c2")
+            },
+        ).add_cte(delete_statement_cte)
+
+        self.assert_compile(
+            update_stmt,
+            "WITH deletions AS (DELETE FROM t WHERE t.c1 < %(c1_1)s) "
+            "INSERT INTO t (c1, c2) VALUES (%(c1_m0)s, %(c2_m0)s) "
+            "ON CONFLICT (c1) DO UPDATE SET c1 = excluded.c1, "
+            "c2 = excluded.c2",
+            checkparams={"c1_m0": 1, "c2_m0": 2, "c1_1": 1},
         )
 
     def test_quote_raw_string_col(self):

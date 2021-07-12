@@ -2313,8 +2313,7 @@ class SQLCompiler(Compiled):
                 ) and not existing.proxy_set.intersection(bindparam.proxy_set):
                     raise exc.CompileError(
                         "Bind parameter '%s' conflicts with "
-                        "unique bind parameter of the same name"
-                        % bindparam.key
+                        "unique bind parameter of the same name" % name
                     )
                 elif existing._is_crud or bindparam._is_crud:
                     raise exc.CompileError(
@@ -3075,6 +3074,10 @@ class SQLCompiler(Compiled):
         else:
             byfrom = None
 
+        if select_stmt._independent_ctes:
+            for cte in select_stmt._independent_ctes:
+                cte._compiler_dispatch(self, **kwargs)
+
         if select_stmt._prefixes:
             text += self._generate_prefixes(
                 select_stmt, select_stmt._prefixes, **kwargs
@@ -3551,6 +3554,10 @@ class SQLCompiler(Compiled):
         if insert_stmt._hints:
             _, table_text = self._setup_crud_hints(insert_stmt, table_text)
 
+        if insert_stmt._independent_ctes:
+            for cte in insert_stmt._independent_ctes:
+                cte._compiler_dispatch(self, **kw)
+
         text += table_text
 
         if crud_params_single or not supports_default_values:
@@ -3700,6 +3707,10 @@ class SQLCompiler(Compiled):
         else:
             dialect_hints = None
 
+        if update_stmt._independent_ctes:
+            for cte in update_stmt._independent_ctes:
+                cte._compiler_dispatch(self, **kw)
+
         text += table_text
 
         text += " SET "
@@ -3807,6 +3818,10 @@ class SQLCompiler(Compiled):
             )
         else:
             dialect_hints = None
+
+        if delete_stmt._independent_ctes:
+            for cte in delete_stmt._independent_ctes:
+                cte._compiler_dispatch(self, **kw)
 
         text += table_text
 

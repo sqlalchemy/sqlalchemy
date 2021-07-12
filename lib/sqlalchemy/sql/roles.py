@@ -182,6 +182,10 @@ class HasCTERole(ReturnsRowsRole):
     pass
 
 
+class IsCTERole(SQLRole):
+    _role_name = "CTE object"
+
+
 class CompoundElementRole(AllowsLambdaRole, SQLRole):
     """SELECT statements inside a CompoundSelect, e.g. UNION, EXTRACT, etc."""
 

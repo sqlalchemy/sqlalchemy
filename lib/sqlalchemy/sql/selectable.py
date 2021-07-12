@@ -1986,6 +1986,7 @@ class TableSample(AliasedReturnsRows):
 
 class CTE(
     roles.DMLTableRole,
+    roles.IsCTERole,
     Generative,
     HasPrefixes,
     HasSuffixes,
@@ -2109,6 +2110,79 @@ class HasCTE(roles.HasCTERole):
     .. versionadded:: 1.1
 
     """
+
+    _has_ctes_traverse_internals = [
+        ("_independent_ctes", InternalTraversal.dp_clauseelement_list),
+    ]
+
+    _independent_ctes = ()
+
+    @_generative
+    def add_cte(self, cte):
+        """Add a :class:`_sql.CTE` to this statement object that will be
+        independently rendered even if not referenced in the statement
+        otherwise.
+
+        This feature is useful for the use case of embedding a DML statement
+        such as an INSERT or UPDATE as a CTE inline with a primary statement
+        that may draw from its results indirectly; while PostgreSQL is known
+        to support this usage, it may not be supported by other backends.
+
+        E.g.::
+
+            from sqlalchemy import table, column, select
+            t = table('t', column('c1'), column('c2'))
+
+            ins = t.insert().values({"c1": "x", "c2": "y"}).cte()
+
+            stmt = select(t).add_cte(ins)
+
+        Would render::
+
+            WITH anon_1 AS
+            (INSERT INTO t (c1, c2) VALUES (:param_1, :param_2))
+            SELECT t.c1, t.c2
+            FROM t
+
+        Above, the "anon_1" CTE is not referred towards in the SELECT
+        statement, however still accomplishes the task of running an INSERT
+        statement.
+
+        Similarly in a DML-related context, using the PostgreSQL
+        :class:`_postgresql.Insert` construct to generate an "upsert"::
+
+            from sqlalchemy import table, column
+            from sqlalchemy.dialects.postgresql import insert
+
+            t = table("t", column("c1"), column("c2"))
+
+            delete_statement_cte = (
+                t.delete().where(t.c.c1 < 1).cte("deletions")
+            )
+
+            insert_stmt = insert(t).values({"c1": 1, "c2": 2})
+            update_statement = insert_stmt.on_conflict_do_update(
+                index_elements=[t.c.c1],
+                set_={
+                    "c1": insert_stmt.excluded.c1,
+                    "c2": insert_stmt.excluded.c2,
+                },
+            ).add_cte(delete_statement_cte)
+
+            print(update_statement)
+
+        The above statement renders as::
+
+            WITH deletions AS
+            (DELETE FROM t WHERE t.c1 < %(c1_1)s)
+            INSERT INTO t (c1, c2) VALUES (%(c1)s, %(c2)s)
+            ON CONFLICT (c1) DO UPDATE SET c1 = excluded.c1, c2 = excluded.c2
+
+        .. versionadded:: 1.4.21
+
+        """
+        cte = coercions.expect(roles.IsCTERole, cte)
+        self._independent_ctes += (cte,)
 
     def cte(self, name=None, recursive=False):
         r"""Return a new :class:`_expression.CTE`,
@@ -4622,6 +4696,7 @@ class Select(
             ("_distinct_on", InternalTraversal.dp_clauseelement_tuple),
             ("_label_style", InternalTraversal.dp_plain_obj),
         ]
+        + HasCTE._has_ctes_traverse_internals
         + HasPrefixes._has_prefixes_traverse_internals
         + HasSuffixes._has_suffixes_traverse_internals
         + HasHints._has_hints_traverse_internals
