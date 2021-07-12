@@ -504,6 +504,7 @@ class CoreFixtures(object):
             .union_all(select(table_a.c.b)),
             select(table_a.c.a).lateral(),
             select(table_a.c.a).lateral(name="bar"),
+            table_a.tablesample(0.75),
             table_a.tablesample(func.bernoulli(1)),
             table_a.tablesample(func.bernoulli(1), seed=func.random()),
             table_a.tablesample(func.bernoulli(1), seed=func.other_random()),

@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, sql, regression
+    :tickets: 6735
+
+    Fixed regression where the :func:`_sql.tablesample` construct would fail to
+    be executable when constructed given a floating-point sampling value not
+    embedded within a SQL function.

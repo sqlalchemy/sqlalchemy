@@ -1970,18 +1970,18 @@ class TableSample(AliasedReturnsRows):
             sampling, name=name, seed=seed
         )
 
+    @util.preload_module("sqlalchemy.sql.functions")
     def _init(self, selectable, sampling, name=None, seed=None):
+        functions = util.preloaded.sql_functions
+        if not isinstance(sampling, functions.Function):
+            sampling = functions.func.system(sampling)
+
         self.sampling = sampling
         self.seed = seed
         super(TableSample, self)._init(selectable, name=name)
 
-    @util.preload_module("sqlalchemy.sql.functions")
     def _get_method(self):
-        functions = util.preloaded.sql_functions
-        if isinstance(self.sampling, functions.Function):
-            return self.sampling
-        else:
-            return functions.func.system(self.sampling)
+        return self.sampling
 
 
 class CTE(
