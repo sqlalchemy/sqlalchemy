@@ -191,25 +191,27 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_for_update_basic(self):
         self.assert_compile(
-            self.table1.select(self.table1.c.myid == 7).with_for_update(),
+            self.table1.select()
+            .where(self.table1.c.myid == 7)
+            .with_for_update(),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s FOR UPDATE",
         )
 
     def test_for_update_read(self):
         self.assert_compile(
-            self.table1.select(self.table1.c.myid == 7).with_for_update(
-                read=True
-            ),
+            self.table1.select()
+            .where(self.table1.c.myid == 7)
+            .with_for_update(read=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s LOCK IN SHARE MODE",
         )
 
     def test_for_update_skip_locked(self):
         self.assert_compile(
-            self.table1.select(self.table1.c.myid == 7).with_for_update(
-                skip_locked=True
-            ),
+            self.table1.select()
+            .where(self.table1.c.myid == 7)
+            .with_for_update(skip_locked=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
             "FOR UPDATE SKIP LOCKED",
@@ -217,9 +219,9 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_for_update_read_and_skip_locked(self):
         self.assert_compile(
-            self.table1.select(self.table1.c.myid == 7).with_for_update(
-                read=True, skip_locked=True
-            ),
+            self.table1.select()
+            .where(self.table1.c.myid == 7)
+            .with_for_update(read=True, skip_locked=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
             "LOCK IN SHARE MODE SKIP LOCKED",
@@ -227,9 +229,9 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_for_update_nowait(self):
         self.assert_compile(
-            self.table1.select(self.table1.c.myid == 7).with_for_update(
-                nowait=True
-            ),
+            self.table1.select()
+            .where(self.table1.c.myid == 7)
+            .with_for_update(nowait=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
             "FOR UPDATE NOWAIT",
@@ -237,9 +239,9 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_for_update_read_and_nowait(self):
         self.assert_compile(
-            self.table1.select(self.table1.c.myid == 7).with_for_update(
-                read=True, nowait=True
-            ),
+            self.table1.select()
+            .where(self.table1.c.myid == 7)
+            .with_for_update(read=True, nowait=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
             "LOCK IN SHARE MODE NOWAIT",
@@ -247,9 +249,9 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_for_update_of_nowait(self):
         self.assert_compile(
-            self.table1.select(self.table1.c.myid == 7).with_for_update(
-                of=self.table1, nowait=True
-            ),
+            self.table1.select()
+            .where(self.table1.c.myid == 7)
+            .with_for_update(of=self.table1, nowait=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
             "FOR UPDATE OF mytable NOWAIT",
@@ -258,9 +260,9 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_for_update_of_basic(self):
         self.assert_compile(
-            self.table1.select(self.table1.c.myid == 7).with_for_update(
-                of=self.table1
-            ),
+            self.table1.select()
+            .where(self.table1.c.myid == 7)
+            .with_for_update(of=self.table1),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
             "FOR UPDATE OF mytable",
@@ -269,9 +271,9 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_for_update_of_skip_locked(self):
         self.assert_compile(
-            self.table1.select(self.table1.c.myid == 7).with_for_update(
-                of=self.table1, skip_locked=True
-            ),
+            self.table1.select()
+            .where(self.table1.c.myid == 7)
+            .with_for_update(of=self.table1, skip_locked=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
             "FOR UPDATE OF mytable SKIP LOCKED",
@@ -295,9 +297,9 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_for_update_of_column_list_aliased(self):
         ta = self.table1.alias()
         self.assert_compile(
-            ta.select(ta.c.myid == 7).with_for_update(
-                of=[ta.c.myid, ta.c.name]
-            ),
+            ta.select()
+            .where(ta.c.myid == 7)
+            .with_for_update(of=[ta.c.myid, ta.c.name]),
             "SELECT mytable_1.myid, mytable_1.name, mytable_1.description "
             "FROM mytable AS mytable_1 "
             "WHERE mytable_1.myid = %s FOR UPDATE OF mytable_1",
@@ -325,9 +327,9 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_for_update_of_read_nowait(self):
         self.assert_compile(
-            self.table1.select(self.table1.c.myid == 7).with_for_update(
-                read=True, of=self.table1, nowait=True
-            ),
+            self.table1.select()
+            .where(self.table1.c.myid == 7)
+            .with_for_update(read=True, of=self.table1, nowait=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
             "LOCK IN SHARE MODE OF mytable NOWAIT",
@@ -336,9 +338,9 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_for_update_of_read_skip_locked(self):
         self.assert_compile(
-            self.table1.select(self.table1.c.myid == 7).with_for_update(
-                read=True, of=self.table1, skip_locked=True
-            ),
+            self.table1.select()
+            .where(self.table1.c.myid == 7)
+            .with_for_update(read=True, of=self.table1, skip_locked=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
             "LOCK IN SHARE MODE OF mytable SKIP LOCKED",
@@ -347,7 +349,9 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_for_update_of_read_nowait_column_list(self):
         self.assert_compile(
-            self.table1.select(self.table1.c.myid == 7).with_for_update(
+            self.table1.select()
+            .where(self.table1.c.myid == 7)
+            .with_for_update(
                 read=True,
                 of=[self.table1.c.myid, self.table1.c.name],
                 nowait=True,
@@ -360,9 +364,9 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_for_update_of_read(self):
         self.assert_compile(
-            self.table1.select(self.table1.c.myid == 7).with_for_update(
-                read=True, of=self.table1
-            ),
+            self.table1.select()
+            .where(self.table1.c.myid == 7)
+            .with_for_update(read=True, of=self.table1),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
             "LOCK IN SHARE MODE OF mytable",
@@ -371,9 +375,9 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_for_update_textual_of(self):
         self.assert_compile(
-            self.table1.select(self.table1.c.myid == 7).with_for_update(
-                of=text("mytable")
-            ),
+            self.table1.select()
+            .where(self.table1.c.myid == 7)
+            .with_for_update(of=text("mytable")),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
             "FOR UPDATE OF mytable",
@@ -381,9 +385,9 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            self.table1.select(self.table1.c.myid == 7).with_for_update(
-                of=literal_column("mytable")
-            ),
+            self.table1.select()
+            .where(self.table1.c.myid == 7)
+            .with_for_update(of=literal_column("mytable")),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
             "FOR UPDATE OF mytable",

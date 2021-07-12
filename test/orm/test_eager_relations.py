@@ -1967,9 +1967,11 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             .alias("max_orders_by_user")
         )
 
-        max_orders = orders.select(
-            orders.c.id == max_orders_by_user.c.order_id
-        ).alias("max_orders")
+        max_orders = (
+            orders.select()
+            .where(orders.c.id == max_orders_by_user.c.order_id)
+            .alias("max_orders")
+        )
 
         mapper(Order, orders)
         mapper(

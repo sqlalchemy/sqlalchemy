@@ -21,8 +21,8 @@ class InheritingSelectablesTest(fixtures.MappedTest):
             Column("b", String(30), nullable=0),
         )
 
-        cls.tables.bar = foo.select(foo.c.b == "bar").alias("bar")
-        cls.tables.baz = foo.select(foo.c.b == "baz").alias("baz")
+        cls.tables.bar = foo.select().where(foo.c.b == "bar").alias("bar")
+        cls.tables.baz = foo.select().where(foo.c.b == "baz").alias("baz")
 
     def test_load(self, connection):
         foo, bar, baz = self.tables.foo, self.tables.bar, self.tables.baz

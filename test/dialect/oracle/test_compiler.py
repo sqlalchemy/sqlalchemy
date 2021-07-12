@@ -379,46 +379,50 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(),
+            table1.select().where(table1.c.myid == 7).with_for_update(),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = :myid_1 FOR UPDATE",
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                of=table1.c.myid
-            ),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(of=table1.c.myid),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = :myid_1 "
             "FOR UPDATE OF mytable.myid",
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(nowait=True),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(nowait=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = :myid_1 FOR UPDATE NOWAIT",
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                nowait=True, of=table1.c.myid
-            ),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(nowait=True, of=table1.c.myid),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = :myid_1 "
             "FOR UPDATE OF mytable.myid NOWAIT",
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                nowait=True, of=[table1.c.myid, table1.c.name]
-            ),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(nowait=True, of=[table1.c.myid, table1.c.name]),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = :myid_1 FOR UPDATE OF "
             "mytable.myid, mytable.name NOWAIT",
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(
                 skip_locked=True, of=[table1.c.myid, table1.c.name]
             ),
             "SELECT mytable.myid, mytable.name, mytable.description "
@@ -428,25 +432,27 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         # key_share has no effect
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(key_share=True),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(key_share=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = :myid_1 FOR UPDATE",
         )
 
         # read has no effect
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                read=True, key_share=True
-            ),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(read=True, key_share=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = :myid_1 FOR UPDATE",
         )
 
         ta = table1.alias()
         self.assert_compile(
-            ta.select(ta.c.myid == 7).with_for_update(
-                of=[ta.c.myid, ta.c.name]
-            ),
+            ta.select()
+            .where(ta.c.myid == 7)
+            .with_for_update(of=[ta.c.myid, ta.c.name]),
             "SELECT mytable_1.myid, mytable_1.name, mytable_1.description "
             "FROM mytable mytable_1 "
             "WHERE mytable_1.myid = :myid_1 FOR UPDATE OF "
@@ -455,18 +461,18 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         # ensure of=text() for of works
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                read=True, of=text("table1")
-            ),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(read=True, of=text("table1")),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = :myid_1 FOR UPDATE OF table1",
         )
 
         # ensure of=literal_column() for of works
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                read=True, of=literal_column("table1")
-            ),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(read=True, of=literal_column("table1")),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = :myid_1 FOR UPDATE OF table1",
         )

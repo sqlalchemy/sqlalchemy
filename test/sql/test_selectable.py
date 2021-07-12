@@ -2422,9 +2422,9 @@ class ReduceTest(fixtures.TestBase, AssertsExecutionResults):
 
         item_join = polymorphic_union(
             {
-                "BaseItem": base_item_table.select(
-                    base_item_table.c.child_name == "BaseItem"
-                ).subquery(),
+                "BaseItem": base_item_table.select()
+                .where(base_item_table.c.child_name == "BaseItem")
+                .subquery(),
                 "Item": base_item_table.join(item_table),
             },
             None,

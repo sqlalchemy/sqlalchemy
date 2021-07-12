@@ -1133,7 +1133,7 @@ class GetTest(QueryTest):
         class SomeUser(object):
             pass
 
-        s = users.select(users.c.id != 12).alias("users")
+        s = users.select().where(users.c.id != 12).alias("users")
         m = mapper(SomeUser, s)
         assert s.primary_key == m.primary_key
 

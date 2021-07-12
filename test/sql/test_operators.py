@@ -1355,13 +1355,15 @@ class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_operator_precedence_1(self):
         self.assert_compile(
-            self.table2.select((self.table2.c.field == 5) == None),  # noqa
+            self.table2.select().where(
+                (self.table2.c.field == 5) == None
+            ),  # noqa
             "SELECT op.field FROM op WHERE (op.field = :field_1) IS NULL",
         )
 
     def test_operator_precedence_2(self):
         self.assert_compile(
-            self.table2.select(
+            self.table2.select().where(
                 (self.table2.c.field + 5) == self.table2.c.field
             ),
             "SELECT op.field FROM op WHERE op.field + :field_1 = op.field",
@@ -1369,33 +1371,33 @@ class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_operator_precedence_3(self):
         self.assert_compile(
-            self.table2.select((self.table2.c.field + 5) * 6),
+            self.table2.select().where((self.table2.c.field + 5) * 6),
             "SELECT op.field FROM op WHERE (op.field + :field_1) * :param_1",
         )
 
     def test_operator_precedence_4(self):
         self.assert_compile(
-            self.table2.select((self.table2.c.field * 5) + 6),
+            self.table2.select().where((self.table2.c.field * 5) + 6),
             "SELECT op.field FROM op WHERE op.field * :field_1 + :param_1",
         )
 
     def test_operator_precedence_5(self):
         self.assert_compile(
-            self.table2.select(5 + self.table2.c.field.in_([5, 6])),
+            self.table2.select().where(5 + self.table2.c.field.in_([5, 6])),
             "SELECT op.field FROM op WHERE :param_1 + "
             "(op.field IN ([POSTCOMPILE_field_1]))",
         )
 
     def test_operator_precedence_6(self):
         self.assert_compile(
-            self.table2.select((5 + self.table2.c.field).in_([5, 6])),
+            self.table2.select().where((5 + self.table2.c.field).in_([5, 6])),
             "SELECT op.field FROM op WHERE :field_1 + op.field "
             "IN ([POSTCOMPILE_param_1])",
         )
 
     def test_operator_precedence_7(self):
         self.assert_compile(
-            self.table2.select(
+            self.table2.select().where(
                 not_(and_(self.table2.c.field == 5, self.table2.c.field == 7))
             ),
             "SELECT op.field FROM op WHERE NOT "
@@ -1404,26 +1406,28 @@ class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_operator_precedence_8(self):
         self.assert_compile(
-            self.table2.select(not_(self.table2.c.field == 5)),
+            self.table2.select().where(not_(self.table2.c.field == 5)),
             "SELECT op.field FROM op WHERE op.field != :field_1",
         )
 
     def test_operator_precedence_9(self):
         self.assert_compile(
-            self.table2.select(not_(self.table2.c.field.between(5, 6))),
+            self.table2.select().where(
+                not_(self.table2.c.field.between(5, 6))
+            ),
             "SELECT op.field FROM op WHERE "
             "op.field NOT BETWEEN :field_1 AND :field_2",
         )
 
     def test_operator_precedence_10(self):
         self.assert_compile(
-            self.table2.select(not_(self.table2.c.field) == 5),
+            self.table2.select().where(not_(self.table2.c.field) == 5),
             "SELECT op.field FROM op WHERE (NOT op.field) = :param_1",
         )
 
     def test_operator_precedence_11(self):
         self.assert_compile(
-            self.table2.select(
+            self.table2.select().where(
                 (self.table2.c.field == self.table2.c.field).between(
                     False, True
                 )
@@ -1434,7 +1438,7 @@ class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_operator_precedence_12(self):
         self.assert_compile(
-            self.table2.select(
+            self.table2.select().where(
                 between(
                     (self.table2.c.field == self.table2.c.field), False, True
                 )
@@ -1445,7 +1449,7 @@ class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_operator_precedence_13(self):
         self.assert_compile(
-            self.table2.select(
+            self.table2.select().where(
                 self.table2.c.field.match(self.table2.c.field).is_(None)
             ),
             "SELECT op.field FROM op WHERE (op.field MATCH op.field) IS NULL",
@@ -1514,7 +1518,9 @@ class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_op_operators(self):
         self.assert_compile(
-            self.table1.select(self.table1.c.myid.op("hoho")(12) == 14),
+            self.table1.select().where(
+                self.table1.c.myid.op("hoho")(12) == 14
+            ),
             "SELECT mytable.myid, mytable.name, mytable.description FROM "
             "mytable WHERE (mytable.myid hoho :myid_1) = :param_1",
         )
@@ -2319,7 +2325,7 @@ class NegationTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_negate_operators_2(self):
         self.assert_compile(
-            self.table1.select(
+            self.table1.select().where(
                 (self.table1.c.myid != 12) & ~(self.table1.c.name == "john")
             ),
             "SELECT mytable.myid, mytable.name FROM "
@@ -2329,7 +2335,7 @@ class NegationTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_negate_operators_3(self):
         self.assert_compile(
-            self.table1.select(
+            self.table1.select().where(
                 (self.table1.c.myid != 12)
                 & ~(self.table1.c.name.between("jack", "john"))
             ),
@@ -2340,7 +2346,7 @@ class NegationTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_negate_operators_4(self):
         self.assert_compile(
-            self.table1.select(
+            self.table1.select().where(
                 (self.table1.c.myid != 12)
                 & ~and_(
                     self.table1.c.name == "john",
@@ -2356,7 +2362,7 @@ class NegationTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_negate_operators_5(self):
         self.assert_compile(
-            self.table1.select(
+            self.table1.select().where(
                 (self.table1.c.myid != 12) & ~self.table1.c.name
             ),
             "SELECT mytable.myid, mytable.name FROM "
