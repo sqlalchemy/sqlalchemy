@@ -2351,6 +2351,32 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
             "DO NOTHING",
         )
 
+    def test_do_nothing_super_long_name_constraint_target(self):
+        """test #6755"""
+
+        m = MetaData(
+            naming_convention={"uq": "%(table_name)s_%(column_0_N_name)s_key"}
+        )
+
+        uq = UniqueConstraint("some_column_name_thats_really_really_long_too")
+        Table(
+            "some_table_name_thats_really_really",
+            m,
+            Column("some_column_name_thats_really_really_long_too", Integer),
+            uq,
+        )
+
+        i = insert(self.table1, values=dict(name="foo"))
+
+        i = i.on_conflict_do_nothing(constraint=uq)
+        self.assert_compile(
+            i,
+            "INSERT INTO mytable (name) VALUES (%(name)s) ON CONFLICT "
+            "ON CONSTRAINT "
+            "some_table_name_thats_really_really_some_column_name_th_f7ab "
+            "DO NOTHING",
+        )
+
     def test_do_nothing_quoted_named_constraint_target(self):
         """test #6696"""
         i = insert(self.table1, values=dict(name="foo"))

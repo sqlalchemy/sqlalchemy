@@ -2322,8 +2322,16 @@ class PGCompiler(compiler.SQLCompiler):
     def _on_conflict_target(self, clause, **kw):
 
         if clause.constraint_target is not None:
-            target_text = "ON CONSTRAINT %s" % self.preparer.quote(
-                clause.constraint_target
+            # target may be a name of an Index, UniqueConstraint or
+            # ExcludeConstraint.  While there is a separate
+            # "max_identifier_length" for indexes, PostgreSQL uses the same
+            # length for all objects so we can use
+            # truncate_and_render_constraint_name
+            target_text = (
+                "ON CONSTRAINT %s"
+                % self.preparer.truncate_and_render_constraint_name(
+                    clause.constraint_target
+                )
             )
         elif clause.inferred_target_elements is not None:
             target_text = "(%s)" % ", ".join(

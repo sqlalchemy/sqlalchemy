@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 6755
+
+    Fixed issue where a too-long constraint name rendered as part of the "ON
+    CONFLICT ON CONSTRAINT" element of the :class:`_postgresql.Insert`
+    construct due to naming convention generation would not correctly truncate
+    the name in the same way that it normally renders within a CREATE TABLE
+    statement, thus producing a non-matching and too-long constraint name.
