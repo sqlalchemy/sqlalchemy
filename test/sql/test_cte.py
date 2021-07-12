@@ -1015,8 +1015,8 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             insert,
-            "WITH upsert AS (UPDATE orders SET amount=:amount, "
-            "product=:product, quantity=:quantity "
+            "WITH upsert AS (UPDATE orders SET amount=:param_5, "
+            "product=:param_6, quantity=:param_7 "
             "WHERE orders.region = :region_1 "
             "RETURNING orders.region, orders.amount, "
             "orders.product, orders.quantity) "
@@ -1025,6 +1025,16 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             ":param_3 AS anon_3, :param_4 AS anon_4 WHERE NOT (EXISTS "
             "(SELECT upsert.region, upsert.amount, upsert.product, "
             "upsert.quantity FROM upsert))",
+            checkparams={
+                "param_1": "Region1",
+                "param_2": 1.0,
+                "param_3": "Product1",
+                "param_4": 1,
+                "param_5": 1.0,
+                "param_6": "Product1",
+                "param_7": 1,
+                "region_1": "Region1",
+            },
         )
 
         eq_(insert.compile().isinsert, True)
@@ -1106,9 +1116,10 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt.select(),
-            "WITH anon_1 AS (UPDATE orders SET region=:region "
+            "WITH anon_1 AS (UPDATE orders SET region=:param_1 "
             "WHERE orders.region = :region_1 RETURNING orders.region) "
             "SELECT anon_1.region FROM anon_1",
+            checkparams={"param_1": "y", "region_1": "x"},
         )
 
         eq_(stmt.select().compile().isupdate, False)
@@ -1122,8 +1133,9 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             stmt.select(),
             "WITH anon_1 AS (INSERT INTO orders (region) "
-            "VALUES (:region) RETURNING orders.region) "
+            "VALUES (:param_1) RETURNING orders.region) "
             "SELECT anon_1.region FROM anon_1",
+            checkparams={"param_1": "y"},
         )
         eq_(stmt.select().compile().isinsert, False)
 
@@ -1196,10 +1208,11 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             stmt,
             "WITH t AS "
-            "(UPDATE products SET price=:price "
+            "(UPDATE products SET price=:param_1 "
             "RETURNING products.id, products.price) "
             "SELECT t.id, t.price "
             "FROM t",
+            checkparams={"param_1": "someprice"},
         )
         eq_(stmt.compile().isupdate, False)
 
@@ -1257,10 +1270,11 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             stmt,
             "WITH pd AS "
-            "(INSERT INTO products (id, price) VALUES (:id, :price) "
+            "(INSERT INTO products (id, price) VALUES (:param_1, :param_2) "
             "RETURNING products.id, products.price) "
             "SELECT pd.id, pd.price "
             "FROM pd",
+            checkparams={"param_1": 1, "param_2": 27.0},
         )
         eq_(stmt.compile().isinsert, False)
 
@@ -1352,6 +1366,132 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             "AS RN FROM testtable) DELETE FROM deldup WHERE RN > 1",
         )
         eq_(stmt.compile().isdelete, True)
+
+    def test_select_uses_independent_cte(self):
+        products = table("products", column("id"), column("price"))
+
+        upd_cte = (
+            products.update().values(price=10).where(products.c.price > 50)
+        ).cte()
+
+        stmt = products.select().where(products.c.price < 45).add_cte(upd_cte)
+
+        self.assert_compile(
+            stmt,
+            "WITH anon_1 AS (UPDATE products SET price=:param_1 "
+            "WHERE products.price > :price_1) "
+            "SELECT products.id, products.price "
+            "FROM products WHERE products.price < :price_2",
+            checkparams={"param_1": 10, "price_1": 50, "price_2": 45},
+        )
+
+    def test_insert_uses_independent_cte(self):
+        products = table("products", column("id"), column("price"))
+
+        upd_cte = (
+            products.update().values(price=10).where(products.c.price > 50)
+        ).cte()
+
+        stmt = (
+            products.insert().values({"id": 1, "price": 20}).add_cte(upd_cte)
+        )
+
+        self.assert_compile(
+            stmt,
+            "WITH anon_1 AS (UPDATE products SET price=:param_1 "
+            "WHERE products.price > :price_1) "
+            "INSERT INTO products (id, price) VALUES (:id, :price)",
+            checkparams={"id": 1, "price": 20, "param_1": 10, "price_1": 50},
+        )
+
+    def test_update_uses_independent_cte(self):
+        products = table("products", column("id"), column("price"))
+
+        upd_cte = (
+            products.update().values(price=10).where(products.c.price > 50)
+        ).cte()
+
+        stmt = (
+            products.update()
+            .values(price=5)
+            .where(products.c.price < 50)
+            .add_cte(upd_cte)
+        )
+
+        self.assert_compile(
+            stmt,
+            "WITH anon_1 AS (UPDATE products SET price=:param_1 "
+            "WHERE products.price > :price_1) UPDATE products "
+            "SET price=:price WHERE products.price < :price_2",
+            checkparams={
+                "param_1": 10,
+                "price": 5,
+                "price_1": 50,
+                "price_2": 50,
+            },
+        )
+
+    def test_update_w_insert_independent_cte(self):
+        products = table("products", column("id"), column("price"))
+
+        ins_cte = (products.insert().values({"id": 1, "price": 10})).cte()
+
+        stmt = (
+            products.update()
+            .values(price=5)
+            .where(products.c.price < 50)
+            .add_cte(ins_cte)
+        )
+
+        self.assert_compile(
+            stmt,
+            "WITH anon_1 AS (INSERT INTO products (id, price) "
+            "VALUES (:param_1, :param_2)) "
+            "UPDATE products SET price=:price WHERE products.price < :price_1",
+            checkparams={
+                "price": 5,
+                "param_1": 1,
+                "param_2": 10,
+                "price_1": 50,
+            },
+        )
+
+    def test_delete_uses_independent_cte(self):
+        products = table("products", column("id"), column("price"))
+
+        upd_cte = (
+            products.update().values(price=10).where(products.c.price > 50)
+        ).cte()
+
+        stmt = products.delete().where(products.c.price < 45).add_cte(upd_cte)
+
+        self.assert_compile(
+            stmt,
+            "WITH anon_1 AS (UPDATE products SET price=:param_1 "
+            "WHERE products.price > :price_1) "
+            "DELETE FROM products WHERE products.price < :price_2",
+            checkparams={"param_1": 10, "price_1": 50, "price_2": 45},
+        )
+
+    def test_independent_cte_can_be_referenced(self):
+        products = table("products", column("id"), column("price"))
+
+        cte = products.select().cte("pd")
+
+        stmt = (
+            products.update()
+            .where(products.c.price == cte.c.price)
+            .add_cte(cte)
+        )
+
+        self.assert_compile(
+            stmt,
+            "WITH pd AS "
+            "(SELECT products.id AS id, products.price AS price "
+            "FROM products) "
+            "UPDATE products SET id=:id, price=:price FROM pd "
+            "WHERE products.price = pd.price",
+        )
 
     def test_standalone_function(self):
         a = table("a", column("x"))

@@ -871,6 +871,10 @@ class HasCTEImpl(ReturnsRowsImpl):
     __slots__ = ()
 
 
+class IsCTEImpl(RoleImpl):
+    __slots__ = ()
+
+
 class JoinTargetImpl(RoleImpl):
     __slots__ = ()
 
