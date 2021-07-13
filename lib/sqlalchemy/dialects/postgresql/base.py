@@ -1686,8 +1686,9 @@ class UUID(sqltypes.TypeEngine):
     data either as natively returned by the DBAPI
     or as Python uuid objects.
 
-    The UUID type may not be supported on all DBAPIs.
-    It is known to work on psycopg2 and not pg8000.
+    The UUID type is currently known to work within the prominent DBAPI
+    drivers supported by SQLAlchemy including psycopg2, pg8000 and
+    asyncpg. Support for other DBAPI drivers may be incomplete or non-present.
 
     """
 
