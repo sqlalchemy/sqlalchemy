@@ -998,9 +998,11 @@ class SelectableTest(
         self.assert_compile(
             stmt,
             "SELECT anon_1.col1, anon_1.col2, anon_1.col1_1 FROM "
-            "((SELECT table1.col1, table1.col2, table2.col1 AS col1_1 "
+            "((SELECT table1.col1 AS col1, table1.col2 AS col2, table2.col1 "
+            "AS col1_1 "
             "FROM table1, table2 LIMIT :param_1) UNION "
-            "(SELECT table2.col1, table2.col2, table2.col3 FROM table2 "
+            "(SELECT table2.col1 AS col1, table2.col2 AS col2, "
+            "table2.col3 AS col3 FROM table2 "
             "LIMIT :param_2)) AS anon_1",
         )
 

@@ -627,8 +627,10 @@ class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             select(u_alias),
-            "SELECT anon_1.id FROM ((SELECT users.name, users.id FROM users "
-            "WHERE users.id = :id_1 UNION SELECT users.name, users.id "
+            "SELECT anon_1.id FROM ((SELECT users.name AS name, "
+            "users.id AS id FROM users "
+            "WHERE users.id = :id_1 UNION SELECT users.name AS name, "
+            "users.id AS id "
             "FROM users WHERE users.id = :id_2) "
             "UNION SELECT users.name AS name, users.id AS id "
             "FROM users WHERE users.id = :id_3) AS anon_1",
@@ -656,8 +658,9 @@ class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):
         self.assert_compile(
             select(u_alias).options(undefer(u_alias.name)),
             "SELECT anon_1.name, anon_1.id FROM "
-            "((SELECT users.name, users.id FROM users "
-            "WHERE users.id = :id_1 UNION SELECT users.name, users.id "
+            "((SELECT users.name AS name, users.id AS id FROM users "
+            "WHERE users.id = :id_1 UNION SELECT users.name AS name, "
+            "users.id AS id "
             "FROM users WHERE users.id = :id_2) "
             "UNION SELECT users.name AS name, users.id AS id "
             "FROM users WHERE users.id = :id_3) AS anon_1",

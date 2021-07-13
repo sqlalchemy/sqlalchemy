@@ -1311,6 +1311,9 @@ class SQLCompiler(Compiled):
     def visit_grouping(self, grouping, asfrom=False, **kwargs):
         return "(" + grouping.element._compiler_dispatch(self, **kwargs) + ")"
 
+    def visit_select_statement_grouping(self, grouping, **kwargs):
+        return "(" + grouping.element._compiler_dispatch(self, **kwargs) + ")"
+
     def visit_label_reference(
         self, element, within_columns_clause=False, **kwargs
     ):
@@ -2562,17 +2565,29 @@ class SQLCompiler(Compiled):
                         col_source = cte.element.selects[0]
                     else:
                         assert False, "cte should only be against SelectBase"
+
+                    # TODO: can we get at the .columns_plus_names collection
+                    # that is already (or will be?) generated for the SELECT
+                    # rather than calling twice?
                     recur_cols = [
-                        c
-                        for c in util.unique_list(
-                            col_source._all_selected_columns
-                        )
-                        if c is not None
+                        # TODO: proxy_name is not technically safe,
+                        # see test_cte->
+                        # test_with_recursive_no_name_currently_buggy.  not
+                        # clear what should be done with such a case
+                        fallback_label_name or proxy_name
+                        for (
+                            _,
+                            proxy_name,
+                            fallback_label_name,
+                            c,
+                            repeated,
+                        ) in (col_source._generate_columns_plus_names(True))
+                        if not repeated
                     ]
 
                     text += "(%s)" % (
                         ", ".join(
-                            self.preparer.format_column(
+                            self.preparer.format_label_name(
                                 ident, anon_map=self.anon_map
                             )
                             for ident in recur_cols
@@ -5121,6 +5136,20 @@ class IdentifierPreparer(object):
 
     def format_schema(self, name):
         """Prepare a quoted schema name."""
+
+        return self.quote(name)
+
+    def format_label_name(
+        self,
+        name,
+        anon_map=None,
+    ):
+        """Prepare a quoted column name."""
+
+        if anon_map is not None and isinstance(
+            name, elements._truncated_label
+        ):
+            name = name.apply_map(anon_map)
 
         return self.quote(name)
 

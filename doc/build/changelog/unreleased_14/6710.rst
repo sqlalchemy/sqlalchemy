@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 6710
+
+    Fixed issue in CTE constructs where a recursive CTE that referred to a
+    SELECT that has duplicate column names, which are typically deduplicated
+    using labeling logic in 1.4, would fail to refer to the deduplicated label
+    name correctly within the WITH clause.
