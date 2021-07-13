@@ -2732,7 +2732,7 @@ class Case(ColumnElement):
             stmt = select(users_table).\
                         where(
                             case(
-                                whens={"wendy": "W", "jack": "J"},
+                                {"wendy": "W", "jack": "J"},
                                 value=users_table.c.name,
                                 else_='E'
                             )

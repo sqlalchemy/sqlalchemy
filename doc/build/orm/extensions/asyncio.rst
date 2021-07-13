@@ -62,12 +62,27 @@ to deliver a streaming server-side :class:`_asyncio.AsyncResult`::
 
             print(result.fetchall())
 
+        # for AsyncEngine created in function scope, close and
+        # clean-up pooled connections
+        await engine.dispose()
 
     asyncio.run(async_main())
 
 Above, the :meth:`_asyncio.AsyncConnection.run_sync` method may be used to
 invoke special DDL functions such as :meth:`_schema.MetaData.create_all` that
 don't include an awaitable hook.
+
+.. tip:: It's advisable to invoke the :meth:`_asyncio.AsyncEngine.dispose` method
+   using ``await`` when using the :class:`_asyncio.AsyncEngine` object in a
+   scope that will go out of context and be garbage collected, as illustrated in the
+   ``async_main`` function in the above example.  This ensures that any
+   connections held open by the connection pool will be properly disposed
+   within an awaitable context.   Unlike when using blocking IO, SQLAlchemy
+   cannot properly dispose of these connections within methods like ``__del__``
+   or weakref finalizers as there is no opportunity to invoke ``await``.
+   Failing to explicitly dispose of the engine when it falls out of scope
+   may result in warnings emitted to standard out resembling the form
+   ``RuntimeError: Event loop is closed`` within garbage collection.
 
 The :class:`_asyncio.AsyncConnection` also features a "streaming" API via
 the :meth:`_asyncio.AsyncConnection.stream` method that returns an
@@ -178,6 +193,10 @@ illustrates a complete example including mapper and session configuration::
             # access attribute subsequent to commit; this is what
             # expire_on_commit=False allows
             print(a1.data)
+
+        # for AsyncEngine created in function scope, close and
+        # clean-up pooled connections
+        await engine.dispose()
 
 
     asyncio.run(async_main())
@@ -369,6 +388,10 @@ attribute accesses within a separate function::
 
             await session.commit()
 
+        # for AsyncEngine created in function scope, close and
+        # clean-up pooled connections
+        await engine.dispose()
+
     asyncio.run(async_main())
 
 The above approach of running certain functions within a "sync" runner
@@ -456,6 +479,44 @@ the usual ``await`` keywords are necessary, including for the
 
 .. currentmodule:: sqlalchemy.ext.asyncio
 
+
+Using the Inspector to inspect schema objects
+---------------------------------------------------
+
+SQLAlchemy does not yet offer an asyncio version of the
+:class:`_reflection.Inspector` (introduced at :ref:`metadata_reflection_inspector`),
+however the existing interface may be used in an asyncio context by
+leveraging the :meth:`_asyncio.AsyncConnection.run_sync` method of
+:class:`_asyncio.AsyncConnection`::
+
+    import asyncio
+
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlalchemy import inspect
+
+    engine = create_async_engine(
+      "postgresql+asyncpg://scott:tiger@localhost/test"
+    )
+
+    def use_inspector(conn):
+        inspector = inspect(conn)
+        # use the inspector
+        print(inspector.get_view_names())
+        # return any value to the caller
+        return inspector.get_table_names()
+
+    async def async_main():
+        async with engine.connect() as conn:
+            tables = await conn.run_sync(use_inspector)
+
+    asyncio.run(async_main())
+
+.. seealso::
+
+    :ref:`metadata_reflection`
+
+    :ref:`inspection_toplevel`
 
 Engine API Documentation
 -------------------------
