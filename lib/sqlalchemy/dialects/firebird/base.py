@@ -539,7 +539,7 @@ class FBCompiler(sql.compiler.SQLCompiler):
 
     def returning_clause(self, stmt, returning_cols):
         columns = [
-            self._label_select_column(None, c, True, False, {})
+            self._label_returning_column(stmt, c)
             for c in expression._select_iterables(returning_cols)
         ]
 

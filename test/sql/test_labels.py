@@ -850,8 +850,8 @@ class ColExprLabelTest(fixtures.TestBase, AssertsCompiledSQL):
                 expr(table1.c.name),
             ),
             "SELECT some_table.name, some_table.name AS name__1, "
-            "SOME_COL_THING(some_table.name) AS some_table_name__1, "
-            "SOME_COL_THING(some_table.name) AS some_table_name__2 "
+            "SOME_COL_THING(some_table.name) AS name__2, "
+            "SOME_COL_THING(some_table.name) AS name__3 "
             "FROM some_table",
         )
 
@@ -917,7 +917,7 @@ class ColExprLabelTest(fixtures.TestBase, AssertsCompiledSQL):
                 table1.c.name,
             ),
             "SELECT CAST(some_table.name AS INTEGER) AS name, "
-            "CAST(some_table.name AS VARCHAR) AS some_table_name__1, "
+            "CAST(some_table.name AS VARCHAR) AS name__1, "
             "some_table.name AS name_1 FROM some_table",
         )
 
@@ -947,7 +947,7 @@ class ColExprLabelTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
             # ideally type_coerce wouldn't label at all...
             "SELECT some_table.name AS name, "
-            "some_table.name AS some_table_name__1, "
+            "some_table.name AS name__1, "
             "some_table.name AS name_1 FROM some_table",
         )
 

@@ -728,12 +728,18 @@ class LegacyCursorResultMetaData(CursorResultMetaData):
             result = map_.get(key if self.case_sensitive else key.lower())
         elif isinstance(key, expression.ColumnElement):
             if (
-                key._label
-                and (key._label if self.case_sensitive else key._label.lower())
+                key._tq_label
+                and (
+                    key._tq_label
+                    if self.case_sensitive
+                    else key._tq_label.lower()
+                )
                 in map_
             ):
                 result = map_[
-                    key._label if self.case_sensitive else key._label.lower()
+                    key._tq_label
+                    if self.case_sensitive
+                    else key._tq_label.lower()
                 ]
             elif (
                 hasattr(key, "name")

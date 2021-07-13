@@ -1132,7 +1132,7 @@ class Join(roles.DMLTableRole, FromClause):
             )
         )
         self._columns._populate_separate_keys(
-            (col._key_label, col) for col in columns
+            (col._tq_key_label, col) for col in columns
         )
         self.foreign_keys.update(
             itertools.chain(*[col.foreign_keys for col in columns])
@@ -4222,49 +4222,41 @@ class SelectState(util.MemoizedSlots, CompileState):
 
     @classmethod
     def _column_naming_convention(cls, label_style):
-        # note: these functions won't work for TextClause objects,
-        # which should be omitted when iterating through
-        # _raw_columns.
 
-        if label_style is LABEL_STYLE_NONE:
+        table_qualified = label_style is LABEL_STYLE_TABLENAME_PLUS_COL
+        dedupe = label_style is not LABEL_STYLE_NONE
 
-            def go(c, col_name=None):
-                return c._proxy_key
+        pa = prefix_anon_map()
+        names = set()
 
-        elif label_style is LABEL_STYLE_TABLENAME_PLUS_COL:
-            names = set()
-            pa = []  # late-constructed as needed, python 2 has no "nonlocal"
+        def go(c, col_name=None):
+            if c._is_text_clause:
+                return None
 
-            def go(c, col_name=None):
-                # we use key_label since this name is intended for targeting
-                # within the ColumnCollection only, it's not related to SQL
-                # rendering which always uses column name for SQL label names
-
-                name = c._key_label
-
-                if name in names:
-                    if not pa:
-                        pa.append(prefix_anon_map())
-
-                    name = c._label_anon_key_label % pa[0]
-                else:
-                    names.add(name)
-
+            elif not dedupe:
+                name = c._proxy_key
+                if name is None:
+                    name = "_no_label"
                 return name
 
-        else:
-            names = set()
-            pa = []  # late-constructed as needed, python 2 has no "nonlocal"
+            name = c._tq_key_label if table_qualified else c._proxy_key
 
-            def go(c, col_name=None):
-                name = c._proxy_key
+            if name is None:
+                name = "_no_label"
                 if name in names:
-                    if not pa:
-                        pa.append(prefix_anon_map())
-                    name = c._anon_key_label % pa[0]
+                    return c._anon_label(name) % pa
                 else:
                     names.add(name)
+                    return name
 
+            elif name in names:
+                return (
+                    c._anon_tq_key_label % pa
+                    if table_qualified
+                    else c._anon_key_label % pa
+                )
+            else:
+                names.add(name)
                 return name
 
         return go
@@ -4394,7 +4386,7 @@ class SelectState(util.MemoizedSlots, CompileState):
 
     def _memoized_attr__label_resolve_dict(self):
         with_cols = dict(
-            (c._resolve_label or c._label or c.key, c)
+            (c._resolve_label or c._tq_label or c.key, c)
             for c in self.statement._all_selected_columns
             if c._allow_label_resolve
         )
@@ -5853,60 +5845,70 @@ class Select(
         """Generate column names as rendered in a SELECT statement by
         the compiler.
 
-        This is distinct from other name generators that are intended for
-        population of .c collections and similar, which may have slightly
-        different rules.
+        This is distinct from the _column_naming_convention generator that's
+        intended for population of .c collections and similar, which has
+        different rules.   the collection returned here calls upon the
+        _column_naming_convention as well.
 
         """
         cols = self._all_selected_columns
-        # when use_labels is on:
-        # in all cases == if we see the same label name, use _label_anon_label
-        # for subsequent occurrences of that label
-        #
-        # anon_for_dupe_key == if we see the same column object multiple
-        # times under a particular name, whether it's the _label name or the
-        # anon label, apply _dedupe_label_anon_label to the subsequent
-        # occurrences of it.
 
-        if self._label_style is LABEL_STYLE_NONE:
-            # don't generate any labels
-            same_cols = set()
+        key_naming_convention = SelectState._column_naming_convention(
+            self._label_style
+        )
 
-            return [
-                (None, c, c in same_cols or same_cols.add(c)) for c in cols
-            ]
-        else:
-            names = {}
+        names = {}
 
-            use_tablename_labels = (
-                self._label_style is LABEL_STYLE_TABLENAME_PLUS_COL
-            )
+        result = []
+        result_append = result.append
 
-            def name_for_col(c):
-                if not c._render_label_in_columns_clause:
-                    return (None, c, False)
-                elif use_tablename_labels:
-                    if c._label is None:
-                        repeated = c._anon_name_label in names
-                        names[c._anon_name_label] = c
-                        return (None, c, repeated)
-                    else:
-                        name = effective_name = c._label
-                elif getattr(c, "name", None) is None:
-                    # this is a scalar_select().  need to improve this case
+        table_qualified = self._label_style is LABEL_STYLE_TABLENAME_PLUS_COL
+        label_style_none = self._label_style is LABEL_STYLE_NONE
+
+        for c in cols:
+            repeated = False
+
+            if not c._render_label_in_columns_clause:
+                effective_name = (
+                    required_label_name
+                ) = fallback_label_name = None
+            elif label_style_none:
+                effective_name = required_label_name = None
+                fallback_label_name = c._non_anon_label or c._anon_name_label
+            else:
+                if table_qualified:
+                    required_label_name = (
+                        effective_name
+                    ) = fallback_label_name = c._tq_label
+                else:
+                    effective_name = fallback_label_name = c._non_anon_label
+                    required_label_name = None
+
+                if effective_name is None:
+                    # it seems like this could be _proxy_key and we would
+                    # not need _expression_label but it isn't
+                    # giving us a clue when to use anon_label instead
                     expr_label = c._expression_label
                     if expr_label is None:
                         repeated = c._anon_name_label in names
                         names[c._anon_name_label] = c
-                        return (None, c, repeated)
+                        effective_name = required_label_name = None
+
+                        if repeated:
+                            # here, "required_label_name" is sent as
+                            # "None" and "fallback_label_name" is sent.
+                            if table_qualified:
+                                fallback_label_name = c._dedupe_anon_tq_label
+                            else:
+                                fallback_label_name = c._dedupe_anon_label
+                        else:
+                            fallback_label_name = c._anon_name_label
                     else:
-                        name = effective_name = expr_label
-                else:
-                    name = None
-                    effective_name = c.name
+                        required_label_name = (
+                            effective_name
+                        ) = fallback_label_name = expr_label
 
-                repeated = False
-
+            if effective_name is not None:
                 if effective_name in names:
                     # when looking to see if names[name] is the same column as
                     # c, use hash(), so that an annotated version of the column
@@ -5915,82 +5917,97 @@ class Select(
 
                         # different column under the same name.  apply
                         # disambiguating label
-                        if use_tablename_labels:
-                            name = c._label_anon_label
+                        if table_qualified:
+                            required_label_name = (
+                                fallback_label_name
+                            ) = c._anon_tq_label
                         else:
-                            name = c._anon_name_label
+                            required_label_name = (
+                                fallback_label_name
+                            ) = c._anon_name_label
 
-                        if anon_for_dupe_key and name in names:
-                            # here, c._label_anon_label is definitely unique to
+                        if anon_for_dupe_key and required_label_name in names:
+                            # here, c._anon_tq_label is definitely unique to
                             # that column identity (or annotated version), so
                             # this should always be true.
                             # this is also an infrequent codepath because
                             # you need two levels of duplication to be here
-                            assert hash(names[name]) == hash(c)
+                            assert hash(names[required_label_name]) == hash(c)
 
                             # the column under the disambiguating label is
                             # already present.  apply the "dedupe" label to
                             # subsequent occurrences of the column so that the
                             # original stays non-ambiguous
-                            if use_tablename_labels:
-                                name = c._dedupe_label_anon_label
+                            if table_qualified:
+                                required_label_name = (
+                                    fallback_label_name
+                                ) = c._dedupe_anon_tq_label
                             else:
-                                name = c._dedupe_anon_label
+                                required_label_name = (
+                                    fallback_label_name
+                                ) = c._dedupe_anon_label
                             repeated = True
                         else:
-                            names[name] = c
+                            names[required_label_name] = c
                     elif anon_for_dupe_key:
                         # same column under the same name. apply the "dedupe"
                         # label so that the original stays non-ambiguous
-                        if use_tablename_labels:
-                            name = c._dedupe_label_anon_label
+                        if table_qualified:
+                            required_label_name = (
+                                fallback_label_name
+                            ) = c._dedupe_anon_tq_label
                         else:
-                            name = c._dedupe_anon_label
+                            required_label_name = (
+                                fallback_label_name
+                            ) = c._dedupe_anon_label
                         repeated = True
                 else:
                     names[effective_name] = c
-                return name, c, repeated
 
-            return [name_for_col(c) for c in cols]
+            result_append(
+                (
+                    # string label name, if non-None, must be rendered as a
+                    # label, i.e. "AS <name>"
+                    required_label_name,
+                    # proxy_key that is to be part of the result map for this
+                    # col.  this is also the key in a fromclause.c or
+                    # select.selected_columns collection
+                    key_naming_convention(c),
+                    # name that can be used to render an "AS <name>" when
+                    # we have to render a label even though
+                    # required_label_name was not given
+                    fallback_label_name,
+                    # the ColumnElement itself
+                    c,
+                    # True if this is a duplicate of a previous column
+                    # in the list of columns
+                    repeated,
+                )
+            )
+
+        return result
 
     def _generate_fromclause_column_proxies(self, subquery):
         """Generate column proxies to place in the exported ``.c``
         collection of a subquery."""
 
-        keys_seen = set()
-        prox = []
-
-        pa = None
-
-        tablename_plus_col = (
-            self._label_style is LABEL_STYLE_TABLENAME_PLUS_COL
-        )
-        disambiguate_only = self._label_style is LABEL_STYLE_DISAMBIGUATE_ONLY
-
-        for name, c, repeated in self._generate_columns_plus_names(False):
-            if c._is_text_clause:
-                continue
-            elif tablename_plus_col:
-                key = c._key_label
-                if key is not None and key in keys_seen:
-                    if pa is None:
-                        pa = prefix_anon_map()
-                    key = c._label_anon_key_label % pa
-                keys_seen.add(key)
-            elif disambiguate_only:
-                key = c._proxy_key
-                if key is not None and key in keys_seen:
-                    if pa is None:
-                        pa = prefix_anon_map()
-                    key = c._anon_key_label % pa
-                keys_seen.add(key)
-            else:
-                key = c._proxy_key
-            prox.append(
-                c._make_proxy(
-                    subquery, key=key, name=name, name_is_truncatable=True
-                )
+        prox = [
+            c._make_proxy(
+                subquery,
+                key=proxy_key,
+                name=required_label_name,
+                name_is_truncatable=True,
             )
+            for (
+                required_label_name,
+                proxy_key,
+                fallback_label_name,
+                c,
+                repeated,
+            ) in (self._generate_columns_plus_names(False))
+            if not c._is_text_clause
+        ]
+
         subquery._columns._populate_separate_keys(prox)
 
     def _needs_parens_for_grouping(self):

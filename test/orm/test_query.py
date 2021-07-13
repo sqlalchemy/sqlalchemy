@@ -783,14 +783,21 @@ class RowLabelingTest(QueryTest):
             pass
 
         if False:
+            # this conditional creates the table each time which would
+            # eliminate cross-test memoization issues.  if the tests
+            # are failing without this then there's a memoization issue.
+            # check AnnotatedColumn memoized keys
             m = MetaData()
             users = Table(
                 "users",
                 m,
                 Column("id", Integer, primary_key=True),
-                Column("name", String, key="uname"),
+                Column(
+                    "name",
+                    String,
+                ),
             )
-            mapper(Foo, users, properties={"uname": users.c.uname})
+            mapper(Foo, users, properties={"uname": users.c.name})
         else:
             users = self.tables.users
             mapper(Foo, users, properties={"uname": users.c.name})
