@@ -5057,20 +5057,41 @@ class IdentifierPreparer(object):
         else:
             name = constraint.name
 
+        if constraint.__visit_name__ == "index":
+            return self.truncate_and_render_index_name(
+                name, _alembic_quote=_alembic_quote
+            )
+        else:
+            return self.truncate_and_render_constraint_name(
+                name, _alembic_quote=_alembic_quote
+            )
+
+    def truncate_and_render_index_name(self, name, _alembic_quote=True):
+        # calculate these at format time so that ad-hoc changes
+        # to dialect.max_identifier_length etc. can be reflected
+        # as IdentifierPreparer is long lived
+        max_ = (
+            self.dialect.max_index_name_length
+            or self.dialect.max_identifier_length
+        )
+        return self._truncate_and_render_maxlen_name(
+            name, max_, _alembic_quote
+        )
+
+    def truncate_and_render_constraint_name(self, name, _alembic_quote=True):
+        # calculate these at format time so that ad-hoc changes
+        # to dialect.max_identifier_length etc. can be reflected
+        # as IdentifierPreparer is long lived
+        max_ = (
+            self.dialect.max_constraint_name_length
+            or self.dialect.max_identifier_length
+        )
+        return self._truncate_and_render_maxlen_name(
+            name, max_, _alembic_quote
+        )
+
+    def _truncate_and_render_maxlen_name(self, name, max_, _alembic_quote):
         if isinstance(name, elements._truncated_label):
-            # calculate these at format time so that ad-hoc changes
-            # to dialect.max_identifier_length etc. can be reflected
-            # as IdentifierPreparer is long lived
-            if constraint.__visit_name__ == "index":
-                max_ = (
-                    self.dialect.max_index_name_length
-                    or self.dialect.max_identifier_length
-                )
-            else:
-                max_ = (
-                    self.dialect.max_constraint_name_length
-                    or self.dialect.max_identifier_length
-                )
             if len(name) > max_:
                 name = name[0 : max_ - 8] + "_" + util.md5_hex(name)[-4:]
         else:
