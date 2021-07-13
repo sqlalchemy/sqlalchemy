@@ -2,8 +2,8 @@
     :tags: bug, regression, orm
     :tickets: 6698
 
-    Fixed regression caused in 1.4.19 due to #6503 and related involving
-    :meth:`_orm.Query.with_entities` where the new structure used would be
-    inappropriately transferred to an enclosing :class:`_orm.Query` when making
-    use of set operations such as :meth:`_orm.Query.union`, causing the JOIN
-    instructions within to be applied to the outside query as well.
+    Fixed regression caused in 1.4.19 due to :ticket:`6503` and related
+    involving :meth:`_orm.Query.with_entities` where the new structure used
+    would be inappropriately transferred to an enclosing :class:`_orm.Query`
+    when making use of set operations such as :meth:`_orm.Query.union`, causing
+    the JOIN instructions within to be applied to the outside query as well.
