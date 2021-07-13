@@ -1202,7 +1202,7 @@ class CompoundTest(fixtures.TablesTest):
                 t2.c.col2.in_(["t2col2r2", "t2col2r3"]),
             ),
         )
-        u = union(s1, s2, order_by=["col3", "col4"])
+        u = union(s1, s2).order_by("col3", "col4")
 
         wanted = [
             ("aaa", "aaa"),
@@ -1225,7 +1225,7 @@ class CompoundTest(fixtures.TablesTest):
                 t2.c.col2.in_(["t2col2r2", "t2col2r3"]),
             ),
         )
-        u = union(s1, s2, order_by=["col3", "col4"])
+        u = union(s1, s2).order_by("col3", "col4")
 
         wanted = [
             ("aaa", "aaa"),

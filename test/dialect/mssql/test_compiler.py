@@ -805,7 +805,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 t2.c.col2.in_(["t2col2r2", "t2col2r3"]),
             ),
         )
-        u = union(s1, s2, order_by=["col3", "col4"])
+        u = union(s1, s2).order_by("col3", "col4")
         self.assert_compile(
             u,
             "SELECT t1.col3 AS col3, t1.col4 AS col4 "
