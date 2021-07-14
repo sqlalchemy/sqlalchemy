@@ -15,7 +15,143 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.21
-    :include_notes_from: unreleased_14
+    :released: July 14, 2021
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 6708
+
+        Modified the approach used for history tracking of scalar object
+        relationships that are not many-to-one, i.e. one-to-one relationships that
+        would otherwise be one-to-many. When replacing a one-to-one value, the
+        "old" value that would be replaced is no longer loaded immediately, and is
+        instead handled during the flush process. This eliminates an historically
+        troublesome lazy load that otherwise often occurs when assigning to a
+        one-to-one attribute, and is particularly troublesome when using
+        "lazy='raise'" as well as asyncio use cases.
+
+        This change does cause a behavioral change within the
+        :meth:`_orm.AttributeEvents.set` event, which is nonetheless currently
+        documented, which is that the event applied to such a one-to-one attribute
+        will no longer receive the "old" parameter if it is unloaded and the
+        :paramref:`_orm.relationship.active_history` flag is not set. As is
+        documented in :meth:`_orm.AttributeEvents.set`, if the event handler needs
+        to receive the "old" value when the event fires off, the active_history
+        flag must be established either with the event listener or with the
+        relationship. This is already the behavior with other kinds of attributes
+        such as many-to-one and column value references.
+
+        The change additionally will defer updating a backref on the "old" value
+        in the less common case that the "old" value is locally present in the
+        session, but isn't loaded on the relationship in question, until the
+        next flush occurs.  If this causes an issue, again the normal
+        :paramref:`_orm.relationship.active_history` flag can be set to ``True``
+        on the relationship.
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 6752
+
+        Added new method :meth:`_sql.HasCTE.add_cte` to each of the
+        :func:`_sql.select`, :func:`_sql.insert`, :func:`_sql.update` and
+        :func:`_sql.delete` constructs. This method will add the given
+        :class:`_sql.CTE` as an "independent" CTE of the statement, meaning it
+        renders in the WITH clause above the statement unconditionally even if it
+        is not otherwise referenced in the primary statement. This is a popular use
+        case on the PostgreSQL database where a CTE is used for a DML statement
+        that runs against database rows independently of the primary statement.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 6755
+
+        Fixed issue in :meth:`_postgresql.Insert.on_conflict_do_nothing` and
+        :meth:`_postgresql.Insert.on_conflict_do_update` where the name of a unique
+        constraint passed as the ``constraint`` parameter would not be properly
+        truncated for length if it were based on a naming convention that generated
+        a too-long name for the PostgreSQL max identifier length of 63 characters,
+        in the same way which occurs within a CREATE TABLE statement.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 6710
+
+        Fixed issue in CTE constructs where a recursive CTE that referred to a
+        SELECT that has duplicate column names, which are typically deduplicated
+        using labeling logic in 1.4, would fail to refer to the deduplicated label
+        name correctly within the WITH clause.
+
+    .. change::
+        :tags: bug, regression, mssql
+        :tickets: 6697
+
+        Fixed regression where the special dotted-schema name handling for the SQL
+        Server dialect would not function correctly if the dotted schema name were
+        used within the ``schema_translate_map`` feature.
+
+    .. change::
+        :tags: orm, regression
+        :tickets: 6718
+
+        Fixed ORM regression where ad-hoc label names generated for hybrid
+        properties and potentially other similar types of ORM-enabled expressions
+        would usually be propagated outwards through subqueries, allowing the name
+        to be retained in the final keys of the result set even when selecting from
+        subqueries. Additional state is now tracked in this case that isn't lost
+        when a hybrid is selected out of a Core select / subquery.
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 6739
+
+        Fixed issue where the PostgreSQL ``ENUM`` datatype as embedded in the
+        ``ARRAY`` datatype would fail to emit correctly in create/drop when the
+        ``schema_translate_map`` feature were also in use. Additionally repairs a
+        related issue where the same ``schema_translate_map`` feature would not
+        work for the ``ENUM`` datatype in combination with a ``CAST``, that's also
+        intrinsic to how the ``ARRAY(ENUM)`` combination works on the PostgreSQL
+        dialect.
+
+
+    .. change::
+        :tags: bug, sql, regression
+        :tickets: 6735
+
+        Fixed regression where the :func:`_sql.tablesample` construct would fail to
+        be executable when constructed given a floating-point sampling value not
+        embedded within a SQL function.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 6696
+
+        Fixed issue in :meth:`_postgresql.Insert.on_conflict_do_nothing` and
+        :meth:`_postgresql.Insert.on_conflict_do_update` where the name of a unique
+        constraint passed as the ``constraint`` parameter would not be properly
+        quoted if it contained characters which required quoting.
+
+
+    .. change::
+        :tags: bug, regression, orm
+        :tickets: 6698
+
+        Fixed regression caused in 1.4.19 due to :ticket:`6503` and related
+        involving :meth:`_orm.Query.with_entities` where the new structure used
+        would be inappropriately transferred to an enclosing :class:`_orm.Query`
+        when making use of set operations such as :meth:`_orm.Query.union`, causing
+        the JOIN instructions within to be applied to the outside query as well.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6762
+
+        Fixed regression which appeared in version 1.4.3 due to :ticket:`6060`
+        where rules that limit ORM adaptation of derived selectables interfered
+        with other ORM-adaptation based cases, in this case when applying
+        adaptations for a :func:`_orm.with_polymorphic` against a mapping which
+        uses a :func:`_orm.column_property` which in turn makes use of a scalar
+        select that includes a :func:`_orm.aliased` object of the mapped table.
 
 .. changelog::
     :version: 1.4.20
