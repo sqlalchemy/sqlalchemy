@@ -1414,7 +1414,6 @@ class SQLCompiler(Compiled):
                     (label, labelname) + label._alt_names + result_map_targets,
                     label.type,
                 )
-
             return (
                 label.element._compiler_dispatch(
                     self,

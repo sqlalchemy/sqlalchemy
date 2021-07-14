@@ -13,6 +13,7 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import Unicode
 from sqlalchemy import util
+from sqlalchemy.orm import aliased
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import contains_eager
@@ -25,6 +26,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.orm.interfaces import MANYTOONE
+from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -1104,6 +1106,69 @@ class RelationshipTest8(fixtures.MappedTest):
         eq_(
             sess.query(Taggable).order_by(Taggable.id).all(),
             [User(data="u1"), Taggable(owner=User(data="u1"))],
+        )
+
+
+class ColPropWAliasJoinedToBaseTest(
+    AssertsCompiledSQL, fixtures.DeclarativeMappedTest
+):
+    """test #6762"""
+
+    __dialect__ = "default"
+    run_create_tables = None
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Content(Base):
+
+            __tablename__ = "content"
+
+            id = Column(Integer, primary_key=True)
+            type = Column(String)
+            container_id = Column(Integer, ForeignKey("folder.id"))
+
+            __mapper_args__ = {"polymorphic_on": type}
+
+        class Folder(Content):
+
+            __tablename__ = "folder"
+
+            id = Column(ForeignKey("content.id"), primary_key=True)
+
+            __mapper_args__ = {
+                "polymorphic_identity": "f",
+                "inherit_condition": id == Content.id,
+            }
+
+        _alias = aliased(Content)
+
+        Content.__mapper__.add_property(
+            "count_children",
+            column_property(
+                select(func.count("*"))
+                .where(_alias.container_id == Content.id)
+                .scalar_subquery()
+            ),
+        )
+
+    def test_alias_omitted(self):
+        Content = self.classes.Content
+        Folder = self.classes.Folder
+
+        sess = fixture_session()
+
+        entity = with_polymorphic(Content, [Folder], innerjoin=True)
+
+        self.assert_compile(
+            sess.query(entity),
+            "SELECT content.id AS content_id, content.type AS content_type, "
+            "content.container_id AS content_container_id, "
+            "(SELECT count(:count_2) AS count_1 FROM content AS content_1 "
+            "WHERE content_1.container_id = content.id) AS anon_1, "
+            "folder.id AS folder_id FROM content "
+            "JOIN folder ON folder.id = content.id",
         )
 
 
