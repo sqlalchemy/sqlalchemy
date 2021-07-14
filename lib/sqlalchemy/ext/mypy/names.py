@@ -153,7 +153,7 @@ _lookup: Dict[str, Tuple[int, Set[str]]] = {
 }
 
 
-def _has_base_type_id(info: TypeInfo, type_id: int) -> bool:
+def has_base_type_id(info: TypeInfo, type_id: int) -> bool:
     for mr in info.mro:
         check_type_id, fullnames = _lookup.get(mr.name, (None, None))
         if check_type_id == type_id:
@@ -167,7 +167,7 @@ def _has_base_type_id(info: TypeInfo, type_id: int) -> bool:
     return mr.fullname in fullnames
 
 
-def _mro_has_id(mro: List[TypeInfo], type_id: int) -> bool:
+def mro_has_id(mro: List[TypeInfo], type_id: int) -> bool:
     for mr in mro:
         check_type_id, fullnames = _lookup.get(mr.name, (None, None))
         if check_type_id == type_id:
@@ -181,49 +181,41 @@ def _mro_has_id(mro: List[TypeInfo], type_id: int) -> bool:
     return mr.fullname in fullnames
 
 
-def _type_id_for_unbound_type(
+def type_id_for_unbound_type(
     type_: UnboundType, cls: ClassDef, api: SemanticAnalyzerPluginInterface
 ) -> Optional[int]:
-    type_id = None
-
     sym = api.lookup_qualified(type_.name, type_)
     if sym is not None:
         if isinstance(sym.node, TypeAlias):
             target_type = get_proper_type(sym.node.target)
             if isinstance(target_type, Instance):
-                type_id = _type_id_for_named_node(target_type.type)
+                return type_id_for_named_node(target_type.type)
         elif isinstance(sym.node, TypeInfo):
-            type_id = _type_id_for_named_node(sym.node)
-
-    return type_id
-
-
-def _type_id_for_callee(callee: Expression) -> Optional[int]:
-    if isinstance(callee, (MemberExpr, NameExpr)):
-        if isinstance(callee.node, FuncDef):
-            return _type_id_for_funcdef(callee.node)
-        elif isinstance(callee.node, TypeAlias):
-            target_type = get_proper_type(callee.node.target)
-            if isinstance(target_type, Instance):
-                type_id = _type_id_for_fullname(target_type.type.fullname)
-        elif isinstance(callee.node, TypeInfo):
-            type_id = _type_id_for_named_node(callee)
-        else:
-            type_id = None
-    return type_id
-
-
-def _type_id_for_funcdef(node: FuncDef) -> Optional[int]:
-    if node.type and isinstance(node.type, CallableType):
-        ret_type = get_proper_type(node.type.ret_type)
-
-        if isinstance(ret_type, Instance):
-            return _type_id_for_fullname(ret_type.type.fullname)
+            return type_id_for_named_node(sym.node)
 
     return None
 
 
-def _type_id_for_named_node(
+def type_id_for_callee(callee: Expression) -> Optional[int]:
+    if isinstance(callee, (MemberExpr, NameExpr)):
+        if isinstance(callee.node, FuncDef):
+            if callee.node.type and isinstance(callee.node.type, CallableType):
+                ret_type = get_proper_type(callee.node.type.ret_type)
+
+                if isinstance(ret_type, Instance):
+                    return type_id_for_fullname(ret_type.type.fullname)
+
+            return None
+        elif isinstance(callee.node, TypeAlias):
+            target_type = get_proper_type(callee.node.target)
+            if isinstance(target_type, Instance):
+                return type_id_for_fullname(target_type.type.fullname)
+        elif isinstance(callee.node, TypeInfo):
+            return type_id_for_named_node(callee)
+    return None
+
+
+def type_id_for_named_node(
     node: Union[NameExpr, MemberExpr, SymbolNode]
 ) -> Optional[int]:
     type_id, fullnames = _lookup.get(node.name, (None, None))
@@ -236,7 +228,7 @@ def _type_id_for_named_node(
         return None
 
 
-def _type_id_for_fullname(fullname: str) -> Optional[int]:
+def type_id_for_fullname(fullname: str) -> Optional[int]:
     tokens = fullname.split(".")
     immediate = tokens[-1]
 

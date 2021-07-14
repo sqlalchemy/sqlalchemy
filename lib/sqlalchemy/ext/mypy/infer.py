@@ -35,15 +35,15 @@ from . import names
 from . import util
 
 
-def _infer_type_from_right_hand_nameexpr(
+def infer_type_from_right_hand_nameexpr(
     api: SemanticAnalyzerPluginInterface,
     stmt: AssignmentStmt,
     node: Var,
     left_hand_explicit_type: Optional[ProperType],
-    infer_from_right_side: NameExpr,
+    infer_from_right_side: RefExpr,
 ) -> Optional[ProperType]:
 
-    type_id = names._type_id_for_callee(infer_from_right_side)
+    type_id = names.type_id_for_callee(infer_from_right_side)
 
     if type_id is None:
         return None
@@ -60,7 +60,7 @@ def _infer_type_from_right_hand_nameexpr(
             api, stmt, node, left_hand_explicit_type
         )
     elif type_id is names.SYNONYM_PROPERTY:
-        python_type_for_type = _infer_type_from_left_hand_type_only(
+        python_type_for_type = infer_type_from_left_hand_type_only(
             api, node, left_hand_explicit_type
         )
     elif type_id is names.COMPOSITE_PROPERTY:
@@ -128,8 +128,8 @@ def _infer_type_from_relationship(
     # string expression
     # isinstance(target_cls_arg, StrExpr)
 
-    uselist_arg = util._get_callexpr_kwarg(stmt.rvalue, "uselist")
-    collection_cls_arg: Optional[Expression] = util._get_callexpr_kwarg(
+    uselist_arg = util.get_callexpr_kwarg(stmt.rvalue, "uselist")
+    collection_cls_arg: Optional[Expression] = util.get_callexpr_kwarg(
         stmt.rvalue, "collection_class"
     )
     type_is_a_collection = False
@@ -137,7 +137,7 @@ def _infer_type_from_relationship(
     # this can be used to determine Optional for a many-to-one
     # in the same way nullable=False could be used, if we start supporting
     # that.
-    # innerjoin_arg = _get_callexpr_kwarg(stmt.rvalue, "innerjoin")
+    # innerjoin_arg = util.get_callexpr_kwarg(stmt.rvalue, "innerjoin")
 
     if (
         uselist_arg is not None
@@ -218,7 +218,7 @@ def _infer_type_from_relationship(
             util.fail(api, msg.format(node.name), node)
 
     if python_type_for_type is None:
-        return _infer_type_from_left_hand_type_only(
+        return infer_type_from_left_hand_type_only(
             api, node, left_hand_explicit_type
         )
     elif left_hand_explicit_type is not None:
@@ -260,7 +260,7 @@ def _infer_type_from_decl_composite_property(
         python_type_for_type = None
 
     if python_type_for_type is None:
-        return _infer_type_from_left_hand_type_only(
+        return infer_type_from_left_hand_type_only(
             api, node, left_hand_explicit_type
         )
     elif left_hand_explicit_type is not None:
@@ -287,7 +287,7 @@ def _infer_type_from_decl_column_property(
     first_prop_arg = stmt.rvalue.args[0]
 
     if isinstance(first_prop_arg, CallExpr):
-        type_id = names._type_id_for_callee(first_prop_arg.callee)
+        type_id = names.type_id_for_callee(first_prop_arg.callee)
 
         # look for column_property() / deferred() etc with Column as first
         # argument
@@ -300,7 +300,7 @@ def _infer_type_from_decl_column_property(
                 right_hand_expression=first_prop_arg,
             )
 
-    return _infer_type_from_left_hand_type_only(
+    return infer_type_from_left_hand_type_only(
         api, node, left_hand_explicit_type
     )
 
@@ -378,10 +378,10 @@ def _infer_type_from_decl_column(
     if callee is None:
         return None
 
-    if isinstance(callee.node, TypeInfo) and names._mro_has_id(
+    if isinstance(callee.node, TypeInfo) and names.mro_has_id(
         callee.node.mro, names.TYPEENGINE
     ):
-        python_type_for_type = _extract_python_type_from_typeengine(
+        python_type_for_type = extract_python_type_from_typeengine(
             api, callee.node, type_args
         )
 
@@ -396,7 +396,7 @@ def _infer_type_from_decl_column(
     else:
         # it's not TypeEngine, it's typically implicitly typed
         # like ForeignKey.  we can't infer from the right side.
-        return _infer_type_from_left_hand_type_only(
+        return infer_type_from_left_hand_type_only(
             api, node, left_hand_explicit_type
         )
 
@@ -472,7 +472,7 @@ def _infer_collection_type_from_left_and_inferred_right(
     )
 
 
-def _infer_type_from_left_hand_type_only(
+def infer_type_from_left_hand_type_only(
     api: SemanticAnalyzerPluginInterface,
     node: Var,
     left_hand_explicit_type: Optional[ProperType],
@@ -499,7 +499,7 @@ def _infer_type_from_left_hand_type_only(
         return left_hand_explicit_type
 
 
-def _extract_python_type_from_typeengine(
+def extract_python_type_from_typeengine(
     api: SemanticAnalyzerPluginInterface,
     node: TypeInfo,
     type_args: Sequence[Expression],

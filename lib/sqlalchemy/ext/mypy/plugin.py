@@ -45,29 +45,14 @@ class SQLAlchemyPlugin(Plugin):
     def get_dynamic_class_hook(
         self, fullname: str
     ) -> Optional[Callable[[DynamicClassDefContext], None]]:
-        if names._type_id_for_fullname(fullname) is names.DECLARATIVE_BASE:
+        if names.type_id_for_fullname(fullname) is names.DECLARATIVE_BASE:
             return _dynamic_class_hook
         return None
 
-    def get_base_class_hook(
+    def get_customize_class_mro_hook(
         self, fullname: str
     ) -> Optional[Callable[[ClassDefContext], None]]:
-
-        # kind of a strange relationship between get_metaclass_hook()
-        # and get_base_class_hook().  the former doesn't fire off for
-        # subclasses.   but then you can just check it here from the "base"
-        # and get the same effect.
-        sym = self.lookup_fully_qualified(fullname)
-
-        if (
-            sym
-            and isinstance(sym.node, TypeInfo)
-            and sym.node.metaclass_type
-            and names._type_id_for_named_node(sym.node.metaclass_type.type)
-            is names.DECLARATIVE_META
-        ):
-            return _base_cls_hook
-        return None
+        return _fill_in_decorators
 
     def get_class_decorator_hook(
         self, fullname: str
@@ -76,7 +61,7 @@ class SQLAlchemyPlugin(Plugin):
         sym = self.lookup_fully_qualified(fullname)
 
         if sym is not None and sym.node is not None:
-            type_id = names._type_id_for_named_node(sym.node)
+            type_id = names.type_id_for_named_node(sym.node)
             if type_id is names.MAPPED_DECORATOR:
                 return _cls_decorator_hook
             elif type_id in (
@@ -89,10 +74,29 @@ class SQLAlchemyPlugin(Plugin):
 
         return None
 
-    def get_customize_class_mro_hook(
+    def get_metaclass_hook(
         self, fullname: str
     ) -> Optional[Callable[[ClassDefContext], None]]:
-        return _fill_in_decorators
+        if names.type_id_for_fullname(fullname) is names.DECLARATIVE_META:
+            # Set any classes that explicitly have metaclass=DeclarativeMeta
+            # as declarative so the check in `get_base_class_hook()` works
+            return _metaclass_cls_hook
+
+        return None
+
+    def get_base_class_hook(
+        self, fullname: str
+    ) -> Optional[Callable[[ClassDefContext], None]]:
+        sym = self.lookup_fully_qualified(fullname)
+
+        if (
+            sym
+            and isinstance(sym.node, TypeInfo)
+            and util.has_declarative_base(sym.node)
+        ):
+            return _base_cls_hook
+
+        return None
 
     def get_attribute_hook(
         self, fullname: str
@@ -101,6 +105,7 @@ class SQLAlchemyPlugin(Plugin):
             "sqlalchemy.orm.attributes.QueryableAttribute."
         ):
             return _queryable_getattr_hook
+
         return None
 
     def get_additional_deps(
@@ -116,10 +121,43 @@ def plugin(version: str) -> TypingType[SQLAlchemyPlugin]:
     return SQLAlchemyPlugin
 
 
-def _queryable_getattr_hook(ctx: AttributeContext) -> Type:
-    # how do I....tell it it has no attribute of a certain name?
-    # can't find any Type that seems to match that
-    return ctx.default_attr_type
+def _dynamic_class_hook(ctx: DynamicClassDefContext) -> None:
+    """Generate a declarative Base class when the declarative_base() function
+    is encountered."""
+
+    _add_globals(ctx)
+
+    cls = ClassDef(ctx.name, Block([]))
+    cls.fullname = ctx.api.qualified_name(ctx.name)
+
+    info = TypeInfo(SymbolTable(), cls, ctx.api.cur_mod_id)
+    cls.info = info
+    _set_declarative_metaclass(ctx.api, cls)
+
+    cls_arg = util.get_callexpr_kwarg(ctx.call, "cls", expr_types=(NameExpr,))
+    if cls_arg is not None and isinstance(cls_arg.node, TypeInfo):
+        util.set_is_base(cls_arg.node)
+        decl_class.scan_declarative_assignments_and_apply_types(
+            cls_arg.node.defn, ctx.api, is_mixin_scan=True
+        )
+        info.bases = [Instance(cls_arg.node, [])]
+    else:
+        obj = ctx.api.named_type("__builtins__.object")
+
+        info.bases = [obj]
+
+    try:
+        calculate_mro(info)
+    except MroError:
+        util.fail(
+            ctx.api, "Not able to calculate MRO for declarative base", ctx.call
+        )
+        obj = ctx.api.named_type("__builtins__.object")
+        info.bases = [obj]
+        info.fallback_to_any = True
+
+    ctx.api.add_symbol_table_node(ctx.name, SymbolTableNode(GDEF, info))
+    util.set_is_base(info)
 
 
 def _fill_in_decorators(ctx: ClassDefContext) -> None:
@@ -173,39 +211,6 @@ def _fill_in_decorators(ctx: ClassDefContext) -> None:
                 )
 
 
-def _add_globals(ctx: Union[ClassDefContext, DynamicClassDefContext]) -> None:
-    """Add __sa_DeclarativeMeta and __sa_Mapped symbol to the global space
-    for all class defs
-
-    """
-
-    util.add_global(
-        ctx,
-        "sqlalchemy.orm.decl_api",
-        "DeclarativeMeta",
-        "__sa_DeclarativeMeta",
-    )
-
-    util.add_global(ctx, "sqlalchemy.orm.attributes", "Mapped", "__sa_Mapped")
-
-
-def _cls_metadata_hook(ctx: ClassDefContext) -> None:
-    _add_globals(ctx)
-    decl_class._scan_declarative_assignments_and_apply_types(ctx.cls, ctx.api)
-
-
-def _base_cls_hook(ctx: ClassDefContext) -> None:
-    _add_globals(ctx)
-    decl_class._scan_declarative_assignments_and_apply_types(ctx.cls, ctx.api)
-
-
-def _declarative_mixin_hook(ctx: ClassDefContext) -> None:
-    _add_globals(ctx)
-    decl_class._scan_declarative_assignments_and_apply_types(
-        ctx.cls, ctx.api, is_mixin_scan=True
-    )
-
-
 def _cls_decorator_hook(ctx: ClassDefContext) -> None:
     _add_globals(ctx)
     assert isinstance(ctx.reason, nodes.MemberExpr)
@@ -217,10 +222,10 @@ def _cls_decorator_hook(ctx: ClassDefContext) -> None:
 
     assert (
         isinstance(node_type, Instance)
-        and names._type_id_for_named_node(node_type.type) is names.REGISTRY
+        and names.type_id_for_named_node(node_type.type) is names.REGISTRY
     )
 
-    decl_class._scan_declarative_assignments_and_apply_types(ctx.cls, ctx.api)
+    decl_class.scan_declarative_assignments_and_apply_types(ctx.cls, ctx.api)
 
 
 def _base_cls_decorator_hook(ctx: ClassDefContext) -> None:
@@ -228,69 +233,52 @@ def _base_cls_decorator_hook(ctx: ClassDefContext) -> None:
 
     cls = ctx.cls
 
-    _make_declarative_meta(ctx.api, cls)
+    _set_declarative_metaclass(ctx.api, cls)
 
-    decl_class._scan_declarative_assignments_and_apply_types(
+    util.set_is_base(ctx.cls.info)
+    decl_class.scan_declarative_assignments_and_apply_types(
         cls, ctx.api, is_mixin_scan=True
     )
 
 
-def _dynamic_class_hook(ctx: DynamicClassDefContext) -> None:
-    """Generate a declarative Base class when the declarative_base() function
-    is encountered."""
-
+def _declarative_mixin_hook(ctx: ClassDefContext) -> None:
     _add_globals(ctx)
-
-    cls = ClassDef(ctx.name, Block([]))
-    cls.fullname = ctx.api.qualified_name(ctx.name)
-
-    info = TypeInfo(SymbolTable(), cls, ctx.api.cur_mod_id)
-    cls.info = info
-    _make_declarative_meta(ctx.api, cls)
-
-    cls_arg = util._get_callexpr_kwarg(ctx.call, "cls", expr_types=(NameExpr,))
-    if cls_arg is not None and isinstance(cls_arg.node, TypeInfo):
-        decl_class._scan_declarative_assignments_and_apply_types(
-            cls_arg.node.defn, ctx.api, is_mixin_scan=True
-        )
-        info.bases = [Instance(cls_arg.node, [])]
-    else:
-        obj = ctx.api.named_type("__builtins__.object")
-
-        info.bases = [obj]
-
-    try:
-        calculate_mro(info)
-    except MroError:
-        util.fail(
-            ctx.api, "Not able to calculate MRO for declarative base", ctx.call
-        )
-        obj = ctx.api.named_type("__builtins__.object")
-        info.bases = [obj]
-        info.fallback_to_any = True
-
-    ctx.api.add_symbol_table_node(ctx.name, SymbolTableNode(GDEF, info))
+    util.set_is_base(ctx.cls.info)
+    decl_class.scan_declarative_assignments_and_apply_types(
+        ctx.cls, ctx.api, is_mixin_scan=True
+    )
 
 
-def _make_declarative_meta(
+def _metaclass_cls_hook(ctx: ClassDefContext) -> None:
+    util.set_is_base(ctx.cls.info)
+
+
+def _base_cls_hook(ctx: ClassDefContext) -> None:
+    _add_globals(ctx)
+    decl_class.scan_declarative_assignments_and_apply_types(ctx.cls, ctx.api)
+
+
+def _queryable_getattr_hook(ctx: AttributeContext) -> Type:
+    # how do I....tell it it has no attribute of a certain name?
+    # can't find any Type that seems to match that
+    return ctx.default_attr_type
+
+
+def _add_globals(ctx: Union[ClassDefContext, DynamicClassDefContext]) -> None:
+    """Add __sa_DeclarativeMeta and __sa_Mapped symbol to the global space
+    for all class defs
+
+    """
+
+    util.add_global(ctx, "sqlalchemy.orm.attributes", "Mapped", "__sa_Mapped")
+
+
+def _set_declarative_metaclass(
     api: SemanticAnalyzerPluginInterface, target_cls: ClassDef
 ) -> None:
-
-    declarative_meta_name: NameExpr = NameExpr("__sa_DeclarativeMeta")
-    declarative_meta_name.kind = GDEF
-    declarative_meta_name.fullname = "sqlalchemy.orm.decl_api.DeclarativeMeta"
-
-    # installed by _add_globals
-    sym = api.lookup_qualified("__sa_DeclarativeMeta", target_cls)
-
-    assert sym is not None and isinstance(sym.node, nodes.TypeInfo)
-
-    declarative_meta_typeinfo = sym.node
-    declarative_meta_name.node = declarative_meta_typeinfo
-
-    target_cls.metaclass = declarative_meta_name
-
-    declarative_meta_instance = Instance(declarative_meta_typeinfo, [])
-
     info = target_cls.info
-    info.declared_metaclass = info.metaclass_type = declarative_meta_instance
+    sym = api.lookup_fully_qualified_or_none(
+        "sqlalchemy.orm.decl_api.DeclarativeMeta"
+    )
+    assert sym is not None and isinstance(sym.node, TypeInfo)
+    info.declared_metaclass = info.metaclass_type = Instance(sym.node, [])
