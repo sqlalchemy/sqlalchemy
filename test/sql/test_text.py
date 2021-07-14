@@ -768,13 +768,15 @@ class TextErrorsTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
     def _test(self, fn, arg, offending_clause):
+        arg = util.to_list(arg)
+
         assert_raises_message(
             exc.ArgumentError,
             r"Textual (?:SQL|column|SQL FROM) expression %(stmt)r should be "
             r"explicitly declared (?:with|as) text\(%(stmt)r\)"
             % {"stmt": util.ellipses_string(offending_clause)},
             fn,
-            arg,
+            *arg
         )
 
     def test_where(self):

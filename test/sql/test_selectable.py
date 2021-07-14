@@ -3444,7 +3444,7 @@ class ResultMapTest(fixtures.TestBase):
         )
 
     def test_plain_exists(self):
-        expr = exists([1])
+        expr = exists(text("1"))
         eq_(type(expr.type), Boolean)
         eq_(
             [
@@ -3455,7 +3455,7 @@ class ResultMapTest(fixtures.TestBase):
         )
 
     def test_plain_exists_negate(self):
-        expr = ~exists([1])
+        expr = ~exists(text("1"))
         eq_(type(expr.type), Boolean)
         eq_(
             [
@@ -3466,7 +3466,7 @@ class ResultMapTest(fixtures.TestBase):
         )
 
     def test_plain_exists_double_negate(self):
-        expr = ~(~exists([1]))
+        expr = ~(~exists(text("1")))
         eq_(type(expr.type), Boolean)
         eq_(
             [

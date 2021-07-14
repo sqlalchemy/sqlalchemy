@@ -356,7 +356,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            sess.query(users, exists([1], from_obj=addresses))
+            sess.query(users, exists(text("1")).select_from(addresses))
             .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .statement,
             "SELECT users.id AS users_id, users.name AS users_name, EXISTS "
@@ -1083,7 +1083,8 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             .union(users.select().where(users.c.id > 7))
             .alias("ulist")
             .outerjoin(addresses)
-            .select(order_by=[text("ulist.id"), addresses.c.id])
+            .select()
+            .order_by(text("ulist.id"), addresses.c.id)
         )
         sess = fixture_session()
         q = sess.query(User)
@@ -1111,7 +1112,8 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             .union(users.select().where(users.c.id > 7))
             .alias("ulist")
             .outerjoin(addresses)
-            .select(order_by=[text("ulist.id"), addresses.c.id])
+            .select()
+            .order_by(text("ulist.id"), addresses.c.id)
         )
         sess = fixture_session()
         q = sess.query(User)
@@ -1141,7 +1143,8 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             .union(users.select().where(users.c.id > 7))
             .alias("ulist")
             .outerjoin(addresses)
-            .select(order_by=[text("ulist.id"), addresses.c.id])
+            .select()
+            .order_by(text("ulist.id"), addresses.c.id)
         )
         sess = fixture_session()
 
@@ -1176,7 +1179,8 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             .union(users.select().where(users.c.id > 7))
             .alias("ulist")
             .outerjoin(adalias)
-            .select(order_by=[text("ulist.id"), adalias.c.id])
+            .select()
+            .order_by(text("ulist.id"), adalias.c.id)
         )
 
         def go():
@@ -1251,9 +1255,11 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
         sess = fixture_session()
 
-        selectquery = users.outerjoin(addresses).select(
-            users.c.id < 10,
-            order_by=[users.c.id, addresses.c.id],
+        selectquery = (
+            users.outerjoin(addresses)
+            .select()
+            .where(users.c.id < 10)
+            .order_by(users.c.id, addresses.c.id)
         )
 
         q = sess.query(User)
@@ -1277,9 +1283,11 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
         sess = fixture_session(future=True)
 
-        selectquery = users.outerjoin(addresses).select(
-            users.c.id < 10,
-            order_by=[users.c.id, addresses.c.id],
+        selectquery = (
+            users.outerjoin(addresses)
+            .select()
+            .where(users.c.id < 10)
+            .order_by(users.c.id, addresses.c.id)
         )
 
         q = select(User)
@@ -2234,8 +2242,10 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
 
         sess = fixture_session(future=True)
 
-        selectquery = users.outerjoin(addresses).select(
-            order_by=[users.c.id, addresses.c.id]
+        selectquery = (
+            users.outerjoin(addresses)
+            .select()
+            .order_by(users.c.id, addresses.c.id)
         )
 
         result = sess.execute(

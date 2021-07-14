@@ -511,7 +511,8 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             .union(users.select().where(users.c.id > 7))
             .alias("ulist")
             .outerjoin(addresses)
-            .select(order_by=[text("ulist.id"), addresses.c.id])
+            .select()
+            .order_by(text("ulist.id"), addresses.c.id)
         )
         sess = fixture_session()
 
@@ -547,7 +548,8 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             .union(users.select().where(users.c.id > 7))
             .alias("ulist")
             .outerjoin(adalias)
-            .select(order_by=[text("ulist.id"), adalias.c.id])
+            .select()
+            .order_by(text("ulist.id"), adalias.c.id)
         )
 
         def go():
@@ -3304,7 +3306,8 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             .union(users.select().where(users.c.id > 7))
             .alias("ulist")
             .outerjoin(addresses)
-            .select(order_by=[text("ulist.id"), addresses.c.id])
+            .select()
+            .order_by(text("ulist.id"), addresses.c.id)
         )
         sess = fixture_session()
         q = sess.query(User)
@@ -3334,9 +3337,11 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
         sess = fixture_session()
 
-        selectquery = users.outerjoin(addresses).select(
-            users.c.id < 10,
-            order_by=[users.c.id, addresses.c.id],
+        selectquery = (
+            users.outerjoin(addresses)
+            .select()
+            .where(users.c.id < 10)
+            .order_by(users.c.id, addresses.c.id)
         )
         q = sess.query(User)
 
@@ -3379,8 +3384,10 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         q = sess.query(User)
 
         adalias = addresses.alias("adalias")
-        selectquery = users.outerjoin(adalias).select(
-            order_by=[users.c.id, adalias.c.id]
+        selectquery = (
+            users.outerjoin(adalias)
+            .select()
+            .order_by(users.c.id, adalias.c.id)
         )
 
         # note this has multiple problems because we aren't giving Query
@@ -3413,8 +3420,10 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         q = sess.query(User)
 
         adalias = addresses.alias("adalias")
-        selectquery = users.outerjoin(adalias).select(
-            order_by=[users.c.id, adalias.c.id]
+        selectquery = (
+            users.outerjoin(adalias)
+            .select()
+            .order_by(users.c.id, adalias.c.id)
         )
 
         # note this has multiple problems because we aren't giving Query

@@ -403,16 +403,16 @@ class QueryTest(fixtures.TablesTest):
                 return stmt
 
             a_eq(
-                users.select(order_by=[users.c.user_id]).set_label_style(
-                    label_style
-                ),
+                users.select()
+                .order_by(users.c.user_id)
+                .set_label_style(label_style),
                 [(1, "c"), (2, "b"), (3, "a")],
             )
 
             a_eq(
-                users.select(
-                    order_by=[users.c.user_name, users.c.user_id],
-                ).set_label_style(label_style),
+                users.select()
+                .order_by(users.c.user_name, users.c.user_id)
+                .set_label_style(label_style),
                 [(3, "a"), (2, "b"), (1, "c")],
             )
 
@@ -435,10 +435,10 @@ class QueryTest(fixtures.TablesTest):
             )
 
             a_eq(
-                users.select(
-                    distinct=True,
-                    order_by=[users.c.user_id],
-                ).set_label_style(label_style),
+                users.select()
+                .distinct()
+                .order_by(users.c.user_id)
+                .set_label_style(label_style),
                 [(1, "c"), (2, "b"), (3, "a")],
             )
 
@@ -463,10 +463,10 @@ class QueryTest(fixtures.TablesTest):
             )
 
             a_eq(
-                users.select(
-                    distinct=True,
-                    order_by=[desc(users.c.user_id)],
-                ).set_label_style(label_style),
+                users.select()
+                .distinct()
+                .order_by(desc(users.c.user_id))
+                .set_label_style(label_style),
                 [(3, "a"), (2, "b"), (1, "c")],
             )
 
@@ -503,75 +503,75 @@ class QueryTest(fixtures.TablesTest):
                 else LABEL_STYLE_TABLENAME_PLUS_COL
             )
             a_eq(
-                users.select(
-                    order_by=[users.c.user_name.nulls_first()],
-                ).set_label_style(label_style),
+                users.select()
+                .order_by(users.c.user_name.nulls_first())
+                .set_label_style(label_style),
                 [(1, None), (3, "a"), (2, "b")],
             )
 
             a_eq(
-                users.select(
-                    order_by=[users.c.user_name.nulls_last()],
-                ).set_label_style(label_style),
+                users.select()
+                .order_by(users.c.user_name.nulls_last())
+                .set_label_style(label_style),
                 [(3, "a"), (2, "b"), (1, None)],
             )
 
             a_eq(
-                users.select(
-                    order_by=[asc(users.c.user_name).nulls_first()],
-                ).set_label_style(label_style),
+                users.select()
+                .order_by(asc(users.c.user_name).nulls_first())
+                .set_label_style(label_style),
                 [(1, None), (3, "a"), (2, "b")],
             )
 
             a_eq(
-                users.select(
-                    order_by=[asc(users.c.user_name).nulls_last()],
-                ).set_label_style(label_style),
+                users.select()
+                .order_by(asc(users.c.user_name).nulls_last())
+                .set_label_style(label_style),
                 [(3, "a"), (2, "b"), (1, None)],
             )
 
             a_eq(
-                users.select(
-                    order_by=[users.c.user_name.desc().nulls_first()],
-                ).set_label_style(label_style),
+                users.select()
+                .order_by(users.c.user_name.desc().nulls_first())
+                .set_label_style(label_style),
                 [(1, None), (2, "b"), (3, "a")],
             )
 
             a_eq(
-                users.select(
-                    order_by=[users.c.user_name.desc().nulls_last()],
-                ).set_label_style(label_style),
+                users.select()
+                .order_by(users.c.user_name.desc().nulls_last())
+                .set_label_style(label_style),
                 [(2, "b"), (3, "a"), (1, None)],
             )
 
             a_eq(
-                users.select(
-                    order_by=[desc(users.c.user_name).nulls_first()],
-                ).set_label_style(label_style),
+                users.select()
+                .order_by(desc(users.c.user_name).nulls_first())
+                .set_label_style(label_style),
                 [(1, None), (2, "b"), (3, "a")],
             )
 
             a_eq(
-                users.select(
-                    order_by=[desc(users.c.user_name).nulls_last()],
-                ).set_label_style(label_style),
+                users.select()
+                .order_by(desc(users.c.user_name).nulls_last())
+                .set_label_style(label_style),
                 [(2, "b"), (3, "a"), (1, None)],
             )
 
             a_eq(
-                users.select(
-                    order_by=[
-                        users.c.user_name.nulls_first(),
-                        users.c.user_id,
-                    ],
-                ).set_label_style(label_style),
+                users.select()
+                .order_by(
+                    users.c.user_name.nulls_first(),
+                    users.c.user_id,
+                )
+                .set_label_style(label_style),
                 [(1, None), (3, "a"), (2, "b")],
             )
 
             a_eq(
-                users.select(
-                    order_by=[users.c.user_name.nulls_last(), users.c.user_id],
-                ).set_label_style(label_style),
+                users.select()
+                .order_by(users.c.user_name.nulls_last(), users.c.user_id)
+                .set_label_style(label_style),
                 [(3, "a"), (2, "b"), (1, None)],
             )
 
@@ -1008,7 +1008,7 @@ class LimitTest(fixtures.TablesTest):
     def test_select_limit(self, connection):
         users, addresses = self.tables("users", "addresses")
         r = connection.execute(
-            users.select(limit=3, order_by=[users.c.user_id])
+            users.select().limit(3).order_by(users.c.user_id)
         ).fetchall()
         self.assert_(r == [(1, "john"), (2, "jack"), (3, "ed")], repr(r))
 
@@ -1019,11 +1019,11 @@ class LimitTest(fixtures.TablesTest):
         users, addresses = self.tables("users", "addresses")
 
         r = connection.execute(
-            users.select(limit=3, offset=2, order_by=[users.c.user_id])
+            users.select().limit(3).offset(2).order_by(users.c.user_id)
         ).fetchall()
         self.assert_(r == [(3, "ed"), (4, "wendy"), (5, "laura")])
         r = connection.execute(
-            users.select(offset=5, order_by=[users.c.user_id])
+            users.select().offset(5).order_by(users.c.user_id)
         ).fetchall()
         self.assert_(r == [(6, "ralph"), (7, "fido")])
 
