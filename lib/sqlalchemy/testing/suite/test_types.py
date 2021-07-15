@@ -817,7 +817,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             metadata,
             Column("id", Integer, primary_key=True),
             Column("name", String(30), nullable=False),
-            Column("data", cls.datatype),
+            Column("data", cls.datatype, nullable=False),
             Column("nulldata", cls.datatype(none_as_null=True)),
         )
 
@@ -1101,13 +1101,47 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             eq_(js.mock_calls, [mock.call(data_element)])
             eq_(jd.mock_calls, [mock.call(json.dumps(data_element))])
 
-    def test_round_trip_none_as_sql_null(self, connection):
+    @testing.combinations(
+        ("parameters",),
+        ("multiparameters",),
+        ("values",),
+        ("omit",),
+        argnames="insert_type",
+    )
+    def test_round_trip_none_as_sql_null(self, connection, insert_type):
         col = self.tables.data_table.c["nulldata"]
 
         conn = connection
-        conn.execute(
-            self.tables.data_table.insert(), {"name": "r1", "data": None}
-        )
+
+        if insert_type == "parameters":
+            stmt, params = self.tables.data_table.insert(), {
+                "name": "r1",
+                "nulldata": None,
+                "data": None,
+            }
+        elif insert_type == "multiparameters":
+            stmt, params = self.tables.data_table.insert(), [
+                {"name": "r1", "nulldata": None, "data": None}
+            ]
+        elif insert_type == "values":
+            stmt, params = (
+                self.tables.data_table.insert().values(
+                    name="r1",
+                    nulldata=None,
+                    data=None,
+                ),
+                {},
+            )
+        elif insert_type == "omit":
+            stmt, params = (
+                self.tables.data_table.insert(),
+                {"name": "r1", "data": None},
+            )
+
+        else:
+            assert False
+
+        conn.execute(stmt, params)
 
         eq_(
             conn.scalar(
@@ -1138,24 +1172,45 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
         eq_(conn.scalar(select(col)), None)
 
-    def test_round_trip_none_as_json_null(self):
+    @testing.combinations(
+        ("parameters",),
+        ("multiparameters",),
+        ("values",),
+        argnames="insert_type",
+    )
+    def test_round_trip_none_as_json_null(self, connection, insert_type):
         col = self.tables.data_table.c["data"]
 
-        with config.db.begin() as conn:
-            conn.execute(
-                self.tables.data_table.insert(), {"name": "r1", "data": None}
+        if insert_type == "parameters":
+            stmt, params = self.tables.data_table.insert(), {
+                "name": "r1",
+                "data": None,
+            }
+        elif insert_type == "multiparameters":
+            stmt, params = self.tables.data_table.insert(), [
+                {"name": "r1", "data": None}
+            ]
+        elif insert_type == "values":
+            stmt, params = (
+                self.tables.data_table.insert().values(name="r1", data=None),
+                {},
             )
+        else:
+            assert False
 
-            eq_(
-                conn.scalar(
-                    select(self.tables.data_table.c.name).where(
-                        cast(col, String) == "null"
-                    )
-                ),
-                "r1",
-            )
+        conn = connection
+        conn.execute(stmt, params)
 
-            eq_(conn.scalar(select(col)), None)
+        eq_(
+            conn.scalar(
+                select(self.tables.data_table.c.name).where(
+                    cast(col, String) == "null"
+                )
+            ),
+            "r1",
+        )
+
+        eq_(conn.scalar(select(col)), None)
 
     def test_unicode_round_trip(self):
         # note we include Unicode supplementary characters as well

@@ -464,7 +464,14 @@ class ExpressionElementImpl(_ColumnCoercions, RoleImpl):
     def _literal_coercion(
         self, element, name=None, type_=None, argname=None, is_crud=False, **kw
     ):
-        if element is None:
+        if (
+            element is None
+            and not is_crud
+            and (type_ is None or not type_.should_evaluate_none)
+        ):
+            # TODO: there's no test coverage now for the
+            # "should_evaluate_none" part of this, as outside of "crud" this
+            # codepath is not normally used except in some special cases
             return elements.Null()
         else:
             try:

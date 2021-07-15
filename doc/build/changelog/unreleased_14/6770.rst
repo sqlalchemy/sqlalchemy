@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 6770
+
+    Fixed issue where type-specific bound parameter handlers would not be
+    called upon in the case of using the :meth:`_sql.Insert.values` method with
+    the Python ``None`` value; in particular, this would be noticed when using
+    the :class:`_types.JSON` datatype as well as related PostgreSQL specific
+    types such as :class:`_postgresql.JSONB` which would fail to encode the
+    Python ``None`` value into JSON null, however the issue was generalized to
+    any bound parameter handler in conjunction with this specific method of
+    :class:`_sql.Insert`.
+

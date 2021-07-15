@@ -2371,6 +2371,14 @@ class JSON(Indexable, TypeEngine):
               :paramref:`_schema.Column.server_default`; a value of ``None``
               passed for these parameters means "no default present".
 
+              Additionally, when used in SQL comparison expressions, the
+              Python value ``None`` continues to refer to SQL null, and not
+              JSON NULL.  The :paramref:`_types.JSON.none_as_null` flag refers
+              explicitly to the **persistence** of the value within an
+              INSERT or UPDATE statement.   The :attr:`_types.JSON.NULL`
+              value should be used for SQL expressions that wish to compare to
+              JSON null.
+
          .. seealso::
 
               :attr:`.types.JSON.NULL`
