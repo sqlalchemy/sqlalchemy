@@ -1,5 +1,4 @@
 import functools
-import pytest
 from sqlalchemy import delete
 from sqlalchemy import testing
 from sqlalchemy import text
@@ -1568,26 +1567,6 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             "AS (SELECT %(param_1)s AS inner_cte) "
             "SELECT nesting.inner_cte AS outer_cte FROM nesting) "
             "SELECT cte.outer_cte FROM cte",
-        )
-
-    @pytest.mark.parametrize(
-        "dialect",
-        [mysql],
-    )
-    def test_nesting_cte_unsupported_backend_raise(self, dialect):
-        stmt = select(
-            [
-                select(
-                    [select([literal(1).label("one")]).cte("t2", nesting=True)]
-                ).cte("t")
-            ]
-        )
-
-        assert_raises_message(
-            CompileError,
-            "Nesting CTE is not supported by this "
-            "dialect's statement compiler.",
-            functools.partial(stmt.compile, dialect=dialect.dialect()),
         )
 
     def test_select_from_insert_cte_with_nesting(self):

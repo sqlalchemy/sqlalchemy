@@ -3091,7 +3091,6 @@ class PGDialect(default.DefaultDialect):
 
     supports_comments = True
     supports_default_values = True
-    supports_nesting_cte = True
 
     supports_default_metavalue = True
 

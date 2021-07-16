@@ -3361,12 +3361,6 @@ class SQLCompiler(Compiled):
                 if not cte.nesting and self.level_by_ctes[cte] == nesting_level
             }
 
-            if ctes and not self.dialect.supports_nesting_cte:
-                raise exc.CompileError(
-                    "Nesting CTE is not supported by this "
-                    "dialect's statement compiler."
-                )
-
         ctes_recursive = any([cte.recursive for cte in ctes])
 
         if self.positional:

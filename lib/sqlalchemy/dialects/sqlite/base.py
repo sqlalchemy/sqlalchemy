@@ -1807,7 +1807,6 @@ class SQLiteDialect(default.DefaultDialect):
     supports_multivalues_insert = True
     tuple_in_values = True
     supports_statement_cache = True
-    supports_nesting_cte = True
 
     default_paramstyle = "qmark"
     execution_ctx_cls = SQLiteExecutionContext
