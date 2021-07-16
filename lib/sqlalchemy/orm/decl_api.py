@@ -624,14 +624,14 @@ class registry(object):
         return itertools.chain(
             (
                 manager.mapper
-                for manager in self._managers
+                for manager in list(self._managers)
                 if manager.is_mapped
                 and not manager.mapper.configured
                 and manager.mapper._ready_for_configure
             ),
             (
                 npm
-                for npm in self._non_primary_mappers
+                for npm in list(self._non_primary_mappers)
                 if not npm.configured and npm._ready_for_configure
             ),
         )
