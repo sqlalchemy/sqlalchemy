@@ -1433,6 +1433,12 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_double_nesting_cte_in_cte(self):
+        """
+        Validate that the SELECT in the 2nd nesting CTE does not render
+        the 1st CTE.
+
+        It implies that nesting CTE level is taken in account.
+        """
         select_1_cte = select([literal(1).label("inner_cte")]).cte(
             "nesting_1", nesting=True
         )
