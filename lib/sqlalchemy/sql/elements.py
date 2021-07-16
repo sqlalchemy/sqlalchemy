@@ -4931,6 +4931,10 @@ class TableValuedColumn(NamedColumn):
         self.key = self.name = scalar_alias.name
         self.type = type_
 
+    def _copy_internals(self, clone=_clone, **kw):
+        self.scalar_alias = clone(self.scalar_alias, **kw)
+        self.key = self.name = self.scalar_alias.name
+
     @property
     def _from_objects(self):
         return [self.scalar_alias]

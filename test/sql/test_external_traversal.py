@@ -2231,6 +2231,21 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             "FROM table1 AS table1_1",
         )
 
+    def test_table_valued_column(self):
+        """test #6775"""
+        stmt = select(func.some_json_func(t1.table_valued()))
+
+        self.assert_compile(
+            stmt,
+            "SELECT some_json_func(table1) AS some_json_func_1 FROM table1",
+        )
+
+        self.assert_compile(
+            sql_util.ClauseAdapter(t1.alias()).traverse(stmt),
+            "SELECT some_json_func(table1_1) AS some_json_func_1 "
+            "FROM table1 AS table1_1",
+        )
+
     def test_recursive(self):
         metadata = MetaData()
         a = Table("a", metadata, Column("id", Integer, primary_key=True))
