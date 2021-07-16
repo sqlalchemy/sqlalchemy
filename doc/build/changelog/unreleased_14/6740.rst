@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 6740
+
+    Added some guards against ``KeyError`` in the event system to accommodate
+    the case that the interpreter is shutting down at the same time
+    :meth:`_engine.Engine.dispose` is being called, which would cause stack
+    trace warnings.
+
