@@ -1525,14 +1525,13 @@ class OneToManyTest(_fixtures.FixtureTest):
 
         conn = session.connection()
         user_rows = conn.execute(
-            users.select(users.c.id.in_([u.id]))
+            users.select().where(users.c.id.in_([u.id]))
         ).fetchall()
         eq_(list(user_rows[0]), [u.id, "one2manytester"])
 
         address_rows = conn.execute(
-            addresses.select(
+            addresses.select(order_by=[addresses.c.email_address]).where(
                 addresses.c.id.in_([a.id, a2.id]),
-                order_by=[addresses.c.email_address],
             )
         ).fetchall()
         eq_(list(address_rows[0]), [a2.id, u.id, "lala@test.org"])
@@ -1546,7 +1545,7 @@ class OneToManyTest(_fixtures.FixtureTest):
         session.flush()
 
         address_rows = conn.execute(
-            addresses.select(addresses.c.id == addressid)
+            addresses.select().where(addresses.c.id == addressid)
         ).fetchall()
         eq_(list(address_rows[0]), [addressid, userid, "somethingnew@foo.com"])
         self.assert_(u.id == userid and a2.id == addressid)
@@ -2086,11 +2085,11 @@ class SaveTest(_fixtures.FixtureTest):
 
         conn = session.connection()
         user_rows = conn.execute(
-            users.select(users.c.id.in_([u.foo_id]))
+            users.select().where(users.c.id.in_([u.foo_id]))
         ).fetchall()
         eq_(list(user_rows[0]), [u.foo_id, "multitester"])
         address_rows = conn.execute(
-            addresses.select(addresses.c.id.in_([u.id]))
+            addresses.select().where(addresses.c.id.in_([u.id]))
         ).fetchall()
         eq_(list(address_rows[0]), [u.id, u.foo_id, "multi@test.org"])
 
@@ -2099,11 +2098,11 @@ class SaveTest(_fixtures.FixtureTest):
         session.flush()
 
         user_rows = conn.execute(
-            users.select(users.c.id.in_([u.foo_id]))
+            users.select().where(users.c.id.in_([u.foo_id]))
         ).fetchall()
         eq_(list(user_rows[0]), [u.foo_id, "imnew"])
         address_rows = conn.execute(
-            addresses.select(addresses.c.id.in_([u.id]))
+            addresses.select().where(addresses.c.id.in_([u.id]))
         ).fetchall()
         eq_(list(address_rows[0]), [u.id, u.foo_id, "lala@hey.com"])
 

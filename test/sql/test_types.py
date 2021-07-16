@@ -490,6 +490,8 @@ class _UserDefinedTypeFixture(object):
 
             def bind_processor(self, dialect):
                 def process(value):
+                    if value is None:
+                        value = "<null value>"
                     return "BIND_IN" + value
 
                 return process
@@ -513,6 +515,8 @@ class _UserDefinedTypeFixture(object):
                 ) or (lambda value: value)
 
                 def process(value):
+                    if value is None:
+                        value = "<null value>"
                     return "BIND_IN" + impl_processor(value)
 
                 return process
@@ -535,6 +539,8 @@ class _UserDefinedTypeFixture(object):
             cache_ok = True
 
             def process_bind_param(self, value, dialect):
+                if value is None:
+                    value = u"<null value>"
                 return "BIND_IN" + value
 
             def process_result_value(self, value, dialect):
@@ -548,6 +554,8 @@ class _UserDefinedTypeFixture(object):
             cache_ok = True
 
             def process_bind_param(self, value, dialect):
+                if value is None:
+                    value = 29
                 return value * 10
 
             def process_result_value(self, value, dialect):
@@ -573,6 +581,9 @@ class _UserDefinedTypeFixture(object):
                 ) or (lambda value: value)
 
                 def process(value):
+                    if value is None:
+                        value = u"<null value>"
+
                     return "BIND_IN" + impl_processor(value)
 
                 return process
@@ -654,6 +665,19 @@ class UserDefinedRoundTripTest(_UserDefinedTypeFixture, fixtures.TablesTest):
                 goofy10=9,
             ),
         )
+        connection.execute(
+            users.insert(),
+            dict(
+                user_id=5,
+                goofy=None,
+                goofy2=None,
+                goofy4=None,
+                goofy7=None,
+                goofy8=None,
+                goofy9=None,
+                goofy10=None,
+            ),
+        )
 
     def test_processing(self, connection):
         users = self.tables.users
@@ -662,22 +686,51 @@ class UserDefinedRoundTripTest(_UserDefinedTypeFixture, fixtures.TablesTest):
         result = connection.execute(
             users.select().order_by(users.c.user_id)
         ).fetchall()
-        for assertstr, assertint, assertint2, row in zip(
-            [
-                "BIND_INjackBIND_OUT",
-                "BIND_INlalaBIND_OUT",
-                "BIND_INfredBIND_OUT",
-            ],
-            [1200, 1500, 900],
-            [1800, 2250, 1350],
+        eq_(
             result,
-        ):
-            for col in list(row)[1:5]:
-                eq_(col, assertstr)
-            eq_(row[5], assertint)
-            eq_(row[6], assertint2)
-            for col in row[3], row[4]:
-                assert isinstance(col, util.text_type)
+            [
+                (
+                    2,
+                    "BIND_INjackBIND_OUT",
+                    "BIND_INjackBIND_OUT",
+                    "BIND_INjackBIND_OUT",
+                    "BIND_INjackBIND_OUT",
+                    1200,
+                    1800,
+                    1200,
+                ),
+                (
+                    3,
+                    "BIND_INlalaBIND_OUT",
+                    "BIND_INlalaBIND_OUT",
+                    "BIND_INlalaBIND_OUT",
+                    "BIND_INlalaBIND_OUT",
+                    1500,
+                    2250,
+                    1500,
+                ),
+                (
+                    4,
+                    "BIND_INfredBIND_OUT",
+                    "BIND_INfredBIND_OUT",
+                    "BIND_INfredBIND_OUT",
+                    "BIND_INfredBIND_OUT",
+                    900,
+                    1350,
+                    900,
+                ),
+                (
+                    5,
+                    "BIND_IN<null value>BIND_OUT",
+                    "BIND_IN<null value>BIND_OUT",
+                    "BIND_IN<null value>BIND_OUT",
+                    "BIND_IN<null value>BIND_OUT",
+                    2900,
+                    4350,
+                    2900,
+                ),
+            ],
+        )
 
     def test_plain_in_typedec(self, connection):
         users = self.tables.users
@@ -726,6 +779,64 @@ class UserDefinedRoundTripTest(_UserDefinedTypeFixture, fixtures.TablesTest):
         )
         result = connection.execute(stmt, {"goofy": [15, 9]})
         eq_(result.fetchall(), [(3, 1500), (4, 900)])
+
+
+class BindProcessorInsertValuesTest(UserDefinedRoundTripTest):
+    """related to #6770, test that insert().values() applies to
+    bound parameter handlers including the None value."""
+
+    __backend__ = True
+
+    def _data_fixture(self, connection):
+        users = self.tables.users
+        connection.execute(
+            users.insert().values(
+                user_id=2,
+                goofy="jack",
+                goofy2="jack",
+                goofy4=util.u("jack"),
+                goofy7=util.u("jack"),
+                goofy8=12,
+                goofy9=12,
+                goofy10=12,
+            ),
+        )
+        connection.execute(
+            users.insert().values(
+                user_id=3,
+                goofy="lala",
+                goofy2="lala",
+                goofy4=util.u("lala"),
+                goofy7=util.u("lala"),
+                goofy8=15,
+                goofy9=15,
+                goofy10=15,
+            ),
+        )
+        connection.execute(
+            users.insert().values(
+                user_id=4,
+                goofy="fred",
+                goofy2="fred",
+                goofy4=util.u("fred"),
+                goofy7=util.u("fred"),
+                goofy8=9,
+                goofy9=9,
+                goofy10=9,
+            ),
+        )
+        connection.execute(
+            users.insert().values(
+                user_id=5,
+                goofy=None,
+                goofy2=None,
+                goofy4=None,
+                goofy7=None,
+                goofy8=None,
+                goofy9=None,
+                goofy10=None,
+            ),
+        )
 
 
 class UserDefinedTest(

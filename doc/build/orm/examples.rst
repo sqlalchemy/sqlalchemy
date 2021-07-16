@@ -10,7 +10,7 @@ runnable and can be found in the ``/examples`` directory of the
 distribution.   Descriptions and source code for all can be found here.
 
 Additional SQLAlchemy examples, some user contributed, are available on the
-wiki at `<http://www.sqlalchemy.org/trac/wiki/UsageRecipes>`_.
+wiki at `<https://www.sqlalchemy.org/trac/wiki/UsageRecipes>`_.
 
 
 Mapping Recipes

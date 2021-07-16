@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """Logic to map Python classes to and from selectables.
 
@@ -1729,7 +1729,7 @@ class Mapper(
             if isinstance(col, expression.Label):
                 # new in 1.4, get column property against expressions
                 # to be addressable in subqueries
-                col.key = col._key_label = key
+                col.key = col._tq_key_label = key
 
             self.columns.add(col, key)
             for col in prop.columns + prop._orig_columns:

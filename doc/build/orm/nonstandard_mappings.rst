@@ -197,5 +197,5 @@ directly to mapped table columns.   The feature was removed and replaced
 with a simple recipe-oriented approach to accomplishing this task
 without any ambiguity of instrumentation - to create new subclasses, each
 mapped individually.  This pattern is now available as a recipe at `Entity Name
-<http://www.sqlalchemy.org/trac/wiki/UsageRecipes/EntityName>`_.
+<https://www.sqlalchemy.org/trac/wiki/UsageRecipes/EntityName>`_.
 

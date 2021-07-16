@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 r"""Define an extension to the :mod:`sqlalchemy.ext.declarative` system
 which automatically generates mapped classes and relationships from a database
@@ -185,7 +185,7 @@ are known as :func:`.classname_for_table`,
 and :func:`.name_for_collection_relationship`.  Any or all of these
 functions are provided as in the example below, where we use a "camel case"
 scheme for class names and a "pluralizer" for collection names using the
-`Inflect <https://pypi.python.org/pypi/inflect>`_ package::
+`Inflect <https://pypi.org/project/inflect>`_ package::
 
     import re
     import inflect

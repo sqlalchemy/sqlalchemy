@@ -223,6 +223,7 @@ in this case the ``uselist`` parameter::
         parent = relationship("Parent", backref=backref("child", uselist=False))
 
 
+
 .. _relationships_many_to_many:
 
 Many To Many
@@ -547,7 +548,7 @@ undefined class may also be specified either as Python functions, or more
 commonly as strings.   For most of these
 arguments except that of the main argument, string inputs are
 **evaluated as Python expressions using Python's built-in eval() function**,
-as they are intended to recieve complete SQL expressions.
+as they are intended to receive complete SQL expressions.
 
 .. warning:: As the Python ``eval()`` function is used to interpret the
    late-evaluated string arguments passed to :func:`_orm.relationship` mapper

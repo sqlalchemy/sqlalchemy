@@ -506,8 +506,9 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
         query = (
-            users.select(users.c.id == 7)
-            .union(users.select(users.c.id > 7))
+            users.select()
+            .where(users.c.id == 7)
+            .union(users.select().where(users.c.id > 7))
             .alias("ulist")
             .outerjoin(addresses)
             .select(order_by=[text("ulist.id"), addresses.c.id])
@@ -541,8 +542,9 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         # the adapter created by contains_eager()
         adalias = addresses.alias()
         query = (
-            users.select(users.c.id == 7)
-            .union(users.select(users.c.id > 7))
+            users.select()
+            .where(users.c.id == 7)
+            .union(users.select().where(users.c.id > 7))
             .alias("ulist")
             .outerjoin(adalias)
             .select(order_by=[text("ulist.id"), adalias.c.id])
@@ -616,7 +618,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         # mapper(User, users, properties={"addresses": relationship(Address)})
         # mapper(Address, addresses)
 
-        sel = users.select(users.c.id.in_([7, 8]))
+        sel = users.select().where(users.c.id.in_([7, 8]))
         sess = fixture_session()
 
         with self._expect_implicit_subquery():
@@ -693,7 +695,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
         sess = fixture_session()
-        sel = users.select(users.c.id.in_([7, 8]))
+        sel = users.select().where(users.c.id.in_([7, 8]))
 
         with self._expect_implicit_subquery():
             eq_(
@@ -718,7 +720,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_join_no_order_by(self):
         User, users = self.classes.User, self.tables.users
 
-        sel = users.select(users.c.id.in_([7, 8]))
+        sel = users.select().where(users.c.id.in_([7, 8]))
         sess = fixture_session()
 
         with self._expect_implicit_subquery():
@@ -734,7 +736,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        sel = users.select(users.c.id.in_([7, 8]))
+        sel = users.select().where(users.c.id.in_([7, 8]))
         sess = fixture_session()
 
         def go():
@@ -3297,8 +3299,9 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         )
 
         query = (
-            users.select(users.c.id == 7)
-            .union(users.select(users.c.id > 7))
+            users.select()
+            .where(users.c.id == 7)
+            .union(users.select().where(users.c.id > 7))
             .alias("ulist")
             .outerjoin(addresses)
             .select(order_by=[text("ulist.id"), addresses.c.id])
@@ -3746,7 +3749,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
             assert list(sess.query(User).values()) == list()
 
-        sel = users.select(User.id.in_([7, 8])).alias()
+        sel = users.select().where(User.id.in_([7, 8])).alias()
         q = sess.query(User)
         with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
             q2 = q.select_entity_from(sel).values(User.name)
@@ -3854,7 +3857,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
             assert list(sess.query(User).values()) == list()
 
-        sel = users.select(User.id.in_([7, 8])).alias()
+        sel = users.select().where(User.id.in_([7, 8])).alias()
         q = sess.query(User)
         u2 = aliased(User)
         with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):

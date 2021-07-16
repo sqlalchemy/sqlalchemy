@@ -1788,7 +1788,7 @@
         :tags: sqlite, bug
 
         Support has been added to SQLite type reflection to fully support
-        the "type affinity" contract specified at http://www.sqlite.org/datatype3.html.
+        the "type affinity" contract specified at https://www.sqlite.org/datatype3.html.
         In this scheme, keywords like ``INT``, ``CHAR``, ``BLOB`` or
         ``REAL`` located in the type name generically associate the type with
         one of five affinities.  Pull request courtesy Erich Blume.

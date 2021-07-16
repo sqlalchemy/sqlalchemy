@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 """Public API functions and helpers for declarative."""
 from __future__ import absolute_import
 
@@ -624,14 +624,14 @@ class registry(object):
         return itertools.chain(
             (
                 manager.mapper
-                for manager in self._managers
+                for manager in list(self._managers)
                 if manager.is_mapped
                 and not manager.mapper.configured
                 and manager.mapper._ready_for_configure
             ),
             (
                 npm
-                for npm in self._non_primary_mappers
+                for npm in list(self._non_primary_mappers)
                 if not npm.configured and npm._ready_for_configure
             ),
         )

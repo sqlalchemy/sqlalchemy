@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 r"""
 
@@ -77,7 +77,7 @@ the SQLAlchemy ``returning()`` method, such as::
     print(raises.fetchall())
 
 
-.. _dialects: http://mc-computing.com/Databases/Firebird/SQL_Dialect.html
+.. _dialects: https://mc-computing.com/Databases/Firebird/SQL_Dialect.html
 """
 
 import datetime
@@ -539,7 +539,7 @@ class FBCompiler(sql.compiler.SQLCompiler):
 
     def returning_clause(self, stmt, returning_cols):
         columns = [
-            self._label_select_column(None, c, True, False, {})
+            self._label_returning_column(stmt, c)
             for c in expression._select_iterables(returning_cols)
         ]
 
@@ -553,7 +553,7 @@ class FBDDLCompiler(sql.compiler.DDLCompiler):
         """Generate a ``CREATE GENERATOR`` statement for the sequence."""
 
         # no syntax for these
-        # http://www.firebirdsql.org/manual/generatorguide-sqlsyntax.html
+        # https://www.firebirdsql.org/manual/generatorguide-sqlsyntax.html
         if create.element.start is not None:
             raise NotImplementedError(
                 "Firebird SEQUENCE doesn't support START WITH"
@@ -716,7 +716,7 @@ class FBDialect(default.DefaultDialect):
     def get_table_names(self, connection, schema=None, **kw):
         # there are two queries commonly mentioned for this.
         # this one, using view_blr, is at the Firebird FAQ among other places:
-        # http://www.firebirdfaq.org/faq174/
+        # https://www.firebirdfaq.org/faq174/
         s = """
         select rdb$relation_name
         from rdb$relations
@@ -726,7 +726,7 @@ class FBDialect(default.DefaultDialect):
 
         # the other query is this one.  It's not clear if there's really
         # any difference between these two.  This link:
-        # http://www.alberton.info/firebird_sql_meta_info.html#.Ur3vXfZGni8
+        # https://www.alberton.info/firebird_sql_meta_info.html#.Ur3vXfZGni8
         # states them as interchangeable.  Some discussion at [ticket:2898]
         # SELECT DISTINCT rdb$relation_name
         # FROM rdb$relation_fields
@@ -739,7 +739,7 @@ class FBDialect(default.DefaultDialect):
 
     @reflection.cache
     def get_view_names(self, connection, schema=None, **kw):
-        # see http://www.firebirdfaq.org/faq174/
+        # see https://www.firebirdfaq.org/faq174/
         s = """
         select rdb$relation_name
         from rdb$relations
@@ -880,7 +880,7 @@ class FBDialect(default.DefaultDialect):
                 # the value comes down as "DEFAULT 'value'": there may be
                 # more than one whitespace around the "DEFAULT" keyword
                 # and it may also be lower case
-                # (see also http://tracker.firebirdsql.org/browse/CORE-356)
+                # (see also https://tracker.firebirdsql.org/browse/CORE-356)
                 defexpr = row["fdefault"].lstrip()
                 assert defexpr[:8].rstrip().upper() == "DEFAULT", (
                     "Unrecognized default value: %s" % defexpr

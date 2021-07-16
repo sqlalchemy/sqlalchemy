@@ -80,6 +80,8 @@ cursor and provides an async/await API, such as an async iterator::
         async for row in async_result:
             print("row: %s" % (row, ))
 
+.. _asyncio_orm:
+
 
 Synopsis - ORM
 ---------------

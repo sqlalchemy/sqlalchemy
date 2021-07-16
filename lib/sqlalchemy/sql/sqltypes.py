@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """SQL specific types.
 
@@ -608,7 +608,7 @@ class Numeric(_LookupExpressionAdapter, TypeEngine):
 
        The Python ``decimal.Decimal`` class is generally slow
        performing; cPython 3.3 has now switched to use the `cdecimal
-       <http://pypi.python.org/pypi/cdecimal/>`_ library natively. For
+       <https://pypi.org/project/cdecimal/>`_ library natively. For
        older Python versions, the ``cdecimal`` library can be patched
        into any application where it will replace the ``decimal``
        library fully, however this needs to be applied globally and
@@ -874,7 +874,7 @@ class DateTime(_LookupExpressionAdapter, TypeEngine):
     @util.memoized_property
     def _expression_adaptations(self):
 
-        # Based on http://www.postgresql.org/docs/current/\
+        # Based on https://www.postgresql.org/docs/current/\
         # static/functions-datetime.html.
 
         return {
@@ -898,7 +898,7 @@ class Date(_LookupExpressionAdapter, TypeEngine):
 
     @util.memoized_property
     def _expression_adaptations(self):
-        # Based on http://www.postgresql.org/docs/current/\
+        # Based on https://www.postgresql.org/docs/current/\
         # static/functions-datetime.html.
 
         return {
@@ -939,7 +939,7 @@ class Time(_LookupExpressionAdapter, TypeEngine):
 
     @util.memoized_property
     def _expression_adaptations(self):
-        # Based on http://www.postgresql.org/docs/current/\
+        # Based on https://www.postgresql.org/docs/current/\
         # static/functions-datetime.html.
 
         return {
@@ -1997,7 +1997,7 @@ class Boolean(Emulated, TypeEngine, SchemaType):
 class _AbstractInterval(_LookupExpressionAdapter, TypeEngine):
     @util.memoized_property
     def _expression_adaptations(self):
-        # Based on http://www.postgresql.org/docs/current/\
+        # Based on https://www.postgresql.org/docs/current/\
         # static/functions-datetime.html.
 
         return {
@@ -2370,6 +2370,14 @@ class JSON(Indexable, TypeEngine):
               values passed to :paramref:`_schema.Column.default` and
               :paramref:`_schema.Column.server_default`; a value of ``None``
               passed for these parameters means "no default present".
+
+              Additionally, when used in SQL comparison expressions, the
+              Python value ``None`` continues to refer to SQL null, and not
+              JSON NULL.  The :paramref:`_types.JSON.none_as_null` flag refers
+              explicitly to the **persistence** of the value within an
+              INSERT or UPDATE statement.   The :attr:`_types.JSON.NULL`
+              value should be used for SQL expressions that wish to compare to
+              JSON null.
 
          .. seealso::
 

@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """High level utilities which build upon other modules here.
 
@@ -853,14 +853,14 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
         if isinstance(col, FromClause) and not isinstance(
             col, functions.FunctionElement
         ):
-            if self.adapt_from_selectables:
-                for adp in self.adapt_from_selectables:
-                    if adp.is_derived_from(col):
-                        break
-                else:
-                    return None
 
             if self.selectable.is_derived_from(col):
+                if self.adapt_from_selectables:
+                    for adp in self.adapt_from_selectables:
+                        if adp.is_derived_from(col):
+                            break
+                    else:
+                        return None
                 return self.selectable
             elif isinstance(col, Alias) and isinstance(
                 col.element, TableClause

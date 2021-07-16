@@ -217,7 +217,7 @@ class SelectableTest(
 
     def test_labels_anon_w_separate_key_subquery(self):
         label = select(table1.c.col1).label(None)
-        label.key = label._key_label = "bar"
+        label.key = label._tq_key_label = "bar"
 
         s1 = select(label)
 
@@ -234,7 +234,7 @@ class SelectableTest(
 
     def test_labels_anon_generate_binds_subquery(self):
         label = select(table1.c.col1).label(None)
-        label.key = label._key_label = "bar"
+        label.key = label._tq_key_label = "bar"
 
         s1 = select(label)
 
@@ -901,9 +901,42 @@ class SelectableTest(
             table1.c.col1 == 10,
             func.count(table1.c.col1),
             literal_column("x"),
-        ).subquery()
+        )
 
-        eq_(s1.c.keys(), ["_no_label", "_no_label_1", "count", "x"])
+        # the reason we return "_no_label" is because we dont have a system
+        # right now that is guaranteed to use the identical label in
+        # selected_columns as will be used when we compile the statement, and
+        # this includes the creation of _result_map right now which gets loaded
+        # with lots of unprocessed anon symbols for these kinds of cases,
+        # and we don't have a fully comprehensive approach for this to always
+        # do the right thing; as it is *vastly* simpler for the user to please
+        # use a label(), "_no_label" is meant to encourage this rather than
+        # relying on a system that we don't fully have on this end.
+        eq_(s1.subquery().c.keys(), ["_no_label", "_no_label_1", "count", "x"])
+
+        self.assert_compile(
+            s1,
+            "SELECT table1.col1 = :col1_1 AS anon_1, "
+            "table1.col1 = :col1_2 AS anon_2, count(table1.col1) AS count_1, "
+            "x FROM table1",
+        )
+        eq_(
+            s1.selected_columns.keys(),
+            ["_no_label", "_no_label_1", "count", "x"],
+        )
+
+        eq_(
+            select(s1.subquery()).selected_columns.keys(),
+            ["_no_label", "_no_label_1", "_no_label_2", "x"],
+        )
+
+        self.assert_compile(
+            select(s1.subquery()),
+            "SELECT anon_2.anon_1, anon_2.anon_3, anon_2.count_1, anon_2.x "
+            "FROM (SELECT table1.col1 = :col1_1 AS anon_1, "
+            "table1.col1 = :col1_2 AS anon_3, "
+            "count(table1.col1) AS count_1, x FROM table1) AS anon_2",
+        )
 
     def test_union_alias_dupe_keys(self):
         s1 = select(table1.c.col1, table1.c.col2, table2.c.col1)
@@ -965,9 +998,11 @@ class SelectableTest(
         self.assert_compile(
             stmt,
             "SELECT anon_1.col1, anon_1.col2, anon_1.col1_1 FROM "
-            "((SELECT table1.col1, table1.col2, table2.col1 AS col1_1 "
+            "((SELECT table1.col1 AS col1, table1.col2 AS col2, table2.col1 "
+            "AS col1_1 "
             "FROM table1, table2 LIMIT :param_1) UNION "
-            "(SELECT table2.col1, table2.col2, table2.col3 FROM table2 "
+            "(SELECT table2.col1 AS col1, table2.col2 AS col2, "
+            "table2.col3 AS col3 FROM table2 "
             "LIMIT :param_2)) AS anon_1",
         )
 
@@ -2422,9 +2457,9 @@ class ReduceTest(fixtures.TestBase, AssertsExecutionResults):
 
         item_join = polymorphic_union(
             {
-                "BaseItem": base_item_table.select(
-                    base_item_table.c.child_name == "BaseItem"
-                ).subquery(),
+                "BaseItem": base_item_table.select()
+                .where(base_item_table.c.child_name == "BaseItem")
+                .subquery(),
                 "Item": base_item_table.join(item_table),
             },
             None,

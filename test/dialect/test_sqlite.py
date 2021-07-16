@@ -667,7 +667,7 @@ class DialectTest(
         that start and end with quotes.
 
         SQLite claims to have fixed this in
-        http://www.sqlite.org/src/info/600482d161, however
+        https://www.sqlite.org/src/info/600482d161, however
         it still fails if the FK points to a table name that actually
         has quotes as part of its name.
 

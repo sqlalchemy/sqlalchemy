@@ -309,7 +309,9 @@ class QueryTest(fixtures.TablesTest):
         connection.execute(users.insert(), dict(user_id=8, user_name="fred"))
 
         u = bindparam("userid")
-        s = users.select(and_(users.c.user_name == u, users.c.user_name == u))
+        s = users.select().where(
+            and_(users.c.user_name == u, users.c.user_name == u)
+        )
         r = connection.execute(s, dict(userid="fred")).fetchall()
         assert len(r) == 1
 
@@ -581,20 +583,20 @@ class QueryTest(fixtures.TablesTest):
         connection.execute(users.insert(), dict(user_id=8, user_name="fred"))
         connection.execute(users.insert(), dict(user_id=9, user_name=None))
 
-        s = users.select(users.c.user_name.in_([]))
+        s = users.select().where(users.c.user_name.in_([]))
         r = connection.execute(s).fetchall()
         # No username is in empty set
         assert len(r) == 0
 
-        s = users.select(not_(users.c.user_name.in_([])))
+        s = users.select().where(not_(users.c.user_name.in_([])))
         r = connection.execute(s).fetchall()
         assert len(r) == 3
 
-        s = users.select(users.c.user_name.in_(["jack", "fred"]))
+        s = users.select().where(users.c.user_name.in_(["jack", "fred"]))
         r = connection.execute(s).fetchall()
         assert len(r) == 2
 
-        s = users.select(not_(users.c.user_name.in_(["jack", "fred"])))
+        s = users.select().where(not_(users.c.user_name.in_(["jack", "fred"])))
         r = connection.execute(s).fetchall()
         # Null values are not outside any set
         assert len(r) == 0
@@ -842,7 +844,7 @@ class QueryTest(fixtures.TablesTest):
 
         u = bindparam("search_key", type_=String)
 
-        s = users.select(not_(u.in_([])))
+        s = users.select().where(not_(u.in_([])))
         r = connection.execute(s, dict(search_key="john")).fetchall()
         assert len(r) == 3
         r = connection.execute(s, dict(search_key=None)).fetchall()
@@ -857,7 +859,7 @@ class QueryTest(fixtures.TablesTest):
         connection.execute(users.insert(), dict(user_id=8, user_name="fred"))
         connection.execute(users.insert(), dict(user_id=9, user_name=None))
 
-        s = users.select(not_(literal("john").in_([])))
+        s = users.select().where(not_(literal("john").in_([])))
         r = connection.execute(s).fetchall()
         assert len(r) == 3
 
@@ -879,13 +881,13 @@ class QueryTest(fixtures.TablesTest):
             ],
         )
 
-        s = users.select(users.c.user_name.in_([]) == True)  # noqa
+        s = users.select().where(users.c.user_name.in_([]) == True)  # noqa
         r = connection.execute(s).fetchall()
         assert len(r) == 0
-        s = users.select(users.c.user_name.in_([]) == False)  # noqa
+        s = users.select().where(users.c.user_name.in_([]) == False)  # noqa
         r = connection.execute(s).fetchall()
         assert len(r) == 3
-        s = users.select(users.c.user_name.in_([]) == None)  # noqa
+        s = users.select().where(users.c.user_name.in_([]) == None)  # noqa
         r = connection.execute(s).fetchall()
         assert len(r) == 0
 
@@ -1200,7 +1202,7 @@ class CompoundTest(fixtures.TablesTest):
                 t2.c.col2.in_(["t2col2r2", "t2col2r3"]),
             ),
         )
-        u = union(s1, s2, order_by=["col3", "col4"])
+        u = union(s1, s2).order_by("col3", "col4")
 
         wanted = [
             ("aaa", "aaa"),
@@ -1223,7 +1225,7 @@ class CompoundTest(fixtures.TablesTest):
                 t2.c.col2.in_(["t2col2r2", "t2col2r3"]),
             ),
         )
-        u = union(s1, s2, order_by=["col3", "col4"])
+        u = union(s1, s2).order_by("col3", "col4")
 
         wanted = [
             ("aaa", "aaa"),

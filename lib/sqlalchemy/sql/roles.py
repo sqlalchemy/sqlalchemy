@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 from .. import util
 
@@ -180,6 +180,10 @@ class SelectStatementRole(StatementRole, ReturnsRowsRole):
 
 class HasCTERole(ReturnsRowsRole):
     pass
+
+
+class IsCTERole(SQLRole):
+    _role_name = "CTE object"
 
 
 class CompoundElementRole(AllowsLambdaRole, SQLRole):

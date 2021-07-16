@@ -3,13 +3,13 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 r"""
 .. dialect:: postgresql+psycopg2cffi
     :name: psycopg2cffi
     :dbapi: psycopg2cffi
     :connectstring: postgresql+psycopg2cffi://user:password@host:port/dbname[?key=value&key=value...]
-    :url: http://pypi.python.org/pypi/psycopg2cffi/
+    :url: https://pypi.org/project/psycopg2cffi/
 
 ``psycopg2cffi`` is an adaptation of ``psycopg2``, using CFFI for the C
 layer. This makes it suitable for use in e.g. PyPy. Documentation

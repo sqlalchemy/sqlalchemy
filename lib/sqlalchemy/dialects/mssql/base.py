@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 """
 .. dialect:: mssql
     :name: Microsoft SQL Server
@@ -410,7 +410,7 @@ Large Text/Binary Type Deprecation
 ----------------------------------
 
 Per
-`SQL Server 2012/2014 Documentation <http://technet.microsoft.com/en-us/library/ms187993.aspx>`_,
+`SQL Server 2012/2014 Documentation <https://technet.microsoft.com/en-us/library/ms187993.aspx>`_,
 the ``NTEXT``, ``TEXT`` and ``IMAGE`` datatypes are to be removed from SQL
 Server in a future release.   SQLAlchemy normally relates these types to the
 :class:`.UnicodeText`, :class:`_expression.TextClause` and
@@ -740,7 +740,7 @@ following ALTER DATABASE commands executed at the SQL prompt::
     ALTER DATABASE MyDatabase SET READ_COMMITTED_SNAPSHOT ON
 
 Background on SQL Server snapshot isolation is available at
-http://msdn.microsoft.com/en-us/library/ms175095.aspx.
+https://msdn.microsoft.com/en-us/library/ms175095.aspx.
 
 """  # noqa
 
@@ -790,7 +790,7 @@ from ...util import update_wrapper
 from ...util.langhelpers import public_factory
 
 
-# http://sqlserverbuilds.blogspot.com/
+# https://sqlserverbuilds.blogspot.com/
 MS_2017_VERSION = (14,)
 MS_2016_VERSION = (13,)
 MS_2014_VERSION = (12,)
@@ -2010,11 +2010,9 @@ class MSSQLCompiler(compiler.SQLCompiler):
         # necessarily used an expensive KeyError in order to match.
 
         columns = [
-            self._label_select_column(
-                None,
+            self._label_returning_column(
+                stmt,
                 adapter.traverse(c),
-                True,
-                False,
                 {"result_map_targets": (c,)},
             )
             for c in expression._select_iterables(returning_cols)

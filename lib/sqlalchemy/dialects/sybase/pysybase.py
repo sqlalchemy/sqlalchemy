@@ -3,14 +3,14 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """
 .. dialect:: sybase+pysybase
     :name: Python-Sybase
     :dbapi: Sybase
     :connectstring: sybase+pysybase://<username>:<password>@<dsn>/[database name]
-    :url: http://python-sybase.sourceforge.net/
+    :url: https://python-sybase.sourceforge.net/
 
 Unicode Support
 ---------------

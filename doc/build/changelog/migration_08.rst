@@ -1500,7 +1500,7 @@ structures and pickled objects.   However, the
 implementation was never reasonable and forced a very
 inefficient mode of usage on the unit-of-work which caused
 an expensive scan of all objects to take place during flush.
-In 0.7, the `sqlalchemy.ext.mutable <http://docs.sqlalchemy.
+In 0.7, the `sqlalchemy.ext.mutable <https://docs.sqlalchemy.
 org/en/latest/orm/extensions/mutable.html>`_ extension was
 introduced so that user-defined datatypes can appropriately
 send events to the unit of work as changes occur.

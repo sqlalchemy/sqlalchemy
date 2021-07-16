@@ -249,6 +249,33 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "'y', 'z')))",
         )
 
+    def test_cast_enum_schema(self):
+        """test #6739"""
+        e1 = Enum("x", "y", "z", name="somename")
+        e2 = Enum("x", "y", "z", name="somename", schema="someschema")
+
+        stmt = select(cast(column("foo"), e1), cast(column("bar"), e2))
+        self.assert_compile(
+            stmt,
+            "SELECT CAST(foo AS somename) AS foo, "
+            "CAST(bar AS someschema.somename) AS bar",
+        )
+
+    def test_cast_enum_schema_translate(self):
+        """test #6739"""
+        e1 = Enum("x", "y", "z", name="somename")
+        e2 = Enum("x", "y", "z", name="somename", schema="someschema")
+        schema_translate_map = {None: "bat", "someschema": "hoho"}
+
+        stmt = select(cast(column("foo"), e1), cast(column("bar"), e2))
+        self.assert_compile(
+            stmt,
+            "SELECT CAST(foo AS bat.somename) AS foo, "
+            "CAST(bar AS hoho.somename) AS bar",
+            schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
+        )
+
     def test_create_type_schema_translate(self):
         e1 = Enum("x", "y", "z", name="somename")
         e2 = Enum("x", "y", "z", name="somename", schema="someschema")
@@ -281,6 +308,27 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             CreateTable(table),
             "CREATE TABLE foo.some_table (q foo.somename, p bar.somename)",
+            schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
+        )
+
+    def test_create_table_array_embedded_schema_type_schema_translate(self):
+        """test #6739"""
+        e1 = Enum("x", "y", "z", name="somename")
+        e2 = Enum("x", "y", "z", name="somename", schema="someschema")
+        schema_translate_map = {None: "foo", "someschema": "bar"}
+
+        table = Table(
+            "some_table",
+            MetaData(),
+            Column("q", PG_ARRAY(e1)),
+            Column("p", PG_ARRAY(e2)),
+        )
+        from sqlalchemy.schema import CreateTable
+
+        self.assert_compile(
+            CreateTable(table),
+            "CREATE TABLE foo.some_table (q foo.somename[], p bar.somename[])",
             schema_translate_map=schema_translate_map,
             render_schema_translate=True,
         )
@@ -1034,87 +1082,93 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(),
+            table1.select().where(table1.c.myid == 7).with_for_update(),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s FOR UPDATE",
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(nowait=True),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(nowait=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s FOR UPDATE NOWAIT",
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                skip_locked=True
-            ),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(skip_locked=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s "
             "FOR UPDATE SKIP LOCKED",
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(read=True),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(read=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s FOR SHARE",
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                read=True, nowait=True
-            ),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(read=True, nowait=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s FOR SHARE NOWAIT",
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                key_share=True, nowait=True
-            ),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(key_share=True, nowait=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s "
             "FOR NO KEY UPDATE NOWAIT",
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                key_share=True, read=True, nowait=True
-            ),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(key_share=True, read=True, nowait=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s "
             "FOR KEY SHARE NOWAIT",
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                read=True, skip_locked=True
-            ),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(read=True, skip_locked=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s "
             "FOR SHARE SKIP LOCKED",
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                of=table1.c.myid
-            ),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(of=table1.c.myid),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s "
             "FOR UPDATE OF mytable",
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                read=True, nowait=True, of=table1
-            ),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(read=True, nowait=True, of=table1),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s "
             "FOR SHARE OF mytable NOWAIT",
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(
                 key_share=True, read=True, nowait=True, of=table1
             ),
             "SELECT mytable.myid, mytable.name, mytable.description "
@@ -1123,16 +1177,18 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                read=True, nowait=True, of=table1.c.myid
-            ),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(read=True, nowait=True, of=table1.c.myid),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s "
             "FOR SHARE OF mytable NOWAIT",
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(
                 read=True, nowait=True, of=[table1.c.myid, table1.c.name]
             ),
             "SELECT mytable.myid, mytable.name, mytable.description "
@@ -1141,7 +1197,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(
                 read=True,
                 skip_locked=True,
                 of=[table1.c.myid, table1.c.name],
@@ -1153,7 +1211,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(
                 skip_locked=True, of=[table1.c.myid, table1.c.name]
             ),
             "SELECT mytable.myid, mytable.name, mytable.description "
@@ -1162,7 +1222,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(
                 read=True, skip_locked=True, of=[table1.c.myid, table1.c.name]
             ),
             "SELECT mytable.myid, mytable.name, mytable.description "
@@ -1171,7 +1233,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(
                 key_share=True, nowait=True, of=[table1.c.myid, table1.c.name]
             ),
             "SELECT mytable.myid, mytable.name, mytable.description "
@@ -1180,7 +1244,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(
                 key_share=True,
                 skip_locked=True,
                 of=[table1.c.myid, table1.c.name],
@@ -1191,7 +1257,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(
                 key_share=True, of=[table1.c.myid, table1.c.name]
             ),
             "SELECT mytable.myid, mytable.name, mytable.description "
@@ -1200,52 +1268,54 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(key_share=True),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(key_share=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s "
             "FOR NO KEY UPDATE",
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                read=True, key_share=True
-            ),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(read=True, key_share=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s "
             "FOR KEY SHARE",
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                read=True, key_share=True, of=table1
-            ),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(read=True, key_share=True, of=table1),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s "
             "FOR KEY SHARE OF mytable",
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                read=True, of=table1
-            ),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(read=True, of=table1),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s "
             "FOR SHARE OF mytable",
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                read=True, key_share=True, skip_locked=True
-            ),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(read=True, key_share=True, skip_locked=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s "
             "FOR KEY SHARE SKIP LOCKED",
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                key_share=True, skip_locked=True
-            ),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(key_share=True, skip_locked=True),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s "
             "FOR NO KEY UPDATE SKIP LOCKED",
@@ -1253,9 +1323,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         ta = table1.alias()
         self.assert_compile(
-            ta.select(ta.c.myid == 7).with_for_update(
-                of=[ta.c.myid, ta.c.name]
-            ),
+            ta.select()
+            .where(ta.c.myid == 7)
+            .with_for_update(of=[ta.c.myid, ta.c.name]),
             "SELECT mytable_1.myid, mytable_1.name, mytable_1.description "
             "FROM mytable AS mytable_1 "
             "WHERE mytable_1.myid = %(myid_1)s FOR UPDATE OF mytable_1",
@@ -1264,7 +1334,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         table2 = table("table2", column("mytable_id"))
         join = table2.join(table1, table2.c.mytable_id == table1.c.myid)
         self.assert_compile(
-            join.select(table2.c.mytable_id == 7).with_for_update(of=[join]),
+            join.select()
+            .where(table2.c.mytable_id == 7)
+            .with_for_update(of=[join]),
             "SELECT table2.mytable_id, "
             "mytable.myid, mytable.name, mytable.description "
             "FROM table2 "
@@ -1275,7 +1347,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         join = table2.join(ta, table2.c.mytable_id == ta.c.myid)
         self.assert_compile(
-            join.select(table2.c.mytable_id == 7).with_for_update(of=[join]),
+            join.select()
+            .where(table2.c.mytable_id == 7)
+            .with_for_update(of=[join]),
             "SELECT table2.mytable_id, "
             "mytable_1.myid, mytable_1.name, mytable_1.description "
             "FROM table2 "
@@ -1287,9 +1361,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         # ensure of=text() for of works
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                of=text("table1")
-            ),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(of=text("table1")),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s "
             "FOR UPDATE OF table1",
@@ -1297,9 +1371,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         # ensure literal_column of works
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(
-                of=literal_column("table1")
-            ),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(of=literal_column("table1")),
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable WHERE mytable.myid = %(myid_1)s "
             "FOR UPDATE OF table1",
@@ -1312,7 +1386,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            table1.select(table1.c.myid == 7).with_for_update(of=table1),
+            table1.select()
+            .where(table1.c.myid == 7)
+            .with_for_update(of=table1),
             "SELECT testschema.mytable.myid, testschema.mytable.name "
             "FROM testschema.mytable "
             "WHERE testschema.mytable.myid = %(myid_1)s "
@@ -2351,6 +2427,32 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
             "DO NOTHING",
         )
 
+    def test_do_nothing_super_long_name_constraint_target(self):
+        """test #6755"""
+
+        m = MetaData(
+            naming_convention={"uq": "%(table_name)s_%(column_0_N_name)s_key"}
+        )
+
+        uq = UniqueConstraint("some_column_name_thats_really_really_long_too")
+        Table(
+            "some_table_name_thats_really_really",
+            m,
+            Column("some_column_name_thats_really_really_long_too", Integer),
+            uq,
+        )
+
+        i = insert(self.table1, values=dict(name="foo"))
+
+        i = i.on_conflict_do_nothing(constraint=uq)
+        self.assert_compile(
+            i,
+            "INSERT INTO mytable (name) VALUES (%(name)s) ON CONFLICT "
+            "ON CONSTRAINT "
+            "some_table_name_thats_really_really_some_column_name_th_f7ab "
+            "DO NOTHING",
+        )
+
     def test_do_nothing_quoted_named_constraint_target(self):
         """test #6696"""
         i = insert(self.table1, values=dict(name="foo"))
@@ -2518,13 +2620,37 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             stmt,
             "WITH i_upsert AS "
-            "(INSERT INTO mytable (name) VALUES (%(name)s) "
+            "(INSERT INTO mytable (name) VALUES (%(param_1)s) "
             "ON CONFLICT (name, description) "
             "WHERE description != %(description_1)s "
             "DO UPDATE SET name = excluded.name "
             "WHERE mytable.name != excluded.name RETURNING 1) "
             "SELECT i_upsert.1 "
             "FROM i_upsert",
+        )
+
+    def test_combined_with_cte(self):
+        t = table("t", column("c1"), column("c2"))
+
+        delete_statement_cte = t.delete().where(t.c.c1 < 1).cte("deletions")
+
+        insert_stmt = insert(t).values([{"c1": 1, "c2": 2}])
+        update_stmt = insert_stmt.on_conflict_do_update(
+            index_elements=[t.c.c1],
+            set_={
+                col.name: col
+                for col in insert_stmt.excluded
+                if col.name in ("c1", "c2")
+            },
+        ).add_cte(delete_statement_cte)
+
+        self.assert_compile(
+            update_stmt,
+            "WITH deletions AS (DELETE FROM t WHERE t.c1 < %(c1_1)s) "
+            "INSERT INTO t (c1, c2) VALUES (%(c1_m0)s, %(c2_m0)s) "
+            "ON CONFLICT (c1) DO UPDATE SET c1 = excluded.c1, "
+            "c2 = excluded.c2",
+            checkparams={"c1_m0": 1, "c2_m0": 2, "c1_1": 1},
         )
 
     def test_quote_raw_string_col(self):

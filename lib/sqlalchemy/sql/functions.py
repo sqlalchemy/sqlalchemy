@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """SQL function API, factories, and built-in functions.
 
@@ -124,6 +124,14 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
         self.clause_expr = ClauseList(
             operator=operators.comma_op, group_contents=True, *args
         ).self_group()
+
+    _non_anon_label = None
+
+    @property
+    def _proxy_key(self):
+        return super(FunctionElement, self)._proxy_key or getattr(
+            self, "name", None
+        )
 
     def _execute_on_connection(
         self, connection, multiparams, params, execution_options

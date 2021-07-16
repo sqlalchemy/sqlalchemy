@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """sqlalchemy.orm.interfaces.LoaderStrategy
    implementations, and related MapperOptions."""
@@ -695,18 +695,27 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
     def init_class_attribute(self, mapper):
         self.is_class_level = True
 
-        active_history = (
-            self.parent_property.active_history
-            or self.parent_property.direction is not interfaces.MANYTOONE
-            or not self.use_get
+        _legacy_inactive_history_style = (
+            self.parent_property._legacy_inactive_history_style
         )
 
-        # MANYTOONE currently only needs the
-        # "old" value for delete-orphan
-        # cascades.  the required _SingleParentValidator
-        # will enable active_history
-        # in that case.  otherwise we don't need the
-        # "old" value during backref operations.
+        if self.parent_property.active_history:
+            active_history = True
+            _deferred_history = False
+
+        elif (
+            self.parent_property.direction is not interfaces.MANYTOONE
+            or not self.use_get
+        ):
+            if _legacy_inactive_history_style:
+                active_history = True
+                _deferred_history = False
+            else:
+                active_history = False
+                _deferred_history = True
+        else:
+            active_history = _deferred_history = False
+
         _register_attribute(
             self.parent_property,
             mapper,
@@ -714,6 +723,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             callable_=self._load_for_state,
             typecallable=self.parent_property.collection_class,
             active_history=active_history,
+            _deferred_history=_deferred_history,
         )
 
     def _memoized_attr__simple_lazy_clause(self):
@@ -850,7 +860,10 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             if _none_set.issuperset(primary_key_identity):
                 return None
 
-            if self.key in state.dict:
+            if (
+                self.key in state.dict
+                and not passive & attributes.DEFERRED_HISTORY_LOAD
+            ):
                 return attributes.ATTR_WAS_SET
 
             # look for this identity in the identity map.  Delegate to the
@@ -1016,7 +1029,10 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             "_sa_orm_load_options": load_options,
         }
 
-        if self.key in state.dict:
+        if (
+            self.key in state.dict
+            and not passive & attributes.DEFERRED_HISTORY_LOAD
+        ):
             return attributes.ATTR_WAS_SET
 
         if pending:

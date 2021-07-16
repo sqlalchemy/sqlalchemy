@@ -1,6 +1,6 @@
 """Celko's "Nested Sets" Tree Structure.
 
-http://www.intelligententerprise.com/001020/celko.jhtml
+https://www.intelligententerprise.com/001020/celko.jhtml
 
 """
 

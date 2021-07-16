@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """Defines instrumentation for class attributes and their interaction
 with instances.
@@ -22,6 +22,7 @@ from . import interfaces
 from .base import ATTR_EMPTY
 from .base import ATTR_WAS_SET
 from .base import CALLABLES_OK
+from .base import DEFERRED_HISTORY_LOAD
 from .base import INIT_OK
 from .base import instance_dict
 from .base import instance_state
@@ -768,6 +769,9 @@ class AttributeImpl(object):
         else:
             self.accepts_scalar_loader = self.default_accepts_scalar_loader
 
+        _deferred_history = kwargs.pop("_deferred_history", False)
+        self._deferred_history = _deferred_history
+
         if active_history:
             self.dispatch._active_history = True
 
@@ -786,6 +790,7 @@ class AttributeImpl(object):
         "load_on_unexpire",
         "_modified_token",
         "accepts_scalar_loader",
+        "_deferred_history",
     )
 
     def __str__(self):
@@ -918,19 +923,7 @@ class AttributeImpl(object):
                 if not passive & CALLABLES_OK:
                     return PASSIVE_NO_RESULT
 
-                if (
-                    self.accepts_scalar_loader
-                    and self.load_on_unexpire
-                    and key in state.expired_attributes
-                ):
-                    value = state._load_expired(state, passive)
-                elif key in state.callables:
-                    callable_ = state.callables[key]
-                    value = callable_(state, passive)
-                elif self.callable_:
-                    value = self.callable_(state, passive)
-                else:
-                    value = ATTR_EMPTY
+                value = self._fire_loader_callables(state, key, passive)
 
                 if value is PASSIVE_NO_RESULT or value is NO_VALUE:
                     return value
@@ -954,6 +947,21 @@ class AttributeImpl(object):
                 return NO_VALUE
             else:
                 return self._default_value(state, dict_)
+
+    def _fire_loader_callables(self, state, key, passive):
+        if (
+            self.accepts_scalar_loader
+            and self.load_on_unexpire
+            and key in state.expired_attributes
+        ):
+            return state._load_expired(state, passive)
+        elif key in state.callables:
+            callable_ = state.callables[key]
+            return callable_(state, passive)
+        elif self.callable_:
+            return self.callable_(state, passive)
+        else:
+            return ATTR_EMPTY
 
     def append(self, state, dict_, value, initiator, passive=PASSIVE_OFF):
         self.set(state, dict_, value, initiator, passive=passive)
@@ -1142,15 +1150,33 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
 
     def get_history(self, state, dict_, passive=PASSIVE_OFF):
         if self.key in dict_:
-            return History.from_object_attribute(self, state, dict_[self.key])
+            current = dict_[self.key]
         else:
             if passive & INIT_OK:
                 passive ^= INIT_OK
             current = self.get(state, dict_, passive=passive)
             if current is PASSIVE_NO_RESULT:
                 return HISTORY_BLANK
-            else:
-                return History.from_object_attribute(self, state, current)
+
+        if not self._deferred_history:
+            return History.from_object_attribute(self, state, current)
+        else:
+            original = state.committed_state.get(self.key, _NO_HISTORY)
+            if original is PASSIVE_NO_RESULT:
+
+                loader_passive = passive | (
+                    PASSIVE_ONLY_PERSISTENT
+                    | NO_AUTOFLUSH
+                    | LOAD_AGAINST_COMMITTED
+                    | NO_RAISE
+                    | DEFERRED_HISTORY_LOAD
+                )
+                original = self._fire_loader_callables(
+                    state, self.key, loader_passive
+                )
+            return History.from_object_attribute(
+                self, state, current, original=original
+            )
 
     def get_all_pending(self, state, dict_, passive=PASSIVE_NO_INITIALIZE):
         if self.key in dict_:
@@ -1193,6 +1219,7 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         pop=False,
     ):
         """Set a value on the given InstanceState."""
+
         if self.dispatch._active_history:
             old = self.get(
                 state,
@@ -1227,7 +1254,11 @@ class ScalarObjectAttributeImpl(ScalarAttributeImpl):
         dict_[self.key] = value
 
     def fire_remove_event(self, state, dict_, value, initiator):
-        if self.trackparent and value is not None:
+        if self.trackparent and value not in (
+            None,
+            PASSIVE_NO_RESULT,
+            NO_VALUE,
+        ):
             self.sethasparent(instance_state(value), state, False)
 
         for fn in self.dispatch.remove:
@@ -1930,8 +1961,11 @@ class History(util.namedtuple("History", ["added", "unchanged", "deleted"])):
                 return cls([current], (), deleted)
 
     @classmethod
-    def from_object_attribute(cls, attribute, state, current):
-        original = state.committed_state.get(attribute.key, _NO_HISTORY)
+    def from_object_attribute(
+        cls, attribute, state, current, original=_NO_HISTORY
+    ):
+        if original is _NO_HISTORY:
+            original = state.committed_state.get(attribute.key, _NO_HISTORY)
 
         if original is _NO_HISTORY:
             if current is NO_VALUE:

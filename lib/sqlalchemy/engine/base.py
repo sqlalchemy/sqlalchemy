@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 from __future__ import with_statement
 
 import contextlib
@@ -1222,8 +1222,9 @@ class Connection(Connectable):
          Note above, the usage of a question mark "?" or other
          symbol is contingent upon the "paramstyle" accepted by the DBAPI
          in use, which may be any of "qmark", "named", "pyformat", "format",
-         "numeric".   See `pep-249 <http://www.python.org/dev/peps/pep-0249/>`_
-         for details on paramstyle.
+         "numeric".   See `pep-249
+         <https://www.python.org/dev/peps/pep-0249/>`_ for details on
+         paramstyle.
 
          To execute a textual SQL statement which uses bound parameters in a
          DBAPI-agnostic way, use the :func:`_expression.text` construct.

@@ -1719,14 +1719,14 @@ keeping the original error message on one line for logging purposes.
 
 This means that an error message that previously looked like this::
 
-    sqlalchemy.exc.StatementError: (sqlalchemy.exc.InvalidRequestError) A value is required for bind parameter 'id' [SQL: 'select * from reviews\nwhere id = ?'] (Background on this error at: http://sqlalche.me/e/cd3x)
+    sqlalchemy.exc.StatementError: (sqlalchemy.exc.InvalidRequestError) A value is required for bind parameter 'id' [SQL: 'select * from reviews\nwhere id = ?'] (Background on this error at: https://sqlalche.me/e/cd3x)
 
 Will now look like this::
 
     sqlalchemy.exc.StatementError: (sqlalchemy.exc.InvalidRequestError) A value is required for bind parameter 'id'
     [SQL: select * from reviews
     where id = ?]
-    (Background on this error at: http://sqlalche.me/e/cd3x)
+    (Background on this error at: https://sqlalche.me/e/cd3x)
 
 The primary impact of this change is that consumers can no longer assume that
 a complete exception message is on a single line, however the original

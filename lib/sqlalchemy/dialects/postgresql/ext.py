@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 from .array import ARRAY
 from ... import util
@@ -92,7 +92,7 @@ class ExcludeConstraint(ColumnCollectionConstraint):
     Defines an EXCLUDE constraint as described in the `PostgreSQL
     documentation`__.
 
-    __ http://www.postgresql.org/docs/9.0/static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
+    __ https://www.postgresql.org/docs/9.0/static/sql-createtable.html#SQL-CREATETABLE-EXCLUDE
 
     """  # noqa
 

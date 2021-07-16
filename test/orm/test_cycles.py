@@ -733,6 +733,18 @@ class BiDirectionalOneToManyTest2(fixtures.MappedTest):
         sess.flush()
 
 
+@testing.combinations(
+    (
+        "legacy_style",
+        True,
+    ),
+    (
+        "new_style",
+        False,
+    ),
+    argnames="name, _legacy_inactive_history_style",
+    id_="sa",
+)
 class OneToManyManyToOneTest(fixtures.MappedTest):
     """
 
@@ -804,11 +816,17 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
                     Ball,
                     primaryjoin=ball.c.person_id == person.c.id,
                     remote_side=ball.c.person_id,
+                    _legacy_inactive_history_style=(
+                        self._legacy_inactive_history_style
+                    ),
                 ),
                 favorite=relationship(
                     Ball,
                     primaryjoin=person.c.favorite_ball_id == ball.c.id,
                     remote_side=ball.c.id,
+                    _legacy_inactive_history_style=(
+                        self._legacy_inactive_history_style
+                    ),
                 ),
             ),
         )
@@ -837,6 +855,9 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
                     Ball,
                     primaryjoin=person.c.favorite_ball_id == ball.c.id,
                     post_update=True,
+                    _legacy_inactive_history_style=(
+                        self._legacy_inactive_history_style
+                    ),
                 )
             ),
         )
@@ -884,12 +905,18 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
                     remote_side=ball.c.person_id,
                     post_update=False,
                     cascade="all, delete-orphan",
+                    _legacy_inactive_history_style=(
+                        self._legacy_inactive_history_style
+                    ),
                 ),
                 favorite=relationship(
                     Ball,
                     primaryjoin=person.c.favorite_ball_id == ball.c.id,
                     remote_side=person.c.favorite_ball_id,
                     post_update=True,
+                    _legacy_inactive_history_style=(
+                        self._legacy_inactive_history_style
+                    ),
                 ),
             ),
         )
@@ -989,12 +1016,24 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
                     primaryjoin=ball.c.person_id == person.c.id,
                     remote_side=ball.c.person_id,
                     post_update=True,
-                    backref=backref("person", post_update=True),
+                    backref=backref(
+                        "person",
+                        post_update=True,
+                        _legacy_inactive_history_style=(
+                            self._legacy_inactive_history_style
+                        ),
+                    ),
+                    _legacy_inactive_history_style=(
+                        self._legacy_inactive_history_style
+                    ),
                 ),
                 favorite=relationship(
                     Ball,
                     primaryjoin=person.c.favorite_ball_id == ball.c.id,
                     remote_side=person.c.favorite_ball_id,
+                    _legacy_inactive_history_style=(
+                        self._legacy_inactive_history_style
+                    ),
                 ),
             ),
         )
@@ -1044,11 +1083,17 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
                     cascade="all, delete-orphan",
                     post_update=True,
                     backref="person",
+                    _legacy_inactive_history_style=(
+                        self._legacy_inactive_history_style
+                    ),
                 ),
                 favorite=relationship(
                     Ball,
                     primaryjoin=person.c.favorite_ball_id == ball.c.id,
                     remote_side=person.c.favorite_ball_id,
+                    _legacy_inactive_history_style=(
+                        self._legacy_inactive_history_style
+                    ),
                 ),
             ),
         )
@@ -1169,13 +1214,17 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
                     Person,
                     post_update=True,
                     primaryjoin=person.c.id == ball.c.person_id,
+                    _legacy_inactive_history_style=(
+                        self._legacy_inactive_history_style
+                    ),
                 )
             },
         )
         mapper(Person, person)
 
         sess = fixture_session(autocommit=False, expire_on_commit=True)
-        sess.add(Ball(person=Person()))
+        p1 = Person()
+        sess.add(Ball(person=p1))
         sess.commit()
         b1 = sess.query(Ball).first()
 

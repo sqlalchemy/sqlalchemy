@@ -844,6 +844,19 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "foo_bar.id AS foo_bar_id__2 "  # 6. 3rd foo_bar.id, same as 5
             "FROM foo, foo_bar",
         )
+        eq_(
+            stmt.selected_columns.keys(),
+            [
+                "foo_id",
+                "foo_bar_id",
+                "foo_bar_id_1",
+                "foo_bar_id_2",
+                "foo_id_1",
+                "foo_bar_id_2",
+                "foo_bar_id_1",
+                "foo_bar_id_1",
+            ],
+        )
 
         # for the subquery, the labels created for repeated occurrences
         # of the same column are not used.  only the label applied to the
@@ -870,6 +883,79 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "foo_bar.id AS foo_bar_id__2 "  # 6. 3rd foo_bar.id, same as 5
             "FROM foo, foo_bar"
             ") AS anon_1",
+        )
+
+    def test_overlapping_labels_plus_dupes_separate_keys_use_labels(self):
+        """test a condition related to #6710.
+
+        prior to this issue CTE uses selected_columns to render the
+        "WITH RECURSIVE (colnames)" part.  This test shows that this isn't
+        correct when keys are present.
+
+        See also test_cte ->
+        test_wrecur_ovlp_lbls_plus_dupes_separate_keys_use_labels
+
+        """
+        m = MetaData()
+        foo = Table(
+            "foo",
+            m,
+            Column("id", Integer),
+            Column("bar_id", Integer, key="bb"),
+        )
+        foo_bar = Table("foo_bar", m, Column("id", Integer, key="bb"))
+
+        stmt = select(
+            foo.c.id,
+            foo.c.bb,
+            foo_bar.c.bb,
+            foo.c.bb,
+            foo.c.id,
+            foo.c.bb,
+            foo_bar.c.bb,
+            foo_bar.c.bb,
+        ).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+
+        # note these keys are not what renders in the SQL.  These keys
+        # will be addressable in the result set but can't be used in
+        # rendering, such as for a CTE
+        eq_(
+            stmt.selected_columns.keys(),
+            [
+                "foo_id",
+                "foo_bb",
+                "foo_bar_bb",
+                "foo_bb_1",
+                "foo_id_1",
+                "foo_bb_1",
+                "foo_bar_bb_1",
+                "foo_bar_bb_1",
+            ],
+        )
+        eq_(
+            stmt.subquery().c.keys(),
+            [
+                "foo_id",
+                "foo_bb",
+                "foo_bar_bb",
+                "foo_bb_1",
+                "foo_id_1",
+                "foo_bb_1",
+                "foo_bar_bb_1",
+                "foo_bar_bb_1",
+            ],
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT foo.id AS foo_id, "
+            "foo.bar_id AS foo_bar_id, "  # 1. 1st foo.bar_id, as is
+            "foo_bar.id AS foo_bar_id_1, "  # 2. 1st foo_bar.id, disamb from 1
+            "foo.bar_id AS foo_bar_id__1, "  # 3. 2nd foo.bar_id, dedupe from 1
+            "foo.id AS foo_id__1, "
+            "foo.bar_id AS foo_bar_id__1, "  # 4. 3rd foo.bar_id, same as 3
+            "foo_bar.id AS foo_bar_id__2, "  # 5. 2nd foo_bar.id
+            "foo_bar.id AS foo_bar_id__2 "  # 6. 3rd foo_bar.id, same as 5
+            "FROM foo, foo_bar",
         )
 
     def test_dupe_columns_use_labels(self):
@@ -2630,13 +2716,18 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             # coverage on other dialects.
             sel = select(tbl, cast(tbl.c.v1, Numeric)).compile(dialect=dialect)
 
-            # TODO: another unusual result from disambiguate only
+            # TODO: another unusual result from disambiguate only:
+            # v1__1 vs v1_1 are due to the special meaning
+            # WrapsColumnExpression gives to the "_anon_name_label" attribute,
+            # where it tries to default to a label name that matches that of
+            # the column within.
+
             if isinstance(dialect, type(mysql.dialect())):
                 eq_(
                     str(sel),
                     "SELECT casttest.id, casttest.v1, casttest.v2, "
                     "casttest.ts, "
-                    "CAST(casttest.v1 AS DECIMAL) AS casttest_v1__1 \n"
+                    "CAST(casttest.v1 AS DECIMAL) AS v1__1 \n"
                     "FROM casttest",
                 )
             else:
@@ -2644,7 +2735,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                     str(sel),
                     "SELECT casttest.id, casttest.v1, casttest.v2, "
                     "casttest.ts, CAST(casttest.v1 AS NUMERIC) AS "
-                    "casttest_v1__1 \nFROM casttest",
+                    "v1__1 \nFROM casttest",
                 )
 
             sel = (
@@ -2652,6 +2743,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 .set_label_style(LABEL_STYLE_NONE)
                 .compile(dialect=dialect)
             )
+            # label style none - dupes v1
             if isinstance(dialect, type(mysql.dialect())):
                 eq_(
                     str(sel),
@@ -3059,7 +3151,12 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 '"some wacky thing"',
                 "",
             ),
-            (exprs[3], exprs[3].key, ":param_1", "anon_1"),
+            (
+                exprs[3],
+                "_no_label",
+                ":param_1",
+                "anon_1",
+            ),
         ):
             if getattr(col, "table", None) is not None:
                 t = col.table
@@ -6036,7 +6133,7 @@ class ResultMapTest(fixtures.TestBase):
                 "bar": ("bar", (l1, "bar"), l1.type, 1),
                 "anon_1": (
                     tc._anon_name_label,
-                    (tc_anon_label, "anon_1", tc),
+                    (tc_anon_label, "anon_1", tc, "_no_label"),
                     tc.type,
                     2,
                 ),

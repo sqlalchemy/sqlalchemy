@@ -2,7 +2,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 from ... import types as sqltypes
 
@@ -18,7 +18,7 @@ class RangeOperators(object):
     provided in the ``postgres`` dialect and can likely be used for
     any range types you create yourself.
 
-    __ http://www.postgresql.org/docs/devel/static/functions-range.html
+    __ https://www.postgresql.org/docs/devel/static/functions-range.html
 
     No extra support is provided for the Range Functions listed in
     Table 9-45 of the PostgreSQL documentation. For these, the normal

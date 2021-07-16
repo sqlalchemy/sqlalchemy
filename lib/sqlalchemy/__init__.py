@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 from . import util as _util
 from .engine import create_engine
@@ -130,7 +130,7 @@ from .types import VARBINARY
 from .types import VARCHAR
 
 
-__version__ = "1.4.21"
+__version__ = "1.4.22"
 
 
 def __go(lcls):

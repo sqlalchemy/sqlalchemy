@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 r"""
 .. dialect:: sqlite
@@ -39,7 +39,7 @@ so that the column continues to have textual affinity.
 
 .. seealso::
 
-    `Type Affinity <http://www.sqlite.org/datatype3.html#affinity>`_ -
+    `Type Affinity <https://www.sqlite.org/datatype3.html#affinity>`_ -
     in the SQLite documentation
 
 .. _sqlite_autoincrement:
@@ -47,7 +47,7 @@ so that the column continues to have textual affinity.
 SQLite Auto Incrementing Behavior
 ----------------------------------
 
-Background on SQLite's autoincrement is at: http://sqlite.org/autoinc.html
+Background on SQLite's autoincrement is at: https://sqlite.org/autoinc.html
 
 Key concepts:
 
@@ -123,7 +123,7 @@ name to be ``INTEGER`` when compiled against SQLite::
 
     :ref:`sqlalchemy.ext.compiler_toplevel`
 
-    `Datatypes In SQLite Version 3 <http://sqlite.org/datatype3.html>`_
+    `Datatypes In SQLite Version 3 <https://sqlite.org/datatype3.html>`_
 
 .. _sqlite_concurrency:
 
@@ -163,7 +163,7 @@ achieving a high degree of write-concurrency with SQLite is a losing battle.
 For more information on SQLite's lack of write concurrency by design, please
 see
 `Situations Where Another RDBMS May Work Better - High Concurrency
-<http://www.sqlite.org/whentouse.html>`_ near the bottom of the page.
+<https://www.sqlite.org/whentouse.html>`_ near the bottom of the page.
 
 The following subsections introduce areas that are impacted by SQLite's
 file-based architecture and additionally will usually require workarounds to
@@ -176,7 +176,7 @@ Transaction Isolation Level / Autocommit
 
 SQLite supports "transaction isolation" in a non-standard way, along two
 axes.  One is that of the
-`PRAGMA read_uncommitted <http://www.sqlite.org/pragma.html#pragma_read_uncommitted>`_
+`PRAGMA read_uncommitted <https://www.sqlite.org/pragma.html#pragma_read_uncommitted>`_
 instruction.   This setting can essentially switch SQLite between its
 default mode of ``SERIALIZABLE`` isolation, and a "dirty read" isolation
 mode normally referred to as ``READ UNCOMMITTED``.
@@ -201,7 +201,7 @@ of the setting.
 The other axis along which SQLite's transactional locking is impacted is
 via the nature of the ``BEGIN`` statement used.   The three varieties
 are "deferred", "immediate", and "exclusive", as described at
-`BEGIN TRANSACTION <http://sqlite.org/lang_transaction.html>`_.   A straight
+`BEGIN TRANSACTION <https://sqlite.org/lang_transaction.html>`_.   A straight
 ``BEGIN`` statement uses the "deferred" mode, where the database file is
 not locked until the first read or write operation, and read access remains
 open to other transactions until the first write operation.  But again,
@@ -291,7 +291,7 @@ new connections through the usage of events::
 
 .. seealso::
 
-    `SQLite Foreign Key Support <http://www.sqlite.org/foreignkeys.html>`_
+    `SQLite Foreign Key Support <https://www.sqlite.org/foreignkeys.html>`_
     - on the SQLite web site.
 
     :ref:`event_toplevel` - SQLAlchemy event API.
@@ -628,7 +628,7 @@ This lookup table is present within the SQLite dialect as it is for all
 other dialects.  However, the SQLite dialect has a different "fallback"
 routine for when a particular type name is not located in the lookup map;
 it instead implements the SQLite "type affinity" scheme located at
-http://www.sqlite.org/datatype3.html section 2.1.
+https://www.sqlite.org/datatype3.html section 2.1.
 
 The provided typemap will make direct associations from an exact string
 name match for the following types:
@@ -1903,12 +1903,12 @@ class SQLiteDialect(default.DefaultDialect):
             )
             self.supports_cast = self.dbapi.sqlite_version_info >= (3, 2, 3)
             self.supports_multivalues_insert = (
-                # http://www.sqlite.org/releaselog/3_7_11.html
+                # https://www.sqlite.org/releaselog/3_7_11.html
                 self.dbapi.sqlite_version_info
                 >= (3, 7, 11)
             )
-            # see http://www.sqlalchemy.org/trac/ticket/2568
-            # as well as http://www.sqlite.org/src/info/600482d161
+            # see https://www.sqlalchemy.org/trac/ticket/2568
+            # as well as https://www.sqlite.org/src/info/600482d161
             self._broken_fk_pragma_quotes = self.dbapi.sqlite_version_info < (
                 3,
                 6,
@@ -1940,7 +1940,7 @@ class SQLiteDialect(default.DefaultDialect):
         if res:
             value = res[0]
         else:
-            # http://www.sqlite.org/changes.html#version_3_3_3
+            # https://www.sqlite.org/changes.html#version_3_3_3
             # "Optional READ UNCOMMITTED isolation (instead of the
             # default isolation level of SERIALIZABLE) and
             # table level locking when database connections
@@ -2159,7 +2159,7 @@ class SQLiteDialect(default.DefaultDialect):
         Internally, SQLite handles this with a 'data type affinity' for each
         column definition, mapping to one of 'TEXT', 'NUMERIC', 'INTEGER',
         'REAL', or 'NONE' (raw bits). The algorithm that determines this is
-        listed in http://www.sqlite.org/datatype3.html section 2.1.
+        listed in https://www.sqlite.org/datatype3.html section 2.1.
 
         This method allows SQLAlchemy to support that algorithm, while still
         providing access to smarter reflection utilities by recognizing
@@ -2465,7 +2465,7 @@ class SQLiteDialect(default.DefaultDialect):
         include_auto_indexes = kw.pop("include_auto_indexes", False)
         for row in pragma_indexes:
             # ignore implicit primary key index.
-            # http://www.mail-archive.com/sqlite-users@sqlite.org/msg30517.html
+            # https://www.mail-archive.com/sqlite-users@sqlite.org/msg30517.html
             if not include_auto_indexes and row[1].startswith(
                 "sqlite_autoindex"
             ):
@@ -2534,7 +2534,7 @@ class SQLiteDialect(default.DefaultDialect):
             if not cursor._soft_closed:
                 # work around SQLite issue whereby cursor.description
                 # is blank when PRAGMA returns no rows:
-                # http://www.sqlite.org/cvstrac/tktview?tn=1884
+                # https://www.sqlite.org/cvstrac/tktview?tn=1884
                 result = cursor.fetchall()
             else:
                 result = []

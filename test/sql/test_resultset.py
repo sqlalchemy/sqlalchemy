@@ -391,7 +391,9 @@ class CursorResultTest(fixtures.TablesTest):
             ],
         )
 
-        r = connection.execute(users.select(users.c.user_id == 2)).first()
+        r = connection.execute(
+            users.select().where(users.c.user_id == 2)
+        ).first()
         eq_(r.user_id, 2)
         eq_(r._mapping["user_id"], 2)
         eq_(r._mapping[users.c.user_id], 2)
@@ -411,7 +413,9 @@ class CursorResultTest(fixtures.TablesTest):
             ],
         )
 
-        r = connection.execute(users.select(users.c.user_id == 2)).first()
+        r = connection.execute(
+            users.select().where(users.c.user_id == 2)
+        ).first()
 
         eq_(r.user_id, 2)
         eq_(r._mapping["user_id"], 2)
@@ -766,7 +770,9 @@ class CursorResultTest(fixtures.TablesTest):
         users = self.tables.users
 
         connection.execute(users.insert(), dict(user_id=1, user_name="john"))
-        r = connection.execute(users.select(users.c.user_id == 1)).first()
+        r = connection.execute(
+            users.select().where(users.c.user_id == 1)
+        ).first()
         connection.execute(users.delete())
         connection.execute(users.insert(), r._mapping)
         eq_(connection.execute(users.select()).fetchall(), [(1, "john")])
@@ -1241,7 +1247,9 @@ class CursorResultTest(fixtures.TablesTest):
         users = self.tables.users
 
         connection.execute(users.insert(), dict(user_id=1, user_name="foo"))
-        r = connection.execute(users.select(users.c.user_id == 1)).first()
+        r = connection.execute(
+            users.select().where(users.c.user_id == 1)
+        ).first()
         eq_(r[0], 1)
         eq_(r[1], "foo")
         eq_([x.lower() for x in r._fields], ["user_id", "user_name"])
@@ -1288,7 +1296,7 @@ class CursorResultTest(fixtures.TablesTest):
             ),
         )
         r = connection.execute(
-            shadowed.select(shadowed.c.shadow_id == 1)
+            shadowed.select().where(shadowed.c.shadow_id == 1)
         ).first()
 
         eq_(r.shadow_id, 1)
@@ -1764,7 +1772,8 @@ class KeyTargetingTest(fixtures.TablesTest):
         @compiles(not_named_max)
         def visit_max(element, compiler, **kw):
             # explicit add
-            kw["add_to_result_map"](None, None, (element,), NULLTYPE)
+            if "add_to_result_map" in kw:
+                kw["add_to_result_map"](None, None, (element,), NULLTYPE)
             return "max(a)"
 
         # assert that there is no "AS max_" or any label of any kind.

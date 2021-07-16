@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """Core SQL expression elements, including :class:`_expression.ClauseElement`,
 :class:`_expression.ColumnElement`, and derived classes.
@@ -687,18 +687,20 @@ class ColumnElement(
     foreign_keys = []
     _proxies = ()
 
-    _label = None
+    _tq_label = None
     """The named label that can be used to target
-    this column in a result set.
+    this column in a result set in a "table qualified" context.
 
     This label is almost always the label used when
-    rendering <expr> AS <label> in a SELECT statement.  It also
-    refers to a name that this column expression can be located from
-    in a result set.
+    rendering <expr> AS <label> in a SELECT statement when using
+    the LABEL_STYLE_TABLENAME_PLUS_COL label style, which is what the legacy
+    ORM ``Query`` object uses as well.
 
     For a regular Column bound to a Table, this is typically the label
     <tablename>_<columnname>.  For other constructs, different rules
     may apply, such as anonymized labels and others.
+
+    .. versionchanged:: 1.4.21 renamed from ``._label``
 
     """
 
@@ -712,19 +714,69 @@ class ColumnElement(
 
     """
 
-    _key_label = None
-    """A label-based version of 'key' that in some circumstances refers
-    to this object in a Python namespace.
+    @HasMemoized.memoized_attribute
+    def _tq_key_label(self):
+        """A label-based version of 'key' that in some circumstances refers
+        to this object in a Python namespace.
 
 
-    _key_label comes into play when a select() statement is constructed with
-    apply_labels(); in this case, all Column objects in the ``.c`` collection
-    are rendered as <tablename>_<columnname> in SQL; this is essentially the
-    value of ._label.  But to locate those columns in the ``.c`` collection,
-    the name is along the lines of <tablename>_<key>; that's the typical
-    value of .key_label.
+        _tq_key_label comes into play when a select() statement is constructed
+        with apply_labels(); in this case, all Column objects in the ``.c``
+        collection are rendered as <tablename>_<columnname> in SQL; this is
+        essentially the value of ._label. But to locate those columns in the
+        ``.c`` collection, the name is along the lines of <tablename>_<key>;
+        that's the typical value of .key_label.
 
-    """
+        .. versionchanged:: 1.4.21 renamed from ``._key_label``
+
+        """
+        return self._proxy_key
+
+    @property
+    def _key_label(self):
+        """legacy; renamed to _tq_key_label"""
+        return self._tq_key_label
+
+    @property
+    def _label(self):
+        """legacy; renamed to _tq_label"""
+        return self._tq_label
+
+    @property
+    def _non_anon_label(self):
+        """the 'name' that naturally applies this element when rendered in
+        SQL.
+
+        Concretely, this is the "name" of a column or a label in a
+        SELECT statement; ``<columnname>`` and ``<labelname>`` below::
+
+            SELECT <columnmame> FROM table
+
+            SELECT column AS <labelname> FROM table
+
+        Above, the two names noted will be what's present in the DBAPI
+        ``cursor.description`` as the names.
+
+        If this attribute returns ``None``, it means that the SQL element as
+        written does not have a 100% fully predictable "name" that would appear
+        in the ``cursor.description``. Examples include SQL functions, CAST
+        functions, etc. While such things do return names in
+        ``cursor.description``, they are only predictable on a
+        database-specific basis; e.g. an expression like ``MAX(table.col)`` may
+        appear as the string ``max`` on one database (like PostgreSQL) or may
+        appear as the whole expression ``max(table.col)`` on SQLite.
+
+        The default implementation looks for a ``.name`` attribute on the
+        object, as has been the precedent established in SQLAlchemy for many
+        years.  An exception is made on the ``FunctionElement`` subclass
+        so that the return value is always ``None``.
+
+        .. versionadded:: 1.4.21
+
+
+
+        """
+        return getattr(self, "name", None)
 
     _render_label_in_columns_clause = True
     """A flag used by select._columns_plus_names that helps to determine
@@ -878,14 +930,41 @@ class ColumnElement(
             and other.name == self.name
         )
 
-    @util.memoized_property
+    @HasMemoized.memoized_attribute
     def _proxy_key(self):
         if self._annotations and "proxy_key" in self._annotations:
             return self._annotations["proxy_key"]
-        elif self.key:
-            return self.key
+
+        name = self.key
+        if not name:
+            # there's a bit of a seeming contradiction which is that the
+            # "_non_anon_label" of a column can in fact be an
+            # "_anonymous_label"; this is when it's on a column that is
+            # proxying for an anonymous expression in a subquery.
+            name = self._non_anon_label
+
+        if isinstance(name, _anonymous_label):
+            return None
         else:
-            return getattr(self, "name", "_no_label")
+            return name
+
+    @HasMemoized.memoized_attribute
+    def _expression_label(self):
+        """a suggested label to use in the case that the column has no name,
+        which should be used if possible as the explicit 'AS <label>'
+        where this expression would normally have an anon label.
+
+        this is essentially mostly what _proxy_key does except it returns
+        None if the column has a normal name that can be used.
+
+        """
+
+        if getattr(self, "name", None) is not None:
+            return None
+        elif self._annotations and "proxy_key" in self._annotations:
+            return self._annotations["proxy_key"]
+        else:
+            return None
 
     def _make_proxy(
         self, selectable, name=None, key=None, name_is_truncatable=False, **kw
@@ -1016,20 +1095,39 @@ class ColumnElement(
 
     @util.memoized_property
     def _dedupe_anon_label(self):
-        label = getattr(self, "name", None) or "anon"
-        return self._anon_label(label + "_")
+        """label to apply to a column that is anon labeled, but repeated
+        in the SELECT, so that we have to make an "extra anon" label that
+        disambiguates it from the previous appearance.
+
+        these labels come out like "foo_bar_id__1" and have double underscores
+        in them.
+
+        """
+        label = getattr(self, "name", None)
+
+        # current convention is that if the element doesn't have a
+        # ".name" (usually because it is not NamedColumn), we try to
+        # use a "table qualified" form for the "dedupe anon" label,
+        # based on the notion that a label like
+        # "CAST(casttest.v1 AS DECIMAL) AS casttest_v1__1" looks better than
+        # "CAST(casttest.v1 AS DECIMAL) AS anon__1"
+
+        if label is None:
+            return self._dedupe_anon_tq_label
+        else:
+            return self._anon_label(label + "_")
 
     @util.memoized_property
-    def _label_anon_label(self):
-        return self._anon_label(getattr(self, "_label", None))
+    def _anon_tq_label(self):
+        return self._anon_label(getattr(self, "_tq_label", None))
 
     @util.memoized_property
-    def _label_anon_key_label(self):
-        return self._anon_label(getattr(self, "_key_label", None))
+    def _anon_tq_key_label(self):
+        return self._anon_label(getattr(self, "_tq_key_label", None))
 
     @util.memoized_property
-    def _dedupe_label_anon_label(self):
-        label = getattr(self, "_label", None) or "anon"
+    def _dedupe_anon_tq_label(self):
+        label = getattr(self, "_tq_label", None) or "anon"
         return self._anon_label(label + "_")
 
 
@@ -1052,22 +1150,42 @@ class WrapsColumnExpression(object):
         raise NotImplementedError()
 
     @property
-    def _label(self):
+    def _tq_label(self):
         wce = self.wrapped_column_expression
-        if hasattr(wce, "_label"):
-            return wce._label
+        if hasattr(wce, "_tq_label"):
+            return wce._tq_label
         else:
             return None
+
+    _label = _tq_label
+
+    @property
+    def _non_anon_label(self):
+        return None
 
     @property
     def _anon_name_label(self):
         wce = self.wrapped_column_expression
-        if hasattr(wce, "name"):
-            return wce.name
-        elif hasattr(wce, "_anon_name_label"):
-            return wce._anon_name_label
+
+        # this logic tries to get the WrappedColumnExpression to render
+        # with "<expr> AS <name>", where "<name>" is the natural name
+        # within the expression itself.   e.g. "CAST(table.foo) AS foo".
+        if not wce._is_text_clause:
+            nal = wce._non_anon_label
+            if nal:
+                return nal
+            elif hasattr(wce, "_anon_name_label"):
+                return wce._anon_name_label
+        return super(WrapsColumnExpression, self)._anon_name_label
+
+    @property
+    def _dedupe_anon_label(self):
+        wce = self.wrapped_column_expression
+        nal = wce._non_anon_label
+        if nal:
+            return self._anon_label(nal + "_")
         else:
-            return super(WrapsColumnExpression, self)._anon_name_label
+            return self._dedupe_anon_tq_label
 
 
 class BindParameter(roles.InElementRole, ColumnElement):
@@ -3797,12 +3915,10 @@ class Grouping(GroupedElement, ColumnElement):
         return self.element._is_implicitly_boolean
 
     @property
-    def _key_label(self):
-        return self._label
-
-    @property
-    def _label(self):
-        return getattr(self.element, "_label", None) or self._anon_name_label
+    def _tq_label(self):
+        return (
+            getattr(self.element, "_tq_label", None) or self._anon_name_label
+        )
 
     @property
     def _proxies(self):
@@ -4315,7 +4431,7 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
                 id(self), getattr(element, "name", "anon")
             )
 
-        self.key = self._label = self._key_label = self.name
+        self.key = self._tq_label = self._tq_key_label = self.name
         self._element = element
         self._type = type_
         self._proxies = [element]
@@ -4373,7 +4489,7 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
             self.name = self._resolve_label = _anonymous_label.safe_construct(
                 id(self), getattr(self.element, "name", "anon")
             )
-            self.key = self._label = self._key_label = self.name
+            self.key = self._tq_label = self._tq_key_label = self.name
 
     @property
     def _from_objects(self):
@@ -4429,22 +4545,39 @@ class NamedColumn(ColumnElement):
             return self.name.encode("ascii", "backslashreplace")
 
     @HasMemoized.memoized_attribute
-    def _key_label(self):
+    def _tq_key_label(self):
+        """table qualified label based on column key.
+
+        for table-bound columns this is <tablename>_<column key/proxy key>;
+
+        all other expressions it resolves to key/proxy key.
+
+        """
         proxy_key = self._proxy_key
-        if proxy_key != self.name:
-            return self._gen_label(proxy_key)
+        if proxy_key and proxy_key != self.name:
+            return self._gen_tq_label(proxy_key)
         else:
-            return self._label
+            return self._tq_label
 
     @HasMemoized.memoized_attribute
-    def _label(self):
-        return self._gen_label(self.name)
+    def _tq_label(self):
+        """table qualified label based on column name.
+
+        for table-bound columns this is <tablename>_<columnname>; all other
+        expressions it resolves to .name.
+
+        """
+        return self._gen_tq_label(self.name)
 
     @HasMemoized.memoized_attribute
     def _render_label_in_columns_clause(self):
         return True
 
-    def _gen_label(self, name, dedupe_on_key=True):
+    @HasMemoized.memoized_attribute
+    def _non_anon_label(self):
+        return self.name
+
+    def _gen_tq_label(self, name, dedupe_on_key=True):
         return name
 
     def _bind_param(self, operator, obj, type_=None, expanding=False):
@@ -4667,7 +4800,7 @@ class ColumnClause(
 
     @property
     def _ddl_label(self):
-        return self._gen_label(self.name, dedupe_on_key=False)
+        return self._gen_tq_label(self.name, dedupe_on_key=False)
 
     def _compare_name_for_result(self, other):
         if (
@@ -4685,12 +4818,21 @@ class ColumnClause(
             )
         ):
             return (hasattr(other, "name") and self.name == other.name) or (
-                hasattr(other, "_label") and self._label == other._label
+                hasattr(other, "_tq_label")
+                and self._tq_label == other._tq_label
             )
         else:
             return other.proxy_set.intersection(self.proxy_set)
 
-    def _gen_label(self, name, dedupe_on_key=True):
+    def _gen_tq_label(self, name, dedupe_on_key=True):
+        """generate table-qualified label
+
+        for a table-bound column this is <tablename>_<columnname>.
+
+        used primarily for LABEL_STYLE_TABLENAME_PLUS_COL
+        as well as the .columns collection on a Join object.
+
+        """
         t = self.table
         if self.is_literal:
             return None
@@ -4788,6 +4930,10 @@ class TableValuedColumn(NamedColumn):
         self.scalar_alias = scalar_alias
         self.key = self.name = scalar_alias.name
         self.type = type_
+
+    def _copy_internals(self, clone=_clone, **kw):
+        self.scalar_alias = clone(self.scalar_alias, **kw)
+        self.key = self.name = self.scalar_alias.name
 
     @property
     def _from_objects(self):
@@ -4952,7 +5098,13 @@ def _corresponding_column_or_error(fromclause, column, require_embedded=False):
 class AnnotatedColumnElement(Annotated):
     def __init__(self, element, values):
         Annotated.__init__(self, element, values)
-        for attr in ("comparator", "_proxy_key", "_key_label"):
+        for attr in (
+            "comparator",
+            "_proxy_key",
+            "_tq_key_label",
+            "_tq_label",
+            "_non_anon_label",
+        ):
             self.__dict__.pop(attr, None)
         for attr in ("name", "key", "table"):
             if self.__dict__.get(attr, False) is None:

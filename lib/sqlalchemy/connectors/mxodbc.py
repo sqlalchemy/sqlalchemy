@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """
 Provide a SQLALchemy connector for the eGenix mxODBC commercial
@@ -15,7 +15,7 @@ This has been tested for use with mxODBC 3.1.2 on SQL Server 2005
 and 2008, using the SQL Server Native driver. However, it is
 possible for this to be used on other database platforms.
 
-For more info on mxODBC, see http://www.egenix.com/
+For more info on mxODBC, see https://www.egenix.com/
 
 .. deprecated:: 1.4 The mxODBC DBAPI is deprecated and will be removed
    in a future version. Please use one of the supported DBAPIs to

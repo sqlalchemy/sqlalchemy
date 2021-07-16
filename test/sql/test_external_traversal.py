@@ -2172,7 +2172,16 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
             {"param_1": 5, "param_2": 10},
         )
 
-    def test_aliasedselect_to_aliasedselect_join_nested_table(self):
+    @testing.combinations((True,), (False,), argnames="use_adapt_from")
+    def test_aliasedselect_to_aliasedselect_join_nested_table(
+        self, use_adapt_from
+    ):
+        """test the logic in clauseadapter regarding not traversing aliases.
+
+        adapt_from_selectables case added to test #6762, which is a regression
+        from #6060
+
+        """
         s1 = select(t1).alias("foo")
         s2 = select(s1).limit(5).offset(10).alias()
         talias = t1.alias("bar")
@@ -2191,8 +2200,12 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
 
         j = s1.outerjoin(talias, s1.c.col1 == talias.c.col1)
 
+        if use_adapt_from:
+            vis = sql_util.ClauseAdapter(s2, adapt_from_selectables=[s1])
+        else:
+            vis = sql_util.ClauseAdapter(s2)
         self.assert_compile(
-            sql_util.ClauseAdapter(s2).traverse(j).select(),
+            vis.traverse(j).select(),
             "SELECT anon_1.col1, anon_1.col2, "
             "anon_1.col3, bar.col1 AS col1_1, bar.col2 AS col2_1, "
             "bar.col3 AS col3_1 "
@@ -2215,6 +2228,21 @@ class ClauseAdapterTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             sql_util.ClauseAdapter(t1.alias()).traverse(s),
             "SELECT count(table1_1.col1) AS count_1 "
+            "FROM table1 AS table1_1",
+        )
+
+    def test_table_valued_column(self):
+        """test #6775"""
+        stmt = select(func.some_json_func(t1.table_valued()))
+
+        self.assert_compile(
+            stmt,
+            "SELECT some_json_func(table1) AS some_json_func_1 FROM table1",
+        )
+
+        self.assert_compile(
+            sql_util.ClauseAdapter(t1.alias()).traverse(stmt),
+            "SELECT some_json_func(table1_1) AS some_json_func_1 "
             "FROM table1 AS table1_1",
         )
 

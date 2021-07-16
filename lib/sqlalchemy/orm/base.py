@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """Constants and rudimental functions used throughout the ORM.
 
@@ -122,6 +122,12 @@ NO_RAISE = util.symbol(
     "NO_RAISE",
     """Loader callables should not raise any assertions""",
     canonical=128,
+)
+
+DEFERRED_HISTORY_LOAD = util.symbol(
+    "DEFERRED_HISTORY_LOAD",
+    """indicates special load of the previous value of an attribute""",
+    canonical=256,
 )
 
 # pre-packaged sets of flags used as inputs

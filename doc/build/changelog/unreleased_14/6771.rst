@@ -1,0 +1,8 @@
+.. change::
+    :tags: orm, bug
+    :tickets: 6771
+
+    Fixed an issue where clearing of mappers during things like test suite
+    teardowns could cause a "dictionary changed size" warning during garbage
+    collection, due to iteration of a weak-referencing dictionary. A ``list()``
+    has been applied to prevent concurrent GC from affecting this operation.

@@ -3,14 +3,14 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """
 .. dialect:: firebird+kinterbasdb
     :name: kinterbasdb
     :dbapi: kinterbasdb
     :connectstring: firebird+kinterbasdb://user:password@host:port/path/to/db[?key=value&key=value...]
-    :url: http://firebirdsql.org/index.php?op=devel&sub=python
+    :url: https://firebirdsql.org/index.php?op=devel&sub=python
 
 Arguments
 ----------
@@ -29,11 +29,11 @@ In addition, it also accepts the following:
 
 .. seealso::
 
-    http://sourceforge.net/projects/kinterbasdb
+    https://sourceforge.net/projects/kinterbasdb
 
-    http://kinterbasdb.sourceforge.net/dist_docs/usage.html#adv_param_conv_dynamic_type_translation
+    https://kinterbasdb.sourceforge.net/dist_docs/usage.html#adv_param_conv_dynamic_type_translation
 
-    http://kinterbasdb.sourceforge.net/dist_docs/usage.html#special_issue_concurrency
+    https://kinterbasdb.sourceforge.net/dist_docs/usage.html#special_issue_concurrency
 
 """  # noqa
 
@@ -142,7 +142,7 @@ class FBDialect_kinterbasdb(FBDialect):
             initialized = getattr(self.dbapi, "initialized", None)
             if initialized is None:
                 # CVS rev 1.96 changed the name of the attribute:
-                # http://kinterbasdb.cvs.sourceforge.net/viewvc/kinterbasdb/
+                # https://kinterbasdb.cvs.sourceforge.net/viewvc/kinterbasdb/
                 # Kinterbasdb-3.0/__init__.py?r1=1.95&r2=1.96
                 initialized = getattr(self.dbapi, "_initialized", False)
             if not initialized:

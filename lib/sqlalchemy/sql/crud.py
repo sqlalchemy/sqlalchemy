@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """Functions used by compiler.py to determine the parameters rendered
 within INSERT and UPDATE statements.
@@ -224,7 +224,17 @@ def _handle_values_anonymous_param(compiler, col, value, name, **kw):
     # rather than having
     # compiler.visit_bindparam()->compiler._truncated_identifier make up a
     # name.  Saves on call counts also.
-    if value.unique and isinstance(value.key, elements._truncated_label):
+
+    # for INSERT/UPDATE that's a CTE, we don't need names to match to
+    # external parameters and these would also conflict in the case where
+    # multiple insert/update are combined together using CTEs
+    is_cte = "visiting_cte" in kw
+
+    if (
+        not is_cte
+        and value.unique
+        and isinstance(value.key, elements._truncated_label)
+    ):
         compiler.truncated_names[("bindparam", value.key)] = name
 
     if value.type._isnull:
@@ -460,7 +470,6 @@ def _append_param_parameter(
     values,
     kw,
 ):
-
     value = parameters.pop(col_key)
 
     col_value = compiler.preparer.format_column(

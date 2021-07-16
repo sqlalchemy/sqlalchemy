@@ -4,7 +4,7 @@ embed PostGIS functionality.
 This example was originally developed in the hopes that it would be
 extrapolated into a comprehensive PostGIS integration layer.  We are
 pleased to announce that this has come to fruition as `GeoAlchemy
-<http://www.geoalchemy.org/>`_.
+<https://geoalchemy-2.readthedocs.io>`_.
 
 The example illustrates:
 

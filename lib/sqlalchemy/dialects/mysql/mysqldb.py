@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """
 
@@ -17,7 +17,7 @@ Driver Status
 -------------
 
 The mysqlclient DBAPI is a maintained fork of the
-`MySQL-Python <http://sourceforge.net/projects/mysql-python>`_ DBAPI
+`MySQL-Python <https://sourceforge.net/projects/mysql-python>`_ DBAPI
 that is no longer maintained.  `mysqlclient`_ supports Python 2 and Python 3
 and is very stable.
 

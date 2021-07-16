@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 6775
+
+    Fixed issue in new :meth:`_schema.Table.table_valued` method where the
+    resulting :class:`_sql.TableValuedColumn` construct would not respond
+    correctly to alias adaptation as is used throughout the ORM, such as for
+    eager loading, polymorphic loading, etc.
+

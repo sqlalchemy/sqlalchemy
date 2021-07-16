@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """Base SQL and DDL compiler implementations.
 
@@ -35,7 +35,6 @@ from . import crud
 from . import elements
 from . import functions
 from . import operators
-from . import roles
 from . import schema
 from . import selectable
 from . import sqltypes
@@ -612,7 +611,7 @@ class SQLCompiler(Compiled):
 
     _loose_column_name_matching = False
     """tell the result object that the SQL staement is textual, wants to match
-    up to Column objects, and may be using the ._label in the SELECT rather
+    up to Column objects, and may be using the ._tq_label in the SELECT rather
     than the base name.
 
     """
@@ -1314,6 +1313,9 @@ class SQLCompiler(Compiled):
     def visit_grouping(self, grouping, asfrom=False, **kwargs):
         return "(" + grouping.element._compiler_dispatch(self, **kwargs) + ")"
 
+    def visit_select_statement_grouping(self, grouping, **kwargs):
+        return "(" + grouping.element._compiler_dispatch(self, **kwargs) + ")"
+
     def visit_label_reference(
         self, element, within_columns_clause=False, **kwargs
     ):
@@ -1414,7 +1416,6 @@ class SQLCompiler(Compiled):
                     (label, labelname) + label._alt_names + result_map_targets,
                     label.type,
                 )
-
             return (
                 label.element._compiler_dispatch(
                     self,
@@ -1459,8 +1460,8 @@ class SQLCompiler(Compiled):
 
         if add_to_result_map is not None:
             targets = (column, name, column.key) + result_map_targets
-            if column._label:
-                targets += (column._label,)
+            if column._tq_label:
+                targets += (column._tq_label,)
 
             add_to_result_map(name, orig_name, targets, column.type)
 
@@ -1499,6 +1500,7 @@ class SQLCompiler(Compiled):
 
     def visit_typeclause(self, typeclause, **kw):
         kw["type_expression"] = typeclause
+        kw["identifier_preparer"] = self.preparer
         return self.dialect.type_compiler.process(typeclause.type, **kw)
 
     def post_process_text(self, text):
@@ -2317,8 +2319,7 @@ class SQLCompiler(Compiled):
                 ) and not existing.proxy_set.intersection(bindparam.proxy_set):
                     raise exc.CompileError(
                         "Bind parameter '%s' conflicts with "
-                        "unique bind parameter of the same name"
-                        % bindparam.key
+                        "unique bind parameter of the same name" % name
                     )
                 elif existing._is_crud or bindparam._is_crud:
                     raise exc.CompileError(
@@ -2571,17 +2572,29 @@ class SQLCompiler(Compiled):
                         col_source = cte.element.selects[0]
                     else:
                         assert False, "cte should only be against SelectBase"
+
+                    # TODO: can we get at the .columns_plus_names collection
+                    # that is already (or will be?) generated for the SELECT
+                    # rather than calling twice?
                     recur_cols = [
-                        c
-                        for c in util.unique_list(
-                            col_source._all_selected_columns
-                        )
-                        if c is not None
+                        # TODO: proxy_name is not technically safe,
+                        # see test_cte->
+                        # test_with_recursive_no_name_currently_buggy.  not
+                        # clear what should be done with such a case
+                        fallback_label_name or proxy_name
+                        for (
+                            _,
+                            proxy_name,
+                            fallback_label_name,
+                            c,
+                            repeated,
+                        ) in (col_source._generate_columns_plus_names(True))
+                        if not repeated
                     ]
 
                     text += "(%s)" % (
                         ", ".join(
-                            self.preparer.format_column(
+                            self.preparer.format_label_name(
                                 ident, anon_map=self.anon_map
                             )
                             for ident in recur_cols
@@ -2825,6 +2838,24 @@ class SQLCompiler(Compiled):
             )
         self._result_columns.append((keyname, name, objects, type_))
 
+    def _label_returning_column(self, stmt, column, column_clause_args=None):
+        """Render a column with necessary labels inside of a RETURNING clause.
+
+        This method is provided for individual dialects in place of calling
+        the _label_select_column method directly, so that the two use cases
+        of RETURNING vs. SELECT can be disambiguated going forward.
+
+        .. versionadded:: 1.4.21
+
+        """
+        return self._label_select_column(
+            None,
+            column,
+            True,
+            False,
+            {} if column_clause_args is None else column_clause_args,
+        )
+
     def _label_select_column(
         self,
         select,
@@ -2833,6 +2864,8 @@ class SQLCompiler(Compiled):
         asfrom,
         column_clause_args,
         name=None,
+        proxy_name=None,
+        fallback_label_name=None,
         within_columns_clause=True,
         column_is_repeated=False,
         need_column_expressions=False,
@@ -2876,9 +2909,17 @@ class SQLCompiler(Compiled):
         else:
             add_to_result_map = None
 
-        if not within_columns_clause:
-            result_expr = col_expr
-        elif isinstance(column, elements.Label):
+        # this method is used by some of the dialects for RETURNING,
+        # which has different inputs.  _label_returning_column was added
+        # as the better target for this now however for 1.4 we will keep
+        # _label_select_column directly compatible with this use case.
+        # these assertions right now set up the current expected inputs
+        assert within_columns_clause, (
+            "_label_select_column is only relevant within "
+            "the columns clause of a SELECT or RETURNING"
+        )
+
+        if isinstance(column, elements.Label):
             if col_expr is not column:
                 result_expr = _CompileLabel(
                     col_expr, column.name, alt_names=(column.element,)
@@ -2886,50 +2927,91 @@ class SQLCompiler(Compiled):
             else:
                 result_expr = col_expr
 
-        elif select is not None and name:
-            result_expr = _CompileLabel(
-                col_expr, name, alt_names=(column._key_label,)
-            )
-        elif (
-            asfrom
-            and isinstance(column, elements.ColumnClause)
-            and not column.is_literal
-            and column.table is not None
-            and not isinstance(column.table, selectable.Select)
-        ):
-            result_expr = _CompileLabel(
-                col_expr,
-                coercions.expect(roles.TruncatedLabelRole, column.name),
-                alt_names=(column.key,),
-            )
-        elif (
-            not isinstance(column, elements.TextClause)
-            and (
-                not isinstance(column, elements.UnaryExpression)
-                or column.wraps_column_expression
-                or asfrom
-            )
-            and (
-                not hasattr(column, "name")
-                or isinstance(column, functions.FunctionElement)
-            )
-        ):
+        elif name:
+            # here, _columns_plus_names has determined there's an explicit
+            # label name we need to use.  this is the default for
+            # tablenames_plus_columnnames as well as when columns are being
+            # deduplicated on name
+
+            assert (
+                proxy_name is not None
+            ), "proxy_name is required if 'name' is passed"
+
             result_expr = _CompileLabel(
                 col_expr,
-                column._anon_name_label
-                if not column_is_repeated
-                else column._dedupe_label_anon_label,
-            )
-        elif col_expr is not column:
-            # TODO: are we sure "column" has a .name and .key here ?
-            # assert isinstance(column, elements.ColumnClause)
-            result_expr = _CompileLabel(
-                col_expr,
-                coercions.expect(roles.TruncatedLabelRole, column.name),
-                alt_names=(column.key,),
+                name,
+                alt_names=(
+                    proxy_name,
+                    # this is a hack to allow legacy result column lookups
+                    # to work as they did before; this goes away in 2.0.
+                    # TODO: this only seems to be tested indirectly
+                    # via test/orm/test_deprecations.py.   should be a
+                    # resultset test for this
+                    column._tq_label,
+                ),
             )
         else:
-            result_expr = col_expr
+            # determine here whether this column should be rendered in
+            # a labelled context or not, as we were given no required label
+            # name from the caller. Here we apply heuristics based on the kind
+            # of SQL expression involved.
+
+            if col_expr is not column:
+                # type-specific expression wrapping the given column,
+                # so we render a label
+                render_with_label = True
+            elif isinstance(column, elements.ColumnClause):
+                # table-bound column, we render its name as a label if we are
+                # inside of a subquery only
+                render_with_label = (
+                    asfrom
+                    and not column.is_literal
+                    and column.table is not None
+                )
+            elif isinstance(column, elements.TextClause):
+                render_with_label = False
+            elif isinstance(column, elements.UnaryExpression):
+                render_with_label = column.wraps_column_expression or asfrom
+            elif (
+                # general class of expressions that don't have a SQL-column
+                # addressible name.  includes scalar selects, bind parameters,
+                # SQL functions, others
+                not isinstance(column, elements.NamedColumn)
+                # deeper check that indicates there's no natural "name" to
+                # this element, which accommodates for custom SQL constructs
+                # that might have a ".name" attribute (but aren't SQL
+                # functions) but are not implementing this more recently added
+                # base class.  in theory the "NamedColumn" check should be
+                # enough, however here we seek to maintain legacy behaviors
+                # as well.
+                and column._non_anon_label is None
+            ):
+                render_with_label = True
+            else:
+                render_with_label = False
+
+            if render_with_label:
+                if not fallback_label_name:
+                    # used by the RETURNING case right now.  we generate it
+                    # here as 3rd party dialects may be referring to
+                    # _label_select_column method directly instead of the
+                    # just-added _label_returning_column method
+                    assert not column_is_repeated
+                    fallback_label_name = column._anon_name_label
+
+                fallback_label_name = (
+                    elements._truncated_label(fallback_label_name)
+                    if not isinstance(
+                        fallback_label_name, elements._truncated_label
+                    )
+                    else fallback_label_name
+                )
+
+                result_expr = _CompileLabel(
+                    col_expr, fallback_label_name, alt_names=(proxy_name,)
+                )
+            else:
+                result_expr = col_expr
 
         column_clause_args.update(
             within_columns_clause=within_columns_clause,
@@ -3085,6 +3167,10 @@ class SQLCompiler(Compiled):
         else:
             byfrom = None
 
+        if select_stmt._independent_ctes:
+            for cte in select_stmt._independent_ctes:
+                cte._compiler_dispatch(self, **kwargs)
+
         if select_stmt._prefixes:
             text += self._generate_prefixes(
                 select_stmt, select_stmt._prefixes, **kwargs
@@ -3102,10 +3188,18 @@ class SQLCompiler(Compiled):
                     asfrom,
                     column_clause_args,
                     name=name,
+                    proxy_name=proxy_name,
+                    fallback_label_name=fallback_label_name,
                     column_is_repeated=repeated,
                     need_column_expressions=need_column_expressions,
                 )
-                for name, column, repeated in compile_state.columns_plus_names
+                for (
+                    name,
+                    proxy_name,
+                    fallback_label_name,
+                    column,
+                    repeated,
+                ) in compile_state.columns_plus_names
             ]
             if c is not None
         ]
@@ -3120,6 +3214,8 @@ class SQLCompiler(Compiled):
                         name
                         for (
                             key,
+                            proxy_name,
+                            fallback_label_name,
                             name,
                             repeated,
                         ) in compile_state.columns_plus_names
@@ -3128,6 +3224,8 @@ class SQLCompiler(Compiled):
                         name
                         for (
                             key,
+                            proxy_name,
+                            fallback_label_name,
                             name,
                             repeated,
                         ) in compile_state_wraps_for.columns_plus_names
@@ -3590,6 +3688,10 @@ class SQLCompiler(Compiled):
         if insert_stmt._hints:
             _, table_text = self._setup_crud_hints(insert_stmt, table_text)
 
+        if insert_stmt._independent_ctes:
+            for cte in insert_stmt._independent_ctes:
+                cte._compiler_dispatch(self, **kw)
+
         text += table_text
 
         if crud_params_single or not supports_default_values:
@@ -3746,6 +3848,10 @@ class SQLCompiler(Compiled):
         else:
             dialect_hints = None
 
+        if update_stmt._independent_ctes:
+            for cte in update_stmt._independent_ctes:
+                cte._compiler_dispatch(self, **kw)
+
         text += table_text
 
         text += " SET "
@@ -3854,6 +3960,10 @@ class SQLCompiler(Compiled):
             )
         else:
             dialect_hints = None
+
+        if delete_stmt._independent_ctes:
+            for cte in delete_stmt._independent_ctes:
+                cte._compiler_dispatch(self, **kw)
 
         text += table_text
 
@@ -5009,20 +5119,41 @@ class IdentifierPreparer(object):
         else:
             name = constraint.name
 
+        if constraint.__visit_name__ == "index":
+            return self.truncate_and_render_index_name(
+                name, _alembic_quote=_alembic_quote
+            )
+        else:
+            return self.truncate_and_render_constraint_name(
+                name, _alembic_quote=_alembic_quote
+            )
+
+    def truncate_and_render_index_name(self, name, _alembic_quote=True):
+        # calculate these at format time so that ad-hoc changes
+        # to dialect.max_identifier_length etc. can be reflected
+        # as IdentifierPreparer is long lived
+        max_ = (
+            self.dialect.max_index_name_length
+            or self.dialect.max_identifier_length
+        )
+        return self._truncate_and_render_maxlen_name(
+            name, max_, _alembic_quote
+        )
+
+    def truncate_and_render_constraint_name(self, name, _alembic_quote=True):
+        # calculate these at format time so that ad-hoc changes
+        # to dialect.max_identifier_length etc. can be reflected
+        # as IdentifierPreparer is long lived
+        max_ = (
+            self.dialect.max_constraint_name_length
+            or self.dialect.max_identifier_length
+        )
+        return self._truncate_and_render_maxlen_name(
+            name, max_, _alembic_quote
+        )
+
+    def _truncate_and_render_maxlen_name(self, name, max_, _alembic_quote):
         if isinstance(name, elements._truncated_label):
-            # calculate these at format time so that ad-hoc changes
-            # to dialect.max_identifier_length etc. can be reflected
-            # as IdentifierPreparer is long lived
-            if constraint.__visit_name__ == "index":
-                max_ = (
-                    self.dialect.max_index_name_length
-                    or self.dialect.max_identifier_length
-                )
-            else:
-                max_ = (
-                    self.dialect.max_constraint_name_length
-                    or self.dialect.max_identifier_length
-                )
             if len(name) > max_:
                 name = name[0 : max_ - 8] + "_" + util.md5_hex(name)[-4:]
         else:
@@ -5052,6 +5183,20 @@ class IdentifierPreparer(object):
 
     def format_schema(self, name):
         """Prepare a quoted schema name."""
+
+        return self.quote(name)
+
+    def format_label_name(
+        self,
+        name,
+        anon_map=None,
+    ):
+        """Prepare a quoted column name."""
+
+        if anon_map is not None and isinstance(
+            name, elements._truncated_label
+        ):
+            name = name.apply_map(anon_map)
 
         return self.quote(name)
 

@@ -5,6 +5,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy import literal_column
 from sqlalchemy import Numeric
 from sqlalchemy import select
@@ -243,6 +244,89 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
             as_ = relationship("A")
 
         return A, B
+
+    @testing.fixture
+    def _unnamed_expr_fixture(self):
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+            firstname = Column(String)
+            lastname = Column(String)
+
+            @hybrid.hybrid_property
+            def name(self):
+                return self.firstname + " " + self.lastname
+
+        return A
+
+    def test_labeling_for_unnamed(self, _unnamed_expr_fixture):
+        A = _unnamed_expr_fixture
+
+        stmt = select(A.id, A.name)
+        self.assert_compile(
+            stmt,
+            "SELECT a.id, a.firstname || :firstname_1 || a.lastname AS name "
+            "FROM a",
+        )
+
+        eq_(stmt.subquery().c.keys(), ["id", "name"])
+
+        self.assert_compile(
+            select(stmt.subquery()),
+            "SELECT anon_1.id, anon_1.name "
+            "FROM (SELECT a.id AS id, a.firstname || :firstname_1 || "
+            "a.lastname AS name FROM a) AS anon_1",
+        )
+
+    def test_labeling_for_unnamed_tablename_plus_col(
+        self, _unnamed_expr_fixture
+    ):
+        A = _unnamed_expr_fixture
+
+        stmt = select(A.id, A.name).set_label_style(
+            LABEL_STYLE_TABLENAME_PLUS_COL
+        )
+        # looks like legacy query
+        self.assert_compile(
+            stmt,
+            "SELECT a.id AS a_id, a.firstname || :firstname_1 || "
+            "a.lastname AS name FROM a",
+        )
+
+        eq_(stmt.subquery().c.keys(), ["a_id", "name"])
+
+        self.assert_compile(
+            select(stmt.subquery()),
+            "SELECT anon_1.a_id, anon_1.name FROM (SELECT a.id AS a_id, "
+            "a.firstname || :firstname_1 || a.lastname AS name FROM a) "
+            "AS anon_1",
+        )
+
+    def test_labeling_for_unnamed_legacy(self, _unnamed_expr_fixture):
+        A = _unnamed_expr_fixture
+
+        sess = fixture_session()
+
+        stmt = sess.query(A.id, A.name)
+
+        self.assert_compile(
+            stmt,
+            "SELECT a.id AS a_id, a.firstname || "
+            ":firstname_1 || a.lastname AS name FROM a",
+        )
+
+        # for the subquery, we lose the "ORM-ness" from the subquery
+        # so we have to carry it over using _proxy_key
+        eq_(stmt.subquery().c.keys(), ["id", "name"])
+
+        self.assert_compile(
+            sess.query(stmt.subquery()),
+            "SELECT anon_1.id AS anon_1_id, anon_1.name AS anon_1_name "
+            "FROM (SELECT a.id AS id, a.firstname || :firstname_1 || "
+            "a.lastname AS name FROM a) AS anon_1",
+        )
 
     def test_info(self):
         A = self._fixture()
@@ -943,7 +1027,7 @@ class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
     """tests against hybrids that return a non-ClauseElement.
 
     use cases derived from the example at
-    http://techspot.zzzeek.org/2011/10/21/hybrids-and-value-agnostic-types/
+    https://techspot.zzzeek.org/2011/10/21/hybrids-and-value-agnostic-types/
 
     """
 

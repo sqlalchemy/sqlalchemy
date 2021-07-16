@@ -3,7 +3,7 @@
 # <see AUTHORS file>
 #
 # This module is part of SQLAlchemy and is released under
-# the MIT License: http://www.opensource.org/licenses/mit-license.php
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """private module containing functions used to emit INSERT, UPDATE
 and DELETE statements on behalf of a :class:`_orm.Mapper` and its descending

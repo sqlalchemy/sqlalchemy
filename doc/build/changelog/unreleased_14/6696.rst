@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, postgresql
-    :tickets: 6696
-
-    Fixed issue in :meth:`_postgresql.Insert.on_conflict_do_nothing` and
-    :meth:`_postgresql.Insert.on_conflict_do_update` where the name of a unique
-    constraint passed as the ``constraint`` parameter would not be properly
-    quoted if it contained characters which required quoting.
-

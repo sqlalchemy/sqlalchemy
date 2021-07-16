@@ -83,7 +83,7 @@ class PolymorphicVerticalProperty(object):
                 for attribute, discriminator in pairs
                 if attribute is not None
             ]
-            return case(whens, self.cls.type, null())
+            return case(whens, value=self.cls.type, else_=null())
 
         def __eq__(self, other):
             return self._case() == cast(other, String)
