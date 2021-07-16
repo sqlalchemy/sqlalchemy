@@ -1468,6 +1468,30 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             ") SELECT cte.outer_1, cte.outer_2 FROM cte",
         )
 
+    def test_double_nesting_cte_with_cross_reference_in_cte(self):
+        select_1_cte = select([literal(1).label("inner_cte_1")]).cte(
+            "nesting_1", nesting=True
+        )
+        select_2_cte = select(
+            [(select_1_cte.c.inner_cte_1 + 1).label("inner_cte_2")]
+        ).cte("nesting_2", nesting=True)
+
+        # 1 next 2
+
+        nesting_cte_1_2 = select([select_1_cte, select_2_cte]).cte("cte")
+        stmt_1_2 = select([nesting_cte_1_2])
+        self.assert_compile(
+            stmt_1_2,
+            "WITH cte AS ("
+            "WITH nesting_1 AS (SELECT %(param_1)s AS inner_cte_1)"
+            ", nesting_2 AS (SELECT nesting_1.inner_cte_1 + %(inner_cte_1_1)s"
+            " AS inner_cte_2 FROM nesting_1)"
+            " SELECT nesting_1.inner_cte_1 AS inner_cte_1"
+            ", nesting_2.inner_cte_2 AS inner_cte_2"
+            " FROM nesting_1, nesting_2"
+            ") SELECT cte.inner_cte_1, cte.inner_cte_2 FROM cte",
+        )
+
     def test_nesting_cte_in_nesting_cte_in_cte(self):
         select_1_cte = select([literal(1).label("inner_cte")]).cte(
             "nesting_1", nesting=True
