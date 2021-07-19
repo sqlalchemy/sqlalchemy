@@ -133,7 +133,7 @@ application will usually have just one instance of this base in a commonly
 imported module.   We create the base class using the :func:`.declarative_base`
 function, as follows::
 
-    >>> from sqlalchemy.orm import declarative_base
+    >>> from sqlalchemy.ext.declarative import declarative_base
 
     >>> Base = declarative_base()
 
