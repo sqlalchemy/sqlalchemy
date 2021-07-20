@@ -3427,8 +3427,8 @@ class PGDialect(default.DefaultDialect):
     def _get_server_version_info(self, connection):
         v = connection.exec_driver_sql("select version()").scalar()
         m = re.match(
-            r".*(?:PostgreSQL|EnterpriseDB) "
-            r"(\d+)\.?(\d+)?(?:\.(\d+))?(?:\.\d+)?(?:devel|beta)?",
+            r".*(?:PostgreSQL|EnterpriseDB|CockroachDB CCL) "
+            r"v?(\d+)\.?(\d+)?(?:\.(\d+))?(?:\.\d+)?(?:devel|beta)?",
             v,
         )
         if not m:
