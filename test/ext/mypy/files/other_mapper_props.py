@@ -42,7 +42,7 @@ class User:
 
 s = Session()
 
-u1: User = s.get(User, 5)
+u1: Optional[User] = s.get(User, 5)
 
 q1: Optional[str] = u1.big_col
 
