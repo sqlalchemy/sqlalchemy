@@ -2086,13 +2086,13 @@ class PolymorphicOnTest(fixtures.MappedTest):
             self.classes.Employee,
             self.tables.employees,
             polymorphic_on=case(
-                value=self.tables.employees.c.type,
-                whens={
+                {
                     "E": "employee",
                     "M": "manager",
                     "G": "engineer",
                     "R": "engineer",
                 },
+                value=self.tables.employees.c.type,
             ),
             polymorphic_identity="employee",
         )

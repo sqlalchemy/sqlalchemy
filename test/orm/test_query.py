@@ -7290,7 +7290,7 @@ class SessionBindTest(QueryTest):
         User = self.classes.User
         session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=True):
-            session.query(case([(User.name == "x", "C")], else_="W")).all()
+            session.query(case((User.name == "x", "C"), else_="W")).all()
 
     def test_cast(self):
         User = self.classes.User

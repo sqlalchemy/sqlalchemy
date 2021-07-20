@@ -1259,12 +1259,10 @@ class ExpandingBoundInTest(fixtures.TablesTest):
     def test_null_in_empty_set_is_false_bindparam(self, connection):
         stmt = select(
             case(
-                [
-                    (
-                        null().in_(bindparam("foo", value=())),
-                        true(),
-                    )
-                ],
+                (
+                    null().in_(bindparam("foo", value=())),
+                    true(),
+                ),
                 else_=false(),
             )
         )
@@ -1273,12 +1271,10 @@ class ExpandingBoundInTest(fixtures.TablesTest):
     def test_null_in_empty_set_is_false_direct(self, connection):
         stmt = select(
             case(
-                [
-                    (
-                        null().in_([]),
-                        true(),
-                    )
-                ],
+                (
+                    null().in_([]),
+                    true(),
+                ),
                 else_=false(),
             )
         )

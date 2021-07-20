@@ -362,12 +362,10 @@ class _DateFixture(_LiteralRoundTripFixture, fixtures.TestBase):
             id_ = result.inserted_primary_key[0]
             stmt = select(date_table.c.id).where(
                 case(
-                    [
-                        (
-                            bindparam("foo", type_=self.datatype) != None,
-                            bindparam("foo", type_=self.datatype),
-                        )
-                    ],
+                    (
+                        bindparam("foo", type_=self.datatype) != None,
+                        bindparam("foo", type_=self.datatype),
+                    ),
                     else_=date_table.c.date_data,
                 )
                 == date_table.c.date_data

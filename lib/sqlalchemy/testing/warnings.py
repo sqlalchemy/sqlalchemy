@@ -74,7 +74,6 @@ def setup_filters():
         "arguments in version 2.0",
         r"The Join.select\(\) method will no longer accept keyword arguments "
         "in version 2.0.",
-        r"The \"whens\" argument to case\(\) is now passed",
         r"The Join.select\(\).whereclause parameter is deprecated",
         #
         # DML
