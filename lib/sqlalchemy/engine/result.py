@@ -708,6 +708,15 @@ class Result(_WithKeys, ResultInternal):
        :class:`.ResultProxy` interface.   When using the ORM, a higher level
        object called :class:`.ChunkedIteratorResult` is normally used.
 
+    .. note:: In SQLAlchemy 1.4 and above, this object is
+       used for ORM results returned by :meth:`_orm.Session.execute`, which can
+       yield instances of ORM mapped objects either individually or within
+       tuple-like rows. Note that the :class:`_result.Result` object does not
+       deduplicate instances or rows automatically as is the case with the
+       legacy :class:`_orm.Query` object. For in-Python de-duplication of
+       instances or rows, use the :meth:`_result.Result.unique` modifier
+       method.
+
     .. seealso::
 
         :ref:`tutorial_fetching_rows` - in the :doc:`/tutorial/index`
