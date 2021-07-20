@@ -177,8 +177,8 @@ class, so that the :class:`_schema.ForeignKey` directives can locate the
 remote tables with which to link::
 
     association_table = Table('association', Base.metadata,
-        Column('left_id', Integer, ForeignKey('left.id')),
-        Column('right_id', Integer, ForeignKey('right.id'))
+        Column('left_id', ForeignKey('left.id')),
+        Column('right_id', ForeignKey('right.id'))
     )
 
     class Parent(Base):
@@ -191,13 +191,30 @@ remote tables with which to link::
         __tablename__ = 'right'
         id = Column(Integer, primary_key=True)
 
+.. tip::
+
+    The "association table" above has foreign key constraints established that
+    refer to the two entity tables on either side of the relationship.  The data
+    type of each of ``association.left_id`` and ``association.right_id`` is
+    normally inferred from that of the referenced table and may be omitted.
+    It is also **recommended**, though not in any way required by SQLAlchemy,
+    that the columns which refer to the two entity tables are established within
+    either a **unique constraint** or more commonly as the **primary key constraint**;
+    this ensures that duplicate rows won't be persisted within the table regardless
+    of issues on the application side::
+
+        association_table = Table('association', Base.metadata,
+            Column('left_id', ForeignKey('left.id'), primary_key=True),
+            Column('right_id', ForeignKey('right.id'), primary_key=True)
+        )
+
 For a bidirectional relationship, both sides of the relationship contain a
 collection.  Specify using :paramref:`_orm.relationship.back_populates`, and
 for each :func:`_orm.relationship` specify the common association table::
 
     association_table = Table('association', Base.metadata,
-        Column('left_id', Integer, ForeignKey('left.id')),
-        Column('right_id', Integer, ForeignKey('right.id'))
+        Column('left_id', ForeignKey('left.id'), primary_key=True),
+        Column('right_id', ForeignKey('right.id'), primary_key=True)
     )
 
     class Parent(Base):
@@ -222,8 +239,8 @@ use the same :paramref:`_orm.relationship.secondary` argument for the
 reverse relationship::
 
     association_table = Table('association', Base.metadata,
-        Column('left_id', Integer, ForeignKey('left.id')),
-        Column('right_id', Integer, ForeignKey('right.id'))
+        Column('left_id', ForeignKey('left.id'), primary_key=True),
+        Column('right_id', ForeignKey('right.id'), primary_key=True)
     )
 
     class Parent(Base):
@@ -345,8 +362,8 @@ is stored along with each association between ``Parent`` and
 
     class Association(Base):
         __tablename__ = 'association'
-        left_id = Column(Integer, ForeignKey('left.id'), primary_key=True)
-        right_id = Column(Integer, ForeignKey('right.id'), primary_key=True)
+        left_id = Column(ForeignKey('left.id'), primary_key=True)
+        right_id = Column(ForeignKey('right.id'), primary_key=True)
         extra_data = Column(String(50))
         child = relationship("Child")
 
@@ -364,8 +381,8 @@ or :paramref:`_orm.relationship.backref`::
 
     class Association(Base):
         __tablename__ = 'association'
-        left_id = Column(Integer, ForeignKey('left.id'), primary_key=True)
-        right_id = Column(Integer, ForeignKey('right.id'), primary_key=True)
+        left_id = Column(ForeignKey('left.id'), primary_key=True)
+        right_id = Column(ForeignKey('right.id'), primary_key=True)
         extra_data = Column(String(50))
         child = relationship("Child", back_populates="parents")
         parent = relationship("Parent", back_populates="children")
@@ -419,8 +436,8 @@ associated object, and a second to a target attribute.
         class Association(Base):
             __tablename__ = 'association'
 
-            left_id = Column(Integer, ForeignKey('left.id'), primary_key=True)
-            right_id = Column(Integer, ForeignKey('right.id'), primary_key=True)
+            left_id = Column(ForeignKey('left.id'), primary_key=True)
+            right_id = Column(ForeignKey('right.id'), primary_key=True)
             extra_data = Column(String(50))
 
             child = relationship("Child", backref="parent_associations")
