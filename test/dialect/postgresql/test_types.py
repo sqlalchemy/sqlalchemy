@@ -1587,7 +1587,7 @@ class ArrayRoundTripTest(object):
             ),
         )
         results = connection.execute(
-            arrtable.select(order_by=[arrtable.c.intarr])
+            arrtable.select().order_by(arrtable.c.intarr)
         ).fetchall()
         eq_(len(results), 2)
         eq_(results[0].strarr, [util.ue("m\xe4\xe4"), util.ue("m\xf6\xf6")])

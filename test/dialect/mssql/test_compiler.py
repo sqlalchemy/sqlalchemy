@@ -1069,7 +1069,13 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         t = table("t", column("x", Integer), column("y", Integer))
 
         cols = [t.c.x, t.c.x.label("q"), t.c.x.label("p"), t.c.y]
-        s = select(cols).where(t.c.x == 5).order_by(t.c.y).limit(10).offset(20)
+        s = (
+            select(*cols)
+            .where(t.c.x == 5)
+            .order_by(t.c.y)
+            .limit(10)
+            .offset(20)
+        )
 
         self.assert_compile(
             s,

@@ -68,8 +68,6 @@ def setup_filters():
         #
         # Core SQL constructs
         #
-        r"The legacy calling style of select\(\) is deprecated and will be "
-        "removed",
         r"The FromClause.select\(\) method will no longer accept keyword "
         "arguments in version 2.0",
         r"The Join.select\(\) method will no longer accept keyword arguments "

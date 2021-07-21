@@ -948,7 +948,7 @@ class LambdaElementTest(
             exc.ArgumentError,
             "Textual column expression 'f' should be explicitly declared",
             select,
-            [lambda: "foo"],
+            lambda: "foo",
         )
 
     def test_coercion_where_clause(self):

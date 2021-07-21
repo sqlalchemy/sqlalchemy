@@ -161,19 +161,19 @@ class UnicodeSchemaTest(fixtures.TablesTest):
 
         eq_(
             connection.execute(
-                tt1.select(order_by=desc(u("méil")))
+                tt1.select().order_by(desc(u("méil")))
             ).fetchall(),
             [(2, 7), (1, 5)],
         )
         eq_(
             connection.execute(
-                tt2.select(order_by=desc(u("méil")))
+                tt2.select().order_by(desc(u("méil")))
             ).fetchall(),
             [(2, 2), (1, 1)],
         )
         eq_(
             connection.execute(
-                tt3.select(order_by=desc(ue("\u6e2c\u8a66_id")))
+                tt3.select().order_by(desc(ue("\u6e2c\u8a66_id")))
             ).fetchall(),
             [(2, 7, 2, 2), (1, 5, 1, 1)],
         )

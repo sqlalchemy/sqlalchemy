@@ -282,9 +282,9 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_for_update_of_join_one(self):
         self.assert_compile(
-            self.join.select(self.table2.c.mytable_id == 7).with_for_update(
-                of=[self.join]
-            ),
+            self.join.select()
+            .where(self.table2.c.mytable_id == 7)
+            .with_for_update(of=[self.join]),
             "SELECT table2.mytable_id, "
             "mytable.myid, mytable.name, mytable.description "
             "FROM table2 "
@@ -312,9 +312,9 @@ class MySQLForUpdateCompileTest(fixtures.TestBase, AssertsCompiledSQL):
             ta, self.table2.c.mytable_id == ta.c.myid
         )
         self.assert_compile(
-            alias_join.select(self.table2.c.mytable_id == 7).with_for_update(
-                of=[alias_join]
-            ),
+            alias_join.select()
+            .where(self.table2.c.mytable_id == 7)
+            .with_for_update(of=[alias_join]),
             "SELECT table2.mytable_id, "
             "mytable_1.myid, mytable_1.name, mytable_1.description "
             "FROM table2 "

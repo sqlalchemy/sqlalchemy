@@ -56,27 +56,6 @@ grandchild = Table(
 class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
-    def test_legacy_calling_style_kw_only(self):
-        stmt = select(
-            whereclause=table1.c.myid == table2.c.otherid
-        ).add_columns(table1.c.myid)
-
-        self.assert_compile(
-            stmt,
-            "SELECT mytable.myid FROM mytable, myothertable "
-            "WHERE mytable.myid = myothertable.otherid",
-        )
-
-    def test_legacy_calling_style_col_seq_only(self):
-        # keep [] here
-        stmt = select([table1.c.myid]).where(table1.c.myid == table2.c.otherid)
-
-        self.assert_compile(
-            stmt,
-            "SELECT mytable.myid FROM mytable, myothertable "
-            "WHERE mytable.myid = myothertable.otherid",
-        )
-
     def test_new_calling_style(self):
         stmt = select(table1.c.myid).where(table1.c.myid == table2.c.otherid)
 
@@ -121,28 +100,6 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
             stmt,
             "SELECT mytable.myid, mytable.name, "
             "mytable.description FROM mytable",
-        )
-
-    def test_new_calling_style_thing_ok_actually_use_iter(self):
-        class Thing(object):
-            def __iter__(self):
-                return iter([table1.c.name, table1.c.description])
-
-        stmt = select(Thing())
-        self.assert_compile(
-            stmt,
-            "SELECT mytable.name, mytable.description FROM mytable",
-        )
-
-    def test_kw_triggers_old_style(self):
-
-        assert_raises_message(
-            exc.ArgumentError,
-            r"select\(\) construct created in legacy mode, "
-            "i.e. with keyword arguments",
-            select,
-            table1.c.myid,
-            whereclause=table1.c.myid == table2.c.otherid,
         )
 
     def test_join_nofrom_implicit_left_side_explicit_onclause(self):

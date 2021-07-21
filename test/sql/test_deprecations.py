@@ -2805,3 +2805,84 @@ class DDLDeprecatedBindTest(fixtures.TestBase):
             c1 = const(m1, bind=testing.db)
 
             is_(c1.bind, testing.db)
+
+
+class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    @testing.fixture
+    def table_fixture(self):
+        table1 = table(
+            "mytable",
+            column("myid", Integer),
+            column("name", String),
+            column("description", String),
+        )
+
+        table2 = table(
+            "myothertable",
+            column("otherid", Integer),
+            column("othername", String),
+        )
+        return table1, table2
+
+    def test_legacy_calling_style_kw_only(self, table_fixture):
+        table1, table2 = table_fixture
+        with testing.expect_deprecated_20(
+            "The legacy calling style of select"
+        ):
+            stmt = select(
+                whereclause=table1.c.myid == table2.c.otherid
+            ).add_columns(table1.c.myid)
+
+            self.assert_compile(
+                stmt,
+                "SELECT mytable.myid FROM mytable, myothertable "
+                "WHERE mytable.myid = myothertable.otherid",
+            )
+
+    def test_legacy_calling_style_col_seq_only(self, table_fixture):
+        table1, table2 = table_fixture
+        with testing.expect_deprecated_20(
+            "The legacy calling style of select"
+        ):
+            # keep [] here
+            stmt = select([table1.c.myid]).where(
+                table1.c.myid == table2.c.otherid
+            )
+
+            self.assert_compile(
+                stmt,
+                "SELECT mytable.myid FROM mytable, myothertable "
+                "WHERE mytable.myid = myothertable.otherid",
+            )
+
+    def test_new_calling_style_thing_ok_actually_use_iter(self, table_fixture):
+        table1, table2 = table_fixture
+
+        class Thing(object):
+            def __iter__(self):
+                return iter([table1.c.name, table1.c.description])
+
+        with testing.expect_deprecated_20(
+            "The legacy calling style of select"
+        ):
+            stmt = select(Thing())
+            self.assert_compile(
+                stmt,
+                "SELECT mytable.name, mytable.description FROM mytable",
+            )
+
+    def test_kw_triggers_old_style(self, table_fixture):
+        table1, table2 = table_fixture
+        with testing.expect_deprecated_20(
+            "The legacy calling style of select"
+        ):
+            assert_raises_message(
+                exc.ArgumentError,
+                r"select\(\) construct created in legacy mode, "
+                "i.e. with keyword arguments",
+                select,
+                table1.c.myid,
+                whereclause=table1.c.myid == table2.c.otherid,
+            )
