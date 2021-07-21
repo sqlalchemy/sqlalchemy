@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 6793
+
+    Fixed critical caching issue where the ORM's persistence feature using
+    INSERT..RETURNING would cache an incorrect query when mixing the "bulk
+    save" and standard "flush" forms of INSERT.

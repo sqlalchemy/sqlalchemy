@@ -866,3 +866,57 @@ class BulkInheritanceTest(BulkTest, fixtures.MappedTest):
                 ],
             ),
         )
+
+
+class BulkIssue6793Test(BulkTest, fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class User(Base):
+            __tablename__ = "users"
+            id = Column(Integer, primary_key=True)
+            name = Column(String(255), nullable=False)
+
+    def test_issue_6793(self):
+        User = self.classes.User
+
+        session = fixture_session()
+
+        with self.sql_execution_asserter() as asserter:
+
+            session.bulk_save_objects([User(name="A"), User(name="B")])
+
+            session.add(User(name="C"))
+            session.add(User(name="D"))
+            session.flush()
+
+        asserter.assert_(
+            Conditional(
+                testing.db.dialect.insert_executemany_returning,
+                [
+                    CompiledSQL(
+                        "INSERT INTO users (name) VALUES (:name)",
+                        [{"name": "A"}, {"name": "B"}],
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO users (name) VALUES (:name)",
+                        [{"name": "C"}, {"name": "D"}],
+                    ),
+                ],
+                [
+                    CompiledSQL(
+                        "INSERT INTO users (name) VALUES (:name)",
+                        [{"name": "A"}, {"name": "B"}],
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO users (name) VALUES (:name)",
+                        [{"name": "C"}],
+                    ),
+                    CompiledSQL(
+                        "INSERT INTO users (name) VALUES (:name)",
+                        [{"name": "D"}],
+                    ),
+                ],
+            )
+        )

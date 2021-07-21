@@ -214,7 +214,8 @@ class UpdateBase(
     _hints = util.immutabledict()
     named_with_column = False
 
-    _return_defaults = None
+    _return_defaults = False
+    _return_defaults_columns = None
     _returning = ()
 
     is_dml = True
@@ -794,7 +795,8 @@ class ValuesBase(UpdateBase):
             :attr:`_engine.CursorResult.inserted_primary_key_rows`
 
         """
-        self._return_defaults = cols or True
+        self._return_defaults = True
+        self._return_defaults_columns = cols
 
 
 class Insert(ValuesBase):
@@ -825,6 +827,11 @@ class Insert(ValuesBase):
             ("_post_values_clause", InternalTraversal.dp_clauseelement),
             ("_returning", InternalTraversal.dp_clauseelement_list),
             ("_hints", InternalTraversal.dp_table_hint_list),
+            ("_return_defaults", InternalTraversal.dp_boolean),
+            (
+                "_return_defaults_columns",
+                InternalTraversal.dp_clauseelement_list,
+            ),
         ]
         + HasPrefixes._has_prefixes_traverse_internals
         + DialectKWArgs._dialect_kwargs_traverse_internals
@@ -929,7 +936,10 @@ class Insert(ValuesBase):
         if dialect_kw:
             self._validate_dialect_kwargs_deprecated(dialect_kw)
 
-        self._return_defaults = return_defaults
+        if return_defaults:
+            self._return_defaults = True
+            if not isinstance(return_defaults, bool):
+                self._return_defaults_columns = return_defaults
 
     @_generative
     def inline(self):
@@ -1116,6 +1126,11 @@ class Update(DMLWhereBase, ValuesBase):
             ("_values", InternalTraversal.dp_dml_values),
             ("_returning", InternalTraversal.dp_clauseelement_list),
             ("_hints", InternalTraversal.dp_table_hint_list),
+            ("_return_defaults", InternalTraversal.dp_boolean),
+            (
+                "_return_defaults_columns",
+                InternalTraversal.dp_clauseelement_list,
+            ),
         ]
         + HasPrefixes._has_prefixes_traverse_internals
         + DialectKWArgs._dialect_kwargs_traverse_internals

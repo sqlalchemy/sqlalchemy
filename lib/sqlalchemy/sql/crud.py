@@ -760,7 +760,7 @@ def _append_param_update(
             compiler.postfetch.append(c)
     elif (
         implicit_return_defaults
-        and stmt._return_defaults is not True
+        and (stmt._return_defaults_columns or not stmt._return_defaults)
         and c in implicit_return_defaults
     ):
         compiler.returning.append(c)
@@ -1024,10 +1024,10 @@ def _get_returning_modifiers(compiler, stmt, compile_state):
         implicit_return_defaults = False  # pragma: no cover
 
     if implicit_return_defaults:
-        if stmt._return_defaults is True:
+        if not stmt._return_defaults_columns:
             implicit_return_defaults = set(stmt.table.c)
         else:
-            implicit_return_defaults = set(stmt._return_defaults)
+            implicit_return_defaults = set(stmt._return_defaults_columns)
 
     postfetch_lastrowid = need_pks and compiler.dialect.postfetch_lastrowid
 
