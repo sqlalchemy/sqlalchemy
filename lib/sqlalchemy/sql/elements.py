@@ -2918,15 +2918,15 @@ class Case(ColumnElement):
 
         if "whens" in kw:
             util.warn_deprecated_20(
-                'The "whens" argument to case() is now passed as a series of '
-                "positional "
-                "elements, rather than as a list. "
+                'The "whens" argument to case() is now passed using '
+                "positional style only, not as a keyword argument."
             )
-            whens = kw.pop("whens")
-        else:
-            whens = coercions._expression_collection_was_a_list(
-                "whens", "case", whens
-            )
+            whens = (kw.pop("whens"),)
+
+        whens = coercions._expression_collection_was_a_list(
+            "whens", "case", whens
+        )
+
         try:
             whens = util.dictlike_iteritems(whens)
         except TypeError:

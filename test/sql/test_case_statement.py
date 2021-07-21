@@ -175,8 +175,7 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
         ),
         argnames="test_case, expected",
     )
-    @testing.combinations(("positional",), ("kwarg",), argnames="argstyle")
-    def test_when_dicts(self, argstyle, test_case, expected):
+    def test_when_dicts(self, test_case, expected):
         t = table("test", column("col1"))
 
         whens, value, else_ = testing.resolve_lambda(test_case, t=t)
@@ -188,10 +187,7 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
             if else_ is not None:
                 kw["else_"] = else_
 
-            if argstyle == "kwarg":
-                return case(whens=whens, **kw)
-            elif argstyle == "positional":
-                return case(whens, **kw)
+            return case(whens, **kw)
 
             # note: 1.3 also does not allow this form
             # case([whens], **kw)
