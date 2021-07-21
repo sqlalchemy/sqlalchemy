@@ -81,6 +81,7 @@ class QueryContext(object):
         _yield_per = None
         _refresh_state = None
         _lazy_loaded_from = None
+        _legacy_uniquing = False
 
     def __init__(
         self,
@@ -2257,6 +2258,10 @@ class _QueryEntity(object):
 
     __slots__ = ()
 
+    _non_hashable_value = False
+    _null_column_type = False
+    use_id_for_hash = False
+
     @classmethod
     def to_compile_state(cls, compile_state, entities, entities_collection):
 
@@ -2387,6 +2392,7 @@ class _MapperEntity(_QueryEntity):
 
     supports_single_entity = True
 
+    _non_hashable_value = True
     use_id_for_hash = True
 
     @property
@@ -2483,7 +2489,6 @@ class _MapperEntity(_QueryEntity):
 
 
 class _BundleEntity(_QueryEntity):
-    use_id_for_hash = False
 
     _extra_entities = ()
 
@@ -2663,8 +2668,12 @@ class _ColumnEntity(_QueryEntity):
         return self.column.type
 
     @property
-    def use_id_for_hash(self):
+    def _non_hashable_value(self):
         return not self.column.type.hashable
+
+    @property
+    def _null_column_type(self):
+        return self.column.type._isnull
 
     def row_processor(self, context, result):
         compile_state = context.compile_state

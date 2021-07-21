@@ -1,0 +1,18 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 6769
+
+    Fixed issue where usage of the :meth:`_result.Result.unique` method with an
+    ORM result that included column expressions with unhashable types, such as
+    ``JSON`` or ``ARRAY`` using non-tuples would silently fall back to using
+    the ``id()`` function, rather than raising an error. This now raises an
+    error when the :meth:`_result.Result.unique` method is used in a 2.0 style
+    ORM query. Additionally, hashability is assumed to be True for result
+    values of unknown type, such as often happens when using SQL functions of
+    unknown return type; if values are truly not hashable then the ``hash()``
+    itself will raise.
+
+    For legacy ORM queries, since the legacy :class:`_orm.Query` object
+    uniquifies in all cases, the old rules remain in place, which is to use
+    ``id()`` for result values of unknown type as this legacy uniquing is
+    mostly for the purpose of uniquing ORM entities and not column values.
