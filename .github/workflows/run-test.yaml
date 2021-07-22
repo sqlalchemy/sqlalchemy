@@ -122,3 +122,40 @@ jobs:
             pip list &&
             tox -e github-${{ matrix.build-type }} -- -q --nomemory --notimingintensive ${{ matrix.pytest-args }}
             "
+
+  run-mypy:
+    name: mypy-${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # run this job using this matrix, excluding some combinations below.
+      matrix:
+        os:
+          - "ubuntu-latest"
+        python-version:
+          - "3.6"
+          - "3.7"
+          - "3.8"
+          - "3.9"
+          - "3.10.0-beta - 3.10"
+
+      fail-fast: false
+
+    # steps to run in each job. Some are github actions, others run shell commands
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+
+      - name: Set up python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: ${{ matrix.architecture }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade tox setuptools
+          pip list
+
+      - name: Run tests
+        run: tox -e mypy ${{ matrix.pytest-args }}
