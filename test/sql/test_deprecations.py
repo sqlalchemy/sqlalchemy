@@ -451,6 +451,17 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
             "deprecated"
         )
 
+    def test_froms_renamed(self):
+        t1 = table("t1", column("q"))
+
+        stmt = select(t1)
+
+        with testing.expect_deprecated(
+            r"The Select.froms attribute is moved to the "
+            r"Select.get_final_froms\(\) method."
+        ):
+            eq_(stmt.froms, [t1])
+
     def test_select_list_argument(self):
 
         with testing.expect_deprecated_20(

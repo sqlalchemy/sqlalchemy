@@ -1,5 +1,4 @@
 """Test various algorithmic properties of selectables."""
-
 from sqlalchemy import and_
 from sqlalchemy import bindparam
 from sqlalchemy import Boolean
@@ -589,6 +588,32 @@ class SelectableTest(
             "SELECT (SELECT table1.col1, table1.col2, "
             "table1.col3, table1.colx FROM table1) AS anon_1",
         )
+
+    @testing.combinations(
+        (
+            [table1.c.col1],
+            [table1.join(table2)],
+            [table1.join(table2)],
+            [table1],
+        ),
+        ([table1], [table2], [table1, table2], [table1]),
+        (
+            [table1.c.col1, table2.c.col1],
+            [],
+            [table1, table2],
+            [table1, table2],
+        ),
+    )
+    def test_froms_accessors(
+        self, cols_expr, select_from, exp_final_froms, exp_cc_froms
+    ):
+        """tests for #6808"""
+        s1 = select(*cols_expr).select_from(*select_from)
+
+        for ff, efp in util.zip_longest(s1.get_final_froms(), exp_final_froms):
+            assert ff.compare(efp)
+
+        eq_(s1.columns_clause_froms, exp_cc_froms)
 
     def test_scalar_subquery_from_subq_same_source(self):
         s1 = select(table1.c.col1)

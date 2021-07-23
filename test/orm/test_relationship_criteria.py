@@ -5,6 +5,7 @@ from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
+from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import orm
 from sqlalchemy import select
@@ -25,6 +26,7 @@ from sqlalchemy.orm import with_loader_criteria
 from sqlalchemy.orm.decl_api import declared_attr
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
 
 
@@ -170,6 +172,39 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             stmt,
             "SELECT users.id, users.name "
             "FROM users WHERE users.name != :name_1",
+        )
+
+    def test_criteria_post_replace(self, user_address_fixture):
+        User, Address = user_address_fixture
+
+        stmt = (
+            select(User)
+            .select_from(User)
+            .options(with_loader_criteria(User, User.name != "name"))
+            .with_only_columns(func.count())
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT count(*) AS count_1 FROM users "
+            "WHERE users.name != :name_1",
+        )
+
+    def test_criteria_post_replace_legacy(self, user_address_fixture):
+        User, Address = user_address_fixture
+
+        s = fixture_session()
+        stmt = (
+            s.query(User)
+            .select_from(User)
+            .options(with_loader_criteria(User, User.name != "name"))
+            .with_entities(func.count())
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT count(*) AS count_1 FROM users "
+            "WHERE users.name != :name_1",
         )
 
     def test_select_from_mapper_mapper_criteria(self, user_address_fixture):

@@ -1106,6 +1106,11 @@ class LoaderCriteriaOption(CriteriaOption):
         else:
             return self.where_criteria
 
+    def process_compile_state_replaced_entities(
+        self, compile_state, mapper_entities
+    ):
+        return self.process_compile_state(compile_state)
+
     def process_compile_state(self, compile_state):
         """Apply a modification to a given :class:`.CompileState`."""
 
