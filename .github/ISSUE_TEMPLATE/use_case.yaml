@@ -1,0 +1,38 @@
+# docs https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/syntax-for-issue-forms
+# https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/syntax-for-githubs-form-schema
+
+name: Request a new use case
+description: Support for new SQL syntaxes, database capabilities, DBAPIs and DBAPI features
+labels: [requires triage,use case]
+body:
+  - type: textarea
+    attributes:
+      label: Describe the use case
+      description: A clear and concise description of what the SQL or database capability is.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Databases / Backends / Drivers targeted
+      description: What database(s) is this for?  What drivers?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Example Use
+      description: Provide a clear example of what the SQL looks like, or what the DBAPI code looks like
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: Add any other context about the use case here.
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: "**Have a nice day!**"
