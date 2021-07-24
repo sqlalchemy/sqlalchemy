@@ -1424,3 +1424,8 @@ class SuiteRequirements(Requirements):
         sequence. This should be false only for oracle.
         """
         return exclusions.open()
+
+    @property
+    def builtin_generics(self):
+        "If list[int] is a valid syntax. basically py3.9+"
+        return exclusions.only_if(lambda: util.py39)
