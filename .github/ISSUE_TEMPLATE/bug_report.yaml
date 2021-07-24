@@ -33,7 +33,9 @@ of [well written bug reports](https://github.com/sqlalchemy/sqlalchemy/issues?q=
     attributes:
       label: To Reproduce
       description: "
-Provide your [Minimal, Complete, and Verifiable](https://stackoverflow.com/help/mcve) example here."
+Provide your [Minimal, Complete, and Verifiable](https://stackoverflow.com/help/mcve) example here.
+If you need help creating one, you can model yours after the MCV code shared in one of our previous
+[well written bug reports](https://github.com/sqlalchemy/sqlalchemy/issues?q=is%3Aissue+label%3A%22great+mcve%22)"
       placeholder: "# Insert code here"
       render: python
     validations:
