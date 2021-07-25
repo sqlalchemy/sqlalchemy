@@ -1216,7 +1216,7 @@ class ManyToManyDP(DependencyProcessor):
 
         if secondary_update:
             associationrow = secondary_update[0]
-            statement = self.secondary.update(
+            statement = self.secondary.update().where(
                 sql.and_(
                     *[
                         c == sql.bindparam("old_" + c.key, type_=c.type)

@@ -380,7 +380,7 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         tbl.create(connection)
         connection.execute(tbl.insert(), {"id": 1})
         eq_(connection.scalar(tbl.select()), 1)
-        connection.execute(tbl.delete(tbl.c.id == 1))
+        connection.execute(tbl.delete().where(tbl.c.id == 1))
         eq_(connection.scalar(tbl.select()), None)
 
     @testing.provide_metadata

@@ -1504,7 +1504,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             )
         )
         cte = q.cte("deldup")
-        stmt = delete(cte, text("RN > 1"))
+        stmt = delete(cte).where(text("RN > 1"))
         eq_(stmt.compile().execution_options["autocommit"], True)
 
         self.assert_compile(

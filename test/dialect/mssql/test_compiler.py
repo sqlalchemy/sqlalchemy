@@ -137,7 +137,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_update(self):
         t = table("sometable", column("somecolumn"))
         self.assert_compile(
-            t.update(t.c.somecolumn == 7),
+            t.update().where(t.c.somecolumn == 7),
             "UPDATE sometable SET somecolumn=:somecolum"
             "n WHERE sometable.somecolumn = "
             ":somecolumn_1",
@@ -703,7 +703,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema="paj",
         )
         self.assert_compile(
-            tbl.delete(tbl.c.id == 1),
+            tbl.delete().where(tbl.c.id == 1),
             "DELETE FROM paj.test WHERE paj.test.id = " ":id_1",
         )
         s = select(tbl.c.id).where(tbl.c.id == 1)
@@ -723,7 +723,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema="banana.paj",
         )
         self.assert_compile(
-            tbl.delete(tbl.c.id == 1),
+            tbl.delete().where(tbl.c.id == 1),
             "DELETE FROM banana.paj.test WHERE " "banana.paj.test.id = :id_1",
         )
         s = select(tbl.c.id).where(tbl.c.id == 1)
@@ -744,7 +744,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema="banana split.paj",
         )
         self.assert_compile(
-            tbl.delete(tbl.c.id == 1),
+            tbl.delete().where(tbl.c.id == 1),
             "DELETE FROM [banana split].paj.test WHERE "
             "[banana split].paj.test.id = :id_1",
         )
@@ -767,7 +767,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema="banana split.paj with a space",
         )
         self.assert_compile(
-            tbl.delete(tbl.c.id == 1),
+            tbl.delete().where(tbl.c.id == 1),
             "DELETE FROM [banana split].[paj with a "
             "space].test WHERE [banana split].[paj "
             "with a space].test.id = :id_1",

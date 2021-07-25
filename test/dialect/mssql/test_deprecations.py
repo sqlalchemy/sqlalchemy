@@ -213,24 +213,6 @@ class LegacySchemaAliasingBackendTest(
             eq_(conn.scalar(tbl.select()), 1)
 
     @testing.provide_metadata
-    def test_delete_schema(self, connection):
-        meta = self.metadata
-
-        is_(connection.dialect.legacy_schema_aliasing, False)
-
-        tbl = Table(
-            "test",
-            meta,
-            Column("id", Integer, primary_key=True),
-            schema=testing.config.test_schema,
-        )
-        tbl.create(connection)
-        connection.execute(tbl.insert(), {"id": 1})
-        eq_(connection.scalar(tbl.select()), 1)
-        connection.execute(tbl.delete(tbl.c.id == 1))
-        eq_(connection.scalar(tbl.select()), None)
-
-    @testing.provide_metadata
     def test_delete_schema_legacy(self):
         meta = self.metadata
         with _legacy_schema_aliasing_warning():
@@ -249,5 +231,5 @@ class LegacySchemaAliasingBackendTest(
             tbl.create(conn)
             conn.execute(tbl.insert(), {"id": 1})
             eq_(conn.scalar(tbl.select()), 1)
-            conn.execute(tbl.delete(tbl.c.id == 1))
+            conn.execute(tbl.delete().where(tbl.c.id == 1))
             eq_(conn.scalar(tbl.select()), None)

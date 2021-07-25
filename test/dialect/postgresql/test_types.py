@@ -1019,7 +1019,9 @@ class TimezoneTest(fixtures.TablesTest):
             row[0].tzinfo.utcoffset(row[0]),
         )
         result = connection.execute(
-            tztable.update(tztable.c.id == 1).returning(tztable.c.date),
+            tztable.update()
+            .where(tztable.c.id == 1)
+            .returning(tztable.c.date),
             dict(
                 name="newname",
             ),
@@ -1043,7 +1045,9 @@ class TimezoneTest(fixtures.TablesTest):
         eq_(row[0], somedate)
         eq_(row[0].tzinfo, None)
         result = connection.execute(
-            notztable.update(notztable.c.id == 1).returning(notztable.c.date),
+            notztable.update()
+            .where(notztable.c.id == 1)
+            .returning(notztable.c.date),
             dict(
                 name="newname",
             ),
