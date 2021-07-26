@@ -8,13 +8,10 @@ included, using asyncio-compatible dialects.
 
 .. versionadded:: 1.4
 
-The asyncio extension requires at least Python version 3.6.
-
 .. note:: The asyncio extension as of SQLAlchemy 1.4.3 can now be considered to
    be **beta level** software. API details are subject to change however at this
    point it is unlikely for there to be significant backwards-incompatible
    changes.
-
 
 .. seealso::
 
@@ -22,6 +19,25 @@ The asyncio extension requires at least Python version 3.6.
 
     :ref:`examples_asyncio` - example scripts illustrating working examples
     of Core and ORM use within the asyncio extension.
+
+.. _asyncio_install:
+
+Asyncio Platform Installation Notes
+------------------------------------
+
+The asyncio extension requires at least Python version 3.6. It also depends
+upon the `greenlet <https://pypi.org/project/greenlet/>`_ library. This
+dependency is installed by default on common machine platforms including::
+
+    x86_64 aarch64 ppc64le amd64 win32
+
+For the above platforms, ``greenlet`` is known to supply pre-built wheel files.
+To ensure the ``greenlet`` dependency is present on other platforms, the
+``[asyncio]`` extra may be installed as follows, which will include an attempt
+to build and install ``greenlet``::
+
+  pip install sqlalchemy[asyncio]
+
 
 Synopsis - Core
 ---------------

@@ -1,0 +1,19 @@
+.. change::
+    :tags: bug, general
+    :tickets: 6136
+
+    The setup requirements have been modified such ``greenlet`` is a default
+    requirement only for those platforms that are well known for ``greenlet``
+    to be installable and for which there is already a pre-built binary on
+    pypi; the current list is ``x86_64 aarch64 ppc64le amd64 win32``. For other
+    platforms, greenlet will not install by default, which should enable
+    installation and test suite running of SQLAlchemy 1.4 on platforms that
+    don't support ``greenlet``, excluding any asyncio features. In order to
+    install with the ``greenlet`` dependency included on a machine architecture
+    outside of the above list, the ``[asyncio]`` extra may be included by
+    running ``pip install sqlalchemy[asyncio]`` which will then attempt to
+    install ``greenlet``.
+
+    Additionally, the test suite has been repaired so that tests can complete
+    fully when greenlet is not installed, with appropriate skips for
+    asyncio-related tests.
