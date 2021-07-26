@@ -144,7 +144,7 @@ class NaturalPKTest(fixtures.MappedTest):
         assert sess.query(User).get("jack") is u1
 
         sess.execute(
-            users.update(values={User.username: "jack"}), dict(username="ed")
+            users.update().values({User.username: "jack"}), dict(username="ed")
         )
 
         # expire/refresh works off of primary key.  the PK is gone

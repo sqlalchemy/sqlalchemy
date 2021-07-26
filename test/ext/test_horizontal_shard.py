@@ -54,7 +54,9 @@ class ShardTest(object):
 
             with db1.begin() as c:
                 nextid = c.execute(ids.select().with_for_update()).scalar()
-                c.execute(ids.update(values={ids.c.nextid: ids.c.nextid + 1}))
+                c.execute(
+                    ids.update().values({ids.c.nextid: ids.c.nextid + 1})
+                )
                 return nextid
 
         weather_locations = Table(

@@ -30,18 +30,18 @@ class OnDuplicateTest(fixtures.TablesTest):
     def test_bad_args(self):
         assert_raises(
             ValueError,
-            insert(self.tables.foos, values={}).on_duplicate_key_update,
+            insert(self.tables.foos).values({}).on_duplicate_key_update,
         )
         assert_raises(
             exc.ArgumentError,
-            insert(self.tables.foos, values={}).on_duplicate_key_update,
+            insert(self.tables.foos).values({}).on_duplicate_key_update,
             {"id": 1, "bar": "b"},
             id=1,
             bar="b",
         )
         assert_raises(
             exc.ArgumentError,
-            insert(self.tables.foos, values={}).on_duplicate_key_update,
+            insert(self.tables.foos).values({}).on_duplicate_key_update,
             {"id": 1, "bar": "b"},
             {"id": 2, "bar": "baz"},
         )
@@ -49,7 +49,7 @@ class OnDuplicateTest(fixtures.TablesTest):
     def test_on_duplicate_key_update_multirow(self, connection):
         foos = self.tables.foos
         conn = connection
-        conn.execute(insert(foos, dict(id=1, bar="b", baz="bz")))
+        conn.execute(insert(foos).values(dict(id=1, bar="b", baz="bz")))
         stmt = insert(foos).values([dict(id=1, bar="ab"), dict(id=2, bar="b")])
         stmt = stmt.on_duplicate_key_update(bar=stmt.inserted.bar)
 
@@ -66,7 +66,7 @@ class OnDuplicateTest(fixtures.TablesTest):
     def test_on_duplicate_key_update_singlerow(self, connection):
         foos = self.tables.foos
         conn = connection
-        conn.execute(insert(foos, dict(id=1, bar="b", baz="bz")))
+        conn.execute(insert(foos).values(dict(id=1, bar="b", baz="bz")))
         stmt = insert(foos).values(dict(id=2, bar="b"))
         stmt = stmt.on_duplicate_key_update(bar=stmt.inserted.bar)
 
@@ -82,7 +82,7 @@ class OnDuplicateTest(fixtures.TablesTest):
     def test_on_duplicate_key_update_null_multirow(self, connection):
         foos = self.tables.foos
         conn = connection
-        conn.execute(insert(foos, dict(id=1, bar="b", baz="bz")))
+        conn.execute(insert(foos).values(dict(id=1, bar="b", baz="bz")))
         stmt = insert(foos).values([dict(id=1, bar="ab"), dict(id=2, bar="b")])
         stmt = stmt.on_duplicate_key_update(updated_once=None)
         result = conn.execute(stmt)
@@ -97,7 +97,7 @@ class OnDuplicateTest(fixtures.TablesTest):
     def test_on_duplicate_key_update_expression_multirow(self, connection):
         foos = self.tables.foos
         conn = connection
-        conn.execute(insert(foos, dict(id=1, bar="b", baz="bz")))
+        conn.execute(insert(foos).values(dict(id=1, bar="b", baz="bz")))
         stmt = insert(foos).values([dict(id=1, bar="ab"), dict(id=2, bar="b")])
         stmt = stmt.on_duplicate_key_update(
             bar=func.concat(stmt.inserted.bar, "_foo")
@@ -113,8 +113,7 @@ class OnDuplicateTest(fixtures.TablesTest):
         foos = self.tables.foos
         conn = connection
         conn.execute(
-            insert(
-                foos,
+            insert(foos).values(
                 [
                     dict(id=1, bar="b", baz="bz"),
                     dict(id=2, bar="b", baz="bz2"),
