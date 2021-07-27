@@ -66,13 +66,6 @@ def setup_filters():
     # we are moving one at a time
     for msg in [
         #
-        # DML
-        #
-        r"The update.preserve_parameter_order parameter will be removed in "
-        "SQLAlchemy 2.0.",
-        r"Passing dialect keyword arguments directly to the "
-        "(?:Insert|Update|Delete) constructor",
-        #
         # ORM configuration
         #
         r"Calling the mapper\(\) function directly outside of a "
