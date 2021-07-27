@@ -13,6 +13,7 @@ from ..util import create_proxy_methods
 from ..util import ScopedRegistry
 from ..util import ThreadLocalRegistry
 from ..util import warn
+from ..util import warn_deprecated
 
 __all__ = ["scoped_session", "ScopedSessionMixin"]
 
@@ -42,9 +43,16 @@ class ScopedSessionMixin(object):
             else:
                 sess = self.session_factory(**kw)
                 self.registry.set(sess)
-                return sess
         else:
-            return self.registry()
+            sess = self.registry()
+        if not self._support_async and sess._is_asyncio:
+            warn_deprecated(
+                "Using `scoped_session` with asyncio is deprecated and "
+                "will raise an error in a future version. "
+                "Please use `async_scoped_session` instead.",
+                "1.4.23",
+            )
+        return sess
 
     def configure(self, **kwargs):
         """reconfigure the :class:`.sessionmaker` used by this
@@ -116,7 +124,15 @@ class scoped_session(ScopedSessionMixin):
 
     See :ref:`unitofwork_contextual` for a tutorial.
 
+    ..warning::
+
+       When using :ref:`asyncio_toplevel` the async
+       version :class:`_asyncio.async_scoped_session` should be
+       used instead.
+
     """
+
+    _support_async = False
 
     session_factory = None
     """The `session_factory` provided to `__init__` is stored in this

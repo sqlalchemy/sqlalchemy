@@ -63,6 +63,8 @@ class async_scoped_session(ScopedSessionMixin):
 
     """
 
+    _support_async = True
+
     def __init__(self, session_factory, scopefunc):
         """Construct a new :class:`_asyncio.async_scoped_session`.
 

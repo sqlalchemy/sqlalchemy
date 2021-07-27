@@ -53,6 +53,8 @@ class AsyncSession(ReversibleProxy):
 
     """
 
+    _is_asyncio = True
+
     __slots__ = (
         "binds",
         "bind",
