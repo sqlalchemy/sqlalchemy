@@ -2311,8 +2311,14 @@ class SQLCompiler(Compiled):
             existing = self.binds[name]
             if existing is not bindparam:
                 if (
-                    existing.unique or bindparam.unique
-                ) and not existing.proxy_set.intersection(bindparam.proxy_set):
+                    (existing.unique or bindparam.unique)
+                    and not existing.proxy_set.intersection(
+                        bindparam.proxy_set
+                    )
+                    and not existing._cloned_set.intersection(
+                        bindparam._cloned_set
+                    )
+                ):
                     raise exc.CompileError(
                         "Bind parameter '%s' conflicts with "
                         "unique bind parameter of the same name" % name

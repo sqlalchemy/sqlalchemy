@@ -162,6 +162,20 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
         assert row.name == "Kurt"
         assert row.employee_id == e1.employee_id
 
+    def test_discrim_bound_param_cloned_ok(self):
+        """Test #6824"""
+        Manager = self.classes.Manager
+
+        subq1 = select(Manager.employee_id).label("foo")
+        subq2 = select(Manager.employee_id).label("bar")
+        self.assert_compile(
+            select(subq1, subq2),
+            "SELECT (SELECT employees.employee_id FROM employees "
+            "WHERE employees.type IN ([POSTCOMPILE_type_1])) AS foo, "
+            "(SELECT employees.employee_id FROM employees "
+            "WHERE employees.type IN ([POSTCOMPILE_type_1])) AS bar",
+        )
+
     def test_multi_qualification(self):
         Manager, Engineer = (self.classes.Manager, self.classes.Engineer)
 
