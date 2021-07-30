@@ -3443,26 +3443,22 @@ class SQLCompiler(Compiled):
         if not self.ctes:
             return ""
 
-        ctes = self.ctes
-
         if nesting_level and nesting_level > 1:
-            ctes = {
-                cte: ctes[cte]
-                for cte in ctes
-                if cte.nesting and self.level_by_ctes[cte] == nesting_level
-            }
+            ctes = {}
+            for cte in list(self.ctes.keys()):
+                cte_level = self.level_by_ctes[cte]
+                if not (cte.nesting and cte_level == nesting_level):
+                    continue
 
-            if not ctes:
-                return ""
+                ctes[cte] = self.ctes[cte]
 
-            # Remove them from the visible CTEs
-            self.ctes = {
-                cte: self.ctes[cte]
-                for cte in self.ctes
-                if not (
-                    cte.nesting and self.level_by_ctes[cte] == nesting_level
-                )
-            }
+                del self.ctes[cte]
+                del self.level_by_ctes[cte]
+        else:
+            ctes = self.ctes
+
+        if not ctes:
+            return ""
 
         ctes_recursive = any([cte.recursive for cte in ctes])
 
