@@ -3459,7 +3459,9 @@ class SQLCompiler(Compiled):
             self.ctes = {
                 cte: self.ctes[cte]
                 for cte in self.ctes
-                if not cte.nesting and self.level_by_ctes[cte] == nesting_level
+                if not (
+                    cte.nesting and self.level_by_ctes[cte] == nesting_level
+                )
             }
 
         ctes_recursive = any([cte.recursive for cte in ctes])
