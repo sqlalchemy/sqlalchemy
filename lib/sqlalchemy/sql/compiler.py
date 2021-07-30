@@ -2510,6 +2510,9 @@ class SQLCompiler(Compiled):
         is_new_cte = True
         embedded_in_current_named_cte = False
 
+        if cte in self.level_by_ctes:
+            cte_level = self.level_by_ctes[cte]
+
         cte_level_name = (cte_level, cte_name)
         if cte_level_name in self.ctes_by_name:
             existing_cte = self.ctes_by_name[cte_level_name]

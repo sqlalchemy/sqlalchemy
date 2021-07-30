@@ -1888,6 +1888,49 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT cte.outer_cte FROM cte",
         )
 
+    def test_same_nested_cte_is_not_generated_twice(self):
+        # Same = name and query
+        nesting_cte_used_twice = select([literal(1).label("inner_cte_1")]).cte(
+            "nesting_cte", nesting=True
+        )
+        select_add_cte = select(
+            [(nesting_cte_used_twice.c.inner_cte_1 + 1).label("next_value")]
+        ).cte("nesting_2", nesting=True)
+
+        union_cte = (
+            select(
+                [
+                    (nesting_cte_used_twice.c.inner_cte_1 - 1).label(
+                        "next_value"
+                    )
+                ]
+            )
+            .union(select([select_add_cte]))
+            .cte("wrapper", nesting=True)
+        )
+
+        stmt = (
+            select([union_cte])
+            .add_cte(nesting_cte_used_twice)
+            .union(select([nesting_cte_used_twice]))
+        )
+
+        self.assert_compile(
+            stmt,
+            "WITH nesting_cte AS "
+            "(SELECT %(param_1)s AS inner_cte_1)"
+            ", wrapper AS "
+            "(WITH nesting_2 AS "
+            "(SELECT nesting_cte.inner_cte_1 + %(inner_cte_1_2)s AS next_value "
+            "FROM nesting_cte)"
+            " SELECT nesting_cte.inner_cte_1 - %(inner_cte_1_1)s AS next_value "
+            "FROM nesting_cte UNION SELECT nesting_2.next_value AS next_value "
+            "FROM nesting_2)"
+            " SELECT wrapper.next_value "
+            "FROM wrapper UNION SELECT nesting_cte.inner_cte_1 "
+            "FROM nesting_cte",
+        )
+
     def test_recursive_nesting_cte_in_recursive_cte(self):
         nesting_cte = select([literal(1).label("inner_cte")]).cte(
             "nesting", nesting=True, recursive=True
