@@ -1782,11 +1782,15 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         # 2 next 1
 
-        nesting_cte_2_1 = select([select_2_cte, select_1_cte]).cte("cte")
+        # Reorganize order with add_cte
+        nesting_cte_2_1 = (
+            select([select_2_cte, select_1_cte])
+            .add_cte(select_1_cte)
+            .cte("cte")
+        )
         stmt_2_1 = select([nesting_cte_2_1])
         self.assert_compile(
             stmt_2_1,
-            # FIXME: nesting_1 is generated 2 times
             "WITH cte AS ("
             "WITH nesting_1 AS (SELECT %(param_1)s AS inner_cte_1)"
             ", nesting_2 AS (SELECT nesting_1.inner_cte_1 + %(inner_cte_1_1)s"
