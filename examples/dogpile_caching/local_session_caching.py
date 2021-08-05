@@ -13,6 +13,7 @@ with the basic operation of CachingQuery.
 from dogpile.cache.api import CacheBackend
 from dogpile.cache.api import NO_VALUE
 from dogpile.cache.region import register_backend
+from examples.dogpile_caching import environment
 
 
 class ScopedSessionBackend(CacheBackend):
@@ -76,7 +77,7 @@ if __name__ == "__main__":
     q = (
         Session.query(Person)
         .filter(Person.name == "person 10")
-        .execution_options(cache_options=FromCache("local_session"))
+        .options(FromCache("local_session"))
     )
 
     # load from DB
@@ -99,5 +100,8 @@ if __name__ == "__main__":
     # that would change the results of a cached query, such as
     # inserts, deletes, or modification to attributes that are
     # part of query criterion, still require careful invalidation.
-    cache, key = q._get_cache_plus_key()
-    assert person10 is cache.get(key)[0]
+    cache_key = FromCache("local_session")._generate_cache_key(
+        q._statement_20(), {}, environment.cache
+    )
+
+    assert person10 is regions["local_session"].get(cache_key)().scalar()
