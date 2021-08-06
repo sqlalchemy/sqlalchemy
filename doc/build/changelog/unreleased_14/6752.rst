@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 6752
+
+    Fix :class:`_sql.CTE` added with :meth:`_sql.HasCTE.add_cte` on
+    :func:`_sql.union`, :func:`_sql.union_all`, :func:`_sql.except`,
+    :func:`_sql.except_all`, :func:`_sql.intersect` or
+    :func:`_sql.intersect_all` constructs were not generated.
