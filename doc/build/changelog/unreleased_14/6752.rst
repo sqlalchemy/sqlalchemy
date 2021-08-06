@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 6752
+
+    Fix issue in :class:`_sql.CTE` where new :meth:`_sql.HasCTE.add_cte` method
+    added in version 1.4.21 / :ticket:`6752` failed to function correctly for
+    "compound select" structures such as :func:`_sql.union`,
+    :func:`_sql.union_all`, :func:`_sql.except`, etc. Pull request courtesy
+    Eric Masseran.
