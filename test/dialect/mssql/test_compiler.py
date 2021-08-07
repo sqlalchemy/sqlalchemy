@@ -864,15 +864,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             column("name", String(128)),
             column("description", String(128)),
         )
-        u = update(table1, values=dict(name="foo")).returning(
-            table1.c.myid, table1.c.name
+        u = (
+            update(table1)
+            .values(dict(name="foo"))
+            .returning(table1.c.myid, table1.c.name)
         )
         self.assert_compile(
             u,
             "UPDATE mytable SET name=:name OUTPUT "
             "inserted.myid, inserted.name",
         )
-        u = update(table1, values=dict(name="foo")).returning(table1)
+        u = update(table1).values(dict(name="foo")).returning(table1)
         self.assert_compile(
             u,
             "UPDATE mytable SET name=:name OUTPUT "
@@ -880,7 +882,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "inserted.description",
         )
         u = (
-            update(table1, values=dict(name="foo"))
+            update(table1)
+            .values(dict(name="foo"))
             .returning(table1)
             .where(table1.c.name == "bar")
         )
@@ -891,8 +894,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "inserted.description WHERE mytable.name = "
             ":name_1",
         )
-        u = update(table1, values=dict(name="foo")).returning(
-            func.length(table1.c.name)
+        u = (
+            update(table1)
+            .values(dict(name="foo"))
+            .returning(func.length(table1.c.name))
         )
         self.assert_compile(
             u,
@@ -929,8 +934,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             column("name", String(128)),
             column("description", String(128)),
         )
-        i = insert(table1, values=dict(name="foo")).returning(
-            table1.c.myid, table1.c.name
+        i = (
+            insert(table1)
+            .values(dict(name="foo"))
+            .returning(table1.c.myid, table1.c.name)
         )
         self.assert_compile(
             i,
@@ -938,15 +945,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "inserted.myid, inserted.name VALUES "
             "(:name)",
         )
-        i = insert(table1, values=dict(name="foo")).returning(table1)
+        i = insert(table1).values(dict(name="foo")).returning(table1)
         self.assert_compile(
             i,
             "INSERT INTO mytable (name) OUTPUT "
             "inserted.myid, inserted.name, "
             "inserted.description VALUES (:name)",
         )
-        i = insert(table1, values=dict(name="foo")).returning(
-            func.length(table1.c.name)
+        i = (
+            insert(table1)
+            .values(dict(name="foo"))
+            .returning(func.length(table1.c.name))
         )
         self.assert_compile(
             i,

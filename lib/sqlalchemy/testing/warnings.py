@@ -68,8 +68,6 @@ def setup_filters():
         #
         # DML
         #
-        r"The (?:insert|update).values parameter will be removed in "
-        "SQLAlchemy 2.0.",
         r"The update.preserve_parameter_order parameter will be removed in "
         "SQLAlchemy 2.0.",
         r"Passing dialect keyword arguments directly to the "

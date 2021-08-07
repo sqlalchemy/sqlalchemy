@@ -55,18 +55,18 @@ class SequenceTest(fixtures.TablesTest):
 
     def test_int_seq(self, connection):
         t = self.tables.int_seq_t
-        connection.execute(t.insert({"txt": "int_seq test"}))
+        connection.execute(t.insert().values({"txt": "int_seq test"}))
         result = connection.scalar(select(t.c.id))
         eq_(result, 1)
 
     def test_bigint_seq(self, connection):
         t = self.tables.bigint_seq_t
-        connection.execute(t.insert({"txt": "bigint_seq test"}))
+        connection.execute(t.insert().values({"txt": "bigint_seq test"}))
         result = connection.scalar(select(t.c.id))
         eq_(result, 3000000000)
 
     def test_decimal_seq(self, connection):
         t = self.tables.decimal_seq_t
-        connection.execute(t.insert({"txt": "decimal_seq test"}))
+        connection.execute(t.insert().values({"txt": "decimal_seq test"}))
         result = connection.scalar(select(t.c.id))
         eq_(result, Decimal("3000000000"))
