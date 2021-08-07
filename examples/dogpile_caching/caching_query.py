@@ -139,7 +139,6 @@ class FromCache(UserDefinedOption):
         key = statement_cache_key.to_offline_string(
             orm_cache._statement_cache, statement, parameters
         ) + repr(self.cache_key)
-
         # print("here's our key...%s" % key)
         return key
 

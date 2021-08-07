@@ -897,6 +897,42 @@ class LambdaElementTest(
             checkparams={"q_1": 1},
         )
 
+    def test_offline_cache_key_no_paramtrack(self):
+        def go():
+            stmt = lambdas.lambda_stmt(
+                lambda: select(column("x")).where(
+                    column("y") == bindparam("q")
+                ),
+                global_track_bound_values=False,
+            )
+
+            return stmt
+
+        s1 = go()
+
+        eq_(
+            s1._generate_cache_key().to_offline_string({}, s1, {"q": 5}),
+            "('SELECT x \\nWHERE y = :q', (5,))",
+        )
+
+    def test_offline_cache_key_paramtrack(self):
+        def go(param):
+            stmt = lambdas.lambda_stmt(
+                lambda: select(column("x")).where(column("y") == param),
+            )
+
+            return stmt
+
+        s1 = go(5)
+
+        param_key = s1._resolved._where_criteria[0].right.key
+        eq_(
+            s1._generate_cache_key().to_offline_string(
+                {}, s1, {param_key: 10}
+            ),
+            "('SELECT x \\nWHERE y = :param_1', (10,))",
+        )
+
     def test_stmt_lambda_w_list_of_opts(self):
         def go(opts):
             stmt = lambdas.lambda_stmt(lambda: select(column("x")))
