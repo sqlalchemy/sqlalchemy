@@ -66,14 +66,6 @@ def setup_filters():
     # we are moving one at a time
     for msg in [
         #
-        # Core SQL constructs
-        #
-        r"The FromClause.select\(\) method will no longer accept keyword "
-        "arguments in version 2.0",
-        r"The Join.select\(\) method will no longer accept keyword arguments "
-        "in version 2.0.",
-        r"The Join.select\(\).whereclause parameter is deprecated",
-        #
         # DML
         #
         r"The (?:insert|update).values parameter will be removed in "
