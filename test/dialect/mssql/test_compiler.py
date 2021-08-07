@@ -36,6 +36,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing.assertions import eq_ignore_whitespace
 
 tbl = table("t", column("a"))
 
@@ -965,6 +966,22 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT TOP [POSTCOMPILE_param_1] t.x, t.y FROM t "
             "WHERE t.x = :x_1 ORDER BY t.y",
             checkparams={"x_1": 5, "param_1": 10},
+        )
+
+    def test_limit_using_top_literal_binds(self):
+        """test #6863"""
+        t = table("t", column("x", Integer), column("y", Integer))
+
+        s = select(t).where(t.c.x == 5).order_by(t.c.y).limit(10)
+
+        eq_ignore_whitespace(
+            str(
+                s.compile(
+                    dialect=mssql.dialect(),
+                    compile_kwargs={"literal_binds": True},
+                )
+            ),
+            "SELECT TOP 10 t.x, t.y FROM t WHERE t.x = 5 ORDER BY t.y",
         )
 
     def test_limit_zero_using_top(self):

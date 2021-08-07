@@ -2297,7 +2297,7 @@ class SQLCompiler(Compiled):
         else:
             post_compile = False
 
-        if not literal_execute and (literal_binds):
+        if literal_binds:
             ret = self.render_literal_bindparam(
                 bindparam, within_columns_clause=True, **kwargs
             )
