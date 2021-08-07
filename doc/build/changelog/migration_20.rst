@@ -1326,6 +1326,18 @@ following the table, and may include additional notes not summarized here.
 
       - :ref:`orm_expression_update_delete`
 
+    *
+      - ::
+
+          session.query(User).count()
+
+      - ::
+
+          session.scalar(select(func.count()).select_from(User))
+          session.scalar(select(func.count(User.id)))
+
+      - :meth:`_orm.Session.scalar`
+
 .. _migration_20_unify_select:
 
 ORM Query Unified with Core Select
