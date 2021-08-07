@@ -146,6 +146,12 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def implicitly_named_constraints(self):
+        """target database must apply names to unnamed constraints."""
+
+        return exclusions.open()
+
+    @property
     def subqueries(self):
         """Target database must support subqueries."""
 
