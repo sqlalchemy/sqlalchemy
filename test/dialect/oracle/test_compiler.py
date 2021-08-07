@@ -36,6 +36,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertions import eq_ignore_whitespace
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
@@ -172,6 +173,28 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         c = s.compile(dialect=oracle.OracleDialect())
         eq_(len(c._result_columns), 2)
         assert t.c.col1 in set(c._create_result_map()["col1"][1])
+
+    def test_limit_one_literal_binds(self):
+        """test for #6863.
+
+        the bug does not appear to have affected Oracle's case.
+
+        """
+        t = table("sometable", column("col1"), column("col2"))
+        s = select(t).limit(10).offset(20)
+        c = s.compile(
+            dialect=oracle.OracleDialect(),
+            compile_kwargs={"literal_binds": True},
+        )
+
+        eq_ignore_whitespace(
+            str(c),
+            "SELECT anon_1.col1, anon_1.col2 FROM "
+            "(SELECT anon_2.col1 AS col1, anon_2.col2 AS col2, "
+            "ROWNUM AS ora_rn FROM (SELECT sometable.col1 AS col1, "
+            "sometable.col2 AS col2 FROM sometable) anon_2 "
+            "WHERE ROWNUM <= 10 + 20) anon_1 WHERE ora_rn > 20",
+        )
 
     def test_limit_one_firstrows(self):
         t = table("sometable", column("col1"), column("col2"))
