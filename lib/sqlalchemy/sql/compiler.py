@@ -1787,6 +1787,8 @@ class SQLCompiler(Compiled):
         if toplevel and not self.compile_state:
             self.compile_state = compile_state
 
+        compound_stmt = compile_state.statement
+
         entry = self._default_stack_entry if toplevel else self.stack[-1]
         need_result_map = toplevel or (
             not compound_index
@@ -1806,6 +1808,10 @@ class SQLCompiler(Compiled):
                 "need_result_map_for_compound": need_result_map,
             }
         )
+
+        if compound_stmt._independent_ctes:
+            for cte in compound_stmt._independent_ctes:
+                cte._compiler_dispatch(self, **kwargs)
 
         keyword = self.compound_keywords.get(cs.keyword)
 
