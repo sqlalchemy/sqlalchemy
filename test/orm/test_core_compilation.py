@@ -2,6 +2,7 @@ from sqlalchemy import bindparam
 from sqlalchemy import exc
 from sqlalchemy import func
 from sqlalchemy import insert
+from sqlalchemy import inspect
 from sqlalchemy import literal_column
 from sqlalchemy import null
 from sqlalchemy import or_
@@ -21,6 +22,7 @@ from sqlalchemy.orm import query_expression
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import undefer
 from sqlalchemy.orm import with_expression
+from sqlalchemy.orm import with_loader_criteria
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.sql import and_
 from sqlalchemy.sql import sqltypes
@@ -30,6 +32,8 @@ from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import is_
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.util import resolve_lambda
 from .inheritance import _poly_fixtures
@@ -81,7 +85,7 @@ class SelectableTest(QueryTest, AssertsCompiledSQL):
 
         stmt = select(User).filter_by(name="ed")
 
-        eq_(stmt.froms, [self.tables.users])
+        eq_(stmt.get_final_froms(), [self.tables.users])
 
     def test_froms_join(self):
         User, Address = self.classes("User", "Address")
@@ -89,7 +93,7 @@ class SelectableTest(QueryTest, AssertsCompiledSQL):
 
         stmt = select(User).join(User.addresses)
 
-        assert stmt.froms[0].compare(users.join(addresses))
+        assert stmt.get_final_froms()[0].compare(users.join(addresses))
 
     @testing.combinations(
         (
@@ -164,6 +168,115 @@ class SelectableTest(QueryTest, AssertsCompiledSQL):
         stmt = select(*cols)
 
         eq_(stmt.column_descriptions, expected)
+
+
+class ColumnsClauseFromsTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def test_exclude_eagerloads(self):
+        User, Address = self.classes("User", "Address")
+
+        stmt = select(User).options(joinedload(User.addresses))
+
+        froms = stmt.columns_clause_froms
+
+        mapper = inspect(User)
+        is_(froms[0], inspect(User).__clause_element__())
+        eq_(
+            froms[0]._annotations,
+            {
+                "entity_namespace": mapper,
+                "parententity": mapper,
+                "parentmapper": mapper,
+            },
+        )
+        eq_(len(froms), 1)
+
+    def test_maintain_annotations_from_table(self):
+        User, Address = self.classes("User", "Address")
+
+        stmt = select(User)
+
+        mapper = inspect(User)
+        froms = stmt.columns_clause_froms
+        is_(froms[0], inspect(User).__clause_element__())
+        eq_(
+            froms[0]._annotations,
+            {
+                "entity_namespace": mapper,
+                "parententity": mapper,
+                "parentmapper": mapper,
+            },
+        )
+        eq_(len(froms), 1)
+
+    def test_maintain_annotations_from_annoated_cols(self):
+        User, Address = self.classes("User", "Address")
+
+        stmt = select(User.id)
+
+        mapper = inspect(User)
+        froms = stmt.columns_clause_froms
+        is_(froms[0], inspect(User).__clause_element__())
+        eq_(
+            froms[0]._annotations,
+            {
+                "entity_namespace": mapper,
+                "parententity": mapper,
+                "parentmapper": mapper,
+            },
+        )
+        eq_(len(froms), 1)
+
+    def test_with_only_columns_unknown_kw(self):
+        User, Address = self.classes("User", "Address")
+
+        stmt = select(User.id)
+
+        with expect_raises_message(TypeError, "unknown parameters: foo"):
+            stmt.with_only_columns(User.id, foo="bar")
+
+    @testing.combinations((True,), (False,))
+    def test_replace_into_select_from_maintains_existing(self, use_flag):
+        User, Address = self.classes("User", "Address")
+
+        stmt = select(User.id).select_from(Address)
+
+        if use_flag:
+            stmt = stmt.with_only_columns(
+                func.count(), maintain_column_froms=True
+            )
+        else:
+            stmt = stmt.select_from(
+                *stmt.columns_clause_froms
+            ).with_only_columns(func.count())
+
+        # Address is maintained in the FROM list
+        self.assert_compile(
+            stmt, "SELECT count(*) AS count_1 FROM addresses, users"
+        )
+
+    @testing.combinations((True,), (False,))
+    def test_replace_into_select_from_with_loader_criteria(self, use_flag):
+        User, Address = self.classes("User", "Address")
+
+        stmt = select(User.id).options(
+            with_loader_criteria(User, User.name == "ed")
+        )
+
+        if use_flag:
+            stmt = stmt.with_only_columns(
+                func.count(), maintain_column_froms=True
+            )
+        else:
+            stmt = stmt.select_from(
+                *stmt.columns_clause_froms
+            ).with_only_columns(func.count())
+
+        self.assert_compile(
+            stmt,
+            "SELECT count(*) AS count_1 FROM users WHERE users.name = :name_1",
+        )
 
 
 class JoinTest(QueryTest, AssertsCompiledSQL):
