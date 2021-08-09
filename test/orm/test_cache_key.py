@@ -15,6 +15,7 @@ from sqlalchemy.orm import join as orm_join
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import Load
+from sqlalchemy.orm import load_only
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import Query
 from sqlalchemy.orm import relationship
@@ -186,6 +187,28 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                 .defer(Item.description),
                 defaultload(User.orders).defaultload(Order.items),
                 defaultload(User.orders),
+            ),
+            compare_values=True,
+        )
+
+    def test_unbound_sub_options(self):
+        """test #6869"""
+
+        User, Address, Keyword, Order, Item = self.classes(
+            "User", "Address", "Keyword", "Order", "Item"
+        )
+
+        self._run_cache_key_fixture(
+            lambda: (
+                joinedload(User.addresses).options(
+                    joinedload(Address.dingaling)
+                ),
+                joinedload(User.addresses).options(
+                    joinedload(Address.dingaling).options(load_only("name"))
+                ),
+                joinedload(User.orders).options(
+                    joinedload(Order.items).options(joinedload(Item.keywords))
+                ),
             ),
             compare_values=True,
         )
