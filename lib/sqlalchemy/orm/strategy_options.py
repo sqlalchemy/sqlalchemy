@@ -28,6 +28,7 @@ from .. import util
 from ..sql import and_
 from ..sql import coercions
 from ..sql import roles
+from ..sql import traversals
 from ..sql import visitors
 from ..sql.base import _generative
 from ..sql.base import Generative
@@ -615,16 +616,88 @@ class _UnboundLoad(Load):
         self.local_opts = {}
         self._extra_criteria = ()
 
-    _cache_key_traversal = [
-        ("path", visitors.ExtendedInternalTraversal.dp_multi_list),
-        ("strategy", visitors.ExtendedInternalTraversal.dp_plain_obj),
-        ("_to_bind", visitors.ExtendedInternalTraversal.dp_has_cache_key_list),
-        ("_extra_criteria", visitors.InternalTraversal.dp_clauseelement_list),
-        (
-            "local_opts",
-            visitors.ExtendedInternalTraversal.dp_string_multi_dict,
-        ),
-    ]
+    def _gen_cache_key(self, anon_map, bindparams, _unbound_option_seen=None):
+        """Inlined gen_cache_key
+
+        Original traversal is::
+
+
+            _cache_key_traversal = [
+                ("path", visitors.ExtendedInternalTraversal.dp_multi_list),
+                ("strategy", visitors.ExtendedInternalTraversal.dp_plain_obj),
+                (
+                    "_to_bind",
+                    visitors.ExtendedInternalTraversal.dp_has_cache_key_list,
+                ),
+                (
+                    "_extra_criteria",
+                    visitors.InternalTraversal.dp_clauseelement_list),
+                (
+                    "local_opts",
+                    visitors.ExtendedInternalTraversal.dp_string_multi_dict,
+                ),
+            ]
+
+        The inlining is so that the "_to_bind" list can be flattened to not
+        repeat the same UnboundLoad options over and over again.
+
+        See #6869
+
+        """
+
+        idself = id(self)
+        cls = self.__class__
+
+        if idself in anon_map:
+            return (anon_map[idself], cls)
+        else:
+            id_ = anon_map[idself]
+
+        vis = traversals._cache_key_traversal_visitor
+
+        seen = _unbound_option_seen
+        if seen is None:
+            seen = set()
+
+        return (
+            (id_, cls)
+            + vis.visit_multi_list(
+                "path", self.path, self, anon_map, bindparams
+            )
+            + ("strategy", self.strategy)
+            + (
+                (
+                    "_to_bind",
+                    tuple(
+                        elem._gen_cache_key(
+                            anon_map, bindparams, _unbound_option_seen=seen
+                        )
+                        for elem in self._to_bind
+                        if elem not in seen and not seen.add(elem)
+                    ),
+                )
+                if self._to_bind
+                else ()
+            )
+            + (
+                (
+                    "_extra_criteria",
+                    tuple(
+                        elem._gen_cache_key(anon_map, bindparams)
+                        for elem in self._extra_criteria
+                    ),
+                )
+                if self._extra_criteria
+                else ()
+            )
+            + (
+                vis.visit_string_multi_dict(
+                    "local_opts", self.local_opts, self, anon_map, bindparams
+                )
+                if self.local_opts
+                else ()
+            )
+        )
 
     _is_chain_link = False
 
@@ -663,12 +736,20 @@ class _UnboundLoad(Load):
         assert cloned.is_class_strategy == self.is_class_strategy
         assert cloned.is_opts_only == self.is_opts_only
 
-        new_to_bind = {
+        uniq = set()
+
+        cloned._to_bind = parent._to_bind
+
+        cloned._to_bind[:] = [
+            elem
+            for elem in cloned._to_bind
+            if elem not in uniq and not uniq.add(elem)
+        ] + [
             elem._apply_to_parent(parent, applied, bound, to_bind)
             for elem in to_bind
-        }
-        cloned._to_bind = parent._to_bind
-        cloned._to_bind.extend(new_to_bind)
+            if elem not in uniq and not uniq.add(elem)
+        ]
+
         cloned.local_opts.update(self.local_opts)
 
         return cloned
