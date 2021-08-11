@@ -1326,6 +1326,18 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def greenlet(self):
+        def go(config):
+            try:
+                import greenlet  # noqa F401
+            except ImportError:
+                return False
+            else:
+                return True
+
+        return exclusions.only_if(go)
+
+    @property
     def computed_columns(self):
         "Supports computed columns"
         return exclusions.closed()
