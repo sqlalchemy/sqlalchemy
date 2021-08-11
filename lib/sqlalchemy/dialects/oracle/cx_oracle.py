@@ -8,34 +8,73 @@ r"""
 .. dialect:: oracle+cx_oracle
     :name: cx-Oracle
     :dbapi: cx_oracle
-    :connectstring: oracle+cx_oracle://user:pass@host:port/dbname[?key=value&key=value...]
+    :connectstring: oracle+cx_oracle://user:pass@hostname:port[/dbname][?service_name=<service>[&key=value&key=value...]]
     :url: https://oracle.github.io/python-cx_Oracle/
 
 DSN vs. Hostname connections
 -----------------------------
 
-The dialect will connect to a DSN if no database name portion is presented,
-such as::
+cx_Oracle provides several methods of indicating the target database.  The
+dialect translates from a series of different URL forms.
 
-    engine = create_engine("oracle+cx_oracle://scott:tiger@oracle1120/?encoding=UTF-8&nencoding=UTF-8")
+Hostname Connections with Easy Connect Syntax
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Above, ``oracle1120`` is passed to cx_Oracle as an Oracle datasource name.
+Given a hostname, port and service name of the target Oracle Database, for
+example from Oracle's `Easy Connect syntax
+<https://cx-oracle.readthedocs.io/en/latest/user_guide/connection_handling.html#easy-connect-syntax-for-connection-strings>`_,
+then connect in SQLAlchemy using the ``service_name`` query string parameter::
 
-Alternatively, if a database name is present, the ``cx_Oracle.makedsn()``
-function is used to create an ad-hoc "datasource" name assuming host
-and port::
+    engine = create_engine("oracle+cx_oracle://scott:tiger@hostname:port/?service_name=myservice&encoding=UTF-8&nencoding=UTF-8")
+
+The `full Easy Connect syntax
+<https://www.oracle.com/pls/topic/lookup?ctx=dblatest&id=GUID-B0437826-43C1-49EC-A94D-B650B6A4A6EE>`_
+is not supported.  Instead, use a ``tnsnames.ora`` file and connect using a
+DSN.
+
+Connections with tnsnames.ora or Oracle Cloud
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Alternatively, if no port, database name, or ``service_name`` is provided, the
+dialect will use an Oracle DSN "connection string".  This takes the "hostname"
+portion of the URL as the data source name.  For example, if the
+``tnsnames.ora`` file contains a `Net Service Name
+<https://cx-oracle.readthedocs.io/en/latest/user_guide/connection_handling.html#net-service-names-for-connection-strings>`_
+of ``myalias`` as below::
+
+    myalias =
+      (DESCRIPTION =
+        (ADDRESS = (PROTOCOL = TCP)(HOST = mymachine.example.com)(PORT = 1521))
+        (CONNECT_DATA =
+          (SERVER = DEDICATED)
+          (SERVICE_NAME = orclpdb1)
+        )
+      )
+
+The cx_Oracle dialect connects to this database service when ``myalias`` is the
+hostname portion of the URL, without specifying a port, database name or
+``service_name``::
+
+    engine = create_engine("oracle+cx_oracle://scott:tiger@myalias/?encoding=UTF-8&nencoding=UTF-8")
+
+Users of Oracle Cloud should use this syntax and also configure the cloud
+wallet as shown in cx_Oracle documentation `Connecting to Autononmous Databases
+<https://cx-oracle.readthedocs.io/en/latest/user_guide/connection_handling.html#connecting-to-autononmous-databases>`_.
+
+SID Connections
+^^^^^^^^^^^^^^^
+
+To use Oracle's obsolete SID connection syntax, the SID can be passed in a
+"database name" portion of the URL as below::
 
     engine = create_engine("oracle+cx_oracle://scott:tiger@hostname:1521/dbname?encoding=UTF-8&nencoding=UTF-8")
 
-Above, the DSN would be created as follows::
+Above, the DSN passed to cx_Oracle is created by ``cx_Oracle.makedsn()`` as
+follows::
 
     >>> import cx_Oracle
     >>> cx_Oracle.makedsn("hostname", 1521, sid="dbname")
     '(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=hostname)(PORT=1521))(CONNECT_DATA=(SID=dbname)))'
-
-The ``service_name`` parameter, also consumed by ``cx_Oracle.makedsn()``, may
-be specified in the URL query string, e.g. ``?service_name=my_service``.
-
 
 Passing cx_Oracle connect arguments
 -----------------------------------
@@ -68,6 +107,10 @@ Any cx_Oracle parameter value and/or constant may be passed, such as::
         }
     )
 
+Note that the default value for ``encoding`` and ``nencoding`` was changed to
+"UTF-8" in cx_Oracle 8.0 so these parameters can be ommitted when using that
+version, or later.
+
 Options consumed by the SQLAlchemy cx_Oracle dialect outside of the driver
 --------------------------------------------------------------------------
 
@@ -98,8 +141,8 @@ The parameters accepted by the cx_oracle dialect are as follows:
 Using cx_Oracle SessionPool
 ---------------------------
 
-The cx_Oracle library provides its own connectivity services that may be
-used in place of SQLAlchemy's pooling functionality.    This can be achieved
+The cx_Oracle library provides its own connection pool implementation that may
+be used in place of SQLAlchemy's pooling functionality.  This can be achieved
 by using the :paramref:`_sa.create_engine.creator` parameter to provide a
 function that returns a new connection, along with setting
 :paramref:`_sa.create_engine.pool_class` to ``NullPool`` to disable
@@ -110,8 +153,9 @@ SQLAlchemy's pooling::
     from sqlalchemy.pool import NullPool
 
     pool = cx_Oracle.SessionPool(
-        user="scott", password="tiger", dsn="oracle1120",
-        min=2, max=5, increment=1, threaded=True
+        user="scott", password="tiger", dsn="orclpdb",
+        min=2, max=5, increment=1, threaded=True,
+	encoding="UTF-8", nencoding="UTF-8"
     )
 
     engine = create_engine("oracle://", creator=pool.acquire, poolclass=NullPool)
@@ -122,6 +166,43 @@ connection pooling::
     with engine.connect() as conn:
         print(conn.scalar("select 1 FROM dual"))
 
+
+As well as providing a scalable solution for multi-user applications, the
+cx_Oracle session pool supports some Oracle features such as DRCP and
+`Application Continuity
+<https://cx-oracle.readthedocs.io/en/latest/user_guide/ha.html#application-continuity-ac>`_.
+
+Using Oracle Database Resident Connection Pooling (DRCP)
+--------------------------------------------------------
+
+When using Oracle's `DRCP
+<https://www.oracle.com/pls/topic/lookup?ctx=dblatest&id=GUID-015CA8C1-2386-4626-855D-CC546DDC1086>`_,
+the best practice is to pass a connection class and "purity" when acquiring a
+connection from the SessionPool.  Refer to the `cx_Oracle DRCP documentation
+<https://cx-oracle.readthedocs.io/en/latest/user_guide/connection_handling.html#database-resident-connection-pooling-drcp>`_.
+
+This can be achieved by wrapping ``pool.acquire()``::
+
+    import cx_Oracle
+    from sqlalchemy import create_engine
+    from sqlalchemy.pool import NullPool
+
+    pool = cx_Oracle.SessionPool(
+        user="scott", password="tiger", dsn="orclpdb",
+        min=2, max=5, increment=1, threaded=True,
+	encoding="UTF-8", nencoding="UTF-8"
+    )
+
+    def creator():
+        return pool.acquire(cclass="MYCLASS", purity=cx_Oracle.ATTR_PURITY_SELF)
+
+    engine = create_engine("oracle://", creator=creator, poolclass=NullPool)
+
+The above engine may then be used normally where cx_Oracle handles session
+pooling and Oracle Database additionally uses DRCP::
+
+    with engine.connect() as conn:
+        print(conn.scalar("select 1 FROM dual"))
 
 .. _cx_oracle_unicode:
 
@@ -147,7 +228,7 @@ The cx_Oracle driver also supports a programmatic alternative which is to
 pass the ``encoding`` and ``nencoding`` parameters directly to its
 ``.connect()`` function.  These can be present in the URL as follows::
 
-    engine = create_engine("oracle+cx_oracle://scott:tiger@oracle1120/?encoding=UTF-8&nencoding=UTF-8")
+    engine = create_engine("oracle+cx_oracle://scott:tiger@orclpdb/?encoding=UTF-8&nencoding=UTF-8")
 
 For the meaning of the ``encoding`` and ``nencoding`` parameters, please
 consult
