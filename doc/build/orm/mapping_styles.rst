@@ -571,11 +571,11 @@ object, mapped to a class called ``Address``, then linked to ``User`` via :func:
                 Column('email_address', String(50))
                 )
 
-    mapper(User, user, properties={
+    mapper_registry.map_imperatively(User, user, properties={
         'addresses' : relationship(Address, backref='user', order_by=address.c.id)
     })
 
-    mapper(Address, address)
+    mapper_registry.map_imperatively(Address, address)
 
 When using classical mappings, classes must be provided directly without the benefit
 of the "string lookup" system provided by Declarative.  SQL expressions are typically
