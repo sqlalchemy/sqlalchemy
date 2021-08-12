@@ -16,7 +16,6 @@ from sqlalchemy import TypeDecorator
 from sqlalchemy import util
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import exc as orm_exc
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.testing import assert_raises
@@ -90,7 +89,7 @@ class NullVersionIdTest(fixtures.MappedTest):
     def _fixture(self):
         Foo, version_table = self.classes.Foo, self.tables.version_table
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             version_table,
             version_id_col=version_table.c.version_id,
@@ -174,7 +173,9 @@ class VersioningTest(fixtures.MappedTest):
     def _fixture(self):
         Foo, version_table = self.classes.Foo, self.tables.version_table
 
-        mapper(Foo, version_table, version_id_col=version_table.c.version_id)
+        self.mapper_registry.map_imperatively(
+            Foo, version_table, version_id_col=version_table.c.version_id
+        )
         s1 = fixture_session()
         return s1
 
@@ -405,7 +406,7 @@ class VersioningTest(fixtures.MappedTest):
         Foo = self.classes.Foo
         version_table = self.tables.version_table
 
-        mapper(Foo, version_table)
+        self.mapper_registry.map_imperatively(Foo, version_table)
         s1 = fixture_session()
         f1s1 = Foo(value="f1 value", version_id=1)
         s1.add(f1s1)
@@ -503,7 +504,7 @@ class VersioningTest(fixtures.MappedTest):
         Foo, version_table = self.classes.Foo, self.tables.version_table
 
         s1 = fixture_session(autocommit=False)
-        mapper(Foo, version_table)
+        self.mapper_registry.map_imperatively(Foo, version_table)
         f1s1 = Foo(value="foo", version_id=0)
         s1.add(f1s1)
         s1.commit()
@@ -634,7 +635,7 @@ class VersionOnPostUpdateTest(fixtures.MappedTest):
         Node = self.classes.Node
         node = self.tables.node
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Node,
             node,
             properties={
@@ -847,13 +848,13 @@ class NoBumpOnRelationshipTest(fixtures.MappedTest):
         A, B = self.classes("A", "B")
         a, b = self.tables("a", "b")
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             a,
             properties={"bs": relationship(B, backref="a")},
             version_id_col=a.c.version_id,
         )
-        mapper(B, b)
+        self.mapper_registry.map_imperatively(B, b)
 
         self._run_test()
 
@@ -861,14 +862,14 @@ class NoBumpOnRelationshipTest(fixtures.MappedTest):
         A, B = self.classes("A", "B")
         a, b = self.tables("a", "b")
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             a,
             properties={"bs": relationship(B, backref="a")},
             version_id_col=a.c.version_id,
             version_id_generator=lambda num: (num or 0) + 1,
         )
-        mapper(B, b)
+        self.mapper_registry.map_imperatively(B, b)
 
         self._run_test()
 
@@ -876,14 +877,14 @@ class NoBumpOnRelationshipTest(fixtures.MappedTest):
         A, B = self.classes("A", "B")
         a, b = self.tables("a", "b")
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             a,
             properties={"bs": relationship(B, backref="a")},
             version_id_col=a.c.version_id,
             version_id_generator=False,
         )
-        mapper(B, b)
+        self.mapper_registry.map_imperatively(B, b)
 
         self._run_test(False)
 
@@ -918,7 +919,9 @@ class ColumnTypeTest(fixtures.MappedTest):
     def _fixture(self):
         Foo, version_table = self.classes.Foo, self.tables.version_table
 
-        mapper(Foo, version_table, version_id_col=version_table.c.version_id)
+        self.mapper_registry.map_imperatively(
+            Foo, version_table, version_id_col=version_table.c.version_id
+        )
         s1 = fixture_session()
         return s1
 
@@ -970,7 +973,7 @@ class RowSwitchTest(fixtures.MappedTest):
     def setup_mappers(cls):
         p, c, C, P = cls.tables.p, cls.tables.c, cls.classes.C, cls.classes.P
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             P,
             p,
             version_id_col=p.c.version_id,
@@ -980,7 +983,9 @@ class RowSwitchTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(C, c, version_id_col=c.c.version_id)
+        cls.mapper_registry.map_imperatively(
+            C, c, version_id_col=c.c.version_id
+        )
 
     def test_row_switch(self):
         P = self.classes.P
@@ -1053,7 +1058,7 @@ class AlternateGeneratorTest(fixtures.MappedTest):
     def setup_mappers(cls):
         p, c, C, P = cls.tables.p, cls.tables.c, cls.classes.C, cls.classes.P
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             P,
             p,
             version_id_col=p.c.version_id,
@@ -1064,7 +1069,7 @@ class AlternateGeneratorTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             C,
             c,
             version_id_col=c.c.version_id,
@@ -1181,8 +1186,10 @@ class PlainInheritanceTest(fixtures.MappedTest):
             self.classes.Sub,
         )
 
-        mapper(Base, base, version_id_col=base.c.version_id)
-        mapper(Sub, sub, inherits=Base)
+        self.mapper_registry.map_imperatively(
+            Base, base, version_id_col=base.c.version_id
+        )
+        self.mapper_registry.map_imperatively(Sub, sub, inherits=Base)
 
         s = fixture_session()
         s1 = Sub(data="b", sub_data="s")
@@ -1241,8 +1248,10 @@ class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
             self.classes.Sub,
         )
 
-        mapper(Base, base, version_id_col=base.c.version_id)
-        mapper(Sub, sub, inherits=Base)
+        self.mapper_registry.map_imperatively(
+            Base, base, version_id_col=base.c.version_id
+        )
+        self.mapper_registry.map_imperatively(Sub, sub, inherits=Base)
 
         session = fixture_session()
         b1 = Base(data="b1")
@@ -1260,8 +1269,10 @@ class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
             self.classes.Sub,
         )
 
-        mapper(Base, base, version_id_col=base.c.version_id)
-        mapper(Sub, sub, inherits=Base)
+        self.mapper_registry.map_imperatively(
+            Base, base, version_id_col=base.c.version_id
+        )
+        self.mapper_registry.map_imperatively(Sub, sub, inherits=Base)
 
         session = fixture_session()
         s1 = Sub(data="s1", sub_data="s1")
@@ -1282,8 +1293,10 @@ class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
             self.classes.Sub,
         )
 
-        mapper(Base, base)
-        mapper(Sub, sub, inherits=Base, version_id_col=sub.c.version_id)
+        self.mapper_registry.map_imperatively(Base, base)
+        self.mapper_registry.map_imperatively(
+            Sub, sub, inherits=Base, version_id_col=sub.c.version_id
+        )
 
         session = fixture_session()
         s1 = Sub(data="s1", sub_data="s1")
@@ -1304,7 +1317,9 @@ class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
             self.classes.Sub,
         )
 
-        mapper(Base, base, version_id_col=base.c.version_id)
+        self.mapper_registry.map_imperatively(
+            Base, base, version_id_col=base.c.version_id
+        )
 
         assert_raises_message(
             exc.SAWarning,
@@ -1313,7 +1328,7 @@ class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
             "automatically populate the inherited versioning column. "
             "version_id_col should only be specified on "
             "the base-most mapper that includes versioning.",
-            mapper,
+            self.mapper_registry.map_imperatively,
             Sub,
             sub,
             inherits=Base,
@@ -1375,7 +1390,7 @@ class ServerVersioningTest(fixtures.MappedTest):
     def _fixture(self, expire_on_commit=True, eager_defaults=False):
         Foo, version_table = self.classes.Foo, self.tables.version_table
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             version_table,
             version_id_col=version_table.c.version_id,
@@ -1689,7 +1704,7 @@ class ManualVersionTest(fixtures.MappedTest):
 
     @classmethod
     def setup_mappers(cls):
-        mapper(
+        cls.mapper_registry.map_imperatively(
             cls.classes.A,
             cls.tables.a,
             version_id_col=cls.tables.a.c.vid,
@@ -1803,14 +1818,16 @@ class ManualInheritanceVersionTest(fixtures.MappedTest):
 
     @classmethod
     def setup_mappers(cls):
-        mapper(
+        cls.mapper_registry.map_imperatively(
             cls.classes.A,
             cls.tables.a,
             version_id_col=cls.tables.a.c.vid,
             version_id_generator=False,
         )
 
-        mapper(cls.classes.B, cls.tables.b, inherits=cls.classes.A)
+        cls.mapper_registry.map_imperatively(
+            cls.classes.B, cls.tables.b, inherits=cls.classes.A
+        )
 
     def test_no_increment(self):
         sess = fixture_session()
@@ -1872,7 +1889,9 @@ class VersioningMappedSelectTest(fixtures.MappedTest):
             .alias("current_table")
         )
 
-        mapper(Foo, current, version_id_col=version_table.c.version_id)
+        self.mapper_registry.map_imperatively(
+            Foo, current, version_id_col=version_table.c.version_id
+        )
         s1 = fixture_session()
         return s1
 
@@ -1885,7 +1904,7 @@ class VersioningMappedSelectTest(fixtures.MappedTest):
             .alias("current_table")
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             current,
             version_id_col=version_table.c.version_id,

@@ -12,7 +12,6 @@ from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
@@ -56,12 +55,13 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
                 "addresses": relationship(
-                    mapper(Address, addresses), order_by=Address.id
+                    self.mapper_registry.map_imperatively(Address, addresses),
+                    order_by=Address.id,
                 )
             },
         )
@@ -99,15 +99,15 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.tables.addresses,
         )
 
-        mapper(Dingaling, dingalings)
-        mapper(
+        self.mapper_registry.map_imperatively(Dingaling, dingalings)
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
                 "dingalings": relationship(Dingaling, order_by=Dingaling.id)
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -209,12 +209,13 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
                 "addresses": relationship(
-                    mapper(Address, addresses), order_by=Address.id
+                    self.mapper_registry.map_imperatively(Address, addresses),
+                    order_by=Address.id,
                 )
             },
         )
@@ -241,12 +242,13 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
                 "addresses": relationship(
-                    mapper(Address, addresses), order_by=Address.id
+                    self.mapper_registry.map_imperatively(Address, addresses),
+                    order_by=Address.id,
                 )
             },
         )
@@ -275,12 +277,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={"addresses": relationship(Address, lazy="dynamic")},
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
         sess = fixture_session()
 
         # previously this would not raise, but would emit
@@ -301,8 +303,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.Item,
         )
 
-        mapper(Keyword, keywords)
-        mapper(
+        self.mapper_registry.map_imperatively(Keyword, keywords)
+        self.mapper_registry.map_imperatively(
             Item,
             items,
             properties=dict(
@@ -331,8 +333,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.Item,
         )
 
-        mapper(Keyword, keywords)
-        mapper(
+        self.mapper_registry.map_imperatively(Keyword, keywords)
+        self.mapper_registry.map_imperatively(
             Item,
             items,
             properties=dict(
@@ -364,8 +366,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.Item,
         )
 
-        mapper(Keyword, keywords)
-        mapper(
+        self.mapper_registry.map_imperatively(Keyword, keywords)
+        self.mapper_registry.map_imperatively(
             Item,
             items,
             properties=dict(
@@ -397,12 +399,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
                 "addresses": relationship(
-                    mapper(Address, addresses),
+                    self.mapper_registry.map_imperatively(Address, addresses),
                     lazy="selectin",
                     order_by=addresses.c.email_address,
                 )
@@ -434,12 +436,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
                 "addresses": relationship(
-                    mapper(Address, addresses),
+                    self.mapper_registry.map_imperatively(Address, addresses),
                     lazy="selectin",
                     order_by=[addresses.c.email_address, addresses.c.id],
                 )
@@ -474,8 +476,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(Address, addresses)
-        mapper(
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
@@ -516,8 +518,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(Address, addresses)
-        mapper(
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
@@ -587,14 +589,14 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.tables.item_keywords,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
                 "orders": relationship(Order, order_by=orders.c.id)  # o2m, m2o
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -603,7 +605,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                 )  # m2m
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Item,
             items,
             properties={
@@ -612,7 +614,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                 )  # m2m
             },
         )
-        mapper(Keyword, keywords)
+        self.mapper_registry.map_imperatively(Keyword, keywords)
 
         callables = {
             "joinedload": joinedload,
@@ -671,7 +673,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         }
 
         for o, i, k, count in configs:
-            mapper(
+            self.mapper_registry.map_imperatively(
                 User,
                 users,
                 properties={
@@ -680,7 +682,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     )
                 },
             )
-            mapper(
+            self.mapper_registry.map_imperatively(
                 Order,
                 orders,
                 properties={
@@ -692,7 +694,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     )
                 },
             )
-            mapper(
+            self.mapper_registry.map_imperatively(
                 Item,
                 items,
                 properties={
@@ -704,7 +706,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                     )
                 },
             )
-            mapper(Keyword, keywords)
+            self.mapper_registry.map_imperatively(Keyword, keywords)
 
             try:
                 self._do_query_tests([], count)
@@ -754,8 +756,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(Address, addresses)
-        mapper(
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
@@ -789,8 +791,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(Address, addresses)
-        mapper(
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
@@ -841,8 +843,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.tables.order_items,
         )
 
-        mapper(Address, addresses)
-        mapper(
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -854,7 +856,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                 )
             },
         )
-        mapper(Item, items)
+        self.mapper_registry.map_imperatively(Item, items)
 
         open_mapper = aliased(
             Order, select(orders).where(orders.c.isopen == 1).alias()
@@ -863,7 +865,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             Order, select(orders).where(orders.c.isopen == 0).alias()
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
@@ -911,8 +913,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.tables.order_items,
         )
 
-        mapper(Address, addresses)
-        mapper(
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -924,12 +926,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                 )
             },
         )
-        mapper(Item, items)
+        self.mapper_registry.map_imperatively(Item, items)
 
         open_mapper = aliased(Order, orders)
         closed_mapper = aliased(Order, orders)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
@@ -987,8 +989,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.tables.users,
         )
 
-        mapper(Address, addresses)
-        mapper(
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -1000,8 +1002,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                 )
             },
         )
-        mapper(Item, items)
-        mapper(
+        self.mapper_registry.map_imperatively(Item, items)
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
@@ -1095,12 +1097,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         elif type_ == "subquery":
             target = select(users).subquery()
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             target,
             properties={"addresses": relationship(Address, backref="user")},
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         sess = fixture_session()
 
@@ -1136,8 +1138,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.tables.addresses,
         )
 
-        mapper(Item, items)
-        mapper(
+        self.mapper_registry.map_imperatively(Item, items)
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -1149,12 +1151,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
                 )
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
                 "addresses": relationship(
-                    mapper(Address, addresses),
+                    self.mapper_registry.map_imperatively(Address, addresses),
                     lazy="selectin",
                     order_by=addresses.c.id,
                 ),
@@ -1181,12 +1183,14 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
                 address=relationship(
-                    mapper(Address, addresses), lazy="selectin", uselist=False
+                    self.mapper_registry.map_imperatively(Address, addresses),
+                    lazy="selectin",
+                    uselist=False,
                 )
             ),
         )
@@ -1206,12 +1210,14 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
                 address=relationship(
-                    mapper(Address, addresses), lazy="selectin", uselist=False
+                    self.mapper_registry.map_imperatively(Address, addresses),
+                    lazy="selectin",
+                    uselist=False,
                 )
             ),
         )
@@ -1231,11 +1237,14 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties=dict(
-                user=relationship(mapper(User, users), lazy="selectin")
+                user=relationship(
+                    self.mapper_registry.map_imperatively(User, users),
+                    lazy="selectin",
+                )
             ),
         )
         sess = fixture_session()
@@ -1257,12 +1266,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.Address,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={"address": relationship(Address, lazy="selectin")},
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         sess = fixture_session(autoflush=False)
         q = sess.query(Order).filter(Order.id.in_([4, 5])).order_by(Order.id)
@@ -1291,14 +1300,14 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.Address,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
                 "address": relationship(Address, lazy="selectin", uselist=True)
             },
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         sess = fixture_session()
         q = sess.query(Order).filter(Order.id.in_([4, 5])).order_by(Order.id)
@@ -1315,12 +1324,13 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
                 addresses=relationship(
-                    mapper(Address, addresses), lazy="selectin"
+                    self.mapper_registry.map_imperatively(Address, addresses),
+                    lazy="selectin",
                 )
             ),
         )
@@ -1350,8 +1360,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             .alias("max_orders")
         )
 
-        mapper(Order, orders)
-        mapper(
+        self.mapper_registry.map_imperatively(Order, orders)
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -1401,12 +1411,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             self.classes.Order,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={"order": relationship(Order, uselist=False)},
         )
-        mapper(Order, orders)
+        self.mapper_registry.map_imperatively(Order, orders)
         s = fixture_session()
         assert_raises(
             sa.exc.SAWarning,
@@ -1426,17 +1436,19 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
             self.classes.Address,
             self.classes.Dingaling,
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             self.tables.users,
             properties={"addresses": relationship(Address)},
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Address,
             self.tables.addresses,
             properties={"dingaling": relationship(Dingaling)},
         )
-        mapper(Dingaling, self.tables.dingalings)
+        self.mapper_registry.map_imperatively(
+            Dingaling, self.tables.dingalings
+        )
 
         sess = fixture_session(autoflush=False)
         return User, Address, Dingaling, sess
@@ -1447,35 +1459,35 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
             self.classes.Order,
             self.classes.Item,
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             User, self.tables.users, properties={"orders": relationship(Order)}
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             self.tables.orders,
             properties={
                 "items": relationship(Item, secondary=self.tables.order_items)
             },
         )
-        mapper(Item, self.tables.items)
+        self.mapper_registry.map_imperatively(Item, self.tables.items)
 
         sess = fixture_session(autoflush=False)
         return User, Order, Item, sess
 
     def _eager_config_fixture(self, default_lazy="selectin"):
         User, Address = self.classes.User, self.classes.Address
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             self.tables.users,
             properties={"addresses": relationship(Address, lazy=default_lazy)},
         )
-        mapper(Address, self.tables.addresses)
+        self.mapper_registry.map_imperatively(Address, self.tables.addresses)
         sess = fixture_session(autoflush=False)
         return User, Address, sess
 
     def _deferred_config_fixture(self):
         User, Address = self.classes.User, self.classes.Address
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             self.tables.users,
             properties={
@@ -1483,7 +1495,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
                 "addresses": relationship(Address, lazy="selectin"),
             },
         )
-        mapper(Address, self.tables.addresses)
+        self.mapper_registry.map_imperatively(Address, self.tables.addresses)
         sess = fixture_session(autoflush=False)
         return User, Address, sess
 
@@ -1670,7 +1682,7 @@ class OrderBySecondaryTest(fixtures.MappedTest):
         class B(fixtures.ComparableEntity):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             a,
             properties={
@@ -1679,7 +1691,7 @@ class OrderBySecondaryTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(B, b)
+        self.mapper_registry.map_imperatively(B, b)
 
         sess = fixture_session()
 
@@ -1758,7 +1770,7 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
         engineers = cls.tables.engineers
         paperwork = cls.tables.paperwork
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Person,
             people,
             polymorphic_on=people.c.type,
@@ -1770,14 +1782,14 @@ class BaseRelationFromJoinedSubclassTest(_Polymorphic):
             },
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Engineer,
             engineers,
             inherits=Person,
             polymorphic_identity="engineer",
         )
 
-        mapper(Paperwork, paperwork)
+        cls.mapper_registry.map_imperatively(Paperwork, paperwork)
 
     @classmethod
     def insert_data(cls, connection):
@@ -2522,14 +2534,14 @@ class SubRelationFromJoinedSubclassMultiLevelTest(_Polymorphic):
         machines = cls.tables.machines
         machine_type = cls.tables.machine_type
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Company,
             companies,
             properties={
                 "employees": relationship(Person, order_by=people.c.person_id)
             },
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Person,
             people,
             polymorphic_on=people.c.type,
@@ -2537,7 +2549,7 @@ class SubRelationFromJoinedSubclassMultiLevelTest(_Polymorphic):
             with_polymorphic="*",
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Engineer,
             engineers,
             inherits=Person,
@@ -2549,10 +2561,10 @@ class SubRelationFromJoinedSubclassMultiLevelTest(_Polymorphic):
             },
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Machine, machines, properties={"type": relationship(MachineType)}
         )
-        mapper(MachineType, machine_type)
+        cls.mapper_registry.map_imperatively(MachineType, machine_type)
 
     @classmethod
     def insert_data(cls, connection):
@@ -2618,7 +2630,7 @@ class SelfReferentialTest(fixtures.MappedTest):
             def append(self, node):
                 self.children.append(node)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Node,
             nodes,
             properties={
@@ -2694,7 +2706,7 @@ class SelfReferentialTest(fixtures.MappedTest):
             def append(self, node):
                 self.children.append(node)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Node,
             nodes,
             properties={
@@ -2740,7 +2752,7 @@ class SelfReferentialTest(fixtures.MappedTest):
             def append(self, node):
                 self.children.append(node)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Node,
             nodes,
             properties={
@@ -2798,7 +2810,7 @@ class SelfReferentialTest(fixtures.MappedTest):
             def append(self, node):
                 self.children.append(node)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Node,
             nodes,
             properties={"children": relationship(Node, order_by=nodes.c.id)},
@@ -2853,7 +2865,7 @@ class SelfReferentialTest(fixtures.MappedTest):
             def append(self, node):
                 self.children.append(node)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Node,
             nodes,
             properties={"children": relationship(Node, lazy="selectin")},

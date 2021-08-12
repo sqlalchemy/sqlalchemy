@@ -479,7 +479,16 @@ def setup_test_methods(request):
 
     self = request.instance
 
-    # 1. run outer xdist-style setup
+    # before this fixture runs:
+
+    # 1. function level "autouse" fixtures under py3k (examples: TablesTest
+    #    define tables / data, MappedTest define tables / mappers / data)
+
+    # 2. run homegrown function level "autouse" fixtures under py2k
+    if py2k:
+        reinvent_fixtures_py2k.run_fn_fixture_setup(request)
+
+    # 3. run outer xdist-style setup
     if hasattr(self, "setup_test"):
         asyncio._maybe_async(self.setup_test)
 
@@ -489,15 +498,7 @@ def setup_test_methods(request):
     if hasattr(self, "setUp"):
         asyncio._maybe_async(self.setUp)
 
-    # 2. run homegrown function level "autouse" fixtures under py2k
-    if py2k:
-        reinvent_fixtures_py2k.run_fn_fixture_setup(request)
-
     # inside the yield:
-
-    # 3. function level "autouse" fixtures under py3k (examples: TablesTest
-    #    define tables / data, MappedTest define tables / mappers / data)
-
     # 4. function level fixtures defined on test functions themselves,
     #    e.g. "connection", "metadata" run next
 
@@ -509,32 +510,32 @@ def setup_test_methods(request):
 
     # yield finishes:
 
-    # 7. pytest hook pytest_runtest_teardown hook runs, this is associated
+    # 7. function level fixtures defined on test functions
+    #    themselves, e.g. "connection" rolls back the transaction, "metadata"
+    #    emits drop all
+
+    # 8. pytest hook pytest_runtest_teardown hook runs, this is associated
     #    with fixtures close all sessions, provisioning.stop_test_class(),
     #    engines.testing_reaper -> ensure all connection pool connections
     #    are returned, engines created by testing_engine that aren't the
     #    config engine are disposed
 
-    # 8. function level fixtures defined on test functions
-    #    themselves, e.g. "connection" rolls back the transaction, "metadata"
-    #    emits drop all
-
-    # 9. function level "autouse" fixtures under py3k (examples: TablesTest /
-    #    MappedTest delete table data, possibly drop tables and clear mappers
-    #    depending on the flags defined by the test class)
-
-    # 10. run homegrown function-level "autouse" fixtures under py2k
-    if py2k:
-        reinvent_fixtures_py2k.run_fn_fixture_teardown(request)
-
     asyncio._maybe_async(plugin_base.after_test_fixtures, self)
 
-    # 11. run outer xdist-style teardown
+    # 10. run xdist-style teardown
     if hasattr(self, "tearDown"):
         asyncio._maybe_async(self.tearDown)
 
     if hasattr(self, "teardown_test"):
         asyncio._maybe_async(self.teardown_test)
+
+    # 11. run homegrown function-level "autouse" fixtures under py2k
+    if py2k:
+        reinvent_fixtures_py2k.run_fn_fixture_teardown(request)
+
+    # 12. function level "autouse" fixtures under py3k (examples: TablesTest /
+    #    MappedTest delete table data, possibly drop tables and clear mappers
+    #    depending on the flags defined by the test class)
 
 
 def getargspec(fn):

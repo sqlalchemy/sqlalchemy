@@ -16,7 +16,6 @@ from sqlalchemy.orm import attributes
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm.instrumentation import ClassManager
 from sqlalchemy.orm.mapper import Mapper
 from sqlalchemy.testing import assert_raises
@@ -109,7 +108,7 @@ class _MutableDictTestBase(_MutableDictTestFixture):
     def setup_mappers(cls):
         foo = cls.tables.foo
 
-        mapper(Foo, foo)
+        cls.mapper_registry.map_imperatively(Foo, foo)
 
     def test_coerce_none(self):
         sess = fixture_session()
@@ -330,7 +329,7 @@ class _MutableListTestBase(_MutableListTestFixture):
     def setup_mappers(cls):
         foo = cls.tables.foo
 
-        mapper(Foo, foo)
+        cls.mapper_registry.map_imperatively(Foo, foo)
 
     def test_coerce_none(self):
         sess = fixture_session()
@@ -636,7 +635,7 @@ class _MutableSetTestBase(_MutableSetTestFixture):
     def setup_mappers(cls):
         foo = cls.tables.foo
 
-        mapper(Foo, foo)
+        cls.mapper_registry.map_imperatively(Foo, foo)
 
     def test_coerce_none(self):
         sess = fixture_session()
@@ -926,7 +925,7 @@ class MutableColumnDefaultTest(_MutableDictTestFixture, fixtures.MappedTest):
     def setup_mappers(cls):
         foo = cls.tables.foo
 
-        mapper(Foo, foo)
+        cls.mapper_registry.map_imperatively(Foo, foo)
 
     def test_evt_on_flush_refresh(self):
         # test for #3427
@@ -1133,8 +1132,8 @@ class MutableAssocWithAttrInheritTest(
         foo = cls.tables.foo
         subfoo = cls.tables.subfoo
 
-        mapper(Foo, foo)
-        mapper(SubFoo, subfoo, inherits=Foo)
+        cls.mapper_registry.map_imperatively(Foo, foo)
+        cls.mapper_registry.map_imperatively(SubFoo, subfoo, inherits=Foo)
         MutableDict.associate_with_attribute(Foo.data)
 
     def test_in_place_mutation(self):
@@ -1332,7 +1331,7 @@ class MutableCompositeColumnDefaultTest(
 
         cls.Point = cls._type_fixture()
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Foo,
             foo,
             properties={"data": composite(cls.Point, foo.c.x, foo.c.y)},
@@ -1359,7 +1358,7 @@ class MutableCompositesUnpickleTest(_CompositeTestBase, fixtures.MappedTest):
 
         cls.Point = cls._type_fixture()
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             FooWithEq,
             foo,
             properties={"data": composite(cls.Point, foo.c.x, foo.c.y)},
@@ -1378,7 +1377,7 @@ class MutableCompositesTest(_CompositeTestBase, fixtures.MappedTest):
 
         Point = cls._type_fixture()
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Foo, foo, properties={"data": composite(Point, foo.c.x, foo.c.y)}
         )
 
@@ -1489,7 +1488,7 @@ class MutableCompositeCallableTest(_CompositeTestBase, fixtures.MappedTest):
 
         # in this case, this is not actually a MutableComposite.
         # so we don't expect it to track changes
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Foo,
             foo,
             properties={
@@ -1523,7 +1522,7 @@ class MutableCompositeCustomCoerceTest(
 
         Point = cls._type_fixture()
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Foo, foo, properties={"data": composite(Point, foo.c.x, foo.c.y)}
         )
 
@@ -1568,10 +1567,10 @@ class MutableInheritedCompositesTest(_CompositeTestBase, fixtures.MappedTest):
 
         Point = cls._type_fixture()
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Foo, foo, properties={"data": composite(Point, foo.c.x, foo.c.y)}
         )
-        mapper(SubFoo, subfoo, inherits=Foo)
+        cls.mapper_registry.map_imperatively(SubFoo, subfoo, inherits=Foo)
 
     def test_in_place_mutation_subclass(self):
         sess = fixture_session()

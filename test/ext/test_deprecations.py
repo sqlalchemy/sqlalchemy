@@ -1,7 +1,6 @@
 from sqlalchemy import testing
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.ext.horizontal_shard import ShardedSession
-from sqlalchemy.orm import mapper
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
@@ -39,11 +38,11 @@ class MutableIncludeNonPrimaryTest(test_mutable.MutableWithScalarJSONTest):
     def setup_mappers(cls):
         foo = cls.tables.foo
 
-        mapper(Foo, foo)
+        cls.mapper_registry.map_imperatively(Foo, foo)
         with testing.expect_deprecated(
             "The mapper.non_primary parameter is deprecated"
         ):
-            mapper(
+            cls.mapper_registry.map_imperatively(
                 Foo, foo, non_primary=True, properties={"foo_bar": foo.c.data}
             )
 
@@ -55,11 +54,11 @@ class MutableAssocIncludeNonPrimaryTest(
     def setup_mappers(cls):
         foo = cls.tables.foo
 
-        mapper(Foo, foo)
+        cls.mapper_registry.map_imperatively(Foo, foo)
         with testing.expect_deprecated(
             "The mapper.non_primary parameter is deprecated"
         ):
-            mapper(
+            cls.mapper_registry.map_imperatively(
                 Foo, foo, non_primary=True, properties={"foo_bar": foo.c.data}
             )
 

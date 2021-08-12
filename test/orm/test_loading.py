@@ -4,7 +4,6 @@ from sqlalchemy import testing
 from sqlalchemy.engine import result_tuple
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import loading
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
@@ -23,7 +22,7 @@ class InstanceProcessorTest(_fixtures.FixtureTest):
         User, Order, Address = self.classes("User", "Order", "Address")
         users, orders, addresses = self.tables("users", "orders", "addresses")
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -33,12 +32,12 @@ class InstanceProcessorTest(_fixtures.FixtureTest):
                 ),
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={"address": relationship(Address, lazy="joined")},
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         s = fixture_session()
 

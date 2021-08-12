@@ -2,7 +2,6 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import Session
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -41,9 +40,9 @@ class InheritingSelectablesTest(fixtures.MappedTest):
         class Baz(Foo):
             pass
 
-        mapper(Foo, foo, polymorphic_on=foo.c.b)
+        self.mapper_registry.map_imperatively(Foo, foo, polymorphic_on=foo.c.b)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Baz,
             baz,
             with_polymorphic=(
@@ -56,7 +55,7 @@ class InheritingSelectablesTest(fixtures.MappedTest):
             polymorphic_identity="baz",
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Bar,
             bar,
             with_polymorphic=(
@@ -110,13 +109,15 @@ class JoinFromSelectPersistenceTest(fixtures.MappedTest):
         base, child = self.tables.base, self.tables.child
 
         base_select = select(base).alias()
-        mapper(
+        self.mapper_registry.map_imperatively(
             Base,
             base_select,
             polymorphic_on=base_select.c.type,
             polymorphic_identity="base",
         )
-        mapper(Child, child, inherits=Base, polymorphic_identity="child")
+        self.mapper_registry.map_imperatively(
+            Child, child, inherits=Base, polymorphic_identity="child"
+        )
 
         sess = fixture_session()
 

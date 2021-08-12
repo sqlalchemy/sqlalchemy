@@ -3,7 +3,6 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy.orm import mapper
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
@@ -42,7 +41,9 @@ class BulkInsertUpdateVersionId(BulkTest, fixtures.MappedTest):
     def setup_mappers(cls):
         Foo, version_table = cls.classes.Foo, cls.tables.version_table
 
-        mapper(Foo, version_table, version_id_col=version_table.c.version_id)
+        cls.mapper_registry.map_imperatively(
+            Foo, version_table, version_id_col=version_table.c.version_id
+        )
 
     @testing.emits_warning(r".*versioning cannot be verified")
     def test_bulk_insert_via_save(self):
@@ -77,9 +78,9 @@ class BulkInsertUpdateTest(BulkTest, _fixtures.FixtureTest):
         User, Address, Order = cls.classes("User", "Address", "Order")
         u, a, o = cls.tables("users", "addresses", "orders")
 
-        mapper(User, u)
-        mapper(Address, a)
-        mapper(Order, o)
+        cls.mapper_registry.map_imperatively(User, u)
+        cls.mapper_registry.map_imperatively(Address, a)
+        cls.mapper_registry.map_imperatively(Order, o)
 
     def test_bulk_save_return_defaults(self):
         (User,) = self.classes("User")
@@ -329,7 +330,7 @@ class BulkUDPostfetchTest(BulkTest, fixtures.MappedTest):
         A = cls.classes.A
         a = cls.tables.a
 
-        mapper(A, a)
+        cls.mapper_registry.map_imperatively(A, a)
 
     def test_insert_w_fetch(self):
         A = self.classes.A
@@ -402,8 +403,8 @@ class BulkUDTestAltColKeys(BulkTest, fixtures.MappedTest):
             "people_keys", "people_attrs", "people_both"
         )
 
-        mapper(PersonKeys, people_keys)
-        mapper(
+        cls.mapper_registry.map_imperatively(PersonKeys, people_keys)
+        cls.mapper_registry.map_imperatively(
             PersonAttrs,
             people_attrs,
             properties={
@@ -412,7 +413,7 @@ class BulkUDTestAltColKeys(BulkTest, fixtures.MappedTest):
             },
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             PersonBoth,
             people_both,
             properties={
@@ -623,12 +624,18 @@ class BulkInheritanceTest(BulkTest, fixtures.MappedTest):
         )
         p, e, m, b = cls.tables("people", "engineers", "managers", "boss")
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Person, p, polymorphic_on=p.c.type, polymorphic_identity="person"
         )
-        mapper(Engineer, e, inherits=Person, polymorphic_identity="engineer")
-        mapper(Manager, m, inherits=Person, polymorphic_identity="manager")
-        mapper(Boss, b, inherits=Manager, polymorphic_identity="boss")
+        cls.mapper_registry.map_imperatively(
+            Engineer, e, inherits=Person, polymorphic_identity="engineer"
+        )
+        cls.mapper_registry.map_imperatively(
+            Manager, m, inherits=Person, polymorphic_identity="manager"
+        )
+        cls.mapper_registry.map_imperatively(
+            Boss, b, inherits=Manager, polymorphic_identity="boss"
+        )
 
     def test_bulk_save_joined_inh_return_defaults(self):
         Person, Engineer, Manager, Boss = self.classes(

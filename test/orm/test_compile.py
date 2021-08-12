@@ -9,14 +9,13 @@ from sqlalchemy import Unicode
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import configure_mappers
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import fixtures
 
 
-class CompileTest(fixtures.ORMTest):
+class CompileTest(fixtures.MappedTest):
     """test various mapper compilation scenarios"""
 
     def teardown_test(self):
@@ -78,7 +77,7 @@ class CompileTest(fixtures.ORMTest):
 
         order_join = order.select().alias("pjoin")
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             order,
             with_polymorphic=("*", order_join),
@@ -91,7 +90,7 @@ class CompileTest(fixtures.ORMTest):
             },
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Product,
             product,
             properties={
@@ -101,7 +100,7 @@ class CompileTest(fixtures.ORMTest):
             },
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Employee,
             employee,
             properties={
@@ -111,7 +110,7 @@ class CompileTest(fixtures.ORMTest):
             },
         )
 
-        mapper(OrderProduct, orderproduct)
+        self.mapper_registry.map_imperatively(OrderProduct, orderproduct)
 
         # this requires that the compilation of order_mapper's "surrogate
         # mapper" occur after the initial setup of MapperProperty objects on
@@ -160,7 +159,7 @@ class CompileTest(fixtures.ORMTest):
 
         order_join = order.select().alias("pjoin")
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             order,
             with_polymorphic=("*", order_join),
@@ -173,7 +172,7 @@ class CompileTest(fixtures.ORMTest):
             },
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Product,
             product,
             properties={
@@ -183,7 +182,7 @@ class CompileTest(fixtures.ORMTest):
             },
         )
 
-        mapper(OrderProduct, orderproduct)
+        self.mapper_registry.map_imperatively(OrderProduct, orderproduct)
 
         assert_raises_message(
             sa_exc.ArgumentError, "Error creating backref", configure_mappers
@@ -222,9 +221,9 @@ class CompileTest(fixtures.ORMTest):
         class Host(object):
             pass
 
-        mapper(Node, node_table)
-        mapper(Host, host_table)
-        mapper(
+        self.mapper_registry.map_imperatively(Node, node_table)
+        self.mapper_registry.map_imperatively(Host, host_table)
+        self.mapper_registry.map_imperatively(
             NodeName,
             node_name_table,
             properties={
@@ -252,8 +251,12 @@ class CompileTest(fixtures.ORMTest):
         class B(object):
             pass
 
-        mapper(A, a, properties={"b": relationship(B, backref="a")})
-        mapper(B, b, properties={"a": relationship(A, backref="b")})
+        self.mapper_registry.map_imperatively(
+            A, a, properties={"b": relationship(B, backref="a")}
+        )
+        self.mapper_registry.map_imperatively(
+            B, b, properties={"a": relationship(A, backref="b")}
+        )
 
         assert_raises_message(
             sa_exc.ArgumentError, "Error creating backref", configure_mappers
@@ -279,7 +282,7 @@ class CompileTest(fixtures.ORMTest):
         class C(B):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             a,
             properties={
@@ -287,8 +290,8 @@ class CompileTest(fixtures.ORMTest):
                 "c": relationship(C, backref="a"),
             },
         )
-        mapper(B, b)
-        mapper(C, None, inherits=B)
+        self.mapper_registry.map_imperatively(B, b)
+        self.mapper_registry.map_imperatively(C, None, inherits=B)
 
         assert_raises_message(
             sa_exc.ArgumentError, "Error creating backref", configure_mappers

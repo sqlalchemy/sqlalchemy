@@ -12,7 +12,6 @@ from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import lazyload
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import state as sa_state
 from sqlalchemy.orm import subqueryload
@@ -101,17 +100,17 @@ class PickleTest(fixtures.MappedTest):
             self.tables.dingalings,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={"addresses": relationship(Address, backref="user")},
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={"dingaling": relationship(Dingaling)},
         )
-        mapper(Dingaling, dingalings)
+        self.mapper_registry.map_imperatively(Dingaling, dingalings)
         sess = fixture_session()
         u1 = User(name="ed")
         u1.addresses.append(Address(email_address="ed@bar.com"))
@@ -123,12 +122,12 @@ class PickleTest(fixtures.MappedTest):
     def test_transient(self):
         users, addresses = (self.tables.users, self.tables.addresses)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={"addresses": relationship(Address, backref="user")},
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         sess = fixture_session()
         u1 = User(name="ed")
@@ -145,7 +144,7 @@ class PickleTest(fixtures.MappedTest):
     def test_no_mappers(self):
         users = self.tables.users
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
         u1 = User(name="ed")
         u1_pickled = pickle.dumps(u1, -1)
 
@@ -162,13 +161,13 @@ class PickleTest(fixtures.MappedTest):
     def test_no_instrumentation(self):
         users = self.tables.users
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
         u1 = User(name="ed")
         u1_pickled = pickle.dumps(u1, -1)
 
         clear_mappers()
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         u1 = pickle.loads(u1_pickled)
         # this fails unless the InstanceState
@@ -178,7 +177,7 @@ class PickleTest(fixtures.MappedTest):
     def test_class_deferred_cols(self):
         addresses, users = (self.tables.addresses, self.tables.users)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -186,7 +185,7 @@ class PickleTest(fixtures.MappedTest):
                 "addresses": relationship(Address, backref="user"),
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
@@ -229,12 +228,12 @@ class PickleTest(fixtures.MappedTest):
     def test_instance_lazy_relation_loaders(self):
         users, addresses = (self.tables.users, self.tables.addresses)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={"addresses": relationship(Address, lazy="noload")},
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         sess = fixture_session()
         u1 = User(name="ed", addresses=[Address(email_address="ed@bar.com")])
@@ -253,12 +252,12 @@ class PickleTest(fixtures.MappedTest):
     def test_lazyload_extra_criteria_not_supported(self):
         users, addresses = (self.tables.users, self.tables.addresses)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={"addresses": relationship(Address)},
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         sess = fixture_session()
         u1 = User(
@@ -296,12 +295,12 @@ class PickleTest(fixtures.MappedTest):
     def test_invalidated_flag_pickle(self):
         users, addresses = (self.tables.users, self.tables.addresses)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={"addresses": relationship(Address, lazy="noload")},
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         u1 = User()
         u1.addresses.append(Address())
@@ -312,12 +311,12 @@ class PickleTest(fixtures.MappedTest):
     def test_invalidated_flag_deepcopy(self):
         users, addresses = (self.tables.users, self.tables.addresses)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={"addresses": relationship(Address, lazy="noload")},
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         u1 = User()
         u1.addresses.append(Address())
@@ -329,12 +328,12 @@ class PickleTest(fixtures.MappedTest):
     def test_instance_deferred_cols(self):
         users, addresses = (self.tables.users, self.tables.addresses)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={"addresses": relationship(Address, backref="user")},
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         with fixture_session(expire_on_commit=False) as sess:
             u1 = User(name="ed")
@@ -391,12 +390,12 @@ class PickleTest(fixtures.MappedTest):
     def test_pickle_protocols(self):
         users, addresses = (self.tables.users, self.tables.addresses)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={"addresses": relationship(Address, backref="user")},
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         sess = fixture_session()
         u1 = User(name="ed")
@@ -413,7 +412,7 @@ class PickleTest(fixtures.MappedTest):
 
     def test_09_pickle(self):
         users = self.tables.users
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
         sess = fixture_session()
         sess.add(User(id=1, name="ed"))
         sess.commit()
@@ -448,7 +447,7 @@ class PickleTest(fixtures.MappedTest):
 
     def test_11_pickle(self):
         users = self.tables.users
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
         sess = fixture_session()
         u1 = User(id=1, name="ed")
         sess.add(u1)
@@ -480,7 +479,7 @@ class PickleTest(fixtures.MappedTest):
 
     def test_state_info_pickle(self):
         users = self.tables.users
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         u1 = User(id=1, name="ed")
 
@@ -577,7 +576,7 @@ class PickleTest(fixtures.MappedTest):
         )
         p = Table("p", m, Column("id", String, primary_key=True))
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Parent,
             p,
             properties={
@@ -585,8 +584,8 @@ class PickleTest(fixtures.MappedTest):
                 "children2": relationship(Child2),
             },
         )
-        mapper(Child1, c1)
-        mapper(Child2, c2)
+        self.mapper_registry.map_imperatively(Child1, c1)
+        self.mapper_registry.map_imperatively(Child2, c2)
 
         obj = Parent()
         screen1 = Screen(obj)
@@ -599,7 +598,7 @@ class PickleTest(fixtures.MappedTest):
             pass
 
         users = self.tables.users
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         for sa_exc in (
             orm_exc.UnmappedInstanceError(Foo()),
@@ -613,7 +612,7 @@ class PickleTest(fixtures.MappedTest):
     def test_attribute_mapped_collection(self):
         users, addresses = self.tables.users, self.tables.addresses
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -625,7 +624,7 @@ class PickleTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
         u1 = User()
         u1.addresses = {"email1": Address(email_address="email1")}
         for loads, dumps in picklers():
@@ -636,7 +635,7 @@ class PickleTest(fixtures.MappedTest):
     def test_column_mapped_collection(self):
         users, addresses = self.tables.users, self.tables.addresses
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -648,7 +647,7 @@ class PickleTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
         u1 = User()
         u1.addresses = {
             "email1": Address(email_address="email1"),
@@ -662,7 +661,7 @@ class PickleTest(fixtures.MappedTest):
     def test_composite_column_mapped_collection(self):
         users, addresses = self.tables.users, self.tables.addresses
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -674,7 +673,7 @@ class PickleTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
         u1 = User()
         u1.addresses = {
             (1, "email1"): Address(id=1, email_address="email1"),
@@ -743,13 +742,13 @@ class PolymorphicDeferredTest(fixtures.MappedTest):
     def test_polymorphic_deferred(self):
         email_users, users = (self.tables.email_users, self.tables.users)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             polymorphic_identity="user",
             polymorphic_on=users.c.type,
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             EmailUser,
             email_users,
             inherits=User,
@@ -782,7 +781,7 @@ class TupleLabelTest(_fixtures.FixtureTest):
             cls.tables.addresses,
             cls.tables.orders,
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -795,8 +794,8 @@ class TupleLabelTest(_fixtures.FixtureTest):
                 ),
             },
         )
-        mapper(Address, addresses)
-        mapper(
+        cls.mapper_registry.map_imperatively(Address, addresses)
+        cls.mapper_registry.map_imperatively(
             Order, orders, properties={"address": relationship(Address)}
         )  # m2o
 
@@ -893,7 +892,7 @@ class CustomSetupTeardownTest(fixtures.MappedTest):
 
         users = self.tables.users
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         u1 = User()
         attributes.manager_of_class(User).teardown_instance(u1)

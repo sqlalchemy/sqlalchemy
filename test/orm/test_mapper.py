@@ -23,7 +23,6 @@ from sqlalchemy.orm import deferred
 from sqlalchemy.orm import dynamic_loader
 from sqlalchemy.orm import Load
 from sqlalchemy.orm import load_only
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import reconstructor
 from sqlalchemy.orm import registry
 from sqlalchemy.orm import relationship
@@ -291,13 +290,23 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         User, users = self.classes.User, self.tables.users
 
         s = sa.select(users.c.name).alias("foo")
-        assert_raises(sa.exc.ArgumentError, mapper, User, s)
+        assert_raises(
+            sa.exc.ArgumentError,
+            self.mapper_registry.map_imperatively,
+            User,
+            s,
+        )
 
     def test_no_pks_2(self):
         User, users = self.classes.User, self.tables.users
 
         s = sa.select(users.c.name).alias()
-        assert_raises(sa.exc.ArgumentError, mapper, User, s)
+        assert_raises(
+            sa.exc.ArgumentError,
+            self.mapper_registry.map_imperatively,
+            User,
+            s,
+        )
 
     def test_reconfigure_on_other_mapper(self):
         """A configure trigger on an already-configured mapper
@@ -365,7 +374,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert_raises_message(
             sa.exc.ArgumentError,
             "not represented in the mapper's table",
-            mapper,
+            self.mapper_registry.map_imperatively,
             User,
             users,
             properties={"foo": addresses.c.user_id},
@@ -974,7 +983,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert_raises_message(
             sa.exc.SAWarning,
             "Reassigning polymorphic association for identity 'user'",
-            mapper,
+            self.mapper_registry.map_imperatively,
             MyUser,
             users,
             inherits=User,
@@ -1226,7 +1235,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert_raises_message(
             sa.exc.InvalidRequestError,
             "Implicitly",
-            mapper,
+            self.mapper_registry.map_imperatively,
             User,
             usersaddresses,
             primary_key=[users.c.id],
@@ -1792,7 +1801,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         assert_raises(
             sa.exc.ArgumentError,
-            mapper,
+            self.mapper_registry.map_imperatively,
             User,
             users,
             properties=util.OrderedDict(
@@ -1803,9 +1812,10 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             ),
         )
 
+        clear_mappers()
         assert_raises(
             sa.exc.ArgumentError,
-            mapper,
+            self.mapper_registry.map_imperatively,
             User,
             users,
             properties=util.OrderedDict(
@@ -2273,25 +2283,6 @@ class RequirementsTest(fixtures.MappedTest):
             Column("value", String(10)),
         )
 
-    if util.py2k:
-
-        def test_baseclass(self):
-            ht1 = self.tables.ht1
-
-            class OldStyle:
-                pass
-
-            assert_raises(sa.exc.ArgumentError, mapper, OldStyle, ht1)
-
-            assert_raises(sa.exc.ArgumentError, mapper, 123)
-
-            class NoWeakrefSupport(str):
-                pass
-
-            # TODO: is weakref support detectable without an instance?
-            # self.assertRaises(
-            #  sa.exc.ArgumentError, mapper, NoWeakrefSupport, t2)
-
     class _ValueBase(object):
         def __init__(self, value="abc", id_=None):
             self.id = id_
@@ -2650,13 +2641,14 @@ class MagicNamesTest(fixtures.MappedTest):
             class T(object):
                 pass
 
+            clear_mappers()
             assert_raises_message(
                 KeyError,
                 (
                     "%r: requested attribute name conflicts with "
                     "instrumentation attribute of the same name." % reserved
                 ),
-                mapper,
+                self.mapper_registry.map_imperatively,
                 T,
                 t,
             )
@@ -2672,13 +2664,14 @@ class MagicNamesTest(fixtures.MappedTest):
             class M(object):
                 pass
 
+            clear_mappers()
             assert_raises_message(
                 KeyError,
                 (
                     "requested attribute name conflicts with "
                     "instrumentation attribute of the same name"
                 ),
-                mapper,
+                self.mapper_registry.map_imperatively,
                 M,
                 maps,
                 properties={reserved: maps.c.state},
@@ -3154,7 +3147,7 @@ class ConfigureOrNotConfigureTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         users = self.tables.users
 
-        um = mapper(User, users)
+        um = self.mapper_registry.map_imperatively(User, users)
 
         if use_bound:
             stmt = select(User).options(
@@ -3179,12 +3172,12 @@ class ConfigureOrNotConfigureTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         User, Address = self.classes("User", "Address")
         users, addresses = self.tables("users", "addresses")
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={"addresses": relationship(Address, backref="user")},
         )
-        am = mapper(Address, addresses)
+        am = self.mapper_registry.map_imperatively(Address, addresses)
 
         if use_legacy_query:
             s = Session()

@@ -8,7 +8,6 @@ from sqlalchemy import testing
 from sqlalchemy import tuple_
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import Bundle
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.elements import ClauseList
@@ -61,12 +60,14 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     @classmethod
     def setup_mappers(cls):
-        mapper(
+        cls.mapper_registry.map_imperatively(
             cls.classes.Data,
             cls.tables.data,
             properties={"others": relationship(cls.classes.Other)},
         )
-        mapper(cls.classes.Other, cls.tables.other)
+        cls.mapper_registry.map_imperatively(
+            cls.classes.Other, cls.tables.other
+        )
 
     @classmethod
     def insert_data(cls, connection):

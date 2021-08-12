@@ -4,7 +4,7 @@ from sqlalchemy import MetaData
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.ext.orderinglist import ordering_list
-from sqlalchemy.orm import mapper
+from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -59,7 +59,7 @@ def alpha_ordering(index, collection):
     return s
 
 
-class OrderingListTest(fixtures.TestBase):
+class OrderingListTest(fixtures.MappedTest):
     def setup_test(self):
         global metadata, slides_table, bullets_table, Slide, Bullet
         slides_table, bullets_table = None, None
@@ -105,7 +105,8 @@ class OrderingListTest(fixtures.TestBase):
             def __repr__(self):
                 return '<Bullet "%s" pos %s>' % (self.text, self.position)
 
-        mapper(
+        clear_mappers()
+        self.mapper_registry.map_imperatively(
             Slide,
             slides_table,
             properties={
@@ -118,7 +119,7 @@ class OrderingListTest(fixtures.TestBase):
                 )
             },
         )
-        mapper(Bullet, bullets_table)
+        self.mapper_registry.map_imperatively(Bullet, bullets_table)
 
         metadata.create_all(testing.db)
 

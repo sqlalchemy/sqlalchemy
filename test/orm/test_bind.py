@@ -12,7 +12,6 @@ from sqlalchemy import true
 from sqlalchemy import update
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
@@ -46,8 +45,8 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         users_unbound = users.to_metadata(m2)
         addresses_unbound = addresses.to_metadata(m2)
 
-        mapper(Address, addresses_unbound)
-        mapper(
+        self.mapper_registry.map_imperatively(Address, addresses_unbound)
+        self.mapper_registry.map_imperatively(
             User,
             users_unbound,
             properties={
@@ -103,8 +102,8 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         users_unbound = users.to_metadata(m2)
         addresses_unbound = addresses.to_metadata(m2)
 
-        mapper(Address, addresses_unbound)
-        mapper(
+        self.mapper_registry.map_imperatively(Address, addresses_unbound)
+        self.mapper_registry.map_imperatively(
             User,
             users_unbound,
             properties={
@@ -155,7 +154,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
     def test_bind_from_metadata(self):
         users, User = self.tables.users, self.classes.User
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         session = fixture_session()
 
@@ -261,8 +260,10 @@ class BindIntegrationTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        mapper(User, users, properties={"addresses": relationship(Address)})
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(
+            User, users, properties={"addresses": relationship(Address)}
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         e1 = engines.testing_engine()
         e2 = engines.testing_engine()
@@ -333,8 +334,10 @@ class BindIntegrationTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        mapper(User, users, properties={"addresses": relationship(Address)})
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(
+            User, users, properties={"addresses": relationship(Address)}
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         e1 = engines.testing_engine()
         e2 = engines.testing_engine()
@@ -397,7 +400,9 @@ class BindIntegrationTest(_fixtures.FixtureTest):
             testing.db,
         )
 
-        mapper(self.classes.User, self.tables.users)
+        self.mapper_registry.map_imperatively(
+            self.classes.User, self.tables.users
+        )
         u_object = self.classes.User()
 
         assert_raises_message(
@@ -412,7 +417,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
     def test_bound_connection(self):
         users, User = self.tables.users, self.classes.User
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
         c = testing.db.connect()
         sess = Session(bind=c)
         sess.begin()
@@ -440,7 +445,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
     def test_bound_connection_transactional(self):
         User, users = self.classes.User, self.tables.users
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
         with testing.db.connect() as c:
 
             sess = Session(bind=c, autocommit=False)
@@ -508,7 +513,7 @@ class SessionBindTest(fixtures.MappedTest):
         test_table.to_metadata(meta)
 
         assert meta.tables["test_table"].bind is None
-        mapper(Foo, meta.tables["test_table"])
+        cls.mapper_registry.map_imperatively(Foo, meta.tables["test_table"])
 
     def test_session_bind(self):
         Foo = self.classes.Foo
@@ -580,14 +585,18 @@ class GetBindTest(fixtures.MappedTest):
 
     @classmethod
     def setup_mappers(cls):
-        mapper(cls.classes.ClassWMixin, cls.tables.w_mixin_table)
-        mapper(cls.classes.BaseClass, cls.tables.base_table)
-        mapper(
+        cls.mapper_registry.map_imperatively(
+            cls.classes.ClassWMixin, cls.tables.w_mixin_table
+        )
+        cls.mapper_registry.map_imperatively(
+            cls.classes.BaseClass, cls.tables.base_table
+        )
+        cls.mapper_registry.map_imperatively(
             cls.classes.JoinedSubClass,
             cls.tables.joined_sub_table,
             inherits=cls.classes.BaseClass,
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             cls.classes.ConcreteSubClass,
             cls.tables.concrete_sub_table,
             inherits=cls.classes.BaseClass,

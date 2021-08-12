@@ -5,7 +5,6 @@ from sqlalchemy import Identity
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy.orm import mapper
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertsql import assert_engine
@@ -153,7 +152,7 @@ class TriggerDefaultsTest(fixtures.MappedTest):
     def setup_mappers(cls):
         Default, dt = cls.classes.Default, cls.tables.dt
 
-        mapper(Default, dt)
+        cls.mapper_registry.map_imperatively(Default, dt)
 
     def test_insert(self):
         Default = self.classes.Default
@@ -210,7 +209,9 @@ class ExcludedDefaultsTest(fixtures.MappedTest):
         class Foo(fixtures.BasicEntity):
             pass
 
-        mapper(Foo, dt, exclude_properties=("col1",))
+        self.mapper_registry.map_imperatively(
+            Foo, dt, exclude_properties=("col1",)
+        )
 
         f1 = Foo()
         sess = fixture_session()
@@ -248,10 +249,14 @@ class ComputedDefaultsOnUpdateTest(fixtures.MappedTest):
     def setup_mappers(cls):
         Thing = cls.classes.Thing
 
-        mapper(Thing, cls.tables.test, eager_defaults=True)
+        cls.mapper_registry.map_imperatively(
+            Thing, cls.tables.test, eager_defaults=True
+        )
 
         ThingNoEager = cls.classes.ThingNoEager
-        mapper(ThingNoEager, cls.tables.test, eager_defaults=False)
+        cls.mapper_registry.map_imperatively(
+            ThingNoEager, cls.tables.test, eager_defaults=False
+        )
 
     @testing.combinations(("eager", True), ("noneager", False), id_="ia")
     def test_insert_computed(self, eager):
@@ -439,7 +444,7 @@ class IdentityDefaultsOnUpdateTest(fixtures.MappedTest):
     def setup_mappers(cls):
         Thing = cls.classes.Thing
 
-        mapper(Thing, cls.tables.test)
+        cls.mapper_registry.map_imperatively(Thing, cls.tables.test)
 
     def test_insert_identity(self):
         Thing = self.classes.Thing

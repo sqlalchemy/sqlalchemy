@@ -41,7 +41,7 @@ from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.orm import aliased
-from sqlalchemy.orm import mapper
+from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import column
 from sqlalchemy.sql import literal_column
@@ -2728,7 +2728,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
 
-class DistinctOnTest(fixtures.TestBase, AssertsCompiledSQL):
+class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     """Test 'DISTINCT' with SQL expression language and orm.Query with
     an emphasis on PG's 'DISTINCT ON' syntax.
@@ -2825,7 +2825,8 @@ class DistinctOnTest(fixtures.TestBase, AssertsCompiledSQL):
         class Foo(object):
             pass
 
-        mapper(Foo, self.table)
+        clear_mappers()
+        self.mapper_registry.map_imperatively(Foo, self.table)
         sess = Session()
         subq = sess.query(Foo).subquery()
 
@@ -2842,7 +2843,7 @@ class DistinctOnTest(fixtures.TestBase, AssertsCompiledSQL):
         class Foo(object):
             pass
 
-        mapper(Foo, self.table)
+        self.mapper_registry.map_imperatively(Foo, self.table)
         a1 = aliased(Foo)
         sess = Session()
         self.assert_compile(

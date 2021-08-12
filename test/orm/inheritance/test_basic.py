@@ -22,7 +22,6 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import object_mapper
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
@@ -84,19 +83,19 @@ class O2MTest(fixtures.MappedTest):
             def __repr__(self):
                 return "Foo id %d, data %s" % (self.id, self.data)
 
-        mapper(Foo, foo)
+        self.mapper_registry.map_imperatively(Foo, foo)
 
         class Bar(Foo):
             def __repr__(self):
                 return "Bar id %d, data %s" % (self.id, self.data)
 
-        mapper(Bar, bar, inherits=Foo)
+        self.mapper_registry.map_imperatively(Bar, bar, inherits=Foo)
 
         class Blub(Bar):
             def __repr__(self):
                 return "Blub id %d, data %s" % (self.id, self.data)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Blub,
             blub,
             inherits=Bar,
@@ -370,7 +369,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
             "Can't determine polymorphic_on "
             "value 'im not a column' - no "
             "attribute is mapped to this name.",
-            mapper,
+            self.mapper_registry.map_imperatively,
             Parent,
             t2,
             polymorphic_on="im not a column",
@@ -384,7 +383,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
             sa_exc.ArgumentError,
             r"Column expression or string key expected for argument "
             r"'polymorphic_on'; got .*function",
-            mapper,
+            self.mapper,
             Parent,
             t2,
             polymorphic_on=lambda: "hi",
@@ -398,7 +397,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
 
         def go():
             t1t2_join_2 = select(t1.c.q).select_from(t1.join(t2)).alias()
-            mapper(
+            self.mapper_registry.map_imperatively(
                 Parent,
                 t2,
                 polymorphic_on=t1t2_join.c.x,
@@ -418,7 +417,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         Parent = self.classes.Parent
         t1t2_join = select(t1.c.x).select_from(t1.join(t2)).alias()
         # if its in the with_polymorphic, then its OK
-        mapper(
+        self.mapper_registry.map_imperatively(
             Parent,
             t2,
             polymorphic_on=t1t2_join.c.x,
@@ -435,7 +434,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         # if with_polymorphic, but its not present, not OK
         def go():
             t1t2_join_2 = select(t1.c.q).select_from(t1.join(t2)).alias()
-            mapper(
+            self.mapper_registry.map_imperatively(
                 Parent,
                 t2,
                 polymorphic_on=t1t2_join.c.x,
@@ -455,14 +454,16 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         t2, t1 = self.tables.t2, self.tables.t1
         Parent, Child = self.classes.Parent, self.classes.Child
         expr = case((t1.c.x == "p", "parent"), (t1.c.x == "c", "child"))
-        mapper(
+        self.mapper_registry.map_imperatively(
             Parent,
             t1,
             properties={"discriminator": column_property(expr)},
             polymorphic_identity="parent",
             polymorphic_on=expr,
         )
-        mapper(Child, t2, inherits=Parent, polymorphic_identity="child")
+        self.mapper_registry.map_imperatively(
+            Child, t2, inherits=Parent, polymorphic_identity="child"
+        )
 
         self._roundtrip(parent_ident="p", child_ident="c")
 
@@ -470,8 +471,12 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         t2, t1 = self.tables.t2, self.tables.t1
         Parent, Child = self.classes.Parent, self.classes.Child
         expr = case((t1.c.x == "p", "parent"), (t1.c.x == "c", "child"))
-        mapper(Parent, t1, polymorphic_identity="parent", polymorphic_on=expr)
-        mapper(Child, t2, inherits=Parent, polymorphic_identity="child")
+        self.mapper_registry.map_imperatively(
+            Parent, t1, polymorphic_identity="parent", polymorphic_on=expr
+        )
+        self.mapper_registry.map_imperatively(
+            Child, t2, inherits=Parent, polymorphic_identity="child"
+        )
 
         self._roundtrip(parent_ident="p", child_ident="c")
 
@@ -481,8 +486,12 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         expr = case((t1.c.x == "p", "parent"), (t1.c.x == "c", "child")).label(
             None
         )
-        mapper(Parent, t1, polymorphic_identity="parent", polymorphic_on=expr)
-        mapper(Child, t2, inherits=Parent, polymorphic_identity="child")
+        self.mapper_registry.map_imperatively(
+            Parent, t1, polymorphic_identity="parent", polymorphic_on=expr
+        )
+        self.mapper_registry.map_imperatively(
+            Child, t2, inherits=Parent, polymorphic_identity="child"
+        )
 
         self._roundtrip(parent_ident="p", child_ident="c")
 
@@ -492,8 +501,12 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         t1 = self.tables.t1
         Parent, Child = self.classes.Parent, self.classes.Child
         expr = case((t1.c.x == "p", "parent"), (t1.c.x == "c", "child"))
-        mapper(Parent, t1, polymorphic_identity="parent", polymorphic_on=expr)
-        mapper(Child, inherits=Parent, polymorphic_identity="child")
+        self.mapper_registry.map_imperatively(
+            Parent, t1, polymorphic_identity="parent", polymorphic_on=expr
+        )
+        self.mapper_registry.map_imperatively(
+            Child, inherits=Parent, polymorphic_identity="child"
+        )
 
         self._roundtrip(parent_ident="p", child_ident="c")
 
@@ -505,8 +518,12 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         expr = case((t1.c.x == "p", "parent"), (t1.c.x == "c", "child")).label(
             None
         )
-        mapper(Parent, t1, polymorphic_identity="parent", polymorphic_on=expr)
-        mapper(Child, inherits=Parent, polymorphic_identity="child")
+        self.mapper_registry.map_imperatively(
+            Parent, t1, polymorphic_identity="parent", polymorphic_on=expr
+        )
+        self.mapper_registry.map_imperatively(
+            Child, inherits=Parent, polymorphic_identity="child"
+        )
 
         self._roundtrip(parent_ident="p", child_ident="c")
 
@@ -515,14 +532,16 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         Parent, Child = self.classes.Parent, self.classes.Child
         expr = case((t1.c.x == "p", "parent"), (t1.c.x == "c", "child"))
         cprop = column_property(expr)
-        mapper(
+        self.mapper_registry.map_imperatively(
             Parent,
             t1,
             properties={"discriminator": cprop},
             polymorphic_identity="parent",
             polymorphic_on=cprop,
         )
-        mapper(Child, t2, inherits=Parent, polymorphic_identity="child")
+        self.mapper_registry.map_imperatively(
+            Child, t2, inherits=Parent, polymorphic_identity="child"
+        )
 
         self._roundtrip(parent_ident="p", child_ident="c")
 
@@ -531,14 +550,16 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
         Parent, Child = self.classes.Parent, self.classes.Child
         expr = case((t1.c.x == "p", "parent"), (t1.c.x == "c", "child"))
         cprop = column_property(expr)
-        mapper(
+        self.mapper_registry.map_imperatively(
             Parent,
             t1,
             properties={"discriminator": cprop},
             polymorphic_identity="parent",
             polymorphic_on="discriminator",
         )
-        mapper(Child, t2, inherits=Parent, polymorphic_identity="child")
+        self.mapper_registry.map_imperatively(
+            Child, t2, inherits=Parent, polymorphic_identity="child"
+        )
 
         self._roundtrip(parent_ident="p", child_ident="c")
 
@@ -550,7 +571,7 @@ class PolymorphicOnNotLocalTest(fixtures.MappedTest):
             sa_exc.ArgumentError,
             "Only direct column-mapped property or "
             "SQL expression can be passed for polymorphic_on",
-            mapper,
+            self.mapper_registry.map_imperatively,
             Parent,
             t1,
             properties={"discriminator": cprop, "discrim_syn": synonym(cprop)},
@@ -671,8 +692,12 @@ class FalseDiscriminatorTest(fixtures.MappedTest):
         class Bar(Foo):
             pass
 
-        mapper(Foo, t1, polymorphic_on=t1.c.type, polymorphic_identity=True)
-        mapper(Bar, inherits=Foo, polymorphic_identity=False)
+        self.mapper_registry.map_imperatively(
+            Foo, t1, polymorphic_on=t1.c.type, polymorphic_identity=True
+        )
+        self.mapper_registry.map_imperatively(
+            Bar, inherits=Foo, polymorphic_identity=False
+        )
         sess = fixture_session()
         b1 = Bar()
         sess.add(b1)
@@ -688,8 +713,12 @@ class FalseDiscriminatorTest(fixtures.MappedTest):
         class Bat(Ding):
             pass
 
-        mapper(Ding, t1, polymorphic_on=t1.c.type, polymorphic_identity=False)
-        mapper(Bat, inherits=Ding, polymorphic_identity=True)
+        self.mapper_registry.map_imperatively(
+            Ding, t1, polymorphic_on=t1.c.type, polymorphic_identity=False
+        )
+        self.mapper_registry.map_imperatively(
+            Bat, inherits=Ding, polymorphic_identity=True
+        )
         sess = fixture_session()
         d1 = Ding()
         sess.add(d1)
@@ -732,14 +761,16 @@ class PolymorphicSynonymTest(fixtures.MappedTest):
         class T2(T1):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             T1,
             t1,
             polymorphic_on=t1.c.type,
             polymorphic_identity="t1",
             properties={"info": synonym("_info", map_column=True)},
         )
-        mapper(T2, t2, inherits=T1, polymorphic_identity="t2")
+        self.mapper_registry.map_imperatively(
+            T2, t2, inherits=T1, polymorphic_identity="t2"
+        )
         sess = fixture_session()
         at1 = T1(info="at1")
         at2 = T2(info="at2", data="t2 data")
@@ -781,12 +812,6 @@ class PolymorphicAttributeManagementTest(fixtures.MappedTest):
 
     @classmethod
     def setup_classes(cls):
-        table_b, table_c, table_a = (
-            cls.tables.table_b,
-            cls.tables.table_c,
-            cls.tables.table_a,
-        )
-
         class A(cls.Basic):
             pass
 
@@ -799,13 +824,21 @@ class PolymorphicAttributeManagementTest(fixtures.MappedTest):
         class D(B):
             pass
 
-        mapper(
+    @classmethod
+    def setup_mappers(cls):
+        A, B, C, D = cls.classes("A", "B", "C", "D")
+        table_b, table_c, table_a = (
+            cls.tables.table_b,
+            cls.tables.table_c,
+            cls.tables.table_a,
+        )
+        cls.mapper_registry.map_imperatively(
             A,
             table_a,
             polymorphic_on=table_a.c.class_name,
             polymorphic_identity="a",
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             B,
             table_b,
             inherits=A,
@@ -815,8 +848,12 @@ class PolymorphicAttributeManagementTest(fixtures.MappedTest):
                 class_name=[table_a.c.class_name, table_b.c.class_name]
             ),
         )
-        mapper(C, table_c, inherits=B, polymorphic_identity="c")
-        mapper(D, inherits=B, polymorphic_identity="d")
+        cls.mapper_registry.map_imperatively(
+            C, table_c, inherits=B, polymorphic_identity="c"
+        )
+        cls.mapper_registry.map_imperatively(
+            D, inherits=B, polymorphic_identity="d"
+        )
 
     def test_poly_configured_immediate(self):
         A, C, B = (self.classes.A, self.classes.C, self.classes.B)
@@ -997,16 +1034,20 @@ class CascadeTest(fixtures.MappedTest):
         class T4(fixtures.BasicEntity):
             pass
 
-        mapper(T1, t1, properties={"t2s": relationship(T2, cascade="all")})
-        mapper(T2, t2, polymorphic_on=t2.c.type, polymorphic_identity="t2")
-        mapper(
+        self.mapper_registry.map_imperatively(
+            T1, t1, properties={"t2s": relationship(T2, cascade="all")}
+        )
+        self.mapper_registry.map_imperatively(
+            T2, t2, polymorphic_on=t2.c.type, polymorphic_identity="t2"
+        )
+        self.mapper_registry.map_imperatively(
             T3,
             t3,
             inherits=T2,
             polymorphic_identity="t3",
             properties={"t4s": relationship(T4, cascade="all")},
         )
-        mapper(T4, t4)
+        self.mapper_registry.map_imperatively(T4, t4)
 
         sess = fixture_session()
         t1_1 = T1(data="t1")
@@ -1072,11 +1113,13 @@ class M2OUseGetTest(fixtures.MappedTest):
         class Related(Base):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Base, base, polymorphic_on=base.c.type, polymorphic_identity="b"
         )
-        mapper(Sub, sub, inherits=Base, polymorphic_identity="s")
-        mapper(
+        self.mapper_registry.map_imperatively(
+            Sub, sub, inherits=Base, polymorphic_identity="s"
+        )
+        self.mapper_registry.map_imperatively(
             Related,
             related,
             properties={
@@ -1170,15 +1213,19 @@ class GetTest(fixtures.MappedTest):
         )
 
         if polymorphic:
-            mapper(
+            self.mapper_registry.map_imperatively(
                 Foo, foo, polymorphic_on=foo.c.type, polymorphic_identity="foo"
             )
-            mapper(Bar, bar, inherits=Foo, polymorphic_identity="bar")
-            mapper(Blub, blub, inherits=Bar, polymorphic_identity="blub")
+            self.mapper_registry.map_imperatively(
+                Bar, bar, inherits=Foo, polymorphic_identity="bar"
+            )
+            self.mapper_registry.map_imperatively(
+                Blub, blub, inherits=Bar, polymorphic_identity="blub"
+            )
         else:
-            mapper(Foo, foo)
-            mapper(Bar, bar, inherits=Foo)
-            mapper(Blub, blub, inherits=Bar)
+            self.mapper_registry.map_imperatively(Foo, foo)
+            self.mapper_registry.map_imperatively(Bar, bar, inherits=Foo)
+            self.mapper_registry.map_imperatively(Blub, blub, inherits=Bar)
 
         sess = fixture_session()
         f = Foo()
@@ -1268,8 +1315,8 @@ class EagerLazyTest(fixtures.MappedTest):
         class Bar(Foo):
             pass
 
-        foos = mapper(Foo, foo)
-        bars = mapper(Bar, bar, inherits=foos)
+        foos = cls.mapper_registry.map_imperatively(Foo, foo)
+        bars = cls.mapper_registry.map_imperatively(Bar, bar, inherits=foos)
         bars.add_property("lazy", relationship(foos, bar_foo, lazy="select"))
         bars.add_property(
             "eager", relationship(foos, bar_foo, lazy="joined", viewonly=True)
@@ -1331,7 +1378,7 @@ class EagerTargetingTest(fixtures.MappedTest):
         class B(A):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             a_table,
             polymorphic_on=a_table.c.type,
@@ -1339,7 +1386,7 @@ class EagerTargetingTest(fixtures.MappedTest):
             properties={"children": relationship(A, order_by=a_table.c.name)},
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             B,
             b_table,
             inherits=A,
@@ -1442,8 +1489,8 @@ class FlushTest(fixtures.MappedTest):
         class Admin(User):
             pass
 
-        mapper(Role, roles)
-        user_mapper = mapper(
+        self.mapper_registry.map_imperatively(Role, roles)
+        user_mapper = self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -1452,7 +1499,9 @@ class FlushTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(Admin, admins, inherits=user_mapper)
+        self.mapper_registry.map_imperatively(
+            Admin, admins, inherits=user_mapper
+        )
         sess = fixture_session()
         adminrole = Role()
         sess.add(adminrole)
@@ -1490,8 +1539,8 @@ class FlushTest(fixtures.MappedTest):
         class Admin(User):
             pass
 
-        mapper(Role, roles)
-        user_mapper = mapper(
+        self.mapper_registry.map_imperatively(Role, roles)
+        user_mapper = self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -1501,7 +1550,9 @@ class FlushTest(fixtures.MappedTest):
             },
         )
 
-        mapper(Admin, admins, inherits=user_mapper)
+        self.mapper_registry.map_imperatively(
+            Admin, admins, inherits=user_mapper
+        )
 
         # create roles
         adminrole = Role("admin")
@@ -1566,15 +1617,19 @@ class PassiveDeletesTest(fixtures.MappedTest):
         A, B, C = self.classes("A", "B", "C")
         a, b, c = self.tables("a", "b", "c")
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             a,
             passive_deletes=a_p,
             polymorphic_on=a.c.type,
             polymorphic_identity="a",
         )
-        mapper(B, b, inherits=A, passive_deletes=b_p, polymorphic_identity="b")
-        mapper(C, c, inherits=B, passive_deletes=c_p, polymorphic_identity="c")
+        self.mapper_registry.map_imperatively(
+            B, b, inherits=A, passive_deletes=b_p, polymorphic_identity="b"
+        )
+        self.mapper_registry.map_imperatively(
+            C, c, inherits=B, passive_deletes=c_p, polymorphic_identity="c"
+        )
 
     def test_none(self):
         A, B, C = self.classes("A", "B", "C")
@@ -1753,8 +1808,8 @@ class OptimizedGetOnDeferredTest(fixtures.MappedTest):
         A, B = cls.classes("A", "B")
         a, b = cls.tables("a", "b")
 
-        mapper(A, a)
-        mapper(
+        cls.mapper_registry.map_imperatively(A, a)
+        cls.mapper_registry.map_imperatively(
             B,
             b,
             inherits=A,
@@ -1811,15 +1866,15 @@ class JoinedNoFKSortingTest(fixtures.MappedTest):
     @classmethod
     def setup_mappers(cls):
         A, B, C = cls.classes.A, cls.classes.B, cls.classes.C
-        mapper(A, cls.tables.a)
-        mapper(
+        cls.mapper_registry.map_imperatively(A, cls.tables.a)
+        cls.mapper_registry.map_imperatively(
             B,
             cls.tables.b,
             inherits=A,
             inherit_condition=cls.tables.a.c.id == cls.tables.b.c.id,
             inherit_foreign_keys=cls.tables.b.c.id,
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             C,
             cls.tables.c,
             inherits=A,
@@ -1906,8 +1961,8 @@ class VersioningTest(fixtures.MappedTest):
         class Stuff(Base):
             pass
 
-        mapper(Stuff, stuff)
-        mapper(
+        self.mapper_registry.map_imperatively(Stuff, stuff)
+        self.mapper_registry.map_imperatively(
             Base,
             base,
             polymorphic_on=base.c.discriminator,
@@ -1915,7 +1970,9 @@ class VersioningTest(fixtures.MappedTest):
             polymorphic_identity=1,
             properties={"stuff": relationship(Stuff)},
         )
-        mapper(Sub, subtable, inherits=Base, polymorphic_identity=2)
+        self.mapper_registry.map_imperatively(
+            Sub, subtable, inherits=Base, polymorphic_identity=2
+        )
 
         sess = fixture_session(autoflush=False)
 
@@ -1966,14 +2023,16 @@ class VersioningTest(fixtures.MappedTest):
         class Sub(Base):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Base,
             base,
             polymorphic_on=base.c.discriminator,
             version_id_col=base.c.version_id,
             polymorphic_identity=1,
         )
-        mapper(Sub, subtable, inherits=Base, polymorphic_identity=2)
+        self.mapper_registry.map_imperatively(
+            Sub, subtable, inherits=Base, polymorphic_identity=2
+        )
 
         sess = fixture_session(autoflush=False, expire_on_commit=False)
 
@@ -2053,13 +2112,19 @@ class DistinctPKTest(fixtures.MappedTest):
         )  # bob
 
     def test_implicit(self):
-        person_mapper = mapper(Person, person_table)
-        mapper(Employee, employee_table, inherits=person_mapper)
+        person_mapper = self.mapper_registry.map_imperatively(
+            Person, person_table
+        )
+        self.mapper_registry.map_imperatively(
+            Employee, employee_table, inherits=person_mapper
+        )
         assert list(class_mapper(Employee).primary_key) == [person_table.c.id]
 
     def test_explicit_props(self):
-        person_mapper = mapper(Person, person_table)
-        mapper(
+        person_mapper = self.mapper_registry.map_imperatively(
+            Person, person_table
+        )
+        self.mapper_registry.map_imperatively(
             Employee,
             employee_table,
             inherits=person_mapper,
@@ -2068,8 +2133,10 @@ class DistinctPKTest(fixtures.MappedTest):
         self._do_test(False)
 
     def test_explicit_composite_pk(self):
-        person_mapper = mapper(Person, person_table)
-        mapper(
+        person_mapper = self.mapper_registry.map_imperatively(
+            Person, person_table
+        )
+        self.mapper_registry.map_imperatively(
             Employee,
             employee_table,
             inherits=person_mapper,
@@ -2088,8 +2155,10 @@ class DistinctPKTest(fixtures.MappedTest):
         )
 
     def test_explicit_pk(self):
-        person_mapper = mapper(Person, person_table)
-        mapper(
+        person_mapper = self.mapper_registry.map_imperatively(
+            Person, person_table
+        )
+        self.mapper_registry.map_imperatively(
             Employee,
             employee_table,
             inherits=person_mapper,
@@ -2173,9 +2242,13 @@ class SyncCompileTest(fixtures.MappedTest):
         class C(B):
             pass
 
-        mapper(A, _a_table)
-        mapper(B, _b_table, inherits=A, inherit_condition=j1)
-        mapper(C, _c_table, inherits=B, inherit_condition=j2)
+        self.mapper_registry.map_imperatively(A, _a_table)
+        self.mapper_registry.map_imperatively(
+            B, _b_table, inherits=A, inherit_condition=j1
+        )
+        self.mapper_registry.map_imperatively(
+            C, _c_table, inherits=B, inherit_condition=j2
+        )
 
         session = fixture_session()
 
@@ -2243,8 +2316,8 @@ class OverrideColKeyTest(fixtures.MappedTest):
         class Sub(Base):
             pass
 
-        mapper(Base, base)
-        mapper(Sub, subtable, inherits=Base)
+        self.mapper_registry.map_imperatively(Base, base)
+        self.mapper_registry.map_imperatively(Sub, subtable, inherits=Base)
 
         # Sub gets a "base_id" property using the "base_id"
         # column of both tables.
@@ -2264,8 +2337,10 @@ class OverrideColKeyTest(fixtures.MappedTest):
         class Sub(Base):
             pass
 
-        mapper(Base, base, properties={"id": base.c.base_id})
-        mapper(
+        self.mapper_registry.map_imperatively(
+            Base, base, properties={"id": base.c.base_id}
+        )
+        self.mapper_registry.map_imperatively(
             Sub,
             subtable,
             inherits=Base,
@@ -2295,8 +2370,10 @@ class OverrideColKeyTest(fixtures.MappedTest):
         class Sub(Base):
             pass
 
-        mapper(Base, base, properties={"id": base.c.base_id})
-        mapper(Sub, subtable, inherits=Base)
+        self.mapper_registry.map_imperatively(
+            Base, base, properties={"id": base.c.base_id}
+        )
+        self.mapper_registry.map_imperatively(Sub, subtable, inherits=Base)
 
         eq_(class_mapper(Sub).get_property("id").columns, [base.c.base_id])
 
@@ -2332,10 +2409,12 @@ class OverrideColKeyTest(fixtures.MappedTest):
         class Sub(Base):
             pass
 
-        mapper(Base, base, properties={"id": base.c.base_id})
+        self.mapper_registry.map_imperatively(
+            Base, base, properties={"id": base.c.base_id}
+        )
 
         def go():
-            mapper(
+            self.mapper_registry.map_imperatively(
                 Sub,
                 subtable,
                 inherits=Base,
@@ -2355,10 +2434,12 @@ class OverrideColKeyTest(fixtures.MappedTest):
         class Sub(Base):
             pass
 
-        mapper(Base, base)
+        self.mapper_registry.map_imperatively(Base, base)
 
         def go():
-            mapper(Sub, subtable_two, inherits=Base)
+            self.mapper_registry.map_imperatively(
+                Sub, subtable_two, inherits=Base
+            )
 
         assert_raises_message(
             sa_exc.SAWarning,
@@ -2379,8 +2460,8 @@ class OverrideColKeyTest(fixtures.MappedTest):
             def data(self):
                 return "im the data"
 
-        mapper(Base, base)
-        mapper(Sub, subtable, inherits=Base)
+        self.mapper_registry.map_imperatively(Base, base)
+        self.mapper_registry.map_imperatively(Sub, subtable, inherits=Base)
 
         s1 = Sub()
         sess = fixture_session()
@@ -2404,8 +2485,8 @@ class OverrideColKeyTest(fixtures.MappedTest):
         class Sub(Base):
             data = MyDesc()
 
-        mapper(Base, base)
-        mapper(Sub, subtable, inherits=Base)
+        self.mapper_registry.map_imperatively(Base, base)
+        self.mapper_registry.map_imperatively(Sub, subtable, inherits=Base)
 
         s1 = Sub()
         sess = fixture_session()
@@ -2422,8 +2503,8 @@ class OverrideColKeyTest(fixtures.MappedTest):
         class Sub(Base):
             pass
 
-        mapper(Base, base)
-        mapper(Sub, subtable, inherits=Base)
+        self.mapper_registry.map_imperatively(Base, base)
+        self.mapper_registry.map_imperatively(Sub, subtable, inherits=Base)
 
         sess = fixture_session()
         b1 = Base()
@@ -2448,8 +2529,8 @@ class OverrideColKeyTest(fixtures.MappedTest):
         class Sub(Base):
             pass
 
-        mapper(Base, base)
-        mapper(Sub, subtable, inherits=Base)
+        self.mapper_registry.map_imperatively(Base, base)
+        self.mapper_registry.map_imperatively(Sub, subtable, inherits=Base)
 
         sess = fixture_session()
         b1 = Base()
@@ -2514,8 +2595,8 @@ class OptimizedLoadTest(fixtures.MappedTest):
         class SubJoinBase(JoinBase):
             pass
 
-        mapper(Base, base)
-        mapper(
+        self.mapper_registry.map_imperatively(Base, base)
+        self.mapper_registry.map_imperatively(
             JoinBase,
             base.outerjoin(sub),
             properties=util.OrderedDict(
@@ -2525,7 +2606,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
                 ]
             ),
         )
-        mapper(SubJoinBase, inherits=JoinBase)
+        self.mapper_registry.map_imperatively(SubJoinBase, inherits=JoinBase)
 
         sess = fixture_session()
         sess.add(Base(data="data"))
@@ -2580,11 +2661,11 @@ class OptimizedLoadTest(fixtures.MappedTest):
         class Sub(Base):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Base, base, polymorphic_on=base.c.type, polymorphic_identity="base"
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Sub,
             sub,
             inherits=Base,
@@ -2627,13 +2708,13 @@ class OptimizedLoadTest(fixtures.MappedTest):
         class Sub(Base):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Base, base, polymorphic_on=base.c.type, polymorphic_identity="base"
         )
 
         # redefine Sub's "id" to favor the "id" col in the subtable.
         # "id" is also part of the primary join condition
-        mapper(
+        self.mapper_registry.map_imperatively(
             Sub,
             sub,
             inherits=Base,
@@ -2663,10 +2744,10 @@ class OptimizedLoadTest(fixtures.MappedTest):
         class Sub(Base):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Base, base, polymorphic_on=base.c.type, polymorphic_identity="base"
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Sub,
             sub,
             inherits=Base,
@@ -2692,10 +2773,10 @@ class OptimizedLoadTest(fixtures.MappedTest):
         class Sub(Base):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Base, base, polymorphic_on=base.c.type, polymorphic_identity="base"
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Sub,
             sub,
             inherits=Base,
@@ -2744,10 +2825,10 @@ class OptimizedLoadTest(fixtures.MappedTest):
             def __eq__(self, other):
                 return (self.a == other.a) and (self.b == other.b)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Base, base, polymorphic_on=base.c.type, polymorphic_identity="base"
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             WithComp,
             with_comp,
             inherits=Base,
@@ -2775,10 +2856,12 @@ class OptimizedLoadTest(fixtures.MappedTest):
         class Sub(Base):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Base, base, polymorphic_on=base.c.type, polymorphic_identity="base"
         )
-        mapper(Sub, sub, inherits=Base, polymorphic_identity="sub")
+        self.mapper_registry.map_imperatively(
+            Sub, sub, inherits=Base, polymorphic_identity="sub"
+        )
         sess = fixture_session()
         s1 = Sub(data="s1")
         sess.add(s1)
@@ -2819,10 +2902,12 @@ class OptimizedLoadTest(fixtures.MappedTest):
         class Sub(Base):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Base, base, polymorphic_on=base.c.type, polymorphic_identity="base"
         )
-        m = mapper(Sub, sub, inherits=Base, polymorphic_identity="sub")
+        m = self.mapper_registry.map_imperatively(
+            Sub, sub, inherits=Base, polymorphic_identity="sub"
+        )
 
         s1 = Sub()
         assert (
@@ -2868,11 +2953,15 @@ class OptimizedLoadTest(fixtures.MappedTest):
         class SubSub(Sub):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Base, base, polymorphic_on=base.c.type, polymorphic_identity="base"
         )
-        mapper(Sub, sub, inherits=Base, polymorphic_identity="sub")
-        mapper(SubSub, subsub, inherits=Sub, polymorphic_identity="subsub")
+        self.mapper_registry.map_imperatively(
+            Sub, sub, inherits=Base, polymorphic_identity="sub"
+        )
+        self.mapper_registry.map_imperatively(
+            SubSub, subsub, inherits=Sub, polymorphic_identity="subsub"
+        )
         sess = fixture_session()
         s1 = SubSub(data="s1", counter=1, subcounter=2)
         sess.add(s1)
@@ -2919,7 +3008,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
         )
 
 
-class NoPKOnSubTableWarningTest(fixtures.TestBase):
+class NoPKOnSubTableWarningTest(fixtures.MappedTest):
     def _fixture(self):
         metadata = MetaData()
         parent = Table(
@@ -2930,9 +3019,6 @@ class NoPKOnSubTableWarningTest(fixtures.TestBase):
         )
         return parent, child
 
-    def teardown_test(self):
-        clear_mappers()
-
     def test_warning_on_sub(self):
         parent, child = self._fixture()
 
@@ -2942,12 +3028,12 @@ class NoPKOnSubTableWarningTest(fixtures.TestBase):
         class C(P):
             pass
 
-        mapper(P, parent)
+        self.mapper_registry.map_imperatively(P, parent)
         assert_raises_message(
             sa_exc.SAWarning,
             "Could not assemble any primary keys for locally mapped "
             "table 'child' - no rows will be persisted in this Table.",
-            mapper,
+            self.mapper_registry.map_imperatively,
             C,
             child,
             inherits=P,
@@ -2962,12 +3048,14 @@ class NoPKOnSubTableWarningTest(fixtures.TestBase):
         class C(P):
             pass
 
-        mapper(P, parent)
-        mc = mapper(C, child, inherits=P, primary_key=[parent.c.id])
+        self.mapper_registry.map_imperatively(P, parent)
+        mc = self.mapper_registry.map_imperatively(
+            C, child, inherits=P, primary_key=[parent.c.id]
+        )
         eq_(mc.primary_key, (parent.c.id,))
 
 
-class InhCondTest(fixtures.TestBase):
+class InhCondTest(fixtures.MappedTest):
     def test_inh_cond_nonexistent_table_unrelated(self):
         metadata = MetaData()
         base_table = Table(
@@ -2986,9 +3074,11 @@ class InhCondTest(fixtures.TestBase):
         class Derived(Base):
             pass
 
-        mapper(Base, base_table)
+        self.mapper_registry.map_imperatively(Base, base_table)
         # succeeds, despite "owner" table not configured yet
-        m2 = mapper(Derived, derived_table, inherits=Base)
+        m2 = self.mapper_registry.map_imperatively(
+            Derived, derived_table, inherits=Base
+        )
         assert m2.inherit_condition.compare(
             base_table.c.id == derived_table.c.id
         )
@@ -3010,10 +3100,12 @@ class InhCondTest(fixtures.TestBase):
         class Derived(Base):
             pass
 
-        mapper(Base, base_table)
+        self.mapper_registry.map_imperatively(Base, base_table)
 
         # succeeds, despite "order.foo" doesn't exist
-        m2 = mapper(Derived, derived_table, inherits=Base)
+        m2 = self.mapper_registry.map_imperatively(
+            Derived, derived_table, inherits=Base
+        )
         assert m2.inherit_condition.compare(
             base_table.c.id == derived_table.c.id
         )
@@ -3033,7 +3125,7 @@ class InhCondTest(fixtures.TestBase):
         class Derived(Base):
             pass
 
-        mapper(Base, base_table)
+        self.mapper_registry.map_imperatively(Base, base_table)
         assert_raises_message(
             sa_exc.NoForeignKeysError,
             "Can't determine the inherit condition between inherited table "
@@ -3042,7 +3134,7 @@ class InhCondTest(fixtures.TestBase):
             "table has a foreign key relationship to the inherited table, "
             "or provide an 'on clause' using the 'inherit_condition' "
             "mapper argument.",
-            mapper,
+            self.mapper,
             Derived,
             derived_table,
             inherits=Base,
@@ -3068,14 +3160,14 @@ class InhCondTest(fixtures.TestBase):
         class Derived(Base):
             pass
 
-        mapper(Base, base_table)
+        self.mapper(Base, base_table)
         assert_raises_message(
             sa_exc.AmbiguousForeignKeysError,
             "Can't determine the inherit condition between inherited table "
             "'base' and inheriting table 'derived'; tables have more than "
             "one foreign key relationship established.  Please specify the "
             "'on clause' using the 'inherit_condition' mapper argument.",
-            mapper,
+            self.mapper,
             Derived,
             derived_table,
             inherits=Base,
@@ -3097,7 +3189,8 @@ class InhCondTest(fixtures.TestBase):
         class Derived(Base):
             pass
 
-        mapper(Base, base_table)
+        clear_mappers()
+        self.mapper_registry.map_imperatively(Base, base_table)
 
         # the ForeignKey def is correct but there are two
         # different metadatas.  Would like the traditional
@@ -3108,7 +3201,7 @@ class InhCondTest(fixtures.TestBase):
             "Foreign key associated with column 'derived.id' "
             "could not find table 'base' with which to generate "
             "a foreign key to target column 'id'",
-            mapper,
+            self.mapper,
             Derived,
             derived_table,
             inherits=Base,
@@ -3129,14 +3222,15 @@ class InhCondTest(fixtures.TestBase):
         class Derived(Base):
             pass
 
-        mapper(Base, base_table)
+        clear_mappers()
+        self.mapper_registry.map_imperatively(Base, base_table)
 
         assert_raises_message(
             sa_exc.NoReferencedColumnError,
             "Could not initialize target column for ForeignKey "
             "'base.q' on table "
             "'derived': table 'base' has no column named 'q'",
-            mapper,
+            self.mapper,
             Derived,
             derived_table,
             inherits=Base,
@@ -3177,19 +3271,21 @@ class PKDiscriminatorTest(fixtures.MappedTest):
         class A(Child):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Parent,
             parents,
             properties={"children": relationship(Child, backref="parent")},
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Child,
             children,
             polymorphic_on=children.c.type,
             polymorphic_identity=1,
         )
 
-        mapper(A, inherits=Child, polymorphic_identity=2)
+        self.mapper_registry.map_imperatively(
+            A, inherits=Child, polymorphic_identity=2
+        )
 
         s = fixture_session()
         p = Parent("p1")
@@ -3250,11 +3346,19 @@ class NoPolyIdentInMiddleTest(fixtures.MappedTest):
             cls.tables.base,
         )
 
-        mapper(A, base, polymorphic_on=base.c.type)
-        mapper(B, inherits=A)
-        mapper(C, inherits=B, polymorphic_identity="c")
-        mapper(D, inherits=B, polymorphic_identity="d")
-        mapper(E, inherits=A, polymorphic_identity="e")
+        cls.mapper_registry.map_imperatively(
+            A, base, polymorphic_on=base.c.type
+        )
+        cls.mapper_registry.map_imperatively(B, inherits=A)
+        cls.mapper_registry.map_imperatively(
+            C, inherits=B, polymorphic_identity="c"
+        )
+        cls.mapper_registry.map_imperatively(
+            D, inherits=B, polymorphic_identity="d"
+        )
+        cls.mapper_registry.map_imperatively(
+            E, inherits=A, polymorphic_identity="e"
+        )
 
     def test_load_from_middle(self):
         C, B = self.classes.C, self.classes.B
@@ -3338,14 +3442,16 @@ class DeleteOrphanTest(fixtures.MappedTest):
         class Parent(fixtures.BasicEntity):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Base,
             single,
             polymorphic_on=single.c.type,
             polymorphic_identity="base",
         )
-        mapper(SubClass, inherits=Base, polymorphic_identity="sub")
-        mapper(
+        self.mapper_registry.map_imperatively(
+            SubClass, inherits=Base, polymorphic_identity="sub"
+        )
+        self.mapper_registry.map_imperatively(
             Parent,
             parent,
             properties={
@@ -3632,12 +3738,12 @@ class NameConflictTest(fixtures.MappedTest):
         class Foo(Content):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Content,
             self.tables.content,
             polymorphic_on=self.tables.content.c.type,
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo, self.tables.foo, inherits=Content, polymorphic_identity="foo"
         )
         sess = fixture_session()

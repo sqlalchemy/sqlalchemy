@@ -7,7 +7,6 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import Text
 from sqlalchemy.orm import backref
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import eq_
@@ -196,9 +195,11 @@ class MagazineTest(fixtures.MappedTest):
             "MagazinePage",
             "ClassifiedPage",
         )
-        mapper(Publication, self.tables.publication)
+        self.mapper_registry.map_imperatively(
+            Publication, self.tables.publication
+        )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Issue,
             self.tables.issue,
             properties={
@@ -209,9 +210,11 @@ class MagazineTest(fixtures.MappedTest):
             },
         )
 
-        mapper(LocationName, self.tables.location_name)
+        self.mapper_registry.map_imperatively(
+            LocationName, self.tables.location_name
+        )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Location,
             self.tables.location,
             properties={
@@ -227,9 +230,9 @@ class MagazineTest(fixtures.MappedTest):
             },
         )
 
-        mapper(PageSize, self.tables.page_size)
+        self.mapper_registry.map_imperatively(PageSize, self.tables.page_size)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Magazine,
             self.tables.magazine,
             properties={
@@ -254,7 +257,7 @@ class MagazineTest(fixtures.MappedTest):
                 None,
                 "page_join",
             )
-            page_mapper = mapper(
+            page_mapper = self.mapper_registry.map_imperatively(
                 Page,
                 self.tables.page,
                 with_polymorphic=("*", page_join),
@@ -265,7 +268,7 @@ class MagazineTest(fixtures.MappedTest):
             page_join = self.tables.page.outerjoin(
                 self.tables.magazine_page
             ).outerjoin(self.tables.classified_page)
-            page_mapper = mapper(
+            page_mapper = self.mapper_registry.map_imperatively(
                 Page,
                 self.tables.page,
                 with_polymorphic=("*", page_join),
@@ -273,7 +276,7 @@ class MagazineTest(fixtures.MappedTest):
                 polymorphic_identity="p",
             )
         else:
-            page_mapper = mapper(
+            page_mapper = self.mapper_registry.map_imperatively(
                 Page,
                 self.tables.page,
                 polymorphic_on=self.tables.page.c.type,
@@ -291,7 +294,7 @@ class MagazineTest(fixtures.MappedTest):
                 None,
                 "page_join",
             )
-            magazine_page_mapper = mapper(
+            magazine_page_mapper = self.mapper_registry.map_imperatively(
                 MagazinePage,
                 self.tables.magazine_page,
                 with_polymorphic=("*", magazine_join),
@@ -310,7 +313,7 @@ class MagazineTest(fixtures.MappedTest):
             magazine_join = self.tables.page.join(
                 self.tables.magazine_page
             ).outerjoin(self.tables.classified_page)
-            magazine_page_mapper = mapper(
+            magazine_page_mapper = self.mapper_registry.map_imperatively(
                 MagazinePage,
                 self.tables.magazine_page,
                 with_polymorphic=("*", magazine_join),
@@ -326,7 +329,7 @@ class MagazineTest(fixtures.MappedTest):
                 },
             )
         else:
-            magazine_page_mapper = mapper(
+            magazine_page_mapper = self.mapper_registry.map_imperatively(
                 MagazinePage,
                 self.tables.magazine_page,
                 inherits=page_mapper,
@@ -341,7 +344,7 @@ class MagazineTest(fixtures.MappedTest):
                 },
             )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             ClassifiedPage,
             self.tables.classified_page,
             inherits=magazine_page_mapper,

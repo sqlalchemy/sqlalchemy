@@ -3,7 +3,6 @@ from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -92,15 +91,15 @@ class AssociationTest(fixtures.MappedTest):
             "items", "item_keywords", "keywords"
         )
 
-        mapper(Keyword, keywords)
-        mapper(
+        cls.mapper_registry.map_imperatively(Keyword, keywords)
+        cls.mapper_registry.map_imperatively(
             KeywordAssociation,
             item_keywords,
             properties={"keyword": relationship(Keyword, lazy="joined")},
             primary_key=[item_keywords.c.item_id, item_keywords.c.keyword_id],
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Item,
             items,
             properties={

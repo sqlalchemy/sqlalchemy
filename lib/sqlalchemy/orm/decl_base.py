@@ -176,19 +176,28 @@ class _MapperConfig(object):
 
         return cfg_cls(registry, cls_, dict_, table, mapper_kw)
 
-    def __init__(self, registry, cls_):
-        self.cls = cls_
+    def __init__(self, registry, cls_, mapper_kw):
+        self.cls = util.assert_arg_type(cls_, type, "cls_")
         self.classname = cls_.__name__
         self.properties = util.OrderedDict()
         self.declared_attr_reg = {}
 
-        instrumentation.register_class(
-            self.cls,
-            finalize=False,
-            registry=registry,
-            declarative_scan=self,
-            init_method=registry.constructor,
-        )
+        if not mapper_kw.get("non_primary", False):
+            instrumentation.register_class(
+                self.cls,
+                finalize=False,
+                registry=registry,
+                declarative_scan=self,
+                init_method=registry.constructor,
+            )
+        else:
+            manager = attributes.manager_of_class(self.cls)
+            if not manager or not manager.is_mapped:
+                raise exc.InvalidRequestError(
+                    "Class %s has no primary mapper configured.  Configure "
+                    "a primary mapper first before setting up a non primary "
+                    "Mapper." % self.cls
+                )
 
     def set_cls_attribute(self, attrname, value):
 
@@ -210,15 +219,18 @@ class _ImperativeMapperConfig(_MapperConfig):
         table,
         mapper_kw,
     ):
-        super(_ImperativeMapperConfig, self).__init__(registry, cls_)
+        super(_ImperativeMapperConfig, self).__init__(
+            registry, cls_, mapper_kw
+        )
 
         self.dict_ = {}
         self.local_table = self.set_cls_attribute("__table__", table)
 
         with mapperlib._CONFIGURE_MUTEX:
-            clsregistry.add_class(
-                self.classname, self.cls, registry._class_registry
-            )
+            if not mapper_kw.get("non_primary", False):
+                clsregistry.add_class(
+                    self.classname, self.cls, registry._class_registry
+                )
 
             self._setup_inheritance(mapper_kw)
 
@@ -288,7 +300,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         mapper_kw,
     ):
 
-        super(_ClassScanMapperConfig, self).__init__(registry, cls_)
+        super(_ClassScanMapperConfig, self).__init__(registry, cls_, mapper_kw)
 
         self.dict_ = dict(dict_) if dict_ else {}
         self.persist_selectable = None

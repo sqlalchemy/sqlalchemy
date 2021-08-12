@@ -14,7 +14,6 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import backref
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -66,7 +65,7 @@ class SelfReferentialTest(fixtures.MappedTest):
     def test_single(self):
         C1, t1 = self.classes.C1, self.tables.t1
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             C1,
             t1,
             properties={
@@ -103,7 +102,7 @@ class SelfReferentialTest(fixtures.MappedTest):
 
         C1, t1 = self.classes.C1, self.tables.t1
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             C1,
             t1,
             properties={
@@ -136,13 +135,14 @@ class SelfReferentialTest(fixtures.MappedTest):
             self.tables.t1,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             C1,
             t1,
             properties={
                 "c1s": relationship(C1, cascade="all"),
                 "c2s": relationship(
-                    mapper(C2, t2), cascade="all, delete-orphan"
+                    self.mapper_registry.map_imperatively(C2, t2),
+                    cascade="all, delete-orphan",
                 ),
             },
         )
@@ -164,7 +164,9 @@ class SelfReferentialTest(fixtures.MappedTest):
     def test_setnull_ondelete(self):
         C1, t1 = self.classes.C1, self.tables.t1
 
-        mapper(C1, t1, properties={"children": relationship(C1)})
+        self.mapper_registry.map_imperatively(
+            C1, t1, properties={"children": relationship(C1)}
+        )
 
         sess = fixture_session()
         c1 = C1()
@@ -213,7 +215,7 @@ class SelfReferentialNoPKTest(fixtures.MappedTest):
     def setup_mappers(cls):
         item, TT = cls.tables.item, cls.classes.TT
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             TT,
             item,
             properties={
@@ -307,9 +309,9 @@ class InheritTestOne(fixtures.MappedTest):
             cls.classes.Child2,
         )
 
-        mapper(Parent, parent)
-        mapper(Child1, child1, inherits=Parent)
-        mapper(
+        cls.mapper_registry.map_imperatively(Parent, parent)
+        cls.mapper_registry.map_imperatively(Child1, child1, inherits=Parent)
+        cls.mapper_registry.map_imperatively(
             Child2,
             child2,
             inherits=Parent,
@@ -401,15 +403,17 @@ class InheritTestTwo(fixtures.MappedTest):
             self.classes.B,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             a,
             properties={"cs": relationship(C, primaryjoin=a.c.cid == c.c.id)},
         )
 
-        mapper(B, b, inherits=A, inherit_condition=b.c.id == a.c.id)
+        self.mapper_registry.map_imperatively(
+            B, b, inherits=A, inherit_condition=b.c.id == a.c.id
+        )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             C,
             c,
             properties={
@@ -481,21 +485,21 @@ class BiDirectionalManyToOneTest(fixtures.MappedTest):
             cls.classes.T1,
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             T1,
             t1,
             properties={
                 "t2": relationship(T2, primaryjoin=t1.c.t2id == t2.c.id)
             },
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             T2,
             t2,
             properties={
                 "t1": relationship(T1, primaryjoin=t2.c.t1id == t1.c.id)
             },
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             T3, t3, properties={"t1": relationship(T1), "t2": relationship(T2)}
         )
 
@@ -591,7 +595,7 @@ class BiDirectionalOneToManyTest(fixtures.MappedTest):
             self.tables.t1,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             C2,
             t2,
             properties={
@@ -600,7 +604,7 @@ class BiDirectionalOneToManyTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             C1,
             t1,
             properties={
@@ -685,7 +689,7 @@ class BiDirectionalOneToManyTest2(fixtures.MappedTest):
             cls.classes.C1,
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             C2,
             t2,
             properties={
@@ -694,14 +698,16 @@ class BiDirectionalOneToManyTest2(fixtures.MappedTest):
                 )
             },
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             C1,
             t1,
             properties={
                 "c2s": relationship(
                     C2, primaryjoin=t1.c.c1 == t2.c.c2, uselist=True
                 ),
-                "data": relationship(mapper(C1Data, t1_data)),
+                "data": relationship(
+                    cls.mapper_registry.map_imperatively(C1Data, t1_data)
+                ),
             },
         )
 
@@ -807,8 +813,8 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
             self.classes.Person,
         )
 
-        mapper(Ball, ball)
-        mapper(
+        self.mapper_registry.map_imperatively(Ball, ball)
+        self.mapper_registry.map_imperatively(
             Person,
             person,
             properties=dict(
@@ -846,8 +852,8 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
             self.classes.Person,
         )
 
-        mapper(Ball, ball)
-        mapper(
+        self.mapper_registry.map_imperatively(Ball, ball)
+        self.mapper_registry.map_imperatively(
             Person,
             person,
             properties=dict(
@@ -894,8 +900,8 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
             self.classes.Person,
         )
 
-        mapper(Ball, ball)
-        mapper(
+        self.mapper_registry.map_imperatively(Ball, ball)
+        self.mapper_registry.map_imperatively(
             Person,
             person,
             properties=dict(
@@ -1006,8 +1012,8 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
             self.classes.Person,
         )
 
-        mapper(Ball, ball)
-        mapper(
+        self.mapper_registry.map_imperatively(Ball, ball)
+        self.mapper_registry.map_imperatively(
             Person,
             person,
             properties=dict(
@@ -1071,8 +1077,8 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
             self.classes.Person,
         )
 
-        mapper(Ball, ball)
-        mapper(
+        self.mapper_registry.map_imperatively(Ball, ball)
+        self.mapper_registry.map_imperatively(
             Person,
             person,
             properties=dict(
@@ -1206,7 +1212,7 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
             self.classes.Person,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Ball,
             ball,
             properties={
@@ -1220,7 +1226,7 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(Person, person)
+        self.mapper_registry.map_imperatively(Person, person)
 
         sess = fixture_session(autocommit=False, expire_on_commit=True)
         p1 = Person()
@@ -1288,7 +1294,7 @@ class SelfReferentialPostUpdateTest(fixtures.MappedTest):
 
         node, Node = self.tables.node, self.classes.Node
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Node,
             node,
             properties={
@@ -1458,7 +1464,7 @@ class SelfReferentialPostUpdateTest2(fixtures.MappedTest):
 
         A, a_table = self.classes.A, self.tables.a_table
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             a_table,
             properties={
@@ -1536,7 +1542,7 @@ class SelfReferentialPostUpdateTest3(fixtures.MappedTest):
             self.tables.child,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Parent,
             parent,
             properties={
@@ -1550,7 +1556,7 @@ class SelfReferentialPostUpdateTest3(fixtures.MappedTest):
                 ),
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Child,
             child,
             properties={"parent": relationship(Child, remote_side=child.c.id)},
@@ -1681,7 +1687,7 @@ class PostUpdateBatchingTest(fixtures.MappedTest):
             self.classes.Child3,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Parent,
             parent,
             properties={
@@ -1711,9 +1717,9 @@ class PostUpdateBatchingTest(fixtures.MappedTest):
                 ),
             },
         )
-        mapper(Child1, child1)
-        mapper(Child2, child2)
-        mapper(Child3, child3)
+        self.mapper_registry.map_imperatively(Child1, child1)
+        self.mapper_registry.map_imperatively(Child2, child2)
+        self.mapper_registry.map_imperatively(Child3, child3)
 
         sess = fixture_session()
 

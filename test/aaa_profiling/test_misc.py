@@ -1,3 +1,4 @@
+import sqlalchemy
 from sqlalchemy import Column
 from sqlalchemy import Enum
 from sqlalchemy import ForeignKey
@@ -8,7 +9,6 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy.orm import join as ormjoin
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -59,6 +59,8 @@ class CacheKeyTest(fixtures.TestBase):
         # a whole new model of setup/teardown, since pytest "fixture"
         # sort of purposely works badly with setup/teardown
 
+        registry = sqlalchemy.orm.registry()
+
         metadata = MetaData()
         parent = Table(
             "parent",
@@ -82,14 +84,16 @@ class CacheKeyTest(fixtures.TestBase):
         class Child(testing.entities.BasicEntity):
             pass
 
-        mapper(
+        registry.map_imperatively(
             Parent,
             parent,
             properties={"children": relationship(Child, backref="parent")},
         )
-        mapper(Child, child)
+        registry.map_imperatively(Child, child)
 
-        return Parent, Child
+        yield Parent, Child
+
+        registry.dispose()
 
     @testing.fixture(scope="function")
     def stmt_fixture_one(self, mapping_fixture):

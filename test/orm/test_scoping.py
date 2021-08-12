@@ -3,7 +3,6 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import query
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import scoped_session
@@ -54,12 +53,12 @@ class ScopedSessionTest(fixtures.MappedTest):
             query = Session.query_property()
             custom_query = Session.query_property(query_cls=CustomQuery)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             SomeObject,
             table1,
             properties={"options": relationship(SomeOtherObject)},
         )
-        mapper(SomeOtherObject, table2)
+        self.mapper_registry.map_imperatively(SomeOtherObject, table2)
 
         s = SomeObject(id=1, data="hello")
         sso = SomeOtherObject()

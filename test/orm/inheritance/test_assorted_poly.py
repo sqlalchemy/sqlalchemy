@@ -19,7 +19,6 @@ from sqlalchemy.orm import column_property
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import join
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
@@ -87,7 +86,7 @@ class RelationshipTest1(fixtures.MappedTest):
     def test_parent_refs_descendant(self):
         Person, Manager = self.classes("Person", "Manager")
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Person,
             people,
             properties={
@@ -99,7 +98,7 @@ class RelationshipTest1(fixtures.MappedTest):
                 )
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Manager,
             managers,
             inherits=Person,
@@ -126,8 +125,8 @@ class RelationshipTest1(fixtures.MappedTest):
     def test_descendant_refs_parent(self):
         Person, Manager = self.classes("Person", "Manager")
 
-        mapper(Person, people)
-        mapper(
+        self.mapper_registry.map_imperatively(Person, people)
+        self.mapper_registry.map_imperatively(
             Manager,
             managers,
             inherits=Person,
@@ -254,9 +253,9 @@ class RelationshipTest2(fixtures.MappedTest):
                 def __init__(self, data):
                     self.data = data
 
-            mapper(Data, data)
+            self.mapper_registry.map_imperatively(Data, data)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Person,
             people,
             with_polymorphic=("*", poly_union),
@@ -265,7 +264,7 @@ class RelationshipTest2(fixtures.MappedTest):
         )
 
         if usedata:
-            mapper(
+            self.mapper_registry.map_imperatively(
                 Manager,
                 managers,
                 inherits=Person,
@@ -283,7 +282,7 @@ class RelationshipTest2(fixtures.MappedTest):
                 },
             )
         else:
-            mapper(
+            self.mapper_registry.map_imperatively(
                 Manager,
                 managers,
                 inherits=Person,
@@ -409,10 +408,10 @@ class RelationshipTest3(fixtures.MappedTest):
             assert False
 
         if usedata:
-            mapper(Data, data)
+            self.mapper_registry.map_imperatively(Data, data)
 
         if usedata:
-            mapper(
+            self.mapper_registry.map_imperatively(
                 Person,
                 people,
                 with_polymorphic=("*", poly_union),
@@ -430,7 +429,7 @@ class RelationshipTest3(fixtures.MappedTest):
                 },
             )
         else:
-            mapper(
+            self.mapper_registry.map_imperatively(
                 Person,
                 people,
                 with_polymorphic=("*", poly_union),
@@ -447,7 +446,7 @@ class RelationshipTest3(fixtures.MappedTest):
                 },
             )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Manager,
             managers,
             inherits=Person,
@@ -591,28 +590,30 @@ class RelationshipTest4(fixtures.MappedTest):
             "employee_join",
         )
 
-        person_mapper = mapper(
+        person_mapper = self.mapper_registry.map_imperatively(
             Person,
             people,
             with_polymorphic=("*", employee_join),
             polymorphic_on=employee_join.c.type,
             polymorphic_identity="person",
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Engineer,
             engineers,
             with_polymorphic=([Engineer], people.join(engineers)),
             inherits=person_mapper,
             polymorphic_identity="engineer",
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Manager,
             managers,
             with_polymorphic=([Manager], people.join(managers)),
             inherits=person_mapper,
             polymorphic_identity="manager",
         )
-        mapper(Car, cars, properties={"employee": relationship(person_mapper)})
+        self.mapper_registry.map_imperatively(
+            Car, cars, properties={"employee": relationship(person_mapper)}
+        )
 
         session = fixture_session()
 
@@ -757,25 +758,25 @@ class RelationshipTest5(fixtures.MappedTest):
             def __repr__(self):
                 return "Car number %d" % self.car_id
 
-        person_mapper = mapper(
+        person_mapper = self.mapper_registry.map_imperatively(
             Person,
             people,
             polymorphic_on=people.c.type,
             polymorphic_identity="person",
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Engineer,
             engineers,
             inherits=person_mapper,
             polymorphic_identity="engineer",
         )
-        manager_mapper = mapper(
+        manager_mapper = self.mapper_registry.map_imperatively(
             Manager,
             managers,
             inherits=person_mapper,
             polymorphic_identity="manager",
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Car,
             cars,
             properties={
@@ -840,9 +841,9 @@ class RelationshipTest6(fixtures.MappedTest):
     def test_basic(self):
         Person, Manager = self.classes("Person", "Manager")
 
-        mapper(Person, people)
+        self.mapper_registry.map_imperatively(Person, people)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Manager,
             managers,
             inherits=Person,
@@ -996,20 +997,20 @@ class RelationshipTest7(fixtures.MappedTest):
             "car_join",
         )
 
-        car_mapper = mapper(
+        car_mapper = self.mapper_registry.map_imperatively(
             Car,
             cars,
             with_polymorphic=("*", car_join),
             polymorphic_on=car_join.c.type,
             polymorphic_identity="car",
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Offraod_Car,
             offroad_cars,
             inherits=car_mapper,
             polymorphic_identity="offroad",
         )
-        person_mapper = mapper(
+        person_mapper = self.mapper_registry.map_imperatively(
             Person,
             people,
             with_polymorphic=("*", employee_join),
@@ -1017,13 +1018,13 @@ class RelationshipTest7(fixtures.MappedTest):
             polymorphic_identity="person",
             properties={"car": relationship(car_mapper)},
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Engineer,
             engineers,
             inherits=person_mapper,
             polymorphic_identity="engineer",
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Manager,
             managers,
             inherits=person_mapper,
@@ -1074,7 +1075,7 @@ class RelationshipTest8(fixtures.MappedTest):
         class User(Taggable):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Taggable,
             taggable,
             polymorphic_on=taggable.c.type,
@@ -1088,7 +1089,7 @@ class RelationshipTest8(fixtures.MappedTest):
             },
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             inherits=Taggable,
@@ -1369,8 +1370,8 @@ class GenerativeTest(fixtures.MappedTest, AssertsExecutionResults):
             "employee_join",
         )
 
-        status_mapper = mapper(Status, status)
-        person_mapper = mapper(
+        status_mapper = cls.mapper_registry.map_imperatively(Status, status)
+        person_mapper = cls.mapper_registry.map_imperatively(
             Person,
             people,
             with_polymorphic=("*", employee_join),
@@ -1378,21 +1379,21 @@ class GenerativeTest(fixtures.MappedTest, AssertsExecutionResults):
             polymorphic_identity="person",
             properties={"status": relationship(status_mapper)},
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Engineer,
             engineers,
             with_polymorphic=([Engineer], people.join(engineers)),
             inherits=person_mapper,
             polymorphic_identity="engineer",
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Manager,
             managers,
             with_polymorphic=([Manager], people.join(managers)),
             inherits=person_mapper,
             polymorphic_identity="manager",
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Car,
             cars,
             properties={
@@ -1568,7 +1569,7 @@ class MultiLevelTest(fixtures.MappedTest):
             "pu_employee",
         )
 
-        mapper_Employee = mapper(
+        mapper_Employee = self.mapper_registry.map_imperatively(
             Employee,
             table_Employee,
             polymorphic_identity="Employee",
@@ -1589,7 +1590,7 @@ class MultiLevelTest(fixtures.MappedTest):
             None,
             "pu_engineer",
         )
-        mapper_Engineer = mapper(
+        mapper_Engineer = self.mapper_registry.map_imperatively(
             Engineer,
             table_Engineer,
             inherit_condition=table_Engineer.c.id == table_Employee.c.id,
@@ -1599,7 +1600,7 @@ class MultiLevelTest(fixtures.MappedTest):
             with_polymorphic=("*", pu_Engineer),
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Manager,
             table_Manager,
             inherit_condition=table_Manager.c.id == table_Engineer.c.id,
@@ -1685,7 +1686,7 @@ class ManyToManyPolyTest(fixtures.MappedTest):
             "item_join",
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             BaseItem,
             base_item_table,
             with_polymorphic=("*", item_join),
@@ -1700,11 +1701,11 @@ class ManyToManyPolyTest(fixtures.MappedTest):
             ),
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Item, item_table, inherits=BaseItem, polymorphic_identity="Item"
         )
 
-        mapper(Collection, collection_table)
+        self.mapper_registry.map_imperatively(Collection, collection_table)
 
         class_mapper(BaseItem)
 
@@ -1750,7 +1751,7 @@ class CustomPKTest(fixtures.MappedTest):
         d["t2"] = t1.join(t2)
         pjoin = polymorphic_union(d, None, "pjoin")
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             T1,
             t1,
             polymorphic_on=t1.c.type,
@@ -1758,7 +1759,9 @@ class CustomPKTest(fixtures.MappedTest):
             with_polymorphic=("*", pjoin),
             primary_key=[pjoin.c.id],
         )
-        mapper(T2, t2, inherits=T1, polymorphic_identity="t2")
+        self.mapper_registry.map_imperatively(
+            T2, t2, inherits=T1, polymorphic_identity="t2"
+        )
         ot1 = T1()
         ot2 = T2()
         sess = fixture_session()
@@ -1796,14 +1799,16 @@ class CustomPKTest(fixtures.MappedTest):
         d["t2"] = t1.join(t2)
         pjoin = polymorphic_union(d, None, "pjoin")
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             T1,
             t1,
             polymorphic_on=t1.c.type,
             polymorphic_identity="t1",
             with_polymorphic=("*", pjoin),
         )
-        mapper(T2, t2, inherits=T1, polymorphic_identity="t2")
+        self.mapper_registry.map_imperatively(
+            T2, t2, inherits=T1, polymorphic_identity="t2"
+        )
         assert len(class_mapper(T1).primary_key) == 1
 
         ot1 = T1()
@@ -1875,7 +1880,7 @@ class InheritingEagerTest(fixtures.MappedTest):
             def __init__(self, label):
                 self.label = label
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Person,
             people,
             polymorphic_on=people.c._type,
@@ -1886,13 +1891,13 @@ class InheritingEagerTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Employee,
             employees,
             inherits=Person,
             polymorphic_identity="employee",
         )
-        mapper(Tag, tags)
+        self.mapper_registry.map_imperatively(Tag, tags)
 
         session = fixture_session()
 
@@ -1979,16 +1984,20 @@ class MissingPolymorphicOnTest(fixtures.MappedTest):
             .alias("poly")
         )
 
-        mapper(B, tableb)
-        mapper(
+        self.mapper_registry.map_imperatively(B, tableb)
+        self.mapper_registry.map_imperatively(
             A,
             tablea,
             with_polymorphic=("*", poly_select),
             polymorphic_on=poly_select.c.discriminator,
             properties={"b": relationship(B, uselist=False)},
         )
-        mapper(C, tablec, inherits=A, polymorphic_identity="c")
-        mapper(D, tabled, inherits=C, polymorphic_identity="d")
+        self.mapper_registry.map_imperatively(
+            C, tablec, inherits=A, polymorphic_identity="c"
+        )
+        self.mapper_registry.map_imperatively(
+            D, tabled, inherits=C, polymorphic_identity="d"
+        )
 
         c = C(cdata="c1", adata="a1", b=B(data="c"))
         d = D(cdata="c2", adata="a2", ddata="d2", b=B(data="d"))
@@ -2063,13 +2072,13 @@ class JoinedInhAdjacencyTest(fixtures.MappedTest):
         people, users = self.tables.people, self.tables.users
         Person, User = self.classes.Person, self.classes.User
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Person,
             people,
             polymorphic_on=people.c.type,
             polymorphic_identity="person",
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             inherits=Person,
@@ -2089,13 +2098,13 @@ class JoinedInhAdjacencyTest(fixtures.MappedTest):
         people, users = self.tables.people, self.tables.users
         Person, User = self.classes.Person, self.classes.User
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Person,
             people,
             polymorphic_on=people.c.type,
             polymorphic_identity="person",
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             inherits=Person,
@@ -2125,20 +2134,20 @@ class JoinedInhAdjacencyTest(fixtures.MappedTest):
             self.classes.Dude,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Person,
             people,
             polymorphic_on=people.c.type,
             polymorphic_identity="person",
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             inherits=Person,
             polymorphic_identity="user",
             inherit_condition=(users.c.id == people.c.id),
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Dude,
             dudes,
             inherits=User,

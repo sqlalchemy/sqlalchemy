@@ -1,7 +1,6 @@
 import sqlalchemy as sa
 from sqlalchemy import testing
 from sqlalchemy import util
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -67,11 +66,11 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
             self.tables.addresses,
         )
 
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
-        mapper(Keyword, keywords)
+        self.mapper_registry.map_imperatively(Keyword, keywords)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Item,
             items,
             properties=dict(
@@ -84,7 +83,7 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
             ),
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties=dict(
@@ -97,7 +96,7 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
             ),
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
@@ -141,11 +140,11 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
             self.tables.addresses,
         )
 
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
-        mapper(Keyword, keywords)
+        self.mapper_registry.map_imperatively(Keyword, keywords)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Item,
             items,
             properties=dict(
@@ -158,7 +157,7 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
             ),
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties=dict(
@@ -171,7 +170,7 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
             ),
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
@@ -620,12 +619,13 @@ class NoLoadTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        m = mapper(
+        m = self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
                 addresses=relationship(
-                    mapper(Address, addresses), lazy="noload"
+                    self.mapper_registry.map_imperatively(Address, addresses),
+                    lazy="noload",
                 )
             ),
         )
@@ -651,12 +651,13 @@ class NoLoadTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        m = mapper(
+        m = self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
                 addresses=relationship(
-                    mapper(Address, addresses), lazy="noload"
+                    self.mapper_registry.map_imperatively(Address, addresses),
+                    lazy="noload",
                 )
             ),
         )
@@ -681,8 +682,10 @@ class NoLoadTest(_fixtures.FixtureTest):
             self.tables.users,
             self.classes.User,
         )
-        mapper(Address, addresses, properties={"user": relationship(User)})
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(
+            Address, addresses, properties={"user": relationship(User)}
+        )
+        self.mapper_registry.map_imperatively(User, users)
         s = fixture_session()
         a1 = (
             s.query(Address)

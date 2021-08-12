@@ -17,11 +17,13 @@ from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import true
+from sqlalchemy import util
 from sqlalchemy.engine import default
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import as_declarative
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
+from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import collections
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import configure_mappers
@@ -890,7 +892,7 @@ class SelfRefFromSelfTest(fixtures.MappedTest, AssertsCompiledSQL):
     def setup_mappers(cls):
         Node, nodes = cls.classes.Node, cls.tables.nodes
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Node,
             nodes,
             properties={
@@ -1076,7 +1078,7 @@ class SelfReferentialEagerTest(fixtures.MappedTest):
             def append(self, node):
                 self.children.append(node)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Node,
             nodes,
             properties={
@@ -2462,8 +2464,8 @@ class AutocommitClosesOnFailTest(fixtures.MappedTest):
             cls.tables.t1,
         )
 
-        mapper(T1, t1)
-        mapper(T2, t2)
+        cls.mapper_registry.map_imperatively(T1, t1)
+        cls.mapper_registry.map_imperatively(T2, t2)
 
     def test_close_transaction_on_commit_fail(self):
         T2 = self.classes.T2
@@ -2598,7 +2600,7 @@ class DeprecatedMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 # non-standard comparator
                 return self.__clause_element__().op("&=")(other)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -2651,7 +2653,7 @@ class DeprecatedMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
             name = property(_get_name, _set_name)
 
-        m = mapper(User, users)
+        m = self.mapper_registry.map_imperatively(User, users)
 
         m.add_property("_name", deferred(users.c.name))
         m.add_property("name", synonym("_name"))
@@ -2688,7 +2690,7 @@ class DeprecatedOptionAllTest(OptionsPathTest, _fixtures.FixtureTest):
             self.classes.Keyword,
             self.classes.Item,
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -2696,22 +2698,22 @@ class DeprecatedOptionAllTest(OptionsPathTest, _fixtures.FixtureTest):
                 "orders": relationship(Order),
             },
         )
-        mapper(Address, addresses)
-        mapper(
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
                 "items": relationship(Item, secondary=self.tables.order_items)
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Keyword,
             keywords,
             properties={
                 "keywords": column_property(keywords.c.name + "some keyword")
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Item,
             items,
             properties=dict(
@@ -2739,8 +2741,8 @@ class DeprecatedOptionAllTest(OptionsPathTest, _fixtures.FixtureTest):
             self.tables.addresses,
         )
 
-        mapper(Address, addresses)
-        mapper(
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -2872,16 +2874,20 @@ class NonPrimaryRelationshipLoaderTest(_fixtures.FixtureTest):
         openorders = sa.alias(orders, "openorders")
         closedorders = sa.alias(orders, "closedorders")
 
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
-        mapper(Order, orders)
+        self.mapper_registry.map_imperatively(Order, orders)
 
         with testing.expect_deprecated(
             "The mapper.non_primary parameter is deprecated"
         ):
-            open_mapper = mapper(Order, openorders, non_primary=True)
-            closed_mapper = mapper(Order, closedorders, non_primary=True)
-        mapper(
+            open_mapper = self.mapper_registry.map_imperatively(
+                Order, openorders, non_primary=True
+            )
+            closed_mapper = self.mapper_registry.map_imperatively(
+                Order, closedorders, non_primary=True
+            )
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
@@ -2923,16 +2929,20 @@ class NonPrimaryRelationshipLoaderTest(_fixtures.FixtureTest):
         openorders = sa.alias(orders, "openorders")
         closedorders = sa.alias(orders, "closedorders")
 
-        mapper(Address, addresses)
-        mapper(Order, orders)
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(Order, orders)
 
         with testing.expect_deprecated(
             "The mapper.non_primary parameter is deprecated"
         ):
-            open_mapper = mapper(Order, openorders, non_primary=True)
-            closed_mapper = mapper(Order, closedorders, non_primary=True)
+            open_mapper = self.mapper_registry.map_imperatively(
+                Order, openorders, non_primary=True
+            )
+            closed_mapper = self.mapper_registry.map_imperatively(
+                Order, closedorders, non_primary=True
+            )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
@@ -2975,16 +2985,20 @@ class NonPrimaryRelationshipLoaderTest(_fixtures.FixtureTest):
         openorders = sa.alias(orders, "openorders")
         closedorders = sa.alias(orders, "closedorders")
 
-        mapper(Address, addresses)
-        mapper(Order, orders)
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(Order, orders)
 
         with testing.expect_deprecated(
             "The mapper.non_primary parameter is deprecated"
         ):
-            open_mapper = mapper(Order, openorders, non_primary=True)
-            closed_mapper = mapper(Order, closedorders, non_primary=True)
+            open_mapper = self.mapper_registry.map_imperatively(
+                Order, openorders, non_primary=True
+            )
+            closed_mapper = self.mapper_registry.map_imperatively(
+                Order, closedorders, non_primary=True
+            )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
@@ -3028,16 +3042,20 @@ class NonPrimaryRelationshipLoaderTest(_fixtures.FixtureTest):
         openorders = sa.alias(orders, "openorders")
         closedorders = sa.alias(orders, "closedorders")
 
-        mapper(Address, addresses)
-        mapper(Order, orders)
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(Order, orders)
 
         with testing.expect_deprecated(
             "The mapper.non_primary parameter is deprecated"
         ):
-            open_mapper = mapper(Order, openorders, non_primary=True)
-            closed_mapper = mapper(Order, closedorders, non_primary=True)
+            open_mapper = self.mapper_registry.map_imperatively(
+                Order, openorders, non_primary=True
+            )
+            closed_mapper = self.mapper_registry.map_imperatively(
+                Order, closedorders, non_primary=True
+            )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
@@ -3186,6 +3204,9 @@ class ViewonlyFlagWarningTest(fixtures.MappedTest):
 class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     __dialect__ = "default"
 
+    def teardown_test(self):
+        clear_mappers()
+
     def test_non_primary_identity_class(self):
         User = self.classes.User
         users, addresses = self.tables.users, self.tables.addresses
@@ -3193,8 +3214,10 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         class AddressUser(User):
             pass
 
-        mapper(User, users, polymorphic_identity="user")
-        m2 = mapper(
+        self.mapper_registry.map_imperatively(
+            User, users, polymorphic_identity="user"
+        )
+        m2 = self.mapper_registry.map_imperatively(
             AddressUser,
             addresses,
             inherits=User,
@@ -3204,7 +3227,9 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         with testing.expect_deprecated(
             "The mapper.non_primary parameter is deprecated"
         ):
-            m3 = mapper(AddressUser, addresses, non_primary=True)
+            m3 = self.mapper_registry.map_imperatively(
+                AddressUser, addresses, non_primary=True
+            )
         assert m3._identity_class is m2._identity_class
         eq_(
             m2.identity_key_from_instance(AddressUser()),
@@ -3219,8 +3244,71 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(User, users)
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(User, users)
+        self.mapper_registry.map_imperatively(Address, addresses)
+        with testing.expect_deprecated(
+            "The mapper.non_primary parameter is deprecated"
+        ):
+            m = self.mapper_registry.map_imperatively(  # noqa F841
+                User,
+                users,
+                non_primary=True,
+                properties={"addresses": relationship(Address)},
+            )
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            "Attempting to assign a new relationship 'addresses' "
+            "to a non-primary mapper on class 'User'",
+            configure_mappers,
+        )
+
+    def test_illegal_non_primary_2(self):
+        User, users = self.classes.User, self.tables.users
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Configure a primary mapper first",
+            self.mapper_registry.map_imperatively,
+            User,
+            users,
+            non_primary=True,
+        )
+
+    def test_illegal_non_primary_3(self):
+        users, addresses = self.tables.users, self.tables.addresses
+
+        class Base(object):
+            pass
+
+        class Sub(Base):
+            pass
+
+        self.mapper_registry.map_imperatively(Base, users)
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Configure a primary mapper first",
+            self.mapper_registry.map_imperatively,
+            Sub,
+            addresses,
+            non_primary=True,
+        )
+
+    def test_illegal_non_primary_legacy(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        with testing.expect_deprecated(
+            "Calling the mapper.* function directly outside of a declarative "
+        ):
+            mapper(User, users)
+        with testing.expect_deprecated(
+            "Calling the mapper.* function directly outside of a declarative "
+        ):
+            mapper(Address, addresses)
         with testing.expect_deprecated(
             "The mapper.non_primary parameter is deprecated"
         ):
@@ -3237,7 +3325,7 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             configure_mappers,
         )
 
-    def test_illegal_non_primary_2(self):
+    def test_illegal_non_primary_2_legacy(self):
         User, users = self.classes.User, self.tables.users
 
         with testing.expect_deprecated(
@@ -3252,7 +3340,7 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 non_primary=True,
             )
 
-    def test_illegal_non_primary_3(self):
+    def test_illegal_non_primary_3_legacy(self):
         users, addresses = self.tables.users, self.tables.addresses
 
         class Base(object):
@@ -3261,9 +3349,12 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         class Sub(Base):
             pass
 
-        mapper(Base, users)
         with testing.expect_deprecated(
-            "The mapper.non_primary parameter is deprecated"
+            "Calling the mapper.* function directly outside of a declarative "
+        ):
+            mapper(Base, users)
+        with testing.expect_deprecated(
+            "The mapper.non_primary parameter is deprecated",
         ):
             assert_raises_message(
                 sa.exc.InvalidRequestError,
@@ -3665,7 +3756,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         event.listen(sess, "after_bulk_update", legacy)
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         with testing.expect_deprecated(
             'The argument signature for the "SessionEvents.after_bulk_update" '
@@ -3695,7 +3786,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         event.listen(sess, "after_bulk_delete", legacy)
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         with testing.expect_deprecated(
             'The argument signature for the "SessionEvents.after_bulk_delete" '
@@ -3726,9 +3817,11 @@ class ImmediateTest(_fixtures.FixtureTest):
             cls.classes.User,
         )
 
-        mapper(Address, addresses)
+        cls.mapper_registry.map_imperatively(Address, addresses)
 
-        mapper(User, users, properties=dict(addresses=relationship(Address)))
+        cls.mapper_registry.map_imperatively(
+            User, users, properties=dict(addresses=relationship(Address))
+        )
 
     def test_value(self):
         User = self.classes.User
@@ -4914,7 +5007,7 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
     def setup_mappers(cls):
         Node, nodes = cls.classes.Node, cls.tables.nodes
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Node,
             nodes,
             properties={
@@ -5431,16 +5524,18 @@ class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     @classmethod
     def setup_classes(cls):
-        table1, table2 = cls.tables.table1, cls.tables.table2
-
         class T1(cls.Comparable):
             pass
 
         class T2(cls.Comparable):
             pass
 
-        mapper(T1, table1)
-        mapper(T2, table2)
+    @classmethod
+    def setup_mappers(cls):
+        T1, T2 = cls.classes("T1", "T2")
+        table1, table2 = cls.tables.table1, cls.tables.table2
+        cls.mapper_registry.map_imperatively(T1, table1)
+        cls.mapper_registry.map_imperatively(T2, table2)
 
     def test_mapped_to_select_implicit_left_w_aliased(self):
         T1, T2 = self.classes.T1, self.classes.T2
@@ -5513,7 +5608,7 @@ class MultiplePathTest(fixtures.MappedTest, AssertsCompiledSQL):
         class T2(object):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             T1,
             t1,
             properties={
@@ -5521,7 +5616,7 @@ class MultiplePathTest(fixtures.MappedTest, AssertsCompiledSQL):
                 "t2s_2": relationship(T2, secondary=t1t2_2),
             },
         )
-        mapper(T2, t2)
+        self.mapper_registry.map_imperatively(T2, t2)
 
         with testing.expect_deprecated_20(join_strings_dep):
             q = (
@@ -5544,7 +5639,7 @@ class MultiplePathTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
 
-class BindSensitiveStringifyTest(fixtures.TestBase):
+class BindSensitiveStringifyTest(fixtures.MappedTest):
     def _fixture(self):
         # building a totally separate metadata /mapping here
         # because we need to control if the MetaData is bound or not
@@ -5560,7 +5655,8 @@ class BindSensitiveStringifyTest(fixtures.TestBase):
             Column("name", String(50)),
         )
 
-        mapper(User, user_table)
+        clear_mappers()
+        self.mapper_registry.map_imperatively(User, user_table)
         return User
 
     def _dialect_fixture(self):
@@ -5763,3 +5859,101 @@ class ExplicitJoinTest(fixtures.MappedTest):
                 .all(),
                 [],
             )
+
+
+class RequirementsTest(fixtures.MappedTest):
+
+    """Tests the contract for user classes."""
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "ht1",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("value", String(10)),
+        )
+        Table(
+            "ht2",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("ht1_id", Integer, ForeignKey("ht1.id")),
+            Column("value", String(10)),
+        )
+        Table(
+            "ht3",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("value", String(10)),
+        )
+        Table(
+            "ht4",
+            metadata,
+            Column("ht1_id", Integer, ForeignKey("ht1.id"), primary_key=True),
+            Column("ht3_id", Integer, ForeignKey("ht3.id"), primary_key=True),
+        )
+        Table(
+            "ht5",
+            metadata,
+            Column("ht1_id", Integer, ForeignKey("ht1.id"), primary_key=True),
+        )
+        Table(
+            "ht6",
+            metadata,
+            Column("ht1a_id", Integer, ForeignKey("ht1.id"), primary_key=True),
+            Column("ht1b_id", Integer, ForeignKey("ht1.id"), primary_key=True),
+            Column("value", String(10)),
+        )
+
+    if util.py2k:
+
+        def test_baseclass_map_imperatively(self):
+            ht1 = self.tables.ht1
+
+            class OldStyle:
+                pass
+
+            assert_raises(
+                sa.exc.ArgumentError,
+                self.mapper_registry.map_imperatively,
+                OldStyle,
+                ht1,
+            )
+
+            assert_raises(
+                sa.exc.ArgumentError,
+                self.mapper_registry.map_imperatively,
+                123,
+            )
+
+        def test_baseclass_legacy_mapper(self):
+            ht1 = self.tables.ht1
+
+            class OldStyle:
+                pass
+
+            assert_raises(
+                sa.exc.ArgumentError,
+                mapper,
+                OldStyle,
+                ht1,
+            )
+
+            assert_raises(
+                sa.exc.ArgumentError,
+                mapper,
+                123,
+            )
+
+            class NoWeakrefSupport(str):
+                pass
+
+            # TODO: is weakref support detectable without an instance?
+            # self.assertRaises(
+            #  sa.exc.ArgumentError, mapper, NoWeakrefSupport, t2)

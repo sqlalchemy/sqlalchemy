@@ -8,7 +8,6 @@ from sqlalchemy import func
 from sqlalchemy import testing
 from sqlalchemy.ext import baked
 from sqlalchemy.orm import exc as orm_exc
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
@@ -36,7 +35,7 @@ class StateChangeTest(BakedTest):
     def setup_mappers(cls):
         User = cls.classes.User
 
-        mapper(User, cls.tables.users)
+        cls.mapper_registry.map_imperatively(User, cls.tables.users)
 
     def _assert_cache_key(self, key, elements):
         eq_(key, tuple(elem.__code__ for elem in elements))
@@ -131,7 +130,7 @@ class LikeQueryTest(BakedTest):
     def setup_mappers(cls):
         User = cls.classes.User
 
-        mapper(User, cls.tables.users)
+        cls.mapper_registry.map_imperatively(User, cls.tables.users)
 
     def test_first_no_result(self):
         User = self.classes.User
@@ -296,7 +295,7 @@ class LikeQueryTest(BakedTest):
         class AddressUser(object):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             AddressUser,
             self.tables.users.outerjoin(self.tables.addresses),
             properties={
@@ -369,7 +368,7 @@ class ResultPostCriteriaTest(BakedTest):
         Address = cls.classes.Address
         Order = cls.classes.Order
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             User,
             cls.tables.users,
             properties={
@@ -379,8 +378,8 @@ class ResultPostCriteriaTest(BakedTest):
                 "orders": relationship(Order, order_by=cls.tables.orders.c.id),
             },
         )
-        mapper(Address, cls.tables.addresses)
-        mapper(Order, cls.tables.orders)
+        cls.mapper_registry.map_imperatively(Address, cls.tables.addresses)
+        cls.mapper_registry.map_imperatively(Order, cls.tables.orders)
 
     @contextlib.contextmanager
     def _fixture(self):
@@ -450,7 +449,7 @@ class ResultTest(BakedTest):
         Address = cls.classes.Address
         Order = cls.classes.Order
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             User,
             cls.tables.users,
             properties={
@@ -460,8 +459,8 @@ class ResultTest(BakedTest):
                 "orders": relationship(Order, order_by=cls.tables.orders.c.id),
             },
         )
-        mapper(Address, cls.tables.addresses)
-        mapper(Order, cls.tables.orders)
+        cls.mapper_registry.map_imperatively(Address, cls.tables.addresses)
+        cls.mapper_registry.map_imperatively(Order, cls.tables.orders)
 
     def test_cachekeys_on_constructor(self):
         User = self.classes.User
@@ -985,7 +984,7 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
         User = self.classes.User
         Address = self.classes.Address
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             self.tables.users,
             properties={
@@ -997,7 +996,7 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
                 )
             },
         )
-        mapper(Address, self.tables.addresses)
+        self.mapper_registry.map_imperatively(Address, self.tables.addresses)
         return User, Address
 
     def _query_fixture(self):

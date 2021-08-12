@@ -5,7 +5,6 @@ from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import Session
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -42,7 +41,9 @@ class SelectableNoFromsTest(fixtures.MappedTest, AssertsCompiledSQL):
         Subset = self.classes.Subset
 
         selectable = select(column("x"), column("y"), column("z")).alias()
-        mapper(Subset, selectable, primary_key=[selectable.c.x])
+        self.mapper_registry.map_imperatively(
+            Subset, selectable, primary_key=[selectable.c.x]
+        )
 
         self.assert_compile(
             fixture_session().query(Subset),
@@ -58,7 +59,7 @@ class SelectableNoFromsTest(fixtures.MappedTest, AssertsCompiledSQL):
         assert_raises_message(
             sa.exc.ArgumentError,
             "could not assemble any primary key columns",
-            mapper,
+            self.mapper_registry.map_imperatively,
             Subset,
             selectable,
         )
@@ -67,13 +68,18 @@ class SelectableNoFromsTest(fixtures.MappedTest, AssertsCompiledSQL):
         Subset, common = self.classes.Subset, self.tables.common
 
         subset_select = select(common.c.id, common.c.data)
-        assert_raises(sa.exc.ArgumentError, mapper, Subset, subset_select)
+        assert_raises(
+            sa.exc.ArgumentError,
+            self.mapper_registry.map_imperatively,
+            Subset,
+            subset_select,
+        )
 
     def test_basic(self):
         Subset, common = self.classes.Subset, self.tables.common
 
         subset_select = select(common.c.id, common.c.data).alias()
-        mapper(Subset, subset_select)
+        self.mapper_registry.map_imperatively(Subset, subset_select)
         sess = Session(bind=testing.db)
         sess.add(Subset(data=1))
         sess.flush()

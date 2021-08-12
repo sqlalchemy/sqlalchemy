@@ -2,7 +2,6 @@ from sqlalchemy import exc
 from sqlalchemy import testing
 from sqlalchemy.engine import default
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -15,7 +14,7 @@ class ForUpdateTest(_fixtures.FixtureTest):
     @classmethod
     def setup_mappers(cls):
         User, users = cls.classes.User, cls.tables.users
-        mapper(User, users)
+        cls.mapper_registry.map_imperatively(User, users)
 
     def _assert(
         self,
@@ -76,8 +75,10 @@ class BackendTest(_fixtures.FixtureTest):
     def setup_mappers(cls):
         User, users = cls.classes.User, cls.tables.users
         Address, addresses = cls.classes.Address, cls.tables.addresses
-        mapper(User, users, properties={"addresses": relationship(Address)})
-        mapper(Address, addresses)
+        cls.mapper_registry.map_imperatively(
+            User, users, properties={"addresses": relationship(Address)}
+        )
+        cls.mapper_registry.map_imperatively(Address, addresses)
 
     def test_inner_joinedload_w_limit(self):
         User = self.classes.User
@@ -162,8 +163,10 @@ class CompileTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def setup_mappers(cls):
         User, users = cls.classes.User, cls.tables.users
         Address, addresses = cls.classes.Address, cls.tables.addresses
-        mapper(User, users, properties={"addresses": relationship(Address)})
-        mapper(Address, addresses)
+        cls.mapper_registry.map_imperatively(
+            User, users, properties={"addresses": relationship(Address)}
+        )
+        cls.mapper_registry.map_imperatively(Address, addresses)
 
     def test_default_update(self):
         User = self.classes.User

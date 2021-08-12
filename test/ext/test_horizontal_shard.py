@@ -9,7 +9,6 @@ from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import inspect
 from sqlalchemy import Integer
-from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import sql
 from sqlalchemy import String
@@ -21,7 +20,6 @@ from sqlalchemy import util
 from sqlalchemy.ext.horizontal_shard import ShardedSession
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import deferred
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
@@ -41,15 +39,17 @@ class ShardTest(object):
     __skip_if__ = (lambda: util.win32,)
     __requires__ = ("sqlite",)
 
+    run_create_tables = None
+
     schema = None
 
-    def setup_test(self):
+    @classmethod
+    def define_tables(cls, metadata):
         global db1, db2, db3, db4, weather_locations, weather_reports
 
-        db1, db2, db3, db4 = self._dbs = self._init_dbs()
-
-        meta = self.tables_test_metadata = MetaData()
-        ids = Table("ids", meta, Column("nextid", Integer, nullable=False))
+        cls.tables.ids = ids = Table(
+            "ids", metadata, Column("nextid", Integer, nullable=False)
+        )
 
         def id_generator(ctx):
             # in reality, might want to use a separate transaction for this.
@@ -61,33 +61,37 @@ class ShardTest(object):
                 )
                 return nextid
 
-        weather_locations = Table(
+        cls.tables.weather_locations = weather_locations = Table(
             "weather_locations",
-            meta,
+            metadata,
             Column("id", Integer, primary_key=True, default=id_generator),
             Column("continent", String(30), nullable=False),
             Column("city", String(50), nullable=False),
-            schema=self.schema,
+            schema=cls.schema,
         )
 
-        weather_reports = Table(
+        cls.tables.weather_reports = Table(
             "weather_reports",
-            meta,
+            metadata,
             Column("id", Integer, primary_key=True),
             Column("location_id", Integer, ForeignKey(weather_locations.c.id)),
             Column("temperature", Float),
             Column("report_time", DateTime, default=datetime.datetime.now),
-            schema=self.schema,
+            schema=cls.schema,
         )
 
-        for db in (db1, db2, db3, db4):
-            meta.create_all(db)
+    def setup_test(self):
+        global db1, db2, db3, db4
+        db1, db2, db3, db4 = self._dbs = self._init_dbs()
 
+        for db in (db1, db2, db3, db4):
+            self.tables_test_metadata.create_all(db)
+
+        ids = self.tables.ids
         with db1.begin() as conn:
             conn.execute(ids.insert(), dict(nextid=1))
 
         self.setup_session()
-        self.setup_mappers()
 
     @classmethod
     def setup_session(cls):
@@ -161,7 +165,9 @@ class ShardTest(object):
                 if id_:
                     self.id = id_
 
-        mapper(
+        weather_locations = cls.tables.weather_locations
+
+        cls.mapper_registry.map_imperatively(
             WeatherLocation,
             weather_locations,
             properties={
@@ -170,7 +176,9 @@ class ShardTest(object):
             },
         )
 
-        mapper(Report, weather_reports)
+        weather_reports = cls.tables.weather_reports
+
+        cls.mapper_registry.map_imperatively(Report, weather_reports)
 
     def _fixture_data(self):
         tokyo = WeatherLocation("Asia", "Tokyo")
@@ -655,7 +663,7 @@ class ShardTest(object):
             assert inspect(t).deleted is (t.temperature >= 80)
 
 
-class DistinctEngineShardTest(ShardTest, fixtures.TestBase):
+class DistinctEngineShardTest(ShardTest, fixtures.MappedTest):
     def _init_dbs(self):
         db1 = testing_engine(
             "sqlite:///shard1_%s.db" % provision.FOLLOWER_IDENT,
@@ -675,7 +683,6 @@ class DistinctEngineShardTest(ShardTest, fixtures.TestBase):
         return self.dbs
 
     def teardown_test(self):
-        clear_mappers()
 
         testing_reaper.checkin_all()
         for i in range(1, 5):
@@ -711,7 +718,7 @@ class DistinctEngineShardTest(ShardTest, fixtures.TestBase):
         )
 
 
-class AttachedFileShardTest(ShardTest, fixtures.TestBase):
+class AttachedFileShardTest(ShardTest, fixtures.MappedTest):
     """Use modern schema conventions along with SQLite ATTACH."""
 
     schema = "changeme"
@@ -734,14 +741,12 @@ class AttachedFileShardTest(ShardTest, fixtures.TestBase):
         return db1, db2, db3, db4
 
     def teardown_test(self):
-        clear_mappers()
-
         testing_reaper.checkin_all()
         for i in range(1, 5):
             os.remove("shard%d_%s.db" % (i, provision.FOLLOWER_IDENT))
 
 
-class TableNameConventionShardTest(ShardTest, fixtures.TestBase):
+class TableNameConventionShardTest(ShardTest, fixtures.MappedTest):
     """This fixture uses a single SQLite database along with a table naming
     convention to achieve sharding.   Event hooks are used to rewrite SQL
     statements.
@@ -779,7 +784,7 @@ class TableNameConventionShardTest(ShardTest, fixtures.TestBase):
         return db1, db2, db3, db4
 
 
-class MultipleDialectShardTest(ShardTest, fixtures.TestBase):
+class MultipleDialectShardTest(ShardTest, fixtures.MappedTest):
     __only_on__ = "postgresql"
 
     schema = "changeme"

@@ -17,7 +17,6 @@ from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import join as orm_join
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import query_expression
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import undefer
@@ -489,13 +488,13 @@ class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={"addresses": relationship(Address, lazy="joined")},
         )
 
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         return User, Address
 
@@ -504,7 +503,7 @@ class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         users = self.tables.users
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -522,7 +521,7 @@ class LoadersInSubqueriesTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         users = self.tables.users
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -793,7 +792,7 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
         )
         addresses, Address = (self.tables.addresses, self.classes.Address)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=util.OrderedDict(
@@ -802,7 +801,7 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
                 ]
             ),
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         return User
 
@@ -814,7 +813,7 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
         )
         addresses, Address = (self.tables.addresses, self.classes.Address)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=util.OrderedDict(
@@ -833,7 +832,7 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
                 ]
             ),
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         return User
 
@@ -846,7 +845,7 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=util.OrderedDict(
@@ -867,7 +866,7 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
             ),
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
@@ -888,12 +887,12 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
@@ -2290,7 +2289,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         class Foo(object):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             self.tables.users,
             properties={

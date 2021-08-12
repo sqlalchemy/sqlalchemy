@@ -66,11 +66,6 @@ def setup_filters():
     # we are moving one at a time
     for msg in [
         #
-        # ORM configuration
-        #
-        r"Calling the mapper\(\) function directly outside of a "
-        "declarative registry",
-        #
         # ORM Query
         #
         r"The Query\.get\(\) method",
