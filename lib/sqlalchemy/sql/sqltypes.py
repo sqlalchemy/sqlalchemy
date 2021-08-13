@@ -1712,7 +1712,7 @@ class Enum(Emulated, String, SchemaType):
         variant_mapping = self._variant_mapping_for_set_table(column)
 
         e = schema.CheckConstraint(
-            type_coerce(column, self).in_(self.enums),
+            type_coerce(column, String()).in_(self.enums),
             name=_NONE_NAME if self.name is None else self.name,
             _create_rule=util.portable_instancemethod(
                 self._should_create_constraint,
@@ -1734,13 +1734,14 @@ class Enum(Emulated, String, SchemaType):
         return process
 
     def bind_processor(self, dialect):
+        parent_processor = super(Enum, self).bind_processor(dialect)
+
         def process(value):
             value = self._db_value_for_elem(value)
             if parent_processor:
                 value = parent_processor(value)
             return value
 
-        parent_processor = super(Enum, self).bind_processor(dialect)
         return process
 
     def result_processor(self, dialect, coltype):
