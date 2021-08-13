@@ -1511,11 +1511,26 @@ class SubqueryLoader(PostLoader):
         effective_entity,
         loadopt,
     ):
-        opts = orig_query._with_options
+
+        if orig_query is context.query:
+            options = new_options = orig_query._with_options
+        else:
+            # There's currently no test that exercises the necessity of
+            # this step for subqueryload.  Added in #6881, it is necessary for
+            # selectinload, but its necessity for subqueryload is still
+            # theoretical.
+            options = orig_query._with_options
+
+            new_options = [
+                orig_opt._adjust_for_extra_criteria(context)
+                if orig_opt._is_strategy_option
+                else orig_opt
+                for orig_opt in options
+            ]
 
         if loadopt and loadopt._extra_criteria:
 
-            opts += (
+            new_options += (
                 orm_util.LoaderCriteriaOption(
                     self.entity,
                     loadopt._generate_extra_criteria(context),
@@ -1525,7 +1540,7 @@ class SubqueryLoader(PostLoader):
         # propagate loader options etc. to the new query.
         # these will fire relative to subq_path.
         q = q._with_current_path(rewritten_path)
-        q = q.options(*opts)
+        q = q.options(*new_options)
 
         return q
 
@@ -2916,17 +2931,32 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
 
         effective_path = path[self.parent_property]
 
-        options = orig_query._with_options
+        if orig_query is context.query:
+            options = new_options = orig_query._with_options
+        else:
+            options = orig_query._with_options
+
+            # note this will create a different cache key than
+            # "orig" options if extra_criteria is present, because the copy
+            # of extra_criteria will have different boundparam than that of
+            # the QueryableAttribute in the path
+
+            new_options = [
+                orig_opt._adjust_for_extra_criteria(context)
+                if orig_opt._is_strategy_option
+                else orig_opt
+                for orig_opt in options
+            ]
 
         if loadopt and loadopt._extra_criteria:
-            options += (
+            new_options += (
                 orm_util.LoaderCriteriaOption(
                     effective_entity,
                     loadopt._generate_extra_criteria(context),
                 ),
             )
 
-        q = q.options(*options)._update_compile_options(
+        q = q.options(*new_options)._update_compile_options(
             {"_current_path": effective_path}
         )
 

@@ -96,6 +96,15 @@ class CompiledSQL(SQLMatchRule):
         context = execute_observed.context
         compare_dialect = self._compile_dialect(execute_observed)
 
+        # received_statement runs a full compile().  we should not need to
+        # consider extracted_parameters; if we do this indicates some state
+        # is being sent from a previous cached query, which some misbehaviors
+        # in the ORM can cause, see #6881
+        cache_key = None  # execute_observed.context.compiled.cache_key
+        extracted_parameters = (
+            None  # execute_observed.context.extracted_parameters
+        )
+
         if "schema_translate_map" in context.execution_options:
             map_ = context.execution_options["schema_translate_map"]
         else:
@@ -104,10 +113,12 @@ class CompiledSQL(SQLMatchRule):
         if isinstance(execute_observed.clauseelement, _DDLCompiles):
 
             compiled = execute_observed.clauseelement.compile(
-                dialect=compare_dialect, schema_translate_map=map_
+                dialect=compare_dialect,
+                schema_translate_map=map_,
             )
         else:
             compiled = execute_observed.clauseelement.compile(
+                cache_key=cache_key,
                 dialect=compare_dialect,
                 column_keys=context.compiled.column_keys,
                 for_executemany=context.compiled.for_executemany,
@@ -117,10 +128,17 @@ class CompiledSQL(SQLMatchRule):
         parameters = execute_observed.parameters
 
         if not parameters:
-            _received_parameters = [compiled.construct_params()]
+            _received_parameters = [
+                compiled.construct_params(
+                    extracted_parameters=extracted_parameters
+                )
+            ]
         else:
             _received_parameters = [
-                compiled.construct_params(m) for m in parameters
+                compiled.construct_params(
+                    m, extracted_parameters=extracted_parameters
+                )
+                for m in parameters
             ]
 
         return _received_statement, _received_parameters
