@@ -74,18 +74,18 @@ statement for the above would be:
 
     query.all()
     {opensql}
-    SELECT employee.id AS employee_id,
+    SELECT
+        employee.id AS employee_id,
         engineer.id AS engineer_id,
         manager.id AS manager_id,
         employee.name AS employee_name,
         employee.type AS employee_type,
         engineer.engineer_info AS engineer_engineer_info,
         manager.manager_data AS manager_manager_data
-    FROM employee
-        LEFT OUTER JOIN engineer
-        ON employee.id = engineer.id
-        LEFT OUTER JOIN manager
-        ON employee.id = manager.id
+    FROM
+        employee
+        LEFT OUTER JOIN engineer ON employee.id = engineer.id
+        LEFT OUTER JOIN manager ON employee.id = manager.id
     []
 
 Where above, the additional tables / columns for "engineer" and "manager" are
@@ -105,6 +105,21 @@ subclasses:
 
     # include columns for all mapped subclasses
     entity = with_polymorphic(Employee, '*')
+
+.. tip::
+
+    It's important to note that :func:`_orm.with_polymorphic` only affects the
+    **columns that are included in fetched rows**, and not the **types of
+    objects returned**. A call to ``with_polymorphic(Employee, [Manager])``
+    will refer to rows that contain all types of ``Employee`` objects,
+    including not only ``Manager`` objects, but also ``Engineer`` objects as
+    these are subclasses of ``Employee``, as well as ``Employee`` instances if
+    these are present in the database. The effect of using
+    ``with_polymorphic(Employee, [Manager])`` would only provide the behavior
+    that additional columns specific to ``Manager`` will be eagerly loaded in
+    result rows, and as described below in
+    :ref:`with_polymorphic_subclass_attributes` also be available for use
+    within the WHERE clause of the SELECT statement.
 
 Using aliasing with with_polymorphic
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -229,6 +244,8 @@ modern database versions now support this syntax.
     of :paramref:`.with_polymorphic` with **joined table inheritance** and when
     the :paramref:`.with_polymorphic.selectable` argument is **not** used.
 
+.. _with_polymorphic_subclass_attributes:
+
 Referring to Specific Subclass Attributes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -248,6 +265,31 @@ specific to ``Engineer`` as well as ``Manager`` in terms of ``eng_plus_manager``
                         eng_plus_manager.Manager.manager_data=='y'
                     )
                 )
+
+A query as above would generate SQL resembling the following:
+
+.. sourcecode:: python+sql
+
+    query.all()
+    {opensql}
+    SELECT
+        employee.id AS employee_id,
+        engineer.id AS engineer_id,
+        manager.id AS manager_id,
+        employee.name AS employee_name,
+        employee.type AS employee_type,
+        engineer.engineer_info AS engineer_engineer_info,
+        manager.manager_data AS manager_manager_data
+    FROM
+        employee
+        LEFT OUTER JOIN engineer ON employee.id = engineer.id
+        LEFT OUTER JOIN manager ON employee.id = manager.id
+    WHERE
+      engineer.engineer_info=? OR
+      manager.manager_data=?
+    ['x', 'y']
+
+
 
 .. _with_polymorphic_mapper_config:
 
