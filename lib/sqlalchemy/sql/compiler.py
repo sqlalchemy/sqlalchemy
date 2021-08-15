@@ -3559,7 +3559,11 @@ class SQLCompiler(Compiled):
 
     def visit_join(self, join, asfrom=False, from_linter=None, **kwargs):
         if from_linter:
-            from_linter.edges.add((join.left, join.right))
+            from_linter.edges.update(
+                itertools.product(
+                    join.left._from_objects, join.right._from_objects
+                )
+            )
 
         if join.full:
             join_type = " FULL OUTER JOIN "

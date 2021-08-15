@@ -1508,6 +1508,39 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={"param_1": 7},
         )
 
+    @testing.combinations(
+        (lambda c: c.overlap, "&&"),
+        (lambda c: c.contains, "@>"),
+        (lambda c: c.contained_by, "<@"),
+    )
+    def test_overlap_no_cartesian(self, op_fn, expected_op):
+        """test #6886"""
+        t1 = table(
+            "t1",
+            column("id", Integer),
+            column("ancestor_ids", postgresql.ARRAY(Integer)),
+        )
+
+        t1a = t1.alias()
+        t1b = t1.alias()
+
+        stmt = (
+            select(t1, t1a, t1b)
+            .where(op_fn(t1a.c.ancestor_ids)(postgresql.array((t1.c.id,))))
+            .where(op_fn(t1b.c.ancestor_ids)(postgresql.array((t1.c.id,))))
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT t1.id, t1.ancestor_ids, t1_1.id AS id_1, "
+            "t1_1.ancestor_ids AS ancestor_ids_1, t1_2.id AS id_2, "
+            "t1_2.ancestor_ids AS ancestor_ids_2 "
+            "FROM t1, t1 AS t1_1, t1 AS t1_2 "
+            "WHERE t1_1.ancestor_ids %(op)s ARRAY[t1.id] "
+            "AND t1_2.ancestor_ids %(op)s ARRAY[t1.id]" % {"op": expected_op},
+            from_linting=True,
+        )
+
     @testing.combinations((True,), (False,))
     def test_array_zero_indexes(self, zero_indexes):
         c = Column("x", postgresql.ARRAY(Integer, zero_indexes=zero_indexes))

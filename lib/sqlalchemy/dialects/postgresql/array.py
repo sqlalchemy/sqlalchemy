@@ -153,11 +153,11 @@ class array(expression.ClauseList, expression.ColumnElement):
             return self
 
 
-CONTAINS = operators.custom_op("@>", precedence=5)
+CONTAINS = operators.custom_op("@>", precedence=5, is_comparison=True)
 
-CONTAINED_BY = operators.custom_op("<@", precedence=5)
+CONTAINED_BY = operators.custom_op("<@", precedence=5, is_comparison=True)
 
-OVERLAP = operators.custom_op("&&", precedence=5)
+OVERLAP = operators.custom_op("&&", precedence=5, is_comparison=True)
 
 
 class ARRAY(sqltypes.ARRAY):
