@@ -2560,7 +2560,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         (True, "omit_alias"), (False, "with_alias"), id_="ai", argnames="omit"
     )
     @testing.provide_metadata
-    @testing.skip_if('mysql < 8')
+    @testing.skip_if("mysql < 8")
     def test_duplicate_values_accepted(self, native, omit):
         foo_enum = pep435_enum("foo_enum")
         foo_enum("one", 1, "two")
