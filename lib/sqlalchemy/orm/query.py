@@ -444,8 +444,7 @@ class Query(
             )
         else:
             # Query / select() internal attributes are 99% cross-compatible
-            stmt = Select.__new__(Select)
-            stmt.__dict__.update(self.__dict__)
+            stmt = Select._create_raw_select(**self.__dict__)
             stmt.__dict__.update(
                 _label_style=self._label_style,
                 _compile_options=compile_options,

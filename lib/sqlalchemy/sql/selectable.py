@@ -5047,6 +5047,19 @@ class Select(
     _create_select = _create_future_select
 
     @classmethod
+    def _create_raw_select(cls, **kw):
+        """Create a :class:`.Select` using raw ``__new__`` with no coercions.
+
+        Used internally to build up :class:`.Select` constructs with
+        pre-established state.
+
+        """
+
+        stmt = Select.__new__(Select)
+        stmt.__dict__.update(kw)
+        return stmt
+
+    @classmethod
     def _create(cls, *args, **kw):
         r"""Create a :class:`.Select` using either the 1.x or 2.0 constructor
         style.

@@ -3047,16 +3047,13 @@ class Mapper(
 
         return None
 
-    @util.preload_module(
-        "sqlalchemy.ext.baked", "sqlalchemy.orm.strategy_options"
-    )
+    @util.preload_module("sqlalchemy.orm.strategy_options")
     def _subclass_load_via_in(self, entity):
-        """Assemble a BakedQuery that can load the columns local to
+        """Assemble a that can load the columns local to
         this subclass as a SELECT with IN.
 
         """
         strategy_options = util.preloaded.orm_strategy_options
-        baked = util.preloaded.ext_baked
 
         assert self.inherits
 
@@ -3094,24 +3091,23 @@ class Mapper(
         if entity.is_aliased_class:
             assert entity.mapper is self
 
-            q = baked.BakedQuery(
-                self._compiled_cache,
-                lambda session: session.query(entity).select_entity_from(
-                    entity.selectable
-                ),
-                (self,),
-            )
-            q.spoil()
-        else:
-            q = baked.BakedQuery(
-                self._compiled_cache,
-                lambda session: session.query(self),
-                (self,),
+            q = sql.select(entity).set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
             )
 
-        q += lambda q: q.filter(
-            in_expr.in_(sql.bindparam("primary_keys", expanding=True))
-        ).order_by(*primary_key)
+            in_expr = entity._adapter.traverse(in_expr)
+            primary_key = [entity._adapter.traverse(k) for k in primary_key]
+            q = q.where(
+                in_expr.in_(sql.bindparam("primary_keys", expanding=True))
+            ).order_by(*primary_key)
+        else:
+
+            q = sql.select(self).set_label_style(
+                LABEL_STYLE_TABLENAME_PLUS_COL
+            )
+            q = q.where(
+                in_expr.in_(sql.bindparam("primary_keys", expanding=True))
+            ).order_by(*primary_key)
 
         return q, enable_opt, disable_opt
 

@@ -1150,11 +1150,11 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
     ):
 
         Select = future.Select
-        statement = Select.__new__(Select)
-        statement._raw_columns = raw_columns
-        statement._from_obj = from_obj
-
-        statement._label_style = label_style
+        statement = Select._create_raw_select(
+            _raw_columns=raw_columns,
+            _from_obj=from_obj,
+            _label_style=label_style,
+        )
 
         if where_criteria:
             statement._where_criteria = where_criteria
