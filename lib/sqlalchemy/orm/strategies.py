@@ -1512,21 +1512,14 @@ class SubqueryLoader(PostLoader):
         loadopt,
     ):
 
-        if orig_query is context.query:
-            options = new_options = orig_query._with_options
-        else:
-            # There's currently no test that exercises the necessity of
-            # this step for subqueryload.  Added in #6881, it is necessary for
-            # selectinload, but its necessity for subqueryload is still
-            # theoretical.
-            options = orig_query._with_options
-
-            new_options = [
-                orig_opt._adjust_for_extra_criteria(context)
-                if orig_opt._is_strategy_option
-                else orig_opt
-                for orig_opt in options
-            ]
+        # note that because the subqueryload object
+        # does not re-use the cached query, instead always making
+        # use of the current invoked query, while we have two queries
+        # here (orig and context.query), they are both non-cached
+        # queries and we can transfer the options as is without
+        # adjusting for new criteria.   Some work on #6881 / #6889
+        # brought this into question.
+        new_options = orig_query._with_options
 
         if loadopt and loadopt._extra_criteria:
 
@@ -2933,9 +2926,12 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
 
         if orig_query is context.query:
             options = new_options = orig_query._with_options
+            user_defined_options = []
         else:
             options = orig_query._with_options
 
+            # propagate compile state options from the original query,
+            # updating their "extra_criteria" as necessary.
             # note this will create a different cache key than
             # "orig" options if extra_criteria is present, because the copy
             # of extra_criteria will have different boundparam than that of
@@ -2946,6 +2942,14 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                 if orig_opt._is_strategy_option
                 else orig_opt
                 for orig_opt in options
+                if orig_opt._is_compile_state or orig_opt._is_legacy_option
+            ]
+
+            # propagate user defined options from the current query
+            user_defined_options = [
+                opt
+                for opt in context.query._with_options
+                if not opt._is_compile_state and not opt._is_legacy_option
             ]
 
         if loadopt and loadopt._extra_criteria:
@@ -2959,6 +2963,8 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         q = q.options(*new_options)._update_compile_options(
             {"_current_path": effective_path}
         )
+        if user_defined_options:
+            q = q.options(*user_defined_options)
 
         if context.populate_existing:
             q = q.execution_options(populate_existing=True)

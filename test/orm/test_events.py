@@ -17,6 +17,8 @@ from sqlalchemy.orm import deferred
 from sqlalchemy.orm import events
 from sqlalchemy.orm import EXT_SKIP
 from sqlalchemy.orm import instrumentation
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import Mapper
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import mapperlib
@@ -26,6 +28,8 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import UserDefinedOption
+from sqlalchemy.sql.traversals import NO_CACHE
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -136,6 +140,97 @@ class ORMExecuteTest(_RemoveListeners, _fixtures.FixtureTest):
                 "FROM addresses WHERE :param_1 = addresses.user_id "
                 "ORDER BY addresses.id",
                 [{"param_1": 7}],
+            ),
+        )
+
+    @testing.combinations(
+        ("fixed",), ("payload",), ("dont_cache"), argnames="key_type"
+    )
+    @testing.combinations(
+        (lazyload, 10),
+        (selectinload, 3),
+        (joinedload, 1),
+        (subqueryload, 3),
+        argnames="loader_opt, num_opts",
+    )
+    @testing.combinations((True,), (False,), argnames="use_query_cache")
+    def test_user_option_propagation(
+        self, key_type, loader_opt, num_opts, use_query_cache
+    ):
+        """test #6887.
+
+        The one case here which would break before the bug was fixed is:
+
+        use_query_cache=True, loader_opt=selectinload, key_type="fixed"
+
+        Meaning with a fixed cache key and query caching in place, the user
+        defined loader option would be cached under the same name each time,
+        leading to use of the stale option when using selectinload, as this
+        strategy transfers query options from the cached ORM select into the
+        one that it generates. no other strategy currently does this.
+
+        """
+        User, Address, Dinagling = self.classes("User", "Address", "Dingaling")
+
+        class SetShardOption(UserDefinedOption):
+            propagate_to_loaders = True
+
+            def _gen_cache_key(self, anon_map, bindparams):
+                if key_type == "fixed":
+                    return (None,)
+                elif key_type == "payload":
+                    return (self.payload,)
+                elif key_type == "dont_cache":
+                    anon_map[NO_CACHE] = True
+                    return None
+                else:
+                    assert False
+
+        if use_query_cache:
+            s = fixture_session()
+        else:
+            s = fixture_session(
+                bind=testing.db.execution_options(compiled_cache=None)
+            )
+
+        m1 = Mock()
+
+        @event.listens_for(s, "do_orm_execute")
+        def go(context):
+            for elem in context.user_defined_options:
+                if isinstance(elem, SetShardOption):
+                    m1.update_execution_options(_sa_shard_id=elem.payload)
+
+        stmt = select(User).options(
+            loader_opt(User.addresses).options(loader_opt(Address.dingaling)),
+            SetShardOption("some_shard"),
+        )
+        for u in s.execute(stmt).unique().scalars():
+            for a in u.addresses:
+                a.dingaling
+
+        s.close()
+
+        stmt = select(User).options(
+            loader_opt(User.addresses).options(loader_opt(Address.dingaling)),
+            SetShardOption("some_other_shard"),
+        )
+        for u in s.execute(stmt).unique().scalars():
+            for a in u.addresses:
+                a.dingaling
+        eq_(
+            m1.mock_calls,
+            (
+                [call.update_execution_options(_sa_shard_id="some_shard")]
+                * num_opts
+            )
+            + (
+                [
+                    call.update_execution_options(
+                        _sa_shard_id="some_other_shard"
+                    )
+                ]
+                * num_opts
             ),
         )
 

@@ -548,7 +548,10 @@ _fixture_sessions = set()
 def fixture_session(**kw):
     kw.setdefault("autoflush", True)
     kw.setdefault("expire_on_commit", True)
-    sess = sa.orm.Session(config.db, **kw)
+
+    bind = kw.pop("bind", config.db)
+
+    sess = sa.orm.Session(bind, **kw)
     _fixture_sessions.add(sess)
     return sess
 

@@ -1,0 +1,21 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 6887
+
+    Revised the means by which the
+    :attr:`_orm.ORMExecuteState.user_defined_options` accessor receives
+    :class:`_orm.UserDefinedOption` and related option objects from the
+    context, with particular emphasis on the "selectinload" on the loader
+    strategy where this previously was not working; other strategies did not
+    have this problem. The objects that are associated with the current query
+    being executed, and not that of a query being cached, are now propagated
+    unconditionally. This essentially separates them out from the "loader
+    strategy" options which are explicitly associated with the compiled state
+    of a query and need to be used in relation to the cached query.
+
+    The effect of this fix is that a user-defined option, such as those used
+    by the dogpile.caching example as well as for other recipes such as
+    defining a "shard id" for the horizontal sharing extension, will be
+    correctly propagated to eager and lazy loaders regardless of whether
+    a cached query was ultimately invoked.
+
