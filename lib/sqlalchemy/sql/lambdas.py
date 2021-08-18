@@ -182,28 +182,49 @@ class LambdaElement(elements.ClauseElement):
 
         self._resolved_bindparams = bindparams = []
 
-        anon_map = traversals.anon_map()
-        cache_key = tuple(
-            [
-                getter(closure, opts, anon_map, bindparams)
-                for getter in tracker.closure_trackers
-            ]
-        )
-
         if self.parent_lambda is not None:
-            cache_key = self.parent_lambda.closure_cache_key + cache_key
+            parent_closure_cache_key = self.parent_lambda.closure_cache_key
+        else:
+            parent_closure_cache_key = ()
+
+        if parent_closure_cache_key is not traversals.NO_CACHE:
+            anon_map = traversals.anon_map()
+            cache_key = tuple(
+                [
+                    getter(closure, opts, anon_map, bindparams)
+                    for getter in tracker.closure_trackers
+                ]
+            )
+
+            if traversals.NO_CACHE not in anon_map:
+                cache_key = parent_closure_cache_key + cache_key
+
+                self.closure_cache_key = cache_key
+
+                try:
+                    rec = lambda_cache[tracker_key + cache_key]
+                except KeyError:
+                    rec = None
+            else:
+                cache_key = traversals.NO_CACHE
+                rec = None
+
+        else:
+            cache_key = traversals.NO_CACHE
+            rec = None
 
         self.closure_cache_key = cache_key
 
-        try:
-            rec = lambda_cache[tracker_key + cache_key]
-        except KeyError:
-            rec = None
-
         if rec is None:
-            rec = AnalyzedFunction(tracker, self, apply_propagate_attrs, fn)
-            rec.closure_bindparams = bindparams
-            lambda_cache[tracker_key + cache_key] = rec
+            if cache_key is not traversals.NO_CACHE:
+                rec = AnalyzedFunction(
+                    tracker, self, apply_propagate_attrs, fn
+                )
+                rec.closure_bindparams = bindparams
+                lambda_cache[tracker_key + cache_key] = rec
+            else:
+                rec = NonAnalyzedFunction(self._invoke_user_fn(fn))
+
         else:
             bindparams[:] = [
                 orig_bind._with_value(new_bind.value, maintain_key=True)
@@ -212,21 +233,24 @@ class LambdaElement(elements.ClauseElement):
                 )
             ]
 
-        if self.parent_lambda is not None:
-            bindparams[:0] = self.parent_lambda._resolved_bindparams
-
         self._rec = rec
 
-        lambda_element = self
-        while lambda_element is not None:
-            rec = lambda_element._rec
-            if rec.bindparam_trackers:
-                tracker_instrumented_fn = rec.tracker_instrumented_fn
-                for tracker in rec.bindparam_trackers:
-                    tracker(
-                        lambda_element.fn, tracker_instrumented_fn, bindparams
-                    )
-            lambda_element = lambda_element.parent_lambda
+        if cache_key is not traversals.NO_CACHE:
+            if self.parent_lambda is not None:
+                bindparams[:0] = self.parent_lambda._resolved_bindparams
+
+            lambda_element = self
+            while lambda_element is not None:
+                rec = lambda_element._rec
+                if rec.bindparam_trackers:
+                    tracker_instrumented_fn = rec.tracker_instrumented_fn
+                    for tracker in rec.bindparam_trackers:
+                        tracker(
+                            lambda_element.fn,
+                            tracker_instrumented_fn,
+                            bindparams,
+                        )
+                lambda_element = lambda_element.parent_lambda
 
         return rec
 
@@ -304,6 +328,9 @@ class LambdaElement(elements.ClauseElement):
         return expr
 
     def _gen_cache_key(self, anon_map, bindparams):
+        if self.closure_cache_key is traversals.NO_CACHE:
+            anon_map[traversals.NO_CACHE] = True
+            return None
 
         cache_key = (
             self.fn.__code__,
@@ -912,6 +939,20 @@ class AnalyzedCode(object):
         return self._cache_key_getter_closure_variable(
             fn, variable_name, closure_index, elem
         )
+
+
+class NonAnalyzedFunction(object):
+    __slots__ = ("expr",)
+
+    closure_bindparams = None
+    bindparam_trackers = None
+
+    def __init__(self, expr):
+        self.expr = expr
+
+    @property
+    def expected_expr(self):
+        return self.expr
 
 
 class AnalyzedFunction(object):
