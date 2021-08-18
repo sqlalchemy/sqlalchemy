@@ -20,7 +20,7 @@
     :tags: bug, orm
     :tickets: 6889
 
-     Fixed an issue where the :class:`_orm.Bundle` construct would not create
-     proper cache keys, leading to inefficient use of the query cache.  This
-     had some impact on the "selectinload" strategy and was identified as
-     part of :ticket:`6889`.
+    Fixed an issue where the :class:`_orm.Bundle` construct would not create
+    proper cache keys, leading to inefficient use of the query cache.  This
+    had some impact on the "selectinload" strategy and was identified as
+    part of :ticket:`6889`.
