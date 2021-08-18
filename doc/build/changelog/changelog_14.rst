@@ -14,6 +14,10 @@ This document details individual issue-level changes made throughout
 
 
 .. changelog::
+    :version: 1.4.24
+    :include_notes_from: unreleased_14
+
+.. changelog::
     :version: 1.4.23
     :released: August 18, 2021
 
