@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, ext
-    :tickets: 6816
-
-    Fixed issue where the horizontal sharding extension would not correctly
-    accommodate for a plain textual SQL statement passed to
-    :meth:`_orm.Session.execute`.

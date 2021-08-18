@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 6812
-
-    Fixed issue where the unit of work would internally use a 2.0-deprecated
-    SQL expression form, emitting a deprecation warning when SQLALCHEMY_WARN_20
-    were enabled.
-
