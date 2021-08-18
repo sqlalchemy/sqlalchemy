@@ -900,7 +900,6 @@ class DefaultRequirements(SuiteRequirements):
 
         return skip_if(
             [
-                no_support("oracle", "FIXME: no support in database?"),
                 no_support("sybase", "FIXME: guessing, needs confirmation"),
                 no_support("mssql+pymssql", "no FreeTDS support"),
             ]
