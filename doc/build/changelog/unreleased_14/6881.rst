@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 6881
+
+    Fixed issue in :func:`_orm.selectinload` where use of the new
+    :meth:`_orm.PropComparator.and_` feature within options that were nested
+    more than one level deep would fail to update bound parameter values that
+    were in the nested criteria, as a side effect of SQL statement caching.
+

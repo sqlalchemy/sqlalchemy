@@ -77,6 +77,8 @@ class Load(Generative, LoaderOption):
 
     """
 
+    _is_strategy_option = True
+
     _cache_key_traversal = [
         ("path", visitors.ExtendedInternalTraversal.dp_has_cache_key),
         ("strategy", visitors.ExtendedInternalTraversal.dp_plain_obj),
@@ -115,7 +117,7 @@ class Load(Generative, LoaderOption):
 
     def _generate_extra_criteria(self, context):
         """Apply the current bound parameters in a QueryContext to the
-        "extra_criteria" stored with this Load object.
+        immediate "extra_criteria" stored with this Load object.
 
         Load objects are typically pulled from the cached version of
         the statement from a QueryContext.  The statement currently being
@@ -149,6 +151,69 @@ class Load(Generative, LoaderOption):
         k2 = current_query._generate_cache_key()
 
         return k2._apply_params_to_element(k1, and_(*self._extra_criteria))
+
+    def _adjust_for_extra_criteria(self, context):
+        """Apply the current bound parameters in a QueryContext to all
+        occurrences "extra_criteria" stored within al this Load object;
+        copying in place.
+
+        """
+        orig_query = context.compile_state.select_statement
+
+        applied = {}
+
+        ck = [None, None]
+
+        def process(opt):
+            if not opt._extra_criteria:
+                return
+
+            if ck[0] is None:
+                ck[:] = (
+                    orig_query._generate_cache_key(),
+                    context.query._generate_cache_key(),
+                )
+            k1, k2 = ck
+
+            opt._extra_criteria = tuple(
+                k2._apply_params_to_element(k1, crit)
+                for crit in opt._extra_criteria
+            )
+
+        return self._deep_clone(applied, process)
+
+    def _deep_clone(self, applied, process):
+        if self in applied:
+            return applied[self]
+
+        cloned = self._generate()
+
+        applied[self] = cloned
+
+        cloned.strategy = self.strategy
+
+        assert cloned.propagate_to_loaders == self.propagate_to_loaders
+        assert cloned.is_class_strategy == self.is_class_strategy
+        assert cloned.is_opts_only == self.is_opts_only
+
+        if self.context:
+            cloned.context = util.OrderedDict(
+                [
+                    (
+                        key,
+                        value._deep_clone(applied, process)
+                        if isinstance(value, Load)
+                        else value,
+                    )
+                    for key, value in self.context.items()
+                ]
+            )
+
+        cloned.local_opts.update(self.local_opts)
+
+        process(cloned)
+
+        return cloned
 
     @property
     def _context_cache_key(self):
@@ -345,7 +410,10 @@ class Load(Generative, LoaderOption):
                     else:
                         return None
 
-                if attr._extra_criteria:
+                if attr._extra_criteria and not self._extra_criteria:
+                    # in most cases, the process that brings us here will have
+                    # already established _extra_criteria.  however if not,
+                    # and it's present on the attribute, then use that.
                     self._extra_criteria = attr._extra_criteria
 
                 if getattr(attr, "_of_type", None):
@@ -708,6 +776,30 @@ class _UnboundLoad(Load):
         # anonymous clone of the Load / UnboundLoad object since #5056
         self._to_bind = None
 
+    def _deep_clone(self, applied, process):
+        if self in applied:
+            return applied[self]
+
+        cloned = self._generate()
+
+        applied[self] = cloned
+
+        cloned.strategy = self.strategy
+
+        assert cloned.propagate_to_loaders == self.propagate_to_loaders
+        assert cloned.is_class_strategy == self.is_class_strategy
+        assert cloned.is_opts_only == self.is_opts_only
+
+        cloned._to_bind = [
+            elem._deep_clone(applied, process) for elem in self._to_bind or ()
+        ]
+
+        cloned.local_opts.update(self.local_opts)
+
+        process(cloned)
+
+        return cloned
+
     def _apply_to_parent(self, parent, applied, bound, to_bind=None):
         if self in applied:
             return applied[self]
@@ -984,6 +1076,7 @@ class _UnboundLoad(Load):
         loader.strategy = self.strategy
         loader.is_opts_only = self.is_opts_only
         loader.is_class_strategy = self.is_class_strategy
+        loader._extra_criteria = self._extra_criteria
 
         path = loader.path
 
