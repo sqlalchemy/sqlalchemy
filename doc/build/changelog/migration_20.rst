@@ -1229,6 +1229,24 @@ following the table, and may include additional notes not summarized here.
 
     * - ::
 
+          session.query(User).\
+          filter_by(name='some user').first()
+
+
+      - ::
+
+          session.execute(
+            select(User).
+            filter_by(name="some user").
+            limit(1)
+          ).scalars().first()
+
+      - :ref:`migration_20_unify_select`
+
+        :meth:`_engine.Result.first`
+
+    * - ::
+
             session.query(User).options(
                 joinedload(User.addresses)
             ).all()
@@ -1362,6 +1380,9 @@ Legacy code examples are illustrated below::
     user = session.query(User).filter_by(name='some user').one()
 
     # becomes legacy use case
+    user = session.query(User).filter_by(name='some user').first()
+
+    # becomes legacy use case
     user = session.query(User).get(5)
 
     # becomes legacy use case
@@ -1422,6 +1443,11 @@ Below are some examples of how to migrate to :func:`_sql.select`::
         select(User).filter_by(name="some user")
     ).scalar_one()
 
+    # for first(), no LIMIT is applied automatically; add limit(1) if LIMIT
+    # is desired on the query
+    user = session.execute(
+        select(User).filter_by(name="some user").limit(1)
+    ).scalars().first()
 
     # get() moves to the Session directly
     user = session.get(User, 5)
@@ -1846,21 +1872,22 @@ As is the case described at :ref:`migration_20_query_from_self`, the
 
     from sqlalchemy.orm import aliased
 
-    subquery = session.query(User).filter(User.id == 5).subquery()
+    subquery = session.query(User).filter(User.name.like("%somename%")).subquery()
 
     ua = aliased(User, subquery)
 
-    user = session.query(ua).first()
+    user = session.query(ua).order_by(ua.id).first()
 
 Using :term:`2.0 style`::
 
     from sqlalchemy.orm import aliased
 
-    subquery = select(User).where(User.id == 5).subquery()
+    subquery = select(User).where(User.name.like("%somename%")).subquery()
 
     ua = aliased(User, subquery)
 
-    user = session.execute(select(ua)).scalars().first()
+    # note that LIMIT 1 is not automatically supplied, if needed
+    user = session.execute(select(ua).order_by(ua.id).limit(1)).scalars().first()
 
 **Discussion**
 
