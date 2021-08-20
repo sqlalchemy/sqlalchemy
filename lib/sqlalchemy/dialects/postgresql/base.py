@@ -3425,7 +3425,7 @@ class PGDialect(default.DefaultDialect):
         return bool(cursor.scalar())
 
     def _get_server_version_info(self, connection):
-        v = connection.exec_driver_sql("select version()").scalar()
+        v = connection.exec_driver_sql("select pg_catalog.version()").scalar()
         m = re.match(
             r".*(?:PostgreSQL|EnterpriseDB) "
             r"(\d+)\.?(\d+)?(?:\.(\d+))?(?:\.\d+)?(?:devel|beta)?",
