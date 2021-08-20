@@ -1287,6 +1287,7 @@ class Connection(Connectable):
 
         if self._has_events or self.engine._has_events:
             (
+                default,
                 distilled_params,
                 event_multiparams,
                 event_params,
@@ -1335,6 +1336,7 @@ class Connection(Connectable):
 
         if self._has_events or self.engine._has_events:
             (
+                ddl,
                 distilled_params,
                 event_multiparams,
                 event_params,
@@ -1399,7 +1401,7 @@ class Connection(Connectable):
         else:
             distilled_params = []
 
-        return distilled_params, event_multiparams, event_params
+        return elem, distilled_params, event_multiparams, event_params
 
     def _execute_clauseelement(
         self, elem, multiparams, params, execution_options
@@ -1415,6 +1417,7 @@ class Connection(Connectable):
         has_events = self._has_events or self.engine._has_events
         if has_events:
             (
+                elem,
                 distilled_params,
                 event_multiparams,
                 event_params,
@@ -1492,6 +1495,7 @@ class Connection(Connectable):
 
         if self._has_events or self.engine._has_events:
             (
+                compiled,
                 distilled_params,
                 event_multiparams,
                 event_params,
@@ -1536,6 +1540,7 @@ class Connection(Connectable):
         if not future:
             if self._has_events or self.engine._has_events:
                 (
+                    statement,
                     distilled_params,
                     event_multiparams,
                     event_params,

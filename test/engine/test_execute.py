@@ -31,6 +31,7 @@ from sqlalchemy.pool import NullPool
 from sqlalchemy.pool import QueuePool
 from sqlalchemy.sql import column
 from sqlalchemy.sql import literal
+from sqlalchemy.sql.elements import literal_column
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import config
@@ -1770,6 +1771,56 @@ class EngineEventsTest(fixtures.TestBase):
         ):
             with e1.connect() as conn:
                 conn.execute(select(literal("1")))
+
+    @testing.only_on("sqlite")
+    def test_dont_modify_statement_driversql(self, connection):
+        m1 = mock.Mock()
+
+        @event.listens_for(connection, "before_execute", retval=True)
+        def _modify(
+            conn, clauseelement, multiparams, params, execution_options
+        ):
+            m1.run_event()
+            return clauseelement.replace("hi", "there"), multiparams, params
+
+        # the event does not take effect for the "driver SQL" option
+        eq_(connection.exec_driver_sql("select 'hi'").scalar(), "hi")
+
+        # event is not called at all
+        eq_(m1.mock_calls, [])
+
+    @testing.combinations((True,), (False,), argnames="future")
+    @testing.only_on("sqlite")
+    def test_modify_statement_internal_driversql(self, connection, future):
+        m1 = mock.Mock()
+
+        @event.listens_for(connection, "before_execute", retval=True)
+        def _modify(
+            conn, clauseelement, multiparams, params, execution_options
+        ):
+            m1.run_event()
+            return clauseelement.replace("hi", "there"), multiparams, params
+
+        eq_(
+            connection._exec_driver_sql(
+                "select 'hi'", [], {}, {}, future=future
+            ).scalar(),
+            "hi" if future else "there",
+        )
+
+        if future:
+            eq_(m1.mock_calls, [])
+        else:
+            eq_(m1.mock_calls, [call.run_event()])
+
+    def test_modify_statement_clauseelement(self, connection):
+        @event.listens_for(connection, "before_execute", retval=True)
+        def _modify(
+            conn, clauseelement, multiparams, params, execution_options
+        ):
+            return select(literal_column("'there'")), multiparams, params
+
+        eq_(connection.scalar(select(literal_column("'hi'"))), "there")
 
     def test_argument_format_execute(self, testing_engine):
         def before_execute(
