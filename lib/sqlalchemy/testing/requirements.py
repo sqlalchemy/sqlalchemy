@@ -857,7 +857,7 @@ class SuiteRequirements(Requirements):
 
             >>> testing.requirements.get_isolation_levels()
             {
-                "default": "READ_COMMITED",
+                "default": "READ_COMMITTED",
                 "supported": [
                     "SERIALIZABLE", "READ UNCOMMITTED",
                     "READ COMMITTED", "REPEATABLE READ",
