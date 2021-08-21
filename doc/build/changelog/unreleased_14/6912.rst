@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 6912
+
+    Qualified the server version info call with the corresponding schema
+    ("pg_catalog") to avoid failure on connection when a "version()" function
+    has also been defined in a schema with higher priority in the search path.
