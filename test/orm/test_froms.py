@@ -29,6 +29,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.context import ORMSelectCompileState
 from sqlalchemy.orm.util import join
 from sqlalchemy.sql import column
 from sqlalchemy.sql import table
@@ -1698,6 +1699,59 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
                 (User(id=9, name="fred"), 1),
             ],
         )
+
+    @testing.combinations((True,), (False,))
+    def test_no_uniquing_cols_legacy(self, with_entities):
+        """test #6924"""
+        User = self.classes.User
+        Address = self.classes.Address
+
+        sess = fixture_session()
+
+        if with_entities:
+            q = (
+                sess.query(User)
+                .join(Address)
+                .filter(Address.user_id == 8)
+                .with_entities(User.id, User.name)
+                .order_by(User.id)
+            )
+        else:
+            q = (
+                sess.query(User.id, User.name)
+                .join(Address)
+                .filter(Address.user_id == 8)
+                .order_by(User.id)
+            )
+
+        is_(q._compile_state()._primary_entity, None)
+
+        eq_(q.all(), [(8, "ed"), (8, "ed"), (8, "ed")])
+
+    @testing.combinations((True,), (False,))
+    def test_no_uniquing_cols(self, with_entities):
+        """test #6924"""
+        User = self.classes.User
+        Address = self.classes.Address
+
+        if with_entities:
+            stmt = (
+                select(User)
+                .join(Address)
+                .filter(Address.user_id == 8)
+                .with_only_columns(User.id, User.name)
+                .order_by(User.id)
+            )
+        else:
+            stmt = (
+                select(User.id, User.name)
+                .join(Address)
+                .filter(Address.user_id == 8)
+                .order_by(User.id)
+            )
+
+        compile_state = ORMSelectCompileState.create_for_statement(stmt, None)
+        is_(compile_state._primary_entity, None)
 
     def test_column_queries_one(self):
         User = self.classes.User
