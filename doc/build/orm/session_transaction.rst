@@ -597,7 +597,7 @@ We can for example create our :class:`_orm.Session` from a default
 
     plain_engine = create_engine("postgresql://scott:tiger@localhost/test")
 
-    autocommit_engine = eng.execution_options(isolation_level="AUTOCOMMIT")
+    autocommit_engine = plain_engine.execution_options(isolation_level="AUTOCOMMIT")
 
     # will normally use plain_engine
     Session = sessionmaker(plain_engine)
