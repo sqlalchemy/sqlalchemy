@@ -948,6 +948,8 @@ class Session(_SessionClassMethods):
 
     """
 
+    _is_asyncio = False
+
     @util.deprecated_params(
         autocommit=(
             "2.0",
