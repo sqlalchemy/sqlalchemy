@@ -597,15 +597,15 @@ to ``node.c.id``::
     from sqlalchemy import Integer, ForeignKey, String, Column, Table, MetaData
     from sqlalchemy.orm import relationship, registry
 
-    metadata = MetaData()
+    metadata_obj = MetaData()
     mapper_registry = registry()
 
-    node_to_node = Table("node_to_node", metadata,
+    node_to_node = Table("node_to_node", metadata_obj,
         Column("left_node_id", Integer, ForeignKey("node.id"), primary_key=True),
         Column("right_node_id", Integer, ForeignKey("node.id"), primary_key=True)
     )
 
-    node = Table("node", metadata,
+    node = Table("node", metadata_obj,
         Column('id', Integer, primary_key=True),
         Column('label', String)
     )

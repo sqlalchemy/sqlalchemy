@@ -165,7 +165,7 @@ construct automatically.
     .. sourcecode:: pycon+sql
 
         >>> from sqlalchemy import select, bindparam
-        >>> scalar_subquery = (
+        >>> scalar_subq = (
         ...     select(user_table.c.id).
         ...     where(user_table.c.name==bindparam('username')).
         ...     scalar_subquery()
@@ -173,7 +173,7 @@ construct automatically.
 
         >>> with engine.connect() as conn:
         ...     result = conn.execute(
-        ...         insert(address_table).values(user_id=scalar_subquery),
+        ...         insert(address_table).values(user_id=scalar_subq),
         ...         [
         ...             {"username": 'spongebob', "email_address": "spongebob@sqlalchemy.org"},
         ...             {"username": 'sandy', "email_address": "sandy@sqlalchemy.org"},

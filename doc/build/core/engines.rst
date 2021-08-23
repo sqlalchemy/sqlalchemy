@@ -435,9 +435,9 @@ SQLAlchemy::
 
     @event.listens_for(engine, "connect")
     def connect(dbapi_connection, connection_record):
-        cursor = dbapi_connection.cursor()
-        cursor.execute("SET some session variables")
-        cursor.close()
+        cursor_obj = dbapi_connection.cursor()
+        cursor_obj.execute("SET some session variables")
+        cursor_obj.close()
 
 
 Fully Replacing the DBAPI ``connect()`` function

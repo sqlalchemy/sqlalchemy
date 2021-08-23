@@ -153,14 +153,14 @@ addresses" for each row in the "users" table:
 .. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import Table, Column, Integer, String, MetaData, ForeignKey
-    >>> metadata = MetaData()
-    >>> users = Table('users', metadata,
+    >>> metadata_obj = MetaData()
+    >>> users = Table('users', metadata_obj,
     ...     Column('id', Integer, primary_key=True),
     ...     Column('name', String),
     ...     Column('fullname', String),
     ... )
 
-    >>> addresses = Table('addresses', metadata,
+    >>> addresses = Table('addresses', metadata_obj,
     ...   Column('id', Integer, primary_key=True),
     ...   Column('user_id', None, ForeignKey('users.id')),
     ...   Column('email_address', String, nullable=False)
@@ -178,7 +178,7 @@ each table first before creating, so it's safe to call multiple times:
 
 .. sourcecode:: pycon+sql
 
-    {sql}>>> metadata.create_all(engine)
+    {sql}>>> metadata_obj.create_all(engine)
     BEGIN...
     CREATE TABLE users (
         id INTEGER NOT NULL,
@@ -221,7 +221,7 @@ each table first before creating, so it's safe to call multiple times:
 
     A full, foolproof :class:`~sqlalchemy.schema.Table` is therefore::
 
-        users = Table('users', metadata,
+        users = Table('users', metadata_obj,
            Column('id', Integer, Sequence('user_id_seq'), primary_key=True),
            Column('name', String(50)),
            Column('fullname', String(50)),

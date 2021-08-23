@@ -617,8 +617,8 @@ Given a table as below::
 
     from sqlalchemy import MetaData, Table, Column, Integer
 
-    meta = MetaData()
-    users_table = Table('users', meta,
+    metadata_obj = MetaData()
+    users_table = Table('users', metadata_obj,
         Column('id', Integer, primary_key=True),
         Column('name', String(50))
     )
@@ -658,7 +658,7 @@ has been used to associate a series of
 engine::
 
     engine = create_engine('sqlite:///file.db')
-    meta.bind = engine
+    metadata_obj.bind = engine
     result = users_table.select().execute()
     for row in result:
         # ....
@@ -734,7 +734,7 @@ to render under different schema names without any changes.
 Given a table::
 
     user_table = Table(
-        'user', metadata,
+        'user', metadata_obj,
         Column('id', Integer, primary_key=True),
         Column('name', String(50))
     )
@@ -1756,10 +1756,10 @@ may be used::
 
     connection = engine.raw_connection()
     try:
-        cursor = connection.cursor()
-        cursor.callproc("my_procedure", ['x', 'y', 'z'])
-        results = list(cursor.fetchall())
-        cursor.close()
+        cursor_obj = connection.cursor()
+        cursor_obj.callproc("my_procedure", ['x', 'y', 'z'])
+        results = list(cursor_obj.fetchall())
+        cursor_obj.close()
         connection.commit()
     finally:
         connection.close()
@@ -1772,12 +1772,12 @@ Multiple result set support is available from a raw DBAPI cursor using the
 
     connection = engine.raw_connection()
     try:
-        cursor = connection.cursor()
-        cursor.execute("select * from table1; select * from table2")
-        results_one = cursor.fetchall()
-        cursor.nextset()
-        results_two = cursor.fetchall()
-        cursor.close()
+        cursor_obj = connection.cursor()
+        cursor_obj.execute("select * from table1; select * from table2")
+        results_one = cursor_obj.fetchall()
+        cursor_obj.nextset()
+        results_two = cursor_obj.fetchall()
+        cursor_obj.close()
     finally:
         connection.close()
 
