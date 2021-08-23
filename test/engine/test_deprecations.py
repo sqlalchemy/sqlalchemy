@@ -1687,6 +1687,17 @@ class EngineEventsTest(fixtures.TestBase):
                 )
             eq_(result.all(), [("15",)])
 
+    @testing.only_on("sqlite")
+    def test_modify_statement_string(self, connection):
+        @event.listens_for(connection, "before_execute", retval=True)
+        def _modify(
+            conn, clauseelement, multiparams, params, execution_options
+        ):
+            return clauseelement.replace("hi", "there"), multiparams, params
+
+        with _string_deprecation_expect():
+            eq_(connection.scalar("select 'hi'"), "there")
+
     def test_retval_flag(self):
         canary = []
 
