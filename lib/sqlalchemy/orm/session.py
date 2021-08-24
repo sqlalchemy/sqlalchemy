@@ -1309,6 +1309,7 @@ class Session(_SessionClassMethods):
                 "subtransactions are not implemented in future "
                 "Session objects."
             )
+
         if self._autobegin():
             if not subtransactions and not nested and not _subtrans:
                 return self._transaction
@@ -1326,6 +1327,7 @@ class Session(_SessionClassMethods):
         elif not self.autocommit:
             # outermost transaction.  must be a not nested and not
             # a subtransaction
+
             assert not nested and not _subtrans and not subtransactions
             trans = SessionTransaction(self)
             assert self._transaction is trans

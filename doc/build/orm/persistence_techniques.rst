@@ -498,6 +498,151 @@ The above mapping upon INSERT will look like:
     :ref:`metadata_defaults_toplevel`
 
 
+.. _orm_dml_returning_objects:
+
+Using INSERT, UPDATE and ON CONFLICT (i.e. upsert) to return ORM Objects
+==========================================================================
+
+.. deepalchemy:: The feature of linking ORM objects to RETURNING is a new and
+   experimental feature.
+
+.. versionadded:: 1.4.0
+
+The :term:`DML` constructs :func:`_dml.insert`, :func:`_dml.update`, and
+:func:`_dml.delete` feature a method :meth:`_dml.UpdateBase.returning` which on
+database backends that support RETURNING (PostgreSQL, SQL Server, some MariaDB
+versions) may be used to return database rows generated or matched by
+the statement as though they were SELECTed. The ORM-enabled UPDATE and DELETE
+statements may be combined with this feature, so that they return rows
+corresponding to all the rows which were matched by the criteria::
+
+    from sqlalchemy import update
+
+    stmt = update(User).where(User.name == "squidward").values(name="spongebob").\
+        returning(User.id)
+
+    for row in session.execute(stmt):
+        print(f"id: {row.id}")
+
+The above example returns the ``User.id`` attribute for each row matched.
+Provided that each row contains at least a primary key value, we may opt to
+receive these rows as ORM objects, allowing ORM objects to be loaded from the
+database corresponding atomically to an UPDATE statement against those rows. To
+achieve this, we may combine the :class:`_dml.Update` construct which returns
+``User`` rows with a :func:`_sql.select` that's adapted to run this UPDATE
+statement in an ORM context using the :meth:`_sql.Select.from_statement`
+method::
+
+    stmt = update(User).where(User.name == "squidward").values(name="spongebob").\
+        returning(User)
+
+    orm_stmt = select(User).from_statement(stmt).execution_options(populate_existing=True)
+
+    for user in session.execute(orm_stmt).scalars():
+        print("updated user: %s" % user)
+
+Above, we produce an :func:`_dml.update` construct that includes
+:meth:`_dml.Update.returning` given the full ``User`` entity, which will
+produce complete rows from the database table as it UPDATEs them; any arbitrary
+set of columns to load may be specified as long as the full primary key is
+included. Next, these rows are adapted to an ORM load by producing a
+:func:`_sql.select` for the desired entity, then adapting it to the UPDATE
+statement by passing the :class:`_dml.Update` construct to the
+:meth:`_sql.Select.from_statement` method; this special ORM method, introduced
+at :ref:`orm_queryguide_selecting_text`, produces an ORM-specific adapter that
+allows the given statement to act as though it were the SELECT of rows that is
+first described.   No SELECT is actually emitted in the database, only the
+UPDATE..RETURNING we've constructed.
+
+Finally, we make use of :ref:`orm_queryguide_populate_existing` on the
+construct so that all the data returned by the UPDATE, including the columns
+we've updated, are populated into the returned objects, replacing any
+values which were there already.  This has the same effect as if we had
+used the ``synchronize_session='fetch'`` strategy described previously
+at :ref:`orm_expression_update_delete_sync`.
+
+Using PostgreSQL ON CONFLICT with RETURNING to return upserted ORM objects
+---------------------------------------------------------------------------
+
+The above approach can be used with INSERTs with RETURNING as well. As a more
+advanced example, below illustrates how to use the PostgreSQL
+:ref:`postgresql_insert_on_conflict` construct to INSERT or UPDATE rows in the
+database, while simultaneously producing those objects as ORM instances::
+
+    from sqlalchemy.dialects.postgresql import insert
+
+    stmt = insert(User).values(
+        [
+            dict(name="sandy", fullname="Sandy Cheeks"),
+            dict(name="squidward", fullname="Squidward Tentacles"),
+            dict(name="spongebob", fullname="Spongebob Squarepants"),
+        ]
+    )
+
+    stmt = stmt.on_conflict_do_update(
+        index_elements=[User.name], set_=dict(fullname=stmt.excluded.fullname)
+    ).returning(User)
+
+    orm_stmt = (
+        select(User)
+        .from_statement(stmt)
+        .execution_options(populate_existing=True)
+    )
+    for user in session.execute(
+        orm_stmt,
+    ).scalars():
+        print("inserted or updated: %s" % user)
+
+To start, we make sure we are using the PostgreSQL variant of the
+:func:`_postgresql.insert` construct.   Next, we construct a multi-values
+INSERT statement, where a single INSERT statement will provide multiple rows
+to be inserted.  On the PostgreSQL database, this syntax provides the most
+efficient means of sending many hundreds of rows at once to be INSERTed.
+
+From there, we could if we wanted add the ``RETURNING`` clause to produce
+a bulk INSERT.  However, to make the example even more interesting, we will
+also add the PostgreSQL specific ``ON CONFLICT..DO UPDATE`` syntax so that
+rows which already exist based on a unique criteria will be UPDATEd instead.
+We assume there is an INDEX or UNIQUE constraint on the ``name`` column of the
+``user_account`` table above, and then specify an appropriate :meth:`_postgresql.Insert.on_conflict_do_update`
+criteria that will update the ``fullname`` column for rows that already exist.
+
+Finally, we add the :meth:`_dml.Insert.returning` clause as we did in the
+previous example, and select our ``User`` objects using the same
+:meth:`_sql.Select.from_statement` approach as we did earlier. Supposing the
+database only a row for ``(1, "squidward", NULL)`` present; this row will
+trigger the ON CONFLICT routine in our above statement, in other words perform
+the equivalent of an UPDATE statement. The other two rows,
+``(NULL, "sandy", "Sandy Cheeks")`` and
+``(NULL, "spongebob", "Spongebob Squarepants")`` do not yet exist in the
+database, and will be inserted using normal INSERT semantics; the primary key
+column ``id`` uses either ``SERIAL`` or ``IDENTITY`` to auto-generate new
+integer values.
+
+Using this above form, we see SQL emitted on the PostgreSQL database as:
+
+
+.. sourcecode:: pycon+sql
+
+    {opensql}INSERT INTO user_account (name, fullname)
+    VALUES (%(name_m0)s, %(fullname_m0)s), (%(name_m1)s, %(fullname_m1)s), (%(name_m2)s, %(fullname_m2)s)
+    ON CONFLICT (name) DO UPDATE SET fullname = excluded.fullname
+    RETURNING user_account.id, user_account.name, user_account.fullname
+    {'name_m0': 'sandy', 'fullname_m0': 'Sandy Cheeks', 'name_m1': 'squidward', 'fullname_m1': 'Squidward Tentacles', 'name_m2': 'spongebob', 'fullname_m2': 'Spongebob Squarepants'}{stop}
+
+    inserted or updated: User(id=2, name='sandy', fullname='Sandy Cheeks')
+    inserted or updated: User(id=3, name='squidward', fullname='Squidward Tentacles')
+    inserted or updated: User(id=1, name='spongebob', fullname='Spongebob Squarepants')
+
+Above we can also see that the INSERTed ``User`` objects have a
+newly generated primary key value as we would expect with any other ORM
+oriented INSERT statement.
+
+.. seealso::
+
+  :ref:`orm_queryguide_selecting_text` - introduces the
+  :meth:`_sql.Select.from_statement` method.
+
 .. _session_partitioning:
 
 Partitioning Strategies (e.g. multiple database backends per Session)
@@ -684,7 +829,17 @@ Bulk Operations
 .. note:: Bulk INSERT and UPDATE should not be confused with the
    more common feature known as :ref:`orm_expression_update_delete`.   This
    feature allows a single UPDATE or DELETE statement with arbitrary WHERE
-   criteria to be emitted.
+   criteria to be emitted.    There is also an option on some backends to
+   use true "upsert" with the ORM, such as on PostgreSQL.  See the section
+   :ref:`orm_dml_returning_objects` for examples.
+
+.. seealso::
+
+    :ref:`orm_expression_update_delete` - using straight multi-row UPDATE and DELETE statements
+    in an ORM context.
+
+    :ref:`orm_dml_returning_objects` - use UPDATE, INSERT or upsert operations to
+    return ORM objects
 
 .. versionadded:: 1.0.0
 
