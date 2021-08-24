@@ -1081,7 +1081,7 @@ class SchemaDropper(DDLBase):
         table,
         drop_ok=False,
         _is_metadata_operation=False,
-        _ignore_sequences=[],
+        _ignore_sequences=(),
     ):
         if not drop_ok and not self._can_drop_table(table):
             return
