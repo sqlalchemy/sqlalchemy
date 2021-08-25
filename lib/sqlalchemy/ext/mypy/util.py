@@ -99,6 +99,10 @@ def _get_info_mro_metadata(info: TypeInfo, key: str) -> Optional[Any]:
     return None
 
 
+def establish_as_sqlalchemy(info: TypeInfo) -> None:
+    info.metadata.setdefault("sqlalchemy", {})
+
+
 def set_is_base(info: TypeInfo) -> None:
     _set_info_metadata(info, "is_base", True)
 
