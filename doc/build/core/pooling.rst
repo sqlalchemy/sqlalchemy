@@ -109,8 +109,8 @@ connection that's contained within a transparent proxy::
     conn = mypool.connect()
 
     # use it
-    cursor = conn.cursor()
-    cursor.execute("select foo")
+    cursor_obj = conn.cursor()
+    cursor_obj.execute("select foo")
 
 The purpose of the transparent proxy is to intercept the ``close()`` call,
 such that instead of the DBAPI connection being closed, it is returned to the

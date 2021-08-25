@@ -903,8 +903,8 @@ Another example follows, which is exactly the same except it makes use of the
 
 .. sourcecode:: python+sql
 
-    >>> cte = select(Address).where(~Address.email_address.like('%@aol.com')).cte()
-    >>> address_cte = aliased(Address, cte)
+    >>> cte_obj = select(Address).where(~Address.email_address.like('%@aol.com')).cte()
+    >>> address_cte = aliased(Address, cte_obj)
     >>> stmt = select(User, address_cte).join_from(User, address_cte).order_by(User.id, address_cte.id)
     >>> with Session(engine) as session:
     ...     for user, address in session.execute(stmt):

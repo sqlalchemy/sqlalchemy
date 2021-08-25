@@ -107,16 +107,16 @@ tables and reflect the full set. This is achieved by using the
 located tables are present within the :class:`~sqlalchemy.schema.MetaData`
 object's dictionary of tables::
 
-    meta = MetaData()
-    meta.reflect(bind=someengine)
-    users_table = meta.tables['users']
-    addresses_table = meta.tables['addresses']
+    metadata_obj = MetaData()
+    metadata_obj.reflect(bind=someengine)
+    users_table = metadata_obj.tables['users']
+    addresses_table = metadata_obj.tables['addresses']
 
 ``metadata.reflect()`` also provides a handy way to clear or delete all the rows in a database::
 
-    meta = MetaData()
-    meta.reflect(bind=someengine)
-    for table in reversed(meta.sorted_tables):
+    metadata_obj = MetaData()
+    metadata_obj.reflect(bind=someengine)
+    for table in reversed(metadata_obj.sorted_tables):
         someengine.execute(table.delete())
 
 .. _metadata_reflection_inspector:
@@ -183,8 +183,8 @@ and options:
 
     >>> from sqlalchemy import MetaData, Table, create_engine
     >>> mysql_engine = create_engine("mysql://scott:tiger@localhost/test")
-    >>> metadata = MetaData()
-    >>> my_mysql_table = Table("my_table", metadata, autoload_with=mysql_engine)
+    >>> metadata_obj = MetaData()
+    >>> my_mysql_table = Table("my_table", metadata_obj, autoload_with=mysql_engine)
 
 The above example reflects the above table schema into a new :class:`_schema.Table`
 object.  We can then, for demonstration purposes, print out the MySQL-specific
@@ -219,13 +219,13 @@ The format of this dictionary is described at :meth:`_reflection.Inspector.get_c
 .. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import event
-    >>> metadata = MetaData()
+    >>> metadata_obj = MetaData()
 
-    >>> @event.listens_for(metadata, "column_reflect")
+    >>> @event.listens_for(metadata_obj, "column_reflect")
     >>> def genericize_datatypes(inspector, tablename, column_dict):
     ...     column_dict["type"] = column_dict["type"].as_generic()
 
-    >>> my_generic_table = Table("my_table", metadata, autoload_with=mysql_engine)
+    >>> my_generic_table = Table("my_table", metadata_obj, autoload_with=mysql_engine)
 
 We now get a new :class:`_schema.Table` that is generic and uses
 :class:`_types.Integer` for those datatypes.  We can now emit a

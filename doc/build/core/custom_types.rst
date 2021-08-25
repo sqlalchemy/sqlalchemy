@@ -439,8 +439,8 @@ transparently::
         def column_expression(self, col):
             return func.pgp_sym_decrypt(col, self.passphrase)
 
-    metadata = MetaData()
-    message = Table('message', metadata,
+    metadata_obj = MetaData()
+    message = Table('message', metadata_obj,
                     Column('username', String(50)),
                     Column('message',
                         PGPString("this is my passphrase")),
@@ -448,7 +448,7 @@ transparently::
 
     engine = create_engine("postgresql://scott:tiger@localhost/test", echo=True)
     with engine.begin() as conn:
-        metadata.create_all(conn)
+        metadata_obj.create_all(conn)
 
         conn.execute(message.insert(), username="some user",
                                     message="this is my message")

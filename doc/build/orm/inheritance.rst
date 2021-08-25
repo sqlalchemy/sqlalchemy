@@ -798,23 +798,23 @@ of the :func:`.polymorphic_union` function in terms of mapping.
 A **semi-classical mapping** for example makes use of Declarative, but
 establishes the :class:`_schema.Table` objects separately::
 
-    metadata = Base.metadata
+    metadata_obj = Base.metadata
 
     employees_table = Table(
-        'employee', metadata,
+        'employee', metadata_obj,
         Column('id', Integer, primary_key=True),
         Column('name', String(50)),
     )
 
     managers_table = Table(
-        'manager', metadata,
+        'manager', metadata_obj,
         Column('id', Integer, primary_key=True),
         Column('name', String(50)),
         Column('manager_data', String(50)),
     )
 
     engineers_table = Table(
-        'engineer', metadata,
+        'engineer', metadata_obj,
         Column('id', Integer, primary_key=True),
         Column('name', String(50)),
         Column('engineer_info', String(50)),

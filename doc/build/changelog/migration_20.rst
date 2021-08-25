@@ -556,13 +556,13 @@ execution patterns, is removed::
 
     from sqlalchemy import MetaData
 
-    metadata = MetaData(bind=engine)  # no longer supported
+    metadata_obj = MetaData(bind=engine)  # no longer supported
 
-    metadata.create_all()   # requires Engine or Connection
+    metadata_obj.create_all()   # requires Engine or Connection
 
-    metadata.reflect()  # requires Engine or Connection
+    metadata_obj.reflect()  # requires Engine or Connection
 
-    t = Table('t', metadata, autoload=True)  # use autoload_with=engine
+    t = Table('t', metadata_obj, autoload=True)  # use autoload_with=engine
 
     result = engine.execute(t.select())  # no longer supported
 
@@ -581,18 +581,18 @@ the ORM-level :meth:`_orm.Session.execute` method)::
 
     from sqlalchemy import MetaData
 
-    metadata = MetaData()
+    metadata_obj = MetaData()
 
     # engine level:
 
     # create tables
-    metadata.create_all(engine)
+    metadata_obj.create_all(engine)
 
     # reflect all tables
-    metadata.reflect(engine)
+    metadata_obj.reflect(engine)
 
     # reflect individual table
-    t = Table('t', metadata, autoload_with=engine)
+    t = Table('t', metadata_obj, autoload_with=engine)
 
 
     # connection level:
@@ -601,13 +601,13 @@ the ORM-level :meth:`_orm.Session.execute` method)::
     with engine.connect() as connection:
         # create tables, requires explicit begin and/or commit:
         with connection.begin():
-            metadata.create_all(connection)
+            metadata_obj.create_all(connection)
 
         # reflect all tables
-        metadata.reflect(connection)
+        metadata_obj.reflect(connection)
 
         # reflect individual table
-        t = Table('t', metadata, autoload_with=connection)
+        t = Table('t', metadata_obj, autoload_with=connection)
 
         # execute SQL statements
         result = conn.execute(t.select())
@@ -685,10 +685,10 @@ Core from "many choices"::
   # many choices
 
   # bound metadata?
-  metadata = MetaData(engine)
+  metadata_obj = MetaData(engine)
 
   # or not?
-  metadata = MetaData()
+  metadata_obj = MetaData()
 
   # execute from engine?
   result = engine.execute(stmt)
@@ -973,7 +973,7 @@ documented style in the Core tutorial.
 Examples of "structural" vs. "data" elements are as follows::
 
   # table columns for CREATE TABLE - structural
-  table = Table("table", metadata, Column('x', Integer), Column('y', Integer))
+  table = Table("table", metadata_obj, Column('x', Integer), Column('y', Integer))
 
   # columns in a SELECT statement - structural
   stmt = select(table.c.x, table.c.y)

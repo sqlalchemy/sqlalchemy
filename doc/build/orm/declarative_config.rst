@@ -362,10 +362,10 @@ to a :class:`_schema.Table` that one generates here::
 
     class MyMixin(object):
         @classmethod
-        def __table_cls__(cls, name, metadata, *arg, **kw):
+        def __table_cls__(cls, name, metadata_obj, *arg, **kw):
             return Table(
                 "my_" + name,
-                metadata, *arg, **kw
+                metadata_obj, *arg, **kw
             )
 
 The above mixin would cause all :class:`_schema.Table` objects generated to include

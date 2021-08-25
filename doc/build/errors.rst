@@ -139,8 +139,8 @@ the :class:`_orm.Session` or
 
     engine = create_engine("sqlite://")
     Session = sessionmaker()
-    metadata = MetaData(bind=engine)
-    Base = declarative_base(metadata=metadata)
+    metadata_obj = MetaData(bind=engine)
+    Base = declarative_base(metadata=metadata_obj)
 
     class MyClass(Base):
         # ...
@@ -677,8 +677,8 @@ This error refers to the concept of "bound metadata", described at
 :meth:`.Executable.execute` method directly off of a Core expression object
 that is not associated with any :class:`_engine.Engine`::
 
- metadata = MetaData()
- table = Table('t', metadata, Column('q', Integer))
+ metadata_obj = MetaData()
+ table = Table('t', metadata_obj, Column('q', Integer))
 
  stmt = select(table)
  result = stmt.execute()   # <--- raises
@@ -687,7 +687,7 @@ What the logic is expecting is that the :class:`_schema.MetaData` object has
 been **bound** to a :class:`_engine.Engine`::
 
  engine = create_engine("mysql+pymysql://user:pass@host/db")
- metadata = MetaData(bind=engine)
+ metadata_obj = MetaData(bind=engine)
 
 Where above, any statement that derives from a :class:`_schema.Table` which
 in turn derives from that :class:`_schema.MetaData` will implicitly make use of
