@@ -655,7 +655,7 @@ class URL(
         dialect_cls = entrypoint.get_dialect_cls(self)
         return dialect_cls
 
-    def translate_connect_args(self, names=[], **kw):
+    def translate_connect_args(self, names=None, **kw):
         r"""Translate url attributes into a dictionary of connection arguments.
 
         Returns attributes of this url (`host`, `database`, `username`,
