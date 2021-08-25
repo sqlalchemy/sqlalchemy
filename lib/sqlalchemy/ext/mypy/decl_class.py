@@ -61,6 +61,9 @@ def scan_declarative_assignments_and_apply_types(
         List[util.SQLAlchemyAttribute]
     ] = util.get_mapped_attributes(info, api)
 
+    # used by assign.add_additional_orm_attributes among others
+    util.establish_as_sqlalchemy(info)
+
     if mapped_attributes is not None:
         # ensure that a class that's mapped is always picked up by
         # its mapped() decorator or declarative metaclass before
