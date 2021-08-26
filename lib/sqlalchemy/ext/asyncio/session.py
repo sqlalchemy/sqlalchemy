@@ -14,6 +14,9 @@ from ...orm import Session
 from ...orm import state as _instance_state
 from ...util.concurrency import greenlet_spawn
 
+_EXECUTE_OPTIONS = util.immutabledict({"prebuffer_rows": True})
+_STREAM_OPTIONS = util.immutabledict({"stream_results": True})
+
 
 @util.create_proxy_methods(
     Session,
@@ -140,7 +143,12 @@ class AsyncSession(ReversibleProxy):
         """Execute a statement and return a buffered
         :class:`_engine.Result` object."""
 
-        execution_options = execution_options.union({"prebuffer_rows": True})
+        if execution_options:
+            execution_options = util.immutabledict(execution_options).union(
+                _EXECUTE_OPTIONS
+            )
+        else:
+            execution_options = _EXECUTE_OPTIONS
 
         return await greenlet_spawn(
             self.sync_session.execute,
@@ -205,7 +213,12 @@ class AsyncSession(ReversibleProxy):
         """Execute a statement and return a streaming
         :class:`_asyncio.AsyncResult` object."""
 
-        execution_options = execution_options.union({"stream_results": True})
+        if execution_options:
+            execution_options = util.immutabledict(execution_options).union(
+                _STREAM_OPTIONS
+            )
+        else:
+            execution_options = _STREAM_OPTIONS
 
         result = await greenlet_spawn(
             self.sync_session.execute,

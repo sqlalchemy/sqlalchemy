@@ -1581,7 +1581,7 @@ class Session(_SessionClassMethods):
         :param execution_options: optional dictionary of execution options,
          which will be associated with the statement execution.  This
          dictionary can provide a subset of the options that are accepted
-         by :meth:`_future.Connection.execution_options`, and may also
+         by :meth:`_engine.Connection.execution_options`, and may also
          provide additional options understood only in an ORM context.
 
         :param bind_arguments: dictionary of additional arguments to determine

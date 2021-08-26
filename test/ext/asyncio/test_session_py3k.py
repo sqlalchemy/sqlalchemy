@@ -65,7 +65,10 @@ class AsyncSessionTest(AsyncFixture):
 
 class AsyncSessionQueryTest(AsyncFixture):
     @async_test
-    async def test_execute(self, async_session):
+    @testing.combinations(
+        {}, dict(execution_options={"logging_token": "test"}), argnames="kw"
+    )
+    async def test_execute(self, async_session, kw):
         User = self.classes.User
 
         stmt = (
@@ -74,7 +77,7 @@ class AsyncSessionQueryTest(AsyncFixture):
             .order_by(User.id)
         )
 
-        result = await async_session.execute(stmt)
+        result = await async_session.execute(stmt, **kw)
         eq_(result.scalars().all(), self.static.user_address_result)
 
     @async_test
@@ -103,7 +106,10 @@ class AsyncSessionQueryTest(AsyncFixture):
 
     @async_test
     @testing.requires.independent_cursors
-    async def test_stream_partitions(self, async_session):
+    @testing.combinations(
+        {}, dict(execution_options={"logging_token": "test"}), argnames="kw"
+    )
+    async def test_stream_partitions(self, async_session, kw):
         User = self.classes.User
 
         stmt = (
@@ -112,7 +118,7 @@ class AsyncSessionQueryTest(AsyncFixture):
             .order_by(User.id)
         )
 
-        result = await async_session.stream(stmt)
+        result = await async_session.stream(stmt, **kw)
 
         assert_result = []
         async for partition in result.scalars().partitions(3):
