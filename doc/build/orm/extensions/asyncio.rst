@@ -581,6 +581,9 @@ ORM Session API Documentation
 
 .. autoclass:: AsyncSession
    :members:
+   :exclude-members: sync_session_class
+
+   .. autoattribute:: sync_session_class
 
 .. autoclass:: AsyncSessionTransaction
    :members:
