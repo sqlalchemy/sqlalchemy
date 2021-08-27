@@ -45,6 +45,7 @@ MAPPER_PROPERTY: int = util.symbol("MAPPER_PROPERTY")  # type: ignore
 AS_DECLARATIVE: int = util.symbol("AS_DECLARATIVE")  # type: ignore
 AS_DECLARATIVE_BASE: int = util.symbol("AS_DECLARATIVE_BASE")  # type: ignore
 DECLARATIVE_MIXIN: int = util.symbol("DECLARATIVE_MIXIN")  # type: ignore
+QUERY_EXPRESSION: int = util.symbol("QUERY_EXPRESSION")  # type: ignore
 
 _lookup: Dict[str, Tuple[int, Set[str]]] = {
     "Column": (
@@ -149,6 +150,10 @@ _lookup: Dict[str, Tuple[int, Set[str]]] = {
             "sqlalchemy.orm.decl_api.declarative_mixin",
             "sqlalchemy.orm.declarative_mixin",
         },
+    ),
+    "query_expression": (
+        QUERY_EXPRESSION,
+        {"sqlalchemy.orm.query_expression"},
     ),
 }
 
