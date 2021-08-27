@@ -580,12 +580,10 @@ class AsyncEventTest(AsyncFixture):
 
     @async_test
     async def test_no_async_listeners(self, async_session):
-        with testing.expect_raises(
+        with testing.expect_raises_message(
             NotImplementedError,
-            "NotImplementedError: asynchronous events are not implemented "
-            "at this time.  Apply synchronous listeners to the "
-            "AsyncEngine.sync_engine or "
-            "AsyncConnection.sync_connection attributes.",
+            "asynchronous events are not implemented at this time.  "
+            "Apply synchronous listeners to the AsyncSession.sync_session.",
         ):
             event.listen(async_session, "before_flush", mock.Mock())
 

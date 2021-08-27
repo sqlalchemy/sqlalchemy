@@ -6,6 +6,7 @@ from sqlalchemy import delete
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import func
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
@@ -653,6 +654,39 @@ class AsyncEventTest(EngineFixture):
             [mock.call(sync_conn, mock.ANY, "select 1", (), mock.ANY, False)],
         )
 
+    @async_test
+    async def test_event_on_sync_connection(self, async_engine):
+        canary = mock.Mock()
+
+        async with async_engine.connect() as conn:
+            event.listen(conn.sync_connection, "begin", canary)
+            async with conn.begin():
+                eq_(
+                    canary.mock_calls,
+                    [mock.call(conn.sync_connection)],
+                )
+
+
+class AsyncInspection(EngineFixture):
+    __backend__ = True
+
+    @async_test
+    async def test_inspect_engine(self, async_engine):
+        with testing.expect_raises_message(
+            exc.NoInspectionAvailable,
+            "Inspection on an AsyncEngine is currently not supported.",
+        ):
+            inspect(async_engine)
+
+    @async_test
+    async def test_inspect_connection(self, async_engine):
+        async with async_engine.connect() as conn:
+            with testing.expect_raises_message(
+                exc.NoInspectionAvailable,
+                "Inspection on an AsyncConnection is currently not supported.",
+            ):
+                inspect(conn)
+
 
 class AsyncResultTest(EngineFixture):
     @testing.combinations(
@@ -945,6 +979,7 @@ class AsyncProxyTest(EngineFixture, fixtures.TestBase):
         is_not(async_connection.engine, None)
 
     @testing.requires.predictable_gc
+    @async_test
     async def test_gc_engine(self, testing_engine):
         ReversibleProxy._proxy_objects.clear()
 

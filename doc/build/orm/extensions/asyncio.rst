@@ -498,6 +498,8 @@ the usual ``await`` keywords are necessary, including for the
 .. currentmodule:: sqlalchemy.ext.asyncio
 
 
+.. _asyncio_inspector:
+
 Using the Inspector to inspect schema objects
 ---------------------------------------------------
 
