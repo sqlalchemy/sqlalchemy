@@ -284,20 +284,35 @@ def _infer_type_from_decl_column_property(
 
     """
     assert isinstance(stmt.rvalue, CallExpr)
-    first_prop_arg = stmt.rvalue.args[0]
 
-    if isinstance(first_prop_arg, CallExpr):
-        type_id = names.type_id_for_callee(first_prop_arg.callee)
+    if stmt.rvalue.args:
+        first_prop_arg = stmt.rvalue.args[0]
 
-        # look for column_property() / deferred() etc with Column as first
-        # argument
-        if type_id is names.COLUMN:
+        if isinstance(first_prop_arg, CallExpr):
+            type_id = names.type_id_for_callee(first_prop_arg.callee)
+
+            # look for column_property() / deferred() etc with Column as first
+            # argument
+            if type_id is names.COLUMN:
+                return _infer_type_from_decl_column(
+                    api,
+                    stmt,
+                    node,
+                    left_hand_explicit_type,
+                    right_hand_expression=first_prop_arg,
+                )
+
+    if isinstance(stmt.rvalue, CallExpr):
+        type_id = names.type_id_for_callee(stmt.rvalue.callee)
+        # this is probably not strictly necessary as we have to use the left
+        # hand type for query expression in any case.  any other no-arg
+        # column prop objects would go here also
+        if type_id is names.QUERY_EXPRESSION:
             return _infer_type_from_decl_column(
                 api,
                 stmt,
                 node,
                 left_hand_explicit_type,
-                right_hand_expression=first_prop_arg,
             )
 
     return infer_type_from_left_hand_type_only(
