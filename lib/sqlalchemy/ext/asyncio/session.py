@@ -242,13 +242,13 @@ class AsyncSession(ReversibleProxy):
         """
         return await greenlet_spawn(self.sync_session.delete, instance)
 
-    async def merge(self, instance, load=True):
+    async def merge(self, instance, load=True, options=None):
         """Copy the state of a given instance into a corresponding instance
         within this :class:`_asyncio.AsyncSession`.
 
         """
         return await greenlet_spawn(
-            self.sync_session.merge, instance, load=load
+            self.sync_session.merge, instance, load=load, options=options
         )
 
     async def flush(self, objects=None):

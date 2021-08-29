@@ -105,6 +105,17 @@ class AsyncSessionQueryTest(AsyncFixture):
         is_(u3, None)
 
     @async_test
+    async def test_get_loader_options(self, async_session):
+        User = self.classes.User
+
+        u = await async_session.get(
+            User, 7, options=[selectinload(User.addresses)]
+        )
+
+        eq_(u.name, "jack")
+        eq_(len(u.addresses), 1)
+
+    @async_test
     @testing.requires.independent_cursors
     @testing.combinations(
         {}, dict(execution_options={"logging_token": "test"}), argnames="kw"
@@ -332,6 +343,28 @@ class AsyncSessionTransactionTest(AsyncFixture):
 
             is_(new_u_merged, u1)
             eq_(u1.name, "new u1")
+
+    @async_test
+    async def test_merge_loader_options(self, async_session):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        async with async_session.begin():
+            u1 = User(id=1, name="u1", addresses=[Address(email_address="e1")])
+
+            async_session.add(u1)
+
+        await async_session.close()
+
+        async with async_session.begin():
+            new_u1 = User(id=1, name="new u1")
+
+            new_u_merged = await async_session.merge(
+                new_u1, options=[selectinload(User.addresses)]
+            )
+
+            eq_(new_u_merged.name, "new u1")
+            eq_(len(new_u_merged.addresses), 1)
 
     @async_test
     async def test_join_to_external_transaction(self, async_engine):
