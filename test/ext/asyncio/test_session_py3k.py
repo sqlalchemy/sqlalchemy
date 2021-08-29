@@ -113,7 +113,7 @@ class AsyncSessionQueryTest(AsyncFixture):
         )
 
         eq_(u.name, "jack")
-        eq_(len(u.addresses), 1)
+        eq_(len(u.__dict__["addresses"]), 1)
 
     @async_test
     @testing.requires.independent_cursors
@@ -364,7 +364,7 @@ class AsyncSessionTransactionTest(AsyncFixture):
             )
 
             eq_(new_u_merged.name, "new u1")
-            eq_(len(new_u_merged.addresses), 1)
+            eq_(len(new_u_merged.__dict__["addresses"]), 1)
 
     @async_test
     async def test_join_to_external_transaction(self, async_engine):
