@@ -2843,7 +2843,7 @@ class Session(_SessionClassMethods):
             load_options=load_options,
         )
 
-    def merge(self, instance, load=True):
+    def merge(self, instance, load=True, options=None):
         """Copy the state of a given instance into a corresponding instance
         within this :class:`.Session`.
 
@@ -2889,6 +2889,11 @@ class Session(_SessionClassMethods):
          produced as "clean", so it is only appropriate that the given objects
          should be "clean" as well, else this suggests a mis-use of the
          method.
+        :param options: optional sequence of loader options which will be
+         applied to the :meth:`_orm.Session.get` method when the merge
+         operation loads the existing version of the object from the database.
+
+         .. versionadded:: 1.4.24
 
 
         .. seealso::
@@ -2916,6 +2921,7 @@ class Session(_SessionClassMethods):
                 attributes.instance_state(instance),
                 attributes.instance_dict(instance),
                 load=load,
+                options=options,
                 _recursive=_recursive,
                 _resolve_conflict_map=_resolve_conflict_map,
             )
@@ -2927,6 +2933,7 @@ class Session(_SessionClassMethods):
         state,
         state_dict,
         load=True,
+        options=None,
         _recursive=None,
         _resolve_conflict_map=None,
     ):
@@ -2990,7 +2997,12 @@ class Session(_SessionClassMethods):
                 new_instance = True
 
             elif key_is_persistent:
-                merged = self.get(mapper.class_, key[1], identity_token=key[2])
+                merged = self.get(
+                    mapper.class_,
+                    key[1],
+                    identity_token=key[2],
+                    options=options,
+                )
 
         if merged is None:
             merged = mapper.class_manager.new_instance()
