@@ -1227,6 +1227,10 @@ class SuiteRequirements(Requirements):
         return self.python36
 
     @property
+    def insert_order_dicts(self):
+        return self.python37
+
+    @property
     def python36(self):
         return exclusions.skip_if(
             lambda: sys.version_info < (3, 6),

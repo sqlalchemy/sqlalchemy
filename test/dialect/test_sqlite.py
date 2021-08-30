@@ -54,6 +54,7 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.types import Boolean
 from sqlalchemy.types import Date
 from sqlalchemy.types import DateTime
@@ -595,6 +596,22 @@ class DialectTest(
                     version_info=(2, 6, 0), sqlite_version_info=(3, 2, 8)
                 )
             )
+
+    @testing.requires.insert_order_dicts
+    @testing.only_on("sqlite+pysqlite")
+    def test_isolation_level_message(self):
+        # needs to test that all three words are present and we also
+        # dont want to default all isolation level messages to use
+        # sorted(), so rely on python 3.7 for ordering of keywords
+        # in the message
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Invalid value 'invalid' for "
+            "isolation_level. Valid isolation levels for "
+            "sqlite are READ UNCOMMITTED, SERIALIZABLE, AUTOCOMMIT",
+        ):
+            with testing.db.connect() as conn:
+                conn.execution_options(isolation_level="invalid")
 
     @testing.only_on("sqlite+pysqlcipher")
     def test_pysqlcipher_connects(self):
