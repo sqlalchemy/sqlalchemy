@@ -154,6 +154,7 @@ to disable under the following conditions:
 * If the pool itself doesn't maintain a connection after it's checked in,
   such as when using :class:`.NullPool`, the behavior can be disabled.
 * Otherwise, it must be ensured that:
+
   * the application ensures that all :class:`_engine.Connection`
     objects are explicitly closed out using a context manager (i.e. ``with``
     block) or a ``try/finally`` style block
@@ -518,7 +519,7 @@ are three general approaches to this:
     def checkout(dbapi_connection, connection_record, connection_proxy):
         pid = os.getpid()
         if connection_record.info['pid'] != pid:
-            connection_record.connection = connection_proxy.connection = None
+            connection_record.dbapi_connection = connection_proxy.dbapi_connection = None
             raise exc.DisconnectionError(
                     "Connection record belongs to pid %s, "
                     "attempting to check out in pid %s" %

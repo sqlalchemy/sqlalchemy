@@ -1453,7 +1453,7 @@ class hybridmethod(object):
     """Decorate a function as cls- or instance- level."""
 
     def __init__(self, func):
-        self.func = func
+        self.func = self.__func__ = func
         self.clslevel = func
 
     def __get__(self, instance, owner):

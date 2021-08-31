@@ -41,6 +41,7 @@ from .base import SQLiteExecutionContext
 from .pysqlite import SQLiteDialect_pysqlite
 from ... import pool
 from ... import util
+from ...engine import AdaptedConnection
 from ...util.concurrency import await_fallback
 from ...util.concurrency import await_only
 
@@ -162,7 +163,7 @@ class AsyncAdapt_aiosqlite_ss_cursor(AsyncAdapt_aiosqlite_cursor):
         return self.await_(self._cursor.fetchall())
 
 
-class AsyncAdapt_aiosqlite_connection:
+class AsyncAdapt_aiosqlite_connection(AdaptedConnection):
     await_ = staticmethod(await_only)
     __slots__ = ("dbapi", "_connection")
 
@@ -327,6 +328,9 @@ class SQLiteDialect_aiosqlite(SQLiteDialect_pysqlite):
             return True
 
         return super().is_disconnect(e, connection, cursor)
+
+    def get_driver_connection(self, connection):
+        return connection._connection
 
 
 dialect = SQLiteDialect_aiosqlite

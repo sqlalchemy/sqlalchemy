@@ -1,0 +1,28 @@
+.. change::
+    :tags: engine, asyncio
+    :tickets: 6832
+
+    Improve the interface used by adapted drivers, like the asyncio ones,
+    to access the actual connection object returned by the driver.
+
+    The :class:`._ConnectionFairy` object has two new attributes:
+
+    * :attr:`._ConnectionFairy.dbapi_connection` always represents a DBAPI
+      compatible object. For pep-249 drivers, this is the DBAPI connection as
+      it always has been, previously accessed under the ``.connection``
+      attribute. For asyncio drivers that SQLAlchemy adapts into a pep-249
+      interface, the returned object will normally be a SQLAlchemy adaption
+      object called :class:`_engine.AdaptedConnection`.
+    * :attr:`._ConnectionFairy.driver_connection` always represents the actual
+      connection object maintained by the third party pep-249 DBAPI or async
+      driver in use. For standard pep-249 DBAPIs, this will always be the same
+      object as that of the ``dbapi_connection``. For an asyncio driver, it
+      will be the underlying asyncio-only connection object.
+
+    The ``.connection`` attribute remains available and is now a legacy alias
+    of ``.dbapi_connection``.
+
+    .. seealso::
+
+        :ref:`faq_dbapi_connection`
+

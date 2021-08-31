@@ -31,6 +31,7 @@ This dialect should normally be used only with the
 from .pymysql import MySQLDialect_pymysql
 from ... import pool
 from ... import util
+from ...engine import AdaptedConnection
 from ...util.concurrency import asynccontextmanager
 from ...util.concurrency import asyncio
 from ...util.concurrency import await_fallback
@@ -177,7 +178,7 @@ class AsyncAdapt_asyncmy_ss_cursor(AsyncAdapt_asyncmy_cursor):
         return self.await_(self._cursor.fetchall())
 
 
-class AsyncAdapt_asyncmy_connection:
+class AsyncAdapt_asyncmy_connection(AdaptedConnection):
     await_ = staticmethod(await_only)
     __slots__ = ("dbapi", "_connection", "_execute_mutex", "_ss_cursors")
 
@@ -334,6 +335,9 @@ class MySQLDialect_asyncmy(MySQLDialect_pymysql):
         from pymysql.constants import CLIENT
 
         return CLIENT.FOUND_ROWS
+
+    def get_driver_connection(self, connection):
+        return connection._connection
 
 
 dialect = MySQLDialect_asyncmy

@@ -406,28 +406,107 @@ current SQLAlchemy versions.
 
     :ref:`pysqlite_threading_pooling` - info on PySQLite's behavior.
 
+.. _faq_dbapi_connection:
+
 How do I get at the raw DBAPI connection when using an Engine?
 --------------------------------------------------------------
 
 With a regular SA engine-level Connection, you can get at a pool-proxied
 version of the DBAPI connection via the :attr:`_engine.Connection.connection` attribute on
 :class:`_engine.Connection`, and for the really-real DBAPI connection you can call the
-:attr:`.ConnectionFairy.connection` attribute on that - but there should never be any need to access
-the non-pool-proxied DBAPI connection, as all methods are proxied through::
+:attr:`._ConnectionFairy.dbapi_connection` attribute on that.  On regular sync drivers
+there is usually no need to access the non-pool-proxied DBAPI connection,
+as all methods are proxied through::
 
     engine = create_engine(...)
     conn = engine.connect()
-    conn.connection.<do DBAPI things>
-    cursor_obj = conn.connection.cursor(<DBAPI specific arguments..>)
+
+    # pep-249 style ConnectionFairy connection pool proxy object
+    connection_fairy = conn.connection
+
+    # typically to run statements one would get a cursor() from this
+    # object
+    cursor_obj = connection_fairy.cursor()
+    # ... work with cursor_obj
+
+    # to bypass "connection_fairy", such as to set attributes on the
+    # unproxied pep-249 DBAPI connection, use .dbapi_connection
+    raw_dbapi_connection = connection_fairy.dbapi_connection
+
+    # the same thing is available as .driver_connection (more on this
+    # in the next section)
+    also_raw_dbapi_connection = connection_fairy.driver_connection
+
+.. versionchanged:: 1.4.24  Added the
+   :attr:`._ConnectionFairy.dbapi_connection` attribute,
+   which supersedes the previous
+   :attr:`._ConnectionFairy.connection` attribute which still remains
+   available; this attribute always provides a pep-249 synchronous style
+   connection object.  The :attr:`._ConnectionFairy.driver_connection`
+   attribute is also added which will always refer to the real driver-level
+   connection regardless of what API it presents.
+
+Accessing the underlying connnection for an asyncio driver
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When an asyncio driver is in use, there are two changes to the above
+scheme.  The first is that when using an :class:`_asyncio.AsyncConnection`,
+the :class:`._ConnectionFairy` must be accessed using the awaitable method
+:meth:`_asyncio.AsyncConnection.get_raw_connection`.   The
+returned :class:`._ConnectionFairy` in this case retains a sync-style
+pep-249 usage pattern, and the :attr:`._ConnectionFairy.dbapi_connection`
+attribute refers to a
+a SQLAlchemy-adapted connection object which adapts the asyncio
+connection to a sync style pep-249 API, in other words there are *two* levels
+of proxying going on when using an asyncio driver.   The actual asyncio connection
+is available from the :class:`._ConnectionFairy.driver_connection` attribute.
+To restate the previous example in terms of asyncio looks like::
+
+    async def main():
+        engine = create_async_engine(...)
+        conn = await engine.connect()
+
+        # pep-249 style ConnectionFairy connection pool proxy object
+        # presents a sync interface
+        connection_fairy = await conn.get_raw_connection()
+
+        # beneath that proxy is a second proxy which adapts the
+        # asyncio driver into a pep-249 connection object, accessible
+        # via .dbapi_connection as is the same with a sync API
+        sqla_sync_conn = connection_fairy.dbapi_connection
+
+        # the really-real innermost driver connection is available
+        # from the .driver_connection attribute
+        raw_asyncio_connection = connection_fairy.driver_connection
+
+        # work with raw asyncio connection
+        result = await raw_asyncio_connection.execute(...)
+
+.. versionchanged:: 1.4.24  Added the
+   :attr:`._ConnectionFairy.dbapi_connection`
+   and :attr:`._ConnectionFairy.driver_connection` attributes to allow access
+   to pep-249 connections, pep-249 adaption layers, and underlying driver
+   connections using a consistent interface.
+
+When using asyncio drivers, the above "DBAPI" connection is actually a
+SQLAlchemy-adapted form of connection which presents a synchronous-style
+pep-249 style API.  To access the actual
+asyncio driver connection, which will present the original asyncio API
+of the driver in use, this can be accessed via the
+:attr:`._ConnectionFairy.driver_connection` attribute of
+:class:`._ConnectionFairy`.
+For a standard pep-249 driver, :attr:`._ConnectionFairy.dbapi_connection`
+and :attr:`._ConnectionFairy.driver_connection` are synonymous.
 
 You must ensure that you revert any isolation level settings or other
 operation-specific settings on the connection back to normal before returning
 it to the pool.
 
-As an alternative to reverting settings, you can call the :meth:`_engine.Connection.detach` method on
-either :class:`_engine.Connection` or the proxied connection, which will de-associate
-the connection from the pool such that it will be closed and discarded
-when :meth:`_engine.Connection.close` is called::
+As an alternative to reverting settings, you can call the
+:meth:`_engine.Connection.detach` method on either :class:`_engine.Connection`
+or the proxied connection, which will de-associate the connection from the pool
+such that it will be closed and discarded when :meth:`_engine.Connection.close`
+is called::
 
     conn = engine.connect()
     conn.detach()  # detaches the DBAPI connection from the connection pool

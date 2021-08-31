@@ -391,7 +391,7 @@ class AsyncEngineTest(EngineFixture):
 
         connection_fairy = await conn.get_raw_connection()
         is_(connection_fairy.is_valid, True)
-        dbapi_connection = connection_fairy.connection
+        dbapi_connection = connection_fairy.dbapi_connection
 
         await conn.invalidate()
 
@@ -399,7 +399,7 @@ class AsyncEngineTest(EngineFixture):
             assert dbapi_connection._connection.is_closed()
 
         new_fairy = await conn.get_raw_connection()
-        is_not(new_fairy.connection, dbapi_connection)
+        is_not(new_fairy.dbapi_connection, dbapi_connection)
         is_not(new_fairy, connection_fairy)
         is_(new_fairy.is_valid, True)
         is_(connection_fairy.is_valid, False)

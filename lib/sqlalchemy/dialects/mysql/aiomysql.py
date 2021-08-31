@@ -13,7 +13,7 @@ r"""
 
 .. warning:: The aiomysql dialect as of September, 2021 appears to be unmaintained
    and no longer functions for Python version 3.10.   Please refer to the
-   :ref:`asyncmy` dialect for current MySQL asyncio functionality.
+   :ref:`asyncmy` dialect for current MySQL/MariaDD asyncio functionality.
 
 The aiomysql dialect is SQLAlchemy's second Python asyncio dialect.
 
@@ -33,6 +33,7 @@ This dialect should normally be used only with the
 from .pymysql import MySQLDialect_pymysql
 from ... import pool
 from ... import util
+from ...engine import AdaptedConnection
 from ...util.concurrency import asyncio
 from ...util.concurrency import await_fallback
 from ...util.concurrency import await_only
@@ -173,7 +174,7 @@ class AsyncAdapt_aiomysql_ss_cursor(AsyncAdapt_aiomysql_cursor):
         return self.await_(self._cursor.fetchall())
 
 
-class AsyncAdapt_aiomysql_connection:
+class AsyncAdapt_aiomysql_connection(AdaptedConnection):
     await_ = staticmethod(await_only)
     __slots__ = ("dbapi", "_connection", "_execute_mutex")
 
@@ -305,6 +306,9 @@ class MySQLDialect_aiomysql(MySQLDialect_pymysql):
         from pymysql.constants import CLIENT
 
         return CLIENT.FOUND_ROWS
+
+    def get_driver_connection(self, connection):
+        return connection._connection
 
 
 dialect = MySQLDialect_aiomysql

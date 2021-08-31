@@ -433,8 +433,8 @@ class PGDialect_pg8000(PGDialect):
         level = level.replace("_", " ")
 
         # adjust for ConnectionFairy possibly being present
-        if hasattr(connection, "connection"):
-            connection = connection.connection
+        if hasattr(connection, "dbapi_connection"):
+            connection = connection.dbapi_connection
 
         if level == "AUTOCOMMIT":
             connection.autocommit = True
@@ -498,8 +498,8 @@ class PGDialect_pg8000(PGDialect):
 
     def set_client_encoding(self, connection, client_encoding):
         # adjust for ConnectionFairy possibly being present
-        if hasattr(connection, "connection"):
-            connection = connection.connection
+        if hasattr(connection, "dbapi_connection"):
+            connection = connection.dbapi_connection
 
         cursor = connection.cursor()
         cursor.execute("SET CLIENT_ENCODING TO '" + client_encoding + "'")
