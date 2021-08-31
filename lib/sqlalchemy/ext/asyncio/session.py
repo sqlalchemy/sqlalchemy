@@ -65,14 +65,6 @@ class AsyncSession(ReversibleProxy):
 
     _is_asyncio = True
 
-    __slots__ = (
-        "binds",
-        "bind",
-        "sync_session",
-        "_proxied",
-        "_slots_dispatch",
-    )
-
     dispatch = None
 
     def __init__(self, bind=None, binds=None, sync_session_class=None, **kw):
