@@ -106,16 +106,23 @@ database using Azure credentials::
     import struct
     from sqlalchemy import create_engine, event
     from sqlalchemy.engine.url import URL
-    from azure import identity
+    import msal
 
     SQL_COPT_SS_ACCESS_TOKEN = 1256  # Connection option for access tokens, as defined in msodbcsql.h
     TOKEN_URL = "https://database.windows.net/"  # The token URL for any Azure SQL database
-
+    BACK_APP_ID = "fakebackendappid"
+    BACKEND_APP_CREDENTIAL = "fakebackendappcredential"
+    TENANT_ID = "faketenantid"
+    TOKEN = "token" # obtained from azure 
     connection_string = "mssql+pyodbc://@my-server.database.windows.net/myDb?driver=ODBC+Driver+17+for+SQL+Server"
 
     engine = create_engine(connection_string)
 
-    azure_credentials = identity.DefaultAzureCredential()
+    azure_credentials = msal.ConfidentialClientApplication(
+        client_id=BACK_APP_ID,
+        authority=f"https://login.microsoftonline.com/{TENANT_ID}",
+        client_credential=BACKEND_APP_CREDENTIAL,
+    )
 
     @event.listens_for(engine, "do_connect")
     def provide_token(dialect, conn_rec, cargs, cparams):
@@ -123,8 +130,18 @@ database using Azure credentials::
         cargs[0] = cargs[0].replace(";Trusted_Connection=Yes", "")
 
         # create token credential
-        raw_token = azure_credentials.get_token(TOKEN_URL).token.encode("utf-16-le")
-        token_struct = struct.pack(f"<I{len(raw_token)}s", len(raw_token), raw_token)
+        aad_response = azure_credentials.acquire_token_on_behalf_of(
+            user_assertion=TOKEN,
+            scopes=[f"{TOKEN_URL}.default"],
+        )
+        raw_token = aad_response["access_token"].encode("UTF-8")
+        
+        # format token as needed
+        exptoken = b""
+        for i in raw_token:
+            exptoken += bytes({i})
+            exptoken += bytes(1)
+        token_struct = struct.pack("=i", len(exptoken)) + exptoken
 
         # apply it to keyword arguments
         cparams["attrs_before"] = {SQL_COPT_SS_ACCESS_TOKEN: token_struct}
