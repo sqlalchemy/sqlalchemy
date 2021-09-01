@@ -330,13 +330,18 @@ class AsyncSession(ReversibleProxy):
         else:
             return None
 
-    async def connection(self):
+    async def connection(self, **kw):
         r"""Return a :class:`_asyncio.AsyncConnection` object corresponding to
         this :class:`.Session` object's transactional state.
 
+        .. versionadded:: 1.4.24  Added **kw arguments which are passed through
+           to the underlying :meth:`_orm.Session.connection` method.
+
         """
 
-        sync_connection = await greenlet_spawn(self.sync_session.connection)
+        sync_connection = await greenlet_spawn(
+            self.sync_session.connection, **kw
+        )
         return engine.AsyncConnection._retrieve_proxy_for_target(
             sync_connection
         )

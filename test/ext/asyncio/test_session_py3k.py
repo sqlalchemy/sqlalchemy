@@ -615,6 +615,17 @@ class AsyncProxyTest(AsyncFixture):
         is_(c1.engine, c2.engine)
 
     @async_test
+    async def test_get_connection_kws(self, async_session):
+        c1 = await async_session.connection(
+            execution_options={"isolation_level": "AUTOCOMMIT"}
+        )
+
+        eq_(
+            c1.sync_connection._execution_options,
+            {"isolation_level": "AUTOCOMMIT"},
+        )
+
+    @async_test
     async def test_get_connection_connection_bound(self, async_engine):
         async with async_engine.begin() as conn:
             async_session = AsyncSession(conn)
