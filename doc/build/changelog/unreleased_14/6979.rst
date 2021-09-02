@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 6979
+
+    Fixed ORM issue where column expressions passed to ``query()`` or
+    ORM-enabled ``select()`` would be deduplicated on the identity of the
+    object, such as a phrase like ``select(A.id, null(), null())`` would
+    produce only one "NULL" expression, which previously was not the case in
+    1.3. However, the change also allows for ORM expressions to render as given
+    as well, such as ``select(A.data, A.data)`` will produce a result row with
+    two columns.

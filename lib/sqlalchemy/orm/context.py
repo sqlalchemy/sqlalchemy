@@ -187,6 +187,12 @@ class ORMCompileState(CompileState):
     def __init__(self, *arg, **kw):
         raise NotImplementedError()
 
+    def _append_dedupe_col_collection(self, obj, col_collection):
+        dedupe = self.dedupe_columns
+        if obj not in dedupe:
+            dedupe.add(obj)
+            col_collection.append(obj)
+
     @classmethod
     def _column_naming_convention(cls, label_style, legacy):
 
@@ -443,6 +449,7 @@ class ORMFromStatementCompileState(ORMCompileState):
 
         self.primary_columns = []
         self.secondary_columns = []
+        self.dedupe_columns = set()
         self.create_eager_joins = []
         self._fallback_from_clauses = []
 
@@ -645,6 +652,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         self.primary_columns = []
         self.secondary_columns = []
+        self.dedupe_columns = set()
         self.eager_joins = {}
         self.extra_criteria_entities = {}
         self.create_eager_joins = []
@@ -764,8 +772,6 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             self.correlate = (None,)
 
         # PART II
-
-        self.dedupe_cols = True
 
         self._for_update_arg = query._for_update_arg
 
@@ -1036,9 +1042,8 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         # put FOR UPDATE on the inner query, where MySQL will honor it,
         # as well as if it has an OF so PostgreSQL can use it.
         inner = self._select_statement(
-            util.unique_list(self.primary_columns + order_by_col_expr)
-            if self.dedupe_cols
-            else (self.primary_columns + order_by_col_expr),
+            self.primary_columns
+            + [c for c in order_by_col_expr if c not in self.dedupe_columns],
             self.from_clauses,
             self._where_criteria,
             self._having_criteria,
@@ -1116,9 +1121,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             self.primary_columns += to_add
 
         statement = self._select_statement(
-            util.unique_list(self.primary_columns + self.secondary_columns)
-            if self.dedupe_cols
-            else (self.primary_columns + self.secondary_columns),
+            self.primary_columns + self.secondary_columns,
             tuple(self.from_clauses) + tuple(self.eager_joins.values()),
             self._where_criteria,
             self._having_criteria,
@@ -2822,6 +2825,7 @@ class _RawColumnEntity(_ColumnEntity):
             # result due to the __eq__() method, so use deannotated
             column = column._deannotate()
 
+        compile_state.dedupe_columns.add(column)
         compile_state.primary_columns.append(column)
         self._fetch_column = column
 
@@ -2949,6 +2953,7 @@ class _ORMColumnEntity(_ColumnEntity):
         ):
             compile_state._fallback_from_clauses.append(ezero.selectable)
 
+        compile_state.dedupe_columns.add(column)
         compile_state.primary_columns.append(column)
         self._fetch_column = column
 
