@@ -145,11 +145,11 @@ class QuoteExecTest(fixtures.TablesTest):
             table1.c.MixedCase,
             table1.c.a123,
         ]
-        result = connection.execute(select(columns)).all()
+        result = connection.execute(select(*columns)).all()
         assert result == [(1, 2, 3, 4), (2, 2, 3, 4), (4, 3, 2, 1)]
 
         columns = [table2.c.d123, table2.c.u123, table2.c.MixedCase]
-        result = connection.execute(select(columns)).all()
+        result = connection.execute(select(*columns)).all()
         assert result == [(1, 2, 3), (2, 2, 3), (4, 3, 2)]
 
     def test_use_labels(self, connection):
@@ -178,13 +178,13 @@ class QuoteExecTest(fixtures.TablesTest):
             table1.c.a123,
         ]
         result = connection.execute(
-            select(columns).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            select(*columns).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         ).fetchall()
         assert result == [(1, 2, 3, 4), (2, 2, 3, 4), (4, 3, 2, 1)]
 
         columns = [table2.c.d123, table2.c.u123, table2.c.MixedCase]
         result = connection.execute(
-            select(columns).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
+            select(*columns).set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
         ).all()
         assert result == [(1, 2, 3), (2, 2, 3), (4, 3, 2)]
 
@@ -232,7 +232,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         self.assert_compile(
-            table1.select(distinct=True).alias("LaLa").select(),
+            table1.select().distinct().alias("LaLa").select(),
             "SELECT "
             '"LaLa".lowercase, '
             '"LaLa"."UPPERCASE", '
@@ -669,7 +669,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
 
         # Note that 'col1' is already quoted (literal_column)
         columns = [sql.literal_column("'col1'").label("label1")]
-        x = select(columns, from_obj=[table]).alias("alias1")
+        x = select(*columns).select_from(table).alias("alias1")
         x = x.select()
         self.assert_compile(
             x,
@@ -688,7 +688,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
 
         # Note that 'Col1' is already quoted (literal_column)
         columns = [sql.literal_column("'Col1'").label("Label1")]
-        x = select(columns, from_obj=[table]).alias("Alias1")
+        x = select(*columns).select_from(table).alias("Alias1")
         x = x.select()
         self.assert_compile(
             x,

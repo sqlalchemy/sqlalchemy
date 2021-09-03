@@ -1,9 +1,11 @@
 import os
 import re
 import shutil
+import sys
 import tempfile
 
 from sqlalchemy import testing
+from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 
@@ -152,13 +154,23 @@ class MypyPluginTest(fixtures.TestBase):
         use_plugin = True
 
         expected_errors = []
+        expected_re = re.compile(r"\s*# EXPECTED(_MYPY)?: (.+)")
+        py_ver_re = re.compile(r"^#\s*PYTHON_VERSION\s?>=\s?(\d+\.\d+)")
         with open(path) as file_:
             for num, line in enumerate(file_, 1):
+                m = py_ver_re.match(line)
+                if m:
+                    major, _, minor = m.group(1).partition(".")
+                    if sys.version_info < (int(major), int(minor)):
+                        config.skip_test(
+                            "Requires python >= %s" % (m.group(1))
+                        )
+                    continue
                 if line.startswith("# NOPLUGINS"):
                     use_plugin = False
                     continue
 
-                m = re.match(r"\s*# EXPECTED(_MYPY)?: (.+)", line)
+                m = expected_re.match(line)
                 if m:
                     is_mypy = bool(m.group(1))
                     expected_msg = m.group(2)

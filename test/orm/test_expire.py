@@ -68,7 +68,9 @@ class ExpireTest(_fixtures.FixtureTest):
         u.name = "foo"
         sess.flush()
         # change the value in the DB
-        sess.execute(users.update(users.c.id == 7, values=dict(name="jack")))
+        sess.execute(
+            users.update(values=dict(name="jack")).where(users.c.id == 7)
+        )
         sess.expire(u)
         # object isn't refreshed yet, using dict to bypass trigger
         assert u.__dict__.get("name") != "jack"
@@ -936,7 +938,7 @@ class ExpireTest(_fixtures.FixtureTest):
         sess.expire(u)
         assert "name" not in u.__dict__
 
-        sess.execute(users.update(users.c.id == 7), dict(name="jack2"))
+        sess.execute(users.update().where(users.c.id == 7), dict(name="jack2"))
         assert u.name == "jack2"
         assert u.uname == "jack2"
         assert "name" in u.__dict__
@@ -961,7 +963,7 @@ class ExpireTest(_fixtures.FixtureTest):
         assert attributes.instance_state(o).dict["isopen"] == 1
 
         sess.execute(
-            orders.update(orders.c.id == 3),
+            orders.update().where(orders.c.id == 3),
             dict(description="order 3 modified"),
         )
 

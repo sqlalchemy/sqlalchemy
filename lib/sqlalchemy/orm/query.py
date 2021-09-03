@@ -130,7 +130,9 @@ class Query(
 
     _compile_options = ORMCompileState.default_compile_options
 
-    load_options = QueryContext.default_load_options
+    load_options = QueryContext.default_load_options + {
+        "_legacy_uniquing": True
+    }
 
     _params = util.EMPTY_DICT
 

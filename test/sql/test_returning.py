@@ -189,9 +189,10 @@ class ReturningTest(fixtures.TablesTest, AssertsExecutionResults):
         )
 
         result = connection.execute(
-            table.update(table.c.persons > 4, dict(full=True)).returning(
-                table.c.id
-            )
+            table.update()
+            .values(dict(full=True))
+            .where(table.c.persons > 4)
+            .returning(table.c.id)
         )
         eq_(result.fetchall(), [(1,)])
 
@@ -291,7 +292,8 @@ class ReturningTest(fixtures.TablesTest, AssertsExecutionResults):
         )
 
         result = connection.execute(
-            table.update(table.c.persons > 2)
+            table.update()
+            .where(table.c.persons > 2)
             .values(full=True)
             .returning(table.c.id, table.c.full)
         )
@@ -369,7 +371,7 @@ class ReturningTest(fixtures.TablesTest, AssertsExecutionResults):
         )
 
         result = connection.execute(
-            table.delete(table.c.persons > 4).returning(table.c.id)
+            table.delete().where(table.c.persons > 4).returning(table.c.id)
         )
         eq_(result.fetchall(), [(1,)])
 

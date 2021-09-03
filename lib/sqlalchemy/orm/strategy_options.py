@@ -414,7 +414,7 @@ class Load(Generative, LoaderOption):
             query = session.query(Author)
             query = query.options(
                         joinedload(Author.book).options(
-                            load_only("summary", "excerpt"),
+                            load_only(Book.summary, Book.excerpt),
                             joinedload(Book.citations).options(
                                 joinedload(Citation.author)
                             )
@@ -1152,14 +1152,14 @@ def load_only(loadopt, *attrs):
     Example - given a class ``User``, load only the ``name`` and ``fullname``
     attributes::
 
-        session.query(User).options(load_only("name", "fullname"))
+        session.query(User).options(load_only(User.name, User.fullname))
 
     Example - given a relationship ``User.addresses -> Address``, specify
     subquery loading for the ``User.addresses`` collection, but on each
     ``Address`` object load only the ``email_address`` attribute::
 
         session.query(User).options(
-                subqueryload("addresses").load_only("email_address")
+                subqueryload(User.addresses).load_only(Address.email_address)
         )
 
     For a :class:`_query.Query` that has multiple entities,
@@ -1167,8 +1167,8 @@ def load_only(loadopt, *attrs):
     specifically referred to using the :class:`_orm.Load` constructor::
 
         session.query(User, Address).join(User.addresses).options(
-                    Load(User).load_only("name", "fullname"),
-                    Load(Address).load_only("email_address")
+                    Load(User).load_only(User.name, User.fullname),
+                    Load(Address).load_only(Address.email_address)
                 )
 
      .. note:: This method will still load a :class:`_schema.Column` even

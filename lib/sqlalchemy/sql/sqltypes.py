@@ -3184,8 +3184,6 @@ class NullType(TypeEngine):
 
     _isnull = True
 
-    hashable = False
-
     def literal_processor(self, dialect):
         def process(value):
             raise exc.CompileError(

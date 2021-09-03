@@ -1,0 +1,6 @@
+.. change::
+    :tags: change
+    :tickets: 6804, 6759
+
+    Add basic support for generic classes without requiring
+    ``TYPE_CHECKING``.

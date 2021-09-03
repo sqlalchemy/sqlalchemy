@@ -14,8 +14,93 @@ This document details individual issue-level changes made throughout
 
 
 .. changelog::
-    :version: 1.4.22
+    :version: 1.4.23
     :include_notes_from: unreleased_14
+
+.. changelog::
+    :version: 1.4.22
+    :released: July 21, 2021
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 6786
+
+        Fixed issue where use of the :paramref:`_sql.case.whens` parameter passing
+        a dictionary positionally and not as a keyword argument would emit a 2.0
+        deprecation warning, referring to the deprecation of passing a list
+        positionally. The dictionary format of "whens", passed positionally, is
+        still supported and was accidentally marked as deprecated.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6775
+
+        Fixed issue in new :meth:`_schema.Table.table_valued` method where the
+        resulting :class:`_sql.TableValuedColumn` construct would not respond
+        correctly to alias adaptation as is used throughout the ORM, such as for
+        eager loading, polymorphic loading, etc.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6769
+
+        Fixed issue where usage of the :meth:`_result.Result.unique` method with an
+        ORM result that included column expressions with unhashable types, such as
+        ``JSON`` or ``ARRAY`` using non-tuples would silently fall back to using
+        the ``id()`` function, rather than raising an error. This now raises an
+        error when the :meth:`_result.Result.unique` method is used in a 2.0 style
+        ORM query. Additionally, hashability is assumed to be True for result
+        values of unknown type, such as often happens when using SQL functions of
+        unknown return type; if values are truly not hashable then the ``hash()``
+        itself will raise.
+
+        For legacy ORM queries, since the legacy :class:`_orm.Query` object
+        uniquifies in all cases, the old rules remain in place, which is to use
+        ``id()`` for result values of unknown type as this legacy uniquing is
+        mostly for the purpose of uniquing ORM entities and not column values.
+
+    .. change::
+        :tags: orm, bug
+        :tickets: 6771
+
+        Fixed an issue where clearing of mappers during things like test suite
+        teardowns could cause a "dictionary changed size" warning during garbage
+        collection, due to iteration of a weak-referencing dictionary. A ``list()``
+        has been applied to prevent concurrent GC from affecting this operation.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 6770
+
+        Fixed issue where type-specific bound parameter handlers would not be
+        called upon in the case of using the :meth:`_sql.Insert.values` method with
+        the Python ``None`` value; in particular, this would be noticed when using
+        the :class:`_types.JSON` datatype as well as related PostgreSQL specific
+        types such as :class:`_postgresql.JSONB` which would fail to encode the
+        Python ``None`` value into JSON null, however the issue was generalized to
+        any bound parameter handler in conjunction with this specific method of
+        :class:`_sql.Insert`.
+
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 6740
+
+        Added some guards against ``KeyError`` in the event system to accommodate
+        the case that the interpreter is shutting down at the same time
+        :meth:`_engine.Engine.dispose` is being called, which would cause stack
+        trace warnings.
+
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6793
+
+        Fixed critical caching issue where the ORM's persistence feature using
+        INSERT..RETURNING would cache an incorrect query when mixing the "bulk
+        save" and standard "flush" forms of INSERT.
 
 .. changelog::
     :version: 1.4.21

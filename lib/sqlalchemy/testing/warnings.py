@@ -68,19 +68,14 @@ def setup_filters():
         #
         # Core SQL constructs
         #
-        r"The legacy calling style of select\(\) is deprecated and will be "
-        "removed",
         r"The FromClause.select\(\) method will no longer accept keyword "
         "arguments in version 2.0",
         r"The Join.select\(\) method will no longer accept keyword arguments "
         "in version 2.0.",
-        r"The \"whens\" argument to case\(\) is now passed",
         r"The Join.select\(\).whereclause parameter is deprecated",
         #
         # DML
         #
-        r"The (?:update|delete).whereclause parameter will be removed in "
-        "SQLAlchemy 2.0.",
         r"The (?:insert|update).values parameter will be removed in "
         "SQLAlchemy 2.0.",
         r"The update.preserve_parameter_order parameter will be removed in "

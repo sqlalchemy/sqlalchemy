@@ -3137,7 +3137,7 @@ class ReprTest(fixtures.TestBase):
             elements.BooleanClauseList._construct_raw(operators.and_),
             elements.BooleanClauseList._construct_raw(operators.or_),
             elements.Tuple(),
-            elements.Case([]),
+            elements.Case(),
             elements.Extract("foo", column("x")),
             elements.UnaryExpression(column("x")),
             elements.Grouping(column("x")),
@@ -3444,7 +3444,7 @@ class ResultMapTest(fixtures.TestBase):
         )
 
     def test_plain_exists(self):
-        expr = exists([1])
+        expr = exists(text("1"))
         eq_(type(expr.type), Boolean)
         eq_(
             [
@@ -3455,7 +3455,7 @@ class ResultMapTest(fixtures.TestBase):
         )
 
     def test_plain_exists_negate(self):
-        expr = ~exists([1])
+        expr = ~exists(text("1"))
         eq_(type(expr.type), Boolean)
         eq_(
             [
@@ -3466,7 +3466,7 @@ class ResultMapTest(fixtures.TestBase):
         )
 
     def test_plain_exists_double_negate(self):
-        expr = ~(~exists([1]))
+        expr = ~(~exists(text("1")))
         eq_(type(expr.type), Boolean)
         eq_(
             [

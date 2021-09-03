@@ -112,8 +112,18 @@ def _stored_in_collection_multi(newowner, oldowner, elements):
 
     for listen_fn in elements:
         listen_ref = weakref.ref(listen_fn)
-        key = old_listener_to_key[listen_ref]
-        dispatch_reg = _key_to_collection[key]
+        try:
+            key = old_listener_to_key[listen_ref]
+        except KeyError:
+            # can occur during interpreter shutdown.
+            # see #6740
+            continue
+
+        try:
+            dispatch_reg = _key_to_collection[key]
+        except KeyError:
+            continue
+
         if newowner in dispatch_reg:
             assert dispatch_reg[newowner] == listen_ref
         else:

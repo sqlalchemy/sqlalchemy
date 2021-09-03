@@ -605,7 +605,8 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
         t1 = table("t", column("q"))
 
         with testing.expect_deprecated(
-            r"The \"whens\" argument to case\(\) is now passed"
+            r"The \"whens\" argument to case\(\), when referring "
+            r"to a sequence of items, is now passed"
         ):
             stmt = select(t1).where(
                 case(
@@ -625,7 +626,8 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
         t1 = table("t", column("q"))
 
         with testing.expect_deprecated(
-            r"The \"whens\" argument to case\(\) is now passed"
+            r"The \"whens\" argument to case\(\), when referring "
+            "to a sequence of items, is now passed"
         ):
             stmt = select(t1).where(
                 case(
@@ -642,9 +644,56 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
             "ELSE :param_3 END != :param_4",
         )
 
+    @testing.combinations(
+        (
+            (lambda t: ({"x": "y"}, t.c.col1, None)),
+            "CASE test.col1 WHEN :param_1 THEN :param_2 END",
+        ),
+        (
+            (lambda t: ({"x": "y", "p": "q"}, t.c.col1, None)),
+            "CASE test.col1 WHEN :param_1 THEN :param_2 "
+            "WHEN :param_3 THEN :param_4 END",
+        ),
+        (
+            (lambda t: ({t.c.col1 == 7: "x"}, None, 10)),
+            "CASE WHEN (test.col1 = :col1_1) THEN :param_1 ELSE :param_2 END",
+        ),
+        (
+            (lambda t: ({t.c.col1 == 7: "x", t.c.col1 == 10: "y"}, None, 10)),
+            "CASE WHEN (test.col1 = :col1_1) THEN :param_1 "
+            "WHEN (test.col1 = :col1_2) THEN :param_2 ELSE :param_3 END",
+        ),
+        argnames="test_case, expected",
+    )
+    def test_when_kwarg(self, test_case, expected):
+        t = table("test", column("col1"))
+
+        whens, value, else_ = testing.resolve_lambda(test_case, t=t)
+
+        def _case_args(whens, value=None, else_=None):
+            kw = {}
+            if value is not None:
+                kw["value"] = value
+            if else_ is not None:
+                kw["else_"] = else_
+
+            with testing.expect_deprecated_20(
+                r'The "whens" argument to case\(\) is now passed using '
+                r"positional style only, not as a keyword argument."
+            ):
+
+                return case(whens=whens, **kw)
+
+            # note: 1.3 also does not allow this form
+            # case([whens], **kw)
+
+        self.assert_compile(
+            _case_args(whens=whens, value=value, else_=else_),
+            expected,
+        )
+
     def test_case_whens_dict_kw(self):
         t1 = table("t", column("q"))
-
         with testing.expect_deprecated(
             r"The \"whens\" argument to case\(\) is now passed"
         ):
@@ -655,7 +704,6 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
                 )
                 != "bat"
             )
-
         self.assert_compile(
             stmt,
             "SELECT t.q FROM t WHERE CASE WHEN (t.q = :q_1) THEN "
@@ -685,9 +733,10 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         s1 = table1.select().scalar_subquery()
 
-        with testing.expect_deprecated(
+        with testing.expect_deprecated_20(
             r"The \"columns\" argument to "
-            r"Select.with_only_columns\(\) is now passed"
+            r"Select.with_only_columns\(\), when referring "
+            "to a sequence of items, is now passed"
         ):
             stmt = s1.with_only_columns([s1])
         self.assert_compile(
@@ -702,9 +751,10 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
         s1 = select(table1.c.a, table2.c.b)
         self.assert_compile(s1, "SELECT t1.a, t2.b FROM t1, t2")
 
-        with testing.expect_deprecated(
+        with testing.expect_deprecated_20(
             r"The \"columns\" argument to "
-            r"Select.with_only_columns\(\) is now passed"
+            r"Select.with_only_columns\(\), when referring "
+            "to a sequence of items, is now passed"
         ):
             s2 = s1.with_only_columns([table2.c.b])
 
@@ -2755,3 +2805,84 @@ class DDLDeprecatedBindTest(fixtures.TestBase):
             c1 = const(m1, bind=testing.db)
 
             is_(c1.bind, testing.db)
+
+
+class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    @testing.fixture
+    def table_fixture(self):
+        table1 = table(
+            "mytable",
+            column("myid", Integer),
+            column("name", String),
+            column("description", String),
+        )
+
+        table2 = table(
+            "myothertable",
+            column("otherid", Integer),
+            column("othername", String),
+        )
+        return table1, table2
+
+    def test_legacy_calling_style_kw_only(self, table_fixture):
+        table1, table2 = table_fixture
+        with testing.expect_deprecated_20(
+            "The legacy calling style of select"
+        ):
+            stmt = select(
+                whereclause=table1.c.myid == table2.c.otherid
+            ).add_columns(table1.c.myid)
+
+            self.assert_compile(
+                stmt,
+                "SELECT mytable.myid FROM mytable, myothertable "
+                "WHERE mytable.myid = myothertable.otherid",
+            )
+
+    def test_legacy_calling_style_col_seq_only(self, table_fixture):
+        table1, table2 = table_fixture
+        with testing.expect_deprecated_20(
+            "The legacy calling style of select"
+        ):
+            # keep [] here
+            stmt = select([table1.c.myid]).where(
+                table1.c.myid == table2.c.otherid
+            )
+
+            self.assert_compile(
+                stmt,
+                "SELECT mytable.myid FROM mytable, myothertable "
+                "WHERE mytable.myid = myothertable.otherid",
+            )
+
+    def test_new_calling_style_thing_ok_actually_use_iter(self, table_fixture):
+        table1, table2 = table_fixture
+
+        class Thing(object):
+            def __iter__(self):
+                return iter([table1.c.name, table1.c.description])
+
+        with testing.expect_deprecated_20(
+            "The legacy calling style of select"
+        ):
+            stmt = select(Thing())
+            self.assert_compile(
+                stmt,
+                "SELECT mytable.name, mytable.description FROM mytable",
+            )
+
+    def test_kw_triggers_old_style(self, table_fixture):
+        table1, table2 = table_fixture
+        with testing.expect_deprecated_20(
+            "The legacy calling style of select"
+        ):
+            assert_raises_message(
+                exc.ArgumentError,
+                r"select\(\) construct created in legacy mode, "
+                "i.e. with keyword arguments",
+                select,
+                table1.c.myid,
+                whereclause=table1.c.myid == table2.c.otherid,
+            )

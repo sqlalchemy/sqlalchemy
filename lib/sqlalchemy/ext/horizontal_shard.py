@@ -211,9 +211,11 @@ def execute_and_instances(orm_context):
         load_options = active_options = orm_context.load_options
         update_options = None
 
-    else:
+    elif orm_context.is_update or orm_context.is_delete:
         load_options = None
         update_options = active_options = orm_context.update_delete_options
+    else:
+        load_options = update_options = active_options = None
 
     session = orm_context.session
 
@@ -226,7 +228,7 @@ def execute_and_instances(orm_context):
         if orm_context.is_select:
             load_options += {"_refresh_identity_token": shard_id}
             execution_options["_sa_orm_load_options"] = load_options
-        else:
+        elif orm_context.is_update or orm_context.is_delete:
             update_options += {"_refresh_identity_token": shard_id}
             execution_options["_sa_orm_update_options"] = update_options
 
@@ -234,7 +236,7 @@ def execute_and_instances(orm_context):
             bind_arguments=bind_arguments, execution_options=execution_options
         )
 
-    if active_options._refresh_identity_token is not None:
+    if active_options and active_options._refresh_identity_token is not None:
         shard_id = active_options._refresh_identity_token
     elif "_sa_shard_id" in orm_context.execution_options:
         shard_id = orm_context.execution_options["_sa_shard_id"]

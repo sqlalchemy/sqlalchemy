@@ -2636,7 +2636,7 @@ class BinaryTest(fixtures.TablesTest, AssertsExecutionResults):
         )
 
         for stmt in (
-            binary_table.select(order_by=binary_table.c.primary_id),
+            binary_table.select().order_by(binary_table.c.primary_id),
             text(
                 "select * from binary_table order by binary_table.primary_id",
             ).columns(

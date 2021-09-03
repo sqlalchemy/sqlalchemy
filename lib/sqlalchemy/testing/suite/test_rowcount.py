@@ -69,7 +69,8 @@ class RowCountTest(fixtures.TablesTest):
         # WHERE matches 3, 3 rows changed
         department = employees_table.c.department
         r = connection.execute(
-            employees_table.update(department == "C"), {"department": "Z"}
+            employees_table.update().where(department == "C"),
+            {"department": "Z"},
         )
         assert r.rowcount == 3
 
@@ -80,7 +81,8 @@ class RowCountTest(fixtures.TablesTest):
         department = employees_table.c.department
 
         r = connection.execute(
-            employees_table.update(department == "C"), {"department": "C"}
+            employees_table.update().where(department == "C"),
+            {"department": "C"},
         )
         eq_(r.rowcount, 3)
 
@@ -90,7 +92,8 @@ class RowCountTest(fixtures.TablesTest):
 
         department = employees_table.c.department
         stmt = (
-            employees_table.update(department == "C")
+            employees_table.update()
+            .where(department == "C")
             .values(name=employees_table.c.department + "Z")
             .return_defaults()
         )
@@ -117,7 +120,9 @@ class RowCountTest(fixtures.TablesTest):
 
         # WHERE matches 3, 3 rows deleted
         department = employees_table.c.department
-        r = connection.execute(employees_table.delete(department == "C"))
+        r = connection.execute(
+            employees_table.delete().where(department == "C")
+        )
         eq_(r.rowcount, 3)
 
     @testing.requires.sane_multi_rowcount

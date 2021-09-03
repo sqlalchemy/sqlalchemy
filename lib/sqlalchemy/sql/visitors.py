@@ -120,6 +120,10 @@ class Traversible(util.with_metaclass(TraversibleType)):
 
     """
 
+    def __class_getitem__(cls, key):
+        # allow generic classes in py3.9+
+        return cls
+
     @util.preload_module("sqlalchemy.sql.traversals")
     def get_children(self, omit_attrs=(), **kw):
         r"""Return immediate child :class:`.visitors.Traversible`

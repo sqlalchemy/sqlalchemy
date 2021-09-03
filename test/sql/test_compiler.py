@@ -3589,6 +3589,22 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             s,
         )
 
+    def test_unique_binds_no_clone_collision(self):
+        """test #6824"""
+        bp = bindparam("foo", unique=True)
+
+        bpc1 = bp._clone(maintain_key=True)
+        bpc2 = bp._clone(maintain_key=True)
+
+        stmt1 = select(bp, bpc1, bpc2)
+
+        # OK, still strange that the double-dedupe logic is still *duping*
+        # the label name, but that's a different issue
+        self.assert_compile(
+            stmt1,
+            "SELECT :foo_1 AS anon_1, :foo_1 AS anon__1, :foo_1 AS anon__1",
+        )
+
     def _test_binds_no_hash_collision(self):
         """test that construct_params doesn't corrupt dict
         due to hash collisions"""

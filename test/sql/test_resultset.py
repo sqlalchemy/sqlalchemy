@@ -152,9 +152,7 @@ class CursorResultTest(fixtures.TablesTest):
             .where(users.c.user_name == "jack")
             .scalar_subquery()
         )
-        for row in connection.execute(
-            select([sel + 1, sel + 3], bind=users.bind)
-        ):
+        for row in connection.execute(select(sel + 1, sel + 3)):
             eq_(row._mapping["anon_1"], 8)
             eq_(row._mapping["anon_2"], 10)
 
@@ -2072,7 +2070,7 @@ class KeyTargetingTest(fixtures.TablesTest):
 
     def _adapt_result_columns_fixture_five(self):
         users, teams = self.tables("users", "teams")
-        return select([users.c.id, teams.c.id]).select_from(
+        return select(users.c.id, teams.c.id).select_from(
             users.outerjoin(teams)
         )
 

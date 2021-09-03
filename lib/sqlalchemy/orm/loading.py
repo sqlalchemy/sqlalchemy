@@ -92,17 +92,43 @@ def instances(cursor, context):
             "Can't use the ORM yield_per feature in conjunction with unique()"
         )
 
-    row_metadata = SimpleResultMetaData(
-        labels,
-        extra,
-        _unique_filters=[
+    def _not_hashable(datatype):
+        def go(obj):
+            raise sa_exc.InvalidRequestError(
+                "Can't apply uniqueness to row tuple containing value of "
+                "type %r; this datatype produces non-hashable values"
+                % datatype
+            )
+
+        return go
+
+    if context.load_options._legacy_uniquing:
+        unique_filters = [
             _no_unique
             if context.yield_per
+            else id
+            if (
+                ent.use_id_for_hash
+                or ent._non_hashable_value
+                or ent._null_column_type
+            )
+            else None
+            for ent in context.compile_state._entities
+        ]
+    else:
+        unique_filters = [
+            _no_unique
+            if context.yield_per
+            else _not_hashable(ent.column.type)
+            if (not ent.use_id_for_hash and ent._non_hashable_value)
             else id
             if ent.use_id_for_hash
             else None
             for ent in context.compile_state._entities
-        ],
+        ]
+
+    row_metadata = SimpleResultMetaData(
+        labels, extra, _unique_filters=unique_filters
     )
 
     def chunks(size):

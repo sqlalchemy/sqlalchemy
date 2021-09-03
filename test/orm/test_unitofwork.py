@@ -1530,7 +1530,9 @@ class OneToManyTest(_fixtures.FixtureTest):
         eq_(list(user_rows[0]), [u.id, "one2manytester"])
 
         address_rows = conn.execute(
-            addresses.select(order_by=[addresses.c.email_address]).where(
+            addresses.select()
+            .order_by(addresses.c.email_address)
+            .where(
                 addresses.c.id.in_([a.id, a2.id]),
             )
         ).fetchall()

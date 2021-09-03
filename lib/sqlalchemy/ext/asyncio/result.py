@@ -29,6 +29,15 @@ class AsyncResult(AsyncCommon):
     :meth:`_asyncio.AsyncConnection.stream` and
     :meth:`_asyncio.AsyncSession.stream` methods.
 
+    .. note:: As is the case with :class:`_engine.Result`, this object is
+       used for ORM results returned by :meth:`_asyncio.AsyncSession.execute`,
+       which can yield instances of ORM mapped objects either individually or
+       within tuple-like rows.  Note that these result objects do not
+       deduplicate instances or rows automatically as is the case with the
+       legacy :class:`_orm.Query` object. For in-Python de-duplication of
+       instances or rows, use the :meth:`_asyncio.AsyncResult.unique` modifier
+       method.
+
     .. versionadded:: 1.4
 
     """

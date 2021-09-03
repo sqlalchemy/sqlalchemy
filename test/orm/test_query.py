@@ -79,6 +79,8 @@ from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
+from sqlalchemy.types import NullType
+from sqlalchemy.types import TypeDecorator
 from sqlalchemy.util import collections_abc
 from test.orm import _fixtures
 
@@ -526,10 +528,7 @@ class RowTupleTest(QueryTest):
 
         eq_(q.column_descriptions, asserted)
 
-    def test_unhashable_type(self):
-        from sqlalchemy.types import TypeDecorator, Integer
-        from sqlalchemy.sql import type_coerce
-
+    def test_unhashable_type_legacy(self):
         class MyType(TypeDecorator):
             impl = Integer
             hashable = False
@@ -539,15 +538,154 @@ class RowTupleTest(QueryTest):
                 return [value]
 
         User, users = self.classes.User, self.tables.users
-
-        mapper(User, users)
+        Address, addresses = self.classes.Address, self.tables.addresses
+        mapper(User, users, properties={"addresses": relationship(Address)})
+        mapper(Address, addresses)
 
         s = fixture_session()
-        q = s.query(User, type_coerce(users.c.id, MyType).label("foo")).filter(
-            User.id == 7
+        q = (
+            s.query(User, type_coerce(users.c.id, MyType).label("foo"))
+            .filter(User.id.in_([7, 8]))
+            .join(User.addresses)
+            .order_by(User.id)
         )
-        row = q.first()
-        eq_(row, (User(id=7), [7]))
+
+        result = q.all()
+
+        # uniquing basically does not occur because we can't hash on
+        # MyType
+        eq_(
+            result,
+            [
+                (User(id=7), [7]),
+                (User(id=8), [8]),
+                (User(id=8), [8]),
+                (User(id=8), [8]),
+            ],
+        )
+
+    def test_unhashable_type_future(self):
+        class MyType(TypeDecorator):
+            impl = Integer
+            hashable = False
+            cache_ok = True
+
+            def process_result_value(self, value, dialect):
+                return [value]
+
+        User, users = self.classes.User, self.tables.users
+        Address, addresses = self.classes.Address, self.tables.addresses
+        mapper(User, users, properties={"addresses": relationship(Address)})
+        mapper(Address, addresses)
+
+        s = fixture_session()
+
+        stmt = (
+            select(User, type_coerce(users.c.id, MyType).label("foo"))
+            .filter(User.id.in_([7, 8]))
+            .join(User.addresses)
+            .order_by(User.id)
+        )
+
+        result = s.execute(stmt).unique()
+
+        with expect_raises_message(
+            sa_exc.InvalidRequestError,
+            r"Can't apply uniqueness to row tuple "
+            r"containing value of type MyType\(\)",
+        ):
+            result.all()
+
+    def test_unknown_type_assume_not_hashable_legacy(self):
+        User, users = self.classes.User, self.tables.users
+
+        User, users = self.classes.User, self.tables.users
+        Address, addresses = self.classes.Address, self.tables.addresses
+        mapper(User, users, properties={"addresses": relationship(Address)})
+        mapper(Address, addresses)
+
+        s = fixture_session()
+
+        q = (
+            s.query(
+                User, type_coerce("Some Unique String", NullType).label("foo")
+            )
+            .filter(User.id.in_([7, 8]))
+            .join(User.addresses)
+            .order_by(User.id)
+        )
+
+        result = q.all()
+
+        eq_(
+            result,
+            [
+                (User(id=7, name="jack"), "Some Unique String"),
+                (User(id=8, name="ed"), "Some Unique String"),
+                (User(id=8, name="ed"), "Some Unique String"),
+                (User(id=8, name="ed"), "Some Unique String"),
+            ],
+        )
+
+    def test_unknown_type_assume_hashable_future(self):
+        User, users = self.classes.User, self.tables.users
+
+        User, users = self.classes.User, self.tables.users
+        Address, addresses = self.classes.Address, self.tables.addresses
+        mapper(User, users, properties={"addresses": relationship(Address)})
+        mapper(Address, addresses)
+
+        s = fixture_session()
+
+        # TODO: it's also unusual I need a label() for type_coerce
+        stmt = (
+            select(
+                User, type_coerce("Some Unique String", NullType).label("foo")
+            )
+            .filter(User.id.in_([7, 8]))
+            .join(User.addresses)
+            .order_by(User.id)
+        )
+
+        result = s.execute(stmt).unique()
+
+        eq_(
+            result.all(),
+            [
+                (User(id=7, name="jack"), "Some Unique String"),
+                (User(id=8, name="ed"), "Some Unique String"),
+            ],
+        )
+
+    def test_unknown_type_truly_not_hashable_future(self):
+        User, users = self.classes.User, self.tables.users
+
+        User, users = self.classes.User, self.tables.users
+        Address, addresses = self.classes.Address, self.tables.addresses
+        mapper(User, users, properties={"addresses": relationship(Address)})
+        mapper(Address, addresses)
+
+        class MyType(TypeDecorator):
+            impl = Integer
+            hashable = True  # which is wrong
+            cache_ok = True
+
+            def process_result_value(self, value, dialect):
+                return [value]
+
+        s = fixture_session()
+
+        stmt = (
+            select(User, type_coerce(User.id, MyType).label("foo"))
+            .filter(User.id.in_([7, 8]))
+            .join(User.addresses)
+            .order_by(User.id)
+        )
+
+        result = s.execute(stmt).unique()
+
+        with expect_raises_message(TypeError, "unhashable type"):
+            result.all()
 
 
 class RowLabelingTest(QueryTest):
@@ -7290,7 +7428,7 @@ class SessionBindTest(QueryTest):
         User = self.classes.User
         session = fixture_session()
         with self._assert_bind_args(session, expect_mapped_bind=True):
-            session.query(case([(User.name == "x", "C")], else_="W")).all()
+            session.query(case((User.name == "x", "C"), else_="W")).all()
 
     def test_cast(self):
         User = self.classes.User

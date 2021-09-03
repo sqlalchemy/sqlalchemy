@@ -15,6 +15,7 @@ from sqlalchemy import sql
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
+from sqlalchemy import text
 from sqlalchemy import update
 from sqlalchemy import util
 from sqlalchemy.ext.horizontal_shard import ShardedSession
@@ -27,6 +28,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import SingletonThreadPool
 from sqlalchemy.sql import operators
+from sqlalchemy.sql import Select
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -120,7 +122,7 @@ class ShardTest(object):
                             for value in binary.right.value:
                                 ids.append(shard_lookup[value])
 
-            if query.whereclause is not None:
+            if isinstance(query, Select) and query.whereclause is not None:
                 FindContinent().traverse(query.whereclause)
             if len(ids) == 0:
                 return ["north_america", "asia", "europe", "south_america"]
@@ -676,6 +678,35 @@ class DistinctEngineShardTest(ShardTest, fixtures.TestBase):
         testing_reaper.checkin_all()
         for i in range(1, 5):
             os.remove("shard%d_%s.db" % (i, provision.FOLLOWER_IDENT))
+
+    @testing.combinations((True,), (False,))
+    @testing.uses_deprecated("Using plain strings")
+    def test_plain_core_textual_lookup_w_shard(self, use_legacy_text):
+        sess = self._fixture_data()
+
+        if use_legacy_text:
+            stmt = "SELECT * FROM weather_locations"
+        else:
+            stmt = text("SELECT * FROM weather_locations")
+
+        eq_(
+            sess.execute(stmt, shard_id="asia").fetchall(),
+            [(1, "Asia", "Tokyo")],
+        )
+
+    @testing.combinations((True,), (False,))
+    @testing.uses_deprecated("Using plain strings")
+    def test_plain_core_textual_lookup(self, use_legacy_text):
+        sess = self._fixture_data()
+
+        if use_legacy_text:
+            stmt = "SELECT * FROM weather_locations WHERE id=1"
+        else:
+            stmt = text("SELECT * FROM weather_locations WHERE id=1")
+        eq_(
+            sess.execute(stmt).fetchall(),
+            [(1, "Asia", "Tokyo")],
+        )
 
 
 class AttachedFileShardTest(ShardTest, fixtures.TestBase):

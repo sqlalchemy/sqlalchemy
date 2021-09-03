@@ -534,6 +534,9 @@ class CoreFixtures(object):
         ),
         lambda: (
             table_a.insert(),
+            table_a.insert().return_defaults(),
+            table_a.insert().return_defaults(table_a.c.a),
+            table_a.insert().return_defaults(table_a.c.b),
             table_a.insert().values({})._annotate({"nocache": True}),
             table_b.insert(),
             table_b.insert().with_dialect_options(sqlite_foo="some value"),
@@ -570,6 +573,9 @@ class CoreFixtures(object):
         ),
         lambda: (
             table_b.update(),
+            table_b.update().return_defaults(),
+            table_b.update().return_defaults(table_b.c.a),
+            table_b.update().return_defaults(table_b.c.b),
             table_b.update().where(table_b.c.a == 5),
             table_b.update().where(table_b.c.b == 5),
             table_b.update()
