@@ -1106,6 +1106,11 @@ class LoaderCriteriaOption(CriteriaOption):
         else:
             return self.where_criteria
 
+    def process_compile_state_replaced_entities(
+        self, compile_state, mapper_entities
+    ):
+        return self.process_compile_state(compile_state)
+
     def process_compile_state(self, compile_state):
         """Apply a modification to a given :class:`.CompileState`."""
 
@@ -1340,7 +1345,12 @@ def with_polymorphic(
 
 
 @inspection._self_inspects
-class Bundle(ORMColumnsClauseRole, SupportsCloneAnnotations, InspectionAttr):
+class Bundle(
+    ORMColumnsClauseRole,
+    SupportsCloneAnnotations,
+    sql_base.MemoizedHasCacheKey,
+    InspectionAttr,
+):
     """A grouping of SQL expressions that are returned by a :class:`.Query`
     under one namespace.
 
@@ -1406,6 +1416,11 @@ class Bundle(ORMColumnsClauseRole, SupportsCloneAnnotations, InspectionAttr):
             for col in [e._annotations.get("bundle", e) for e in exprs]
         )
         self.single_entity = kw.pop("single_entity", self.single_entity)
+
+    def _gen_cache_key(self, anon_map, bindparams):
+        return (self.__class__, self.name, self.single_entity) + tuple(
+            [expr._gen_cache_key(anon_map, bindparams) for expr in self.exprs]
+        )
 
     @property
     def mapper(self):

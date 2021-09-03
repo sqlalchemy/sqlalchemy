@@ -43,6 +43,7 @@ from .. import util
 from ..sql import util as sql_util
 from ..sql import visitors
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
+from ..sql.selectable import Select
 
 
 def _register_attribute(
@@ -631,7 +632,6 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         "_simple_lazy_clause",
         "_raise_always",
         "_raise_on_sql",
-        "_lambda_cache",
     )
 
     def __init__(self, parent, strategy_key):
@@ -913,13 +913,6 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             for pk in self.mapper.primary_key
         ]
 
-    def _memoized_attr__lambda_cache(self):
-        # cache is per lazy loader, and is used for caching of
-        # sqlalchemy.sql.lambdas.AnalyzedCode and
-        # sqlalchemy.sql.lambdas.AnalyzedFunction objects which are generated
-        # from the StatementLambda used.
-        return util.LRUCache(30)
-
     @util.preload_module("sqlalchemy.orm.strategy_options")
     def _emit_lazyload(
         self,
@@ -932,18 +925,13 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
     ):
         strategy_options = util.preloaded.orm_strategy_options
 
-        stmt = sql.lambda_stmt(
-            lambda: sql.select(self.entity)
-            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
-            ._set_compile_options(ORMCompileState.default_compile_options),
-            global_track_bound_values=False,
-            lambda_cache=self._lambda_cache,
-            track_on=(self,),
+        clauseelement = self.entity.__clause_element__()
+        stmt = Select._create_raw_select(
+            _raw_columns=[clauseelement],
+            _propagate_attrs=clauseelement._propagate_attrs,
+            _label_style=LABEL_STYLE_TABLENAME_PLUS_COL,
+            _compile_options=ORMCompileState.default_compile_options,
         )
-
-        if not self.parent_property.bake_queries:
-            stmt = stmt.spoil()
-
         load_options = QueryContext.default_load_options
 
         load_options += {
@@ -952,18 +940,15 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         }
 
         if self.parent_property.secondary is not None:
-            stmt = stmt.add_criteria(
-                lambda stmt: stmt.select_from(
-                    self.mapper, self.parent_property.secondary
-                ),
-                track_on=[self.parent_property],
+            stmt = stmt.select_from(
+                self.mapper, self.parent_property.secondary
             )
 
         pending = not state.key
 
         # don't autoflush on pending
         if pending or passive & attributes.NO_AUTOFLUSH:
-            stmt += lambda stmt: stmt.execution_options(autoflush=False)
+            stmt._execution_options = util.immutabledict({"autoflush": False})
 
         use_get = self.use_get
 
@@ -978,15 +963,13 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                     orm_util.LoaderCriteriaOption(self.entity, extra_criteria),
                 )
 
-            stmt += lambda stmt: stmt.options(*opts)
+            stmt._with_options = opts
         else:
             # this path is used if there are not already any options
             # in the query, but an event may want to add them
             effective_path = state.mapper._path_registry[self.parent_property]
 
-        stmt += lambda stmt: stmt._update_compile_options(
-            {"_current_path": effective_path}
-        )
+        stmt._compile_options += {"_current_path": effective_path}
 
         if use_get:
             if self._raise_on_sql and not passive & attributes.NO_RAISE:
@@ -997,9 +980,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             )
 
         if self._order_by:
-            stmt = stmt.add_criteria(
-                lambda stmt: stmt.order_by(*self._order_by), track_on=[self]
-            )
+            stmt._order_by_clauses = self._order_by
 
         def _lazyload_reverse(compile_context):
             for rev in self.parent_property._reverse_property:
@@ -1016,11 +997,8 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                         ]
                     ).lazyload(rev).process_compile_state(compile_context)
 
-        stmt = stmt.add_criteria(
-            lambda stmt: stmt._add_context_option(
-                _lazyload_reverse, self.parent_property
-            ),
-            track_on=[self],
+        stmt._with_context_options += (
+            (_lazyload_reverse, self.parent_property),
         )
 
         lazy_clause, params = self._generate_lazy_clause(state, passive)
@@ -1045,9 +1023,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         if self._raise_on_sql and not passive & attributes.NO_RAISE:
             self._invoke_raise_load(state, passive, "raise_on_sql")
 
-        stmt = stmt.add_criteria(
-            lambda stmt: stmt.where(lazy_clause), enable_tracking=False
-        )
+        stmt._where_criteria = (lazy_clause,)
 
         result = session.execute(
             stmt, params, execution_options=execution_options
@@ -1535,11 +1511,19 @@ class SubqueryLoader(PostLoader):
         effective_entity,
         loadopt,
     ):
-        opts = orig_query._with_options
+
+        # note that because the subqueryload object
+        # does not re-use the cached query, instead always making
+        # use of the current invoked query, while we have two queries
+        # here (orig and context.query), they are both non-cached
+        # queries and we can transfer the options as is without
+        # adjusting for new criteria.   Some work on #6881 / #6889
+        # brought this into question.
+        new_options = orig_query._with_options
 
         if loadopt and loadopt._extra_criteria:
 
-            opts += (
+            new_options += (
                 orm_util.LoaderCriteriaOption(
                     self.entity,
                     loadopt._generate_extra_criteria(context),
@@ -1549,7 +1533,7 @@ class SubqueryLoader(PostLoader):
         # propagate loader options etc. to the new query.
         # these will fire relative to subq_path.
         q = q._with_current_path(rewritten_path)
-        q = q.options(*opts)
+        q = q.options(*new_options)
 
         return q
 
@@ -2634,7 +2618,6 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         "_parent_alias",
         "_query_info",
         "_fallback_query_info",
-        "_lambda_cache",
     )
 
     query_info = collections.namedtuple(
@@ -2737,13 +2720,6 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         self.parent_property._get_strategy(
             (("lazy", "select"),)
         ).init_class_attribute(mapper)
-
-    def _memoized_attr__lambda_cache(self):
-        # cache is per lazy loader, and is used for caching of
-        # sqlalchemy.sql.lambdas.AnalyzedCode and
-        # sqlalchemy.sql.lambdas.AnalyzedFunction objects which are generated
-        # from the StatementLambda used.
-        return util.LRUCache(30)
 
     def create_row_processor(
         self,
@@ -2879,25 +2855,19 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                 ]
                 in_expr = effective_entity._adapt_element(in_expr)
 
-        q = sql.lambda_stmt(
-            lambda: sql.select(
-                orm_util.Bundle("pk", *pk_cols), effective_entity
-            )
-            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
-            ._set_compile_options(ORMCompileState.default_compile_options)
-            ._set_propagate_attrs(
-                {
-                    "compile_state_plugin": "orm",
-                    "plugin_subject": effective_entity,
-                }
-            ),
-            lambda_cache=self._lambda_cache,
-            global_track_bound_values=False,
-            track_on=(self, effective_entity) + (tuple(pk_cols),),
-        )
+        bundle_ent = orm_util.Bundle("pk", *pk_cols)
+        bundle_sql = bundle_ent.__clause_element__()
 
-        if not self.parent_property.bake_queries:
-            q = q.spoil()
+        entity_sql = effective_entity.__clause_element__()
+        q = Select._create_raw_select(
+            _raw_columns=[bundle_sql, entity_sql],
+            _label_style=LABEL_STYLE_TABLENAME_PLUS_COL,
+            _compile_options=ORMCompileState.default_compile_options,
+            _propagate_attrs={
+                "compile_state_plugin": "orm",
+                "plugin_subject": effective_entity,
+            },
+        )
 
         if not query_info.load_with_join:
             # the Bundle we have in the "omit_join" case is against raw, non
@@ -2905,23 +2875,19 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
             # entity, we add it explicitly.  If we made the Bundle against
             # annotated columns, we hit a performance issue in this specific
             # case, which is detailed in issue #4347.
-            q = q.add_criteria(lambda q: q.select_from(effective_entity))
+            q = q.select_from(effective_entity)
         else:
             # in the non-omit_join case, the Bundle is against the annotated/
             # mapped column of the parent entity, but the #4347 issue does not
             # occur in this case.
-            q = q.add_criteria(
-                lambda q: q.select_from(self._parent_alias).join(
-                    getattr(
-                        self._parent_alias, self.parent_property.key
-                    ).of_type(effective_entity)
-                ),
-                track_on=[self],
+            q = q.select_from(self._parent_alias).join(
+                getattr(self._parent_alias, self.parent_property.key).of_type(
+                    effective_entity
+                )
             )
 
-        q = q.add_criteria(
-            lambda q: q.filter(in_expr.in_(sql.bindparam("primary_keys")))
-        )
+        q = q.filter(in_expr.in_(sql.bindparam("primary_keys")))
+
         # a test which exercises what these comments talk about is
         # test_selectin_relations.py -> test_twolevel_selectin_w_polymorphic
         #
@@ -2958,26 +2924,50 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
 
         effective_path = path[self.parent_property]
 
-        options = orig_query._with_options
+        if orig_query is context.query:
+            options = new_options = orig_query._with_options
+            user_defined_options = []
+        else:
+            options = orig_query._with_options
+
+            # propagate compile state options from the original query,
+            # updating their "extra_criteria" as necessary.
+            # note this will create a different cache key than
+            # "orig" options if extra_criteria is present, because the copy
+            # of extra_criteria will have different boundparam than that of
+            # the QueryableAttribute in the path
+
+            new_options = [
+                orig_opt._adjust_for_extra_criteria(context)
+                if orig_opt._is_strategy_option
+                else orig_opt
+                for orig_opt in options
+                if orig_opt._is_compile_state or orig_opt._is_legacy_option
+            ]
+
+            # propagate user defined options from the current query
+            user_defined_options = [
+                opt
+                for opt in context.query._with_options
+                if not opt._is_compile_state and not opt._is_legacy_option
+            ]
 
         if loadopt and loadopt._extra_criteria:
-            options += (
+            new_options += (
                 orm_util.LoaderCriteriaOption(
                     effective_entity,
                     loadopt._generate_extra_criteria(context),
                 ),
             )
 
-        q = q.add_criteria(
-            lambda q: q.options(*options)._update_compile_options(
-                {"_current_path": effective_path}
-            )
+        q = q.options(*new_options)._update_compile_options(
+            {"_current_path": effective_path}
         )
+        if user_defined_options:
+            q = q.options(*user_defined_options)
 
         if context.populate_existing:
-            q = q.add_criteria(
-                lambda q: q.execution_options(populate_existing=True)
-            )
+            q = q.execution_options(populate_existing=True)
 
         if self.parent_property.order_by:
             if not query_info.load_with_join:
@@ -2987,7 +2977,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                         effective_entity._adapt_element(elem)
                         for elem in eager_order_by
                     ]
-                q = q.add_criteria(lambda q: q.order_by(*eager_order_by))
+                q = q.order_by(*eager_order_by)
             else:
 
                 def _setup_outermost_orderby(compile_context):
@@ -2995,11 +2985,8 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
                         util.to_list(self.parent_property.order_by)
                     )
 
-                q = q.add_criteria(
-                    lambda q: q._add_context_option(
-                        _setup_outermost_orderby, self.parent_property
-                    ),
-                    track_on=[self],
+                q = q._add_context_option(
+                    _setup_outermost_orderby, self.parent_property
                 )
 
         if query_info.load_only_child:

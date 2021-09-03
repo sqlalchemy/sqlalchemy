@@ -565,17 +565,17 @@ Information about mapped attributes, such as relationships to other classes, are
 via the ``properties`` dictionary.  The example below illustrates a second :class:`_schema.Table`
 object, mapped to a class called ``Address``, then linked to ``User`` via :func:`_orm.relationship`::
 
-    address = Table('address', metadata,
+    address = Table('address', metadata_obj,
                 Column('id', Integer, primary_key=True),
                 Column('user_id', Integer, ForeignKey('user.id')),
                 Column('email_address', String(50))
                 )
 
-    mapper(User, user, properties={
+    mapper_registry.map_imperatively(User, user, properties={
         'addresses' : relationship(Address, backref='user', order_by=address.c.id)
     })
 
-    mapper(Address, address)
+    mapper_registry.map_imperatively(Address, address)
 
 When using classical mappings, classes must be provided directly without the benefit
 of the "string lookup" system provided by Declarative.  SQL expressions are typically
@@ -639,11 +639,11 @@ on the class itself as declarative class variables::
         user_id: int = field(init=False)
         email_address: str = None
 
-    metadata = MetaData()
+    metadata_obj = MetaData()
 
     user = Table(
         'user',
-        metadata,
+        metadata_obj,
         Column('id', Integer, primary_key=True),
         Column('name', String(50)),
         Column('fullname', String(50)),
@@ -652,7 +652,7 @@ on the class itself as declarative class variables::
 
     address = Table(
         'address',
-        metadata,
+        metadata_obj,
         Column('id', Integer, primary_key=True),
         Column('user_id', Integer, ForeignKey('user.id')),
         Column('email_address', String(50)),

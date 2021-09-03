@@ -1,5 +1,4 @@
 import random
-import types
 
 from sqlalchemy import func
 from sqlalchemy import inspect
@@ -9,12 +8,14 @@ from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import true
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm import Bundle
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import join as orm_join
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import Load
+from sqlalchemy.orm import load_only
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import Query
 from sqlalchemy.orm import relationship
@@ -29,7 +30,6 @@ from sqlalchemy.sql.expression import case
 from sqlalchemy.sql.visitors import InternalTraversal
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
-from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
@@ -76,6 +76,33 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                 User.addresses,
                 Address.email_address,
                 aliased(User).addresses,
+            ),
+            compare_values=True,
+        )
+
+    def test_bundles_in_annotations(self):
+        User = self.classes.User
+
+        self._run_cache_key_fixture(
+            lambda: (
+                Bundle("mybundle", User.id).__clause_element__(),
+                Bundle("myotherbundle", User.id).__clause_element__(),
+                Bundle("mybundle", User.name).__clause_element__(),
+                Bundle("mybundle", User.id, User.name).__clause_element__(),
+            ),
+            compare_values=True,
+        )
+
+    def test_bundles_directly(self):
+        User = self.classes.User
+
+        self._run_cache_key_fixture(
+            lambda: (
+                Bundle("mybundle", User.id),
+                Bundle("mybundle", User.id).__clause_element__(),
+                Bundle("myotherbundle", User.id),
+                Bundle("mybundle", User.name),
+                Bundle("mybundle", User.id, User.name),
             ),
             compare_values=True,
         )
@@ -186,6 +213,28 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                 .defer(Item.description),
                 defaultload(User.orders).defaultload(Order.items),
                 defaultload(User.orders),
+            ),
+            compare_values=True,
+        )
+
+    def test_unbound_sub_options(self):
+        """test #6869"""
+
+        User, Address, Keyword, Order, Item = self.classes(
+            "User", "Address", "Keyword", "Order", "Item"
+        )
+
+        self._run_cache_key_fixture(
+            lambda: (
+                joinedload(User.addresses).options(
+                    joinedload(Address.dingaling)
+                ),
+                joinedload(User.addresses).options(
+                    joinedload(Address.dingaling).options(load_only("name"))
+                ),
+                joinedload(User.orders).options(
+                    joinedload(Order.items).options(joinedload(Item.keywords))
+                ),
             ),
             compare_values=True,
         )
@@ -796,18 +845,17 @@ class RoundTripTest(QueryTest, AssertsCompiledSQL):
             go()
 
     @testing.combinations(
-        (lazyload, 2, 6),
-        (joinedload, 1, 0),
-        (selectinload, 2, 5),
-        (subqueryload, 2, 0),
-        argnames="strat,expected_stmt_cache,expected_lambda_cache",
+        (lazyload, 2),
+        (joinedload, 1),
+        (selectinload, 2),
+        (subqueryload, 2),
+        argnames="strat,expected_stmt_cache",
     )
     def test_cache_key_loader_strategies(
         self,
         plain_fixture,
         strat,
         expected_stmt_cache,
-        expected_lambda_cache,
         connection,
     ):
         User, Address = plain_fixture
@@ -817,37 +865,23 @@ class RoundTripTest(QueryTest, AssertsCompiledSQL):
         connection = connection.execution_options(compiled_cache=cache)
         sess = Session(connection)
 
-        with mock.patch(
-            "sqlalchemy.orm.strategies.LazyLoader._lambda_cache", cache
-        ), mock.patch(
-            "sqlalchemy.orm.strategies.SelectInLoader._lambda_cache", cache
-        ):
+        def go():
+            stmt = (
+                select(User).where(User.id == 7).options(strat(User.addresses))
+            )
 
-            def go():
-                stmt = (
-                    select(User)
-                    .where(User.id == 7)
-                    .options(strat(User.addresses))
-                )
+            u1 = sess.execute(stmt).scalars().first()
+            eq_(u1.addresses, [Address(id=1)])
 
-                u1 = sess.execute(stmt).scalars().first()
-                eq_(u1.addresses, [Address(id=1)])
+        go()
 
+        lc = len(cache)
+
+        stmt_entries = [k for k in cache]
+
+        eq_(len(stmt_entries), expected_stmt_cache)
+
+        for i in range(3):
             go()
 
-            lc = len(cache)
-
-            stmt_entries = [
-                k for k in cache if not isinstance(k[0], types.CodeType)
-            ]
-            lambda_entries = [
-                k for k in cache if isinstance(k[0], types.CodeType)
-            ]
-
-            eq_(len(stmt_entries), expected_stmt_cache)
-            eq_(len(lambda_entries), expected_lambda_cache)
-
-            for i in range(3):
-                go()
-
-            eq_(len(cache), lc)
+        eq_(len(cache), lc)

@@ -1006,12 +1006,12 @@ joined together either with no separator or with an underscore
 separator.  Below we define a convention that will name :class:`.UniqueConstraint`
 constraints with a name that joins together the names of all columns::
 
-    metadata = MetaData(naming_convention={
+    metadata_obj = MetaData(naming_convention={
         "uq": "uq_%(table_name)s_%(column_0_N_name)s"
     })
 
     table = Table(
-        'info', metadata,
+        'info', metadata_obj,
         Column('a', Integer),
         Column('b', Integer),
         Column('c', Integer),
@@ -1037,7 +1037,7 @@ PostgreSQL where identifiers cannot be longer than 63 characters, a long
 constraint name would normally be generated from the table definition below::
 
     long_names = Table(
-        'long_names', metadata,
+        'long_names', metadata_obj,
         Column('information_channel_code', Integer, key='a'),
         Column('billing_convention_name', Integer, key='b'),
         Column('product_identifier', Integer, key='c'),
@@ -1445,7 +1445,7 @@ queries used until now.
 Given a schema such as::
 
     dv = Table(
-        'data_values', metadata,
+        'data_values', metadata_obj,
         Column('modulus', Integer, nullable=False),
         Column('data', String(30)),
         postgresql_partition_by='range(modulus)')
@@ -1542,7 +1542,7 @@ keyword added to objects like :class:`.UniqueConstraint`  as well
 as several :class:`_schema.Column` -specific variants::
 
     some_table = Table(
-        'some_table', metadata,
+        'some_table', metadata_obj,
         Column('id', Integer, primary_key=True, sqlite_on_conflict_primary_key='FAIL'),
         Column('data', Integer),
         UniqueConstraint('id', 'data', sqlite_on_conflict='IGNORE')
@@ -1678,7 +1678,7 @@ new ``mssql_identity_start`` and ``mssql_identity_increment`` parameters
 on :class:`_schema.Column`::
 
     test = Table(
-        'test', metadata,
+        'test', metadata_obj,
         Column(
             'id', Integer, primary_key=True, mssql_identity_start=100,
              mssql_identity_increment=10
@@ -1693,7 +1693,7 @@ primary key column::
 
 
     test = Table(
-        'test', metadata,
+        'test', metadata_obj,
         Column('id', Integer, primary_key=True, autoincrement=False),
         Column('number', Integer, autoincrement=True)
     )

@@ -1789,6 +1789,8 @@ class SQLCompiler(Compiled):
         if toplevel and not self.compile_state:
             self.compile_state = compile_state
 
+        compound_stmt = compile_state.statement
+
         entry = self._default_stack_entry if toplevel else self.stack[-1]
         need_result_map = toplevel or (
             not compound_index
@@ -1808,6 +1810,10 @@ class SQLCompiler(Compiled):
                 "need_result_map_for_compound": need_result_map,
             }
         )
+
+        if compound_stmt._independent_ctes:
+            for cte in compound_stmt._independent_ctes:
+                cte._compiler_dispatch(self, **kwargs)
 
         keyword = self.compound_keywords.get(cs.keyword)
 
@@ -2301,7 +2307,7 @@ class SQLCompiler(Compiled):
         else:
             post_compile = False
 
-        if not literal_execute and (literal_binds):
+        if literal_binds:
             ret = self.render_literal_bindparam(
                 bindparam, within_columns_clause=True, **kwargs
             )
@@ -3593,7 +3599,11 @@ class SQLCompiler(Compiled):
 
     def visit_join(self, join, asfrom=False, from_linter=None, **kwargs):
         if from_linter:
-            from_linter.edges.add((join.left, join.right))
+            from_linter.edges.update(
+                itertools.product(
+                    join.left._from_objects, join.right._from_objects
+                )
+            )
 
         if join.full:
             join_type = " FULL OUTER JOIN "

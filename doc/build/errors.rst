@@ -139,8 +139,8 @@ the :class:`_orm.Session` or
 
     engine = create_engine("sqlite://")
     Session = sessionmaker()
-    metadata = MetaData(bind=engine)
-    Base = declarative_base(metadata=metadata)
+    metadata_obj = MetaData(bind=engine)
+    Base = declarative_base(metadata=metadata_obj)
 
     class MyClass(Base):
         # ...
@@ -677,8 +677,8 @@ This error refers to the concept of "bound metadata", described at
 :meth:`.Executable.execute` method directly off of a Core expression object
 that is not associated with any :class:`_engine.Engine`::
 
- metadata = MetaData()
- table = Table('t', metadata, Column('q', Integer))
+ metadata_obj = MetaData()
+ table = Table('t', metadata_obj, Column('q', Integer))
 
  stmt = select(table)
  result = stmt.execute()   # <--- raises
@@ -687,7 +687,7 @@ What the logic is expecting is that the :class:`_schema.MetaData` object has
 been **bound** to a :class:`_engine.Engine`::
 
  engine = create_engine("mysql+pymysql://user:pass@host/db")
- metadata = MetaData(bind=engine)
+ metadata_obj = MetaData(bind=engine)
 
 Where above, any statement that derives from a :class:`_schema.Table` which
 in turn derives from that :class:`_schema.MetaData` will implicitly make use of
@@ -1264,6 +1264,34 @@ attempt, which is unsupported when using SQLAlchemy with AsyncIO dialects.
 
     :ref:`asyncio_orm_avoid_lazyloads` - covers most ORM scenarios where
     this problem can occur and how to mitigate.
+
+.. _error_xd3s:
+
+No Inspection Avaliable
+-----------------------
+
+Using the :func:`_sa.inspect` function directly on an
+:class:`_asyncio.AsyncConnection` or :class:`_asyncio.AsyncEngine` object is
+not currently supported, as there is not yet an awaitable form of the
+:class:`_reflection.Inspector` object available. Instead, the object
+is used by acquiring it using the
+:func:`_sa.inspect` function in such a way that it refers to the underlying
+:attr:`_asyncio.AsyncConnection.sync_connection` attribute of the
+:class:`_asyncio.AsyncConnection` object; the :class:`_engine.Inspector` is
+then used in a "synchronous" calling style by using the
+:meth:`_asyncio.AsyncConnection.run_sync` method along with a custom function
+that performs the desired operations::
+
+    async def async_main():
+        async with engine.connect() as conn:
+            tables = await conn.run_sync(
+                lambda sync_conn: inspect(sync_conn).get_table_names()
+            )
+
+.. seealso::
+
+    :ref:`asyncio_inspector` - additional examples of using :func:`_sa.inspect`
+    with the asyncio extension.
 
 
 Core Exception Classes

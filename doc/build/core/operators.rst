@@ -7,10 +7,10 @@ Operator Reference
     >>> from sqlalchemy import create_engine
     >>> engine = create_engine("sqlite+pysqlite:///:memory:", echo=True, future=True)
     >>> from sqlalchemy import MetaData, Table, Column, Integer, String
-    >>> metadata = MetaData()
+    >>> metadata_obj = MetaData()
     >>> user_table = Table(
     ...     "user_account",
-    ...     metadata,
+    ...     metadata_obj,
     ...     Column('id', Integer, primary_key=True),
     ...     Column('name', String(30)),
     ...     Column('fullname', String)
@@ -18,12 +18,12 @@ Operator Reference
     >>> from sqlalchemy import ForeignKey
     >>> address_table = Table(
     ...     "address",
-    ...     metadata,
+    ...     metadata_obj,
     ...     Column('id', Integer, primary_key=True),
     ...     Column('user_id', None, ForeignKey('user_account.id')),
     ...     Column('email_address', String, nullable=False)
     ... )
-    >>> metadata.create_all(engine)
+    >>> metadata_obj.create_all(engine)
     BEGIN (implicit)
     ...
     >>> from sqlalchemy.orm import declarative_base

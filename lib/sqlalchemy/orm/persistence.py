@@ -1833,7 +1833,7 @@ class BulkUDCompileState(CompileState):
         return (
             statement,
             util.immutabledict(execution_options).union(
-                dict(_sa_orm_update_options=update_options)
+                {"_sa_orm_update_options": update_options}
             ),
         )
 

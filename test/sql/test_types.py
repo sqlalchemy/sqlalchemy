@@ -80,6 +80,7 @@ from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_deprecated_20
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -2180,7 +2181,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             assert_raises(
                 (exc.DBAPIError,),
                 connection.exec_driver_sql,
-                "insert into my_table " "(data) values('two')",
+                "insert into my_table (data) values('two')",
             )
             trans.rollback()
 
@@ -2551,6 +2552,68 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             r"The provided enum someenum contains the aliases \['four'\]"
         ):
             Enum(self.SomeEnum)
+
+    @testing.combinations(
+        (True, "native"), (False, "non_native"), id_="ai", argnames="native"
+    )
+    @testing.combinations(
+        (True, "omit_alias"), (False, "with_alias"), id_="ai", argnames="omit"
+    )
+    @testing.provide_metadata
+    @testing.skip_if("mysql < 8")
+    def test_duplicate_values_accepted(self, native, omit):
+        foo_enum = pep435_enum("foo_enum")
+        foo_enum("one", 1, "two")
+        foo_enum("three", 3, "four")
+        tbl = sa.Table(
+            "foo_table",
+            self.metadata,
+            sa.Column("id", sa.Integer),
+            sa.Column(
+                "data",
+                sa.Enum(
+                    foo_enum,
+                    native_enum=native,
+                    omit_aliases=omit,
+                    create_constraint=True,
+                ),
+            ),
+        )
+        t = sa.table("foo_table", sa.column("id"), sa.column("data"))
+
+        self.metadata.create_all(testing.db)
+        if omit:
+            with expect_raises(
+                (
+                    exc.IntegrityError,
+                    exc.DataError,
+                    exc.OperationalError,
+                    exc.DBAPIError,
+                )
+            ):
+                with testing.db.begin() as conn:
+                    conn.execute(
+                        t.insert(),
+                        [
+                            {"id": 1, "data": "four"},
+                            {"id": 2, "data": "three"},
+                        ],
+                    )
+        else:
+            with testing.db.begin() as conn:
+                conn.execute(
+                    t.insert(),
+                    [{"id": 1, "data": "four"}, {"id": 2, "data": "three"}],
+                )
+
+                eq_(
+                    conn.execute(t.select().order_by(t.c.id)).fetchall(),
+                    [(1, "four"), (2, "three")],
+                )
+                eq_(
+                    conn.execute(tbl.select().order_by(tbl.c.id)).fetchall(),
+                    [(1, foo_enum.three), (2, foo_enum.three)],
+                )
 
 
 MyPickleType = None

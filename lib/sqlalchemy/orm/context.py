@@ -4,6 +4,8 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+import itertools
+
 from . import attributes
 from . import interfaces
 from . import loading
@@ -415,7 +417,10 @@ class ORMFromStatementCompileState(ORMCompileState):
         )
 
         _QueryEntity.to_compile_state(
-            self, statement_container._raw_columns, self._entities
+            self,
+            statement_container._raw_columns,
+            self._entities,
+            is_current_entities=True,
         )
 
         self.current_path = statement_container._compile_options._current_path
@@ -588,6 +593,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                     self,
                     memoized_entities._raw_columns,
                     [],
+                    is_current_entities=False,
                 )
                 for memoized_entities in (
                     select_statement._memoized_select_entities
@@ -595,7 +601,10 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             }
 
         _QueryEntity.to_compile_state(
-            self, select_statement._raw_columns, self._entities
+            self,
+            select_statement._raw_columns,
+            self._entities,
+            is_current_entities=True,
         )
 
         self.current_path = select_statement._compile_options._current_path
@@ -837,7 +846,9 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         # entities will also set up polymorphic adapters for mappers
         # that have with_polymorphic configured
-        _QueryEntity.to_compile_state(self, query._raw_columns, self._entities)
+        _QueryEntity.to_compile_state(
+            self, query._raw_columns, self._entities, is_current_entities=True
+        )
         return self
 
     @classmethod
@@ -871,6 +882,19 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             else:
                 for elem in _select_iterables([element]):
                     yield elem
+
+    @classmethod
+    def get_columns_clause_froms(cls, statement):
+        return cls._normalize_froms(
+            itertools.chain.from_iterable(
+                element._from_objects
+                if "parententity" not in element._annotations
+                else [
+                    element._annotations["parententity"].__clause_element__()
+                ]
+                for element in statement._raw_columns
+            )
+        )
 
     @classmethod
     @util.preload_module("sqlalchemy.orm.query")
@@ -1135,11 +1159,11 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
     ):
 
         Select = future.Select
-        statement = Select.__new__(Select)
-        statement._raw_columns = raw_columns
-        statement._from_obj = from_obj
-
-        statement._label_style = label_style
+        statement = Select._create_raw_select(
+            _raw_columns=raw_columns,
+            _from_obj=from_obj,
+            _label_style=label_style,
+        )
 
         if where_criteria:
             statement._where_criteria = where_criteria
@@ -2263,13 +2287,18 @@ class _QueryEntity(object):
     use_id_for_hash = False
 
     @classmethod
-    def to_compile_state(cls, compile_state, entities, entities_collection):
+    def to_compile_state(
+        cls, compile_state, entities, entities_collection, is_current_entities
+    ):
 
         for idx, entity in enumerate(entities):
             if entity._is_lambda_element:
                 if entity._is_sequence:
                     cls.to_compile_state(
-                        compile_state, entity._resolved, entities_collection
+                        compile_state,
+                        entity._resolved,
+                        entities_collection,
+                        is_current_entities,
                     )
                     continue
                 else:
@@ -2279,7 +2308,10 @@ class _QueryEntity(object):
                 if entity.is_selectable:
                     if "parententity" in entity._annotations:
                         _MapperEntity(
-                            compile_state, entity, entities_collection
+                            compile_state,
+                            entity,
+                            entities_collection,
+                            is_current_entities,
                         )
                     else:
                         _ColumnEntity._for_columns(
@@ -2328,12 +2360,15 @@ class _MapperEntity(_QueryEntity):
         "_polymorphic_discriminator",
     )
 
-    def __init__(self, compile_state, entity, entities_collection):
+    def __init__(
+        self, compile_state, entity, entities_collection, is_current_entities
+    ):
         entities_collection.append(self)
-        if compile_state._primary_entity is None:
-            compile_state._primary_entity = self
-        compile_state._has_mapper_entities = True
-        compile_state._has_orm_entities = True
+        if is_current_entities:
+            if compile_state._primary_entity is None:
+                compile_state._primary_entity = self
+            compile_state._has_mapper_entities = True
+            compile_state._has_orm_entities = True
 
         entity = entity._annotations["parententity"]
         entity._post_inspect

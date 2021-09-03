@@ -6078,6 +6078,7 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
 
     def test_lazyload_plus_joined_aliased_abs_bcs(self):
         A, B, C = self.classes("A", "B", "C")
+
         s = fixture_session()
         aa = aliased(A)
         q = (

@@ -5,6 +5,7 @@ from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import event
 from sqlalchemy import ForeignKey
+from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import orm
 from sqlalchemy import select
@@ -25,6 +26,7 @@ from sqlalchemy.orm import with_loader_criteria
 from sqlalchemy.orm.decl_api import declared_attr
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
 
 
@@ -69,6 +71,32 @@ class _Fixtures(_fixtures.FixtureTest):
         mapper(Item, items)
 
         return Order, Item
+
+    @testing.fixture
+    def user_order_item_fixture(self):
+        User, Order, Item = self.classes("User", "Order", "Item")
+        users, orders, items, order_items = self.tables(
+            "users", "orders", "items", "order_items"
+        )
+
+        mapper(
+            User,
+            users,
+            properties={"orders": relationship(Order, order_by=orders.c.id)},
+        )
+        mapper(
+            Order,
+            orders,
+            properties={
+                # m2m
+                "items": relationship(
+                    Item, secondary=order_items, order_by=items.c.id
+                ),
+            },
+        )
+        mapper(Item, items)
+
+        return User, Order, Item
 
     @testing.fixture
     def mixin_fixture(self):
@@ -170,6 +198,39 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             stmt,
             "SELECT users.id, users.name "
             "FROM users WHERE users.name != :name_1",
+        )
+
+    def test_criteria_post_replace(self, user_address_fixture):
+        User, Address = user_address_fixture
+
+        stmt = (
+            select(User)
+            .select_from(User)
+            .options(with_loader_criteria(User, User.name != "name"))
+            .with_only_columns(func.count())
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT count(*) AS count_1 FROM users "
+            "WHERE users.name != :name_1",
+        )
+
+    def test_criteria_post_replace_legacy(self, user_address_fixture):
+        User, Address = user_address_fixture
+
+        s = fixture_session()
+        stmt = (
+            s.query(User)
+            .select_from(User)
+            .options(with_loader_criteria(User, User.name != "name"))
+            .with_entities(func.count())
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT count(*) AS count_1 FROM users "
+            "WHERE users.name != :name_1",
         )
 
     def test_select_from_mapper_mapper_criteria(self, user_address_fixture):
@@ -941,26 +1002,6 @@ class TemporalFixtureTest(testing.fixtures.DeclarativeMappedTest):
 class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
     __dialect__ = "default"
 
-    @testing.fixture
-    def user_address_fixture(self):
-        users, Address, addresses, User = (
-            self.tables.users,
-            self.classes.Address,
-            self.tables.addresses,
-            self.classes.User,
-        )
-
-        mapper(
-            User,
-            users,
-            properties={
-                "addresses": relationship(
-                    mapper(Address, addresses), order_by=Address.id
-                )
-            },
-        )
-        return User, Address
-
     def _user_minus_edwood(self, User, Address):
         return [
             User(
@@ -1137,6 +1178,84 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                         {
                             "primary_keys": [7, 8, 9, 10],
                             "email_address_1": value,
+                        }
+                    ],
+                ),
+            )
+
+    @testing.combinations((True,), (False,), argnames="use_compiled_cache")
+    def test_selectinload_nested_criteria(
+        self, user_order_item_fixture, use_compiled_cache
+    ):
+        User, Order, Item = user_order_item_fixture
+
+        if not use_compiled_cache:
+            s = Session(
+                testing.db.execution_options(compiled_cache=None), future=True
+            )
+        else:
+            s = Session(testing.db, future=True)
+
+        def go(order_description, item_description):
+            stmt = (
+                select(User)
+                .where(User.id == 7)
+                .options(
+                    selectinload(
+                        User.orders.and_(
+                            Order.description == order_description
+                        )
+                    ).joinedload(
+                        Order.items.and_(Item.description == item_description)
+                    ),
+                )
+            )
+            return s.execute(stmt)
+
+        for order_description, item_description, oid, iid in (
+            ("order 3", "item 3", 3, 3),
+            ("order 3", "item 4", 3, 4),
+            ("order 3", "item 4", 3, 4),
+            ("order 5", "item 5", 5, 5),
+            ("order 3", "item 3", 3, 3),
+            ("order 5", "item 5", 5, 5),
+        ):
+            s.close()
+            with self.sql_execution_asserter() as asserter:
+                result = go(order_description, item_description)
+
+                eq_(
+                    result.scalars().unique().all(),
+                    [User(id=7, orders=[Order(id=oid, items=[Item(id=iid)])])],
+                )
+            asserter.assert_(
+                CompiledSQL(
+                    "SELECT users.id, users.name FROM users "
+                    "WHERE users.id = :id_1",
+                    [{"id_1": 7}],
+                ),
+                CompiledSQL(
+                    "SELECT orders.user_id AS orders_user_id, "
+                    "orders.id AS orders_id, "
+                    "orders.address_id AS orders_address_id, "
+                    "orders.description AS orders_description, "
+                    "orders.isopen AS orders_isopen, "
+                    "items_1.id AS items_1_id, "
+                    "items_1.description AS items_1_description "
+                    "FROM orders LEFT OUTER JOIN "
+                    "(order_items AS order_items_1 "
+                    "JOIN items AS items_1 "
+                    "ON items_1.id = order_items_1.item_id "
+                    "AND items_1.description = :description_1) "
+                    "ON orders.id = order_items_1.order_id "
+                    "WHERE orders.user_id IN ([POSTCOMPILE_primary_keys]) "
+                    "AND orders.description = :description_2 "
+                    "ORDER BY orders.id, items_1.id",
+                    [
+                        {
+                            "description_1": item_description,
+                            "primary_keys": [7],
+                            "description_2": order_description,
                         }
                     ],
                 ),

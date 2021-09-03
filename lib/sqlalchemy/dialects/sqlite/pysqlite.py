@@ -492,6 +492,12 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
     def _get_server_version_info(self, connection):
         return self.dbapi.sqlite_version_info
 
+    _isolation_lookup = SQLiteDialect._isolation_lookup.union(
+        {
+            "AUTOCOMMIT": None,
+        }
+    )
+
     def set_isolation_level(self, connection, level):
         if hasattr(connection, "connection"):
             dbapi_connection = connection.connection

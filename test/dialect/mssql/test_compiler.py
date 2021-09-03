@@ -36,6 +36,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing.assertions import eq_ignore_whitespace
 
 tbl = table("t", column("a"))
 
@@ -864,15 +865,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             column("name", String(128)),
             column("description", String(128)),
         )
-        u = update(table1, values=dict(name="foo")).returning(
-            table1.c.myid, table1.c.name
+        u = (
+            update(table1)
+            .values(dict(name="foo"))
+            .returning(table1.c.myid, table1.c.name)
         )
         self.assert_compile(
             u,
             "UPDATE mytable SET name=:name OUTPUT "
             "inserted.myid, inserted.name",
         )
-        u = update(table1, values=dict(name="foo")).returning(table1)
+        u = update(table1).values(dict(name="foo")).returning(table1)
         self.assert_compile(
             u,
             "UPDATE mytable SET name=:name OUTPUT "
@@ -880,7 +883,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "inserted.description",
         )
         u = (
-            update(table1, values=dict(name="foo"))
+            update(table1)
+            .values(dict(name="foo"))
             .returning(table1)
             .where(table1.c.name == "bar")
         )
@@ -891,8 +895,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "inserted.description WHERE mytable.name = "
             ":name_1",
         )
-        u = update(table1, values=dict(name="foo")).returning(
-            func.length(table1.c.name)
+        u = (
+            update(table1)
+            .values(dict(name="foo"))
+            .returning(func.length(table1.c.name))
         )
         self.assert_compile(
             u,
@@ -929,8 +935,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             column("name", String(128)),
             column("description", String(128)),
         )
-        i = insert(table1, values=dict(name="foo")).returning(
-            table1.c.myid, table1.c.name
+        i = (
+            insert(table1)
+            .values(dict(name="foo"))
+            .returning(table1.c.myid, table1.c.name)
         )
         self.assert_compile(
             i,
@@ -938,15 +946,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "inserted.myid, inserted.name VALUES "
             "(:name)",
         )
-        i = insert(table1, values=dict(name="foo")).returning(table1)
+        i = insert(table1).values(dict(name="foo")).returning(table1)
         self.assert_compile(
             i,
             "INSERT INTO mytable (name) OUTPUT "
             "inserted.myid, inserted.name, "
             "inserted.description VALUES (:name)",
         )
-        i = insert(table1, values=dict(name="foo")).returning(
-            func.length(table1.c.name)
+        i = (
+            insert(table1)
+            .values(dict(name="foo"))
+            .returning(func.length(table1.c.name))
         )
         self.assert_compile(
             i,
@@ -965,6 +975,22 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT TOP [POSTCOMPILE_param_1] t.x, t.y FROM t "
             "WHERE t.x = :x_1 ORDER BY t.y",
             checkparams={"x_1": 5, "param_1": 10},
+        )
+
+    def test_limit_using_top_literal_binds(self):
+        """test #6863"""
+        t = table("t", column("x", Integer), column("y", Integer))
+
+        s = select(t).where(t.c.x == 5).order_by(t.c.y).limit(10)
+
+        eq_ignore_whitespace(
+            str(
+                s.compile(
+                    dialect=mssql.dialect(),
+                    compile_kwargs={"literal_binds": True},
+                )
+            ),
+            "SELECT TOP 10 t.x, t.y FROM t WHERE t.x = 5 ORDER BY t.y",
         )
 
     def test_limit_zero_using_top(self):

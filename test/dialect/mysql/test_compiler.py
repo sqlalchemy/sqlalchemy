@@ -575,7 +575,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         t = sql.table("t", sql.column("col1"), sql.column("col2"))
 
         self.assert_compile(
-            t.update(values={"col1": 123}), "UPDATE t SET col1=%s"
+            t.update().values({"col1": 123}), "UPDATE t SET col1=%s"
         )
         self.assert_compile(
             t.update()

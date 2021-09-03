@@ -1608,10 +1608,12 @@ class OracleDialect(default.DefaultDialect):
 
         if not schema:
             schema = self.default_schema_name
+
         cursor = connection.execute(
             sql.text(
                 "SELECT table_name FROM all_tables "
-                "WHERE table_name = :name AND owner = :schema_name"
+                "WHERE table_name = CAST(:name AS VARCHAR2(128)) "
+                "AND owner = CAST(:schema_name AS VARCHAR2(128))"
             ),
             dict(
                 name=self.denormalize_name(table_name),
@@ -1665,13 +1667,15 @@ class OracleDialect(default.DefaultDialect):
         clauses = []
         params = {}
         if desired_synonym:
-            clauses.append("synonym_name = :synonym_name")
+            clauses.append(
+                "synonym_name = CAST(:synonym_name AS VARCHAR2(128))"
+            )
             params["synonym_name"] = desired_synonym
         if desired_owner:
-            clauses.append("owner = :desired_owner")
+            clauses.append("owner = CAST(:desired_owner AS VARCHAR2(128))")
             params["desired_owner"] = desired_owner
         if desired_table:
-            clauses.append("table_name = :tname")
+            clauses.append("table_name = CAST(:tname AS VARCHAR2(128))")
             params["tname"] = desired_table
 
         q += " AND ".join(clauses)
@@ -1846,12 +1850,12 @@ class OracleDialect(default.DefaultDialect):
         text = (
             "SELECT %(columns)s "
             "FROM ALL_TABLES%(dblink)s "
-            "WHERE table_name = :table_name"
+            "WHERE table_name = CAST(:table_name AS VARCHAR(128))"
         )
 
         if schema is not None:
             params["owner"] = schema
-            text += " AND owner = :owner "
+            text += " AND owner = CAST(:owner AS VARCHAR(128)) "
         text = text % {"dblink": dblink, "columns": ", ".join(columns)}
 
         result = connection.execute(sql.text(text), params)
@@ -1916,6 +1920,7 @@ class OracleDialect(default.DefaultDialect):
             identity_cols = "NULL as default_on_null, NULL as identity_options"
 
         params = {"table_name": table_name}
+
         text = """
             SELECT
                 col.column_name,
@@ -1933,7 +1938,7 @@ class OracleDialect(default.DefaultDialect):
             ON col.table_name = com.table_name
             AND col.column_name = com.column_name
             AND col.owner = com.owner
-            WHERE col.table_name = :table_name
+            WHERE col.table_name = CAST(:table_name AS VARCHAR2(128))
             AND col.hidden_column = 'NO'
         """
         if schema is not None:
@@ -2076,7 +2081,8 @@ class OracleDialect(default.DefaultDialect):
         COMMENT_SQL = """
             SELECT comments
             FROM all_tab_comments
-            WHERE table_name = :table_name AND owner = :schema_name
+            WHERE table_name = CAST(:table_name AS VARCHAR(128))
+            AND owner = CAST(:schema_name AS VARCHAR(128))
         """
 
         c = connection.execute(
@@ -2117,7 +2123,7 @@ class OracleDialect(default.DefaultDialect):
             "\na.index_name = b.index_name "
             "\nAND a.table_owner = b.table_owner "
             "\nAND a.table_name = b.table_name "
-            "\nAND a.table_name = :table_name "
+            "\nAND a.table_name = CAST(:table_name AS VARCHAR(128))"
         )
 
         if schema is not None:
@@ -2209,13 +2215,13 @@ class OracleDialect(default.DefaultDialect):
             "\nFROM all_constraints%(dblink)s ac,"
             "\nall_cons_columns%(dblink)s loc,"
             "\nall_cons_columns%(dblink)s rem"
-            "\nWHERE ac.table_name = :table_name"
+            "\nWHERE ac.table_name = CAST(:table_name AS VARCHAR2(128))"
             "\nAND ac.constraint_type IN ('R','P', 'U', 'C')"
         )
 
         if schema is not None:
             params["owner"] = schema
-            text += "\nAND ac.owner = :owner"
+            text += "\nAND ac.owner = CAST(:owner AS VARCHAR2(128))"
 
         text += (
             "\nAND ac.owner = loc.owner"

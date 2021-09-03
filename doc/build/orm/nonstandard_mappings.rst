@@ -20,15 +20,15 @@ mapped in the same way as a :class:`_schema.Table`::
     from sqlalchemy.ext.declarative import declarative_base
     from sqlalchemy.orm import column_property
 
-    metadata = MetaData()
+    metadata_obj = MetaData()
 
     # define two Table objects
-    user_table = Table('user', metadata,
+    user_table = Table('user', metadata_obj,
                 Column('id', Integer, primary_key=True),
                 Column('name', String),
             )
 
-    address_table = Table('address', metadata,
+    address_table = Table('address', metadata_obj,
                 Column('id', Integer, primary_key=True),
                 Column('user_id', Integer, ForeignKey('user.id')),
                 Column('email_address', String)

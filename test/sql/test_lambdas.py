@@ -17,6 +17,7 @@ from sqlalchemy.sql import roles
 from sqlalchemy.sql import select
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
+from sqlalchemy.sql.traversals import HasCacheKey
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
@@ -897,6 +898,42 @@ class LambdaElementTest(
             checkparams={"q_1": 1},
         )
 
+    def test_offline_cache_key_no_paramtrack(self):
+        def go():
+            stmt = lambdas.lambda_stmt(
+                lambda: select(column("x")).where(
+                    column("y") == bindparam("q")
+                ),
+                global_track_bound_values=False,
+            )
+
+            return stmt
+
+        s1 = go()
+
+        eq_(
+            s1._generate_cache_key().to_offline_string({}, s1, {"q": 5}),
+            "('SELECT x \\nWHERE y = :q', (5,))",
+        )
+
+    def test_offline_cache_key_paramtrack(self):
+        def go(param):
+            stmt = lambdas.lambda_stmt(
+                lambda: select(column("x")).where(column("y") == param),
+            )
+
+            return stmt
+
+        s1 = go(5)
+
+        param_key = s1._resolved._where_criteria[0].right.key
+        eq_(
+            s1._generate_cache_key().to_offline_string(
+                {}, s1, {param_key: 10}
+            ),
+            "('SELECT x \\nWHERE y = :param_1', (10,))",
+        )
+
     def test_stmt_lambda_w_list_of_opts(self):
         def go(opts):
             stmt = lambdas.lambda_stmt(lambda: select(column("x")))
@@ -916,6 +953,63 @@ class LambdaElementTest(
 
         eq_(s1key.key, s2key.key)
         ne_(s1key.key, s3key.key)
+
+    def test_stmt_lambda_opt_w_key(self):
+        """test issue related to #6887"""
+
+        def go(opts):
+            stmt = lambdas.lambda_stmt(lambda: select(column("x")))
+            stmt += lambda stmt: stmt.options(*opts)
+
+            return stmt
+
+        class SomeOpt(HasCacheKey):
+            def _gen_cache_key(self, anon_map, bindparams):
+                return ("fixed_key",)
+
+        # generates no key, will not be cached
+        eq_(SomeOpt()._generate_cache_key().key, ("fixed_key",))
+
+        s1o, s2o = SomeOpt(), SomeOpt()
+        s1 = go([s1o])
+        s2 = go([s2o])
+
+        s1key = s1._generate_cache_key()
+        s2key = s2._generate_cache_key()
+
+        eq_(s1key.key[-1], (("fixed_key",),))
+        eq_(s1key.key, s2key.key)
+
+        eq_(s1._resolved._with_options, (s1o,))
+        eq_(s2._resolved._with_options, (s1o,))
+        ne_(s2._resolved._with_options, (s2o,))
+
+    def test_stmt_lambda_opt_w_no_key(self):
+        """test issue related to #6887"""
+
+        def go(opts):
+            stmt = lambdas.lambda_stmt(lambda: select(column("x")))
+            stmt += lambda stmt: stmt.options(*opts)
+
+            return stmt
+
+        class SomeOpt(HasCacheKey):
+            pass
+
+        # generates no key, will not be cached
+        eq_(SomeOpt()._generate_cache_key(), None)
+
+        s1o, s2o = SomeOpt(), SomeOpt()
+        s1 = go([s1o])
+        s2 = go([s2o])
+
+        s1key = s1._generate_cache_key()
+
+        eq_(s1key, None)
+
+        eq_(s1._resolved._with_options, (s1o,))
+        eq_(s2._resolved._with_options, (s2o,))
+        ne_(s2._resolved._with_options, (s1o,))
 
     def test_stmt_lambda_hey_theres_multiple_paths(self):
         def go(x, y):

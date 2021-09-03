@@ -4449,6 +4449,24 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             literal_binds=True,
         )
 
+    def test_render_literal_execute_sent_parameter_literal_binds(self):
+        """test #6863"""
+
+        stmt = select(table1.c.myid).where(
+            table1.c.myid == bindparam("foo", 5, literal_execute=True)
+        )
+        eq_ignore_whitespace(
+            str(
+                stmt.compile(
+                    compile_kwargs={
+                        "literal_binds": True,
+                        "literal_execute": True,
+                    }
+                )
+            ),
+            "SELECT mytable.myid FROM mytable WHERE mytable.myid = 5",
+        )
+
     def test_render_literal_execute_parameter_render_postcompile(self):
         self.assert_compile(
             select(table1.c.myid).where(

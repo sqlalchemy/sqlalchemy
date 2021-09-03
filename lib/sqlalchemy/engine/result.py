@@ -1054,6 +1054,17 @@ class Result(_WithKeys, ResultInternal):
            column of the first row, use the :meth:`.Result.scalar` method,
            or combine :meth:`.Result.scalars` and :meth:`.Result.first`.
 
+           Additionally, in contrast to the behavior of the legacy  ORM
+           :meth:`_orm.Query.first` method, **no limit is applied** to the
+           SQL query which was invoked to produce this :class:`_engine.Result`;
+           for a DBAPI driver that buffers results in memory before yielding
+           rows, all rows will be sent to the Python process and all but
+           the first row will be discarded.
+
+           .. seealso::
+
+                :ref:`migration_20_unify_select`
+
         :return: a :class:`.Row` object, or None
          if no rows remain.
 

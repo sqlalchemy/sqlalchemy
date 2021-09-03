@@ -129,8 +129,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             column("name", String(128)),
             column("description", String(128)),
         )
-        u = update(table1, values=dict(name="foo")).returning(
-            table1.c.myid, table1.c.name
+        u = (
+            update(table1)
+            .values(dict(name="foo"))
+            .returning(table1.c.myid, table1.c.name)
         )
         self.assert_compile(
             u,
@@ -138,7 +140,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "RETURNING mytable.myid, mytable.name",
             dialect=dialect,
         )
-        u = update(table1, values=dict(name="foo")).returning(table1)
+        u = update(table1).values(dict(name="foo")).returning(table1)
         self.assert_compile(
             u,
             "UPDATE mytable SET name=%(name)s "
@@ -146,8 +148,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "mytable.description",
             dialect=dialect,
         )
-        u = update(table1, values=dict(name="foo")).returning(
-            func.length(table1.c.name)
+        u = (
+            update(table1)
+            .values(dict(name="foo"))
+            .returning(func.length(table1.c.name))
         )
         self.assert_compile(
             u,
@@ -165,8 +169,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             column("description", String(128)),
         )
 
-        i = insert(table1, values=dict(name="foo")).returning(
-            table1.c.myid, table1.c.name
+        i = (
+            insert(table1)
+            .values(dict(name="foo"))
+            .returning(table1.c.myid, table1.c.name)
         )
         self.assert_compile(
             i,
@@ -175,7 +181,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "mytable.name",
             dialect=dialect,
         )
-        i = insert(table1, values=dict(name="foo")).returning(table1)
+        i = insert(table1).values(dict(name="foo")).returning(table1)
         self.assert_compile(
             i,
             "INSERT INTO mytable (name) VALUES "
@@ -183,8 +189,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "mytable.name, mytable.description",
             dialect=dialect,
         )
-        i = insert(table1, values=dict(name="foo")).returning(
-            func.length(table1.c.name)
+        i = (
+            insert(table1)
+            .values(dict(name="foo"))
+            .returning(func.length(table1.c.name))
         )
         self.assert_compile(
             i,
@@ -1500,6 +1508,39 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={"param_1": 7},
         )
 
+    @testing.combinations(
+        (lambda c: c.overlap, "&&"),
+        (lambda c: c.contains, "@>"),
+        (lambda c: c.contained_by, "<@"),
+    )
+    def test_overlap_no_cartesian(self, op_fn, expected_op):
+        """test #6886"""
+        t1 = table(
+            "t1",
+            column("id", Integer),
+            column("ancestor_ids", postgresql.ARRAY(Integer)),
+        )
+
+        t1a = t1.alias()
+        t1b = t1.alias()
+
+        stmt = (
+            select(t1, t1a, t1b)
+            .where(op_fn(t1a.c.ancestor_ids)(postgresql.array((t1.c.id,))))
+            .where(op_fn(t1b.c.ancestor_ids)(postgresql.array((t1.c.id,))))
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT t1.id, t1.ancestor_ids, t1_1.id AS id_1, "
+            "t1_1.ancestor_ids AS ancestor_ids_1, t1_2.id AS id_2, "
+            "t1_2.ancestor_ids AS ancestor_ids_2 "
+            "FROM t1, t1 AS t1_1, t1 AS t1_2 "
+            "WHERE t1_1.ancestor_ids %(op)s ARRAY[t1.id] "
+            "AND t1_2.ancestor_ids %(op)s ARRAY[t1.id]" % {"op": expected_op},
+            from_linting=True,
+        )
+
     @testing.combinations((True,), (False,))
     def test_array_zero_indexes(self, zero_indexes):
         c = Column("x", postgresql.ARRAY(Integer, zero_indexes=zero_indexes))
@@ -1742,7 +1783,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         self.assert_compile(stmt, expected)
 
-        stmt = update(tbl1, values=dict(id=1))
+        stmt = update(tbl1).values(dict(id=1))
         stmt = stmt.with_hint("ONLY", dialect_name="postgresql")
         expected = "UPDATE ONLY testtbl1 SET id=%(id)s"
         self.assert_compile(stmt, expected)
@@ -2240,9 +2281,11 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_do_nothing_no_target(self):
 
-        i = insert(
-            self.table1, values=dict(name="foo")
-        ).on_conflict_do_nothing()
+        i = (
+            insert(self.table1)
+            .values(dict(name="foo"))
+            .on_conflict_do_nothing()
+        )
         self.assert_compile(
             i,
             "INSERT INTO mytable (name) VALUES "
@@ -2251,9 +2294,11 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_do_nothing_index_elements_target(self):
 
-        i = insert(
-            self.table1, values=dict(name="foo")
-        ).on_conflict_do_nothing(index_elements=["myid"])
+        i = (
+            insert(self.table1)
+            .values(dict(name="foo"))
+            .on_conflict_do_nothing(index_elements=["myid"])
+        )
         self.assert_compile(
             i,
             "INSERT INTO mytable (name) VALUES "
@@ -2342,7 +2387,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_do_update_str_index_elements_target_two(self):
-        i = insert(self.table1, values=dict(name="foo"))
+        i = insert(self.table1).values(dict(name="foo"))
         i = i.on_conflict_do_update(
             index_elements=["myid"], set_=dict(name=i.excluded.name)
         )
@@ -2354,7 +2399,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_do_update_col_index_elements_target(self):
-        i = insert(self.table1, values=dict(name="foo"))
+        i = insert(self.table1).values(dict(name="foo"))
         i = i.on_conflict_do_update(
             index_elements=[self.table1.c.myid],
             set_=dict(name=i.excluded.name),
@@ -2367,7 +2412,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_do_update_unnamed_pk_constraint_target(self):
-        i = insert(self.table_with_metadata, values=dict(myid=1, name="foo"))
+        i = insert(self.table_with_metadata).values(dict(myid=1, name="foo"))
         i = i.on_conflict_do_update(
             constraint=self.table_with_metadata.primary_key,
             set_=dict(name=i.excluded.name),
@@ -2380,7 +2425,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_do_update_pk_constraint_index_elements_target(self):
-        i = insert(self.table_with_metadata, values=dict(myid=1, name="foo"))
+        i = insert(self.table_with_metadata).values(dict(myid=1, name="foo"))
         i = i.on_conflict_do_update(
             index_elements=self.table_with_metadata.primary_key,
             set_=dict(name=i.excluded.name),
@@ -2393,7 +2438,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_do_update_named_unique_constraint_target(self):
-        i = insert(self.table1, values=dict(name="foo"))
+        i = insert(self.table1).values(dict(name="foo"))
         i = i.on_conflict_do_update(
             constraint=self.unique_constr, set_=dict(myid=i.excluded.myid)
         )
@@ -2405,7 +2450,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_do_update_string_constraint_target(self):
-        i = insert(self.table1, values=dict(name="foo"))
+        i = insert(self.table1).values(dict(name="foo"))
         i = i.on_conflict_do_update(
             constraint=self.unique_constr.name, set_=dict(myid=i.excluded.myid)
         )
@@ -2418,7 +2463,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_do_nothing_quoted_string_constraint_target(self):
         """test #6696"""
-        i = insert(self.table1, values=dict(name="foo"))
+        i = insert(self.table1).values(dict(name="foo"))
         i = i.on_conflict_do_nothing(constraint="Some Constraint Name")
         self.assert_compile(
             i,
@@ -2442,7 +2487,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
             uq,
         )
 
-        i = insert(self.table1, values=dict(name="foo"))
+        i = insert(self.table1).values(dict(name="foo"))
 
         i = i.on_conflict_do_nothing(constraint=uq)
         self.assert_compile(
@@ -2455,7 +2500,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_do_nothing_quoted_named_constraint_target(self):
         """test #6696"""
-        i = insert(self.table1, values=dict(name="foo"))
+        i = insert(self.table1).values(dict(name="foo"))
         unique_constr = UniqueConstraint(
             self.table1.c.myid, name="Some Constraint Name"
         )
@@ -2468,7 +2513,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_do_update_index_elements_where_target(self):
-        i = insert(self.table1, values=dict(name="foo"))
+        i = insert(self.table1).values(dict(name="foo"))
         i = i.on_conflict_do_update(
             index_elements=self.goofy_index.expressions,
             index_where=self.goofy_index.dialect_options["postgresql"][
@@ -2485,9 +2530,8 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_do_update_index_elements_where_target_multivalues(self):
-        i = insert(
-            self.table1,
-            values=[dict(name="foo"), dict(name="bar"), dict(name="bat")],
+        i = insert(self.table1).values(
+            [dict(name="foo"), dict(name="bar"), dict(name="bat")],
         )
         i = i.on_conflict_do_update(
             index_elements=self.goofy_index.expressions,
@@ -2512,7 +2556,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_do_update_unnamed_index_target(self):
-        i = insert(self.table1, values=dict(name="foo"))
+        i = insert(self.table1).values(dict(name="foo"))
 
         unnamed_goofy = Index(
             None, self.table1.c.name, postgresql_where=self.table1.c.name > "m"
@@ -2530,7 +2574,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_do_update_unnamed_exclude_constraint_target(self):
-        i = insert(self.table1, values=dict(name="foo"))
+        i = insert(self.table1).values(dict(name="foo"))
         i = i.on_conflict_do_update(
             constraint=self.excl_constr_anon, set_=dict(name=i.excluded.name)
         )
@@ -2543,7 +2587,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_do_update_add_whereclause(self):
-        i = insert(self.table1, values=dict(name="foo"))
+        i = insert(self.table1).values(dict(name="foo"))
         i = i.on_conflict_do_update(
             constraint=self.excl_constr_anon,
             set_=dict(name=i.excluded.name),
@@ -2563,7 +2607,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_do_update_add_whereclause_references_excluded(self):
-        i = insert(self.table1, values=dict(name="foo"))
+        i = insert(self.table1).values(dict(name="foo"))
         i = i.on_conflict_do_update(
             constraint=self.excl_constr_anon,
             set_=dict(name=i.excluded.name),
@@ -2579,7 +2623,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_do_update_additional_colnames(self):
-        i = insert(self.table1, values=dict(name="bar"))
+        i = insert(self.table1).values(dict(name="bar"))
         i = i.on_conflict_do_update(
             constraint=self.excl_constr_anon,
             set_=dict(name="somename", unknown="unknown"),
@@ -2604,7 +2648,7 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
             )
 
     def test_on_conflict_as_cte(self):
-        i = insert(self.table1, values=dict(name="foo"))
+        i = insert(self.table1).values(dict(name="foo"))
         i = (
             i.on_conflict_do_update(
                 constraint=self.excl_constr_anon,

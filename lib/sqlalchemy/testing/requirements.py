@@ -146,6 +146,12 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def implicitly_named_constraints(self):
+        """target database must apply names to unnamed constraints."""
+
+        return exclusions.open()
+
+    @property
     def subqueries(self):
         """Target database must support subqueries."""
 
@@ -851,7 +857,7 @@ class SuiteRequirements(Requirements):
 
             >>> testing.requirements.get_isolation_levels()
             {
-                "default": "READ_COMMITED",
+                "default": "READ_COMMITTED",
                 "supported": [
                     "SERIALIZABLE", "READ UNCOMMITTED",
                     "READ COMMITTED", "REPEATABLE READ",
@@ -1221,6 +1227,10 @@ class SuiteRequirements(Requirements):
         return self.python36
 
     @property
+    def insert_order_dicts(self):
+        return self.python37
+
+    @property
     def python36(self):
         return exclusions.skip_if(
             lambda: sys.version_info < (3, 6),
@@ -1318,6 +1328,18 @@ class SuiteRequirements(Requirements):
         """dialect makes use of await_() to invoke operations on the DBAPI."""
 
         return exclusions.closed()
+
+    @property
+    def greenlet(self):
+        def go(config):
+            try:
+                import greenlet  # noqa F401
+            except ImportError:
+                return False
+            else:
+                return True
+
+        return exclusions.only_if(go)
 
     @property
     def computed_columns(self):

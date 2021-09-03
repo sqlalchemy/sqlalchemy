@@ -27,7 +27,6 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
-from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
@@ -3635,27 +3634,25 @@ class Issue6149Test(fixtures.DeclarativeMappedTest):
         s = fixture_session()
 
         for i in range(3):
-            # this warns because subqueryload is from the
-            # selectinload, which means we have to unwrap the
-            # selectinload query to see what its entities are.
-            with expect_warnings(r".*must invoke lambda callable"):
+            # this used to warn due to selectinload using lambda
+            # query which was removed in #6889
 
-                # the bug is that subqueryload looks at the query that
-                # selectinload created and assumed the "entity" was
-                # compile_state._entities[0], which in this case is a
-                # Bundle, it needs to look at compile_state._entities[1].
-                # so subqueryloader passes through orig_query_entity_index
-                # so it knows where to look.
-                ex1 = (
-                    s.query(Exam)
-                    .options(
-                        selectinload(Exam.submissions).subqueryload(
-                            Submission.solutions
-                        )
+            # the bug is that subqueryload looks at the query that
+            # selectinload created and assumed the "entity" was
+            # compile_state._entities[0], which in this case is a
+            # Bundle, it needs to look at compile_state._entities[1].
+            # so subqueryloader passes through orig_query_entity_index
+            # so it knows where to look.
+            ex1 = (
+                s.query(Exam)
+                .options(
+                    selectinload(Exam.submissions).subqueryload(
+                        Submission.solutions
                     )
-                    .filter_by(id=1)
-                    .first()
                 )
+                .filter_by(id=1)
+                .first()
+            )
 
             eq_(
                 ex1,

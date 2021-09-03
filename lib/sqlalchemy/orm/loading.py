@@ -32,6 +32,7 @@ from ..engine.result import FrozenResult
 from ..engine.result import SimpleResultMetaData
 from ..sql import util as sql_util
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
+from ..sql.selectable import SelectState
 
 _new_runid = util.counter()
 
@@ -431,7 +432,7 @@ def load_on_pk_identity(
     query = statement
     q = query._clone()
 
-    is_lambda = q._is_lambda_element
+    assert not q._is_lambda_element
 
     # TODO: fix these imports ....
     from .context import QueryContext, ORMCompileState
@@ -439,7 +440,13 @@ def load_on_pk_identity(
     if load_options is None:
         load_options = QueryContext.default_load_options
 
-    compile_options = ORMCompileState.default_compile_options
+    if (
+        statement._compile_options
+        is SelectState.default_select_compile_options
+    ):
+        compile_options = ORMCompileState.default_compile_options
+    else:
+        compile_options = statement._compile_options
 
     if primary_key_identity is not None:
         mapper = query._propagate_attrs["plugin_subject"]
@@ -468,24 +475,9 @@ def load_on_pk_identity(
                     "release."
                 )
 
-        if is_lambda:
-            q = q.add_criteria(
-                lambda q: q.where(
-                    sql_util._deep_annotate(_get_clause, {"_orm_adapt": True})
-                ),
-                # this track_on will allow the lambda to refresh if
-                # _get_clause goes stale due to reconfigured mapper.
-                # however, it's not needed as the lambda otherwise tracks
-                # on the SQL cache key of the expression.  the main thing
-                # is that the bindparam.key stays the same if the cache key
-                # stays the same, as we are referring to the .key explicitly
-                # in the params.
-                # track_on=[id(_get_clause)]
-            )
-        else:
-            q._where_criteria = (
-                sql_util._deep_annotate(_get_clause, {"_orm_adapt": True}),
-            )
+        q._where_criteria = (
+            sql_util._deep_annotate(_get_clause, {"_orm_adapt": True}),
+        )
 
         params = dict(
             [
@@ -498,57 +490,32 @@ def load_on_pk_identity(
     else:
         params = None
 
-    if is_lambda:
-        if with_for_update is not None or refresh_state or only_load_props:
-            raise NotImplementedError(
-                "refresh operation not supported with lambda statement"
-            )
-
+    if with_for_update is not None:
+        version_check = True
+        q._for_update_arg = with_for_update
+    elif query._for_update_arg is not None:
+        version_check = True
+        q._for_update_arg = query._for_update_arg
+    else:
         version_check = False
 
-        _, load_options = _set_get_options(
-            compile_options,
-            load_options,
-            version_check=version_check,
-            only_load_props=only_load_props,
-            refresh_state=refresh_state,
-            identity_token=identity_token,
-        )
+    if refresh_state and refresh_state.load_options:
+        compile_options += {"_current_path": refresh_state.load_path.parent}
+        q = q.options(*refresh_state.load_options)
 
-        if no_autoflush:
-            load_options += {"_autoflush": False}
-    else:
-        if with_for_update is not None:
-            version_check = True
-            q._for_update_arg = with_for_update
-        elif query._for_update_arg is not None:
-            version_check = True
-            q._for_update_arg = query._for_update_arg
-        else:
-            version_check = False
+    new_compile_options, load_options = _set_get_options(
+        compile_options,
+        load_options,
+        version_check=version_check,
+        only_load_props=only_load_props,
+        refresh_state=refresh_state,
+        identity_token=identity_token,
+    )
+    q._compile_options = new_compile_options
+    q._order_by = None
 
-        if refresh_state and refresh_state.load_options:
-            compile_options += {
-                "_current_path": refresh_state.load_path.parent
-            }
-            q = q.options(*refresh_state.load_options)
-
-        # TODO: most of the compile_options that are not legacy only involve
-        # this function, so try to see if handling of them can mostly be local
-        # to here
-
-        q._compile_options, load_options = _set_get_options(
-            compile_options,
-            load_options,
-            version_check=version_check,
-            only_load_props=only_load_props,
-            refresh_state=refresh_state,
-            identity_token=identity_token,
-        )
-        q._order_by = None
-
-        if no_autoflush:
-            load_options += {"_autoflush": False}
+    if no_autoflush:
+        load_options += {"_autoflush": False}
 
     execution_options = util.EMPTY_DICT.merge_with(
         execution_options, {"_sa_orm_load_options": load_options}
@@ -1110,21 +1077,24 @@ def _load_subclass_via_in(context, path, entity):
     def do_load(context, path, states, load_only, effective_entity):
         orig_query = context.query
 
-        q2 = q._with_lazyload_options(
-            (enable_opt,) + orig_query._with_options + (disable_opt,),
-            path.parent,
-            cache_path=path,
-        )
+        options = (enable_opt,) + orig_query._with_options + (disable_opt,)
+        q2 = q.options(*options)
+
+        q2._compile_options = context.compile_state.default_compile_options
+        q2._compile_options += {"_current_path": path.parent}
 
         if context.populate_existing:
-            q2.add_criteria(lambda q: q.populate_existing())
+            q2 = q2.execution_options(populate_existing=True)
 
-        q2(context.session).params(
-            primary_keys=[
-                state.key[1][0] if zero_idx else state.key[1]
-                for state, load_attrs in states
-            ]
-        ).all()
+        context.session.execute(
+            q2,
+            dict(
+                primary_keys=[
+                    state.key[1][0] if zero_idx else state.key[1]
+                    for state, load_attrs in states
+                ]
+            ),
+        ).unique().scalars().all()
 
     return do_load
 

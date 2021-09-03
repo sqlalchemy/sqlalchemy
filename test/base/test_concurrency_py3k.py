@@ -33,6 +33,8 @@ def go(*fns):
 
 
 class TestAsyncioCompat(fixtures.TestBase):
+    __requires__ = ("greenlet",)
+
     @async_test
     async def test_ok(self):
 
@@ -186,7 +188,7 @@ class TestAsyncioCompat(fixtures.TestBase):
 class TestAsyncAdaptedQueue(fixtures.TestBase):
     # uses asyncio.run() in alternate threads which is not available
     # in Python 3.6
-    __requires__ = ("python37",)
+    __requires__ = ("python37", "greenlet")
 
     def test_lazy_init(self):
         run = [False]

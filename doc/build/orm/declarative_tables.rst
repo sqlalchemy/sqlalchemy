@@ -167,9 +167,9 @@ may be constructed separately and passed either to :func:`_orm.registry`
 or :func:`_orm.declarative_base`::
 
     from sqlalchemy import MetaData
-    metadata = MetaData(schema="some_schema")
+    metadata_obj = MetaData(schema="some_schema")
 
-    Base = declarative_base(metadata = metadata)
+    Base = declarative_base(metadata = metadata_obj)
 
 
     class MyClass(Base):

@@ -44,6 +44,7 @@ from .interfaces import MapperProperty
 from .interfaces import NOT_EXTENSION
 from .interfaces import ONETOMANY
 from .interfaces import PropComparator
+from .interfaces import UserDefinedOption
 from .loading import merge_frozen_result
 from .loading import merge_result
 from .mapper import class_mapper

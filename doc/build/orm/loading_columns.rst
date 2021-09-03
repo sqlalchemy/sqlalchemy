@@ -133,7 +133,7 @@ may be used::
     query = session.query(Author)
     query = query.options(
                 joinedload(Author.book).options(
-                    load_only("summary", "excerpt"),
+                    load_only(Book.summary, Book.excerpt),
                     joinedload(Book.citations).options(
                         joinedload(Citation.author),
                         defer(Citation.fulltext)
@@ -152,7 +152,7 @@ to create the same structure as we did above using :meth:`_orm.Load.options` as:
 
     query = session.query(Author)
     query = query.options(
-        joinedload(Author.book).load_only("summary", "excerpt"),
+        joinedload(Author.book).load_only(Book.summary, Book.excerpt),
         defaultload(Author.book).joinedload(Book.citations).joinedload(Citation.author),
         defaultload(Author.book).defaultload(Book.citations).defer(Citation.fulltext)
     )
@@ -190,7 +190,7 @@ that are named::
 
     from sqlalchemy.orm import load_only
 
-    session.query(Book).options(load_only("summary", "excerpt"))
+    session.query(Book).options(load_only(Book.summary, Book.excerpt))
 
 Wildcard and Exclusionary Options with Multiple-Entity Queries
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -209,7 +209,7 @@ both at once.  Using :class:`_orm.Load` looks like::
 
     query = session.query(Book, Author).join(Book.author)
     query = query.options(
-                Load(Book).load_only("summary", "excerpt")
+                Load(Book).load_only(Book.summary, Book.excerpt)
             )
 
 Above, :class:`_orm.Load` is used in conjunction with the exclusionary option

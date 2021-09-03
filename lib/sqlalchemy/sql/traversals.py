@@ -299,15 +299,15 @@ class CacheKey(namedtuple("CacheKey", ["key", "bindparams"])):
         else:
             sql_str = statement_cache[self.key]
 
-        return repr(
-            (
-                sql_str,
-                tuple(
-                    parameters.get(bindparam.key, bindparam.value)
-                    for bindparam in self.bindparams
-                ),
+        if not self.bindparams:
+            param_tuple = tuple(parameters[key] for key in sorted(parameters))
+        else:
+            param_tuple = tuple(
+                parameters.get(bindparam.key, bindparam.value)
+                for bindparam in self.bindparams
             )
-        )
+
+        return repr((sql_str, param_tuple))
 
     def __eq__(self, other):
         return self.key == other.key

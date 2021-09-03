@@ -4231,6 +4231,14 @@ class SelectState(util.MemoizedSlots, CompileState):
         cls._plugin_not_implemented()
 
     @classmethod
+    def get_columns_clause_froms(cls, statement):
+        return cls._normalize_froms(
+            itertools.chain.from_iterable(
+                element._from_objects for element in statement._raw_columns
+            )
+        )
+
+    @classmethod
     def _column_naming_convention(cls, label_style):
 
         table_qualified = label_style is LABEL_STYLE_TABLENAME_PLUS_COL
@@ -4291,7 +4299,8 @@ class SelectState(util.MemoizedSlots, CompileState):
             check_statement=statement,
         )
 
-    def _normalize_froms(self, iterable_of_froms, check_statement=None):
+    @classmethod
+    def _normalize_froms(cls, iterable_of_froms, check_statement=None):
         """given an iterable of things to select FROM, reduce them to what
         would actually render in the FROM clause of a SELECT.
 
@@ -5045,6 +5054,19 @@ class Select(
     _create_select = _create_future_select
 
     @classmethod
+    def _create_raw_select(cls, **kw):
+        """Create a :class:`.Select` using raw ``__new__`` with no coercions.
+
+        Used internally to build up :class:`.Select` constructs with
+        pre-established state.
+
+        """
+
+        stmt = Select.__new__(Select)
+        stmt.__dict__.update(kw)
+        return stmt
+
+    @classmethod
     def _create(cls, *args, **kw):
         r"""Create a :class:`.Select` using either the 1.x or 2.0 constructor
         style.
@@ -5354,13 +5376,79 @@ class Select(
         """
         return self.join(target, onclause=onclause, isouter=True, full=full)
 
+    def get_final_froms(self):
+        """Compute the final displayed list of :class:`_expression.FromClause`
+        elements.
+
+        This method will run through the full computation required to
+        determine what FROM elements will be displayed in the resulting
+        SELECT statement, including shadowing individual tables with
+        JOIN objects, as well as full computation for ORM use cases including
+        eager loading clauses.
+
+        For ORM use, this accessor returns the **post compilation**
+        list of FROM objects; this collection will include elements such as
+        eagerly loaded tables and joins.  The objects will **not** be
+        ORM enabled and not work as a replacement for the
+        :meth:`_sql.Select.select_froms` collection; additionally, the
+        method is not well performing for an ORM enabled statement as it
+        will incur the full ORM construction process.
+
+        To retrieve the FROM list that's implied by the "columns" collection
+        passed to the :class:`_sql.Select` originally, use the
+        :attr:`_sql.Select.columns_clause_froms` accessor.
+
+        To select from an alternative set of columns while maintaining the
+        FROM list, use the :meth:`_sql.Select.with_only_columns` method and
+        pass the
+        :paramref:`_sql.Select.with_only_columns.maintain_column_froms`
+        parameter.
+
+        .. versionadded:: 1.4.23 - the :meth:`_sql.Select.get_final_froms`
+           method replaces the previous :attr:`_sql.Select.froms` accessor,
+           which is deprecated.
+
+        .. seealso::
+
+            :attr:`_sql.Select.columns_clause_froms`
+
+        """
+        return self._compile_state_factory(self, None)._get_display_froms()
+
     @property
+    @util.deprecated(
+        "1.4.23",
+        "The :attr:`_expression.Select.froms` attribute is moved to "
+        "the :meth:`_expression.Select.get_final_froms` method.",
+    )
     def froms(self):
         """Return the displayed list of :class:`_expression.FromClause`
         elements.
 
+
         """
-        return self._compile_state_factory(self, None)._get_display_froms()
+        return self.get_final_froms()
+
+    @property
+    def columns_clause_froms(self):
+        """Return the set of :class:`_expression.FromClause` objects implied
+        by the columns clause of this SELECT statement.
+
+        .. versionadded:: 1.4.23
+
+        .. seealso::
+
+            :attr:`_sql.Select.froms` - "final" FROM list taking the full
+            statement into account
+
+            :meth:`_sql.Select.with_only_columns` - makes use of this
+            collection to set up a new FROM list
+
+        """
+
+        return SelectState.get_plugin_class(self).get_columns_clause_froms(
+            self
+        )
 
     @property
     def inner_columns(self):
@@ -5532,13 +5620,13 @@ class Select(
         )
 
     @_generative
-    def with_only_columns(self, *columns):
+    def with_only_columns(self, *columns, **kw):
         r"""Return a new :func:`_expression.select` construct with its columns
         clause replaced with the given columns.
 
-        This method is exactly equivalent to as if the original
+        By default, this method is exactly equivalent to as if the original
         :func:`_expression.select` had been called with the given columns
-        clause.   I.e. a statement::
+        clause. E.g. a statement::
 
             s = select(table1.c.a, table1.c.b)
             s = s.with_only_columns(table1.c.b)
@@ -5547,13 +5635,30 @@ class Select(
 
             s = select(table1.c.b)
 
-        Note that this will also dynamically alter the FROM clause of the
-        statement if it is not explicitly stated.  To maintain the FROM
-        clause, ensure the :meth:`_sql.Select.select_from` method is
-        used appropriately::
+        In this mode of operation, :meth:`_sql.Select.with_only_columns`
+        will also dynamically alter the FROM clause of the
+        statement if it is not explicitly stated.
+        To maintain the existing set of FROMs including those implied by the
+        current columns clause, add the
+        :paramref:`_sql.Select.with_only_columns.maintain_column_froms`
+        parameter::
 
             s = select(table1.c.a, table2.c.b)
-            s = s.select_from(table2.c.b).with_only_columns(table1.c.a)
+            s = s.with_only_columns(table1.c.a, maintain_column_froms=True)
+
+        The above parameter performs a transfer of the effective FROMs
+        in the columns collection to the :meth:`_sql.Select.select_from`
+        method, as though the following were invoked::
+
+            s = select(table1.c.a, table2.c.b)
+            s = s.select_from(table1, table2).with_only_columns(table1.c.a)
+
+        The :paramref:`_sql.Select.with_only_columns.maintain_column_froms`
+        parameter makes use of the :attr:`_sql.Select.columns_clause_froms`
+        collection and performs an operation equivalent to the following::
+
+            s = select(table1.c.a, table2.c.b)
+            s = s.select_from(*s.columns_clause_froms).with_only_columns(table1.c.a)
 
         :param \*columns: column expressions to be used.
 
@@ -5561,13 +5666,27 @@ class Select(
             method accepts the list of column expressions positionally;
             passing the expressions as a list is deprecated.
 
-        """
+        :param maintain_column_froms: boolean parameter that will ensure the
+         FROM list implied from the current columns clause will be transferred
+         to the :meth:`_sql.Select.select_from` method first.
+
+         .. versionadded:: 1.4.23
+
+        """  # noqa E501
 
         # memoizations should be cleared here as of
         # I95c560ffcbfa30b26644999412fb6a385125f663 , asserting this
         # is the case for now.
         self._assert_no_memoizations()
 
+        maintain_column_froms = kw.pop("maintain_column_froms", False)
+        if kw:
+            raise TypeError("unknown parameters: %s" % (", ".join(kw),))
+
+        if maintain_column_froms:
+            self.select_from.non_generative(self, *self.columns_clause_froms)
+
+        # then memoize the FROMs etc.
         _MemoizedSelectEntities._generate_for_statement(self)
 
         self._raw_columns = [

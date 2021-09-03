@@ -1915,7 +1915,9 @@ class SQLiteDialect(default.DefaultDialect):
                 14,
             )
 
-    _isolation_lookup = {"READ UNCOMMITTED": 1, "SERIALIZABLE": 0}
+    _isolation_lookup = util.immutabledict(
+        {"READ UNCOMMITTED": 1, "SERIALIZABLE": 0}
+    )
 
     def set_isolation_level(self, connection, level):
         try:
@@ -1925,7 +1927,11 @@ class SQLiteDialect(default.DefaultDialect):
                 exc.ArgumentError(
                     "Invalid value '%s' for isolation_level. "
                     "Valid isolation levels for %s are %s"
-                    % (level, self.name, ", ".join(self._isolation_lookup))
+                    % (
+                        level,
+                        self.name,
+                        ", ".join(self._isolation_lookup),
+                    )
                 ),
                 replace_context=err,
             )

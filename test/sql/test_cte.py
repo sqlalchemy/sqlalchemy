@@ -1534,6 +1534,37 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={"param_1": 10, "price_1": 50, "price_2": 45},
         )
 
+    def test_compound_select_uses_independent_cte(self):
+        products = table("products", column("id"), column("price"))
+
+        upd_cte = (
+            products.update().values(price=10).where(products.c.price > 50)
+        ).cte()
+
+        stmt = (
+            products.select()
+            .where(products.c.price < 45)
+            .union(products.select().where(products.c.price > 90))
+            .add_cte(upd_cte)
+        )
+
+        self.assert_compile(
+            stmt,
+            "WITH anon_1 AS (UPDATE products SET price=:param_1 "
+            "WHERE products.price > :price_1) "
+            "SELECT products.id, products.price "
+            "FROM products WHERE products.price < :price_2 "
+            "UNION "
+            "SELECT products.id, products.price "
+            "FROM products WHERE products.price > :price_3",
+            checkparams={
+                "param_1": 10,
+                "price_1": 50,
+                "price_2": 45,
+                "price_3": 90,
+            },
+        )
+
     def test_insert_uses_independent_cte(self):
         products = table("products", column("id"), column("price"))
 

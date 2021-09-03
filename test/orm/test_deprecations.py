@@ -38,7 +38,9 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relation
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm import undefer
@@ -54,6 +56,7 @@ from sqlalchemy.testing import assertions
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import eq_ignore_whitespace
+from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
@@ -5475,3 +5478,23 @@ class GetBindTest(_GetBindTest):
         session = self._fixture({self.tables.base_table: base_class_bind})
 
         is_(session.get_bind(self.classes.ConcreteSubClass), testing.db)
+
+
+class DeprecationScopedSessionTest(fixtures.MappedTest):
+    def test_config_errors(self):
+        sm = sessionmaker()
+
+        def go():
+            s = sm()
+            s._is_asyncio = True
+            return s
+
+        Session = scoped_session(go)
+
+        with expect_deprecated(
+            "Using `scoped_session` with asyncio is deprecated and "
+            "will raise an error in a future version. "
+            "Please use `async_scoped_session` instead."
+        ):
+            Session()
+        Session.remove()

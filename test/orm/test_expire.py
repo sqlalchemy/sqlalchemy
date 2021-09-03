@@ -69,7 +69,7 @@ class ExpireTest(_fixtures.FixtureTest):
         sess.flush()
         # change the value in the DB
         sess.execute(
-            users.update(values=dict(name="jack")).where(users.c.id == 7)
+            users.update().values(dict(name="jack")).where(users.c.id == 7)
         )
         sess.expire(u)
         # object isn't refreshed yet, using dict to bypass trigger

@@ -8,6 +8,7 @@ from . import exc as async_exc
 class ReversibleProxy:
     # weakref.ref(async proxy object) -> weakref.ref(sync proxied object)
     _proxy_objects = {}
+    __slots__ = ("__weakref__",)
 
     def _assign_proxied(self, target):
         if target is not None:
@@ -46,6 +47,8 @@ class ReversibleProxy:
 
 
 class StartableContext(abc.ABC):
+    __slots__ = ()
+
     @abc.abstractmethod
     async def start(self, is_ctxmanager=False):
         pass
@@ -68,6 +71,8 @@ class StartableContext(abc.ABC):
 
 
 class ProxyComparable(ReversibleProxy):
+    __slots__ = ()
+
     def __hash__(self):
         return id(self)
 

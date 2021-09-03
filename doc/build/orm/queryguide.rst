@@ -19,10 +19,10 @@ upon the content at :ref:`tutorial_selecting_data`.
     >>> from sqlalchemy import create_engine
     >>> engine = create_engine("sqlite+pysqlite:///:memory:", echo=True, future=True)
     >>> from sqlalchemy import MetaData, Table, Column, Integer, String
-    >>> metadata = MetaData()
+    >>> metadata_obj = MetaData()
     >>> user_table = Table(
     ...     "user_account",
-    ...     metadata,
+    ...     metadata_obj,
     ...     Column('id', Integer, primary_key=True),
     ...     Column('name', String(30)),
     ...     Column('fullname', String)
@@ -30,32 +30,32 @@ upon the content at :ref:`tutorial_selecting_data`.
     >>> from sqlalchemy import ForeignKey
     >>> address_table = Table(
     ...     "address",
-    ...     metadata,
+    ...     metadata_obj,
     ...     Column('id', Integer, primary_key=True),
     ...     Column('user_id', None, ForeignKey('user_account.id')),
     ...     Column('email_address', String, nullable=False)
     ... )
     >>> orders_table = Table(
     ...     "user_order",
-    ...     metadata,
+    ...     metadata_obj,
     ...     Column('id', Integer, primary_key=True),
     ...     Column('user_id', None, ForeignKey('user_account.id')),
     ...     Column('email_address', String, nullable=False)
     ... )
     >>> order_items_table = Table(
     ...     "order_items",
-    ...     metadata,
+    ...     metadata_obj,
     ...     Column("order_id", ForeignKey("user_order.id"), primary_key=True),
     ...     Column("item_id", ForeignKey("item.id"), primary_key=True)
     ... )
     >>> items_table = Table(
     ...     "item",
-    ...     metadata,
+    ...     metadata_obj,
     ...     Column('id', Integer, primary_key=True),
     ...     Column('name', String),
     ...     Column('description', String)
     ... )
-    >>> metadata.create_all(engine)
+    >>> metadata_obj.create_all(engine)
     BEGIN (implicit)
     ...
     >>> from sqlalchemy.orm import declarative_base

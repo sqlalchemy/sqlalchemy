@@ -740,6 +740,8 @@ class ORMOption(ExecutableOption):
 
     _is_criteria_option = False
 
+    _is_strategy_option = False
+
 
 class LoaderOption(ORMOption):
     """Describe a loader modification to an ORM statement at compilation time.

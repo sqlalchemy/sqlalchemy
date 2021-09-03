@@ -281,6 +281,18 @@ class TestFindUnmatchingFroms(fixtures.TablesTest):
         froms, start = find_unmatching_froms(query)
         assert not froms
 
+    def test_join_on_true_muti_levels(self):
+        """test #6886"""
+        # test that a join(a, b).join(c) counts b->c as an edge even if there
+        # isn't actually a join condition.  this essentially allows a cartesian
+        # product to be added explicitly.
+
+        query = select(self.a, self.b, self.c).select_from(
+            self.a.join(self.b, true()).join(self.c, true())
+        )
+        froms, start = find_unmatching_froms(query)
+        assert not froms
+
     def test_right_nested_join_with_an_issue(self):
         query = (
             select(self.a)

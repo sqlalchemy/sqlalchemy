@@ -9,6 +9,7 @@ from .base import ProxyComparable
 from .base import StartableContext
 from .result import AsyncResult
 from ... import exc
+from ... import inspection
 from ... import util
 from ...engine import create_engine as _create_engine
 from ...engine.base import NestedTransaction
@@ -80,6 +81,7 @@ class AsyncConnection(ProxyComparable, StartableContext, AsyncConnectable):
     # create a new AsyncConnection that matches this one given only the
     # "sync" elements.
     __slots__ = (
+        "engine",
         "sync_engine",
         "sync_connection",
     )
@@ -709,3 +711,24 @@ def _get_sync_engine_or_connection(async_engine):
         raise exc.ArgumentError(
             "AsyncEngine expected, got %r" % async_engine
         ) from e
+
+
+@inspection._inspects(AsyncConnection)
+def _no_insp_for_async_conn_yet(subject):
+    raise exc.NoInspectionAvailable(
+        "Inspection on an AsyncConnection is currently not supported. "
+        "Please use ``run_sync`` to pass a callable where it's possible "
+        "to call ``inspect`` on the passed connection.",
+        code="xd3s",
+    )
+
+
+@inspection._inspects(AsyncEngine)
+def _no_insp_for_async_engine_xyet(subject):
+    raise exc.NoInspectionAvailable(
+        "Inspection on an AsyncEngine is currently not supported. "
+        "Please obtain a connection then use ``conn.run_sync`` to pass a "
+        "callable where it's possible to call ``inspect`` on the "
+        "passed connection.",
+        code="xd3s",
+    )

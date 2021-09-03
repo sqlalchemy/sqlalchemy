@@ -54,7 +54,7 @@ that stores a series of :class:`_schema.Table` objects keyed to their string
 name.   Constructing this object looks like::
 
     >>> from sqlalchemy import MetaData
-    >>> metadata = MetaData()
+    >>> metadata_obj = MetaData()
 
 Having a single :class:`_schema.MetaData` object for an entire application is
 the most common case, represented as a module-level variable in a single place
@@ -75,7 +75,7 @@ that will be how we will refer to the table in application code::
     >>> from sqlalchemy import Table, Column, Integer, String
     >>> user_table = Table(
     ...     "user_account",
-    ...     metadata,
+    ...     metadata_obj,
     ...     Column('id', Integer, primary_key=True),
     ...     Column('name', String(30)),
     ...     Column('fullname', String)
@@ -150,7 +150,7 @@ table::
     >>> from sqlalchemy import ForeignKey
     >>> address_table = Table(
     ...     "address",
-    ...     metadata,
+    ...     metadata_obj,
     ...     Column('id', Integer, primary_key=True),
     ...     Column('user_id', ForeignKey('user_account.id'), nullable=False),
     ...     Column('email_address', String, nullable=False)
@@ -193,7 +193,7 @@ sending it the :class:`_future.Engine` that refers to the target database:
 
 .. sourcecode:: pycon+sql
 
-    >>> metadata.create_all(engine)
+    >>> metadata_obj.create_all(engine)
     {opensql}BEGIN (implicit)
     PRAGMA main.table_...info("user_account")
     ...
@@ -499,7 +499,7 @@ using the :paramref:`_schema.Table.autoload_with` parameter:
 
 .. sourcecode:: pycon+sql
 
-    >>> some_table = Table("some_table", metadata, autoload_with=engine)
+    >>> some_table = Table("some_table", metadata_obj, autoload_with=engine)
     {opensql}BEGIN (implicit)
     PRAGMA main.table_...info("some_table")
     [raw sql] ()

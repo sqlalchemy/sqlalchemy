@@ -556,13 +556,13 @@ execution patterns, is removed::
 
     from sqlalchemy import MetaData
 
-    metadata = MetaData(bind=engine)  # no longer supported
+    metadata_obj = MetaData(bind=engine)  # no longer supported
 
-    metadata.create_all()   # requires Engine or Connection
+    metadata_obj.create_all()   # requires Engine or Connection
 
-    metadata.reflect()  # requires Engine or Connection
+    metadata_obj.reflect()  # requires Engine or Connection
 
-    t = Table('t', metadata, autoload=True)  # use autoload_with=engine
+    t = Table('t', metadata_obj, autoload=True)  # use autoload_with=engine
 
     result = engine.execute(t.select())  # no longer supported
 
@@ -581,18 +581,18 @@ the ORM-level :meth:`_orm.Session.execute` method)::
 
     from sqlalchemy import MetaData
 
-    metadata = MetaData()
+    metadata_obj = MetaData()
 
     # engine level:
 
     # create tables
-    metadata.create_all(engine)
+    metadata_obj.create_all(engine)
 
     # reflect all tables
-    metadata.reflect(engine)
+    metadata_obj.reflect(engine)
 
     # reflect individual table
-    t = Table('t', metadata, autoload_with=engine)
+    t = Table('t', metadata_obj, autoload_with=engine)
 
 
     # connection level:
@@ -601,13 +601,13 @@ the ORM-level :meth:`_orm.Session.execute` method)::
     with engine.connect() as connection:
         # create tables, requires explicit begin and/or commit:
         with connection.begin():
-            metadata.create_all(connection)
+            metadata_obj.create_all(connection)
 
         # reflect all tables
-        metadata.reflect(connection)
+        metadata_obj.reflect(connection)
 
         # reflect individual table
-        t = Table('t', metadata, autoload_with=connection)
+        t = Table('t', metadata_obj, autoload_with=connection)
 
         # execute SQL statements
         result = conn.execute(t.select())
@@ -685,10 +685,10 @@ Core from "many choices"::
   # many choices
 
   # bound metadata?
-  metadata = MetaData(engine)
+  metadata_obj = MetaData(engine)
 
   # or not?
-  metadata = MetaData()
+  metadata_obj = MetaData()
 
   # execute from engine?
   result = engine.execute(stmt)
@@ -973,7 +973,7 @@ documented style in the Core tutorial.
 Examples of "structural" vs. "data" elements are as follows::
 
   # table columns for CREATE TABLE - structural
-  table = Table("table", metadata, Column('x', Integer), Column('y', Integer))
+  table = Table("table", metadata_obj, Column('x', Integer), Column('y', Integer))
 
   # columns in a SELECT statement - structural
   stmt = select(table.c.x, table.c.y)
@@ -1229,6 +1229,24 @@ following the table, and may include additional notes not summarized here.
 
     * - ::
 
+          session.query(User).\
+          filter_by(name='some user').first()
+
+
+      - ::
+
+          session.execute(
+            select(User).
+            filter_by(name="some user").
+            limit(1)
+          ).scalars().first()
+
+      - :ref:`migration_20_unify_select`
+
+        :meth:`_engine.Result.first`
+
+    * - ::
+
             session.query(User).options(
                 joinedload(User.addresses)
             ).all()
@@ -1326,6 +1344,18 @@ following the table, and may include additional notes not summarized here.
 
       - :ref:`orm_expression_update_delete`
 
+    *
+      - ::
+
+          session.query(User).count()
+
+      - ::
+
+          session.scalar(select(func.count()).select_from(User))
+          session.scalar(select(func.count(User.id)))
+
+      - :meth:`_orm.Session.scalar`
+
 .. _migration_20_unify_select:
 
 ORM Query Unified with Core Select
@@ -1348,6 +1378,9 @@ Legacy code examples are illustrated below::
 
     # becomes legacy use case
     user = session.query(User).filter_by(name='some user').one()
+
+    # becomes legacy use case
+    user = session.query(User).filter_by(name='some user').first()
 
     # becomes legacy use case
     user = session.query(User).get(5)
@@ -1410,6 +1443,11 @@ Below are some examples of how to migrate to :func:`_sql.select`::
         select(User).filter_by(name="some user")
     ).scalar_one()
 
+    # for first(), no LIMIT is applied automatically; add limit(1) if LIMIT
+    # is desired on the query
+    user = session.execute(
+        select(User).filter_by(name="some user").limit(1)
+    ).scalars().first()
 
     # get() moves to the Session directly
     user = session.get(User, 5)
@@ -1834,21 +1872,22 @@ As is the case described at :ref:`migration_20_query_from_self`, the
 
     from sqlalchemy.orm import aliased
 
-    subquery = session.query(User).filter(User.id == 5).subquery()
+    subquery = session.query(User).filter(User.name.like("%somename%")).subquery()
 
     ua = aliased(User, subquery)
 
-    user = session.query(ua).first()
+    user = session.query(ua).order_by(ua.id).first()
 
 Using :term:`2.0 style`::
 
     from sqlalchemy.orm import aliased
 
-    subquery = select(User).where(User.id == 5).subquery()
+    subquery = select(User).where(User.name.like("%somename%")).subquery()
 
     ua = aliased(User, subquery)
 
-    user = session.execute(select(ua)).scalars().first()
+    # note that LIMIT 1 is not automatically supplied, if needed
+    user = session.execute(select(ua).order_by(ua.id).limit(1)).scalars().first()
 
 **Discussion**
 

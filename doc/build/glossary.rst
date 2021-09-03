@@ -37,7 +37,7 @@ Glossary
             from sqlalchemy.orm import sessionmaker
 
 
-            engine = create_engine("mysql://user:pass:host/dbname", future=True)
+            engine = create_engine("mysql://user:pass@host/dbname", future=True)
             Session = sessionmaker(bind=engine, future=True)
 
         **ORM Queries in 2.0 style**

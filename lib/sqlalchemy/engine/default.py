@@ -1835,8 +1835,9 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         # to avoid many calls of get_insert_default()/
         # get_update_default()
         for c in insert_prefetch:
-            if c.default and c.default.is_scalar:
+            if c.default and not c.default.is_sequence and c.default.is_scalar:
                 scalar_defaults[c] = c.default.arg
+
         for c in update_prefetch:
             if c.onupdate and c.onupdate.is_scalar:
                 scalar_defaults[c] = c.onupdate.arg

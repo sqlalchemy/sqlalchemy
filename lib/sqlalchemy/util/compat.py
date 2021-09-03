@@ -392,6 +392,9 @@ if py3k:
 
         """
 
+        kwonlydefaults = kwonlydefaults or {}
+        annotations = annotations or {}
+
         def formatargandannotation(arg):
             result = formatarg(arg)
             if arg in annotations:
