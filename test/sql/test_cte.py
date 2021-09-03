@@ -1704,11 +1704,11 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = postgresql.dialect()
 
     def test_select_with_nesting_cte_in_cte(self):
-        nesting_cte = select([literal(1).label("inner_cte")]).cte(
+        nesting_cte = select(literal(1).label("inner_cte")).cte(
             "nesting", nesting=True
         )
         stmt = select(
-            [select([nesting_cte.c.inner_cte.label("outer_cte")]).cte("cte")]
+            select(nesting_cte.c.inner_cte.label("outer_cte")).cte("cte")
         )
 
         self.assert_compile(
@@ -1719,15 +1719,11 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_nesting_cte_in_cte_with_same_name(self):
-        nesting_cte = select([literal(1).label("inner_cte")]).cte(
+        nesting_cte = select(literal(1).label("inner_cte")).cte(
             "some_cte", nesting=True
         )
         stmt = select(
-            [
-                select([nesting_cte.c.inner_cte.label("outer_cte")]).cte(
-                    "some_cte"
-                )
-            ]
+            select(nesting_cte.c.inner_cte.label("outer_cte")).cte("some_cte")
         )
 
         self.assert_compile(
@@ -1738,11 +1734,11 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_nesting_cte_at_top_level(self):
-        nesting_cte = select([literal(1).label("val")]).cte(
+        nesting_cte = select(literal(1).label("val")).cte(
             "nesting_cte", nesting=True
         )
-        cte = select([literal(2).label("val")]).cte("cte")
-        stmt = select([nesting_cte.c.val, cte.c.val])
+        cte = select(literal(2).label("val")).cte("cte")
+        stmt = select(nesting_cte.c.val, cte.c.val)
 
         self.assert_compile(
             stmt,
@@ -1758,22 +1754,18 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         It implies that nesting CTE level is taken in account.
         """
-        select_1_cte = select([literal(1).label("inner_cte")]).cte(
+        select_1_cte = select(literal(1).label("inner_cte")).cte(
             "nesting_1", nesting=True
         )
-        select_2_cte = select([literal(2).label("inner_cte")]).cte(
+        select_2_cte = select(literal(2).label("inner_cte")).cte(
             "nesting_2", nesting=True
         )
 
         stmt = select(
-            [
-                select(
-                    [
-                        select_1_cte.c.inner_cte.label("outer_1"),
-                        select_2_cte.c.inner_cte.label("outer_2"),
-                    ]
-                ).cte("cte")
-            ]
+            select(
+                select_1_cte.c.inner_cte.label("outer_1"),
+                select_2_cte.c.inner_cte.label("outer_2"),
+            ).cte("cte")
         )
 
         self.assert_compile(
@@ -1788,17 +1780,17 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_double_nesting_cte_with_cross_reference_in_cte(self):
-        select_1_cte = select([literal(1).label("inner_cte_1")]).cte(
+        select_1_cte = select(literal(1).label("inner_cte_1")).cte(
             "nesting_1", nesting=True
         )
         select_2_cte = select(
-            [(select_1_cte.c.inner_cte_1 + 1).label("inner_cte_2")]
+            (select_1_cte.c.inner_cte_1 + 1).label("inner_cte_2")
         ).cte("nesting_2", nesting=True)
 
         # 1 next 2
 
-        nesting_cte_1_2 = select([select_1_cte, select_2_cte]).cte("cte")
-        stmt_1_2 = select([nesting_cte_1_2])
+        nesting_cte_1_2 = select(select_1_cte, select_2_cte).cte("cte")
+        stmt_1_2 = select(nesting_cte_1_2)
         self.assert_compile(
             stmt_1_2,
             "WITH cte AS ("
@@ -1815,11 +1807,9 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         # Reorganize order with add_cte
         nesting_cte_2_1 = (
-            select([select_2_cte, select_1_cte])
-            .add_cte(select_1_cte)
-            .cte("cte")
+            select(select_2_cte, select_1_cte).add_cte(select_1_cte).cte("cte")
         )
-        stmt_2_1 = select([nesting_cte_2_1])
+        stmt_2_1 = select(nesting_cte_2_1)
         self.assert_compile(
             stmt_2_1,
             "WITH cte AS ("
@@ -1833,15 +1823,15 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_nesting_cte_in_nesting_cte_in_cte(self):
-        select_1_cte = select([literal(1).label("inner_cte")]).cte(
+        select_1_cte = select(literal(1).label("inner_cte")).cte(
             "nesting_1", nesting=True
         )
-        select_2_cte = select([select_1_cte.c.inner_cte.label("inner_2")]).cte(
+        select_2_cte = select(select_1_cte.c.inner_cte.label("inner_2")).cte(
             "nesting_2", nesting=True
         )
 
         stmt = select(
-            [select([select_2_cte.c.inner_2.label("outer_cte")]).cte("cte")]
+            select(select_2_cte.c.inner_2.label("outer_cte")).cte("cte")
         )
 
         self.assert_compile(
@@ -1855,19 +1845,19 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_compound_select_with_nesting_cte_in_cte(self):
-        select_1_cte = select([literal(1).label("inner_cte")]).cte(
+        select_1_cte = select(literal(1).label("inner_cte")).cte(
             "nesting_1", nesting=True
         )
-        select_2_cte = select([literal(2).label("inner_cte")]).cte(
+        select_2_cte = select(literal(2).label("inner_cte")).cte(
             "nesting_2", nesting=True
         )
 
         nesting_cte = (
-            select([select_1_cte]).union(select([select_2_cte])).subquery()
+            select(select_1_cte).union(select(select_2_cte)).subquery()
         )
 
         stmt = select(
-            [select([nesting_cte.c.inner_cte.label("outer_cte")]).cte("cte")]
+            select(nesting_cte.c.inner_cte.label("outer_cte")).cte("cte")
         )
 
         self.assert_compile(
@@ -1884,15 +1874,13 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_nesting_cte_in_recursive_cte(self):
-        nesting_cte = select([literal(1).label("inner_cte")]).cte(
+        nesting_cte = select(literal(1).label("inner_cte")).cte(
             "nesting", nesting=True
         )
         stmt = select(
-            [
-                select([nesting_cte.c.inner_cte.label("outer_cte")]).cte(
-                    "cte", recursive=True
-                )
-            ]
+            select(nesting_cte.c.inner_cte.label("outer_cte")).cte(
+                "cte", recursive=True
+            )
         )
 
         self.assert_compile(
@@ -1904,11 +1892,11 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_recursive_nesting_cte_in_cte(self):
-        nesting_cte = select([literal(1).label("inner_cte")]).cte(
+        nesting_cte = select(literal(1).label("inner_cte")).cte(
             "nesting", nesting=True, recursive=True
         )
         stmt = select(
-            [select([nesting_cte.c.inner_cte.label("outer_cte")]).cte("cte")]
+            select(nesting_cte.c.inner_cte.label("outer_cte")).cte("cte")
         )
 
         self.assert_compile(
@@ -1921,29 +1909,25 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_same_nested_cte_is_not_generated_twice(self):
         # Same = name and query
-        nesting_cte_used_twice = select([literal(1).label("inner_cte_1")]).cte(
+        nesting_cte_used_twice = select(literal(1).label("inner_cte_1")).cte(
             "nesting_cte", nesting=True
         )
         select_add_cte = select(
-            [(nesting_cte_used_twice.c.inner_cte_1 + 1).label("next_value")]
+            (nesting_cte_used_twice.c.inner_cte_1 + 1).label("next_value")
         ).cte("nesting_2", nesting=True)
 
         union_cte = (
             select(
-                [
-                    (nesting_cte_used_twice.c.inner_cte_1 - 1).label(
-                        "next_value"
-                    )
-                ]
+                (nesting_cte_used_twice.c.inner_cte_1 - 1).label("next_value")
             )
-            .union(select([select_add_cte]))
+            .union(select(select_add_cte))
             .cte("wrapper", nesting=True)
         )
 
         stmt = (
-            select([union_cte])
+            select(union_cte)
             .add_cte(nesting_cte_used_twice)
-            .union(select([nesting_cte_used_twice]))
+            .union(select(nesting_cte_used_twice))
         )
 
         self.assert_compile(
@@ -1963,15 +1947,13 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_recursive_nesting_cte_in_recursive_cte(self):
-        nesting_cte = select([literal(1).label("inner_cte")]).cte(
+        nesting_cte = select(literal(1).label("inner_cte")).cte(
             "nesting", nesting=True, recursive=True
         )
         stmt = select(
-            [
-                select([nesting_cte.c.inner_cte.label("outer_cte")]).cte(
-                    "cte", recursive=True
-                )
-            ]
+            select(nesting_cte.c.inner_cte.label("outer_cte")).cte(
+                "cte", recursive=True
+            )
         )
 
         self.assert_compile(
@@ -1986,14 +1968,14 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
         products = table("products", column("id"), column("price"))
 
         generator_cte = select(
-            [literal(1).label("id"), literal(27.0).label("price")]
+            literal(1).label("id"), literal(27.0).label("price")
         ).cte("generator", nesting=True)
 
         cte = (
             products.insert()
             .from_select(
                 [products.c.id, products.c.price],
-                select([generator_cte]),
+                select(generator_cte),
             )
             .returning(*products.c)
             .cte("insert_cte")
@@ -2024,7 +2006,7 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
         t1 = table("table_1", column("id"), column("price"))
 
         generator_cte = select(
-            [literal(1).label("id"), literal(27.0).label("price")]
+            literal(1).label("id"), literal(27.0).label("price")
         ).cte("generator", nesting=True)
 
         cte = (
@@ -2050,7 +2032,7 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
     def test_select_from_delete_cte_with_nesting(self):
         t1 = table("table_1", column("id"), column("price"))
 
-        generator_cte = select([literal(1).label("id")]).cte(
+        generator_cte = select(literal(1).label("id")).cte(
             "generator", nesting=True
         )
 
