@@ -16,6 +16,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.mock import call
 from sqlalchemy.testing.mock import MagicMock
 from sqlalchemy.testing.mock import Mock
@@ -275,19 +276,34 @@ class URLTest(fixtures.TestBase):
             url.make_url("drivername:///?%s" % expected),
         )
 
-    @testing.combinations(
-        "username",
-        "host",
-        "database",
-    )
-    def test_only_str_constructor(self, argname):
+    @testing.combinations("username", "host", "database", argnames="argname")
+    @testing.combinations((35.8), (True,), argnames="value")
+    def test_only_str_constructor(self, argname, value):
         assert_raises_message(
             TypeError,
             "%s must be a string" % argname,
             url.URL.create,
             "somedriver",
-            **{argname: 35.8}
+            **{argname: value}
         )
+
+    @testing.combinations("username", "host", "database", argnames="argname")
+    def test_none_ok(self, argname):
+        u1 = url.URL.create("drivername", **{argname: None})
+        is_(getattr(u1, argname), None)
+
+    @testing.combinations((35.8), (True,), (None,), argnames="value")
+    def test_only_str_drivername_no_none(self, value):
+        assert_raises_message(
+            TypeError, "drivername must be a string", url.URL.create, value
+        )
+
+    @testing.combinations((35.8), (True,), (None,), argnames="value")
+    def test_only_str_drivername_no_none_legacy(self, value):
+        with expect_deprecated(r"Calling URL\(\) directly"):
+            assert_raises_message(
+                TypeError, "drivername must be a string", url.URL, value
+            )
 
     @testing.combinations(
         "username",
