@@ -154,9 +154,6 @@ class URL(
 
     @classmethod
     def _assert_str(cls, v, paramname):
-        if v is None:
-            return v
-
         if not isinstance(v, compat.string_types):
             raise TypeError("%s must be a string" % paramname)
         return v
