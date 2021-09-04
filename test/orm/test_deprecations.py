@@ -99,6 +99,20 @@ join_tuple_form = (
 )
 
 
+def _aliased_join_warning(arg=None):
+    return testing.expect_warnings(
+        "An alias is being generated automatically against joined entity "
+        "mapped class " + (arg if arg else "")
+    )
+
+
+def _aliased_join_deprecation(arg=None):
+    return testing.expect_deprecated(
+        "An alias is being generated automatically against joined entity "
+        "mapped class " + (arg if arg else "")
+    )
+
+
 class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     __dialect__ = "default"
 
@@ -824,7 +838,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         oalias = orders.select()
 
-        with self._expect_implicit_subquery():
+        with self._expect_implicit_subquery(), _aliased_join_warning():
             self.assert_compile(
                 sess.query(User)
                 .join(oalias, User.orders)
@@ -2494,7 +2508,11 @@ class DeprecatedInhTest(_poly_fixtures._Polymorphic):
         sess = fixture_session()
 
         mach_alias = machines.select()
-        with DeprecatedQueryTest._expect_implicit_subquery():
+
+        # note python 2 does not allow parens here; reformat in py3 only
+        with DeprecatedQueryTest._expect_implicit_subquery(), _aliased_join_warning(  # noqa E501
+            "Person->people"
+        ):
             self.assert_compile(
                 sess.query(Company)
                 .join(people.join(engineers), Company.employees)
@@ -4827,19 +4845,20 @@ class AliasFromCorrectLeftTest(
         with testing.expect_deprecated_20(join_strings_dep):
             q = s.query(B).join(B.a_list, "x_list").filter(X.name == "x1")
 
-        self.assert_compile(
-            q,
-            "SELECT object.type AS object_type, b.id AS b_id, "
-            "object.id AS object_id, object.name AS object_name "
-            "FROM object JOIN b ON object.id = b.id "
-            "JOIN a_b_association AS a_b_association_1 "
-            "ON b.id = a_b_association_1.b_id "
-            "JOIN ("
-            "object AS object_1 "
-            "JOIN a AS a_1 ON object_1.id = a_1.id"
-            ") ON a_1.id = a_b_association_1.a_id "
-            "JOIN x ON object_1.id = x.obj_id WHERE x.name = :name_1",
-        )
+        with _aliased_join_warning():
+            self.assert_compile(
+                q,
+                "SELECT object.type AS object_type, b.id AS b_id, "
+                "object.id AS object_id, object.name AS object_name "
+                "FROM object JOIN b ON object.id = b.id "
+                "JOIN a_b_association AS a_b_association_1 "
+                "ON b.id = a_b_association_1.b_id "
+                "JOIN ("
+                "object AS object_1 "
+                "JOIN a AS a_1 ON object_1.id = a_1.id"
+                ") ON a_1.id = a_b_association_1.a_id "
+                "JOIN x ON object_1.id = x.obj_id WHERE x.name = :name_1",
+            )
 
     def test_join_prop_to_prop(self):
         A, B, X = self.classes("A", "B", "X")
@@ -4851,19 +4870,20 @@ class AliasFromCorrectLeftTest(
         with testing.expect_deprecated_20(join_chain_dep):
             q = s.query(B).join(B.a_list, A.x_list).filter(X.name == "x1")
 
-        self.assert_compile(
-            q,
-            "SELECT object.type AS object_type, b.id AS b_id, "
-            "object.id AS object_id, object.name AS object_name "
-            "FROM object JOIN b ON object.id = b.id "
-            "JOIN a_b_association AS a_b_association_1 "
-            "ON b.id = a_b_association_1.b_id "
-            "JOIN ("
-            "object AS object_1 "
-            "JOIN a AS a_1 ON object_1.id = a_1.id"
-            ") ON a_1.id = a_b_association_1.a_id "
-            "JOIN x ON object_1.id = x.obj_id WHERE x.name = :name_1",
-        )
+        with _aliased_join_warning():
+            self.assert_compile(
+                q,
+                "SELECT object.type AS object_type, b.id AS b_id, "
+                "object.id AS object_id, object.name AS object_name "
+                "FROM object JOIN b ON object.id = b.id "
+                "JOIN a_b_association AS a_b_association_1 "
+                "ON b.id = a_b_association_1.b_id "
+                "JOIN ("
+                "object AS object_1 "
+                "JOIN a AS a_1 ON object_1.id = a_1.id"
+                ") ON a_1.id = a_b_association_1.a_id "
+                "JOIN x ON object_1.id = x.obj_id WHERE x.name = :name_1",
+            )
 
 
 class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
@@ -5146,8 +5166,37 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
             )
 
 
-class InheritedJoinTest(_poly_fixtures._Polymorphic, AssertsCompiledSQL):
+class InheritedJoinTest(
+    fixtures.NoCache,
+    _poly_fixtures._Polymorphic,
+    _poly_fixtures._PolymorphicFixtureBase,
+    AssertsCompiledSQL,
+):
     run_setup_mappers = "once"
+
+    def test_join_to_selectable(self):
+        people, Company, engineers, Engineer = (
+            self.tables.people,
+            self.classes.Company,
+            self.tables.engineers,
+            self.classes.Engineer,
+        )
+
+        sess = fixture_session()
+
+        with _aliased_join_deprecation():
+            self.assert_compile(
+                sess.query(Company)
+                .join(people.join(engineers), Company.employees)
+                .filter(Engineer.name == "dilbert"),
+                "SELECT companies.company_id AS companies_company_id, "
+                "companies.name AS companies_name "
+                "FROM companies JOIN (people "
+                "JOIN engineers ON people.person_id = "
+                "engineers.person_id) ON companies.company_id = "
+                "people.company_id WHERE people.name = :name_1",
+                use_default_dialect=True,
+            )
 
     def test_multiple_adaption(self):
         """test that multiple filter() adapters get chained together "
@@ -5166,7 +5215,9 @@ class InheritedJoinTest(_poly_fixtures._Polymorphic, AssertsCompiledSQL):
 
         mach_alias = aliased(Machine, machines.select().subquery())
 
-        with testing.expect_deprecated_20(join_aliased_dep):
+        with testing.expect_deprecated_20(
+            join_aliased_dep
+        ), _aliased_join_deprecation():
             self.assert_compile(
                 sess.query(Company)
                 .join(people.join(engineers), Company.employees)
@@ -5273,6 +5324,95 @@ class InheritedJoinTest(_poly_fixtures._Polymorphic, AssertsCompiledSQL):
             r"correctly with the legacy Query.with_polymorphic\(\)"
         ):
             str(q)
+
+    def test_join_to_subclass_selectable_auto_alias(self):
+        Company, Engineer = self.classes("Company", "Engineer")
+        people, engineers = self.tables("people", "engineers")
+
+        sess = fixture_session()
+
+        with _aliased_join_deprecation():
+            eq_(
+                sess.query(Company)
+                .join(people.join(engineers), "employees")
+                .filter(Engineer.primary_language == "java")
+                .all(),
+                [self.c1],
+            )
+
+        # occurs for 2.0 style query also
+        with _aliased_join_deprecation():
+            stmt = (
+                select(Company)
+                .join(people.join(engineers), Company.employees)
+                .filter(Engineer.primary_language == "java")
+            )
+            results = sess.scalars(stmt)
+            eq_(results.all(), [self.c1])
+
+    def test_join_to_subclass_two(self):
+        Company, Engineer = self.classes("Company", "Engineer")
+        people, engineers = self.tables("people", "engineers")
+
+        sess = fixture_session()
+
+        with _aliased_join_deprecation():
+            eq_(
+                sess.query(Company)
+                .join(people.join(engineers), "employees")
+                .filter(Engineer.primary_language == "java")
+                .all(),
+                [self.c1],
+            )
+
+    def test_join_to_subclass_six_selectable_auto_alias(self):
+        Company, Engineer = self.classes("Company", "Engineer")
+        people, engineers = self.tables("people", "engineers")
+
+        sess = fixture_session()
+
+        with _aliased_join_deprecation():
+            eq_(
+                sess.query(Company)
+                .join(people.join(engineers), "employees")
+                .join(Engineer.machines)
+                .all(),
+                [self.c1, self.c2],
+            )
+
+    def test_join_to_subclass_six_point_five_selectable_auto_alias(self):
+        Company, Engineer = self.classes("Company", "Engineer")
+        people, engineers = self.tables("people", "engineers")
+
+        sess = fixture_session()
+
+        with _aliased_join_deprecation():
+            eq_(
+                sess.query(Company)
+                .join(people.join(engineers), "employees")
+                .join(Engineer.machines)
+                .filter(Engineer.name == "dilbert")
+                .all(),
+                [self.c1],
+            )
+
+    def test_join_to_subclass_seven_selectable_auto_alias(self):
+        Company, Engineer, Machine = self.classes(
+            "Company", "Engineer", "Machine"
+        )
+        people, engineers = self.tables("people", "engineers")
+
+        sess = fixture_session()
+
+        with _aliased_join_deprecation():
+            eq_(
+                sess.query(Company)
+                .join(people.join(engineers), "employees")
+                .join(Engineer.machines)
+                .filter(Machine.name.ilike("%thinkpad%"))
+                .all(),
+                [self.c1],
+            )
 
 
 class JoinFromSelectableTest(fixtures.MappedTest, AssertsCompiledSQL):
@@ -5498,3 +5638,128 @@ class DeprecationScopedSessionTest(fixtures.MappedTest):
         ):
             Session()
         Session.remove()
+
+
+@testing.combinations(
+    (
+        "inline",
+        True,
+    ),
+    (
+        "separate",
+        False,
+    ),
+    argnames="inline",
+    id_="sa",
+)
+@testing.combinations(
+    (
+        "string",
+        True,
+    ),
+    (
+        "literal",
+        False,
+    ),
+    argnames="stringbased",
+    id_="sa",
+)
+class ExplicitJoinTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        global User, Address
+        Base = declarative_base(metadata=metadata)
+
+        class User(Base, fixtures.ComparableEntity):
+
+            __tablename__ = "users"
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            name = Column(String(50))
+
+        class Address(Base, fixtures.ComparableEntity):
+
+            __tablename__ = "addresses"
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            email = Column(String(50))
+            user_id = Column(Integer, ForeignKey("users.id"))
+            if cls.inline:
+                if cls.stringbased:
+                    user = relationship(
+                        "User",
+                        primaryjoin="User.id==Address.user_id",
+                        backref="addresses",
+                    )
+                else:
+                    user = relationship(
+                        User,
+                        primaryjoin=User.id == user_id,
+                        backref="addresses",
+                    )
+
+        if not cls.inline:
+            configure_mappers()
+            if cls.stringbased:
+                Address.user = relationship(
+                    "User",
+                    primaryjoin="User.id==Address.user_id",
+                    backref="addresses",
+                )
+            else:
+                Address.user = relationship(
+                    User,
+                    primaryjoin=User.id == Address.user_id,
+                    backref="addresses",
+                )
+
+    @classmethod
+    def insert_data(cls, connection):
+        params = [
+            dict(list(zip(("id", "name"), column_values)))
+            for column_values in [
+                (7, "jack"),
+                (8, "ed"),
+                (9, "fred"),
+                (10, "chuck"),
+            ]
+        ]
+
+        connection.execute(User.__table__.insert(), params)
+        connection.execute(
+            Address.__table__.insert(),
+            [
+                dict(list(zip(("id", "user_id", "email"), column_values)))
+                for column_values in [
+                    (1, 7, "jack@bean.com"),
+                    (2, 8, "ed@wood.com"),
+                    (3, 8, "ed@bettyboop.com"),
+                    (4, 8, "ed@lala.com"),
+                    (5, 9, "fred@fred.com"),
+                ]
+            ],
+        )
+
+    def test_aliased_join(self):
+
+        # this query will screw up if the aliasing enabled in
+        # query.join() gets applied to the right half of the join
+        # condition inside the any(). the join condition inside of
+        # any() comes from the "primaryjoin" of the relationship,
+        # and should not be annotated with _orm_adapt.
+        # PropertyLoader.Comparator will annotate the left side with
+        # _orm_adapt, though.
+
+        sess = fixture_session()
+
+        with testing.expect_deprecated_20(join_aliased_dep):
+            eq_(
+                sess.query(User)
+                .join(User.addresses, aliased=True)
+                .filter(Address.email == "ed@wood.com")
+                .filter(User.addresses.any(Address.email == "jack@bean.com"))
+                .all(),
+                [],
+            )

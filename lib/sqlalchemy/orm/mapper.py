@@ -1011,9 +1011,52 @@ class Mapper(
                         # immediate table of the inherited mapper, not its
                         # full table which could pull in other stuff we don't
                         # want (allows test/inheritance.InheritTest4 to pass)
-                        self.inherit_condition = sql_util.join_condition(
-                            self.inherits.local_table, self.local_table
-                        )
+                        try:
+                            self.inherit_condition = sql_util.join_condition(
+                                self.inherits.local_table, self.local_table
+                            )
+                        except sa_exc.NoForeignKeysError as nfe:
+                            assert self.inherits.local_table is not None
+                            assert self.local_table is not None
+                            util.raise_(
+                                sa_exc.NoForeignKeysError(
+                                    "Can't determine the inherit condition "
+                                    "between inherited table '%s' and "
+                                    "inheriting "
+                                    "table '%s'; tables have no "
+                                    "foreign key relationships established.  "
+                                    "Please ensure the inheriting table has "
+                                    "a foreign key relationship to the "
+                                    "inherited "
+                                    "table, or provide an "
+                                    "'on clause' using "
+                                    "the 'inherit_condition' mapper argument."
+                                    % (
+                                        self.inherits.local_table.description,
+                                        self.local_table.description,
+                                    )
+                                ),
+                                replace_context=nfe,
+                            )
+                        except sa_exc.AmbiguousForeignKeysError as afe:
+                            assert self.inherits.local_table is not None
+                            assert self.local_table is not None
+                            util.raise_(
+                                sa_exc.AmbiguousForeignKeysError(
+                                    "Can't determine the inherit condition "
+                                    "between inherited table '%s' and "
+                                    "inheriting "
+                                    "table '%s'; tables have more than one "
+                                    "foreign key relationship established.  "
+                                    "Please specify the 'on clause' using "
+                                    "the 'inherit_condition' mapper argument."
+                                    % (
+                                        self.inherits.local_table.description,
+                                        self.local_table.description,
+                                    )
+                                ),
+                                replace_context=afe,
+                            )
                     self.persist_selectable = sql.join(
                         self.inherits.persist_selectable,
                         self.local_table,

@@ -1141,7 +1141,7 @@ class MemUsageWBackendTest(EnsureZeroed):
 
         @profile_memory()
         def go():
-            s = table2.select().subquery()
+            s = aliased(Bar, table2.select().subquery())
             sess = session()
             sess.query(Foo).join(s, Foo.bars).all()
             sess.rollback()

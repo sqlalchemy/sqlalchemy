@@ -2519,7 +2519,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
                 .add_columns(
                     func.count(adalias.c.id), ("Name:" + users.c.name)
                 )
-                .outerjoin(adalias, "addresses")
+                .outerjoin(adalias)
                 .group_by(users)
                 .order_by(users.c.id)
             )
@@ -2582,7 +2582,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
                 .add_columns(
                     func.count(adalias.c.id), ("Name:" + users.c.name)
                 )
-                .outerjoin(adalias, "addresses")
+                .outerjoin(adalias)
                 .group_by(users)
                 .order_by(users.c.id)
             )

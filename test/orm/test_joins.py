@@ -61,29 +61,6 @@ class InheritedJoinTest(InheritedTest, AssertsCompiledSQL):
             use_default_dialect=True,
         )
 
-    def test_join_to_selectable(self):
-        people, Company, engineers, Engineer = (
-            self.tables.people,
-            self.classes.Company,
-            self.tables.engineers,
-            self.classes.Engineer,
-        )
-
-        sess = fixture_session()
-
-        self.assert_compile(
-            sess.query(Company)
-            .join(people.join(engineers), Company.employees)
-            .filter(Engineer.name == "dilbert"),
-            "SELECT companies.company_id AS companies_company_id, "
-            "companies.name AS companies_name "
-            "FROM companies JOIN (people "
-            "JOIN engineers ON people.person_id = "
-            "engineers.person_id) ON companies.company_id = "
-            "people.company_id WHERE people.name = :name_1",
-            use_default_dialect=True,
-        )
-
     def test_force_via_select_from(self):
         Company, Engineer = self.classes.Company, self.classes.Engineer
 
@@ -188,22 +165,30 @@ class InheritedJoinTest(InheritedTest, AssertsCompiledSQL):
             .join(Company.employees.of_type(Boss))
         )
 
-        self.assert_compile(
-            q,
-            "SELECT companies.company_id AS companies_company_id, "
-            "companies.name AS companies_name FROM companies "
-            "JOIN (people JOIN engineers "
-            "ON people.person_id = engineers.person_id) "
-            "ON companies.company_id = people.company_id "
-            "JOIN (people AS people_1 JOIN managers AS managers_1 "
-            "ON people_1.person_id = managers_1.person_id) "
-            "ON companies.company_id = people_1.company_id "
-            "JOIN (people AS people_2 JOIN managers AS managers_2 "
-            "ON people_2.person_id = managers_2.person_id JOIN boss AS boss_1 "
-            "ON managers_2.person_id = boss_1.boss_id) "
-            "ON companies.company_id = people_2.company_id",
-            use_default_dialect=True,
-        )
+        with testing.expect_warnings(
+            "An alias is being generated automatically against joined entity "
+            "mapped class Manager->managers due to overlapping",
+            "An alias is being generated automatically against joined entity "
+            "mapped class Boss->boss due to overlapping",
+            raise_on_any_unexpected=True,
+        ):
+            self.assert_compile(
+                q,
+                "SELECT companies.company_id AS companies_company_id, "
+                "companies.name AS companies_name FROM companies "
+                "JOIN (people JOIN engineers "
+                "ON people.person_id = engineers.person_id) "
+                "ON companies.company_id = people.company_id "
+                "JOIN (people AS people_1 JOIN managers AS managers_1 "
+                "ON people_1.person_id = managers_1.person_id) "
+                "ON companies.company_id = people_1.company_id "
+                "JOIN (people AS people_2 JOIN managers AS managers_2 "
+                "ON people_2.person_id = managers_2.person_id "
+                "JOIN boss AS boss_1 "
+                "ON managers_2.person_id = boss_1.boss_id) "
+                "ON companies.company_id = people_2.company_id",
+                use_default_dialect=True,
+            )
 
 
 class JoinOnSynonymTest(_fixtures.FixtureTest, AssertsCompiledSQL):

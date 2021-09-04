@@ -204,6 +204,181 @@ by passing ``True`` for the :paramref:`_orm.Session.future` parameter.
 
     :ref:`change_5150` - background on the change for SQLAlchemy 2.0.
 
+.. _error_xaj1:
+
+An alias is being generated automatically for raw clauseelement
+----------------------------------------------------------------
+
+.. versionadded:: 1.4.26
+
+This deprecation warning refers to a very old and likely not well known pattern
+that applies to the legacy :meth:`_orm.Query.join` method as well as the
+:term:`2.0 style` :meth:`_sql.Select.join` method, where a join can be stated
+in terms of a :func:`_orm.relationship` but the target is the
+:class:`_schema.Table` or other Core selectable to which the class is mapped,
+rather than an ORM entity such as a mapped class or :func:`_orm.aliased`
+construct::
+
+    a1 = Address.__table__
+
+    q = s.query(User).\
+        join(a1, User.addresses).\
+        filter(Address.email_address == 'ed@foo.com').all()
+
+
+The above pattern also allows an arbitrary selectable, such as
+a Core :class:`_sql.Join` or :class:`_sql.Alias` object,
+however there is no automatic adaptation of this element, meaning the
+Core element would need to be referred towards directly::
+
+    a1 = Address.__table__.alias()
+
+    q = s.query(User).\
+        join(a1, User.addresses).\
+        filter(a1.c.email_address == 'ed@foo.com').all()
+
+The correct way to specify a join target is always by using the mapped
+class itself or an :class:`_orm.aliased` object, in the latter case using the
+:meth:`_orm.PropComparator.of_type` modifier to set up an alias::
+
+    # normal join to relationship entity
+    q = s.query(User).\
+        join(User.addresses).\
+        filter(Address.email_address == 'ed@foo.com')
+
+    # name Address target explicitly, not necessary but legal
+    q = s.query(User).\
+        join(Address, User.addresses).\
+        filter(Address.email_address == 'ed@foo.com')
+
+Join to an alias::
+
+    from sqlalchemy.orm import aliased
+
+    a1 = aliased(Address)
+
+    # of_type() form; recommended
+    q = s.query(User).\
+        join(User.addresses.of_type(a1)).\
+        filter(a1.email_address == 'ed@foo.com')
+
+    # target, onclause form
+    q = s.query(User).\
+        join(a1, User.addresses).\
+        filter(a1.email_address == 'ed@foo.com')
+
+
+.. _error_xaj2:
+
+An alias is being generated automatically due to overlapping tables
+-------------------------------------------------------------------
+
+.. versionadded:: 1.4.26
+
+This warning is typically generated when querying using the
+:meth:`_sql.Select.join` method or the legacy :meth:`_orm.Query.join` method
+with mappings that involve joined table inheritance. The issue is that when
+joining between two joined inheritance models that share a common base table, a
+proper SQL JOIN between the two entities cannot be formed without applying an
+alias to one side or the other; SQLAlchemy applies an alias to the right side
+of the join. For example given a joined inheritance mapping as::
+
+    class Employee(Base):
+        __tablename__ = 'employee'
+        id = Column(Integer, primary_key=True)
+        manager_id = Column(ForeignKey("manager.id"))
+        name = Column(String(50))
+        type = Column(String(50))
+
+        reports_to = relationship("Manager", foreign_keys=manager_id)
+
+        __mapper_args__ = {
+            'polymorphic_identity':'employee',
+            'polymorphic_on':type,
+        }
+
+    class Manager(Employee):
+        __tablename__ = 'manager'
+        id = Column(Integer, ForeignKey('employee.id'), primary_key=True)
+
+        __mapper_args__ = {
+            'polymorphic_identity':'manager',
+            'inherit_condition': id == Employee.id
+        }
+
+The above mapping includes a relationship between the ``Employee`` and
+``Manager`` classes.  Since both classes make use of the "employee" database
+table, from a SQL perspective this is a
+:ref:`self referential relationship <self_referential>`.  If we wanted to
+query from both the ``Employee`` and ``Manager`` models using a join, at the
+SQL level the "employee" table needs to be included twice in the query, which
+means it must be aliased.   When we create such a join using the SQLAlchemy
+ORM, we get SQL that looks like the following:
+
+.. sourcecode:: pycon+sql
+
+    >>> stmt = select(Employee, Manager).join(Employee.reports_to)
+    >>> print(stmt)
+    {opensql}SELECT employee.id, employee.manager_id, employee.name,
+    employee.type, manager_1.id AS id_1, employee_1.id AS id_2,
+    employee_1.manager_id AS manager_id_1, employee_1.name AS name_1,
+    employee_1.type AS type_1
+    FROM employee JOIN
+    (employee AS employee_1 JOIN manager AS manager_1 ON manager_1.id = employee_1.id)
+    ON manager_1.id = employee.manager_id
+
+Above, the SQL selects FROM the ``employee`` table, representing the
+``Employee`` entity in the query. It then joins to a right-nested join of
+``employee AS employee_1 JOIN manager AS manager_1``, where the ``employee``
+table is stated again, except as an anonymous alias ``employee_1``. This is the
+"automatic generation of an alias" that the warning message refers towards.
+
+When SQLAlchemy loads ORM rows that each contain an ``Employee`` and a
+``Manager`` object, the ORM must adapt rows from what above is the
+``employee_1`` and ``manager_1`` table aliases into those of the un-aliased
+``Manager`` class. This process is internally complex and does not accommodate
+for all API features, notably when trying to use eager loading features such as
+:func:`_orm.contains_eager` with more deeply nested queries than are shown
+here.  As the pattern is unreliable for more complex scenarios and involves
+implicit decisionmaking that is difficult to anticipate and follow,
+the warning is emitted and this pattern may be considered a legacy feature. The
+better way to write this query is to use the same patterns that apply to any
+other self-referential relationship, which is to use the :func:`_orm.aliased`
+construct explicitly.  For joined-inheritance and other join-oriented mappings,
+it is usually desirable to add the use of the :paramref:`_orm.aliased.flat`
+parameter, which will allow a JOIN of two or more tables to be aliased by
+applying an alias to the individual tables within the join, rather than
+embedding the join into a new subquery:
+
+.. sourcecode:: pycon+sql
+
+    >>> from sqlalchemy.orm import aliased
+    >>> manager_alias = aliased(Manager, flat=True)
+    >>> stmt = select(Employee, manager_alias).join(Employee.reports_to.of_type(manager_alias))
+    >>> print(stmt)
+    {opensql}SELECT employee.id, employee.manager_id, employee.name,
+    employee.type, manager_1.id AS id_1, employee_1.id AS id_2,
+    employee_1.manager_id AS manager_id_1, employee_1.name AS name_1,
+    employee_1.type AS type_1
+    FROM employee JOIN
+    (employee AS employee_1 JOIN manager AS manager_1 ON manager_1.id = employee_1.id)
+    ON manager_1.id = employee.manager_id
+
+If we then wanted to use :func:`_orm.contains_eager` to populate the
+``reports_to`` attribute, we refer to the alias::
+
+    >>> stmt =select(Employee).join(
+    ...     Employee.reports_to.of_type(manager_alias)
+    ... ).options(
+    ...     contains_eager(Employee.reports_to.of_type(manager_alias))
+    ... )
+
+Without using the explicit :func:`_orm.aliased` object, in some more nested
+cases the :func:`_orm.contains_eager` option does not have enough context to
+know where to get its data from, in the case that the ORM is "auto-aliasing"
+in a very nested context.  Therefore it's best not to rely on this feature
+and instead keep the SQL construction as explicit as possible.
+
 Connections and Transactions
 ============================
 
@@ -905,6 +1080,7 @@ Mitigation of this error is via two general techniques:
     :ref:`session_committing` - background on session commit
 
     :ref:`session_expire` - background on attribute expiry
+
 
 
 .. _error_7s2a:

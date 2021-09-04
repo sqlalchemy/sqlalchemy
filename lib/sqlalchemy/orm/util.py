@@ -1172,6 +1172,14 @@ def aliased(element, alias=None, name=None, flat=False, adapt_on_names=False):
     :class:`_expression.Alias` is not
     ORM-mapped in this case.
 
+    .. seealso::
+
+        :ref:`tutorial_orm_entity_aliases` - in the :ref:`unified_tutorial`
+
+        :ref:`orm_queryguide_orm_aliases` - in the :ref:`queryguide_toplevel`
+
+    :ref:`ormtutorial_aliases` - in the legacy :ref:`ormtutorial_toplevel`
+
     :param element: element to be aliased.  Is normally a mapped class,
      but for convenience can also be a :class:`_expression.FromClause`
      element.

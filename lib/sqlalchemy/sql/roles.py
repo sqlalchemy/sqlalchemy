@@ -145,7 +145,10 @@ class FromClauseRole(ColumnsClauseRole, JoinTargetRole):
 
 class StrictFromClauseRole(FromClauseRole):
     # does not allow text() or select() objects
-    pass
+
+    @property
+    def description(self):
+        raise NotImplementedError()
 
 
 class AnonymizedFromClauseRole(StrictFromClauseRole):

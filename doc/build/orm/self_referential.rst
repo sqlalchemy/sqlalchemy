@@ -4,7 +4,8 @@ Adjacency List Relationships
 ----------------------------
 
 The **adjacency list** pattern is a common relational pattern whereby a table
-contains a foreign key reference to itself. This is the most common
+contains a foreign key reference to itself, in other words is a
+**self referential relationship**. This is the most common
 way to represent hierarchical data in flat tables.  Other methods
 include **nested sets**, sometimes called "modified preorder",
 as well as **materialized path**.  Despite the appeal that modified preorder

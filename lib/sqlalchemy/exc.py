@@ -43,6 +43,12 @@ class HasDescriptionCode(object):
                 )
             )
 
+    def __str__(self):
+        message = super(HasDescriptionCode, self).__str__()
+        if self.code:
+            message = "%s %s" % (message, self._code_str())
+        return message
+
 
 class SQLAlchemyError(HasDescriptionCode, Exception):
     """Generic error class."""
@@ -659,12 +665,6 @@ class SADeprecationWarning(HasDescriptionCode, DeprecationWarning):
 
     deprecated_since = None
     "Indicates the version that started raising this deprecation warning"
-
-    def __str__(self):
-        message = super(SADeprecationWarning, self).__str__()
-        if self.code:
-            message = "%s %s" % (message, self._code_str())
-        return message
 
 
 class RemovedIn20Warning(SADeprecationWarning):

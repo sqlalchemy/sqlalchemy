@@ -1951,6 +1951,18 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
                 # make the right hand side target into an ORM entity
                 right = aliased(right_mapper, right_selectable)
+
+                util.warn_deprecated(
+                    "An alias is being generated automatically against "
+                    "joined entity %s for raw clauseelement, which is "
+                    "deprecated and will be removed in a later release. "
+                    "Use the aliased() "
+                    "construct explicitly, see the linked example."
+                    % right_mapper,
+                    "1.4",
+                    code="xaj1",
+                )
+
             elif create_aliases:
                 # it *could* work, but it doesn't right now and I'd rather
                 # get rid of aliased=True completely
@@ -1974,6 +1986,18 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             # aliasing is desirable.
             right = aliased(right, flat=True)
             need_adapter = True
+
+            if not create_aliases:
+                util.warn(
+                    "An alias is being generated automatically against "
+                    "joined entity %s due to overlapping tables.  This is a "
+                    "legacy pattern which may be "
+                    "deprecated in a later release.  Use the "
+                    "aliased(<entity>, flat=True) "
+                    "construct explicitly, see the linked example."
+                    % right_mapper,
+                    code="xaj2",
+                )
 
         if need_adapter:
             assert right_mapper
