@@ -1724,6 +1724,35 @@ class Session(_SessionClassMethods):
             **kw
         ).scalar()
 
+    def scalars(
+        self,
+        statement,
+        params=None,
+        execution_options=util.EMPTY_DICT,
+        bind_arguments=None,
+        **kw
+    ):
+        """Execute a statement and return the results as scalars.
+
+        Usage and parameters are the same as that of
+        :meth:`_orm.Session.execute`; the return result is a
+        :class:`_result.ScalarResult` filtering object which
+        will return single elements rather than :class:`_row.Row` objects.
+
+        :return:  a :class:`_result.ScalarResult` object
+
+        .. versionadded:: 1.4.24
+
+        """
+
+        return self.execute(
+            statement,
+            params=params,
+            execution_options=execution_options,
+            bind_arguments=bind_arguments,
+            **kw
+        ).scalars()
+
     def close(self):
         """Close out the transactional resources and ORM objects used by this
         :class:`_orm.Session`.

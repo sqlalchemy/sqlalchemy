@@ -1154,12 +1154,24 @@ class Connection(Connectable):
         self.__can_reconnect = False
 
     def scalar(self, object_, *multiparams, **params):
-        """Executes and returns the first column of the first row.
+        """Executes and returns a scalar result set.
 
-        The underlying result/cursor is closed after execution.
+        :return: a :class:_result.ScalarResult
+
         """
 
         return self.execute(object_, *multiparams, **params).scalar()
+
+    def scalars(self, object_, *multiparams, **params):
+        """Executes and returns a scalar result set.
+
+        :return: a :class:_result.ScalarResult
+
+        .. versionadded:: 1.4.24
+
+        """
+
+        return self.execute(object_, *multiparams, **params).scalars()
 
     def execute(self, statement, *multiparams, **params):
         r"""Executes a SQL statement construct and returns a

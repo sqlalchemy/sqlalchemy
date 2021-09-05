@@ -231,6 +231,35 @@ class AsyncSession(ReversibleProxy):
         )
         return result.scalar()
 
+    async def scalars(
+        self,
+        statement,
+        params=None,
+        execution_options=util.EMPTY_DICT,
+        bind_arguments=None,
+        **kw
+    ):
+        """Execute a statement and return scalar results.
+
+        :return: an :class:`_result.ScalarResult` object
+
+        .. versionadded:: 1.4.24
+
+        .. seealso::
+
+            :meth:`_orm.Session.scalars` - main documentation for scalars
+
+        """
+
+        result = await self.execute(
+            statement,
+            params=params,
+            execution_options=execution_options,
+            bind_arguments=bind_arguments,
+            **kw
+        )
+        return result.scalars()
+
     async def get(
         self,
         entity,
@@ -286,6 +315,35 @@ class AsyncSession(ReversibleProxy):
             **kw
         )
         return _result.AsyncResult(result)
+
+    async def stream_scalars(
+        self,
+        statement,
+        params=None,
+        execution_options=util.EMPTY_DICT,
+        bind_arguments=None,
+        **kw
+    ):
+        """Execute a statement and return a stream of scalar results.
+
+        :return: an :class:`_asyncio.AsyncScalarResult` object
+
+        .. versionadded:: 1.4.24
+
+        .. seealso::
+
+            :meth:`_orm.Session.scalars` - main documentation for scalars
+
+        """
+
+        result = await self.stream(
+            statement,
+            params=params,
+            execution_options=execution_options,
+            bind_arguments=bind_arguments,
+            **kw
+        )
+        return result.scalars()
 
     async def delete(self, instance):
         """Mark an instance as deleted.
