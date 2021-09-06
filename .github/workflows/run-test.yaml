@@ -46,6 +46,9 @@ jobs:
           # autocommit tests fail on the ci for some reason
           - python-version: "pypy3"
             pytest-args: "-k 'not test_autocommit_on and not test_turn_autocommit_off_via_default_iso_level and not test_autocommit_isolation_level'"
+          # add aiosqlite on linux
+          - os: "ubuntu-latest"
+            pytest-args: "--dbdriver pysqlite --dbdriver aiosqlite"
 
         exclude:
           # c-extensions fail to build on windows for python 2.7
