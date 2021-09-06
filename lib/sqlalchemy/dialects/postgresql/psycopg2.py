@@ -50,7 +50,7 @@ may be passed to :func:`_sa.create_engine()`, and include the following:
 
 * ``executemany_mode``, ``executemany_batch_page_size``,
   ``executemany_values_page_size``: Allows use of psycopg2
-  extensions for optimizing "executemany"-stye queries.  See the referenced
+  extensions for optimizing "executemany"-style queries.  See the referenced
   section below for details.
 
   .. seealso::
