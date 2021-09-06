@@ -1833,9 +1833,13 @@ class SQLCompiler(Compiled):
             text += self._row_limit_clause(cs, **kwargs)
 
         if self.ctes:
-            # Nesting CTEs from deeper select
-            nesting_level = (len(self.stack) + 1) if not toplevel else None
-            text = self._render_cte_clause(nesting_level=nesting_level) + text
+            nesting_level = len(self.stack) if not toplevel else None
+            text = (
+                self._render_cte_clause(
+                    nesting_level=nesting_level, include_following_stack=True
+                )
+                + text
+            )
 
         self.stack.pop(-1)
         return text
@@ -2499,6 +2503,12 @@ class SQLCompiler(Compiled):
         else:
             return self.bindtemplate % {"name": name}
 
+    def get_name(self, name):
+        if isinstance(name, elements._truncated_label):
+            return self._truncated_identifier("alias", name)
+        else:
+            return name
+
     def visit_cte(
         self,
         cte,
@@ -2514,10 +2524,8 @@ class SQLCompiler(Compiled):
         cte_level = len(self.stack) if cte.nesting else 1
 
         kwargs["visiting_cte"] = cte
-        if isinstance(cte.name, elements._truncated_label):
-            cte_name = self._truncated_identifier("alias", cte.name)
-        else:
-            cte_name = cte.name
+
+        cte_name = self.get_name(cte.name)
 
         is_new_cte = True
         embedded_in_current_named_cte = False
@@ -3125,6 +3133,8 @@ class SQLCompiler(Compiled):
         if toplevel and not self.compile_state:
             self.compile_state = compile_state
 
+        is_embedded_select = compound_index is not None or insert_into
+
         # translate step for Oracle, SQL Server which often need to
         # restructure the SELECT to allow for LIMIT/OFFSET and possibly
         # other conditions
@@ -3273,10 +3283,13 @@ class SQLCompiler(Compiled):
             if per_dialect:
                 text += " " + self.get_statement_hint_text(per_dialect)
 
-        # In compound query, CTEs are shared at the compound level
-        if self.ctes and compound_index is None and not insert_into:
-            nesting_level = len(self.stack) if not toplevel else None
-            text = self._render_cte_clause(nesting_level=nesting_level) + text
+        if self.ctes:
+            # In compound query, CTEs are shared at the compound level
+            if not is_embedded_select:
+                nesting_level = len(self.stack) if not toplevel else None
+                text = (
+                    self._render_cte_clause(nesting_level=nesting_level) + text
+                )
 
         if select_stmt._suffixes:
             text += " " + self._generate_prefixes(
@@ -3451,7 +3464,14 @@ class SQLCompiler(Compiled):
     def _render_cte_clause(
         self,
         nesting_level=None,
+        include_following_stack=False,
     ):
+        """
+        include_following_stack
+            Also render the nesting CTEs on the next stack. Useful for
+            SQL structures like UNION or INSERT that can wrap SELECT
+            statements containing nesting CTEs.
+        """
         if not self.ctes:
             return ""
 
@@ -3459,13 +3479,18 @@ class SQLCompiler(Compiled):
             ctes = {}
             for cte in list(self.ctes.keys()):
                 cte_level = self.level_by_ctes[cte]
-                if not (cte.nesting and cte_level == nesting_level):
+                is_rendered_level = cte_level == nesting_level or (
+                    include_following_stack and cte_level == nesting_level + 1
+                )
+                if not (cte.nesting and is_rendered_level):
                     continue
 
                 ctes[cte] = self.ctes[cte]
 
                 del self.ctes[cte]
                 del self.level_by_ctes[cte]
+                cte_name = self.get_name(cte.name)
+                del self.ctes_by_name[(cte_level, cte_name)]
         else:
             ctes = self.ctes
 
@@ -3732,9 +3757,12 @@ class SQLCompiler(Compiled):
             )
 
             if self.ctes and self.dialect.cte_follows_insert:
-                nesting_level = (len(self.stack) + 1) if not toplevel else None
+                nesting_level = len(self.stack) if not toplevel else None
                 text += " %s%s" % (
-                    self._render_cte_clause(nesting_level=nesting_level),
+                    self._render_cte_clause(
+                        nesting_level=nesting_level,
+                        include_following_stack=True,
+                    ),
                     select_text,
                 )
             else:
@@ -3775,8 +3803,13 @@ class SQLCompiler(Compiled):
             text += " " + returning_clause
 
         if self.ctes and not self.dialect.cte_follows_insert:
-            nesting_level = (len(self.stack) + 1) if not toplevel else None
-            text = self._render_cte_clause(nesting_level=nesting_level) + text
+            nesting_level = len(self.stack) if not toplevel else None
+            text = (
+                self._render_cte_clause(
+                    nesting_level=nesting_level, include_following_stack=True
+                )
+                + text
+            )
 
         self.stack.pop(-1)
 

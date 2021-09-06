@@ -2056,3 +2056,84 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             "table_1.price) SELECT delete_cte.id, delete_cte.price "
             "FROM delete_cte",
         )
+
+    def test_compound_select_with_nesting_cte_in_custom_order(self):
+        select_1_cte = select(literal(1).label("inner_cte")).cte(
+            "nesting_1", nesting=True
+        )
+        select_2_cte = select(literal(2).label("inner_cte")).cte(
+            "nesting_2", nesting=True
+        )
+
+        nesting_cte = (
+            select(select_1_cte)
+            .union(select(select_2_cte))
+            # Generate "select_2_cte" first
+            .add_cte(select_2_cte)
+            .subquery()
+        )
+
+        stmt = select(
+            select(nesting_cte.c.inner_cte.label("outer_cte")).cte("cte")
+        )
+
+        self.assert_compile(
+            stmt,
+            "WITH cte AS ("
+            "SELECT anon_1.inner_cte AS outer_cte FROM ("
+            "WITH nesting_2 AS (SELECT %(param_1)s AS inner_cte)"
+            ", nesting_1 AS (SELECT %(param_2)s AS inner_cte)"
+            " SELECT nesting_1.inner_cte AS inner_cte FROM nesting_1"
+            " UNION"
+            " SELECT nesting_2.inner_cte AS inner_cte FROM nesting_2"
+            ") AS anon_1"
+            ") SELECT cte.outer_cte FROM cte",
+        )
+
+    def test_recursive_cte_referenced_multiple_times_with_nesting_cte(self):
+        rec_root = select(literal(1).label("the_value")).cte(
+            "recursive_cte", recursive=True
+        )
+
+        # Allow to reference the recursive CTE more than once
+        rec_root_ref = rec_root.select().cte(
+            "allow_multiple_ref", nesting=True
+        )
+        should_continue = select(
+            exists(
+                select(rec_root_ref.c.the_value)
+                .where(rec_root_ref.c.the_value < 10)
+                .limit(1)
+            ).label("val")
+        ).cte("should_continue", nesting=True)
+
+        rec_part_1 = select(rec_root_ref.c.the_value * 2).where(
+            should_continue.c.val != True
+        )
+        rec_part_2 = select(rec_root_ref.c.the_value * 3).where(
+            should_continue.c.val != True
+        )
+
+        rec_part = rec_part_1.add_cte(rec_root_ref).union_all(rec_part_2)
+
+        rec_cte = rec_root.union_all(rec_part)
+
+        stmt = rec_cte.select()
+
+        self.assert_compile(
+            stmt,
+            "WITH RECURSIVE recursive_cte(the_value) AS ("
+            "SELECT %(param_1)s AS the_value UNION ALL ("
+            "WITH allow_multiple_ref AS ("
+            "SELECT recursive_cte.the_value AS the_value FROM recursive_cte)"
+            ", should_continue AS (SELECT EXISTS ("
+            "SELECT allow_multiple_ref.the_value FROM allow_multiple_ref"
+            " WHERE allow_multiple_ref.the_value < %(the_value_2)s"
+            "  LIMIT %(param_2)s) AS val) "
+            "SELECT allow_multiple_ref.the_value * %(the_value_1)s AS anon_1"
+            " FROM allow_multiple_ref, should_continue WHERE should_continue.val != true"
+            " UNION ALL SELECT allow_multiple_ref.the_value * %(the_value_3)s"
+            " AS anon_2 FROM allow_multiple_ref, should_continue"
+            " WHERE should_continue.val != true))"
+            " SELECT recursive_cte.the_value FROM recursive_cte",
+        )
