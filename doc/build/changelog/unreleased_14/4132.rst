@@ -3,5 +3,4 @@
     :tickets: 4123
 
     Add `nesting` property on :class:`_sql.CTE` and parameter on
-    :meth:`_sql.HasCTE.add_cte` and :meth:`_sql.HasCTE.cte`
-    to render a nesting CTE.
+    :meth:`_sql.HasCTE.cte` to render a nesting CTE.

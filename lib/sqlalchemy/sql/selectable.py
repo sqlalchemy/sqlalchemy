@@ -2229,6 +2229,8 @@ class HasCTE(roles.HasCTERole):
          A recursive common table expression is intended to be used in
          conjunction with UNION ALL in order to derive rows
          from those already selected.
+        :param nesting: if ``True``, will render the CTE locally to the
+         actual statement.
 
         The following examples include two from PostgreSQL's documentation at
         https://www.postgresql.org/docs/current/static/queries-with.html,
@@ -2348,6 +2350,37 @@ class HasCTE(roles.HasCTERole):
             )
 
             connection.execute(upsert)
+
+        Example 4, Nesting CTE::
+
+            value_a = select(
+                literal("root").label("n")
+            ).cte("value_a")
+
+            # A nested CTE with the same name as the root one
+            value_a_nested = select(
+                literal("nesting").label("n")
+            ).cte("value_a", nesting=True)
+
+            # Nesting CTEs takes acsendency locally
+            # over the CTEs at a higher level
+            value_b = select(value_a_nested.c.n).cte("value_b")
+
+            value_ab = select(value_a.c.n.label("a"), value_b.c.n.label("b"))
+
+            print(value_ab)
+            # WITH value_a AS
+            #     (SELECT :param_1 AS n),
+            # value_b AS
+            #     (WITH value_a AS
+            #         (SELECT :param_2 AS n)
+            #     SELECT value_a.n AS n
+            #     FROM value_a)
+            # SELECT value_a.n AS a, value_b.n AS b
+            # FROM value_a, value_b
+
+            conn.execute(value_ab).fetchall()
+            # (a="root", b="nesting")
 
         .. seealso::
 
