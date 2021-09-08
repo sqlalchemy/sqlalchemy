@@ -54,7 +54,7 @@ from ...util import compat
 
 if compat.py3k:
     from . import aiomysql  # noqa
-
+    from . import asyncmy
 
 # default dialect
 base.dialect = dialect = mysqldb.dialect

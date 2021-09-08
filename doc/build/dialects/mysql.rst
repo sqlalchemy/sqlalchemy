@@ -196,6 +196,11 @@ aiomysql
 
 .. automodule:: sqlalchemy.dialects.mysql.aiomysql
 
+asyncmy
+-------
+
+.. automodule:: sqlalchemy.dialects.mysql.asyncmy
+
 cymysql
 -------
 
@@ -210,4 +215,3 @@ pyodbc
 ------
 
 .. automodule:: sqlalchemy.dialects.mysql.pyodbc
-
