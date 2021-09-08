@@ -1409,7 +1409,7 @@ Basic guidelines include:
       # ...
     sqlalchemy.exc.InvalidRequestError: Closure variable named 'foo' inside of
     lambda callable <code object <lambda> at 0x7fed15f35450, file
-    "<stdin>", line 2> does not refer to a cachable SQL element, and also
+    "<stdin>", line 2> does not refer to a cacheable SQL element, and also
     does not appear to be serving as a SQL literal bound value based on the
     default SQL expression returned by the function.  This variable needs to
     remain outside the scope of a SQL-generating lambda so that a proper cache
@@ -1419,7 +1419,7 @@ Basic guidelines include:
     closure variables from being part of the cache key.
 
   The above error indicates that :class:`_sql.LambdaElement` will not assume
-  that the ``Foo`` object passed in will contine to behave the same in all
+  that the ``Foo`` object passed in will continue to behave the same in all
   cases.    It also won't assume it can use ``Foo`` as part of the cache key
   by default; if it were to use the ``Foo`` object as part of the cache key,
   if there were many different ``Foo`` objects this would fill up the cache
