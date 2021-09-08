@@ -536,7 +536,7 @@ UPDATE and DELETE with arbitrary WHERE clause
 The sections above on :meth:`_orm.Session.flush` and :meth:`_orm.Session.delete`
 detail how rows can be inserted, updated and deleted in the database,
 based on primary key identities that are referred towards by mapped Python
-objets in the application.   The :class:`_orm.Session` can also emit UPDATE
+objects in the application.   The :class:`_orm.Session` can also emit UPDATE
 and DELETE statements with arbitrary WHERE clauses as well, and at the same
 time refresh locally present objects which match those rows.
 
@@ -617,7 +617,7 @@ values for ``synchronize_session`` are supported:
 * ``'evaluate'`` - Evaluate the WHERE criteria given in the UPDATE or DELETE
   statement in Python, to locate matching objects within the
   :class:`_orm.Session`.   This approach does not add any round trips and in
-  the absense of RETURNING support is more efficient.  For UPDATE or DELETE
+  the absence of RETURNING support is more efficient.  For UPDATE or DELETE
   statements with complex criteria, the ``'evaluate'`` strategy may not be
   able to evaluate the expression in Python and will raise an error.  If
   this occurs, use the ``'fetch'`` strategy for the operation instead.
@@ -817,7 +817,7 @@ automatically (it's currently not possible for a flush to continue after a
 partial failure). However, the :class:`_orm.Session` goes into a state known as
 "inactive" at this point, and the calling application must always call the
 :meth:`_orm.Session.rollback` method explicitly so that the
-:class:`_orm.Session` can go back into a useable state (it can also be simply
+:class:`_orm.Session` can go back into a usable state (it can also be simply
 closed and discarded). See the FAQ entry at :ref:`faq_session_rollback` for
 further discussion.
 

@@ -463,7 +463,7 @@ Using asyncio scoped session
 
 The usage of :class:`_asyncio.async_scoped_session` is mostly similar to
 :class:`.scoped_session`. However, since there's no "thread-local" concept in
-the asyncio context, the "scopefunc" paramater must be provided to the
+the asyncio context, the "scopefunc" parameter must be provided to the
 constructor::
 
     from asyncio import current_task

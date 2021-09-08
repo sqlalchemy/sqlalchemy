@@ -14,7 +14,7 @@ Managing Transactions
 
 The :class:`_orm.Session` tracks the state of a single "virtual" transaction
 at a time, using an object called
-:class:`_orm.SessionTransaction`.   This object then makes use of the underyling
+:class:`_orm.SessionTransaction`.   This object then makes use of the underlying
 :class:`_engine.Engine` or engines to which the :class:`_orm.Session`
 object is bound in order to start real connection-level transactions using
 the :class:`_engine.Connection` object as needed.
@@ -59,7 +59,7 @@ or rolled back::
     session.commit()  # commits
 
     # will automatically begin again
-    result = session.execute(< some select statment >)
+    result = session.execute(< some select statement >)
     session.add_all([more_objects, ...])
     session.commit()  # commits
 
@@ -146,7 +146,7 @@ method::
     # commits u1 and u2
 
 Each time :meth:`_orm.Session.begin_nested` is called, a new "BEGIN SAVEPOINT"
-command is emitted to the database wih a unique identifier.  When
+command is emitted to the database with a unique identifier.  When
 :meth:`_orm.SessionTransaction.commit` is called, "RELEASE SAVEPOINT"
 is emitted on the database, and if instead
 :meth:`_orm.SessionTransaction.rollback` is called, "ROLLBACK TO SAVEPOINT"
