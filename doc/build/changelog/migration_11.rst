@@ -689,7 +689,7 @@ The above value of ``A.some_name.__doc__`` is now honored::
 
 However, to accomplish this, the mechanics of hybrid properties necessarily
 becomes more complex.  Previously, the class-level accessor for a hybrid
-would be a simple pass-thru, that is, this test would succeed::
+would be a simple pass-through, that is, this test would succeed::
 
     >>> assert A.name is A.some_name
 

@@ -244,7 +244,7 @@
         :tags: bug, oracle
         :tickets: 5812
 
-        Fixed bug in Oracle dialect where retriving a CLOB/BLOB column via
+        Fixed bug in Oracle dialect where retrieving a CLOB/BLOB column via
         :meth:`_dml.Insert.returning` would fail as the LOB value would need to be
         read when returned; additionally, repaired support for retrieval of Unicode
         values via RETURNING under Python 2.
@@ -280,7 +280,7 @@
         :tickets: 5784
         :versions: 1.4.0b2
 
-        Fixed regression which occured due to :ticket:`5755` which implemented
+        Fixed regression which occurred due to :ticket:`5755` which implemented
         isolation level support for Oracle.   It has been reported that many Oracle
         accounts don't actually have permission to query the ``v$transaction``
         view so this feature has been altered to gracefully fallback when it fails
@@ -323,7 +323,7 @@
         :tags: bug, sql
         :tickets: 5691
 
-        A warning is emmitted if a returning() method such as
+        A warning is emitted if a returning() method such as
         :meth:`_sql.Insert.returning` is called multiple times, as this does not
         yet support additive operation.  Version 1.4 will support additive
         operation for this.  Additionally, any combination of the
@@ -804,7 +804,7 @@
 
         Fixed an issue where the ``is_disconnect`` function in the SQL Server
         pyodbc dialect was incorrectly reporting the disconnect state when the
-        exception messsage had a substring that matched a SQL Server ODBC error
+        exception message had a substring that matched a SQL Server ODBC error
         code.
 
     .. change::
@@ -2339,7 +2339,7 @@
         appeared as of mysqlclient 1.4.4 based on changes in how this DBAPI creates
         a connection.  As the presence of this directive impacts three separate
         MySQL charset settings which each have intricate effects based on their
-        presense,  SQLAlchemy will now emit the directive on new connections to
+        presence,  SQLAlchemy will now emit the directive on new connections to
         ensure correct behavior.
 
     .. change::
@@ -3126,7 +3126,7 @@
 
        A SQL expression can now be assigned to a primary key attribute for an ORM
        flush in the same manner as ordinary attributes as described in
-       :ref:`flush_embedded_sql_expressions` where the expression will be evaulated
+       :ref:`flush_embedded_sql_expressions` where the expression will be evaluated
        and then returned to the ORM using RETURNING, or in the case of pysqlite,
        works using the cursor.lastrowid attribute.Requires either a database that
        supports RETURNING (e.g. Postgresql, Oracle, SQL Server) or pysqlite.

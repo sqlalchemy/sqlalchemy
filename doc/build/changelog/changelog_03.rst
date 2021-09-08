@@ -1191,7 +1191,7 @@
         :tags: sql
         :tickets: 
 
-      exists() becomes useable as a standalone selectable, not just in a
+      exists() becomes usable as a standalone selectable, not just in a
       WHERE clause, i.e. exists([columns], criterion).select()
 
     .. change::
@@ -1693,7 +1693,7 @@
         :tags: mssql
         :tickets: 
 
-      added query_timeout to db-url query parms. currently works only for
+      added query_timeout to db-url query params. currently works only for
       pymssql
 
     .. change::
@@ -1885,7 +1885,7 @@
         :tags: sql
         :tickets: 
 
-      added support for column "key" attribute to be useable in
+      added support for column "key" attribute to be usable in
       row[<key>]/row.<key>
 
     .. change::
