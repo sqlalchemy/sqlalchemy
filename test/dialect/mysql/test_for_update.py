@@ -409,14 +409,14 @@ class SkipLockedTest(fixtures.TablesTest):
             Column("value", Integer),
         )
 
-    @testing.only_on("mysql>=8")
+    @testing.only_on(["mysql>=8", "mariadb>=10.6"])
     def test_skip_locked(self, connection):
         stuff = self.tables.stuff
         stmt = stuff.select().with_for_update(skip_locked=True)
 
         connection.execute(stmt).fetchall()
 
-    @testing.only_on(["mysql<8", "mariadb"])
+    @testing.only_on(["mysql<8", "mariadb<10.6"])
     def test_unsupported_skip_locked(self, connection):
         stuff = self.tables.stuff
         stmt = stuff.select().with_for_update(skip_locked=True)
