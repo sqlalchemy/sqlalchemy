@@ -170,6 +170,9 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
         def contains(self, other, **kwargs):
             """Boolean expression.  Test if keys (or array) are a superset
             of/contained the keys of the argument jsonb expression.
+
+            kwargs may be ignored by this operator but are required for API
+            conformance.
             """
             return self.operate(CONTAINS, other, result_type=sqltypes.Boolean)
 
