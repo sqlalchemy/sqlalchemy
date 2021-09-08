@@ -266,7 +266,8 @@ Constraint checking on SQLite has three prerequisites:
 * The SQLite library must be compiled *without* the SQLITE_OMIT_FOREIGN_KEY
   or SQLITE_OMIT_TRIGGER symbols enabled.
 * The ``PRAGMA foreign_keys = ON`` statement must be emitted on all
-  connections before use.
+  connections before use -- including the initial call to
+  :meth:`sqlalchemy.schema.MetaData.create_all`.
 
 SQLAlchemy allows for the ``PRAGMA`` statement to be emitted automatically for
 new connections through the usage of events::
