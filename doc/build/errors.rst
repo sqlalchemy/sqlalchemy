@@ -48,7 +48,7 @@ select() construct created in "legacy" mode; keyword arguments, etc.
 The :func:`_expression.select` construct has been updated as of SQLAlchemy
 1.4 to support the newer calling style that will be standard in
 :ref:`SQLAlchemy 2.0 <error_b8d9>`.   For backwards compatibility in the
-interm, the construct accepts arguments in both the "legacy" style as well
+interim, the construct accepts arguments in both the "legacy" style as well
 as the "new" style.
 
 The "new" style features that column and table expressions are passed
@@ -1267,7 +1267,7 @@ attempt, which is unsupported when using SQLAlchemy with AsyncIO dialects.
 
 .. _error_xd3s:
 
-No Inspection Avaliable
+No Inspection Available
 -----------------------
 
 Using the :func:`_sa.inspect` function directly on an
