@@ -155,7 +155,7 @@ used, which will be seen as the tutorial describes the :class:`_engine.Engine`
 and :class:`_orm.Session` objects.   These flags fully enable 2.0-compatibility
 mode and allow the code in the tutorial to proceed fully.  When using the
 ``future`` flag with the :func:`_sa.create_engine` function, the object
-returned is a sublass of :class:`sqlalchemy.engine.Engine` described as
+returned is a subclass of :class:`sqlalchemy.engine.Engine` described as
 :class:`sqlalchemy.future.Engine`. This tutorial will be referring to
 :class:`sqlalchemy.future.Engine`.
 

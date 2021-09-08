@@ -531,7 +531,7 @@ a handful of unloaded attributes, routine manipulation of these objects can
 spin off many additional queries that can add up (otherwise known as the
 :term:`N plus one problem`), and to make matters worse they are emitted
 implicitly.    These implicit queries may not be noticed, may cause errors
-when they are attempted after there's no longer a database tranasction
+when they are attempted after there's no longer a database transaction
 available, or when using alternative concurrency patterns such as :ref:`asyncio
 <asyncio_toplevel>`, they actually won't work at all.
 
@@ -642,7 +642,7 @@ which can then load in related objects.
 The :func:`_orm.joinedload` strategy is best suited towards loading
 related many-to-one objects, as this only requires that additional columns
 are added to a primary entity row that would be fetched in any case.
-For greater effiency, it also accepts an option :paramref:`_orm.joinedload.innerjoin`
+For greater efficiency, it also accepts an option :paramref:`_orm.joinedload.innerjoin`
 so that an inner join instead of an outer join may be used for a case such
 as below where we know that all ``Address`` objects have an associated
 ``User``:
@@ -716,7 +716,7 @@ using a method such as :meth:`_sql.Select.join` to render the JOIN, we could
 also leverage that JOIN in order to eagerly load the contents of the
 ``Address.user`` attribute on each ``Address`` object returned.  This is
 essentially that we are using "joined eager loading" but rendering the JOIN
-ourselves.   This common use case is acheived by using the
+ourselves.   This common use case is achieved by using the
 :func:`_orm.contains_eager` option. This option is very similar to
 :func:`_orm.joinedload`, except that it assumes we have set up the JOIN
 ourselves, and it instead only indicates that additional columns in the COLUMNS

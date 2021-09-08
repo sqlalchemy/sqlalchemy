@@ -677,7 +677,7 @@ Using Aliases
 ^^^^^^^^^^^^^
 
 Now that we are selecting from multiple tables and using joins, we quickly
-run into the case where we need to refer to the same table mutiple times
+run into the case where we need to refer to the same table multiple times
 in the FROM clause of a statement.  We accomplish this using SQL **aliases**,
 which are a syntax that supplies an alternative name to a table or subquery
 from which it can be referred towards in the statement.
