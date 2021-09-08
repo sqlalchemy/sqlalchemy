@@ -490,7 +490,7 @@ This document details individual issue-level changes made throughout
         :tickets: 6646
 
         Add a impl parameter to :class:`_types.PickleType` constructor, allowing
-        any arbitary type to be used in place of the default implementation of
+        any arbitrary type to be used in place of the default implementation of
         :class:`_types.LargeBinary`. Pull request courtesy jason3gb.
 
     .. change::
@@ -3117,7 +3117,7 @@ This document details individual issue-level changes made throughout
           disabled for the case of ORM "refresh" operations, including loads
           of deferred or expired column attributes as well as for explicit
           operations like :meth:`_orm.Session.refresh`.  These loads are necessarily
-          based on primary key identity where addiional WHERE criteria is
+          based on primary key identity where additional WHERE criteria is
           never appropriate.  [ticket:5762]
 
         * Added new attribute :attr:`_orm.ORMExecuteState.is_column_load` to indicate
@@ -5004,7 +5004,7 @@ This document details individual issue-level changes made throughout
         :tickets: 5653
 
         Improved support for column names that contain percent signs in the string,
-        including repaired issues involving anoymous labels that also embedded a
+        including repaired issues involving anonymous labels that also embedded a
         column name with a percent sign in it, as well as re-established support
         for bound parameter names with percent signs embedded on the psycopg2
         dialect, using a late-escaping process similar to that used by the
@@ -5075,7 +5075,7 @@ This document details individual issue-level changes made throughout
         :tickets: 5649
 
         Reworked the "setinputsizes()" set of dialect hooks to be correctly
-        extensible for any arbirary DBAPI, by allowing dialects individual hooks
+        extensible for any arbitrary DBAPI, by allowing dialects individual hooks
         that may invoke cursor.setinputsizes() in the appropriate style for that
         DBAPI.   In particular this is intended to support pyodbc's style of usage
         which is fundamentally different from that of cx_Oracle.  Added support

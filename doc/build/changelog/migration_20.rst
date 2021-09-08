@@ -1567,7 +1567,7 @@ will all be removed in 2.0::
     q = session.query(User).join("addresses")
 
     # string use removed
-    q = session.query(User).options(joinedload("addresess"))
+    q = session.query(User).options(joinedload("addresses"))
 
     # string use removed
     q = session.query(Address).filter(with_parent(u1, "addresses"))
@@ -1582,7 +1582,7 @@ is to use mapped attributes::
 
     q = session.query(User).join(User.addresses)
 
-    q = session.query(User).options(joinedload(User.addresess))
+    q = session.query(User).options(joinedload(User.addresses))
 
     q = session.query(Address).filter(with_parent(u1, User.addresses))
 
@@ -1593,7 +1593,7 @@ The same techniques apply to :term:`2.0-style` style use::
     stmt = select(User).join(User.addresses)
     result = session.execute(stmt)
 
-    stmt = select(User).options(joinedload(User.addresess))
+    stmt = select(User).options(joinedload(User.addresses))
     result = session.execute(stmt)
 
     stmt = select(Address).where(with_parent(u1, User.addresses))

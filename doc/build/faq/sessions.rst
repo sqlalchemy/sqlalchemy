@@ -68,7 +68,7 @@ Three ways, from most common to least:
 
 3. We can run whole queries while setting them to definitely overwrite
    already-loaded objects as they read rows by using "populate existing".
-   This is an exection option described at
+   This is an execution option described at
    :ref:`orm_queryguide_populate_existing`.
 
 But remember, **the ORM cannot see changes in rows if our isolation

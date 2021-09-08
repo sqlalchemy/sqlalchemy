@@ -432,7 +432,7 @@ is typically used by sessions that make use of the
 series of engines (although in this use case, things frequently
 "worked" in most cases anyway as the bind would be located via the
 mapped table object), or more specifically implement a user-defined
-:meth:`.Session.get_bind` method that provies some pattern of
+:meth:`.Session.get_bind` method that provides some pattern of
 selecting engines based on mappers, such as horizontal sharding or a
 so-called "routing" session that routes queries to different backends.
 

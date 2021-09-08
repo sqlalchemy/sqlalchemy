@@ -508,7 +508,7 @@
 
         Fixed a small issue in the Jython Oracle compiler involving the
         rendering of "RETURNING" which allows this currently
-        unsupported/untested dialect to work rudimentally with the 1.0 series.
+        unsupported/untested dialect to work rudimentarily with the 1.0 series.
         Pull request courtesy Carlos Rivas.
 
     .. change::
@@ -1460,7 +1460,7 @@
         where the check for query state on :meth:`_query.Query.update` or
         :meth:`_query.Query.delete` compared the empty tuple to itself using ``is``,
         which fails on PyPy to produce ``True`` in this case; this would
-        erronously emit a warning in 0.9 and raise an exception in 1.0.
+        erroneously emit a warning in 0.9 and raise an exception in 1.0.
 
     .. change::
         :tags: feature, engine

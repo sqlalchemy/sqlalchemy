@@ -1341,7 +1341,7 @@
         :versions: 1.0.0b1
 
         Fixes to the newly enhanced boolean coercion in :ticket:`2804` where
-        the new rules for "where" and "having" woudn't take effect for the
+        the new rules for "where" and "having" wouldn't take effect for the
         "whereclause" and "having" kw arguments of the :func:`_expression.select` construct,
         which is also what :class:`_query.Query` uses so wasn't working in the
         ORM either.

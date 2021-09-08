@@ -3742,7 +3742,7 @@
         :tickets: 
 
       New scoped_session() function replaces SessionContext and assignmapper.
-      Builds onto "sessionmaker()" concept to produce a class whos Session()
+      Builds onto "sessionmaker()" concept to produce a class whose Session()
       construction returns the thread-local session.  Or, call all Session
       methods as class methods, i.e. Session.save(foo); Session.commit().
       just like the old "objectstore" days.
