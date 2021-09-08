@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 6958
+
+    Ensure that ``str()`` is called on the an ``URL.password`` argument,
+    allowing usage of objects that implement the ``__str__()`` method
+    as password attributes.
+    Also clarified that one such object is not appropriate to dynamically
+    change the password.

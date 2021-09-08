@@ -722,15 +722,27 @@ class DialectEvents(event.Events):
     def do_connect(self, dialect, conn_rec, cargs, cparams):
         """Receive connection arguments before a connection is made.
 
-        Return a DBAPI connection to halt further events from invoking;
-        the returned connection will be used.
+        This event is useful in that it allows the handler to manipulate the
+        cargs and/or cparams collections that control how the DBAPI
+        ``connect()`` function will be called. ``cargs`` will always be a
+        Python list that can be mutated in-place, and ``cparams`` a Python
+        dictionary that may also be mutated::
 
-        Alternatively, the event can manipulate the cargs and/or cparams
-        collections; cargs will always be a Python list that can be mutated
-        in-place and cparams a Python dictionary.  Return None to
-        allow control to pass to the next event handler and ultimately
-        to allow the dialect to connect normally, given the updated
-        arguments.
+            e = create_engine("postgresql+psycopg2://user@host/dbname")
+
+            @event.listens_for(e, 'do_connect')
+            def receive_do_connect(dialect, conn_rec, cargs, cparams):
+                cparams["password"] = "some_password"
+
+        The event hook may also be used to override the call to ``connect()``
+        entirely, by returning a non-``None`` DBAPI connection object::
+
+            e = create_engine("postgresql+psycopg2://user@host/dbname")
+
+            @event.listens_for(e, 'do_connect')
+            def receive_do_connect(dialect, conn_rec, cargs, cparams):
+                return psycopg2.connect(*cargs, **cparams)
+
 
         .. versionadded:: 1.0.3
 

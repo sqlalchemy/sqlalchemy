@@ -67,8 +67,13 @@ class URL(
     * :attr:`_engine.URL.drivername`: database backend and driver name, such as
       ``postgresql+psycopg2``
     * :attr:`_engine.URL.username`: username string
-    * :attr:`_engine.URL.password`: password, which is normally a string but
-      may also be any object that has a ``__str__()`` method.
+    * :attr:`_engine.URL.password`: password string, or object that includes
+      a ``__str__()`` method that produces a password.
+
+      .. note::  A password-producing object will be stringified only
+         **once** per :class:`_engine.Engine` object.  For dynamic password
+         generation per connect, see :ref:`engines_dynamic_tokens`.
+
     * :attr:`_engine.URL.host`: string hostname
     * :attr:`_engine.URL.port`: integer port number
     * :attr:`_engine.URL.database`: string database name
@@ -108,8 +113,13 @@ class URL(
           correspond to a module in sqlalchemy/databases or a third party
           plug-in.
         :param username: The user name.
-        :param password: database password.  May be a string or an object that
-         can be stringified with ``str()``.
+        :param password: database password.  Is typically a string, but may
+          also be an object that can be stringified with ``str()``.
+
+          .. note::  A password-producing object will be stringified only
+             **once** per :class:`_engine.Engine` object.  For dynamic password
+             generation per connect, see :ref:`engines_dynamic_tokens`.
+
         :param host: The name of the host.
         :param port: The port number.
         :param database: The database name.
@@ -666,6 +676,14 @@ class URL(
             names, but correlates the name to the original positionally.
         """
 
+        if names is not None:
+            util.warn_deprecated(
+                "The `URL.translate_connect_args.name`s parameter is "
+                "deprecated. Please pass the "
+                "alternate names as kw arguments.",
+                "1.4",
+            )
+
         translated = {}
         attribute_names = ["host", "database", "username", "password", "port"]
         for sname in attribute_names:
@@ -676,7 +694,11 @@ class URL(
             else:
                 name = sname
             if name is not None and getattr(self, sname, False):
-                translated[name] = getattr(self, sname)
+                if sname == "password":
+                    translated[name] = str(getattr(self, sname))
+                else:
+                    translated[name] = getattr(self, sname)
+
         return translated
 
 
