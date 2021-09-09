@@ -623,7 +623,7 @@ class DefaultRequirements(SuiteRequirements):
     def update_nowait(self):
         """Target database must support SELECT...FOR UPDATE NOWAIT"""
         return skip_if(
-            ["firebird", "mssql", "mysql", "mariadb", "sqlite", "sybase"],
+            ["firebird", "mssql", "mysql", "mariadb<10.3", "sqlite", "sybase"],
             "no FOR UPDATE NOWAIT support",
         )
 
