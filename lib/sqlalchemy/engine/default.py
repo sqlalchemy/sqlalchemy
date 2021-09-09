@@ -78,6 +78,8 @@ class DefaultDialect(interfaces.Dialect):
     postfetch_lastrowid = True
     implicit_returning = False
     full_returning = False
+    delete_returning = False
+    insert_returning = False
     insert_executemany_returning = False
 
     cte_follows_insert = False

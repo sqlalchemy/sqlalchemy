@@ -2601,6 +2601,8 @@ class MSDialect(default.DefaultDialect):
 
     implicit_returning = True
     full_returning = True
+    insert_returning = True
+    delete_returning = True
 
     colspecs = {
         sqltypes.DateTime: _MSDateTime,

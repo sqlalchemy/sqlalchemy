@@ -973,7 +973,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 synchronize_session="fetch"
             )
 
-        if testing.db.dialect.full_returning:
+        if testing.db.dialect.delete_returning:
             asserter.assert_(
                 CompiledSQL(
                     "DELETE FROM users WHERE users.age_int > %(age_int_1)s "
@@ -1018,7 +1018,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 stmt, execution_options={"synchronize_session": "fetch"}
             )
 
-        if testing.db.dialect.full_returning:
+        if testing.db.dialect.delete_returning:
             asserter.assert_(
                 CompiledSQL(
                     "DELETE FROM users WHERE users.age_int > %(age_int_1)s "
@@ -2084,7 +2084,7 @@ class SingleTablePolymorphicTest(fixtures.DeclarativeMappedTest):
 
 class LoadFromReturningTest(fixtures.MappedTest):
     __backend__ = True
-    __requires__ = ("full_returning",)
+    __requires__ = ("insert_returning",)
 
     @classmethod
     def define_tables(cls, metadata):
@@ -2133,6 +2133,7 @@ class LoadFromReturningTest(fixtures.MappedTest):
             },
         )
 
+    @testing.requires.full_returning
     def test_load_from_update(self, connection):
         User = self.classes.User
 

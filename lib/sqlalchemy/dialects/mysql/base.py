@@ -991,6 +991,7 @@ from ...engine import reflection
 from ...sql import coercions
 from ...sql import compiler
 from ...sql import elements
+from ...sql import expression
 from ...sql import functions
 from ...sql import operators
 from ...sql import roles
@@ -1796,6 +1797,14 @@ class MySQLCompiler(compiler.SQLCompiler):
             tmp += " SKIP LOCKED"
 
         return tmp
+
+    def returning_clause(self, stmt, returning_cols):
+        columns = [
+            self._label_returning_column(stmt, c)
+            for c in expression._select_iterables(returning_cols)
+        ]
+
+        return "RETURNING " + ", ".join(columns)
 
     def limit_clause(self, select, **kw):
         # MySQL supports:
@@ -2776,7 +2785,8 @@ class MySQLDialect(default.DefaultDialect):
 
         server_version_info = tuple(version)
 
-        self._set_mariadb(server_version_info and is_mariadb, val)
+        self._set_mariadb(server_version_info and is_mariadb,
+                          server_version_info)
 
         if not is_mariadb:
             self._mariadb_normalized_version_info = server_version_info
@@ -2798,9 +2808,14 @@ class MySQLDialect(default.DefaultDialect):
         if not is_mariadb and self.is_mariadb:
             raise exc.InvalidRequestError(
                 "MySQL version %s is not a MariaDB variant."
-                % (server_version_info,)
+                % ('.'.join(map(str, server_version_info)),)
             )
         self.is_mariadb = is_mariadb
+        if server_version_info is not None:
+            if server_version_info >= (10, 5):
+                self.insert_returning = True
+            if server_version_info >= (10, 0, 5):
+                self.delete_returning = True
 
     def do_begin_twophase(self, connection, xid):
         connection.execute(sql.text("XA BEGIN :xid"), dict(xid=xid))
@@ -2973,6 +2988,14 @@ class MySQLDialect(default.DefaultDialect):
 
         self._needs_correct_for_88718_96365 = (
             not self.is_mariadb and self.server_version_info >= (8,)
+        )
+
+        self.delete_returning = (
+            self.is_mariadb and self.server_version_info >= (10, 0, 5)
+        )
+
+        self.insert_returning = (
+            self.is_mariadb and self.server_version_info >= (10, 5)
         )
 
         self._warn_for_known_db_issues()

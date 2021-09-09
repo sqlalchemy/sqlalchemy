@@ -3127,6 +3127,8 @@ class PGDialect(default.DefaultDialect):
 
     implicit_returning = True
     full_returning = True
+    delete_returning = True
+    insert_returning = True
 
     connection_characteristics = (
         default.DefaultDialect.connection_characteristics
@@ -3191,6 +3193,7 @@ class PGDialect(default.DefaultDialect):
 
         if self.server_version_info <= (8, 2):
             self.full_returning = self.implicit_returning = False
+            self.delete_returning = self.insert_returning = False
 
         self.supports_native_enum = self.server_version_info >= (8, 3)
         if not self.supports_native_enum:

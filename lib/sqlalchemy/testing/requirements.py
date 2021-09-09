@@ -360,6 +360,15 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def insert_returning(self):
+        """target platform supports INSERT ... RETURNING."""
+
+        return exclusions.only_if(
+            lambda config: config.db.dialect.insert_returning,
+            "%(database)s %(does_support)s 'INSERT ... RETURNING'",
+        )
+
+    @property
     def full_returning(self):
         """target platform supports RETURNING completely, including
         multiple rows returned.

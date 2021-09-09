@@ -2069,9 +2069,12 @@ class BulkUDCompileState(CompileState):
         )
         select_stmt._where_criteria = statement._where_criteria
 
-        def skip_for_full_returning(orm_context):
+        def skip_for_returning(orm_context):
             bind = orm_context.session.get_bind(**orm_context.bind_arguments)
-            if bind.dialect.full_returning:
+            if (
+                (cls == BulkORMDelete and bind.dialect.delete_returning) or
+                bind.dialect.full_returning
+            ):
                 return _result.null_result()
             else:
                 return None
@@ -2081,7 +2084,7 @@ class BulkUDCompileState(CompileState):
             params,
             execution_options,
             bind_arguments,
-            _add_event=skip_for_full_returning,
+            _add_event=skip_for_returning,
         )
         matched_rows = result.fetchall()
 
@@ -2311,10 +2314,8 @@ class BulkORMDelete(DeleteDMLState, BulkUDCompileState):
             statement = statement.where(*new_crit)
 
         if (
-            mapper
-            and compiler._annotations.get("synchronize_session", None)
-            == "fetch"
-            and compiler.dialect.full_returning
+            mapper and compiler.dialect.delete_returning and
+            compiler._annotations.get("synchronize_session", None) == "fetch"
         ):
             statement = statement.returning(*mapper.primary_key)
 
