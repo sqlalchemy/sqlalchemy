@@ -132,7 +132,7 @@ mapper(
     properties={
         "children": relationship(
             _Node, lazy=None
-        ),  # doesnt load; used only for the save relationship
+        ),  # doesn't load; used only for the save relationship
         "attributes": relationship(
             _Attribute, lazy="joined", cascade="all, delete-orphan"
         ),  # eagerly load attributes
