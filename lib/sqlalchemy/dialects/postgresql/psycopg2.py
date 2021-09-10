@@ -1037,7 +1037,7 @@ class PGDialect_psycopg2(PGDialect):
                 "connection not open",
                 "could not receive data from server",
                 "could not send data to server",
-                # psycopg2 client errors, psycopg2/conenction.h,
+                # psycopg2 client errors, psycopg2/connection.h,
                 # psycopg2/cursor.h
                 "connection already closed",
                 "cursor already closed",
