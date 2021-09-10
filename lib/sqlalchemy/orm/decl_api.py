@@ -761,6 +761,8 @@ class registry(object):
                 registry = mapper_registry
                 metadata = mapper_registry.metadata
 
+                __init__ = mapper_registry.constructor
+
         The :meth:`_orm.registry.generate_base` method provides the
         implementation for the :func:`_orm.declarative_base` function, which
         creates the :class:`_orm.registry` and base class all at once.

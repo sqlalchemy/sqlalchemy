@@ -131,6 +131,8 @@ be produced in a fully explicit fashion using the
         registry = mapper_registry
         metadata = mapper_registry.metadata
 
+        __init__ = mapper_registry.constructor
+
 The above ``Base`` is equivalent to one created using the
 :meth:`_orm.registry.generate_base` method and will be fully understood by
 type analysis tools without the use of plugins.
