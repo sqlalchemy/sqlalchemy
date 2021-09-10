@@ -126,7 +126,7 @@ class declared_attr(interfaces._MappedAttribute, property):
     :class:`_orm.declared_attr` is typically applied as a decorator to a class
     level method, turning the attribute into a scalar-like property that can be
     invoked from the uninstantiated class. The Declarative mapping process
-    looks for these :class:`_orm.declared_attr` callables as it scans classe,
+    looks for these :class:`_orm.declared_attr` callables as it scans classes,
     and assumes any attribute marked with :class:`_orm.declared_attr` will be a
     callable that will produce an object specific to the Declarative mapping or
     table configuration.
