@@ -3682,7 +3682,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         subq = select(l).subquery()
 
         # this creates a ColumnClause as a proxy to the Label() that has
-        # an anoymous name, so the column has one too.
+        # an anonymous name, so the column has one too.
         anon_col = subq.c[0]
         assert isinstance(anon_col.name, elements._anonymous_label)
 
@@ -3896,7 +3896,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         # it's anonymous so unique=True
         is_true(original_bind.unique)
 
-        # cache key against hte original param
+        # cache key against the original param
         cache_key = stmt._generate_cache_key()
 
         # now adapt the statement
@@ -3971,7 +3971,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         # it's anonymous so unique=True
         is_true(original_bind.unique)
 
-        # cache key against hte original param
+        # cache key against the original param
         cache_key = stmt._generate_cache_key()
 
         # now adapt the statement and separately adapt the inner
@@ -5309,7 +5309,7 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
         for kw in ("onupdate", "ondelete", "initially"):
             for phrase in (
                 "NOT SQL",
-                "INITALLY NOT SQL",
+                "INITIALLY NOT SQL",
                 "FOO RESTRICT",
                 "CASCADE WRONG",
                 "SET  NULL",
