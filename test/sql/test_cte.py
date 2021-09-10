@@ -1,4 +1,3 @@
-import functools
 from sqlalchemy import Column
 from sqlalchemy import delete
 from sqlalchemy import Integer
@@ -8,7 +7,7 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import update
-from sqlalchemy.dialects import mssql, mysql, postgresql
+from sqlalchemy.dialects import mssql, postgresql
 from sqlalchemy.engine import default
 from sqlalchemy.exc import CompileError
 from sqlalchemy.sql import and_
@@ -1728,8 +1727,10 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "WITH some_cte AS (WITH some_cte AS (SELECT %(param_1)s AS inner_cte) "
-            "SELECT some_cte.inner_cte AS outer_cte FROM some_cte) "
+            "WITH some_cte AS (WITH some_cte AS "
+            "(SELECT %(param_1)s AS inner_cte) "
+            "SELECT some_cte.inner_cte AS outer_cte "
+            "FROM some_cte) "
             "SELECT some_cte.outer_cte FROM some_cte",
         )
 
@@ -1936,9 +1937,11 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             "(SELECT %(param_1)s AS inner_cte_1)"
             ", wrapper AS "
             "(WITH nesting_2 AS "
-            "(SELECT nesting_cte.inner_cte_1 + %(inner_cte_1_2)s AS next_value "
+            "(SELECT nesting_cte.inner_cte_1 + %(inner_cte_1_2)s "
+            "AS next_value "
             "FROM nesting_cte)"
-            " SELECT nesting_cte.inner_cte_1 - %(inner_cte_1_1)s AS next_value "
+            " SELECT nesting_cte.inner_cte_1 - %(inner_cte_1_1)s "
+            "AS next_value "
             "FROM nesting_cte UNION SELECT nesting_2.next_value AS next_value "
             "FROM nesting_2)"
             " SELECT wrapper.next_value "
@@ -1958,7 +1961,8 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "WITH RECURSIVE cte(outer_cte) AS (WITH RECURSIVE nesting(inner_cte) "
+            "WITH RECURSIVE cte(outer_cte) AS "
+            "(WITH RECURSIVE nesting(inner_cte) "
             "AS (SELECT %(param_1)s AS inner_cte) "
             "SELECT nesting.inner_cte AS outer_cte FROM nesting) "
             "SELECT cte.outer_cte FROM cte",
@@ -1995,7 +1999,8 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             "(WITH generator AS "
             "(SELECT %(param_1)s AS id, %(param_2)s AS price) "
             "INSERT INTO products (id, price) "
-            "SELECT generator.id AS id, generator.price AS price FROM generator "
+            "SELECT generator.id AS id, generator.price "
+            "AS price FROM generator "
             "RETURNING products.id, products.price) "
             "SELECT insert_cte.id, insert_cte.price "
             "FROM insert_cte",
@@ -2131,7 +2136,8 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             " WHERE allow_multiple_ref.the_value < %(the_value_2)s"
             "  LIMIT %(param_2)s) AS val) "
             "SELECT allow_multiple_ref.the_value * %(the_value_1)s AS anon_1"
-            " FROM allow_multiple_ref, should_continue WHERE should_continue.val != true"
+            " FROM allow_multiple_ref, should_continue "
+            "WHERE should_continue.val != true"
             " UNION ALL SELECT allow_multiple_ref.the_value * %(the_value_3)s"
             " AS anon_2 FROM allow_multiple_ref, should_continue"
             " WHERE should_continue.val != true))"
