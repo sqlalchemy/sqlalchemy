@@ -655,7 +655,8 @@ class:
     SELECT users.id AS users_id,
             users.name AS users_name,
             users.fullname AS users_fullname,
-            users.nickname AS users_nickname
+            users.nickname AS users_nickname,
+            users.name AS users_name__1
     FROM users
     [...] ()
     {stop}<User(name='ed', fullname='Ed Jones', nickname='eddie')> ed
@@ -694,7 +695,8 @@ entities are present in the call to :meth:`~.Session.query`, can be controlled u
     SELECT user_alias.id AS user_alias_id,
             user_alias.name AS user_alias_name,
             user_alias.fullname AS user_alias_fullname,
-            user_alias.nickname AS user_alias_nickname
+            user_alias.nickname AS user_alias_nickname,
+            user_alias.name AS user_alias_name__1
     FROM users AS user_alias
     [...] (){stop}
     <User(name='ed', fullname='Ed Jones', nickname='eddie')>
