@@ -173,7 +173,7 @@ ImmutableDict_union(PyObject *self, PyObject *args, PyObject *kw)
     }
 
     if (!PyDict_CheckExact(arg_dict)) {
-        // if we didnt get a dict, and got lists of tuples or
+        // if we didn't get a dict, and got lists of tuples or
         // keyword args, make a dict
         arg_dict = PyObject_Call((PyObject *) &PyDict_Type, args, kw);
         if (arg_dict == NULL) {
