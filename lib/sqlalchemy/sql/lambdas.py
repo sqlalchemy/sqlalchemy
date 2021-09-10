@@ -905,7 +905,7 @@ class AnalyzedCode(object):
         util.raise_(
             exc.InvalidRequestError(
                 "Closure variable named '%s' inside of lambda callable %s "
-                "does not refer to a cachable SQL element, and also does not "
+                "does not refer to a cacheable SQL element, and also does not "
                 "appear to be serving as a SQL literal bound value based on "
                 "the default "
                 "SQL expression returned by the function.   This variable "
