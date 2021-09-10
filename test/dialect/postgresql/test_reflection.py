@@ -997,7 +997,7 @@ class ReflectionTest(
         )
 
     def test_index_reflection_partial(self, metadata, connection):
-        """Reflect the filter defintion on partial indexes"""
+        """Reflect the filter definition on partial indexes"""
 
         metadata = metadata
 
