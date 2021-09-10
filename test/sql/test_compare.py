@@ -860,7 +860,7 @@ class CoreFixtures(object):
             subq = select(l).subquery()
 
             # this creates a ColumnClause as a proxy to the Label() that has
-            # an anoymous name, so the column has one too.
+            # an anonymous name, so the column has one too.
             anon_col = subq.c[0]
 
             # then when BindParameter is created, it checks the label
@@ -876,7 +876,7 @@ class CoreFixtures(object):
             subq = select(l).subquery()
 
             # this creates a ColumnClause as a proxy to the Label() that has
-            # an anoymous name, so the column has one too.
+            # an anonymous name, so the column has one too.
             anon_col = subq.c[0]
 
             # then when BindParameter is created, it checks the label
