@@ -4909,7 +4909,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
 
         subq = q.subquery()
 
-        # note this is a bit cutting edge; two differnet entities against
+        # note this is a bit cutting edge; two different entities against
         # the same subquery.
         uentity = aliased(User, subq)
         aentity = aliased(Address, subq)
