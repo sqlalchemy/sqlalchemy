@@ -3476,7 +3476,7 @@ class SQLCompiler(Compiled):
             return ""
 
         if nesting_level and nesting_level > 1:
-            ctes = {}
+            ctes = util.OrderedDict()
             for cte in list(self.ctes.keys()):
                 cte_level = self.level_by_ctes[cte]
                 is_rendered_level = cte_level == nesting_level or (
