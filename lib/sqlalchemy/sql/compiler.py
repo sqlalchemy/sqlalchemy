@@ -610,7 +610,7 @@ class SQLCompiler(Compiled):
     """
 
     _loose_column_name_matching = False
-    """tell the result object that the SQL staement is textual, wants to match
+    """tell the result object that the SQL statement is textual, wants to match
     up to Column objects, and may be using the ._tq_label in the SELECT rather
     than the base name.
 
