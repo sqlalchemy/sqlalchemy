@@ -514,7 +514,7 @@ or embedded dots, use two sets of brackets::
 
 
 .. versionchanged:: 1.2 the SQL Server dialect now treats brackets as
-   identifier delimeters splitting the schema into separate database
+   identifier delimiters splitting the schema into separate database
    and owner tokens, to allow dots within either name itself.
 
 .. _legacy_schema_rendering:
