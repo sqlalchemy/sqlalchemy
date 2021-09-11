@@ -500,7 +500,7 @@ class SuiteRequirements(Requirements):
     def foreign_key_constraint_name_reflection(self):
         """Target supports refleciton of FOREIGN KEY constraints and
         will return the name of the constraint that was used in the
-        "CONSTRANT <name> FOREIGN KEY" DDL.
+        "CONSTRAINT <name> FOREIGN KEY" DDL.
 
         MySQL prior to version 8 and MariaDB prior to version 10.5
         don't support this.

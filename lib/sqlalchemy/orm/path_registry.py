@@ -420,7 +420,7 @@ class AbstractEntityRegistry(PathRegistry):
                 )
         # it seems to make sense that since these paths get mixed up
         # with statements that are cached or not, we should make
-        # sure the natural path is cachable across different occurrences
+        # sure the natural path is cacheable across different occurrences
         # of equivalent AliasedClass objects.  however, so far this
         # does not seem to be needed for whatever reason.
         # elif not parent.path and self.is_aliased_class:

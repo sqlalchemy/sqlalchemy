@@ -767,7 +767,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
                 "SELECT EXTRACT(%s FROM t.col1) AS anon_1 FROM t" % field,
             )
 
-        # millsecondS to millisecond
+        # milliseconds to millisecond
         self.assert_compile(
             select(extract("milliseconds", t.c.col1)),
             "SELECT EXTRACT(millisecond FROM t.col1) AS anon_1 FROM t",

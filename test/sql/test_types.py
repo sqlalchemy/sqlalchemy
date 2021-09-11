@@ -1116,7 +1116,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
         MyType = self.MyType
 
         # test coerce from nulltype - e.g. use an object that
-        # does't match to a known type
+        # doesn't match to a known type
         class MyObj(object):
             def __str__(self):
                 return "THISISMYOBJ"

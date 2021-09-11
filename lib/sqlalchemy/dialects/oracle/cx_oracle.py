@@ -108,7 +108,7 @@ Any cx_Oracle parameter value and/or constant may be passed, such as::
     )
 
 Note that the default value for ``encoding`` and ``nencoding`` was changed to
-"UTF-8" in cx_Oracle 8.0 so these parameters can be ommitted when using that
+"UTF-8" in cx_Oracle 8.0 so these parameters can be omitted when using that
 version, or later.
 
 Options consumed by the SQLAlchemy cx_Oracle dialect outside of the driver

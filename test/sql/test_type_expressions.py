@@ -24,7 +24,7 @@ class _ExprFixture(object):
     def _fixture(self):
         class MyString(String):
 
-            # supercedes any processing that might be on
+            # supersedes any processing that might be on
             # String
             def bind_expression(self, bindvalue):
                 return func.lower(bindvalue)

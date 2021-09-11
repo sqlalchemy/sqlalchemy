@@ -809,7 +809,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         objects maintained by this :class:`_expression.FromClause`.
 
         The :attr:`_sql.FromClause.c` attribute is an alias for the
-        :attr:`_sql.FromClause.columns` atttribute.
+        :attr:`_sql.FromClause.columns` attribute.
 
         :return: a :class:`.ColumnCollection`
 

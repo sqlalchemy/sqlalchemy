@@ -442,7 +442,7 @@ BaseRow_subscript_impl(BaseRow *self, PyObject *key, int asmapping)
 
         // support negative indexes.   We can also call PySequence_GetItem,
         // but here we can stay with the simpler tuple protocol
-        // rather than the seqeunce protocol which has to check for
+        // rather than the sequence protocol which has to check for
         // __getitem__ methods etc.
         if (index < 0)
             index += (long)BaseRow_length(self);
@@ -467,7 +467,7 @@ BaseRow_subscript_impl(BaseRow *self, PyObject *key, int asmapping)
 
         // support negative indexes.   We can also call PySequence_GetItem,
         // but here we can stay with the simpler tuple protocol
-        // rather than the seqeunce protocol which has to check for
+        // rather than the sequence protocol which has to check for
         // __getitem__ methods etc.
         if (index < 0)
             index += (long)BaseRow_length(self);
