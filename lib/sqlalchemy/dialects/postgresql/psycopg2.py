@@ -1041,15 +1041,13 @@ class PGDialect_psycopg2(PGDialect):
                 # psycopg2/cursor.h
                 "connection already closed",
                 "cursor already closed",
-                # not sure where this path is originally from, it may
-                # be obsolete.   It really says "losed", not "closed".
-                "losed the connection unexpectedly",
                 # these can occur in newer SSL
                 "connection has been closed unexpectedly",
+                "SSL error: decryption failed or bad record mac",
                 "SSL SYSCALL error: Bad file descriptor",
                 "SSL SYSCALL error: EOF detected",
-                "SSL error: decryption failed or bad record mac",
                 "SSL SYSCALL error: Operation timed out",
+                "SSL SYSCALL error: Bad address",
             ]:
                 idx = str_e.find(msg)
                 if idx >= 0 and '"' not in str_e[:idx]:
