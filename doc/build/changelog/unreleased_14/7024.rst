@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, installation
+    :tickets: 7024
+
+    Further adjusted the "greenlet" package specifier in setup.cfg to use a
+    long chain of "or" expressions, so that the comparison of
+    ``platform_machine`` to a specific identifier matches only the complete
+    string.
