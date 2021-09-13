@@ -299,8 +299,8 @@ class ReturningTest(fixtures.TablesTest, AssertsExecutionResults):
         )
         eq_(result.fetchall(), [(1, True), (2, True)])
 
-    @testing.requires.full_returning
-    def test_delete_full_returning(self, connection):
+    @testing.requires.delete_returning
+    def test_delete_returning(self, connection):
         table = self.tables.tables
         connection.execute(
             table.insert(),

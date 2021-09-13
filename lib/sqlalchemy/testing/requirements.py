@@ -360,6 +360,15 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def delete_returning(self):
+        """target platform supports DELETE ... RETURNING."""
+
+        return exclusions.only_if(
+            lambda config: config.db.dialect.delete_returning,
+            "%(database)s %(does_support)s 'DELETE ... RETURNING'",
+        )
+
+    @property
     def insert_returning(self):
         """target platform supports INSERT ... RETURNING."""
 
