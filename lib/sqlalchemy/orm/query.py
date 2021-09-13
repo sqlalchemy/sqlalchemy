@@ -501,7 +501,7 @@ class Query(
             q = q.reduce_columns()
         return q.alias(name=name)
 
-    def cte(self, name=None, recursive=False):
+    def cte(self, name=None, recursive=False, nesting=False):
         r"""Return the full SELECT statement represented by this
         :class:`_query.Query` represented as a common table expression (CTE).
 
@@ -557,7 +557,7 @@ class Query(
 
         """
         return self.enable_eagerloads(False).statement.cte(
-            name=name, recursive=recursive
+            name=name, recursive=recursive, nesting=nesting
         )
 
     def label(self, name):
