@@ -452,6 +452,25 @@ available.
 
         :class:`_mysql.match`
 
+INSERT/DELETE...RETURNING
+-------------------------
+
+The MariaDB dialect supports 10.5+'s ``INSERT..RETURNING`` and
+``DELETE..RETURNING`` (10.0+) syntaxes.   ``INSERT..RETURNING`` is used by
+default for INSERT statements in order to fetch newly generated identifiers.
+To specify an explicit ``RETURNING`` clause, use the
+:meth:`._UpdateBase.returning` method on a per-statement basis::
+
+    # INSERT..RETURNING
+    result = table.insert().returning(table.c.col1, table.c.col2).\
+        values(name='foo')
+    print(result.fetchall())
+
+    # DELETE..RETURNING
+    result = table.delete().returning(table.c.col1, table.c.col2).\
+        where(table.c.name=='foo')
+    print(result.fetchall())
+
 .. _mysql_insert_on_duplicate_key_update:
 
 INSERT...ON DUPLICATE KEY UPDATE (Upsert)

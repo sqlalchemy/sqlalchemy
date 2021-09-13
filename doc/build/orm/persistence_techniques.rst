@@ -36,12 +36,12 @@ from the database.
 
 The feature also has conditional support to work in conjunction with
 primary key columns.  A database that supports RETURNING, e.g. PostgreSQL,
-Oracle, or SQL Server, or as a special case when using SQLite with the pysqlite
-driver and a single auto-increment column, a SQL expression may be assigned
-to a primary key column as well.  This allows both the SQL expression to
-be evaluated, as well as allows any server side triggers that modify the
-primary key value on INSERT, to be successfully retrieved by the ORM as
-part of the object's primary key::
+Oracle, SQL Server, or MariaDB (10.5+, INSERT only), or as a special case when
+using SQLite with the pysqlite driver and a single auto-increment column, a
+SQL expression may be assigned to a primary key column as well.  This allows
+both the SQL expression to be evaluated, as well as allows any server side
+triggers that modify the primary key value on INSERT, to be successfully
+retrieved by the ORM as part of the object's primary key::
 
 
     class Foo(Base):
@@ -272,8 +272,8 @@ answered are, 1. is this column part of the primary key or not, and 2. does the
 database support RETURNING or an equivalent, such as "OUTPUT inserted"; these
 are SQL phrases which return a server-generated value at the same time as the
 INSERT or UPDATE statement is invoked. Databases that support RETURNING or
-equivalent include PostgreSQL, Oracle, and SQL Server.  Databases that do not
-include SQLite and MySQL.
+equivalent include PostgreSQL, Oracle, MariaDB (10.5+, INSERT only) and SQL
+Server.  Databases that do not include SQLite and MySQL.
 
 Case 1: non primary key, RETURNING or equivalent is supported
 -------------------------------------------------------------
