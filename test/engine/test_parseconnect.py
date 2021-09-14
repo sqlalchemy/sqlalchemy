@@ -367,6 +367,16 @@ class URLTest(fixtures.TestBase):
             )
         eq_(u1, url.make_url("somedriver://user@hostname:52"))
 
+    def test_deprecated_translate_connect_args_names(self):
+        u = url.make_url("somedriver://user@hostname:52")
+
+        with testing.expect_deprecated(
+            "The `URL.translate_connect_args.name`s parameter is "
+        ):
+            res = u.translate_connect_args(["foo"])
+            is_true("foo" in res)
+            eq_(res["foo"], u.host)
+
 
 class DialectImportTest(fixtures.TestBase):
     def test_import_base_dialects(self):
@@ -690,6 +700,43 @@ class CreateEngineTest(fixtures.TestBase):
             module=mock_sqlite_dbapi,
             _initialize=False,
         )
+
+    @testing.combinations(True, False)
+    def test_password_object_str(self, creator):
+        class SecurePassword:
+            def __init__(self, value):
+                self.called = 0
+                self.value = value
+
+            def __str__(self):
+                self.called += 1
+                return self.value
+
+        sp = SecurePassword("secured_password")
+        u = url.URL.create(
+            "postgresql", username="x", password=sp, host="localhost"
+        )
+        if not creator:
+            dbapi = MockDBAPI(
+                user="x", password="secured_password", host="localhost"
+            )
+
+            e = create_engine(u, module=dbapi, _initialize=False)
+
+        else:
+            dbapi = MockDBAPI(foober=12, lala=18, fooz="somevalue")
+
+            def connect():
+                return dbapi.connect(foober=12, lala=18, fooz="somevalue")
+
+            e = create_engine(
+                u, creator=connect, module=dbapi, _initialize=False
+            )
+        e.connect()
+        e.connect()
+        e.connect()
+        e.connect()
+        eq_(sp.called, 1)
 
 
 class TestRegNewDBAPI(fixtures.TestBase):
