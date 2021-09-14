@@ -11,6 +11,8 @@ r"""
     :connectstring: postgresql+psycopg2://user:password@host:port/dbname[?key=value&key=value...]
     :url: https://pypi.org/project/psycopg2/
 
+.. _psycopg2_toplevel:
+
 psycopg2 Connect Arguments
 --------------------------
 
@@ -442,78 +444,21 @@ which may be more performant.
 
 """  # noqa
 import collections.abc as collections_abc
-import decimal
 import logging
 import re
-from uuid import UUID as _python_UUID
 
-from .array import ARRAY as PGARRAY
-from .base import _DECIMAL_TYPES
-from .base import _FLOAT_TYPES
-from .base import _INT_TYPES
+from ._psycopg_common import _PGDialect_common_psycopg
+from ._psycopg_common import _PGExecutionContext_common_psycopg
 from .base import PGCompiler
-from .base import PGDialect
-from .base import PGExecutionContext
 from .base import PGIdentifierPreparer
-from .base import UUID
-from .hstore import HSTORE
 from .json import JSON
 from .json import JSONB
-from ... import exc
-from ... import processors
 from ... import types as sqltypes
 from ... import util
 from ...engine import cursor as _cursor
 
 
 logger = logging.getLogger("sqlalchemy.dialects.postgresql")
-
-
-class _PGNumeric(sqltypes.Numeric):
-    def bind_processor(self, dialect):
-        return None
-
-    def result_processor(self, dialect, coltype):
-        if self.asdecimal:
-            if coltype in _FLOAT_TYPES:
-                return processors.to_decimal_processor_factory(
-                    decimal.Decimal, self._effective_decimal_return_scale
-                )
-            elif coltype in _DECIMAL_TYPES or coltype in _INT_TYPES:
-                # pg8000 returns Decimal natively for 1700
-                return None
-            else:
-                raise exc.InvalidRequestError(
-                    "Unknown PG numeric type: %d" % coltype
-                )
-        else:
-            if coltype in _FLOAT_TYPES:
-                # pg8000 returns float natively for 701
-                return None
-            elif coltype in _DECIMAL_TYPES or coltype in _INT_TYPES:
-                return processors.to_float
-            else:
-                raise exc.InvalidRequestError(
-                    "Unknown PG numeric type: %d" % coltype
-                )
-
-
-class _PGHStore(HSTORE):
-    def bind_processor(self, dialect):
-        if dialect._has_native_hstore:
-            return None
-        else:
-            return super(_PGHStore, self).bind_processor(dialect)
-
-    def result_processor(self, dialect, coltype):
-        if dialect._has_native_hstore:
-            return None
-        else:
-            return super(_PGHStore, self).result_processor(dialect, coltype)
-
-
-class _PGARRAY(PGARRAY):
-    render_bind_cast = True
 
 
 class _PGJSON(JSON):
@@ -526,39 +471,8 @@ class _PGJSONB(JSONB):
         return None
 
 
-class _PGUUID(UUID):
-    def bind_processor(self, dialect):
-        if not self.as_uuid and dialect.use_native_uuid:
-
-            def process(value):
-                if value is not None:
-                    value = _python_UUID(value)
-                return value
-
-            return process
-
-    def result_processor(self, dialect, coltype):
-        if not self.as_uuid and dialect.use_native_uuid:
-
-            def process(value):
-                if value is not None:
-                    value = str(value)
-                return value
-
-            return process
-
-
-_server_side_id = util.counter()
-
-
-class PGExecutionContext_psycopg2(PGExecutionContext):
+class PGExecutionContext_psycopg2(_PGExecutionContext_common_psycopg):
     _psycopg2_fetched_rows = None
-
-    def create_server_side_cursor(self):
-        # use server-side cursors:
-        # https://lists.initd.org/pipermail/psycopg/2007-January/005251.html
-        ident = "c_%s_%s" % (hex(id(self))[2:], hex(_server_side_id())[2:])
-        return self._dbapi_connection.cursor(ident)
 
     def post_exec(self):
         if (
@@ -614,7 +528,7 @@ EXECUTEMANY_VALUES_PLUS_BATCH = util.symbol(
 )
 
 
-class PGDialect_psycopg2(PGDialect):
+class PGDialect_psycopg2(_PGDialect_common_psycopg):
     driver = "psycopg2"
 
     supports_statement_cache = True
@@ -631,34 +545,22 @@ class PGDialect_psycopg2(PGDialect):
     _has_native_hstore = True
 
     colspecs = util.update_copy(
-        PGDialect.colspecs,
+        _PGDialect_common_psycopg.colspecs,
         {
-            sqltypes.Numeric: _PGNumeric,
-            HSTORE: _PGHStore,
             JSON: _PGJSON,
             sqltypes.JSON: _PGJSON,
             JSONB: _PGJSONB,
-            UUID: _PGUUID,
-            sqltypes.ARRAY: _PGARRAY,
         },
     )
 
     def __init__(
         self,
-        client_encoding=None,
-        use_native_hstore=True,
-        use_native_uuid=True,
         executemany_mode="values_only",
         executemany_batch_page_size=100,
         executemany_values_page_size=1000,
         **kwargs
     ):
-        PGDialect.__init__(self, **kwargs)
-        if not use_native_hstore:
-            self._has_native_hstore = False
-        self.use_native_hstore = use_native_hstore
-        self.use_native_uuid = use_native_uuid
-        self.client_encoding = client_encoding
+        _PGDialect_common_psycopg.__init__(self, **kwargs)
 
         # Parse executemany_mode argument, allowing it to be only one of the
         # symbol names
@@ -737,9 +639,6 @@ class PGDialect_psycopg2(PGDialect):
             "SERIALIZABLE": extensions.ISOLATION_LEVEL_SERIALIZABLE,
         }
 
-    def get_isolation_level_values(self, dbapi_conn):
-        return list(self._isolation_lookup)
-
     def set_isolation_level(self, connection, level):
         connection.set_isolation_level(self._isolation_lookup[level])
 
@@ -754,25 +653,6 @@ class PGDialect_psycopg2(PGDialect):
 
     def get_deferrable(self, connection):
         return connection.deferrable
-
-    def do_ping(self, dbapi_connection):
-        cursor = None
-        try:
-            dbapi_connection.autocommit = True
-            cursor = dbapi_connection.cursor()
-            try:
-                cursor.execute(self._dialect_specific_select_one)
-            finally:
-                cursor.close()
-                if not dbapi_connection.closed:
-                    dbapi_connection.autocommit = False
-        except self.dbapi.Error as err:
-            if self.is_disconnect(err, dbapi_connection, cursor):
-                return False
-            else:
-                raise
-        else:
-            return True
 
     def on_connect(self):
         extras = self._psycopg2_extras
@@ -910,33 +790,6 @@ class PGDialect_psycopg2(PGDialect):
             return oids[0:2]
         else:
             return None
-
-    def create_connect_args(self, url):
-        opts = url.translate_connect_args(username="user")
-
-        is_multihost = False
-        if "host" in url.query:
-            is_multihost = isinstance(url.query["host"], (list, tuple))
-
-        if opts:
-            if "port" in opts:
-                opts["port"] = int(opts["port"])
-            opts.update(url.query)
-            if is_multihost:
-                opts["host"] = ",".join(url.query["host"])
-            # send individual dbname, user, password, host, port
-            # parameters to psycopg2.connect()
-            return ([], opts)
-        elif url.query:
-            # any other connection arguments, pass directly
-            opts.update(url.query)
-            if is_multihost:
-                opts["host"] = ",".join(url.query["host"])
-            return ([], opts)
-        else:
-            # no connection arguments whatsoever; psycopg2.connect()
-            # requires that "dsn" be present as a blank string.
-            return ([""], opts)
 
     def is_disconnect(self, e, connection, cursor):
         if isinstance(e, self.dbapi.Error):

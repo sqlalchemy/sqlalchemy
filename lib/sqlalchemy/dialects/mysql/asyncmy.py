@@ -175,7 +175,7 @@ class AsyncAdapt_asyncmy_ss_cursor(AsyncAdapt_asyncmy_cursor):
 
 class AsyncAdapt_asyncmy_connection(AdaptedConnection):
     await_ = staticmethod(await_only)
-    __slots__ = ("dbapi", "_connection", "_execute_mutex")
+    __slots__ = ("dbapi", "_execute_mutex")
 
     def __init__(self, dbapi, connection):
         self.dbapi = dbapi

@@ -2360,7 +2360,7 @@ class ArrayEnum(fixtures.TestBase):
             testing.combinations(
                 sqltypes.ARRAY,
                 postgresql.ARRAY,
-                (_ArrayOfEnum, testing.only_on("postgresql+psycopg2")),
+                (_ArrayOfEnum, testing.requires.psycopg_compatibility),
                 argnames="array_cls",
             )(fn)
         )
@@ -3066,7 +3066,7 @@ class HStoreRoundTripTest(fixtures.TablesTest):
 
     @testing.fixture
     def non_native_hstore_connection(self, testing_engine):
-        local_engine = testing.requires.psycopg2_native_hstore.enabled
+        local_engine = testing.requires.native_hstore.enabled
 
         if local_engine:
             engine = testing_engine(options=dict(use_native_hstore=False))
@@ -3096,14 +3096,14 @@ class HStoreRoundTripTest(fixtures.TablesTest):
         )["1"]
         eq_(connection.scalar(select(expr)), "3")
 
-    @testing.requires.psycopg2_native_hstore
+    @testing.requires.native_hstore
     def test_insert_native(self, connection):
         self._test_insert(connection)
 
     def test_insert_python(self, non_native_hstore_connection):
         self._test_insert(non_native_hstore_connection)
 
-    @testing.requires.psycopg2_native_hstore
+    @testing.requires.native_hstore
     def test_criterion_native(self, connection):
         self._fixture_data(connection)
         self._test_criterion(connection)
@@ -3134,7 +3134,7 @@ class HStoreRoundTripTest(fixtures.TablesTest):
     def test_fixed_round_trip_python(self, non_native_hstore_connection):
         self._test_fixed_round_trip(non_native_hstore_connection)
 
-    @testing.requires.psycopg2_native_hstore
+    @testing.requires.native_hstore
     def test_fixed_round_trip_native(self, connection):
         self._test_fixed_round_trip(connection)
 
@@ -3154,11 +3154,11 @@ class HStoreRoundTripTest(fixtures.TablesTest):
             },
         )
 
-    @testing.requires.psycopg2_native_hstore
+    @testing.requires.native_hstore
     def test_unicode_round_trip_python(self, non_native_hstore_connection):
         self._test_unicode_round_trip(non_native_hstore_connection)
 
-    @testing.requires.psycopg2_native_hstore
+    @testing.requires.native_hstore
     def test_unicode_round_trip_native(self, connection):
         self._test_unicode_round_trip(connection)
 
@@ -3167,7 +3167,7 @@ class HStoreRoundTripTest(fixtures.TablesTest):
     ):
         self._test_escaped_quotes_round_trip(non_native_hstore_connection)
 
-    @testing.requires.psycopg2_native_hstore
+    @testing.requires.native_hstore
     def test_escaped_quotes_round_trip_native(self, connection):
         self._test_escaped_quotes_round_trip(connection)
 
@@ -3356,7 +3356,7 @@ class _RangeTypeCompilation(AssertsCompiledSQL, fixtures.TestBase):
 
 
 class _RangeTypeRoundTrip(fixtures.TablesTest):
-    __requires__ = "range_types", "psycopg2_compatibility"
+    __requires__ = "range_types", "psycopg_compatibility"
     __backend__ = True
 
     def extras(self):
@@ -3364,8 +3364,18 @@ class _RangeTypeRoundTrip(fixtures.TablesTest):
         # older psycopg2 versions.
         if testing.against("postgresql+psycopg2cffi"):
             from psycopg2cffi import extras
-        else:
+        elif testing.against("postgresql+psycopg2"):
             from psycopg2 import extras
+        elif testing.against("postgresql+psycopg"):
+            from psycopg.types.range import Range
+
+            class psycopg_extras:
+                def __getattr__(self, _):
+                    return Range
+
+            extras = psycopg_extras()
+        else:
+            assert False, "Unknonw dialect"
         return extras
 
     @classmethod

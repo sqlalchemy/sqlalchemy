@@ -2338,25 +2338,39 @@ class JSON(Indexable, TypeEngine):
     def _str_impl(self):
         return String()
 
-    def bind_processor(self, dialect):
-        string_process = self._str_impl.bind_processor(dialect)
+    def _make_bind_processor(self, string_process, json_serializer):
+        if string_process:
 
-        json_serializer = dialect._json_serializer or json.dumps
+            def process(value):
+                if value is self.NULL:
+                    value = None
+                elif isinstance(value, elements.Null) or (
+                    value is None and self.none_as_null
+                ):
+                    return None
 
-        def process(value):
-            if value is self.NULL:
-                value = None
-            elif isinstance(value, elements.Null) or (
-                value is None and self.none_as_null
-            ):
-                return None
+                serialized = json_serializer(value)
+                return string_process(serialized)
 
-            serialized = json_serializer(value)
-            if string_process:
-                serialized = string_process(serialized)
-            return serialized
+        else:
+
+            def process(value):
+                if value is self.NULL:
+                    value = None
+                elif isinstance(value, elements.Null) or (
+                    value is None and self.none_as_null
+                ):
+                    return None
+
+                return json_serializer(value)
 
         return process
+
+    def bind_processor(self, dialect):
+        string_process = self._str_impl.bind_processor(dialect)
+        json_serializer = dialect._json_serializer or json.dumps
+
+        return self._make_bind_processor(string_process, json_serializer)
 
     def result_processor(self, dialect, coltype):
         string_process = self._str_impl.result_processor(dialect, coltype)

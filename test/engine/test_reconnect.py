@@ -365,7 +365,7 @@ class MockReconnectTest(fixtures.TestBase):
         )
 
         self.mock_connect = call(
-            host="localhost", password="bar", user="foo", database="test"
+            host="localhost", password="bar", user="foo", dbname="test"
         )
         # monkeypatch disconnect checker
         self.db.dialect.is_disconnect = lambda e, conn, cursor: isinstance(
@@ -1321,6 +1321,7 @@ class InvalidateDuringResultTest(fixtures.TestBase):
             "+aiosqlite",
             "+aiomysql",
             "+asyncmy",
+            "+psycopg",
         ],
         "Buffers the result set and doesn't check for connection close",
     )

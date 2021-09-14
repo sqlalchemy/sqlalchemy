@@ -193,6 +193,13 @@ psycopg2
 
 .. automodule:: sqlalchemy.dialects.postgresql.psycopg2
 
+.. _postgresql_psycopg:
+
+psycopg
+--------
+
+.. automodule:: sqlalchemy.dialects.postgresql.psycopg
+
 pg8000
 ------
 

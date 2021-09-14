@@ -706,7 +706,8 @@ def _do_skips(cls):
                 )
 
     if not all_configs:
-        msg = "'%s' unsupported on any DB implementation %s%s" % (
+        msg = "'%s.%s' unsupported on any DB implementation %s%s" % (
+            cls.__module__,
             cls.__name__,
             ", ".join(
                 "'%s(%s)+%s'"

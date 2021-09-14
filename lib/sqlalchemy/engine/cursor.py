@@ -1223,6 +1223,7 @@ class BaseCursorResult:
 
 
         """
+
         if (not hard and self._soft_closed) or (hard and self.closed):
             return
 

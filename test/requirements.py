@@ -223,6 +223,7 @@ class DefaultRequirements(SuiteRequirements):
     def pyformat_paramstyle(self):
         return only_on(
             [
+                "postgresql+psycopg",
                 "postgresql+psycopg2",
                 "postgresql+psycopg2cffi",
                 "mysql+mysqlconnector",
@@ -1161,7 +1162,10 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def infinity_floats(self):
         return fails_on_everything_except(
-            "sqlite", "postgresql+psycopg2", "postgresql+asyncpg"
+            "sqlite",
+            "postgresql+psycopg2",
+            "postgresql+asyncpg",
+            "postgresql+psycopg",
         ) + skip_if(
             "postgresql+pg8000", "seems to work on pg14 only, not earlier?"
         )
@@ -1241,9 +1245,7 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def range_types(self):
         def check_range_types(config):
-            if not against(
-                config, ["postgresql+psycopg2", "postgresql+psycopg2cffi"]
-            ):
+            if not self.psycopg_compatibility.enabled:
                 return False
             try:
                 with config.db.connect() as conn:
@@ -1291,22 +1293,26 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
-    def psycopg2_native_hstore(self):
-        return self.psycopg2_compatibility
+    def native_hstore(self):
+        return self.psycopg_compatibility
 
     @property
     def psycopg2_compatibility(self):
         return only_on(["postgresql+psycopg2", "postgresql+psycopg2cffi"])
 
     @property
-    def psycopg2_or_pg8000_compatibility(self):
+    def psycopg_compatibility(self):
         return only_on(
             [
                 "postgresql+psycopg2",
                 "postgresql+psycopg2cffi",
-                "postgresql+pg8000",
+                "postgresql+psycopg",
             ]
         )
+
+    @property
+    def psycopg_or_pg8000_compatibility(self):
+        return only_on([self.psycopg_compatibility, "postgresql+pg8000"])
 
     @property
     def percent_schema_names(self):
@@ -1690,3 +1696,8 @@ class DefaultRequirements(SuiteRequirements):
     def reflect_tables_no_columns(self):
         # so far sqlite, mariadb, mysql don't support this
         return only_on(["postgresql"])
+
+    @property
+    def json_deserializer_binary(self):
+        "indicates if the json_deserializer function is called with bytes"
+        return only_on(["postgresql+psycopg"])

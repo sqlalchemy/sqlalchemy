@@ -1284,6 +1284,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         result.out_parameters = out_parameters
 
     def _setup_dml_or_text_result(self):
+
         if self.isinsert:
             if self.compiled.postfetch_lastrowid:
                 self.inserted_primary_key_rows = (
@@ -1332,8 +1333,17 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                 # assert not result.returns_rows
 
         elif self.isupdate and self._is_implicit_returning:
+            # get rowcount
+            # (which requires open cursor on some drivers)
+            # we were not doing this in 1.4, however
+            # test_rowcount -> test_update_rowcount_return_defaults
+            # is testing this, and psycopg will no longer return
+            # rowcount after cursor is closed.
+            result.rowcount
+
             row = result.fetchone()
             self.returned_default_rows = [row]
+
             result._soft_close()
 
             # test that it has a cursor metadata that is accurate.
@@ -1409,6 +1419,8 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             return
 
         dialect = self.dialect
+
+        # all of the rest of this... cython?
 
         if dialect._has_events:
             inputsizes = dict(inputsizes)

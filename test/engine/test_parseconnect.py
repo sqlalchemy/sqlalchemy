@@ -1037,6 +1037,64 @@ class TestRegNewDBAPI(fixtures.TestBase):
         )
 
 
+class TestGetDialect(fixtures.TestBase):
+    @testing.requires.sqlite
+    @testing.combinations(True, False, None)
+    def test_is_async_to_create_engine(self, is_async):
+        def get_dialect_cls(url):
+            url = url.set(drivername="sqlite")
+            return url.get_dialect()
+
+        global MockDialectGetDialect
+        MockDialectGetDialect = Mock()
+        MockDialectGetDialect.get_dialect_cls.side_effect = get_dialect_cls
+        MockDialectGetDialect.get_async_dialect_cls.side_effect = (
+            get_dialect_cls
+        )
+
+        registry.register("mockdialect", __name__, "MockDialectGetDialect")
+
+        from sqlalchemy.dialects import sqlite
+
+        kw = {}
+        if is_async is not None:
+            kw["_is_async"] = is_async
+        e = create_engine("mockdialect://", **kw)
+
+        eq_(e.dialect.name, "sqlite")
+        assert isinstance(e.dialect, sqlite.dialect)
+
+        if is_async:
+            eq_(
+                MockDialectGetDialect.mock_calls,
+                [
+                    call.get_async_dialect_cls(url.make_url("mockdialect://")),
+                    call.engine_created(e),
+                ],
+            )
+        else:
+            eq_(
+                MockDialectGetDialect.mock_calls,
+                [
+                    call.get_dialect_cls(url.make_url("mockdialect://")),
+                    call.engine_created(e),
+                ],
+            )
+        MockDialectGetDialect.reset_mock()
+        u = url.make_url("mockdialect://")
+        u.get_dialect(**kw)
+        if is_async:
+            eq_(
+                MockDialectGetDialect.mock_calls,
+                [call.get_async_dialect_cls(u)],
+            )
+        else:
+            eq_(
+                MockDialectGetDialect.mock_calls,
+                [call.get_dialect_cls(u)],
+            )
+
+
 class MockDialect(DefaultDialect):
     @classmethod
     def dbapi(cls, **kw):

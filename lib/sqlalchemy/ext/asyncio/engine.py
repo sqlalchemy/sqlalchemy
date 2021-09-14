@@ -37,6 +37,7 @@ def create_async_engine(*arg, **kw):
             "streaming result set"
         )
     kw["future"] = True
+    kw["_is_async"] = True
     sync_engine = _create_engine(*arg, **kw)
     return AsyncEngine(sync_engine)
 

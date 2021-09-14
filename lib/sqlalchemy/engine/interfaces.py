@@ -1114,6 +1114,25 @@ class Dialect:
         return cls
 
     @classmethod
+    def get_async_dialect_cls(cls, url):
+        """Given a URL, return the :class:`.Dialect` that will be used by
+        an async engine.
+
+        By default this is an alias of :meth:`.Dialect.get_dialect_cls` and
+        just returns the cls. It may be used if a dialect provides
+        both a sync and async version under the same name, like the
+        ``psycopg`` driver.
+
+        .. versionadded:: 2
+
+        .. seealso::
+
+            :meth:`.Dialect.get_dialect_cls`
+
+        """
+        return cls.get_dialect_cls(url)
+
+    @classmethod
     def load_provisioning(cls):
         """set up the provision.py module for this dialect.
 

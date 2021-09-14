@@ -634,7 +634,11 @@ class AsyncEventTest(EngineFixture):
 
         eq_(
             canary.mock_calls,
-            [mock.call(sync_conn, mock.ANY, "select 1", (), mock.ANY, False)],
+            [
+                mock.call(
+                    sync_conn, mock.ANY, "select 1", mock.ANY, mock.ANY, False
+                )
+            ],
         )
 
     @async_test
@@ -651,7 +655,11 @@ class AsyncEventTest(EngineFixture):
 
         eq_(
             canary.mock_calls,
-            [mock.call(sync_conn, mock.ANY, "select 1", (), mock.ANY, False)],
+            [
+                mock.call(
+                    sync_conn, mock.ANY, "select 1", mock.ANY, mock.ANY, False
+                )
+            ],
         )
 
     @async_test

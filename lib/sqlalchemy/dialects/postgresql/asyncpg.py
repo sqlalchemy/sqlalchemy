@@ -553,7 +553,6 @@ class AsyncAdapt_asyncpg_ss_cursor(AsyncAdapt_asyncpg_cursor):
 class AsyncAdapt_asyncpg_connection(AdaptedConnection):
     __slots__ = (
         "dbapi",
-        "_connection",
         "isolation_level",
         "_isolation_setting",
         "readonly",

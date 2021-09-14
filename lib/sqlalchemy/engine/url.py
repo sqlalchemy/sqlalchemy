@@ -655,13 +655,16 @@ class URL(
         else:
             return cls
 
-    def get_dialect(self):
+    def get_dialect(self, _is_async=False):
         """Return the SQLAlchemy :class:`_engine.Dialect` class corresponding
         to this URL's driver name.
 
         """
         entrypoint = self._get_entrypoint()
-        dialect_cls = entrypoint.get_dialect_cls(self)
+        if _is_async:
+            dialect_cls = entrypoint.get_async_dialect_cls(self)
+        else:
+            dialect_cls = entrypoint.get_dialect_cls(self)
         return dialect_cls
 
     def translate_connect_args(self, names=None, **kw):

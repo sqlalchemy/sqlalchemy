@@ -244,6 +244,8 @@ class ServerSideCursorsTest(
             return cursor.server_side
         elif self.engine.dialect.driver == "pg8000":
             return getattr(cursor, "server_side", False)
+        elif self.engine.dialect.driver == "psycopg":
+            return bool(getattr(cursor, "name", False))
         else:
             return False
 

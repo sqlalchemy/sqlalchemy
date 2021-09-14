@@ -1701,7 +1701,7 @@ class UUID(sqltypes.TypeEngine):
     or as Python uuid objects.
 
     The UUID type is currently known to work within the prominent DBAPI
-    drivers supported by SQLAlchemy including psycopg2, pg8000 and
+    drivers supported by SQLAlchemy including psycopg, psycopg2, pg8000 and
     asyncpg. Support for other DBAPI drivers may be incomplete or non-present.
 
     """
@@ -1991,6 +1991,12 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
                 return
 
             self.connection.execute(DropEnumType(enum))
+
+    def get_dbapi_type(self, dbapi):
+        """dont return dbapi.STRING for ENUM in PostgreSQL, since that's
+        a different type"""
+
+        return None
 
     def _check_for_name_in_memos(self, checkfirst, kw):
         """Look in the 'ddl runner' for 'memos', then

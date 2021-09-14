@@ -2459,15 +2459,16 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
     @testing.combinations(
         (True, "omit_alias"), (False, "with_alias"), id_="ai", argnames="omit"
     )
-    @testing.provide_metadata
     @testing.skip_if("mysql < 8")
-    def test_duplicate_values_accepted(self, native, omit):
+    def test_duplicate_values_accepted(
+        self, metadata, connection, native, omit
+    ):
         foo_enum = pep435_enum("foo_enum")
         foo_enum("one", 1, "two")
         foo_enum("three", 3, "four")
         tbl = sa.Table(
             "foo_table",
-            self.metadata,
+            metadata,
             sa.Column("id", sa.Integer),
             sa.Column(
                 "data",
@@ -2481,7 +2482,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         )
         t = sa.table("foo_table", sa.column("id"), sa.column("data"))
 
-        self.metadata.create_all(testing.db)
+        metadata.create_all(connection)
         if omit:
             with expect_raises(
                 (
@@ -2491,29 +2492,27 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
                     exc.DBAPIError,
                 )
             ):
-                with testing.db.begin() as conn:
-                    conn.execute(
-                        t.insert(),
-                        [
-                            {"id": 1, "data": "four"},
-                            {"id": 2, "data": "three"},
-                        ],
-                    )
-        else:
-            with testing.db.begin() as conn:
-                conn.execute(
+                connection.execute(
                     t.insert(),
-                    [{"id": 1, "data": "four"}, {"id": 2, "data": "three"}],
+                    [
+                        {"id": 1, "data": "four"},
+                        {"id": 2, "data": "three"},
+                    ],
                 )
+        else:
+            connection.execute(
+                t.insert(),
+                [{"id": 1, "data": "four"}, {"id": 2, "data": "three"}],
+            )
 
-                eq_(
-                    conn.execute(t.select().order_by(t.c.id)).fetchall(),
-                    [(1, "four"), (2, "three")],
-                )
-                eq_(
-                    conn.execute(tbl.select().order_by(tbl.c.id)).fetchall(),
-                    [(1, foo_enum.three), (2, foo_enum.three)],
-                )
+            eq_(
+                connection.execute(t.select().order_by(t.c.id)).fetchall(),
+                [(1, "four"), (2, "three")],
+            )
+            eq_(
+                connection.execute(tbl.select().order_by(tbl.c.id)).fetchall(),
+                [(1, foo_enum.three), (2, foo_enum.three)],
+            )
 
 
 MyPickleType = None

@@ -1107,7 +1107,13 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
             eq_(row, (data_element,))
             eq_(js.mock_calls, [mock.call(data_element)])
-            eq_(jd.mock_calls, [mock.call(json.dumps(data_element))])
+            if testing.requires.json_deserializer_binary.enabled:
+                eq_(
+                    jd.mock_calls,
+                    [mock.call(json.dumps(data_element).encode())],
+                )
+            else:
+                eq_(jd.mock_calls, [mock.call(json.dumps(data_element))])
 
     @testing.combinations(
         ("parameters",),

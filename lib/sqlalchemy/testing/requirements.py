@@ -1493,3 +1493,13 @@ class SuiteRequirements(Requirements):
         sequence. This should be false only for oracle.
         """
         return exclusions.open()
+
+    @property
+    def generic_classes(self):
+        "If X[Y] can be implemented with ``__class_getitem__``. py3.7+"
+        return exclusions.open()
+
+    @property
+    def json_deserializer_binary(self):
+        "indicates if the json_deserializer function is called with bytes"
+        return exclusions.closed()

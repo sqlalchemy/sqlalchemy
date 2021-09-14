@@ -77,6 +77,31 @@ New Features and Improvements
 This section covers new features and improvements in SQLAlchemy 2.0 which
 are not otherwise part of the major 1.4->2.0 migration path.
 
+.. _ticket_6842:
+
+Dialect support for psycopg 3 (a.k.a. "psycopg")
+-------------------------------------------------
+
+Added dialect support for the `psycopg 3 <https://pypi.org/project/psycopg/>`_
+DBAPI, which despite the number "3" now goes by the package name ``psycopg``,
+superseding the previous ``psycopg2`` package that for the time being remains
+SQLAlchemy's "default" driver for the ``postgresql`` dialects. ``psycopg`` is a
+completely reworked and modernized database adapter for PostgreSQL which
+supports concepts such as prepared statements as well as Python asyncio.
+
+``psycopg`` is the first DBAPI supported by SQLAlchemy which provides
+both a pep-249 synchronous API as well as an asyncio driver.  The same
+``psycopg`` database URL may be used with the :func:`_sa.create_engine`
+and :func:`_asyncio.create_async_engine` engine-creation functions, and the
+corresponding sync or asyncio version of the dialect will be selected
+automatically.
+
+.. seealso::
+
+    :ref:`postgresql_psycopg`
+
+
+
 Behavioral Changes
 ==================
 
