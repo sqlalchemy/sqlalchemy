@@ -439,6 +439,47 @@ class AsyncConnection(ProxyComparable, StartableContext, AsyncConnectable):
         result = await self.execute(statement, parameters, execution_options)
         return result.scalar()
 
+    async def scalars(
+        self,
+        statement,
+        parameters=None,
+        execution_options=util.EMPTY_DICT,
+    ):
+        r"""Executes a SQL statement construct and returns a scalar objects.
+
+        This method is shorthand for invoking the
+        :meth:`_engine.Result.scalars` method after invoking the
+        :meth:`_future.Connection.execute` method.  Parameters are equivalent.
+
+        :return: a :class:`_engine.ScalarResult` object.
+
+        .. versionadded:: 1.4.24
+
+        """
+        result = await self.execute(statement, parameters, execution_options)
+        return result.scalars()
+
+    async def stream_scalars(
+        self,
+        statement,
+        parameters=None,
+        execution_options=util.EMPTY_DICT,
+    ):
+        r"""Executes a SQL statement and returns a streaming scalar result
+        object.
+
+        This method is shorthand for invoking the
+        :meth:`_engine.AsyncResult.scalars` method after invoking the
+        :meth:`_future.Connection.stream` method.  Parameters are equivalent.
+
+        :return: an :class:`_asyncio.AsyncScalarResult` object.
+
+        .. versionadded:: 1.4.24
+
+        """
+        result = await self.stream(statement, parameters, execution_options)
+        return result.scalars()
+
     async def run_sync(self, fn, *arg, **kw):
         """Invoke the given sync callable passing self as the first argument.
 

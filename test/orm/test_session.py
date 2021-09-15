@@ -1950,7 +1950,9 @@ class DisposedStates(fixtures.MappedTest):
 class SessionInterface(fixtures.TestBase):
     """Bogus args to Session methods produce actionable exceptions."""
 
-    _class_methods = set(("connection", "execute", "get_bind", "scalar"))
+    _class_methods = set(
+        ("connection", "execute", "get_bind", "scalar", "scalars")
+    )
 
     def _public_session_methods(self):
         Session = sa.orm.session.Session
@@ -2076,6 +2078,10 @@ class SessionInterface(fixtures.TestBase):
 
         raises_(
             "scalar", text("SELECT 1"), bind_arguments=dict(mapper=user_arg)
+        )
+
+        raises_(
+            "scalars", text("SELECT 1"), bind_arguments=dict(mapper=user_arg)
         )
 
         eq_(

@@ -707,6 +707,32 @@ class ExecuteTest(fixtures.TablesTest):
                 eq_(conn.scalar(select(1)), 1)
             eng.dispose()
 
+    def test_scalar(self, connection):
+        conn = connection
+        users = self.tables.users
+        conn.execute(
+            users.insert(),
+            [
+                {"user_id": 1, "user_name": "sandy"},
+                {"user_id": 2, "user_name": "spongebob"},
+            ],
+        )
+        res = conn.scalar(select(users.c.user_name).order_by(users.c.user_id))
+        eq_(res, "sandy")
+
+    def test_scalars(self, connection):
+        conn = connection
+        users = self.tables.users
+        conn.execute(
+            users.insert(),
+            [
+                {"user_id": 1, "user_name": "sandy"},
+                {"user_id": 2, "user_name": "spongebob"},
+            ],
+        )
+        res = conn.scalars(select(users.c.user_name).order_by(users.c.user_id))
+        eq_(res.all(), ["sandy", "spongebob"])
+
 
 class UnicodeReturnsTest(fixtures.TestBase):
     @testing.requires.python3

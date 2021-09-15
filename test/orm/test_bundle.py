@@ -304,7 +304,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         stmt = select(b1).filter(b1.c.x.between("d3d1", "d5d1"))
         eq_(
-            sess.execute(stmt).scalars().all(),
+            sess.scalars(stmt).all(),
             [("d3d1", "d3d2"), ("d4d1", "d4d2"), ("d5d1", "d5d2")],
         )
 
@@ -335,7 +335,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         stmt = select(b1).filter(b1.c.d1.between("d3d1", "d5d1"))
         eq_(
-            sess.execute(stmt).scalars().all(),
+            sess.scalars(stmt).all(),
             [("d3d1", "d3d2"), ("d4d1", "d4d2"), ("d5d1", "d5d2")],
         )
 

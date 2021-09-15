@@ -91,6 +91,25 @@ class AsyncSessionQueryTest(AsyncFixture):
         result = await async_session.scalar(stmt)
         eq_(result, 7)
 
+    @testing.combinations(
+        ("scalars",), ("stream_scalars",), argnames="filter_"
+    )
+    @async_test
+    async def test_scalars(self, async_session, filter_):
+        User = self.classes.User
+
+        stmt = (
+            select(User)
+            .options(selectinload(User.addresses))
+            .order_by(User.id)
+        )
+
+        if filter_ == "scalars":
+            result = (await async_session.scalars(stmt)).all()
+        elif filter_ == "stream_scalars":
+            result = await (await async_session.stream_scalars(stmt)).all()
+        eq_(result, self.static.user_address_result)
+
     @async_test
     async def test_get(self, async_session):
         User = self.classes.User

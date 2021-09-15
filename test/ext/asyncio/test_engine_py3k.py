@@ -889,6 +889,20 @@ class AsyncResultTest(EngineFixture):
             ):
                 await result.one()
 
+    @testing.combinations(
+        ("scalars",), ("stream_scalars",), argnames="filter_"
+    )
+    @async_test
+    async def test_scalars(self, async_engine, filter_):
+        users = self.tables.users
+        async with async_engine.connect() as conn:
+            if filter_ == "scalars":
+                result = (await conn.scalars(select(users))).all()
+            elif filter_ == "stream_scalars":
+                result = await (await conn.stream_scalars(select(users))).all()
+
+        eq_(result, list(range(1, 20)))
+
 
 class TextSyncDBAPI(fixtures.TestBase):
     def test_sync_dbapi_raises(self):
