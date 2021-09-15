@@ -224,27 +224,27 @@ class AsyncAdapt_asyncmy_dbapi:
 
     def _init_dbapi_attributes(self):
         for name in (
-                "Warning",
-                "Error",
-                "InterfaceError",
-                "DataError",
-                "DatabaseError",
-                "OperationalError",
-                "InterfaceError",
-                "IntegrityError",
-                "ProgrammingError",
-                "InternalError",
-                "NotSupportedError",
+            "Warning",
+            "Error",
+            "InterfaceError",
+            "DataError",
+            "DatabaseError",
+            "OperationalError",
+            "InterfaceError",
+            "IntegrityError",
+            "ProgrammingError",
+            "InternalError",
+            "NotSupportedError",
         ):
             setattr(self, name, getattr(self.asyncmy.errors, name))
 
         for name in (
-                "NUMBER",
-                "STRING",
-                "DATETIME",
-                "BINARY",
-                "TIMESTAMP",
-                "Binary",
+            "NUMBER",
+            "STRING",
+            "DATETIME",
+            "BINARY",
+            "TIMESTAMP",
+            "Binary",
         ):
             setattr(self, name, getattr(self.pymysql, name))
 
@@ -295,7 +295,7 @@ class MySQLDialect_asyncmy(MySQLDialect_pymysql):
 
     def is_disconnect(self, e, connection, cursor):
         if super(MySQLDialect_asyncmy, self).is_disconnect(
-                e, connection, cursor
+            e, connection, cursor
         ):
             return True
         else:
