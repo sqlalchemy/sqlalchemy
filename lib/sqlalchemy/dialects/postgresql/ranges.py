@@ -42,6 +42,9 @@ class RangeOperators(object):
             """Boolean expression. Returns true if the right hand operand,
             which can be an element or a range, is contained within the
             column.
+
+            kwargs may be ignored by this operator but are required for API
+            conformance.
             """
             return self.expr.op("@>", is_comparison=True)(other)
 

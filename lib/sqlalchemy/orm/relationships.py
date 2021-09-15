@@ -1539,6 +1539,8 @@ class RelationshipProperty(StrategizedProperty):
             as well as :ref:`ormtutorial_joins`
             for more details on constructing outer joins.
 
+            kwargs may be ignored by this operator but are required for API
+            conformance.
             """
             if not self.property.uselist:
                 raise sa_exc.InvalidRequestError(
