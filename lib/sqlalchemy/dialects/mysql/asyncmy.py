@@ -161,6 +161,7 @@ class AsyncAdapt_asyncmy_ss_cursor(AsyncAdapt_asyncmy_cursor):
 
     def close(self):
         if self._cursor is not None:
+            self.await_(self._cursor.fetchall())
             self.await_(self._cursor.close())
             self._cursor = None
 
