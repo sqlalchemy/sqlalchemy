@@ -3687,7 +3687,10 @@ class SQLCompiler(Compiled):
             returning_clause = None
 
         if insert_stmt.select is not None:
-            select_text = self.process(self._insert_from_select, **kw)
+            # placed here by crud.py
+            select_text = self.process(
+                self.stack[-1]["insert_from_select"], **kw
+            )
 
             if self.ctes and toplevel and self.dialect.cte_follows_insert:
                 text += " %s%s" % (self._render_cte_clause(), select_text)
