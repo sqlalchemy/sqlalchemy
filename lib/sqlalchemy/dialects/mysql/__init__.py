@@ -54,11 +54,10 @@ from ...util import compat
 
 if compat.py3k:
     from . import aiomysql  # noqa
-
+    from . import asyncmy  # noqa
 
 # default dialect
 base.dialect = dialect = mysqldb.dialect
-
 
 __all__ = (
     "BIGINT",

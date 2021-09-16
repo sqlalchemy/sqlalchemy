@@ -2915,7 +2915,10 @@ class MySQLDialect(default.DefaultDialect):
                 "WHERE TABLE_TYPE='SEQUENCE' and TABLE_NAME=:name AND "
                 "TABLE_SCHEMA=:schema_name"
             ),
-            dict(name=sequence_name, schema_name=schema),
+            dict(
+                name=util.text_type(sequence_name),
+                schema_name=util.text_type(schema),
+            ),
         )
         return cursor.first() is not None
 
