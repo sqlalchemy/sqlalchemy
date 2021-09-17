@@ -226,6 +226,16 @@ then used in a Python asynchronous context manager (i.e. ``async with:``
 statement) so that it is automatically closed at the end of the block; this is
 equivalent to calling the :meth:`_asyncio.AsyncSession.close` method.
 
+.. note:: :class:`_asyncio.AsyncSession` uses SQLAlchemy's future mode, which
+   has several potentially breaking changes.  One such change is the new
+   default behavior of ``cascade_backrefs`` is ``False``, which may affect
+   how related objects are saved to the database.
+
+   .. seealso::
+
+     :ref:`change_5150`
+
+
 .. _asyncio_orm_avoid_lazyloads:
 
 Preventing Implicit IO when Using AsyncSession
