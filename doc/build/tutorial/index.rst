@@ -91,7 +91,7 @@ The major sections of this tutorial are as follows:
   :class:`_engine.Engine` object; here's how to create one.
 
 * :ref:`tutorial_working_with_transactions` - the usage API of the
-  :class:`_engine.Engine` and it's related objects :class:`_engine.Connection`
+  :class:`_engine.Engine` and its related objects :class:`_engine.Connection`
   and :class:`_result.Result` are presented here. This content is Core-centric
   however ORM users will want to be familiar with at least the
   :class:`_result.Result` object.
