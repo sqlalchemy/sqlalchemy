@@ -28,11 +28,10 @@ This dialect should normally be used only with the
 
 """  # noqa
 
-import contextlib
-
 from .pymysql import MySQLDialect_pymysql
 from ... import pool
 from ... import util
+from ...util.concurrency import asynccontextmanager
 from ...util.concurrency import asyncio
 from ...util.concurrency import await_fallback
 from ...util.concurrency import await_only
@@ -188,7 +187,7 @@ class AsyncAdapt_asyncmy_connection:
         self._execute_mutex = asyncio.Lock()
         self._ss_cursors = set()
 
-    @contextlib.asynccontextmanager
+    @asynccontextmanager
     async def _mutex_and_adapt_errors(self):
         async with self._execute_mutex:
             try:
