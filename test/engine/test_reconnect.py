@@ -1386,6 +1386,7 @@ class InvalidateDuringResultTest(fixtures.TestBase):
             "+asyncpg",
             "+aiosqlite",
             "+aiomysql",
+            "+asyncmy",
         ],
         "Buffers the result set and doesn't check for connection close",
     )

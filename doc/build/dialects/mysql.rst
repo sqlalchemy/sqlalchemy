@@ -189,6 +189,14 @@ MySQL-Connector
 
 .. automodule:: sqlalchemy.dialects.mysql.mysqlconnector
 
+.. _asyncmy:
+
+asyncmy
+-------
+
+.. automodule:: sqlalchemy.dialects.mysql.asyncmy
+
+
 .. _aiomysql:
 
 aiomysql
@@ -210,4 +218,3 @@ pyodbc
 ------
 
 .. automodule:: sqlalchemy.dialects.mysql.pyodbc
-
