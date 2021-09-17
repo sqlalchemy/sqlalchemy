@@ -310,7 +310,9 @@ def _scan_insert_from_select_cols(
 
     cols = [stmt.table.c[_column_as_key(name)] for name in stmt._select_names]
 
-    compiler._insert_from_select = stmt.select
+    assert compiler.stack[-1]["selectable"] is stmt
+
+    compiler.stack[-1]["insert_from_select"] = stmt.select
 
     add_select_cols = []
     if stmt.include_insert_from_select_defaults:
@@ -331,10 +333,12 @@ def _scan_insert_from_select_cols(
 
     if add_select_cols:
         values.extend(add_select_cols)
-        compiler._insert_from_select = compiler._insert_from_select._generate()
-        compiler._insert_from_select._raw_columns = tuple(
-            compiler._insert_from_select._raw_columns
+        ins_from_select = compiler.stack[-1]["insert_from_select"]
+        ins_from_select = ins_from_select._generate()
+        ins_from_select._raw_columns = tuple(
+            ins_from_select._raw_columns
         ) + tuple(expr for col, col_expr, expr in add_select_cols)
+        compiler.stack[-1]["insert_from_select"] = ins_from_select
 
 
 def _scan_cols(

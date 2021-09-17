@@ -1583,6 +1583,29 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             checkparams={"id": 1, "price": 20, "param_1": 10, "price_1": 50},
         )
 
+    def test_insert_from_select_uses_independent_cte(self):
+        """test #7036"""
+
+        t1 = table("table1", column("id1"), column("a"))
+
+        t2 = table("table2", column("id2"), column("b"))
+
+        ins1 = t1.insert().from_select(["id1", "a"], select(1, text("'a'")))
+
+        cte1 = ins1.cte("cte1")
+
+        ins2 = t2.insert().from_select(["id2", "b"], select(2, text("'b'")))
+
+        ins2 = ins2.add_cte(cte1)
+
+        self.assert_compile(
+            ins2,
+            "WITH cte1 AS "
+            "(INSERT INTO table1 (id1, a) SELECT 1, 'a') "
+            "INSERT INTO table2 (id2, b) SELECT 2, 'b'",
+            checkparams={},
+        )
+
     def test_update_uses_independent_cte(self):
         products = table("products", column("id"), column("price"))
 
