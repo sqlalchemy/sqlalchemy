@@ -113,7 +113,6 @@ class AsyncConnection(ProxyComparable, StartableContext, AsyncConnectable):
     def connection(self):
         """Not implemented for async; call
         :meth:`_asyncio.AsyncConnection.get_raw_connection`.
-
         """
         raise exc.InvalidRequestError(
             "AsyncConnection.connection accessor is not implemented as the "
@@ -125,9 +124,14 @@ class AsyncConnection(ProxyComparable, StartableContext, AsyncConnectable):
         """Return the pooled DBAPI-level connection in use by this
         :class:`_asyncio.AsyncConnection`.
 
-        This is typically the SQLAlchemy connection-pool proxied connection
-        which then has an attribute .connection that refers to the actual
-        DBAPI-level connection.
+        This is a SQLAlchemy connection-pool proxied connection
+        which then has the attribute
+        :attr:`_pool._ConnectionFairy.driver_connection` that refers to the
+        actual driver connection. Its
+        :attr:`_pool._ConnectionFairy.dbapi_connection` refers instead
+        to an :class:`_engine.AdaptedConnection` instance that
+        adapts the driver connection to the DBAPI protocol.
+
         """
         conn = self._sync_connection()
 

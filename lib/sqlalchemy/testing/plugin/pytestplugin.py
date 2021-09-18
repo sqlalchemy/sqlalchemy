@@ -358,6 +358,7 @@ _current_class = None
 
 def pytest_runtest_setup(item):
     from sqlalchemy.testing import asyncio
+    from sqlalchemy.util import string_types
 
     if not isinstance(item, pytest.Function):
         return
@@ -378,13 +379,38 @@ def pytest_runtest_setup(item):
         _current_class = item.parent.parent
 
         def finalize():
-            global _current_class
+            global _current_class, _current_report
             _current_class = None
 
-            asyncio._maybe_async_provisioning(
-                plugin_base.stop_test_class_outside_fixtures,
-                item.parent.parent.cls,
-            )
+            try:
+                asyncio._maybe_async_provisioning(
+                    plugin_base.stop_test_class_outside_fixtures,
+                    item.parent.parent.cls,
+                )
+            except Exception as e:
+                # in case of an exception during teardown attach the original
+                # error to the exception message, otherwise it will get lost
+                if _current_report.failed:
+                    if not e.args:
+                        e.args = (
+                            "__Original test failure__:\n"
+                            + _current_report.longreprtext,
+                        )
+                    elif e.args[-1] and isinstance(e.args[-1], string_types):
+                        args = list(e.args)
+                        args[-1] += (
+                            "\n__Original test failure__:\n"
+                            + _current_report.longreprtext
+                        )
+                        e.args = tuple(args)
+                    else:
+                        e.args += (
+                            "__Original test failure__",
+                            _current_report.longreprtext,
+                        )
+                raise
+            finally:
+                _current_report = None
 
         item.parent.parent.addfinalizer(finalize)
 
@@ -402,6 +428,15 @@ def pytest_runtest_call(item):
         item.parent.cls,
         item.name,
     )
+
+
+_current_report = None
+
+
+def pytest_runtest_logreport(report):
+    global _current_report
+    if report.when == "call":
+        _current_report = report
 
 
 def pytest_runtest_teardown(item, nextitem):

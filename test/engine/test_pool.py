@@ -159,7 +159,7 @@ class PoolTest(PoolTestBase):
         self.assert_("foo2" in c.info)
 
         c2 = p.connect()
-        is_not(c.connection, c2.connection)
+        is_not(c.dbapi_connection, c2.dbapi_connection)
         assert not c2.info
         assert "foo2" in c.info
 
@@ -200,9 +200,11 @@ class PoolTest(PoolTestBase):
 
         r1 = pool._ConnectionRecord(p1, connect=False)
 
-        assert not r1.connection
+        assert not r1.dbapi_connection
         c1 = r1.get_connection()
+        is_(c1, r1.dbapi_connection)
         is_(c1, r1.connection)
+        is_(c1, r1.driver_connection)
 
     def test_rec_close_reopen(self):
         # test that _ConnectionRecord.close() allows
@@ -212,19 +214,19 @@ class PoolTest(PoolTestBase):
 
         r1 = pool._ConnectionRecord(p1)
 
-        c1 = r1.connection
+        c1 = r1.dbapi_connection
         c2 = r1.get_connection()
         is_(c1, c2)
 
         r1.close()
 
-        assert not r1.connection
+        assert not r1.dbapi_connection
         eq_(c1.mock_calls, [call.close()])
 
         c2 = r1.get_connection()
 
         is_not(c1, c2)
-        is_(c2, r1.connection)
+        is_(c2, r1.dbapi_connection)
 
         eq_(c2.mock_calls, [])
 
@@ -290,17 +292,17 @@ class PoolTest(PoolTestBase):
         (pool.StaticPool, None),
         (pool.AssertionPool, None),
     )
-    def test_is_asyncio_from_dialect(self, pool_cls, is_async_king):
+    def test_is_asyncio_from_dialect(self, pool_cls, is_async_kind):
         p = pool_cls(creator=object())
         for is_async in (True, False):
             if is_async:
                 p._dialect = _AsyncConnDialect()
             else:
-                p._dialect = _ConnDialect
-            if is_async_king is None:
+                p._dialect = _ConnDialect()
+            if is_async_kind is None:
                 eq_(p._is_asyncio, is_async)
             else:
-                eq_(p._is_asyncio, is_async_king)
+                eq_(p._is_asyncio, is_async_kind)
 
     @testing.combinations(
         (pool.QueuePool, False),
@@ -313,6 +315,69 @@ class PoolTest(PoolTestBase):
     )
     def test_is_asyncio_from_dialect_cls(self, pool_cls, is_async):
         eq_(pool_cls._is_asyncio, is_async)
+
+    def test_rec_fairy_default_dialect(self):
+        dbapi = MockDBAPI()
+        p1 = pool.Pool(creator=lambda: dbapi.connect("foo.db"))
+
+        rec = pool._ConnectionRecord(p1)
+
+        is_not_none(rec.dbapi_connection)
+
+        is_(rec.connection, rec.dbapi_connection)
+        is_(rec.driver_connection, rec.dbapi_connection)
+
+        fairy = pool._ConnectionFairy(rec.dbapi_connection, rec, False)
+
+        is_not_none(fairy.dbapi_connection)
+        is_(fairy.connection, fairy.dbapi_connection)
+        is_(fairy.driver_connection, fairy.dbapi_connection)
+
+        is_(fairy.dbapi_connection, rec.dbapi_connection)
+        is_(fairy.driver_connection, rec.driver_connection)
+
+    def test_rec_fairy_adapted_dialect(self):
+        dbapi = MockDBAPI()
+
+        mock_dc = object()
+
+        class _AdaptedDialect(_ConnDialect):
+            def get_driver_connection(self, connection):
+                return mock_dc
+
+        p1 = pool.Pool(
+            creator=lambda: dbapi.connect("foo.db"), dialect=_AdaptedDialect()
+        )
+
+        rec = pool._ConnectionRecord(p1)
+
+        is_not_none(rec.dbapi_connection)
+
+        is_(rec.connection, rec.dbapi_connection)
+        is_(rec.driver_connection, mock_dc)
+
+        fairy = pool._ConnectionFairy(rec.dbapi_connection, rec, False)
+
+        is_not_none(fairy.dbapi_connection)
+        is_(fairy.connection, fairy.dbapi_connection)
+        is_(fairy.driver_connection, mock_dc)
+
+        is_(fairy.dbapi_connection, rec.dbapi_connection)
+        is_(fairy.driver_connection, mock_dc)
+
+    def test_connection_setter(self):
+        dbapi = MockDBAPI()
+        p1 = pool.Pool(creator=lambda: dbapi.connect("foo.db"))
+
+        rec = pool._ConnectionRecord(p1)
+
+        is_not_none(rec.dbapi_connection)
+
+        is_(rec.connection, rec.dbapi_connection)
+        rec.connection = 42
+        is_(rec.connection, rec.dbapi_connection)
+        rec.dbapi_connection = 99
+        is_(rec.connection, rec.dbapi_connection)
 
 
 class PoolDialectTest(PoolTestBase):
@@ -333,6 +398,9 @@ class PoolDialectTest(PoolTestBase):
             def do_close(self, dbapi_connection):
                 canary.append("CL")
                 dbapi_connection.close()
+
+            def get_driver_connection(self, connection):
+                return connection
 
         return PoolDialect(), canary
 
@@ -469,7 +537,7 @@ class PoolEventsTest(PoolTestBase):
 
         c1 = p.connect()
 
-        connection = c1.connection
+        connection = c1.dbapi_connection
         rec = c1._connection_record
 
         c1.close()
@@ -484,7 +552,7 @@ class PoolEventsTest(PoolTestBase):
 
         c1 = p.connect()
 
-        connection = c1.connection
+        connection = c1.dbapi_connection
         rec = c1._connection_record
 
         c1.detach()
@@ -496,7 +564,7 @@ class PoolEventsTest(PoolTestBase):
 
         c1 = p.connect()
 
-        connection = c1.connection
+        connection = c1.dbapi_connection
 
         c1.detach()
 
@@ -633,7 +701,7 @@ class PoolEventsTest(PoolTestBase):
         c1.close()
         assert not canary.called
         c1 = p.connect()
-        dbapi_con = c1.connection
+        dbapi_con = c1.dbapi_connection
         c1.invalidate(soft=True)
         assert canary.call_args_list[0][0][0] is dbapi_con
         assert canary.call_args_list[0][0][2] is None
@@ -645,7 +713,7 @@ class PoolEventsTest(PoolTestBase):
         c1.close()
         assert not canary.called
         c1 = p.connect()
-        dbapi_con = c1.connection
+        dbapi_con = c1.dbapi_connection
         exc = Exception("hi")
         c1.invalidate(exc, soft=True)
         assert canary.call_args_list[0][0][0] is dbapi_con
@@ -658,7 +726,7 @@ class PoolEventsTest(PoolTestBase):
         c1.close()
         assert not canary.called
         c1 = p.connect()
-        dbapi_con = c1.connection
+        dbapi_con = c1.dbapi_connection
         c1.invalidate()
         assert canary.call_args_list[0][0][0] is dbapi_con
         assert canary.call_args_list[0][0][2] is None
@@ -670,7 +738,7 @@ class PoolEventsTest(PoolTestBase):
         c1.close()
         assert not canary.called
         c1 = p.connect()
-        dbapi_con = c1.connection
+        dbapi_con = c1.dbapi_connection
         exc = Exception("hi")
         c1.invalidate(exc)
         assert canary.call_args_list[0][0][0] is dbapi_con
@@ -682,7 +750,7 @@ class PoolEventsTest(PoolTestBase):
 
         c1 = p.connect()
 
-        dbapi_connection = weakref.ref(c1.connection)
+        dbapi_connection = weakref.ref(c1.dbapi_connection)
 
         eq_(canary, [])
         del c1
@@ -1199,7 +1267,7 @@ class QueuePoolTest(PoolTestBase):
         """Test that a concurrent ConnectionRecord.invalidate() which
         occurs after the ConnectionFairy has called
         _ConnectionRecord.checkout()
-        but before the ConnectionFairy tests "fairy.connection is None"
+        but before the ConnectionFairy tests "fairy.dbapi_connection is None"
         will not result in an InvalidRequestError.
 
         This use case assumes that a listener on the checkout() event
@@ -1231,7 +1299,7 @@ class QueuePoolTest(PoolTestBase):
             _decorate_existing_checkout,
         ):
             conn = p.connect()
-            is_(conn._connection_record.connection, None)
+            is_(conn._connection_record.dbapi_connection, None)
         conn.close()
 
     @testing.requires.threading_with_mock
@@ -1282,8 +1350,8 @@ class QueuePoolTest(PoolTestBase):
         )
         c1 = p.connect()
         c2 = p.connect()
-        c1_con = c1.connection
-        c2_con = c2.connection
+        c1_con = c1.dbapi_connection
+        c2_con = c2.dbapi_connection
 
         c1.close()
 
@@ -1306,7 +1374,7 @@ class QueuePoolTest(PoolTestBase):
 
         # ...and that's the one we'll get back next.
         c3 = p.connect()
-        assert c3.connection is c2_con
+        assert c3.dbapi_connection is c2_con
 
     @testing.requires.threading_with_mock
     @testing.requires.timing_intensive
@@ -1327,7 +1395,7 @@ class QueuePoolTest(PoolTestBase):
 
         def _conn():
             c = p.connect()
-            strong_refs.add(c.connection)
+            strong_refs.add(c.dbapi_connection)
             return c
 
         for j in range(5):
@@ -1355,44 +1423,44 @@ class QueuePoolTest(PoolTestBase):
                 pool_size=1, max_overflow=0, recycle=30
             )
             c1 = p.connect()
-            c_ref = weakref.ref(c1.connection)
+            c_ref = weakref.ref(c1.dbapi_connection)
             c1.close()
             mock.return_value = 10001
             c2 = p.connect()
 
-            is_(c2.connection, c_ref())
+            is_(c2.dbapi_connection, c_ref())
             c2.close()
 
             mock.return_value = 10035
             c3 = p.connect()
-            is_not(c3.connection, c_ref())
+            is_not(c3.dbapi_connection, c_ref())
 
     @testing.requires.timing_intensive
     def test_recycle_on_invalidate(self):
         p = self._queuepool_fixture(pool_size=1, max_overflow=0)
         c1 = p.connect()
-        c_ref = weakref.ref(c1.connection)
+        c_ref = weakref.ref(c1.dbapi_connection)
         c1.close()
         c2 = p.connect()
-        is_(c2.connection, c_ref())
+        is_(c2.dbapi_connection, c_ref())
 
         c2_rec = c2._connection_record
         p._invalidate(c2)
-        assert c2_rec.connection is None
+        assert c2_rec.dbapi_connection is None
         c2.close()
         time.sleep(0.5)
         c3 = p.connect()
 
-        is_not(c3.connection, c_ref())
+        is_not(c3.dbapi_connection, c_ref())
 
     @testing.requires.timing_intensive
     def test_recycle_on_soft_invalidate(self):
         p = self._queuepool_fixture(pool_size=1, max_overflow=0)
         c1 = p.connect()
-        c_ref = weakref.ref(c1.connection)
+        c_ref = weakref.ref(c1.dbapi_connection)
         c1.close()
         c2 = p.connect()
-        is_(c2.connection, c_ref())
+        is_(c2.dbapi_connection, c_ref())
 
         c2_rec = c2._connection_record
 
@@ -1401,14 +1469,14 @@ class QueuePoolTest(PoolTestBase):
         time.sleep(0.1)
         c2.invalidate(soft=True)
 
-        is_(c2_rec.connection, c2.connection)
+        is_(c2_rec.dbapi_connection, c2.dbapi_connection)
 
         c2.close()
 
         c3 = p.connect()
-        is_not(c3.connection, c_ref())
+        is_not(c3.dbapi_connection, c_ref())
         is_(c3._connection_record, c2_rec)
-        is_(c2_rec.connection, c3.connection)
+        is_(c2_rec.dbapi_connection, c3.dbapi_connection)
 
     def _no_wr_finalize(self):
         finalize_fairy = pool._finalize_fairy
@@ -1500,7 +1568,7 @@ class QueuePoolTest(PoolTestBase):
         assert_raises(Exception, p.connect)
 
         p._pool.queue = collections.deque(
-            [c for c in p._pool.queue if c.connection is not None]
+            [c for c in p._pool.queue if c.dbapi_connection is not None]
         )
 
         dbapi.shutdown(False)
@@ -1546,7 +1614,7 @@ class QueuePoolTest(PoolTestBase):
         assert_raises(Exception, p.connect)
 
         p._pool.queue = collections.deque(
-            [c for c in p._pool.queue if c.connection is not None]
+            [c for c in p._pool.queue if c.dbapi_connection is not None]
         )
 
         dbapi.shutdown(False)
@@ -1581,7 +1649,7 @@ class QueuePoolTest(PoolTestBase):
                 raise tsa.exc.DisconnectionError()
 
         conn = pool.connect()
-        old_dbapi_conn = conn.connection
+        old_dbapi_conn = conn.dbapi_connection
         conn.close()
 
         eq_(old_dbapi_conn.mock_calls, [call.rollback()])
@@ -1589,7 +1657,7 @@ class QueuePoolTest(PoolTestBase):
         old_dbapi_conn.boom = "yes"
 
         conn = pool.connect()
-        dbapi_conn = conn.connection
+        dbapi_conn = conn.dbapi_connection
         del conn
         gc_collect()
 
@@ -1681,15 +1749,15 @@ class QueuePoolTest(PoolTestBase):
     def test_invalidate(self):
         p = self._queuepool_fixture(pool_size=1, max_overflow=0)
         c1 = p.connect()
-        c_id = c1.connection.id
+        c_id = c1.dbapi_connection.id
         c1.close()
         c1 = None
         c1 = p.connect()
-        assert c1.connection.id == c_id
+        assert c1.dbapi_connection.id == c_id
         c1.invalidate()
         c1 = None
         c1 = p.connect()
-        assert c1.connection.id != c_id
+        assert c1.dbapi_connection.id != c_id
 
     def test_recreate(self):
         p = self._queuepool_fixture(
@@ -1707,16 +1775,16 @@ class QueuePoolTest(PoolTestBase):
 
         dbapi, p = self._queuepool_dbapi_fixture(pool_size=1, max_overflow=0)
         c1 = p.connect()
-        c_id = c1.connection.id
+        c_id = c1.dbapi_connection.id
         c1.close()
         c1 = None
         c1 = p.connect()
-        assert c1.connection.id == c_id
+        assert c1.dbapi_connection.id == c_id
         dbapi.raise_error = True
         c1.invalidate()
         c1 = None
         c1 = p.connect()
-        assert c1.connection.id != c_id
+        assert c1.dbapi_connection.id != c_id
 
     def test_detach(self):
         dbapi, p = self._queuepool_dbapi_fixture(pool_size=1, max_overflow=0)
@@ -1725,7 +1793,7 @@ class QueuePoolTest(PoolTestBase):
         c2 = p.connect()  # noqa
         eq_(dbapi.connect.mock_calls, [call("foo.db"), call("foo.db")])
 
-        c1_con = c1.connection
+        c1_con = c1.dbapi_connection
         assert c1_con is not None
         eq_(c1_con.close.call_count, 0)
         c1.close()
@@ -1735,14 +1803,14 @@ class QueuePoolTest(PoolTestBase):
         dbapi, p = self._queuepool_dbapi_fixture(pool_size=1, max_overflow=0)
 
         c1 = p.connect()
-        c1_con = c1.connection
+        c1_con = c1.dbapi_connection
         c1.invalidate()
-        assert c1.connection is None
+        assert c1.dbapi_connection is None
         eq_(c1_con.close.call_count, 1)
 
         c2 = p.connect()
-        assert c2.connection is not c1_con
-        c2_con = c2.connection
+        assert c2.dbapi_connection is not c1_con
+        c2_con = c2.dbapi_connection
 
         c2.close()
         eq_(c2_con.close.call_count, 0)
@@ -1776,21 +1844,21 @@ class QueuePoolTest(PoolTestBase):
 
         for i in range(5):
             pc1 = p.connect()
-            is_(pc1.connection, c3)
+            is_(pc1.dbapi_connection, c3)
             pc1.close()
 
             pc1 = p.connect()
-            is_(pc1.connection, c3)
+            is_(pc1.dbapi_connection, c3)
 
             pc2 = p.connect()
-            is_(pc2.connection, c2)
+            is_(pc2.dbapi_connection, c2)
             pc2.close()
 
             pc3 = p.connect()
-            is_(pc3.connection, c2)
+            is_(pc3.dbapi_connection, c2)
 
             pc2 = p.connect()
-            is_(pc2.connection, c1)
+            is_(pc2.dbapi_connection, c1)
 
             pc2.close()
             pc3.close()
@@ -1814,21 +1882,21 @@ class QueuePoolTest(PoolTestBase):
         pc3.close()
 
         pc1 = p.connect()
-        is_(pc1.connection, c1)
+        is_(pc1.dbapi_connection, c1)
         pc1.close()
 
         pc1 = p.connect()
-        is_(pc1.connection, c2)
+        is_(pc1.dbapi_connection, c2)
 
         pc2 = p.connect()
-        is_(pc2.connection, c3)
+        is_(pc2.dbapi_connection, c3)
         pc2.close()
 
         pc3 = p.connect()
-        is_(pc3.connection, c1)
+        is_(pc3.dbapi_connection, c1)
 
         pc2 = p.connect()
-        is_(pc2.connection, c3)
+        is_(pc2.dbapi_connection, c3)
 
         pc2.close()
         pc3.close()
@@ -1904,7 +1972,7 @@ class SingletonThreadPoolTest(PoolTestBase):
 
             def _conn():
                 c = p.connect()
-                sr.add(c.connection)
+                sr.add(c.dbapi_connection)
                 return c
 
         else:
@@ -1948,7 +2016,7 @@ class SingletonThreadPoolTest(PoolTestBase):
         p = pool.SingletonThreadPool(creator=creator, pool_size=3)
 
         c1 = p.connect()
-        mock_conn = c1.connection
+        mock_conn = c1.dbapi_connection
 
         c2 = p.connect()
         is_(c1, c2)
@@ -2019,11 +2087,11 @@ class StaticPoolTest(PoolTestBase):
         p = pool.StaticPool(creator)
 
         c1 = p.connect()
-        conn = c1.connection
+        conn = c1.dbapi_connection
         c1.close()
 
         c2 = p.connect()
-        is_(conn, c2.connection)
+        is_(conn, c2.dbapi_connection)
 
 
 class CreatorCompatibilityTest(PoolTestBase):

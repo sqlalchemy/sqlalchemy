@@ -1743,6 +1743,12 @@ needed and they also vary highly dependent on the type of DBAPI in use,
 so in any case the direct DBAPI calling pattern is always there for those
 cases where it is needed.
 
+.. seealso::
+
+    :ref:`faq_dbapi_connection` - includes additional details about how
+    the DBAPI connection is accessed as well as the "driver" connection
+    when using asyncio drivers.
+
 Some recipes for DBAPI connection use follow.
 
 .. _stored_procedures:

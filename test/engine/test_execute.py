@@ -1577,7 +1577,8 @@ class EngineEventsTest(fixtures.TestBase):
                 # but sqlite file backend will also have independent
                 # connections here.
                 its_the_same_connection = (
-                    c1.connection.connection is c2.connection.connection
+                    c1.connection.dbapi_connection
+                    is c2.connection.dbapi_connection
                 )
                 c1.close()
                 c2.close()
@@ -2791,9 +2792,9 @@ class HandleErrorTest(fixtures.TestBase):
 
         for crec in crecs:
             if crec is target_crec or not set_to_false:
-                is_not(crec.connection, crec.get_connection())
+                is_not(crec.dbapi_connection, crec.get_connection())
             else:
-                is_(crec.connection, crec.get_connection())
+                is_(crec.dbapi_connection, crec.get_connection())
 
     def test_alter_invalidate_pool_to_false(self):
         self._test_alter_invalidate_pool_to_false(True)
@@ -3136,11 +3137,10 @@ class OnConnectTest(fixtures.TestBase):
             ),
         )
         eng = create_engine(u1, poolclass=QueuePool)
-        eq_(
-            eng.name, "sqlite"
-        )  # make sure other dialects aren't getting pulled in here
+        # make sure other dialects aren't getting pulled in here
+        eq_(eng.name, "sqlite")
         c = eng.connect()
-        dbapi_conn_one = c.connection.connection
+        dbapi_conn_one = c.connection.dbapi_connection
         c.close()
 
         eq_(
@@ -3156,7 +3156,7 @@ class OnConnectTest(fixtures.TestBase):
         )
 
         c2 = eng.connect()
-        dbapi_conn_two = c2.connection.connection
+        dbapi_conn_two = c2.connection.dbapi_connection
 
         is_not(dbapi_conn_one, dbapi_conn_two)
 
@@ -3421,7 +3421,7 @@ class DialectEventTest(fixtures.TestBase):
             eq_(conn.info["bap"], "two")
 
             # returned our mock connection
-            is_(conn.connection.connection, m1.our_connect())
+            is_(conn.connection.dbapi_connection, m1.our_connect())
 
     def test_connect_do_connect_info_there_after_recycle(self):
         # test that info is maintained after the do_connect()

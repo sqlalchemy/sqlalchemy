@@ -440,6 +440,11 @@ class Connection(Connectable):
     def connection(self):
         """The underlying DB-API connection managed by this Connection.
 
+        This is a SQLAlchemy connection-pool proxied connection
+        which then has the attribute
+        :attr:`_pool._ConnectionFairy.dbapi_connection` that refers to the
+        actual driver connection.
+
         .. seealso::
 
 

@@ -982,8 +982,8 @@ class PGDialect_psycopg2(PGDialect):
     @util.memoized_instancemethod
     def _hstore_oids(self, conn):
         extras = self._psycopg2_extras()
-        if hasattr(conn, "connection"):
-            conn = conn.connection
+        if hasattr(conn, "dbapi_connection"):
+            conn = conn.dbapi_connection
         oids = extras.HstoreAdapter.get_oids(conn)
         if oids is not None and oids[0]:
             return oids[0:2]

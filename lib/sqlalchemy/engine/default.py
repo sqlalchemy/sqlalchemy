@@ -646,7 +646,7 @@ class DefaultDialect(interfaces.Dialect):
                         % (", ".join(name for name, obj in trans_objs))
                     )
 
-        dbapi_connection = connection.connection.connection
+        dbapi_connection = connection.connection.dbapi_connection
         for name, characteristic, value in characteristic_values:
             characteristic.set_characteristic(self, dbapi_connection, value)
         connection.connection._connection_record.finalize_callback.append(
@@ -778,6 +778,9 @@ class DefaultDialect(interfaces.Dialect):
             else:
                 name = unicode(name)  # noqa
         return name
+
+    def get_driver_connection(self, connection):
+        return connection
 
 
 class _RendersLiteral(object):
