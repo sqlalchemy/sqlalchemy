@@ -151,8 +151,6 @@ class AsyncAdapt_asyncmy_ss_cursor(AsyncAdapt_asyncmy_cursor):
         self._connection = adapt_connection._connection
         self.await_ = adapt_connection.await_
 
-        adapt_connection._ss_cursors.add(self)
-
         cursor = self._connection.cursor(
             adapt_connection.dbapi.asyncmy.cursors.SSCursor
         )
@@ -160,13 +158,9 @@ class AsyncAdapt_asyncmy_ss_cursor(AsyncAdapt_asyncmy_cursor):
         self._cursor = self.await_(cursor.__aenter__())
 
     def close(self):
-        try:
-            if self._cursor is not None:
-                self.await_(self._cursor.fetchall())
-                self.await_(self._cursor.close())
-                self._cursor = None
-        finally:
-            self._adapt_connection._ss_cursors.discard(self)
+        if self._cursor is not None:
+            self.await_(self._cursor.close())
+            self._cursor = None
 
     def fetchone(self):
         return self.await_(self._cursor.fetchone())
@@ -180,13 +174,12 @@ class AsyncAdapt_asyncmy_ss_cursor(AsyncAdapt_asyncmy_cursor):
 
 class AsyncAdapt_asyncmy_connection(AdaptedConnection):
     await_ = staticmethod(await_only)
-    __slots__ = ("dbapi", "_connection", "_execute_mutex", "_ss_cursors")
+    __slots__ = ("dbapi", "_connection", "_execute_mutex")
 
     def __init__(self, dbapi, connection):
         self.dbapi = dbapi
         self._connection = connection
         self._execute_mutex = asyncio.Lock()
-        self._ss_cursors = set()
 
     @asynccontextmanager
     async def _mutex_and_adapt_errors(self):
@@ -218,20 +211,13 @@ class AsyncAdapt_asyncmy_connection(AdaptedConnection):
         else:
             return AsyncAdapt_asyncmy_cursor(self)
 
-    def _shutdown_ss_cursors(self):
-        for curs in list(self._ss_cursors):
-            curs.close()
-
     def rollback(self):
-        self._shutdown_ss_cursors()
         self.await_(self._connection.rollback())
 
     def commit(self):
-        self._shutdown_ss_cursors()
         self.await_(self._connection.commit())
 
     def close(self):
-        self._shutdown_ss_cursors()
         # it's not awaitable.
         self._connection.close()
 
