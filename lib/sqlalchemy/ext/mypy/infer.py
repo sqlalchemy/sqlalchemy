@@ -521,7 +521,7 @@ def extract_python_type_from_typeengine(
 ) -> ProperType:
     if node.fullname == "sqlalchemy.sql.sqltypes.Enum" and type_args:
         first_arg = type_args[0]
-        if isinstance(first_arg, NameExpr) and isinstance(
+        if isinstance(first_arg, RefExpr) and isinstance(
             first_arg.node, TypeInfo
         ):
             for base_ in first_arg.node.mro:
