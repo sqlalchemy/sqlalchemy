@@ -9,6 +9,7 @@ from sqlalchemy import extract
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import join
 from sqlalchemy import literal
 from sqlalchemy import literal_column
 from sqlalchemy import MetaData
@@ -42,6 +43,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
+from sqlalchemy.testing.schema import eq_clause_element
 from sqlalchemy.util import pickle
 
 A = B = t1 = t2 = t3 = table1 = table2 = table3 = table4 = None
@@ -794,6 +796,109 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
         eq_(str(u2), str(u3))
         eq_(u2.compile().params, {"id_param": 7})
         eq_(u3.compile().params, {"id_param": 10})
+
+    def test_params_elements_in_setup_joins(self):
+        """test #7055"""
+
+        meta = MetaData()
+
+        X = Table("x", meta, Column("a", Integer), Column("b", Integer))
+        Y = Table("y", meta, Column("a", Integer), Column("b", Integer))
+        s1 = select(X.c.a).where(X.c.b == bindparam("xb")).alias("s1")
+        jj = (
+            select(Y)
+            .join(s1, Y.c.a == s1.c.a)
+            .where(Y.c.b == bindparam("yb"))
+            .alias("s2")
+        )
+
+        params = {"xb": 42, "yb": 33}
+        sel = select(Y).select_from(jj).params(params)
+
+        eq_(
+            [
+                eq_clause_element(bindparam("yb", value=33)),
+                eq_clause_element(bindparam("xb", value=42)),
+            ],
+            sel._generate_cache_key()[1],
+        )
+
+    def test_params_subqueries_in_joins_one(self):
+        """test #7055"""
+
+        meta = MetaData()
+
+        Pe = Table(
+            "pe",
+            meta,
+            Column("c", Integer),
+            Column("p", Integer),
+            Column("pid", Integer),
+        )
+        S = Table(
+            "s",
+            meta,
+            Column("c", Integer),
+            Column("p", Integer),
+            Column("sid", Integer),
+        )
+        Ps = Table("ps", meta, Column("c", Integer), Column("p", Integer))
+        params = {"pid": 42, "sid": 33}
+
+        pe_s = select(Pe).where(Pe.c.pid == bindparam("pid")).alias("pe_s")
+        s_s = select(S).where(S.c.sid == bindparam("sid")).alias("s_s")
+        jj = join(
+            Ps,
+            join(pe_s, s_s, and_(pe_s.c.c == s_s.c.c, pe_s.c.p == s_s.c.p)),
+            and_(Ps.c.c == pe_s.c.c, Ps.c.p == Ps.c.p),
+        ).params(params)
+
+        eq_(
+            [
+                eq_clause_element(bindparam("pid", value=42)),
+                eq_clause_element(bindparam("sid", value=33)),
+            ],
+            jj._generate_cache_key()[1],
+        )
+
+    def test_params_subqueries_in_joins_two(self):
+        """test #7055"""
+
+        meta = MetaData()
+
+        Pe = Table(
+            "pe",
+            meta,
+            Column("c", Integer),
+            Column("p", Integer),
+            Column("pid", Integer),
+        )
+        S = Table(
+            "s",
+            meta,
+            Column("c", Integer),
+            Column("p", Integer),
+            Column("sid", Integer),
+        )
+        Ps = Table("ps", meta, Column("c", Integer), Column("p", Integer))
+
+        params = {"pid": 42, "sid": 33}
+
+        pe_s = select(Pe).where(Pe.c.pid == bindparam("pid")).alias("pe_s")
+        s_s = select(S).where(S.c.sid == bindparam("sid")).alias("s_s")
+        jj = (
+            join(Ps, pe_s, and_(Ps.c.c == pe_s.c.c, Ps.c.p == Ps.c.p))
+            .join(s_s, and_(Ps.c.c == s_s.c.c, Ps.c.p == s_s.c.p))
+            .params(params)
+        )
+
+        eq_(
+            [
+                eq_clause_element(bindparam("pid", value=42)),
+                eq_clause_element(bindparam("sid", value=33)),
+            ],
+            jj._generate_cache_key()[1],
+        )
 
     def test_in(self):
         expr = t1.c.col1.in_(["foo", "bar"])
