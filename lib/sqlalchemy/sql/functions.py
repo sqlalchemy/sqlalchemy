@@ -297,12 +297,23 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
             SQL function expressions.
 
         """  # noqa E501
+
+        return ColumnCollection(
+            columns=[(col.key, col) for col in self._all_selected_columns]
+        )
+
+    @property
+    def _all_selected_columns(self):
         if self.type._is_table_value:
             cols = self.type._elements
         else:
             cols = [self.label(None)]
 
-        return ColumnCollection(columns=[(col.key, col) for col in cols])
+        return cols
+
+    @property
+    def exported_columns(self):
+        return self.columns
 
     @HasMemoized.memoized_attribute
     def clauses(self):
