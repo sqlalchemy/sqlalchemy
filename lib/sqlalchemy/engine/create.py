@@ -180,16 +180,24 @@ def create_engine(url, **kwargs):
 
             :ref:`change_4737`
 
-    :param encoding: Defaults to ``utf-8``.  This is the string
-        encoding used by SQLAlchemy for string encode/decode
-        operations which occur within SQLAlchemy, **outside of
-        the DBAPIs own encoding facilities.**
+    :param encoding: **legacy Python 2 value only, where it only applies to
+        specific DBAPIs, not used in Python 3 for any modern DBAPI driver.
+        Please refer to individual dialect documentation for client encoding
+        behaviors.**  Defaults to the string value ``utf-8``.  This value
+        refers **only** to the character encoding that is used when SQLAlchemy
+        sends or receives data from a :term:`DBAPI` that does not support
+        Python Unicode and **is only used under Python 2**, only for certain
+        DBAPI drivers, and only in certain circumstances. **Python 3 users
+        please DISREGARD this parameter and refer to the documentation for the
+        specific dialect in use in order to configure character encoding
+        behavior.**
 
         .. note:: The ``encoding`` parameter deals only with in-Python
-           encoding issues that were prevalent with many DBAPIs under  Python
-           2.  Under Python 3 it is mostly unused.   For  DBAPIs that require
-           client encoding configurations, such as those of MySQL and Oracle,
-           please consult specific :ref:`dialect documentation
+           encoding issues that were prevalent with **some DBAPIS only**
+           under **Python 2 only**.  Under Python 3 it is not used by
+           any modern dialect. For  DBAPIs that require
+           client encoding configurations, which are most of those outside
+           of SQLite, please consult specific :ref:`dialect documentation
            <dialect_toplevel>` for details.
 
         All modern DBAPIs that work in Python 3 necessarily feature direct
