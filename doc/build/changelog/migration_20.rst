@@ -260,7 +260,12 @@ the SQLAlchemy project itself, the approach taken is as follows:
 
         import warnings
         from sqlalchemy import exc
-
+        
+        # for warnings not included in regex-based filter below, just log
+        warnings.filterwarnings(
+          "always", category=exc.RemovedIn20Warning
+        )
+        
         # for warnings related to execute() / scalar(), raise
         for msg in [
             r"The (?:Executable|Engine)\.(?:execute|scalar)\(\) function",
@@ -275,11 +280,6 @@ the SQLAlchemy project itself, the approach taken is as follows:
           warnings.filterwarnings(
               "error", message=msg, category=exc.RemovedIn20Warning,
           )
-
-        # for all other warnings, just log
-        warnings.filterwarnings(
-          "always", category=exc.RemovedIn20Warning
-        )
 
 3. As each sub-category of warnings are resolved in the application, new
    warnings that are caught by the "always" filter can be added to the list
