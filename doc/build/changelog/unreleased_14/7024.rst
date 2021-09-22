@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, platform, regression
+    :tickets: 7024
+
+    Fixed regression due to #7024 where the reorganization of the "platform
+    machine" names for greenlet dependency mis-spelled "aarch64" and
+    additionally omitted uppercase "AMD64" as is needed for windows machines.
+    Pull request courtesy James Dow.
