@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 7055
+
+    Fixed a two issues where combinations of ``select()`` and ``join()`` when
+    adapted to form a copy of the element would not completely copy the state
+    of all column objects associated with subqueries. A key problem this caused
+    is that usage of the :meth:`_sql.ClauseElement.params` method (which should
+    probably be moved into a legacy category as it is inefficient and error
+    prone) would leave copies of the old :class:`_sql.BindParameter` objects
+    around, leading to issues in correctly setting the parameters at execution
+    time.
+
+

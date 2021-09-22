@@ -1138,6 +1138,39 @@ class Join(roles.DMLTableRole, FromClause):
             itertools.chain(*[col.foreign_keys for col in columns])
         )
 
+    def _copy_internals(self, clone=_clone, **kw):
+        # see Select._copy_internals() for similar concept
+
+        # here we pre-clone "left" and "right" so that we can
+        # determine the new FROM clauses
+        all_the_froms = set(
+            itertools.chain(
+                _from_objects(self.left),
+                _from_objects(self.right),
+            )
+        )
+
+        # run the clone on those.  these will be placed in the
+        # cache used by the clone function
+        new_froms = {f: clone(f, **kw) for f in all_the_froms}
+
+        # set up a special replace function that will replace for
+        # ColumnClause with parent table referring to those
+        # replaced FromClause objects
+        def replace(obj, **kw):
+            if isinstance(obj, ColumnClause) and obj.table in new_froms:
+                newelem = new_froms[obj.table].corresponding_column(obj)
+                return newelem
+
+        kw["replace"] = replace
+
+        # run normal _copy_internals.  the clones for
+        # left and right will come from the clone function's
+        # cache
+        super(Join, self)._copy_internals(clone=clone, **kw)
+
+        self._reset_memoizations()
+
     def _refresh_for_new_column(self, column):
         super(Join, self)._refresh_for_new_column(column)
         self.left._refresh_for_new_column(column)
@@ -5519,6 +5552,7 @@ class Select(
             itertools.chain(
                 _from_objects(*self._raw_columns),
                 _from_objects(*self._where_criteria),
+                _from_objects(*[elem[0] for elem in self._setup_joins]),
             )
         )
 
