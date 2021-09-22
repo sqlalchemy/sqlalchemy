@@ -28,6 +28,14 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 
 
+class ORMExpr(object):
+    def __init__(self, col):
+        self.col = col
+
+    def __clause_element__(self):
+        return self.col
+
+
 class _InsertTestBase(object):
     @classmethod
     def define_tables(cls, metadata):
@@ -1126,13 +1134,33 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             dialect=dialect,
         )
 
-    def test_named_with_column_objects(self):
+    @testing.combinations(("strings",), ("columns",), ("inspectables",))
+    def test_named_with_column_objects(self, column_style):
         table1 = self.tables.mytable
 
+        if column_style == "strings":
+            myid, name, description = "myid", "name", "description"
+
+        elif column_style == "columns":
+            myid, name, description = (
+                table1.c.myid,
+                table1.c.name,
+                table1.c.description,
+            )
+        elif column_style == "inspectables":
+
+            myid, name, description = (
+                ORMExpr(table1.c.myid),
+                ORMExpr(table1.c.name),
+                ORMExpr(table1.c.description),
+            )
+        else:
+            assert False
+
         values = [
-            {table1.c.myid: 1, table1.c.name: "a", table1.c.description: "b"},
-            {table1.c.myid: 2, table1.c.name: "c", table1.c.description: "d"},
-            {table1.c.myid: 3, table1.c.name: "e", table1.c.description: "f"},
+            {myid: 1, name: "a", description: "b"},
+            {myid: 2, name: "c", description: "d"},
+            {myid: 3, name: "e", description: "f"},
         ]
 
         checkparams = {
@@ -1304,7 +1332,8 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             dialect=postgresql.dialect(),
         )
 
-    def test_python_scalar_default(self):
+    @testing.combinations(("strings",), ("columns",), ("inspectables",))
+    def test_python_scalar_default(self, key_type):
         metadata = MetaData()
         table = Table(
             "sometable",
@@ -1314,10 +1343,23 @@ class MultirowTest(_InsertTestBase, fixtures.TablesTest, AssertsCompiledSQL):
             Column("foo", Integer, default=10),
         )
 
+        if key_type == "strings":
+            id_, data, foo = "id", "data", "foo"
+        elif key_type == "columns":
+            id_, data, foo = table.c.id, table.c.data, table.c.foo
+        elif key_type == "inspectables":
+            id_, data, foo = (
+                ORMExpr(table.c.id),
+                ORMExpr(table.c.data),
+                ORMExpr(table.c.foo),
+            )
+        else:
+            assert False
+
         values = [
-            {"id": 1, "data": "data1"},
-            {"id": 2, "data": "data2", "foo": 15},
-            {"id": 3, "data": "data3"},
+            {id_: 1, data: "data1"},
+            {id_: 2, data: "data2", foo: 15},
+            {id_: 3, data: "data3"},
         ]
 
         checkparams = {

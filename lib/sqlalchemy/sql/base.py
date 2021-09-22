@@ -121,7 +121,11 @@ def _exclusive_against(*names, **kw):
     ]
 
     @util.decorator
-    def check(fn, self, *args, **kw):
+    def check(fn, *args, **kw):
+        # make pylance happy by not including "self" in the argument
+        # list
+        self = args[0]
+        args = args[1:]
         for name, getter, default_ in getters:
             if getter(self) is not default_:
                 msg = msgs.get(
