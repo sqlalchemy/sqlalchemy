@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm, regression
-    :tickets: 6924
-
-    Fixed issue in recently repaired ``Query.with_entities()`` method where the
-    flag that determines automatic uniquing for legacy ORM ``Query`` objects
-    only would be set to ``True`` inappropriately in cases where the
-    ``with_entities()`` call would be setting the ``Query`` to return
-    column-only rows, which are not uniqued.

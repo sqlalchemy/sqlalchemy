@@ -1,9 +1,0 @@
-.. change::
-    :tags: asyncio, usecase
-    :tickets: 6746
-
-    The :class:`_asyncio.AsyncSession` now supports overriding which
-    :class:`_orm.Session` it uses as the proxied instance. A custom ``Session``
-    class can be passed using the :paramref:`.AsyncSession.sync_session_class`
-    parameter or by subclassing the ``AsyncSession`` and specifying a custom
-    :attr:`.AsyncSession.sync_session_class`.

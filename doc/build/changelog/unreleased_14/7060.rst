@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 7060
-
-    Fixed issue where using ORM column expressions as keys in the list of
-    dictionaries passed to :meth:`_sql.Insert.values` for "multi-valued insert"
-    would not be processed correctly into the correct column expressions.

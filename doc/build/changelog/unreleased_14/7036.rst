@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 7036
-
-    Fixed issue related to new :meth:`_sql.HasCTE.add_cte` feature where
-    pairing two "INSERT..FROM SELECT" statements simultaneously would lose
-    track of the two independent SELECT statements, leading to the wrong SQL.

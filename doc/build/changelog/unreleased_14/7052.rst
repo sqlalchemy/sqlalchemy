@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 7052
-
-    Implemented missing methods in :class:`_functions.FunctionElement` which,
-    while unused, would lead pylint to report them as unimplemented abstract
-    methods.

@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, mssql, reflection
-    :tickets: 6910
-
-    Fixed an issue where :meth:`_reflection.has_table` returned
-    ``True`` for local temporary tables that actually belonged to a
-    different SQL Server session (connection). An extra check is now
-    performed to ensure that the temp table detected is in fact owned
-    by the current session.

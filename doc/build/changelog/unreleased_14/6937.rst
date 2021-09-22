@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, mypy
-    :tickets: 6937
-
-    Fixed issue in mypy plugin where columns on a mixin would not be correctly
-    interpreted if the mapped class relied upon a ``__tablename__`` routine
-    that came from a superclass.
