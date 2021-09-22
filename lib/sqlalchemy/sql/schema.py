@@ -440,6 +440,12 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         is only needed to force quoting of a reserved word which is not known
         by the SQLAlchemy dialect.
 
+        .. note:: setting this flag to ``False`` will not provide
+           case-insensitive behavior for table reflection; table reflection
+           will always search for a mixed-case name in a case sensitive
+           fashion.  Case insensitive names are specified in SQLAlchemy only
+           by stating the name with all lower case characters.
+
     :param quote_schema: same as 'quote' but applies to the schema identifier.
 
     :param schema: The schema name for this table, which is required if
