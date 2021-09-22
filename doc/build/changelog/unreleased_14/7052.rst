@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 7052
+
+    Implemented a method in ``FunctionElement`` that is essentially abstract in
+    an ancestor class (even though not used), leading to pylint complaints.
