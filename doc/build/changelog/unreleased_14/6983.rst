@@ -2,5 +2,6 @@
     :tags: bug, engine
     :tickets: 6983
 
-    Fixed issue in ``URL`` where validation of "drivername" would not
-    appropriately respond to the ``None`` value where a string were expected.
+    Fixed issue in :class:`_engine.URL` where validation of "drivername" would
+    not appropriately respond to the ``None`` value where a string were
+    expected.

@@ -2,7 +2,7 @@
     :tags: usecase, sql
     :tickets: 4123
 
-    Added new parameter :meth:`_sql.HasCte.cte.nesting` to the
+    Added new parameter :paramref:`_sql.HasCTE.cte.nesting` to the
     :class:`_sql.CTE` constructor and :meth:`_sql.HasCTE.cte` method, which
     flags the CTE as one which should remain nested within an enclosing CTE,
     rather than being moved to the top level of the outermost SELECT. While in

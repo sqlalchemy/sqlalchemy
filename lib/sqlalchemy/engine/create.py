@@ -261,14 +261,18 @@ def create_engine(url, **kwargs):
             :ref:`dbengine_logging` - further detail on how to configure
             logging.
 
-    :param implicit_returning=True: When ``True``, a RETURNING-
-        compatible construct, if available, will be used to
-        fetch newly generated primary key values when a single row
-        INSERT statement is emitted with no existing returning()
-        clause.  This applies to those backends which support RETURNING
-        or a compatible construct, including PostgreSQL, Firebird, Oracle,
-        Microsoft SQL Server.   Set this to ``False`` to disable
-        the automatic usage of RETURNING.
+    :param implicit_returning=True:  Legacy flag that when set to ``False``
+        will disable the use of ``RETURNING`` on supporting backends where it
+        would normally be used to fetch newly generated primary key values for
+        single-row INSERT statements that do not otherwise specify a RETURNING
+        clause.  This behavior applies primarily to the PostgreSQL, Oracle,
+        SQL Server backends.
+
+        .. warning:: this flag originally allowed the "implicit returning"
+           feature to be *enabled* back when it was very new and there was not
+           well-established database support.  In modern SQLAlchemy, this flag
+           should **always be set to True**.  Some SQLAlchemy features will
+           fail to function properly if this flag is set to ``False``.
 
     :param isolation_level: this string parameter is interpreted by various
         dialects in order to affect the transaction isolation level of the

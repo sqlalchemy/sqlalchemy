@@ -1,7 +1,7 @@
 .. change::
-    :tags: orm
+    :tags: asyncio, bug
     :tickets: 6746
 
-    Deprecate usage of :class:`_orm.scoped_session` with asyncio drivers.
-    When using Asyncio the :class:`_asyncio.async_scoped_session` should
-    be used instead.
+    Deprecate usage of :class:`_orm.scoped_session` with asyncio drivers. When
+    using Asyncio the :class:`_asyncio.async_scoped_session` should be used
+    instead.

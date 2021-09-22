@@ -3,7 +3,7 @@
     :tickets: 6913
 
     Fixed issue where the ability of the
-    :meth:`_engine.ConnectionEvents.before_execute` method to alter the SQL
+    :meth:`_events.ConnectionEvents.before_execute` method to alter the SQL
     statement object passed, returning the new object to be invoked, was
     inadvertently removed. This behavior has been restored.
 
