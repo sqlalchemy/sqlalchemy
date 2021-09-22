@@ -119,7 +119,7 @@ def _get_crud_params(compiler, stmt, compile_state, **kw):
     # special logic that only occurs for multi-table UPDATE
     # statements
     if compile_state.isupdate and compile_state.is_multitable:
-        _get_multitable_params(
+        _get_update_multitable_params(
             compiler,
             stmt,
             compile_state,
@@ -172,7 +172,12 @@ def _get_crud_params(compiler, stmt, compile_state, **kw):
 
     if compile_state._has_multi_parameters:
         values = _extend_values_for_multiparams(
-            compiler, stmt, compile_state, values, kw
+            compiler,
+            stmt,
+            compile_state,
+            values,
+            _column_as_key,
+            kw,
         )
     elif (
         not values
@@ -842,7 +847,7 @@ def _process_multiparam_default_bind(compiler, stmt, c, index, kw):
             return _create_update_prefetch_bind_param(compiler, col, **kw)
 
 
-def _get_multitable_params(
+def _get_update_multitable_params(
     compiler,
     stmt,
     compile_state,
@@ -918,15 +923,25 @@ def _get_multitable_params(
                 compiler.postfetch.append(c)
 
 
-def _extend_values_for_multiparams(compiler, stmt, compile_state, values, kw):
+def _extend_values_for_multiparams(
+    compiler,
+    stmt,
+    compile_state,
+    values,
+    _column_as_key,
+    kw,
+):
     values_0 = values
     values = [values]
 
     for i, row in enumerate(compile_state._multi_parameters[1:]):
         extension = []
+
+        row = {_column_as_key(key): v for key, v in row.items()}
+
         for (col, col_expr, param) in values_0:
-            if col in row or col.key in row:
-                key = col if col in row else col.key
+            if col.key in row:
+                key = col.key
 
                 if coercions._is_literal(row[key]):
                     new_param = _create_bind_param(
