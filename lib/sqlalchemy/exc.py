@@ -188,6 +188,12 @@ class UnsupportedCompilationError(CompileError):
             "Compiler %r can't render element of type %s%s"
             % (compiler, element_type, ": %s" % message if message else "")
         )
+        self.compiler = compiler
+        self.element_type = element_type
+        self.message = message
+
+    def __reduce__(self):
+        return self._class__, (self.compiler, self.element_type, self.message)
 
 
 class IdentifierError(SQLAlchemyError):
