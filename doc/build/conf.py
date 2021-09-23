@@ -157,7 +157,7 @@ zzzeeksphinx_module_prefixes = {
     "_reflection": "sqlalchemy.engine.reflection",
     "_orm": "sqlalchemy.orm",
     "_query": "sqlalchemy.orm",
-    "_ormevent": "sqlalchemy.orm.event",
+    "_ormevent": "sqlalchemy.orm.events",
     "_ormexc": "sqlalchemy.orm.exc",
     "_roles": "sqlalchemy.sql.roles",
     "_baked": "sqlalchemy.ext.baked",

@@ -400,12 +400,46 @@ ANSI Quoting Style
 MySQL / MariaDB feature two varieties of identifier "quoting style", one using
 backticks and the other using quotes, e.g. ```some_identifier```  vs.
 ``"some_identifier"``.   All MySQL dialects detect which version
-is in use by checking the value of ``sql_mode`` when a connection is first
+is in use by checking the value of :ref:`sql_mode<mysql_sql_mode>` when a connection is first
 established with a particular :class:`_engine.Engine`.
 This quoting style comes
 into play when rendering table and column names as well as when reflecting
 existing database structures.  The detection is entirely automatic and
 no special configuration is needed to use either quoting style.
+
+
+.. _mysql_sql_mode:
+
+Changing the sql_mode
+---------------------
+
+MySQL supports operating in multiple
+`Server SQL Modes <https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html>`_  for
+both Servers and Clients. To change the ``sql_mode`` for a given application, a
+developer can leverage SQLAlchemy's Events system.
+
+In the following example, the event system is used to set the ``sql_mode`` on
+the ``first_connect`` and ``connect`` events::
+
+    from sqlalchemy import create_engine, event
+
+    eng = create_engine("mysql://scott:tiger@localhost/test", echo='debug')
+
+    # `insert=True` will ensure this is the very first listener to run
+    @event.listens_for(eng, "connect", insert=True)
+    def connect(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("SET sql_mode = 'STRICT_ALL_TABLES'")
+
+    conn = eng.connect()
+
+In the example illustrated above, the "connect" event will invoke the "SET"
+statement on the connection at the moment a particular DBAPI connection is
+first created for a given Pool, before the connection is made available to the
+connection pool.  Additionally, because the function was registered with
+``insert=True``, it will be prepended to the internal list of registered
+functions.
+
 
 MySQL / MariaDB SQL Extensions
 ------------------------------
