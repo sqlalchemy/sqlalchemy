@@ -15,7 +15,16 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.25
-    :include_notes_from: unreleased_14
+    :released: September 22, 2021
+
+    .. change::
+        :tags: bug, platform, regression
+        :tickets: 7024
+
+        Fixed regression due to :ticket:`7024` where the reorganization of the
+        "platform machine" names used by the ``greenlet`` dependency mis-spelled
+        "aarch64" and additionally omitted uppercase "AMD64" as is needed for
+        Windows machines. Pull request courtesy James Dow.
 
 .. changelog::
     :version: 1.4.24
