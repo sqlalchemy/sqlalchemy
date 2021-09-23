@@ -1753,12 +1753,18 @@ Some recipes for DBAPI connection use follow.
 
 .. _stored_procedures:
 
-Calling Stored Procedures
--------------------------
+Calling Stored Procedures and User Defined Functions
+------------------------------------------------------
 
-For stored procedures with special syntactical or parameter concerns,
+SQLAlchemy supports calling stored procedures and user defined functions
+several ways. Please note that all DBAPIs have different practices, so you must
+consult your underlying DBAPI's documentation for specifics in relation to your
+particular usage. The following examples are hypothetical and may not work with
+your underlying DBAPI.
+
+For stored procedures or functions with special syntactical or parameter concerns,
 DBAPI-level `callproc <https://legacy.python.org/dev/peps/pep-0249/#callproc>`_
-may be used::
+may potentially be used with your DBAPI. An example of this pattern is::
 
     connection = engine.raw_connection()
     try:
@@ -1769,6 +1775,28 @@ may be used::
         connection.commit()
     finally:
         connection.close()
+
+.. note::
+
+  Not all DBAPIs use `callproc` and overall usage details will vary. The above
+  example is only an illustration of how it might look to use a particular DBAPI
+  function.
+
+Your DBAPI may not have a ``callproc`` requirement *or* may require a stored
+procedure or user defined function to be invoked with another pattern, such as
+normal SQLAlchemy connection usage. One example of this usage pattern is,
+*at the time of this documentation's writing*, executing a stored procedure in
+the PostgreSQL database with the psycopg2 DBAPI, which should be invoked
+with normal connection usage::
+
+    connection.execute("CALL my_procedure();")
+
+This above example is hypothetical. The underlying database is not guaranteed to
+support "CALL" or "SELECT" in these situations, and the keyword may vary
+dependent on the function being a stored procedure or a user defined function.
+You should consult your underlying DBAPI and database documentation in these
+situations to determine the correct syntax and patterns to use.
+
 
 Multiple Result Sets
 --------------------
