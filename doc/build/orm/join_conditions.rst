@@ -752,9 +752,16 @@ there's just "one" table on both the "left" and the "right" side; the
 complexity is kept within the middle.
 
 .. warning:: A relationship like the above is typically marked as
-   ``viewonly=True`` and should be considered as read-only.  While there are
+   ``viewonly=True``, using :paramref:`_orm.relationship.viewonly`,
+   and should be considered as read-only.  While there are
    sometimes ways to make relationships like the above writable, this is
    generally complicated and error prone.
+
+.. seealso::
+
+    :ref:`relationship_viewonly_notes`
+
+
 
 .. _relationship_non_primary_mapper:
 
@@ -1053,3 +1060,247 @@ of special Python attributes.
 .. seealso::
 
     :ref:`mapper_hybrids`
+
+.. _relationship_viewonly_notes:
+
+Notes on using the viewonly relationship parameter
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The :paramref:`_orm.relationship.viewonly` parameter when applied to a
+:func:`_orm.relationship` construct indicates that this :func:`_orm.relationship`
+will not take part in any ORM :term:`unit of work` operations, and additionally
+that the attribute does not expect to participate within in-Python mutations
+of its represented collection.  This means
+that while the viewonly relationship may refer to a mutable Python collection
+like a list or set, making changes to that list or set as present on a
+mapped instance will have **no effect** on the ORM flush process.
+
+To explore this scenario consider this mapping::
+
+    from __future__ import annotations
+
+    import datetime
+
+    from sqlalchemy import and_
+    from sqlalchemy import ForeignKey
+    from sqlalchemy import func
+    from sqlalchemy.orm import DeclarativeBase
+    from sqlalchemy.orm import Mapped
+    from sqlalchemy.orm import mapped_column
+    from sqlalchemy.orm import relationship
+
+
+    class Base(DeclarativeBase):
+        pass
+
+
+    class User(Base):
+        __tablename__ = "user_account"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        name: Mapped[str | None]
+
+        all_tasks: Mapped[list[Task]] = relationship()
+
+        current_week_tasks: Mapped[list[Task]] = relationship(
+            primaryjoin=lambda: and_(
+                User.id == Task.user_account_id,
+                # this expression works on PostgreSQL but may not be supported
+                # by other database engines
+                Task.task_date >= func.now() - datetime.timedelta(days=7),
+            ),
+            viewonly=True,
+        )
+
+
+    class Task(Base):
+        __tablename__ = "task"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        user_account_id: Mapped[int] = mapped_column(ForeignKey("user_account.id"))
+        description: Mapped[str | None]
+        task_date: Mapped[datetime.datetime] = mapped_column(server_default=func.now())
+
+        user: Mapped[User] = relationship(back_populates="current_week_tasks")
+
+The following sections will note different aspects of this configuration.
+
+In-Python mutations including backrefs are not appropriate with viewonly=True
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The above mapping targets the ``User.current_week_tasks`` viewonly relationship
+as the :term:`backref` target of the ``Task.user`` attribute.  This is not
+currently flagged by SQLAlchemy's ORM configuration process, however is a
+configuration error.   Changing the ``.user`` attribute on a ``Task`` will not
+affect the ``.current_week_tasks`` attribute::
+
+    >>> u1 = User()
+    >>> t1 = Task(task_date=datetime.datetime.now())
+    >>> t1.user = u1
+    >>> u1.current_week_tasks
+    []
+
+There is another parameter called :paramref:`_orm.relationship.sync_backrefs`
+which can be turned on here to allow ``.current_week_tasks`` to be mutated in this
+case, however this is not considered to be a best practice with a viewonly
+relationship, which instead should not be relied upon for in-Python mutations.
+
+In this mapping, backrefs can be configured between ``User.all_tasks`` and
+``Task.user``, as these are both not viewonly and will synchronize normally.
+
+Beyond the issue of backref mutations being disabled for viewonly relationships,
+plain changes to the ``User.all_tasks`` collection in Python
+are also not reflected in the ``User.current_week_tasks`` collection until
+changes have been flushed to the database.
+
+Overall, for a use case where a custom collection should respond immediately to
+in-Python mutations, the viewonly relationship is generally not appropriate.  A
+better approach is to use the :ref:`hybrids_toplevel` feature of SQLAlchemy, or
+for instance-only cases to use a Python ``@property``, where a user-defined
+collection that is generated in terms of the current Python instance can be
+implemented.  To change our example to work this way, we repair the
+:paramref:`_orm.relationship.back_populates` parameter on ``Task.user`` to
+reference ``User.all_tasks``, and
+then illustrate a simple ``@property`` that will deliver results in terms of
+the immediate ``User.all_tasks`` collection::
+
+    class User(Base):
+        __tablename__ = "user_account"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        name: Mapped[str | None]
+
+        all_tasks: Mapped[list[Task]] = relationship(back_populates="user")
+
+        @property
+        def current_week_tasks(self) -> list[Task]:
+            past_seven_days = datetime.datetime.now() - datetime.timedelta(days=7)
+            return [t for t in self.all_tasks if t.task_date >= past_seven_days]
+
+
+    class Task(Base):
+        __tablename__ = "task"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        user_account_id: Mapped[int] = mapped_column(ForeignKey("user_account.id"))
+        description: Mapped[str | None]
+        task_date: Mapped[datetime.datetime] = mapped_column(server_default=func.now())
+
+        user: Mapped[User] = relationship(back_populates="all_tasks")
+
+Using an in-Python collection calculated on the fly each time, we are guaranteed
+to have the correct answer at all times, without the need to use a database
+at all::
+
+    >>> u1 = User()
+    >>> t1 = Task(task_date=datetime.datetime.now())
+    >>> t1.user = u1
+    >>> u1.current_week_tasks
+    [<__main__.Task object at 0x7f3d699523c0>]
+
+
+viewonly=True collections / attributes do not get re-queried until expired
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Continuing with the original viewonly attribute, if we do in fact make changes
+to the ``User.all_tasks`` collection on a :term:`persistent` object, the
+viewonly collection can only show the net result of this change after **two**
+things occur.  The first is that the change to ``User.all_tasks`` is
+:term:`flushed`, so that the new data is available in the database, at least
+within the scope of the local transaction.  The second is that the ``User.current_week_tasks``
+attribute is :term:`expired` and reloaded via a new SQL query to the database.
+
+To support this requirement, the simplest flow to use is one where the
+**viewonly relationship is consumed only in operations that are primarily read
+only to start with**.   Such as below, if we retrieve a ``User`` fresh from
+the database, the collection will be current::
+
+    >>> with Session(e) as sess:
+    ...     u1 = sess.scalar(select(User).where(User.id == 1))
+    ...     print(u1.current_week_tasks)
+    [<__main__.Task object at 0x7f8711b906b0>]
+
+
+When we make modifications to ``u1.all_tasks``, if we want to see these changes
+reflected in the ``u1.current_week_tasks`` viewonly relationship, these changes need to be flushed
+and the ``u1.current_week_tasks`` attribute needs to be expired, so that
+it will :term:`lazy load` on next access.  The simplest approach to this is
+to use :meth:`_orm.Session.commit`, keeping the :paramref:`_orm.Session.expire_on_commit`
+parameter set at its default of ``True``::
+
+    >>> with Session(e) as sess:
+    ...     u1 = sess.scalar(select(User).where(User.id == 1))
+    ...     u1.all_tasks.append(Task(task_date=datetime.datetime.now()))
+    ...     sess.commit()
+    ...     print(u1.current_week_tasks)
+    [<__main__.Task object at 0x7f8711b90ec0>, <__main__.Task object at 0x7f8711b90a10>]
+
+Above, the call to :meth:`_orm.Session.commit` flushed the changes to ``u1.all_tasks``
+to the database, then expired all objects, so that when we accessed ``u1.current_week_tasks``,
+a :term:` lazy load` occurred which fetched the contents for this attribute
+freshly from the database.
+
+To intercept operations without actually committing the transaction,
+the attribute needs to be explicitly :term:`expired`
+first.   A simplistic way to do this is to just call it directly.  In
+the example below, :meth:`_orm.Session.flush` sends pending changes to the
+database, then :meth:`_orm.Session.expire` is used to expire the ``u1.current_week_tasks``
+collection so that it re-fetches on next access::
+
+    >>> with Session(e) as sess:
+    ...     u1 = sess.scalar(select(User).where(User.id == 1))
+    ...     u1.all_tasks.append(Task(task_date=datetime.datetime.now()))
+    ...     sess.flush()
+    ...     sess.expire(u1, ["current_week_tasks"])
+    ...     print(u1.current_week_tasks)
+    [<__main__.Task object at 0x7fd95a4c8c50>, <__main__.Task object at 0x7fd95a4c8c80>]
+
+We can in fact skip the call to :meth:`_orm.Session.flush`, assuming a
+:class:`_orm.Session` that keeps :paramref:`_orm.Session.autoflush` at its
+default value of ``True``, as the expired ``current_week_tasks`` attribute will
+trigger autoflush when accessed after expiration::
+
+    >>> with Session(e) as sess:
+    ...     u1 = sess.scalar(select(User).where(User.id == 1))
+    ...     u1.all_tasks.append(Task(task_date=datetime.datetime.now()))
+    ...     sess.expire(u1, ["current_week_tasks"])
+    ...     print(u1.current_week_tasks)  # triggers autoflush before querying
+    [<__main__.Task object at 0x7fd95a4c8c50>, <__main__.Task object at 0x7fd95a4c8c80>]
+
+Continuing with the above approach to something more elaborate, we can apply
+the expiration programmatically when the related ``User.all_tasks`` collection
+changes, using :ref:`event hooks <event_toplevel>`.   This an **advanced
+technique**, where simpler architectures like ``@property`` or sticking to
+read-only use cases should be examined first.  In our simple example, this
+would be configured as::
+
+    from sqlalchemy import event, inspect
+
+
+    @event.listens_for(User.all_tasks, "append")
+    @event.listens_for(User.all_tasks, "remove")
+    @event.listens_for(User.all_tasks, "bulk_replace")
+    def _expire_User_current_week_tasks(target, value, initiator):
+        inspect(target).session.expire(target, ["current_week_tasks"])
+
+With the above hooks, mutation operations are intercepted and result in
+the ``User.current_week_tasks`` collection to be expired automatically::
+
+    >>> with Session(e) as sess:
+    ...     u1 = sess.scalar(select(User).where(User.id == 1))
+    ...     u1.all_tasks.append(Task(task_date=datetime.datetime.now()))
+    ...     print(u1.current_week_tasks)
+    [<__main__.Task object at 0x7f66d093ccb0>, <__main__.Task object at 0x7f66d093cce0>]
+
+The :class:`_orm.AttributeEvents` event hooks used above are also triggered
+by backref mutations, so with the above hooks a change to ``Task.user`` is
+also intercepted::
+
+    >>> with Session(e) as sess:
+    ...     u1 = sess.scalar(select(User).where(User.id == 1))
+    ...     t1 = Task(task_date=datetime.datetime.now())
+    ...     t1.user = u1
+    ...     sess.add(t1)
+    ...     print(u1.current_week_tasks)
+    [<__main__.Task object at 0x7f3b0c070d10>, <__main__.Task object at 0x7f3b0c057d10>]
+
