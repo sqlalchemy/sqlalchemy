@@ -256,16 +256,14 @@ $$ LANGUAGE plpgsql;"""
         eq_(cparams["host"], "hostA:portA,hostB,hostC")
 
     def test_psycopg2_disconnect(self):
-        
         class Error(Exception):
             pass
 
         dbapi = mock.Mock()
         dbapi.Error = Error
 
-        # dialect = getattr(pscyopg2_dialect, dialect_name).dialect(dbapi=dbapi)
         dialect = psycopg2_dialect.dialect(dbapi=dbapi)
-        
+
         for error in [
             # these error messages from libpq: interfaces/libpq/fe-misc.c
             # and interfaces/libpq/fe-secure.c.
@@ -286,12 +284,9 @@ $$ LANGUAGE plpgsql;"""
             "SSL SYSCALL error: Operation timed out",
             "SSL SYSCALL error: Bad address",
         ]:
-            eq_(dialect.is_disconnect(
-                Error(error),
-                None, None), True)
+            eq_(dialect.is_disconnect(Error(error), None, None), True)
 
         eq_(dialect.is_disconnect("not an error", None, None), False)
-
 
 
 class PGCodeTest(fixtures.TestBase):
