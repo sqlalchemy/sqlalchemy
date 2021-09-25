@@ -191,7 +191,7 @@ class PrePingMockTest(fixtures.TestBase):
         )
 
         conn = pool.connect()
-        dbapi_conn = conn.connection
+        dbapi_conn = conn.dbapi_connection
         eq_(dbapi_conn.mock_calls, [])
         conn.close()
 
@@ -199,7 +199,7 @@ class PrePingMockTest(fixtures.TestBase):
         eq_(dbapi_conn.mock_calls, [call.rollback()])
 
         conn = pool.connect()
-        is_(conn.connection, dbapi_conn)
+        is_(conn.dbapi_connection, dbapi_conn)
 
         # ping, so cursor() call.
         eq_(dbapi_conn.mock_calls, [call.rollback(), call.cursor()])
@@ -207,7 +207,7 @@ class PrePingMockTest(fixtures.TestBase):
         conn.close()
 
         conn = pool.connect()
-        is_(conn.connection, dbapi_conn)
+        is_(conn.dbapi_connection, dbapi_conn)
 
         # ping, so cursor() call.
         eq_(
@@ -223,33 +223,33 @@ class PrePingMockTest(fixtures.TestBase):
         )
 
         conn = pool.connect()
-        dbapi_conn = conn.connection
+        dbapi_conn = conn.dbapi_connection
         conn_rec = conn._connection_record
         eq_(dbapi_conn.mock_calls, [])
         conn.close()
 
         conn = pool.connect()
-        is_(conn.connection, dbapi_conn)
+        is_(conn.dbapi_connection, dbapi_conn)
         # ping, so cursor() call.
         eq_(dbapi_conn.mock_calls, [call.rollback(), call.cursor()])
 
         conn.invalidate()
 
-        is_(conn.connection, None)
+        is_(conn.dbapi_connection, None)
 
         # connect again, make sure we're on the same connection record
         conn = pool.connect()
         is_(conn._connection_record, conn_rec)
 
         # no ping
-        dbapi_conn = conn.connection
+        dbapi_conn = conn.dbapi_connection
         eq_(dbapi_conn.mock_calls, [])
 
     def test_connect_across_restart(self):
         pool = self._pool_fixture(pre_ping=True)
 
         conn = pool.connect()
-        stale_connection = conn.connection
+        stale_connection = conn.dbapi_connection
         conn.close()
 
         self.dbapi.shutdown("execute")
@@ -316,7 +316,7 @@ class PrePingMockTest(fixtures.TestBase):
         pool = self._pool_fixture(pre_ping=True)
 
         conn = pool.connect()
-        old_dbapi_conn = conn.connection
+        old_dbapi_conn = conn.dbapi_connection
         conn.close()
 
         # no cursor() because no pre ping
@@ -335,7 +335,7 @@ class PrePingMockTest(fixtures.TestBase):
         self.dbapi.restart()
 
         conn = pool.connect()
-        dbapi_conn = conn.connection
+        dbapi_conn = conn.dbapi_connection
         del conn
         gc_collect()
 
@@ -1111,7 +1111,7 @@ class RealReconnectTest(fixtures.TestBase):
     def test_ensure_is_disconnect_gets_connection(self):
         def is_disconnect(e, conn, cursor):
             # connection is still present
-            assert conn.connection is not None
+            assert conn.dbapi_connection is not None
             # the error usually occurs on connection.cursor(),
             # though MySQLdb we get a non-working cursor.
             # assert cursor is None
@@ -1308,7 +1308,7 @@ class PrePingRealTest(fixtures.TestBase):
 
         conn = engine.connect()
         eq_(conn.execute(select(1)).scalar(), 1)
-        stale_connection = conn.connection.connection
+        stale_connection = conn.connection.dbapi_connection
         conn.close()
 
         engine.test_shutdown()
@@ -1386,6 +1386,7 @@ class InvalidateDuringResultTest(fixtures.TestBase):
             "+asyncpg",
             "+aiosqlite",
             "+aiomysql",
+            "+asyncmy",
         ],
         "Buffers the result set and doesn't check for connection close",
     )

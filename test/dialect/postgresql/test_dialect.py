@@ -944,7 +944,7 @@ class MiscBackendTest(
         with testing.db.connect().execution_options(
             isolation_level="SERIALIZABLE"
         ) as conn:
-            dbapi_conn = conn.connection.connection
+            dbapi_conn = conn.connection.dbapi_connection
 
             is_false(dbapi_conn.autocommit)
 
@@ -997,7 +997,7 @@ class MiscBackendTest(
 
                 conn.execute(text("select 1")).scalar()
 
-                dbapi_conn = conn.connection.connection
+                dbapi_conn = conn.connection.dbapi_connection
 
                 cursor = dbapi_conn.cursor()
                 cursor.execute("show transaction_read_only")
@@ -1032,7 +1032,7 @@ class MiscBackendTest(
 
                 conn.execute(text("Select 1")).scalar()
 
-                dbapi_conn = conn.connection.connection
+                dbapi_conn = conn.connection.dbapi_connection
 
                 cursor = dbapi_conn.cursor()
                 cursor.execute("show transaction_deferrable")
@@ -1064,7 +1064,7 @@ class MiscBackendTest(
             with engine.connect() as conn:
                 conn.execute(text("select 1")).scalar()
 
-                dbapi_conn = conn.connection.connection
+                dbapi_conn = conn.connection.dbapi_connection
 
                 cursor = dbapi_conn.cursor()
                 cursor.execute("show transaction_read_only")
@@ -1094,7 +1094,7 @@ class MiscBackendTest(
             with engine.connect() as conn:
                 # asyncpg but not for deferrable?  which the PG docs actually
                 # state.  weird
-                dbapi_conn = conn.connection.connection
+                dbapi_conn = conn.connection.dbapi_connection
 
                 cursor = dbapi_conn.cursor()
                 cursor.execute("show transaction_deferrable")

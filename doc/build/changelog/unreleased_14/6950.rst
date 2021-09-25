@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, mypy
-    :tickets: 6950
-
-    Fixed issue where mypy plugin would crash when interpreting a
-    ``query_expression()`` construct.

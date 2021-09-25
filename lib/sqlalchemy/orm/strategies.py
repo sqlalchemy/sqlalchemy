@@ -157,7 +157,7 @@ class UninstrumentedColumnLoader(LoaderStrategy):
         for c in self.columns:
             if adapter:
                 c = adapter.columns[c]
-            column_collection.append(c)
+            compile_state._append_dedupe_col_collection(c, column_collection)
 
     def create_row_processor(
         self,
@@ -206,7 +206,7 @@ class ColumnLoader(LoaderStrategy):
                 else:
                     c = adapter.columns[c]
 
-            column_collection.append(c)
+            compile_state._append_dedupe_col_collection(c, column_collection)
 
         fetch = self.columns[0]
         if adapter:
@@ -296,7 +296,7 @@ class ExpressionColumnLoader(ColumnLoader):
         for c in columns:
             if adapter:
                 c = adapter.columns[c]
-            column_collection.append(c)
+            compile_state._append_dedupe_col_collection(c, column_collection)
 
         fetch = columns[0]
         if adapter:
@@ -2335,7 +2335,9 @@ class JoinedLoader(AbstractRelationshipLoader):
                 if localparent.persist_selectable.c.contains_column(col):
                     if adapter:
                         col = adapter.columns[col]
-                    compile_state.primary_columns.append(col)
+                    compile_state._append_dedupe_col_collection(
+                        col, compile_state.primary_columns
+                    )
 
         if self.parent_property.order_by:
             compile_state.eager_order_by += tuple(

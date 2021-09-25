@@ -27,7 +27,8 @@ issued when the ORM is populating the object::
 
         @validates('email')
         def validate_email(self, key, address):
-            assert '@' in address
+            if '@' not in address:
+                raise ValueError("failed simple email validation")
             return address
 
 .. versionchanged:: 1.0.0 - validators are no longer triggered within
@@ -48,7 +49,8 @@ collection::
 
         @validates('addresses')
         def validate_address(self, key, address):
-            assert '@' in address.email
+            if '@' not in address.email:
+                raise ValueError("failed simplified email validation")
             return address
 
 
@@ -72,7 +74,8 @@ argument which if ``True`` indicates that the operation is a removal::
                 raise ValueError(
                         "not allowed to remove items from the collection")
             else:
-                assert '@' in address.email
+                if '@' not in address.email:
+                    raise ValueError("failed simplified email validation")
                 return address
 
 The case where mutually dependent validators are linked via a backref
@@ -89,7 +92,8 @@ event occurs as a result of a backref::
 
         @validates('addresses', include_backrefs=False)
         def validate_address(self, key, address):
-            assert '@' in address.email
+            if '@' not in address:
+                raise ValueError("failed simplified email validation")
             return address
 
 Above, if we were to assign to ``Address.user`` as in ``some_address.user = some_user``,

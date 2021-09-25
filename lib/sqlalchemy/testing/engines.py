@@ -65,7 +65,7 @@ class ConnectionKiller(object):
 
         for rec in list(self.proxy_refs):
             if rec is not None and rec.is_valid:
-                self.dbapi_connections.discard(rec.connection)
+                self.dbapi_connections.discard(rec.dbapi_connection)
                 self._safe(rec._checkin)
 
         # for fairy refs that were GCed and could not close the connection,

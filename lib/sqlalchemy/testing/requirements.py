@@ -500,7 +500,7 @@ class SuiteRequirements(Requirements):
     def foreign_key_constraint_name_reflection(self):
         """Target supports refleciton of FOREIGN KEY constraints and
         will return the name of the constraint that was used in the
-        "CONSTRANT <name> FOREIGN KEY" DDL.
+        "CONSTRAINT <name> FOREIGN KEY" DDL.
 
         MySQL prior to version 8 and MariaDB prior to version 10.5
         don't support this.
@@ -1448,6 +1448,6 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
-    def builtin_generics(self):
-        "If list[int] is a valid syntax. basically py3.9+"
-        return exclusions.only_if(lambda: util.py39)
+    def generic_classes(self):
+        "If X[Y] can be implemented with ``__class_getitem__``. py3.7+"
+        return exclusions.only_if(lambda: util.py37)

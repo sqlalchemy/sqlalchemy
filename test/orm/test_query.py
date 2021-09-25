@@ -173,7 +173,7 @@ class OnlyReturnTuplesTest(QueryTest):
         assert isinstance(row._mapping, collections_abc.Mapping)
 
 
-class RowTupleTest(QueryTest):
+class RowTupleTest(QueryTest, AssertsCompiledSQL):
     run_setup_mappers = None
 
     @testing.combinations((True,), (False,), argnames="legacy")
@@ -215,6 +215,46 @@ class RowTupleTest(QueryTest):
         eq_(row.id, 7)
 
         eq_(row.uname, "jack")
+
+    @testing.combinations(
+        (
+            lambda s, User: (User.id, User.name, User.name),
+            "users.id AS users_id, users.name AS users_name, "
+            "users.name AS users_name__1",
+            (7, "jack", "jack"),
+        ),
+        (
+            lambda s, User: (User.id, User.name, User.id, User.name, null()),
+            "users.id AS users_id, users.name AS users_name, "
+            "users.id AS users_id__1, users.name AS users_name__1, "
+            "NULL AS anon_1",
+            (7, "jack", 7, "jack", None),
+        ),
+        (
+            lambda s, User: (User.id,) + tuple([null()] * 3),
+            "users.id AS users_id, NULL AS anon_1, NULL AS anon__1, "
+            "NULL AS anon__1",
+            (7, None, None, None),
+        ),
+    )
+    def test_dupe_cols(self, test_case, expected_sql, expected_row):
+        """test #6979"""
+        User, users = self.classes.User, self.tables.users
+
+        mapper(User, users)
+
+        s = fixture_session()
+
+        expressions = testing.resolve_lambda(test_case, **locals())
+        expected_num = len(expressions)
+
+        q = s.query(*expressions)
+
+        self.assert_compile(q, "SELECT %s FROM users" % expected_sql)
+
+        row = q.order_by(User.id).first()
+        eq_(row, expected_row)
+        eq_(len(row), expected_num)
 
     @testing.combinations(
         (lambda s, users: s.query(users),),
@@ -4869,7 +4909,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
 
         subq = q.subquery()
 
-        # note this is a bit cutting edge; two differnet entities against
+        # note this is a bit cutting edge; two different entities against
         # the same subquery.
         uentity = aliased(User, subq)
         aentity = aliased(Address, subq)
@@ -5012,21 +5052,20 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
             q,
             "SELECT anon_1.users_id AS anon_1_users_id, "
             "anon_1.users_name AS anon_1_users_name, "
-            "anon_1.addresses_email_address AS "
-            "anon_1_addresses_email_address, "
+            "anon_1.addresses_email_address "
+            "AS anon_1_addresses_email_address, "
             "addresses_1.id AS addresses_1_id, "
             "addresses_1.user_id AS addresses_1_user_id, "
             "addresses_1.email_address AS addresses_1_email_address "
             "FROM (SELECT DISTINCT users.id AS users_id, "
             "users.name AS users_name, "
-            "addresses.email_address AS addresses_email_address "
-            "FROM users, addresses "
-            "ORDER BY users.name, addresses.email_address "
-            "LIMIT :param_1) AS anon_1 LEFT OUTER JOIN "
-            "addresses AS addresses_1 "
+            "addresses.email_address AS addresses_email_address FROM users, "
+            "addresses ORDER BY users.name, addresses.email_address "
+            "LIMIT :param_1) AS anon_1 "
+            "LEFT OUTER JOIN addresses AS addresses_1 "
             "ON anon_1.users_id = addresses_1.user_id "
-            "ORDER BY anon_1.users_name, "
-            "anon_1.addresses_email_address, addresses_1.id",
+            "ORDER BY anon_1.users_name, anon_1.addresses_email_address, "
+            "addresses_1.id",
         )
 
     def test_columns_augmented_sql_three(self):

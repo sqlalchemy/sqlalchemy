@@ -232,6 +232,7 @@ class AsyncEngineTest(EngineFixture):
         is_false(async_engine == None)
 
     @async_test
+    @testing.requires.python37
     async def test_no_attach_to_event_loop(self, testing_engine):
         """test #6409"""
 
@@ -390,7 +391,7 @@ class AsyncEngineTest(EngineFixture):
 
         connection_fairy = await conn.get_raw_connection()
         is_(connection_fairy.is_valid, True)
-        dbapi_connection = connection_fairy.connection
+        dbapi_connection = connection_fairy.dbapi_connection
 
         await conn.invalidate()
 
@@ -398,7 +399,7 @@ class AsyncEngineTest(EngineFixture):
             assert dbapi_connection._connection.is_closed()
 
         new_fairy = await conn.get_raw_connection()
-        is_not(new_fairy.connection, dbapi_connection)
+        is_not(new_fairy.dbapi_connection, dbapi_connection)
         is_not(new_fairy, connection_fairy)
         is_(new_fairy.is_valid, True)
         is_(connection_fairy.is_valid, False)
@@ -887,6 +888,20 @@ class AsyncResultTest(EngineFixture):
                 "Multiple rows were found when exactly one was required",
             ):
                 await result.one()
+
+    @testing.combinations(
+        ("scalars",), ("stream_scalars",), argnames="filter_"
+    )
+    @async_test
+    async def test_scalars(self, async_engine, filter_):
+        users = self.tables.users
+        async with async_engine.connect() as conn:
+            if filter_ == "scalars":
+                result = (await conn.scalars(select(users))).all()
+            elif filter_ == "stream_scalars":
+                result = await (await conn.stream_scalars(select(users))).all()
+
+        eq_(result, list(range(1, 20)))
 
 
 class TextSyncDBAPI(fixtures.TestBase):

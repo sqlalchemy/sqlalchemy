@@ -262,7 +262,7 @@ rules it will also delete all related ``Child`` rows.
     relationships, then the cascade action would continue cascading through all
     ``Parent`` and ``Child`` objects, loading each ``children`` and ``parents``
     collection encountered and deleting everything that's connected.   It is
-    typically not desireable for "delete" cascade to be configured
+    typically not desirable for "delete" cascade to be configured
     bidirectionally.
 
 .. seealso::

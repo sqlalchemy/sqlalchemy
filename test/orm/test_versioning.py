@@ -163,6 +163,7 @@ class VersioningTest(fixtures.MappedTest):
             ),
             Column("version_id", Integer, nullable=False),
             Column("value", String(40), nullable=False),
+            test_needs_acid=True,
         )
 
     @classmethod

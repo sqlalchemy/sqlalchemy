@@ -421,7 +421,7 @@
         :tags: 
         :tickets: 
 
-      added \*args, \**kwargs pass-thru to engine.transaction(func) allowing easier
+      added \*args, \**kwargs pass-through to engine.transaction(func) allowing easier
       creation of transactionalizing decorator functions
 
     .. change::

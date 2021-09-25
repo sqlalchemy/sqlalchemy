@@ -440,6 +440,12 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         is only needed to force quoting of a reserved word which is not known
         by the SQLAlchemy dialect.
 
+        .. note:: setting this flag to ``False`` will not provide
+           case-insensitive behavior for table reflection; table reflection
+           will always search for a mixed-case name in a case sensitive
+           fashion.  Case insensitive names are specified in SQLAlchemy only
+           by stating the name with all lower case characters.
+
     :param quote_schema: same as 'quote' but applies to the schema identifier.
 
     :param schema: The schema name for this table, which is required if
@@ -1416,6 +1422,33 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
 
             Strings and text() will be converted into a
             :class:`.DefaultClause` object upon initialization.
+
+            This parameter can also accept complex compbinations of contextually
+            valid SQLAlchemy expressions or constructs::
+
+                from sqlalchemy import create_engine
+                from sqlalchemy import Table, Column, MetaData, ARRAY, Text
+                from sqlalchemy.dialects.postgresql import array
+
+                engine = create_engine(
+                    'postgresql://scott:tiger@localhost/mydatabase'
+                )
+                metadata_obj = MetaData()
+                tbl = Table(
+                        "foo",
+                        metadata_obj,
+                        Column("bar",
+                               ARRAY(Text),
+                               server_default=array(["biz", "bang", "bash"])
+                               )
+                )
+                metadata_obj.create_all(engine)
+
+            The above results in a table created with the following SQL::
+
+                CREATE TABLE foo (
+                    bar TEXT[] DEFAULT ARRAY['biz', 'bang', 'bash']
+                )
 
             Use :class:`.FetchedValue` to indicate that an already-existing
             column will generate a default value on the database side which

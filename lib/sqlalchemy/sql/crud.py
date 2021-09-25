@@ -119,7 +119,7 @@ def _get_crud_params(compiler, stmt, compile_state, **kw):
     # special logic that only occurs for multi-table UPDATE
     # statements
     if compile_state.isupdate and compile_state.is_multitable:
-        _get_multitable_params(
+        _get_update_multitable_params(
             compiler,
             stmt,
             compile_state,
@@ -172,7 +172,12 @@ def _get_crud_params(compiler, stmt, compile_state, **kw):
 
     if compile_state._has_multi_parameters:
         values = _extend_values_for_multiparams(
-            compiler, stmt, compile_state, values, kw
+            compiler,
+            stmt,
+            compile_state,
+            values,
+            _column_as_key,
+            kw,
         )
     elif (
         not values
@@ -310,7 +315,9 @@ def _scan_insert_from_select_cols(
 
     cols = [stmt.table.c[_column_as_key(name)] for name in stmt._select_names]
 
-    compiler._insert_from_select = stmt.select
+    assert compiler.stack[-1]["selectable"] is stmt
+
+    compiler.stack[-1]["insert_from_select"] = stmt.select
 
     add_select_cols = []
     if stmt.include_insert_from_select_defaults:
@@ -331,10 +338,12 @@ def _scan_insert_from_select_cols(
 
     if add_select_cols:
         values.extend(add_select_cols)
-        compiler._insert_from_select = compiler._insert_from_select._generate()
-        compiler._insert_from_select._raw_columns = tuple(
-            compiler._insert_from_select._raw_columns
+        ins_from_select = compiler.stack[-1]["insert_from_select"]
+        ins_from_select = ins_from_select._generate()
+        ins_from_select._raw_columns = tuple(
+            ins_from_select._raw_columns
         ) + tuple(expr for col, col_expr, expr in add_select_cols)
+        compiler.stack[-1]["insert_from_select"] = ins_from_select
 
 
 def _scan_cols(
@@ -838,7 +847,7 @@ def _process_multiparam_default_bind(compiler, stmt, c, index, kw):
             return _create_update_prefetch_bind_param(compiler, col, **kw)
 
 
-def _get_multitable_params(
+def _get_update_multitable_params(
     compiler,
     stmt,
     compile_state,
@@ -914,15 +923,25 @@ def _get_multitable_params(
                 compiler.postfetch.append(c)
 
 
-def _extend_values_for_multiparams(compiler, stmt, compile_state, values, kw):
+def _extend_values_for_multiparams(
+    compiler,
+    stmt,
+    compile_state,
+    values,
+    _column_as_key,
+    kw,
+):
     values_0 = values
     values = [values]
 
     for i, row in enumerate(compile_state._multi_parameters[1:]):
         extension = []
+
+        row = {_column_as_key(key): v for key, v in row.items()}
+
         for (col, col_expr, param) in values_0:
-            if col in row or col.key in row:
-                key = col if col in row else col.key
+            if col.key in row:
+                key = col.key
 
                 if coercions._is_literal(row[key]):
                     new_param = _create_bind_param(

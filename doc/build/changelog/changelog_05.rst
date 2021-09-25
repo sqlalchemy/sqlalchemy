@@ -2533,7 +2533,7 @@
         :tickets: 536
 
       Removed FIRST_ROWS() optimize flag when using LIMIT/OFFSET,
-      can be reenabled with optimize_limits=True create_engine()
+      can be re-enabled with optimize_limits=True create_engine()
       flag.
 
     .. change::

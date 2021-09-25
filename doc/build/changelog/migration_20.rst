@@ -260,7 +260,12 @@ the SQLAlchemy project itself, the approach taken is as follows:
 
         import warnings
         from sqlalchemy import exc
-
+        
+        # for warnings not included in regex-based filter below, just log
+        warnings.filterwarnings(
+          "always", category=exc.RemovedIn20Warning
+        )
+        
         # for warnings related to execute() / scalar(), raise
         for msg in [
             r"The (?:Executable|Engine)\.(?:execute|scalar)\(\) function",
@@ -275,11 +280,6 @@ the SQLAlchemy project itself, the approach taken is as follows:
           warnings.filterwarnings(
               "error", message=msg, category=exc.RemovedIn20Warning,
           )
-
-        # for all other warnings, just log
-        warnings.filterwarnings(
-          "always", category=exc.RemovedIn20Warning
-        )
 
 3. As each sub-category of warnings are resolved in the application, new
    warnings that are caught by the "always" filter can be added to the list
@@ -1567,7 +1567,7 @@ will all be removed in 2.0::
     q = session.query(User).join("addresses")
 
     # string use removed
-    q = session.query(User).options(joinedload("addresess"))
+    q = session.query(User).options(joinedload("addresses"))
 
     # string use removed
     q = session.query(Address).filter(with_parent(u1, "addresses"))
@@ -1582,7 +1582,7 @@ is to use mapped attributes::
 
     q = session.query(User).join(User.addresses)
 
-    q = session.query(User).options(joinedload(User.addresess))
+    q = session.query(User).options(joinedload(User.addresses))
 
     q = session.query(Address).filter(with_parent(u1, User.addresses))
 
@@ -1593,7 +1593,7 @@ The same techniques apply to :term:`2.0-style` style use::
     stmt = select(User).join(User.addresses)
     result = session.execute(stmt)
 
-    stmt = select(User).options(joinedload(User.addresess))
+    stmt = select(User).options(joinedload(User.addresses))
     result = session.execute(stmt)
 
     stmt = select(Address).where(with_parent(u1, User.addresses))

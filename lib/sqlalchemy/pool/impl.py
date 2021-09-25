@@ -410,7 +410,7 @@ class StaticPool(Pool):
     def dispose(self):
         if (
             "connection" in self.__dict__
-            and self.connection.connection is not None
+            and self.connection.dbapi_connection is not None
         ):
             self.connection.close()
             del self.__dict__["connection"]
@@ -432,7 +432,7 @@ class StaticPool(Pool):
         # used by the test suite to make a new engine / pool without
         # losing the state of an existing SQLite :memory: connection
         self._invoke_creator = (
-            lambda crec: other_static_pool.connection.connection
+            lambda crec: other_static_pool.connection.dbapi_connection
         )
 
     def _create_connection(self):

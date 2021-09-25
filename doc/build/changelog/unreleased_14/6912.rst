@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, postgresql
-    :tickets: 6912
-
-    Qualify ``version()`` call to avoid shadowing issues if a different
-    search path is configured by the user.

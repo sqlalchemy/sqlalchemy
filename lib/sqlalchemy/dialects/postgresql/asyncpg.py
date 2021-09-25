@@ -121,6 +121,7 @@ from ... import exc
 from ... import pool
 from ... import processors
 from ... import util
+from ...engine import AdaptedConnection
 from ...sql import sqltypes
 from ...util.concurrency import asyncio
 from ...util.concurrency import await_fallback
@@ -566,7 +567,7 @@ class AsyncAdapt_asyncpg_ss_cursor(AsyncAdapt_asyncpg_cursor):
         )
 
 
-class AsyncAdapt_asyncpg_connection:
+class AsyncAdapt_asyncpg_connection(AdaptedConnection):
     __slots__ = (
         "dbapi",
         "_connection",
@@ -1044,6 +1045,9 @@ class PGDialect_asyncpg(PGDialect):
                 super_connect(conn)
 
         return connect
+
+    def get_driver_connection(self, connection):
+        return connection._connection
 
 
 dialect = PGDialect_asyncpg

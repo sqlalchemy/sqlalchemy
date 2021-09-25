@@ -183,8 +183,8 @@ class PyODBCConnector(Connector):
         # adjust for ConnectionFairy being present
         # allows attribute set e.g. "connection.autocommit = True"
         # to work properly
-        if hasattr(connection, "connection"):
-            connection = connection.connection
+        if hasattr(connection, "dbapi_connection"):
+            connection = connection.dbapi_connection
 
         if level == "AUTOCOMMIT":
             connection.autocommit = True

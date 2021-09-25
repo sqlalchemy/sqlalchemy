@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, asyncio
-    :tickets: 6943
-
-    Fixed a bug in :meth:`_asyncio.AsyncSession.execute` and
-    :meth:`_asyncio.AsyncSession.stream` that required ``execution_options``
-    to be an instance of ``immutabledict`` when defined. It now
-    correctly accepts any mapping.

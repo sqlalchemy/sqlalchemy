@@ -440,6 +440,11 @@ class Connection(Connectable):
     def connection(self):
         """The underlying DB-API connection managed by this Connection.
 
+        This is a SQLAlchemy connection-pool proxied connection
+        which then has the attribute
+        :attr:`_pool._ConnectionFairy.dbapi_connection` that refers to the
+        actual driver connection.
+
         .. seealso::
 
 
@@ -1157,9 +1162,27 @@ class Connection(Connectable):
         """Executes and returns the first column of the first row.
 
         The underlying result/cursor is closed after execution.
+
         """
 
         return self.execute(object_, *multiparams, **params).scalar()
+
+    def scalars(self, object_, *multiparams, **params):
+        """Executes and returns a scalar result set, which yields scalar values
+        from the first column of each row.
+
+        This method is equivalent to calling :meth:`_engine.Connection.execute`
+        to receive a :class:`_result.Result` object, then invoking the
+        :meth:`_result.Result.scalars` method to produce a
+        :class:`_result.ScalarResult` instance.
+
+        :return: a :class:`_result.ScalarResult`
+
+        .. versionadded:: 1.4.24
+
+        """
+
+        return self.execute(object_, *multiparams, **params).scalars()
 
     def execute(self, statement, *multiparams, **params):
         r"""Executes a SQL statement construct and returns a

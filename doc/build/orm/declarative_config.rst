@@ -287,7 +287,7 @@ be illustrated using :meth:`_orm.registry.mapped` as follows::
         id = Column(Integer, primary_key=True)
 
     @reg.mapped
-    class ClassThree(BaseOne):
+    class ClassThree(BaseTwo):
         __tablename__ = 't1'  # will use BaseTwo.metadata
 
         id = Column(Integer, primary_key=True)

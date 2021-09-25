@@ -197,7 +197,7 @@ class RowVersionTest(fixtures.TablesTest):
         assert isinstance(insp.get_columns("ts_t")[1]["type"], TIMESTAMP)
 
     def test_class_hierarchy(self):
-        """TIMESTAMP and ROWVERSION aren't datetime types, theyre binary."""
+        """TIMESTAMP and ROWVERSION aren't datetime types, they're binary."""
 
         assert issubclass(TIMESTAMP, sqltypes._Binary)
         assert issubclass(ROWVERSION, sqltypes._Binary)
@@ -1179,7 +1179,7 @@ class StringTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_string_text_explicit_literal_binds(self):
-        # the literal experssion here coerces the right side to
+        # the literal expression here coerces the right side to
         # Unicode on Python 3 for plain string, test with unicode
         # string just to confirm literal is doing this
         self.assert_compile(

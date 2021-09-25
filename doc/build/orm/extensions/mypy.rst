@@ -379,7 +379,7 @@ a collection annotation such as ``List`` may be used.   It is also fully
 appropriate to use the string name of the class in the annotation as supported
 by pep-484, ensuring the class is imported with in
 the `TYPE_CHECKING block <https://www.python.org/dev/peps/pep-0484/#runtime-or-type-checking>`_
-as approriate::
+as appropriate::
 
     from typing import List, TYPE_CHECKING
     from .mymodel import Base

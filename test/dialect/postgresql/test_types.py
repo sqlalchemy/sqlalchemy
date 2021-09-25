@@ -157,6 +157,22 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
 
     __only_on__ = "postgresql > 8.3"
 
+    def test_native_enum_warnings(self):
+        """test #6106"""
+
+        with testing.expect_warnings(
+            "the native_enum flag does not apply to the "
+            "sqlalchemy.dialects.postgresql.ENUM datatype;"
+        ):
+            e1 = postgresql.ENUM("a", "b", "c", native_enum=False)
+
+        e2 = postgresql.ENUM("a", "b", "c", native_enum=True)
+        e3 = postgresql.ENUM("a", "b", "c")
+
+        is_(e1.native_enum, True)
+        is_(e2.native_enum, True)
+        is_(e3.native_enum, True)
+
     def test_create_table(self, metadata, connection):
         metadata = self.metadata
         t1 = Table(
@@ -2161,10 +2177,9 @@ class ArrayEnum(fixtures.TestBase):
     @testing.combinations(
         sqltypes.ARRAY, postgresql.ARRAY, argnames="array_cls"
     )
-    @testing.combinations(sqltypes.Enum, postgresql.ENUM, argnames="enum_cls")
-    def test_raises_non_native_enums(
-        self, metadata, connection, array_cls, enum_cls
-    ):
+    def test_raises_non_native_enums(self, metadata, connection, array_cls):
+        enum_cls = sqltypes.Enum
+
         Table(
             "my_table",
             self.metadata,

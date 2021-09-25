@@ -91,6 +91,25 @@ class AsyncSessionQueryTest(AsyncFixture):
         result = await async_session.scalar(stmt)
         eq_(result, 7)
 
+    @testing.combinations(
+        ("scalars",), ("stream_scalars",), argnames="filter_"
+    )
+    @async_test
+    async def test_scalars(self, async_session, filter_):
+        User = self.classes.User
+
+        stmt = (
+            select(User)
+            .options(selectinload(User.addresses))
+            .order_by(User.id)
+        )
+
+        if filter_ == "scalars":
+            result = (await async_session.scalars(stmt)).all()
+        elif filter_ == "stream_scalars":
+            result = await (await async_session.stream_scalars(stmt)).all()
+        eq_(result, self.static.user_address_result)
+
     @async_test
     async def test_get(self, async_session):
         User = self.classes.User
@@ -105,6 +124,17 @@ class AsyncSessionQueryTest(AsyncFixture):
 
         u3 = await async_session.get(User, 12)
         is_(u3, None)
+
+    @async_test
+    async def test_get_loader_options(self, async_session):
+        User = self.classes.User
+
+        u = await async_session.get(
+            User, 7, options=[selectinload(User.addresses)]
+        )
+
+        eq_(u.name, "jack")
+        eq_(len(u.__dict__["addresses"]), 1)
 
     @async_test
     @testing.requires.independent_cursors
@@ -334,6 +364,28 @@ class AsyncSessionTransactionTest(AsyncFixture):
 
             is_(new_u_merged, u1)
             eq_(u1.name, "new u1")
+
+    @async_test
+    async def test_merge_loader_options(self, async_session):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        async with async_session.begin():
+            u1 = User(id=1, name="u1", addresses=[Address(email_address="e1")])
+
+            async_session.add(u1)
+
+        await async_session.close()
+
+        async with async_session.begin():
+            new_u1 = User(id=1, name="new u1")
+
+            new_u_merged = await async_session.merge(
+                new_u1, options=[selectinload(User.addresses)]
+            )
+
+            eq_(new_u_merged.name, "new u1")
+            eq_(len(new_u_merged.__dict__["addresses"]), 1)
 
     @async_test
     async def test_join_to_external_transaction(self, async_engine):

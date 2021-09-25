@@ -221,6 +221,9 @@ class ARRAY(sqltypes.ARRAY):
         def contains(self, other, **kwargs):
             """Boolean expression.  Test if elements are a superset of the
             elements of the argument array expression.
+
+            kwargs may be ignored by this operator but are required for API
+            conformance.
             """
             return self.operate(CONTAINS, other, result_type=sqltypes.Boolean)
 

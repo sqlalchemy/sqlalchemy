@@ -1868,6 +1868,14 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
          be used to emit SQL to a target bind.
 
         """
+        native_enum = kw.pop("native_enum", None)
+        if native_enum is False:
+            util.warn(
+                "the native_enum flag does not apply to the "
+                "sqlalchemy.dialects.postgresql.ENUM datatype; this type "
+                "always refers to ENUM.   Use sqlalchemy.types.Enum for "
+                "non-native enum."
+            )
         self.create_type = kw.pop("create_type", True)
         super(ENUM, self).__init__(*enums, **kw)
 

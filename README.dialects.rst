@@ -183,6 +183,18 @@ Key aspects of this file layout include:
               # [ODBC Microsoft Access Driver] Optional feature not implemented.
               return
 
+AsyncIO dialects
+----------------
+
+As of version 1.4 SQLAlchemy supports also dialects that use
+asyncio drivers to interface with the database backend.
+
+SQLAlchemy's approach to asyncio drivers is that the connection and cursor
+objects of the driver (if any) are adapted into a pep-249 compliant interface,
+using the ``AdaptedConnection`` interface class. Refer to the internal asyncio
+driver implementations such as that of ``asyncpg``, ``asyncmy`` and
+``aiosqlite`` for examples.
+
 Going Forward
 ==============
 

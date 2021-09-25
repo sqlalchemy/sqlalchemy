@@ -499,8 +499,8 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
     )
 
     def set_isolation_level(self, connection, level):
-        if hasattr(connection, "connection"):
-            dbapi_connection = connection.connection
+        if hasattr(connection, "dbapi_connection"):
+            dbapi_connection = connection.dbapi_connection
         else:
             dbapi_connection = connection
 
@@ -521,8 +521,8 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
             return re.search(a, b) is not None
 
         def set_regexp(connection):
-            if hasattr(connection, "connection"):
-                dbapi_connection = connection.connection
+            if hasattr(connection, "dbapi_connection"):
+                dbapi_connection = connection.dbapi_connection
             else:
                 dbapi_connection = connection
             dbapi_connection.create_function(

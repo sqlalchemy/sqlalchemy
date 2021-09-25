@@ -18,6 +18,7 @@ from sqlalchemy.orm import deferred
 from sqlalchemy.orm import foreign
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm.collections import attribute_mapped_collection
@@ -51,6 +52,36 @@ class MergeTest(_fixtures.FixtureTest):
         event.listen(cls, "load", canary)
 
         return canary
+
+    def test_loader_options(self):
+        User, Address, addresses, users = (
+            self.classes.User,
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+        )
+
+        mapper(
+            User,
+            users,
+            properties={"addresses": relationship(Address, backref="user")},
+        )
+        mapper(Address, addresses)
+
+        s = fixture_session()
+        u = User(
+            id=7,
+            name="fred",
+            addresses=[Address(id=1, email_address="jack@bean.com")],
+        )
+        s.add(u)
+        s.commit()
+        s.close()
+
+        u = User(id=7, name="fred")
+        u2 = s.merge(u, options=[selectinload(User.addresses)])
+
+        eq_(len(u2.__dict__["addresses"]), 1)
 
     def test_transient_to_pending(self):
         User, users = self.classes.User, self.tables.users

@@ -50,7 +50,7 @@ may be passed to :func:`_sa.create_engine()`, and include the following:
 
 * ``executemany_mode``, ``executemany_batch_page_size``,
   ``executemany_values_page_size``: Allows use of psycopg2
-  extensions for optimizing "executemany"-stye queries.  See the referenced
+  extensions for optimizing "executemany"-style queries.  See the referenced
   section below for details.
 
   .. seealso::
@@ -982,8 +982,8 @@ class PGDialect_psycopg2(PGDialect):
     @util.memoized_instancemethod
     def _hstore_oids(self, conn):
         extras = self._psycopg2_extras()
-        if hasattr(conn, "connection"):
-            conn = conn.connection
+        if hasattr(conn, "dbapi_connection"):
+            conn = conn.dbapi_connection
         oids = extras.HstoreAdapter.get_oids(conn)
         if oids is not None and oids[0]:
             return oids[0:2]
@@ -1037,7 +1037,7 @@ class PGDialect_psycopg2(PGDialect):
                 "connection not open",
                 "could not receive data from server",
                 "could not send data to server",
-                # psycopg2 client errors, psycopg2/conenction.h,
+                # psycopg2 client errors, psycopg2/connection.h,
                 # psycopg2/cursor.h
                 "connection already closed",
                 "cursor already closed",

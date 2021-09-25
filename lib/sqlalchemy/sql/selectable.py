@@ -809,7 +809,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         objects maintained by this :class:`_expression.FromClause`.
 
         The :attr:`_sql.FromClause.c` attribute is an alias for the
-        :attr:`_sql.FromClause.columns` atttribute.
+        :attr:`_sql.FromClause.columns` attribute.
 
         :return: a :class:`.ColumnCollection`
 
@@ -1137,6 +1137,39 @@ class Join(roles.DMLTableRole, FromClause):
         self.foreign_keys.update(
             itertools.chain(*[col.foreign_keys for col in columns])
         )
+
+    def _copy_internals(self, clone=_clone, **kw):
+        # see Select._copy_internals() for similar concept
+
+        # here we pre-clone "left" and "right" so that we can
+        # determine the new FROM clauses
+        all_the_froms = set(
+            itertools.chain(
+                _from_objects(self.left),
+                _from_objects(self.right),
+            )
+        )
+
+        # run the clone on those.  these will be placed in the
+        # cache used by the clone function
+        new_froms = {f: clone(f, **kw) for f in all_the_froms}
+
+        # set up a special replace function that will replace for
+        # ColumnClause with parent table referring to those
+        # replaced FromClause objects
+        def replace(obj, **kw):
+            if isinstance(obj, ColumnClause) and obj.table in new_froms:
+                newelem = new_froms[obj.table].corresponding_column(obj)
+                return newelem
+
+        kw["replace"] = replace
+
+        # run normal _copy_internals.  the clones for
+        # left and right will come from the clone function's
+        # cache
+        super(Join, self)._copy_internals(clone=clone, **kw)
+
+        self._reset_memoizations()
 
     def _refresh_for_new_column(self, column):
         super(Join, self)._refresh_for_new_column(column)
@@ -2040,12 +2073,14 @@ class CTE(
         selectable,
         name=None,
         recursive=False,
+        nesting=False,
         _cte_alias=None,
         _restates=(),
         _prefixes=None,
         _suffixes=None,
     ):
         self.recursive = recursive
+        self.nesting = nesting
         self._cte_alias = _cte_alias
         self._restates = _restates
         if _prefixes:
@@ -2078,6 +2113,7 @@ class CTE(
             self.element,
             name=name,
             recursive=self.recursive,
+            nesting=self.nesting,
             _cte_alias=self,
             _prefixes=self._prefixes,
             _suffixes=self._suffixes,
@@ -2088,6 +2124,7 @@ class CTE(
             self.element.union(other),
             name=self.name,
             recursive=self.recursive,
+            nesting=self.nesting,
             _restates=self._restates + (self,),
             _prefixes=self._prefixes,
             _suffixes=self._suffixes,
@@ -2098,6 +2135,7 @@ class CTE(
             self.element.union_all(other),
             name=self.name,
             recursive=self.recursive,
+            nesting=self.nesting,
             _restates=self._restates + (self,),
             _prefixes=self._prefixes,
             _suffixes=self._suffixes,
@@ -2184,7 +2222,7 @@ class HasCTE(roles.HasCTERole):
         cte = coercions.expect(roles.IsCTERole, cte)
         self._independent_ctes += (cte,)
 
-    def cte(self, name=None, recursive=False):
+    def cte(self, name=None, recursive=False, nesting=False):
         r"""Return a new :class:`_expression.CTE`,
         or Common Table Expression instance.
 
@@ -2224,6 +2262,10 @@ class HasCTE(roles.HasCTERole):
          A recursive common table expression is intended to be used in
          conjunction with UNION ALL in order to derive rows
          from those already selected.
+        :param nesting: if ``True``, will render the CTE locally to the
+         actual statement.
+
+         .. versionadded:: 1.4.24
 
         The following examples include two from PostgreSQL's documentation at
         https://www.postgresql.org/docs/current/static/queries-with.html,
@@ -2344,13 +2386,45 @@ class HasCTE(roles.HasCTERole):
 
             connection.execute(upsert)
 
+        Example 4, Nesting CTE::
+
+            value_a = select(
+                literal("root").label("n")
+            ).cte("value_a")
+
+            # A nested CTE with the same name as the root one
+            value_a_nested = select(
+                literal("nesting").label("n")
+            ).cte("value_a", nesting=True)
+
+            # Nesting CTEs takes ascendency locally
+            # over the CTEs at a higher level
+            value_b = select(value_a_nested.c.n).cte("value_b")
+
+            value_ab = select(value_a.c.n.label("a"), value_b.c.n.label("b"))
+
+        The above query will render the second CTE nested inside the first,
+        shown with inline parameters below as::
+
+            WITH
+                value_a AS
+                    (SELECT 'root' AS n),
+                value_b AS
+                    (WITH value_a AS
+                        (SELECT 'nesting' AS n)
+                    SELECT value_a.n AS n FROM value_a)
+            SELECT value_a.n AS a, value_b.n AS b
+            FROM value_a, value_b
+
         .. seealso::
 
             :meth:`_orm.Query.cte` - ORM version of
             :meth:`_expression.HasCTE.cte`.
 
         """
-        return CTE._construct(self, name=name, recursive=recursive)
+        return CTE._construct(
+            self, name=name, recursive=recursive, nesting=nesting
+        )
 
 
 class Subquery(AliasedReturnsRows):
@@ -5478,6 +5552,7 @@ class Select(
             itertools.chain(
                 _from_objects(*self._raw_columns),
                 _from_objects(*self._where_criteria),
+                _from_objects(*[elem[0] for elem in self._setup_joins]),
             )
         )
 

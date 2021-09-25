@@ -8,7 +8,7 @@ ORM mapped objects, but also involves calling forms that deliver individual
 column or groups of columns as well.
 
 For an introduction to querying with the SQLAlchemy ORM, one of the
-following tutorials shoud be consulted:
+following tutorials should be consulted:
 
 * :doc:`/tutorial/index` - for :term:`2.0 style` usage
 

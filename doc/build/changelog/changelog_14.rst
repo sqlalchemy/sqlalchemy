@@ -14,8 +14,317 @@ This document details individual issue-level changes made throughout
 
 
 .. changelog::
-    :version: 1.4.24
+    :version: 1.4.26
     :include_notes_from: unreleased_14
+
+.. changelog::
+    :version: 1.4.25
+    :released: September 22, 2021
+
+    .. change::
+        :tags: bug, platform, regression
+        :tickets: 7024
+
+        Fixed regression due to :ticket:`7024` where the reorganization of the
+        "platform machine" names used by the ``greenlet`` dependency mis-spelled
+        "aarch64" and additionally omitted uppercase "AMD64" as is needed for
+        Windows machines. Pull request courtesy James Dow.
+
+.. changelog::
+    :version: 1.4.24
+    :released: September 22, 2021
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 6943
+
+        Fixed a bug in :meth:`_asyncio.AsyncSession.execute` and
+        :meth:`_asyncio.AsyncSession.stream` that required ``execution_options``
+        to be an instance of ``immutabledict`` when defined. It now
+        correctly accepts any mapping.
+
+    .. change::
+        :tags: engine, asyncio, usecase
+        :tickets: 6832
+
+        Improve the interface used by adapted drivers, like the asyncio ones,
+        to access the actual connection object returned by the driver.
+
+        The :class:`._ConnectionFairy` object has two new attributes:
+
+        * :attr:`._ConnectionFairy.dbapi_connection` always represents a DBAPI
+          compatible object. For pep-249 drivers, this is the DBAPI connection as
+          it always has been, previously accessed under the ``.connection``
+          attribute. For asyncio drivers that SQLAlchemy adapts into a pep-249
+          interface, the returned object will normally be a SQLAlchemy adaption
+          object called :class:`_engine.AdaptedConnection`.
+        * :attr:`._ConnectionFairy.driver_connection` always represents the actual
+          connection object maintained by the third party pep-249 DBAPI or async
+          driver in use. For standard pep-249 DBAPIs, this will always be the same
+          object as that of the ``dbapi_connection``. For an asyncio driver, it
+          will be the underlying asyncio-only connection object.
+
+        The ``.connection`` attribute remains available and is now a legacy alias
+        of ``.dbapi_connection``.
+
+        .. seealso::
+
+            :ref:`faq_dbapi_connection`
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 7052
+
+        Implemented missing methods in :class:`_functions.FunctionElement` which,
+        while unused, would lead pylint to report them as unimplemented abstract
+        methods.
+
+    .. change::
+        :tags: bug, mssql, reflection
+        :tickets: 6910
+
+        Fixed an issue where :meth:`_reflection.has_table` returned
+        ``True`` for local temporary tables that actually belonged to a
+        different SQL Server session (connection). An extra check is now
+        performed to ensure that the temp table detected is in fact owned
+        by the current session.
+
+    .. change::
+        :tags: bug, engine, regression
+        :tickets: 6913
+
+        Fixed issue where the ability of the
+        :meth:`_events.ConnectionEvents.before_execute` method to alter the SQL
+        statement object passed, returning the new object to be invoked, was
+        inadvertently removed. This behavior has been restored.
+
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 6958
+
+        Ensure that ``str()`` is called on the an
+        :paramref:`_url.URL.create.password` argument, allowing usage of objects
+        that implement the ``__str__()`` method as password attributes. Also
+        clarified that one such object is not appropriate to dynamically change the
+        password for each database connection; the approaches at
+        :ref:`engines_dynamic_tokens` should be used instead.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6979
+
+        Fixed ORM issue where column expressions passed to ``query()`` or
+        ORM-enabled ``select()`` would be deduplicated on the identity of the
+        object, such as a phrase like ``select(A.id, null(), null())`` would
+        produce only one "NULL" expression, which previously was not the case in
+        1.3. However, the change also allows for ORM expressions to render as given
+        as well, such as ``select(A.data, A.data)`` will produce a result row with
+        two columns.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 6983
+
+        Fixed issue in :class:`_engine.URL` where validation of "drivername" would
+        not appropriately respond to the ``None`` value where a string were
+        expected.
+
+    .. change::
+        :tags: bug, mypy
+        :tickets: 6950
+
+        Fixed issue where mypy plugin would crash when interpreting a
+        ``query_expression()`` construct.
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 4123
+
+        Added new parameter :paramref:`_sql.HasCTE.cte.nesting` to the
+        :class:`_sql.CTE` constructor and :meth:`_sql.HasCTE.cte` method, which
+        flags the CTE as one which should remain nested within an enclosing CTE,
+        rather than being moved to the top level of the outermost SELECT. While in
+        the vast majority of cases there is no difference in SQL functionality,
+        users have identified various edge-cases where true nesting of CTE
+        constructs is desirable. Much thanks to Eric Masseran for lots of work on
+        this intricate feature.
+
+    .. change::
+        :tags: usecase, engine, orm
+        :tickets: 6990
+
+        Added new methods :meth:`_orm.Session.scalars`,
+        :meth:`_engine.Connection.scalars`, :meth:`_asyncio.AsyncSession.scalars`
+        and :meth:`_asyncio.AsyncSession.stream_scalars`, which provide a short cut
+        to the use case of receiving a row-oriented :class:`_result.Result` object
+        and converting it to a :class:`_result.ScalarResult` object via the
+        :meth:`_engine.Result.scalars` method, to return a list of values rather
+        than a list of rows. The new methods are analogous to the long existing
+        :meth:`_orm.Session.scalar` and :meth:`_engine.Connection.scalar` methods
+        used to return a single value from the first row only. Pull request
+        courtesy Miguel Grinberg.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 6955
+
+        Added loader options to :meth:`_orm.Session.merge` and
+        :meth:`_asyncio.AsyncSession.merge` via a new
+        :paramref:`_orm.Session.merge.options` parameter, which will apply the
+        given loader options to the ``get()`` used internally by merge, allowing
+        eager loading of relationships etc. to be applied when the merge process
+        loads a new object. Pull request courtesy Daniel Stone.
+
+    .. change::
+        :tags: feature, asyncio, mysql
+        :tickets: 6993
+
+        Added initial support for the ``asyncmy`` asyncio database driver for MySQL
+        and MariaDB. This driver is very new, however appears to be the only
+        current alternative to the ``aiomysql`` driver which currently appears to
+        be unmaintained and is not working with current Python versions. Much
+        thanks to long2ice for the pull request for this dialect.
+
+        .. seealso::
+
+            :ref:`asyncmy`
+
+    .. change::
+        :tags: bug, asyncio
+
+        Added missing ``**kw`` arguments to the
+        :meth:`_asyncio.AsyncSession.connection` method.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 7055
+
+        Fixed a two issues where combinations of ``select()`` and ``join()`` when
+        adapted to form a copy of the element would not completely copy the state
+        of all column objects associated with subqueries. A key problem this caused
+        is that usage of the :meth:`_sql.ClauseElement.params` method (which should
+        probably be moved into a legacy category as it is inefficient and error
+        prone) would leave copies of the old :class:`_sql.BindParameter` objects
+        around, leading to issues in correctly setting the parameters at execution
+        time.
+
+
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 6924
+
+        Fixed issue in recently repaired ``Query.with_entities()`` method where the
+        flag that determines automatic uniquing for legacy ORM ``Query`` objects
+        only would be set to ``True`` inappropriately in cases where the
+        ``with_entities()`` call would be setting the ``Query`` to return
+        column-only rows, which are not uniqued.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 6912
+
+        Qualify ``version()`` call to avoid shadowing issues if a different
+        search path is configured by the user.
+
+    .. change::
+        :tags: bug, engine, postgresql
+        :tickets: 6963
+
+        Fixed issue where an engine that had
+        :paramref:`_sa.create_engine.implicit_returning` set to False would fail to
+        function when PostgreSQL's "fast insertmany" feature were used in
+        conjunction with a ``Sequence``, as well as if any kind of "executemany"
+        with "return_defaults()" were used in conjunction with a ``Sequence``. Note
+        that PostgreSQL "fast insertmany" uses "RETURNING" by definition, when the
+        SQL statement is passed to the driver; overall, the
+        :paramref:`_sa.create_engine.implicit_returning` flag is legacy and has no
+        real use in modern SQLAlchemy, and will be deprecated in a separate change.
+
+    .. change::
+        :tags: bug, mypy
+        :tickets: 6937
+
+        Fixed issue in mypy plugin where columns on a mixin would not be correctly
+        interpreted if the mapped class relied upon a ``__tablename__`` routine
+        that came from a superclass.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 6106
+
+        The :class:`_postgresql.ENUM` datatype is PostgreSQL-native and therefore
+        should not be used with the ``native_enum=False`` flag. This flag is now
+        ignored if passed to the :class:`_postgresql.ENUM` datatype and a warning
+        is emitted; previously the flag would cause the type object to fail to
+        function correctly.
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 7036
+
+        Fixed issue related to new :meth:`_sql.HasCTE.add_cte` feature where
+        pairing two "INSERT..FROM SELECT" statements simultaneously would lose
+        track of the two independent SELECT statements, leading to the wrong SQL.
+
+    .. change::
+        :tags: asyncio, bug
+        :tickets: 6746
+
+        Deprecate usage of :class:`_orm.scoped_session` with asyncio drivers. When
+        using Asyncio the :class:`_asyncio.async_scoped_session` should be used
+        instead.
+
+    .. change::
+        :tags: bug, platform
+        :tickets: 7024
+
+        Further adjusted the "greenlet" package specifier in setup.cfg to use a
+        long chain of "or" expressions, so that the comparison of
+        ``platform_machine`` to a specific identifier matches only the complete
+        string.
+
+    .. change::
+        :tags: bug, sqlite
+
+        Fixed bug where the error message for SQLite invalid isolation level on the
+        pysqlite driver would fail to indicate that "AUTOCOMMIT" is one of the
+        valid isolation levels.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 7060
+
+        Fixed issue where using ORM column expressions as keys in the list of
+        dictionaries passed to :meth:`_sql.Insert.values` for "multi-valued insert"
+        would not be processed correctly into the correct column expressions.
+
+    .. change::
+        :tags: asyncio, usecase
+        :tickets: 6746
+
+        The :class:`_asyncio.AsyncSession` now supports overriding which
+        :class:`_orm.Session` it uses as the proxied instance. A custom ``Session``
+        class can be passed using the :paramref:`.AsyncSession.sync_session_class`
+        parameter or by subclassing the ``AsyncSession`` and specifying a custom
+        :attr:`.AsyncSession.sync_session_class`.
+
+    .. change::
+        :tags: bug, oracle, performance
+        :tickets: 4486
+
+        Added a CAST(VARCHAR2(128)) to the "table name", "owner", and other
+        DDL-name parameters as used in reflection queries against Oracle system
+        views such as ALL_TABLES, ALL_TAB_CONSTRAINTS, etc to better enable
+        indexing to take place against these columns, as they previously would be
+        implicitly handled as NVARCHAR2 due to Python's use of Unicode for strings;
+        these columns are documented in all Oracle versions as being VARCHAR2 with
+        lengths varying from 30 to 128 characters depending on server version.
+        Additionally, test support has been enabled for Unicode-named DDL
+        structures against Oracle databases.
 
 .. changelog::
     :version: 1.4.23
@@ -490,7 +799,7 @@ This document details individual issue-level changes made throughout
         :tickets: 6646
 
         Add a impl parameter to :class:`_types.PickleType` constructor, allowing
-        any arbitary type to be used in place of the default implementation of
+        any arbitrary type to be used in place of the default implementation of
         :class:`_types.LargeBinary`. Pull request courtesy jason3gb.
 
     .. change::
@@ -3117,7 +3426,7 @@ This document details individual issue-level changes made throughout
           disabled for the case of ORM "refresh" operations, including loads
           of deferred or expired column attributes as well as for explicit
           operations like :meth:`_orm.Session.refresh`.  These loads are necessarily
-          based on primary key identity where addiional WHERE criteria is
+          based on primary key identity where additional WHERE criteria is
           never appropriate.  [ticket:5762]
 
         * Added new attribute :attr:`_orm.ORMExecuteState.is_column_load` to indicate
@@ -5004,7 +5313,7 @@ This document details individual issue-level changes made throughout
         :tickets: 5653
 
         Improved support for column names that contain percent signs in the string,
-        including repaired issues involving anoymous labels that also embedded a
+        including repaired issues involving anonymous labels that also embedded a
         column name with a percent sign in it, as well as re-established support
         for bound parameter names with percent signs embedded on the psycopg2
         dialect, using a late-escaping process similar to that used by the
@@ -5075,7 +5384,7 @@ This document details individual issue-level changes made throughout
         :tickets: 5649
 
         Reworked the "setinputsizes()" set of dialect hooks to be correctly
-        extensible for any arbirary DBAPI, by allowing dialects individual hooks
+        extensible for any arbitrary DBAPI, by allowing dialects individual hooks
         that may invoke cursor.setinputsizes() in the appropriate style for that
         DBAPI.   In particular this is intended to support pyodbc's style of usage
         which is fundamentally different from that of cx_Oracle.  Added support

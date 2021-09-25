@@ -1,23 +1,21 @@
-# mysql/aiomysql.py
+# mysql/asyncmy.py
 # Copyright (C) 2005-2021 the SQLAlchemy authors and contributors <see AUTHORS
 # file>
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 r"""
-.. dialect:: mysql+aiomysql
-    :name: aiomysql
-    :dbapi: aiomysql
-    :connectstring: mysql+aiomysql://user:password@host:port/dbname[?key=value&key=value...]
-    :url: https://github.com/aio-libs/aiomysql
+.. dialect:: mysql+asyncmy
+    :name: asyncmy
+    :dbapi: asyncmy
+    :connectstring: mysql+asyncmy://user:password@host:port/dbname[?key=value&key=value...]
+    :url: https://github.com/long2ice/asyncmy
 
-.. warning:: The aiomysql dialect as of September, 2021 appears to be unmaintained
-   and no longer functions for Python version 3.10.   Please refer to the
-   :ref:`asyncmy` dialect for current MySQL/MariaDD asyncio functionality.
+.. note:: The asyncmy dialect as of September, 2021 was added to provide
+   MySQL/MariaDB asyncio compatibility given that the :ref:`aiomysql` database
+   driver has become unmaintained, however asyncmy is itself very new.
 
-The aiomysql dialect is SQLAlchemy's second Python asyncio dialect.
-
-Using a special asyncio mediation layer, the aiomysql dialect is usable
+Using a special asyncio mediation layer, the asyncmy dialect is usable
 as the backend for the :ref:`SQLAlchemy asyncio <asyncio_toplevel>`
 extension package.
 
@@ -25,7 +23,7 @@ This dialect should normally be used only with the
 :func:`_asyncio.create_async_engine` engine creation function::
 
     from sqlalchemy.ext.asyncio import create_async_engine
-    engine = create_async_engine("mysql+aiomysql://user:pass@hostname/dbname?charset=utf8mb4")
+    engine = create_async_engine("mysql+asyncmy://user:pass@hostname/dbname?charset=utf8mb4")
 
 
 """  # noqa
@@ -34,12 +32,13 @@ from .pymysql import MySQLDialect_pymysql
 from ... import pool
 from ... import util
 from ...engine import AdaptedConnection
+from ...util.concurrency import asynccontextmanager
 from ...util.concurrency import asyncio
 from ...util.concurrency import await_fallback
 from ...util.concurrency import await_only
 
 
-class AsyncAdapt_aiomysql_cursor:
+class AsyncAdapt_asyncmy_cursor:
     server_side = False
     __slots__ = (
         "_adapt_connection",
@@ -56,7 +55,6 @@ class AsyncAdapt_aiomysql_cursor:
 
         cursor = self._connection.cursor()
 
-        # see https://github.com/aio-libs/aiomysql/issues/543
         self._cursor = self.await_(cursor.__aenter__())
         self._rows = []
 
@@ -99,14 +97,14 @@ class AsyncAdapt_aiomysql_cursor:
         )
 
     async def _execute_async(self, operation, parameters):
-        async with self._adapt_connection._execute_mutex:
+        async with self._adapt_connection._mutex_and_adapt_errors():
             if parameters is None:
                 result = await self._cursor.execute(operation)
             else:
                 result = await self._cursor.execute(operation, parameters)
 
             if not self.server_side:
-                # aiomysql has a "fake" async result, so we have to pull it out
+                # asyncmy has a "fake" async result, so we have to pull it out
                 # of that here since our default result is not async.
                 # we could just as easily grab "_rows" here and be done with it
                 # but this is safer.
@@ -114,7 +112,7 @@ class AsyncAdapt_aiomysql_cursor:
             return result
 
     async def _executemany_async(self, operation, seq_of_parameters):
-        async with self._adapt_connection._execute_mutex:
+        async with self._adapt_connection._mutex_and_adapt_errors():
             return await self._cursor.executemany(operation, seq_of_parameters)
 
     def setinputsizes(self, *inputsizes):
@@ -144,7 +142,7 @@ class AsyncAdapt_aiomysql_cursor:
         return retval
 
 
-class AsyncAdapt_aiomysql_ss_cursor(AsyncAdapt_aiomysql_cursor):
+class AsyncAdapt_asyncmy_ss_cursor(AsyncAdapt_asyncmy_cursor):
     __slots__ = ()
     server_side = True
 
@@ -154,7 +152,7 @@ class AsyncAdapt_aiomysql_ss_cursor(AsyncAdapt_aiomysql_cursor):
         self.await_ = adapt_connection.await_
 
         cursor = self._connection.cursor(
-            adapt_connection.dbapi.aiomysql.SSCursor
+            adapt_connection.dbapi.asyncmy.cursors.SSCursor
         )
 
         self._cursor = self.await_(cursor.__aenter__())
@@ -174,7 +172,7 @@ class AsyncAdapt_aiomysql_ss_cursor(AsyncAdapt_aiomysql_cursor):
         return self.await_(self._cursor.fetchall())
 
 
-class AsyncAdapt_aiomysql_connection(AdaptedConnection):
+class AsyncAdapt_asyncmy_connection(AdaptedConnection):
     await_ = staticmethod(await_only)
     __slots__ = ("dbapi", "_connection", "_execute_mutex")
 
@@ -183,8 +181,23 @@ class AsyncAdapt_aiomysql_connection(AdaptedConnection):
         self._connection = connection
         self._execute_mutex = asyncio.Lock()
 
+    @asynccontextmanager
+    async def _mutex_and_adapt_errors(self):
+        async with self._execute_mutex:
+            try:
+                yield
+            except AttributeError:
+                raise self.dbapi.InternalError(
+                    "network operation failed due to asyncmy attribute error"
+                )
+
     def ping(self, reconnect):
-        return self.await_(self._connection.ping(reconnect))
+        assert not reconnect
+        return self.await_(self._do_ping())
+
+    async def _do_ping(self):
+        async with self._mutex_and_adapt_errors():
+            return await self._connection.ping(False)
 
     def character_set_name(self):
         return self._connection.character_set_name()
@@ -194,9 +207,9 @@ class AsyncAdapt_aiomysql_connection(AdaptedConnection):
 
     def cursor(self, server_side=False):
         if server_side:
-            return AsyncAdapt_aiomysql_ss_cursor(self)
+            return AsyncAdapt_asyncmy_ss_cursor(self)
         else:
-            return AsyncAdapt_aiomysql_cursor(self)
+            return AsyncAdapt_asyncmy_cursor(self)
 
     def rollback(self):
         self.await_(self._connection.rollback())
@@ -209,15 +222,15 @@ class AsyncAdapt_aiomysql_connection(AdaptedConnection):
         self._connection.close()
 
 
-class AsyncAdaptFallback_aiomysql_connection(AsyncAdapt_aiomysql_connection):
+class AsyncAdaptFallback_asyncmy_connection(AsyncAdapt_asyncmy_connection):
     __slots__ = ()
 
     await_ = staticmethod(await_fallback)
 
 
-class AsyncAdapt_aiomysql_dbapi:
-    def __init__(self, aiomysql, pymysql):
-        self.aiomysql = aiomysql
+class AsyncAdapt_asyncmy_dbapi:
+    def __init__(self, asyncmy, pymysql):
+        self.asyncmy = asyncmy
         self.pymysql = pymysql
         self.paramstyle = "format"
         self._init_dbapi_attributes()
@@ -236,7 +249,7 @@ class AsyncAdapt_aiomysql_dbapi:
             "InternalError",
             "NotSupportedError",
         ):
-            setattr(self, name, getattr(self.aiomysql, name))
+            setattr(self, name, getattr(self.asyncmy.errors, name))
 
         for name in (
             "NUMBER",
@@ -252,30 +265,30 @@ class AsyncAdapt_aiomysql_dbapi:
         async_fallback = kw.pop("async_fallback", False)
 
         if util.asbool(async_fallback):
-            return AsyncAdaptFallback_aiomysql_connection(
+            return AsyncAdaptFallback_asyncmy_connection(
                 self,
-                await_fallback(self.aiomysql.connect(*arg, **kw)),
+                await_fallback(self.asyncmy.connect(*arg, **kw)),
             )
         else:
-            return AsyncAdapt_aiomysql_connection(
+            return AsyncAdapt_asyncmy_connection(
                 self,
-                await_only(self.aiomysql.connect(*arg, **kw)),
+                await_only(self.asyncmy.connect(*arg, **kw)),
             )
 
 
-class MySQLDialect_aiomysql(MySQLDialect_pymysql):
-    driver = "aiomysql"
+class MySQLDialect_asyncmy(MySQLDialect_pymysql):
+    driver = "asyncmy"
     supports_statement_cache = True
 
     supports_server_side_cursors = True
-    _sscursor = AsyncAdapt_aiomysql_ss_cursor
+    _sscursor = AsyncAdapt_asyncmy_ss_cursor
 
     is_async = True
 
     @classmethod
     def dbapi(cls):
-        return AsyncAdapt_aiomysql_dbapi(
-            __import__("aiomysql"), __import__("pymysql")
+        return AsyncAdapt_asyncmy_dbapi(
+            __import__("asyncmy"), __import__("pymysql")
         )
 
     @classmethod
@@ -289,18 +302,20 @@ class MySQLDialect_aiomysql(MySQLDialect_pymysql):
             return pool.AsyncAdaptedQueuePool
 
     def create_connect_args(self, url):
-        return super(MySQLDialect_aiomysql, self).create_connect_args(
+        return super(MySQLDialect_asyncmy, self).create_connect_args(
             url, _translate_args=dict(username="user", database="db")
         )
 
     def is_disconnect(self, e, connection, cursor):
-        if super(MySQLDialect_aiomysql, self).is_disconnect(
+        if super(MySQLDialect_asyncmy, self).is_disconnect(
             e, connection, cursor
         ):
             return True
         else:
             str_e = str(e).lower()
-            return "not connected" in str_e
+            return (
+                "not connected" in str_e or "network operation failed" in str_e
+            )
 
     def _found_rows_client_flag(self):
         from pymysql.constants import CLIENT
@@ -311,4 +326,4 @@ class MySQLDialect_aiomysql(MySQLDialect_pymysql):
         return connection._connection
 
 
-dialect = MySQLDialect_aiomysql
+dialect = MySQLDialect_asyncmy

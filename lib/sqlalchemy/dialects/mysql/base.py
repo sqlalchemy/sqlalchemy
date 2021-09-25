@@ -2687,8 +2687,8 @@ class MySQLDialect(default.DefaultDialect):
         # adjust for ConnectionFairy being present
         # allows attribute set e.g. "connection.autocommit = True"
         # to work properly
-        if hasattr(connection, "connection"):
-            connection = connection.connection
+        if hasattr(connection, "dbapi_connection"):
+            connection = connection.dbapi_connection
 
         self._set_isolation_level(connection, level)
 
@@ -2915,7 +2915,10 @@ class MySQLDialect(default.DefaultDialect):
                 "WHERE TABLE_TYPE='SEQUENCE' and TABLE_NAME=:name AND "
                 "TABLE_SCHEMA=:schema_name"
             ),
-            dict(name=sequence_name, schema_name=schema),
+            dict(
+                name=util.text_type(sequence_name),
+                schema_name=util.text_type(schema),
+            ),
         )
         return cursor.first() is not None
 

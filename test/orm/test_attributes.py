@@ -1285,7 +1285,7 @@ class BackrefTest(fixtures.ORMTest):
     def test_symmetric_o2o_inheritance(self):
         """Test that backref 'initiator' catching goes against
         a token that is global to all InstrumentedAttribute objects
-        within a particular class, not just the indvidual IA object
+        within a particular class, not just the individual IA object
         since we use distinct objects in an inheritance scenario.
 
         """

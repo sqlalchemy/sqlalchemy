@@ -317,7 +317,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
             if expire_jane_age:
                 asserter.assert_(
                     # it has to unexpire jane.name, because jane is not fully
-                    # expired and the critiera needs to look at this particular
+                    # expired and the criteria needs to look at this particular
                     # key
                     CompiledSQL(
                         "SELECT users.age_int AS users_age_int, "
@@ -335,7 +335,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
             else:
                 asserter.assert_(
                     # it has to unexpire jane.name, because jane is not fully
-                    # expired and the critiera needs to look at this particular
+                    # expired and the criteria needs to look at this particular
                     # key
                     CompiledSQL(
                         "SELECT users.name AS users_name FROM users "

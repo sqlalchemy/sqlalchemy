@@ -1056,7 +1056,21 @@ class Dialect(object):
         .. versionadded:: 1.0.3
 
         """
-        pass
+
+    def get_driver_connection(self, connection):
+        """Returns the connection object as returned by the external driver
+        package.
+
+        For normal dialects that use a DBAPI compliant driver this call
+        will just return the ``connection`` passed as argument.
+        For dialects that instead adapt a non DBAPI compliant driver, like
+        when adapting an asyncio driver, this call will return the
+        connection-like object as returned by the driver.
+
+        .. versionadded:: 1.4.24
+
+        """
+        raise NotImplementedError()
 
 
 class CreateEnginePlugin(object):
@@ -1719,3 +1733,24 @@ class ExceptionContext(object):
     .. versionadded:: 1.0.3
 
     """
+
+
+class AdaptedConnection(object):
+    """Interface of an adapted connection object to support the DBAPI protocol.
+
+    Used by asyncio dialects to provide a sync-style pep-249 facade on top
+    of the asyncio connection/cursor API provided by the driver.
+
+    .. versionadded:: 1.4.24
+
+    """
+
+    __slots__ = ("_connection",)
+
+    @property
+    def driver_connection(self):
+        """The connection object as returned by the driver after a connect."""
+        return self._connection
+
+    def __repr__(self):
+        return "<AdaptedConnection %s>" % self._connection

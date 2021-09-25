@@ -549,7 +549,7 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
         ([0, 0, 0, 0, i, i, i, i], None),
         ([0, 0, 0, 0, 0, j, j, j], None),
         ([0, 0, 0, 0, 0, 0, k, k], None),
-        ([0, 0, 0, 0, 0, 0, 0, l], None),
+        ([0, 0, 0, 0, 0, 0, 0, l], None, testing.fails_if("+asyncmy")),
         argnames="store, expected",
     )
     def test_bit_50_roundtrip(self, connection, bit_table, store, expected):
@@ -569,7 +569,7 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
         ([0, 0, 0, 0, i, i, i, i], None),
         ([0, 0, 0, 0, 0, j, j, j], None),
         ([0, 0, 0, 0, 0, 0, k, k], None),
-        ([0, 0, 0, 0, 0, 0, 0, l], None),
+        ([0, 0, 0, 0, 0, 0, 0, l], None, testing.fails_if("+asyncmy")),
         argnames="store, expected",
     )
     def test_bit_50_roundtrip_reflected(

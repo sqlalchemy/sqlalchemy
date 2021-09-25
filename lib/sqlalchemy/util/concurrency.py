@@ -19,6 +19,7 @@ if compat.py3k:
             _util_async_run_coroutine_function,
         )  # noqa F401, E501
         from ._concurrency_py3k import asyncio  # noqa F401
+        from ._concurrency_py3k import asynccontextmanager
 
 if not have_greenlet:
 
@@ -56,4 +57,7 @@ if not have_greenlet:
         return fn(*arg, **kw)
 
     def _util_async_run_coroutine_function(fn, *arg, **kw):  # noqa F81
+        _not_implemented()
+
+    def asynccontextmanager(fn, *arg, **kw):  # noqa F81
         _not_implemented()

@@ -1539,6 +1539,8 @@ class RelationshipProperty(StrategizedProperty):
             as well as :ref:`ormtutorial_joins`
             for more details on constructing outer joins.
 
+            kwargs may be ignored by this operator but are required for API
+            conformance.
             """
             if not self.property.uselist:
                 raise sa_exc.InvalidRequestError(
@@ -3431,7 +3433,7 @@ class JoinCondition(object):
                         and pr.key not in self.prop._overlaps
                         and self.prop.key not in pr._overlaps
                         # note: the "__*" symbol is used internally by
-                        # SQLAlchemy as a general means of supressing the
+                        # SQLAlchemy as a general means of suppressing the
                         # overlaps warning for some extension cases, however
                         # this is not currently
                         # a publicly supported symbol and may change at

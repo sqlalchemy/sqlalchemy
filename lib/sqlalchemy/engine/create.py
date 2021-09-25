@@ -180,16 +180,24 @@ def create_engine(url, **kwargs):
 
             :ref:`change_4737`
 
-    :param encoding: Defaults to ``utf-8``.  This is the string
-        encoding used by SQLAlchemy for string encode/decode
-        operations which occur within SQLAlchemy, **outside of
-        the DBAPIs own encoding facilities.**
+    :param encoding: **legacy Python 2 value only, where it only applies to
+        specific DBAPIs, not used in Python 3 for any modern DBAPI driver.
+        Please refer to individual dialect documentation for client encoding
+        behaviors.**  Defaults to the string value ``utf-8``.  This value
+        refers **only** to the character encoding that is used when SQLAlchemy
+        sends or receives data from a :term:`DBAPI` that does not support
+        Python Unicode and **is only used under Python 2**, only for certain
+        DBAPI drivers, and only in certain circumstances. **Python 3 users
+        please DISREGARD this parameter and refer to the documentation for the
+        specific dialect in use in order to configure character encoding
+        behavior.**
 
         .. note:: The ``encoding`` parameter deals only with in-Python
-           encoding issues that were prevalent with many DBAPIs under  Python
-           2.  Under Python 3 it is mostly unused.   For  DBAPIs that require
-           client encoding configurations, such as those of MySQL and Oracle,
-           please consult specific :ref:`dialect documentation
+           encoding issues that were prevalent with **some DBAPIS only**
+           under **Python 2 only**.  Under Python 3 it is not used by
+           any modern dialect. For  DBAPIs that require
+           client encoding configurations, which are most of those outside
+           of SQLite, please consult specific :ref:`dialect documentation
            <dialect_toplevel>` for details.
 
         All modern DBAPIs that work in Python 3 necessarily feature direct
@@ -253,14 +261,18 @@ def create_engine(url, **kwargs):
             :ref:`dbengine_logging` - further detail on how to configure
             logging.
 
-    :param implicit_returning=True: When ``True``, a RETURNING-
-        compatible construct, if available, will be used to
-        fetch newly generated primary key values when a single row
-        INSERT statement is emitted with no existing returning()
-        clause.  This applies to those backends which support RETURNING
-        or a compatible construct, including PostgreSQL, Firebird, Oracle,
-        Microsoft SQL Server.   Set this to ``False`` to disable
-        the automatic usage of RETURNING.
+    :param implicit_returning=True:  Legacy flag that when set to ``False``
+        will disable the use of ``RETURNING`` on supporting backends where it
+        would normally be used to fetch newly generated primary key values for
+        single-row INSERT statements that do not otherwise specify a RETURNING
+        clause.  This behavior applies primarily to the PostgreSQL, Oracle,
+        SQL Server backends.
+
+        .. warning:: this flag originally allowed the "implicit returning"
+           feature to be *enabled* back when it was very new and there was not
+           well-established database support.  In modern SQLAlchemy, this flag
+           should **always be set to True**.  Some SQLAlchemy features will
+           fail to function properly if this flag is set to ``False``.
 
     :param isolation_level: this string parameter is interpreted by various
         dialects in order to affect the transaction isolation level of the

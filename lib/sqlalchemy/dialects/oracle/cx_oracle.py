@@ -108,7 +108,7 @@ Any cx_Oracle parameter value and/or constant may be passed, such as::
     )
 
 Note that the default value for ``encoding`` and ``nencoding`` was changed to
-"UTF-8" in cx_Oracle 8.0 so these parameters can be ommitted when using that
+"UTF-8" in cx_Oracle 8.0 so these parameters can be omitted when using that
 version, or later.
 
 Options consumed by the SQLAlchemy cx_Oracle dialect outside of the driver
@@ -1085,8 +1085,8 @@ class OracleDialect_cx_oracle(OracleDialect):
         return result
 
     def set_isolation_level(self, connection, level):
-        if hasattr(connection, "connection"):
-            dbapi_connection = connection.connection
+        if hasattr(connection, "dbapi_connection"):
+            dbapi_connection = connection.dbapi_connection
         else:
             dbapi_connection = connection
         if level == "AUTOCOMMIT":

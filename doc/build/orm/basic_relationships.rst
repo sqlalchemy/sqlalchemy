@@ -655,7 +655,7 @@ that will be passed to ``eval()`` are:
 .. versionchanged:: 1.3.16
 
     Prior to SQLAlchemy 1.3.16, the main :paramref:`_orm.relationship.argument`
-    to :func:`_orm.relationship` was also evaluated throught ``eval()``   As of
+    to :func:`_orm.relationship` was also evaluated through ``eval()``   As of
     1.3.16 the string name is resolved from the class resolver directly without
     supporting custom Python expressions.
 

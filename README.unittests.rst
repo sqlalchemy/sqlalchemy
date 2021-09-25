@@ -231,11 +231,8 @@ intended for production use!
 
 **PostgreSQL configuration**::
 
-    # only needed if a local image of postgres is not already present
-    docker pull postgres:12
-
     # create the container with the proper configuration for sqlalchemy
-    docker run --rm -e POSTGRES_USER='scott' -e POSTGRES_PASSWORD='tiger' -e POSTGRES_DB='test' -p 127.0.0.1:5432:5432 -d --name postgres postgres:12-alpine
+    docker run --rm -e POSTGRES_USER='scott' -e POSTGRES_PASSWORD='tiger' -e POSTGRES_DB='test' -p 127.0.0.1:5432:5432 -d --name postgres postgres
 
     # configure the database
     sleep 10
@@ -248,42 +245,33 @@ intended for production use!
 
 **MySQL configuration**::
 
-    # only needed if a local image of mysql is not already present
-    docker pull mysql:8
-
     # create the container with the proper configuration for sqlalchemy
-    docker run --rm -e MYSQL_USER='scott' -e MYSQL_PASSWORD='tiger' -e MYSQL_DATABASE='test' -e MYSQL_ROOT_PASSWORD='password' -p 127.0.0.1:3306:3306 -d --name mysql mysql:8 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    docker run --rm -e MYSQL_USER='scott' -e MYSQL_PASSWORD='tiger' -e MYSQL_DATABASE='test' -e MYSQL_ROOT_PASSWORD='password' -p 127.0.0.1:3306:3306 -d --name mysql mysql --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
 
     # configure the database
     sleep 20
-    docker exec -ti mysql mysql -u root -ppassword -D test -w -e "GRANT ALL ON *.* TO scott@'%'; CREATE DATABASE test_schema CHARSET utf8mb4; CREATE DATABASE test_schema_2 CHARSET utf8mb4;"
+    docker exec -ti mysql mysql -u root -ppassword -w -e "CREATE DATABASE test_schema CHARSET utf8mb4; GRANT ALL ON test_schema.* TO scott;"
 
     # To stop the container. It will also remove it.
     docker stop mysql
 
 **MariaDB configuration**::
 
-    # only needed if a local image of MariaDB is not already present
-    docker pull mariadb
-
     # create the container with the proper configuration for sqlalchemy
-    docker run --rm -e MYSQL_USER='scott' -e MYSQL_PASSWORD='tiger' -e MYSQL_DATABASE='test' -e MYSQL_ROOT_PASSWORD='password' -p 127.0.0.1:3306:3306 -d --name mariadb mariadb --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    docker run --rm -e MARIADB_USER='scott' -e MARIADB_PASSWORD='tiger' -e MARIADB_DATABASE='test' -e MARIADB_ROOT_PASSWORD='password' -p 127.0.0.1:3306:3306 -d --name mariadb mariadb --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
 
     # configure the database
     sleep 20
-    docker exec -ti mariadb mysql -u root -ppassword -D test -w -e "GRANT ALL ON *.* TO scott@'%'; CREATE DATABASE test_schema CHARSET utf8mb4; CREATE DATABASE test_schema_2 CHARSET utf8mb4;"
+    docker exec -ti mariadb mysql -u root -ppassword -w -e "CREATE DATABASE test_schema CHARSET utf8mb4; GRANT ALL ON test_schema.* TO scott;"
 
     # To stop the container. It will also remove it.
     docker stop mariadb
 
 **MSSQL configuration**::
 
-    # only needed if a local image of mssql is not already present
-    docker pull mcr.microsoft.com/mssql/server:2019-CU1-ubuntu-16.04
-
     # create the container with the proper configuration for sqlalchemy
     # it will use the Developer version
-    docker run --rm -e 'ACCEPT_EULA=Y' -e 'SA_PASSWORD=yourStrong(!)Password' -p 127.0.0.1:1433:1433 -d --name mssql mcr.microsoft.com/mssql/server:2019-CU2-ubuntu-16.04
+    docker run --rm -e 'ACCEPT_EULA=Y' -e 'SA_PASSWORD=yourStrong(!)Password' -p 127.0.0.1:1433:1433 -d --name mssql mcr.microsoft.com/mssql/server
 
     # configure the database
     sleep 20

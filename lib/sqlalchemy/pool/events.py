@@ -71,6 +71,7 @@ class PoolEvents(event.Events):
         to produce a new DBAPI connection.
 
         :param dbapi_connection: a DBAPI connection.
+         The :attr:`._ConnectionRecord.dbapi_connection` attribute.
 
         :param connection_record: the :class:`._ConnectionRecord` managing the
          DBAPI connection.
@@ -95,6 +96,7 @@ class PoolEvents(event.Events):
         encoding settings, collation settings, and many others.
 
         :param dbapi_connection: a DBAPI connection.
+         The :attr:`._ConnectionRecord.dbapi_connection` attribute.
 
         :param connection_record: the :class:`._ConnectionRecord` managing the
          DBAPI connection.
@@ -105,6 +107,7 @@ class PoolEvents(event.Events):
         """Called when a connection is retrieved from the Pool.
 
         :param dbapi_connection: a DBAPI connection.
+         The :attr:`._ConnectionRecord.dbapi_connection` attribute.
 
         :param connection_record: the :class:`._ConnectionRecord` managing the
          DBAPI connection.
@@ -132,6 +135,7 @@ class PoolEvents(event.Events):
         for detached connections.  (They do not return to the pool.)
 
         :param dbapi_connection: a DBAPI connection.
+         The :attr:`._ConnectionRecord.dbapi_connection` attribute.
 
         :param connection_record: the :class:`._ConnectionRecord` managing the
          DBAPI connection.
@@ -153,6 +157,7 @@ class PoolEvents(event.Events):
         cases where the connection is discarded immediately after reset.
 
         :param dbapi_connection: a DBAPI connection.
+         The :attr:`._ConnectionRecord.dbapi_connection` attribute.
 
         :param connection_record: the :class:`._ConnectionRecord` managing the
          DBAPI connection.
@@ -176,6 +181,7 @@ class PoolEvents(event.Events):
         connection occurs.
 
         :param dbapi_connection: a DBAPI connection.
+         The :attr:`._ConnectionRecord.dbapi_connection` attribute.
 
         :param connection_record: the :class:`._ConnectionRecord` managing the
          DBAPI connection.
@@ -205,6 +211,15 @@ class PoolEvents(event.Events):
 
         .. versionadded:: 1.0.3
 
+        :param dbapi_connection: a DBAPI connection.
+         The :attr:`._ConnectionRecord.dbapi_connection` attribute.
+
+        :param connection_record: the :class:`._ConnectionRecord` managing the
+         DBAPI connection.
+
+        :param exception: the exception object corresponding to the reason
+         for this invalidation, if any.  May be ``None``.
+
         """
 
     def close(self, dbapi_connection, connection_record):
@@ -222,6 +237,12 @@ class PoolEvents(event.Events):
 
         .. versionadded:: 1.1
 
+        :param dbapi_connection: a DBAPI connection.
+         The :attr:`._ConnectionRecord.dbapi_connection` attribute.
+
+        :param connection_record: the :class:`._ConnectionRecord` managing the
+         DBAPI connection.
+
         """
 
     def detach(self, dbapi_connection, connection_record):
@@ -231,6 +252,12 @@ class PoolEvents(event.Events):
         is no longer associated with the given connection record.
 
         .. versionadded:: 1.1
+
+        :param dbapi_connection: a DBAPI connection.
+         The :attr:`._ConnectionRecord.dbapi_connection` attribute.
+
+        :param connection_record: the :class:`._ConnectionRecord` managing the
+         DBAPI connection.
 
         """
 
@@ -244,5 +271,8 @@ class PoolEvents(event.Events):
         the connection is discarded.
 
         .. versionadded:: 1.1
+
+        :param dbapi_connection: a DBAPI connection.
+         The :attr:`._ConnectionRecord.dbapi_connection` attribute.
 
         """
