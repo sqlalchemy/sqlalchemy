@@ -276,6 +276,9 @@ $$ LANGUAGE plpgsql;"""
             # psycopg2/cursor.h
             "connection already closed",
             "cursor already closed",
+            # not sure where this path is originally from, it may
+            # be obsolete.   It really says "losed", not "closed".
+            "losed the connection unexpectedly",
             # these can occur in newer SSL
             "connection has been closed unexpectedly",
             "SSL error: decryption failed or bad record mac",
