@@ -34,6 +34,11 @@ from ..sql import compiler
         'expressions, or an "empty set" SELECT, at statement execution'
         "time.",
     ),
+    implicit_returning=(
+        "2.0",
+        "The :paramref:`_sa.create_engine.implicit_returning` parameter "
+        "is deprecated and will be removed in a future release. ",
+    ),
 )
 def create_engine(url, **kwargs):
     """Create a new :class:`_engine.Engine` instance.
@@ -350,8 +355,6 @@ def create_engine(url, **kwargs):
 
             :paramref:`_engine.Connection.execution_options.logging_token`
 
-
-
     :param max_identifier_length: integer; override the max_identifier_length
         determined by the dialect.  if ``None`` or zero, has no effect.  This
         is the database's configured maximum number of characters that may be
@@ -411,12 +414,10 @@ def create_engine(url, **kwargs):
        "sqlalchemy.pool" logger. Defaults to a hexstring of the object's
        id.
 
-
        .. seealso::
 
             :ref:`dbengine_logging` - further detail on how to configure
             logging.
-
 
     :param pool_pre_ping: boolean, if True will enable the connection pool
         "pre-ping" feature that tests connections for liveness upon

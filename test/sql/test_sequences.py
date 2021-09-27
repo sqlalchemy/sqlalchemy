@@ -11,7 +11,6 @@ from sqlalchemy.schema import CreateSequence
 from sqlalchemy.schema import DropSequence
 from sqlalchemy.sql import select
 from sqlalchemy.testing import assert_raises_message
-from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_false
@@ -180,29 +179,30 @@ class SequenceExecTest(fixtures.TestBase):
         connection.execute(t1.insert().values(x=s.next_value()))
         self._assert_seq_result(connection.scalar(t1.select()))
 
-    @testing.provide_metadata
-    def test_inserted_pk_no_returning(self):
+    def test_inserted_pk_no_returning(self, metadata, connection):
         """test inserted_primary_key contains [None] when
         pk_col=next_value(), implicit returning is not used."""
 
         # I'm not really sure what this test wants to accomlish.
 
-        metadata = self.metadata
-        t1 = Table("t", metadata, Column("x", Integer, primary_key=True))
+        t1 = Table(
+            "t",
+            metadata,
+            Column("x", Integer, primary_key=True),
+            implicit_returning=False,
+        )
         s = Sequence("my_sequence_here", metadata=metadata)
 
-        e = engines.testing_engine(options={"implicit_returning": False})
-        with e.begin() as conn:
+        conn = connection
+        t1.create(conn)
+        s.create(conn)
 
-            t1.create(conn)
-            s.create(conn)
+        r = conn.execute(t1.insert().values(x=s.next_value()))
 
-            r = conn.execute(t1.insert().values(x=s.next_value()))
-
-            if testing.requires.emulated_lastrowid_even_with_sequences.enabled:
-                eq_(r.inserted_primary_key, (1,))
-            else:
-                eq_(r.inserted_primary_key, (None,))
+        if testing.requires.emulated_lastrowid_even_with_sequences.enabled:
+            eq_(r.inserted_primary_key, (1,))
+        else:
+            eq_(r.inserted_primary_key, (None,))
 
     @testing.combinations(
         ("implicit_returning",),
@@ -213,43 +213,40 @@ class SequenceExecTest(fixtures.TestBase):
         argnames="returning",
     )
     @testing.requires.multivalues_inserts
-    def test_seq_multivalues_inline(self, metadata, testing_engine, returning):
+    def test_seq_multivalues_inline(self, metadata, connection, returning):
+        _implicit_returning = "no_implicit_returning" not in returning
         t1 = Table(
             "t",
             metadata,
             Column("x", Integer, Sequence("my_seq"), primary_key=True),
             Column("data", String(50)),
+            implicit_returning=_implicit_returning,
         )
 
-        e = engines.testing_engine(
-            options={
-                "implicit_returning": "no_implicit_returning" not in returning
-            }
+        metadata.create_all(connection)
+        conn = connection
+
+        stmt = t1.insert().values(
+            [{"data": "d1"}, {"data": "d2"}, {"data": "d3"}]
         )
-        metadata.create_all(e)
-        with e.begin() as conn:
+        if returning == "explicit_returning":
+            stmt = stmt.returning(t1.c.x)
+        elif "return_defaults" in returning:
+            stmt = stmt.return_defaults()
 
-            stmt = t1.insert().values(
-                [{"data": "d1"}, {"data": "d2"}, {"data": "d3"}]
-            )
-            if returning == "explicit_returning":
-                stmt = stmt.returning(t1.c.x)
-            elif "return_defaults" in returning:
-                stmt = stmt.return_defaults()
+        r = conn.execute(stmt)
+        if returning == "explicit_returning":
+            eq_(r.all(), [(1,), (2,), (3,)])
+        elif "return_defaults" in returning:
+            eq_(r.returned_defaults_rows, None)
 
-            r = conn.execute(stmt)
-            if returning == "explicit_returning":
-                eq_(r.all(), [(1,), (2,), (3,)])
-            elif "return_defaults" in returning:
-                eq_(r.returned_defaults_rows, None)
+            # TODO: not sure what this is
+            eq_(r.inserted_primary_key_rows, [(None,)])
 
-                # TODO: not sure what this is
-                eq_(r.inserted_primary_key_rows, [(None,)])
-
-            eq_(
-                conn.execute(t1.select().order_by(t1.c.x)).all(),
-                [(1, "d1"), (2, "d2"), (3, "d3")],
-            )
+        eq_(
+            conn.execute(t1.select().order_by(t1.c.x)).all(),
+            [(1, "d1"), (2, "d2"), (3, "d3")],
+        )
 
     @testing.combinations(
         ("implicit_returning",),
@@ -272,54 +269,49 @@ class SequenceExecTest(fixtures.TestBase):
         argnames="returning",
     )
     def test_seq_multivalues_executemany(
-        self, metadata, testing_engine, returning
+        self, connection, metadata, returning
     ):
+        _implicit_returning = "no_implicit_returning" not in returning
         t1 = Table(
             "t",
             metadata,
             Column("x", Integer, Sequence("my_seq"), primary_key=True),
             Column("data", String(50)),
+            implicit_returning=_implicit_returning,
         )
 
-        e = engines.testing_engine(
-            options={
-                "implicit_returning": "no_implicit_returning" not in returning
-            }
+        metadata.create_all(connection)
+        conn = connection
+
+        stmt = t1.insert()
+        if returning == "explicit_returning":
+            stmt = stmt.returning(t1.c.x)
+        elif "return_defaults" in returning:
+            stmt = stmt.return_defaults()
+
+        r = conn.execute(
+            stmt, [{"data": "d1"}, {"data": "d2"}, {"data": "d3"}]
         )
-        metadata.create_all(e)
-        with e.begin() as conn:
+        if returning == "explicit_returning":
+            eq_(r.all(), [(1,), (2,), (3,)])
+        elif "return_defaults" in returning:
+            if "no_implicit_returning" in returning:
+                eq_(r.returned_defaults_rows, None)
+                eq_(r.inserted_primary_key_rows, [(1,), (2,), (3,)])
+            else:
+                eq_(r.returned_defaults_rows, [(1,), (2,), (3,)])
+                eq_(r.inserted_primary_key_rows, [(1,), (2,), (3,)])
 
-            stmt = t1.insert()
-            if returning == "explicit_returning":
-                stmt = stmt.returning(t1.c.x)
-            elif "return_defaults" in returning:
-                stmt = stmt.return_defaults()
-
-            r = conn.execute(
-                stmt, [{"data": "d1"}, {"data": "d2"}, {"data": "d3"}]
-            )
-            if returning == "explicit_returning":
-                eq_(r.all(), [(1,), (2,), (3,)])
-            elif "return_defaults" in returning:
-                if "no_implicit_returning" in returning:
-                    eq_(r.returned_defaults_rows, None)
-                    eq_(r.inserted_primary_key_rows, [(1,), (2,), (3,)])
-                else:
-                    eq_(r.returned_defaults_rows, [(1,), (2,), (3,)])
-                    eq_(r.inserted_primary_key_rows, [(1,), (2,), (3,)])
-
-            eq_(
-                conn.execute(t1.select().order_by(t1.c.x)).all(),
-                [(1, "d1"), (2, "d2"), (3, "d3")],
-            )
+        eq_(
+            conn.execute(t1.select().order_by(t1.c.x)).all(),
+            [(1, "d1"), (2, "d2"), (3, "d3")],
+        )
 
     @testing.requires.returning
-    @testing.provide_metadata
-    def test_inserted_pk_implicit_returning(self):
+    def test_inserted_pk_implicit_returning(self, connection, metadata):
         """test inserted_primary_key contains the result when
         pk_col=next_value(), when implicit returning is used."""
 
-        metadata = self.metadata
         s = Sequence("my_sequence")
         t1 = Table(
             "t",
@@ -329,13 +321,12 @@ class SequenceExecTest(fixtures.TestBase):
                 Integer,
                 primary_key=True,
             ),
+            implicit_returning=True,
         )
-        t1.create(testing.db)
+        t1.create(connection)
 
-        e = engines.testing_engine(options={"implicit_returning": True})
-        with e.begin() as conn:
-            r = conn.execute(t1.insert().values(x=s.next_value()))
-            self._assert_seq_result(r.inserted_primary_key[0])
+        r = connection.execute(t1.insert().values(x=s.next_value()))
+        self._assert_seq_result(r.inserted_primary_key[0])
 
 
 class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
@@ -501,42 +492,56 @@ class TableBoundSequenceTest(fixtures.TablesTest):
     __requires__ = ("sequences",)
     __backend__ = True
 
-    @classmethod
-    def define_tables(cls, metadata):
-        Table(
-            "cartitems",
-            metadata,
-            Column(
-                "cart_id",
-                Integer,
-                Sequence("cart_id_seq"),
-                primary_key=True,
-                autoincrement=False,
-            ),
-            Column("description", String(40)),
-            Column("createdate", sa.DateTime()),
-        )
+    @testing.fixture
+    def table_fixture(self, metadata, connection, implicit_returning):
+        def go(implicit_returning):
+            cartitems = Table(
+                "cartitems",
+                metadata,
+                Column(
+                    "cart_id",
+                    Integer,
+                    Sequence("cart_id_seq"),
+                    primary_key=True,
+                    autoincrement=False,
+                ),
+                Column("description", String(40)),
+                Column("createdate", sa.DateTime()),
+                implicit_returning=implicit_returning,
+            )
 
-        # a little bit of implicit case sensitive naming test going on here
-        Table(
-            "Manager",
-            metadata,
-            Column(
-                "obj_id",
-                Integer,
-                Sequence("obj_id_seq"),
-            ),
-            Column("name", String(128)),
-            Column(
-                "id",
-                Integer,
-                Sequence("Manager_id_seq", optional=True),
-                primary_key=True,
-            ),
-        )
+            # a little bit of implicit case sensitive naming test going on here
+            Manager = Table(
+                "Manager",
+                metadata,
+                Column(
+                    "obj_id",
+                    Integer,
+                    Sequence("obj_id_seq"),
+                ),
+                Column("name", String(128)),
+                Column(
+                    "id",
+                    Integer,
+                    Sequence("Manager_id_seq", optional=True),
+                    primary_key=True,
+                ),
+                implicit_returning=implicit_returning,
+            )
+            metadata.create_all(connection)
+            return Manager, cartitems
 
-    def test_insert_via_seq(self, connection):
-        cartitems = self.tables.cartitems
+        return go
+
+    @testing.combinations(
+        (True, testing.requires.returning),
+        (False,),
+        argnames="implicit_returning",
+    )
+    def test_insert_via_seq(
+        self, table_fixture, connection, implicit_returning
+    ):
+        Manager, cartitems = table_fixture(implicit_returning)
 
         connection.execute(cartitems.insert(), dict(description="hi"))
         connection.execute(cartitems.insert(), dict(description="there"))
@@ -554,52 +559,53 @@ class TableBoundSequenceTest(fixtures.TablesTest):
             expected,
         )
 
-    def test_seq_nonpk(self):
+    @testing.combinations(
+        (True, testing.requires.returning),
+        (False,),
+        argnames="implicit_returning",
+    )
+    def test_seq_nonpk(self, connection, table_fixture, implicit_returning):
         """test sequences fire off as defaults on non-pk columns"""
 
-        sometable = self.tables.Manager
+        sometable, cartitems = table_fixture(implicit_returning)
 
-        engine = engines.testing_engine(options={"implicit_returning": False})
+        conn = connection
+        result = conn.execute(sometable.insert(), dict(name="somename"))
 
-        with engine.begin() as conn:
-            result = conn.execute(sometable.insert(), dict(name="somename"))
+        eq_(result.postfetch_cols(), [sometable.c.obj_id])
 
-            eq_(result.postfetch_cols(), [sometable.c.obj_id])
+        result = conn.execute(sometable.insert(), dict(name="someother"))
 
-            result = conn.execute(sometable.insert(), dict(name="someother"))
+        conn.execute(
+            sometable.insert(), [{"name": "name3"}, {"name": "name4"}]
+        )
 
-            conn.execute(
-                sometable.insert(), [{"name": "name3"}, {"name": "name4"}]
-            )
-
-            dsb = testing.db.dialect.default_sequence_base
-            eq_(
-                list(
-                    conn.execute(sometable.select().order_by(sometable.c.id))
+        dsb = testing.db.dialect.default_sequence_base
+        eq_(
+            list(conn.execute(sometable.select().order_by(sometable.c.id))),
+            [
+                (
+                    dsb,
+                    "somename",
+                    dsb,
                 ),
-                [
-                    (
-                        dsb,
-                        "somename",
-                        dsb,
-                    ),
-                    (
-                        dsb + 1,
-                        "someother",
-                        dsb + 1,
-                    ),
-                    (
-                        dsb + 2,
-                        "name3",
-                        dsb + 2,
-                    ),
-                    (
-                        dsb + 3,
-                        "name4",
-                        dsb + 3,
-                    ),
-                ],
-            )
+                (
+                    dsb + 1,
+                    "someother",
+                    dsb + 1,
+                ),
+                (
+                    dsb + 2,
+                    "name3",
+                    dsb + 2,
+                ),
+                (
+                    dsb + 3,
+                    "name4",
+                    dsb + 3,
+                ),
+            ],
+        )
 
 
 class SequenceAsServerDefaultTest(

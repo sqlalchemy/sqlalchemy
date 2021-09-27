@@ -16,7 +16,6 @@ from sqlalchemy import update
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
-from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.schema import Column
@@ -767,35 +766,3 @@ class ReturnDefaultsTest(fixtures.TablesTest):
             result.inserted_primary_key_rows,
             [(10,), (11,), (12,), (13,), (14,), (15,)],
         )
-
-
-class ImplicitReturningFlag(fixtures.TestBase):
-    __backend__ = True
-
-    def test_flag_turned_off(self):
-        e = engines.testing_engine(options={"implicit_returning": False})
-        assert e.dialect.implicit_returning is False
-        c = e.connect()
-        c.close()
-        assert e.dialect.implicit_returning is False
-
-    def test_flag_turned_on(self):
-        e = engines.testing_engine(options={"implicit_returning": True})
-        assert e.dialect.implicit_returning is True
-        c = e.connect()
-        c.close()
-        assert e.dialect.implicit_returning is True
-
-    def test_flag_turned_default(self):
-        supports = [False]
-
-        def go():
-            supports[0] = True
-
-        testing.requires.returning(go)()
-        e = engines.testing_engine()
-
-        # version detection on connect sets it
-        c = e.connect()
-        c.close()
-        assert e.dialect.implicit_returning is supports[0]

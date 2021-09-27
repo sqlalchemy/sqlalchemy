@@ -2010,10 +2010,8 @@ class EngineEventsTest(fixtures.TestBase):
         # TODO: this test is kind of a mess
 
         for engine in [
-            engines.testing_engine(options=dict(implicit_returning=False)),
-            engines.testing_engine(
-                options=dict(implicit_returning=False)
-            ).connect(),
+            engines.testing_engine(),
+            engines.testing_engine().connect(),
         ]:
             event.listen(engine, "before_execute", execute)
             event.listen(engine, "before_cursor_execute", cursor_execute)
@@ -2028,6 +2026,7 @@ class EngineEventsTest(fixtures.TestBase):
                     default=func.lower("Foo"),
                     primary_key=True,
                 ),
+                implicit_returning=False,
             )
 
             if isinstance(engine, Connection):

@@ -1,0 +1,28 @@
+.. change::
+    :tags: deprecations, engine
+    :tickets: 6962
+
+    The :paramref:`_sa.create_engine.implicit_returning` parameter is
+    deprecated on the :func:`_sa.create_engine` function only; the parameter
+    remains available on the :class:`_schema.Table` object. This parameter was
+    originally intended to enable the "implicit returning" feature of
+    SQLAlchemy when it was first developed and was not enabled by default.
+    Under modern use, there's no reason this parameter should be disabled, and
+    it has been observed to cause confusion as it degrades performance and
+    makes it more difficult for the ORM to retrieve recently inserted server
+    defaults. The parameter remains available on :class:`_schema.Table` to
+    specifically suit database-level edge cases which make RETURNING
+    infeasible, the sole example currently being SQL Server's limitation that
+    INSERT RETURNING may not be used on a table that has INSERT triggers on it.
+
+
+.. change::
+    :tags: bug, oracle
+    :tickets: 6962
+
+    Related to the deprecation for
+    :paramref:`_sa.create_engine.implicit_returning`, the "implicit_returning"
+    feature is now enabled for the Oracle dialect in all cases; previously, the
+    feature would be turned off when an Oracle 8/8i version were detected,
+    however online documentation indicates both versions support the same
+    RETURNING syntax as modern versions.

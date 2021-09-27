@@ -1046,43 +1046,49 @@ class TypeRoundTripTest(
                         col.type.length, binary_table.c[col.name].type.length
                     )
 
-    def test_autoincrement(self, metadata, connection):
+    @testing.combinations(True, False, argnames="implicit_returning")
+    def test_autoincrement(self, metadata, connection, implicit_returning):
         Table(
             "ai_1",
             metadata,
             Column("int_y", Integer, primary_key=True, autoincrement=True),
             Column("int_n", Integer, DefaultClause("0"), primary_key=True),
+            implicit_returning=implicit_returning,
         )
         Table(
             "ai_2",
             metadata,
             Column("int_y", Integer, primary_key=True, autoincrement=True),
             Column("int_n", Integer, DefaultClause("0"), primary_key=True),
+            implicit_returning=implicit_returning,
         )
         Table(
             "ai_3",
             metadata,
             Column("int_n", Integer, DefaultClause("0"), primary_key=True),
             Column("int_y", Integer, primary_key=True, autoincrement=True),
+            implicit_returning=implicit_returning,
         )
-
         Table(
             "ai_4",
             metadata,
             Column("int_n", Integer, DefaultClause("0"), primary_key=True),
             Column("int_n2", Integer, DefaultClause("0"), primary_key=True),
+            implicit_returning=implicit_returning,
         )
         Table(
             "ai_5",
             metadata,
             Column("int_y", Integer, primary_key=True, autoincrement=True),
             Column("int_n", Integer, DefaultClause("0"), primary_key=True),
+            implicit_returning=implicit_returning,
         )
         Table(
             "ai_6",
             metadata,
             Column("o1", String(1), DefaultClause("x"), primary_key=True),
             Column("int_y", Integer, primary_key=True, autoincrement=True),
+            implicit_returning=implicit_returning,
         )
         Table(
             "ai_7",
@@ -1090,12 +1096,14 @@ class TypeRoundTripTest(
             Column("o1", String(1), DefaultClause("x"), primary_key=True),
             Column("o2", String(1), DefaultClause("x"), primary_key=True),
             Column("int_y", Integer, autoincrement=True, primary_key=True),
+            implicit_returning=implicit_returning,
         )
         Table(
             "ai_8",
             metadata,
             Column("o1", String(1), DefaultClause("x"), primary_key=True),
             Column("o2", String(1), DefaultClause("x"), primary_key=True),
+            implicit_returning=implicit_returning,
         )
         metadata.create_all(connection)
 
@@ -1124,29 +1132,18 @@ class TypeRoundTripTest(
                     eq_(col.autoincrement, "auto")
                     is_not(tbl._autoincrement_column, col)
 
-            eng = [
-                engines.testing_engine(options={"implicit_returning": False}),
-                engines.testing_engine(options={"implicit_returning": True}),
-            ]
-
-            for counter, engine in enumerate(eng):
-                connection.execute(tbl.insert())
-                if "int_y" in tbl.c:
-                    eq_(
-                        connection.execute(select(tbl.c.int_y)).scalar(),
-                        counter + 1,
-                    )
-                    assert (
-                        list(connection.execute(tbl.select()).first()).count(
-                            counter + 1
-                        )
-                        == 1
-                    )
-                else:
-                    assert 1 not in list(
-                        connection.execute(tbl.select()).first()
-                    )
-                connection.execute(tbl.delete())
+            connection.execute(tbl.insert())
+            if "int_y" in tbl.c:
+                eq_(
+                    connection.execute(select(tbl.c.int_y)).scalar(),
+                    1,
+                )
+                assert (
+                    list(connection.execute(tbl.select()).first()).count(1)
+                    == 1
+                )
+            else:
+                assert 1 not in list(connection.execute(tbl.select()).first())
 
 
 class StringTest(fixtures.TestBase, AssertsCompiledSQL):

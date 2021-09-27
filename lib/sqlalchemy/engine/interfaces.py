@@ -94,14 +94,6 @@ class Dialect(object):
       in order to get their value.   This is currently oriented towards
       PostgreSQL.
 
-    ``implicit_returning``
-      use RETURNING or equivalent during INSERT execution in order to load
-      newly generated primary keys and other column defaults in one execution,
-      which are then available via inserted_primary_key.
-      If an insert statement has returning() specified explicitly,
-      the "implicit" functionality is not used and inserted_primary_key
-      will not be available.
-
     ``colspecs``
       A dictionary of TypeEngine classes from sqlalchemy.types mapped
       to subclasses that are specific to the dialect class.  This
