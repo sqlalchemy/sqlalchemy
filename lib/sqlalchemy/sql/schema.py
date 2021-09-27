@@ -1423,7 +1423,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             Strings and text() will be converted into a
             :class:`.DefaultClause` object upon initialization.
 
-            This parameter can also accept complex compbinations of contextually
+            This parameter can also accept complex combinations of contextually
             valid SQLAlchemy expressions or constructs::
 
                 from sqlalchemy import create_engine
