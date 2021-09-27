@@ -4438,20 +4438,10 @@ This document details individual issue-level changes made throughout
         :tags: bug, postgresql
 
         The pg8000 dialect has been revised and modernized for the most recent
-        version of the pg8000 driver for PostgreSQL.  Changes to the dialect
-        include:
-
-        * All data types are now sent as text rather than binary.
-
-        * Using adapters, custom types can be plugged in to pg8000.
-
-        * Previously, named prepared statements were used for all statements.
-          Now unnamed prepared statements are used by default, and named
-          prepared statements can be used explicitly by calling the
-          Connection.prepare() method, which returns a PreparedStatement
-          object.
-
-        Pull request courtesy Tony Locke.
+        version of the pg8000 driver for PostgreSQL. Pull request courtesy Tony
+        Locke. Note that this necessarily pins pg8000 at 1.16.6 or greater,
+        which no longer has Python 2 support. Python 2 users who require pg8000
+        should ensure their requirements are pinned at ``SQLAlchemy<1.4``.
 
     .. change::
         :tags: bug, orm

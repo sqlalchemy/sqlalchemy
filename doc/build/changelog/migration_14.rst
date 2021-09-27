@@ -2627,6 +2627,19 @@ discriminator column::
 Dialect Changes
 ===============
 
+pg8000 minimum version is 1.16.6, supports Python 3 only
+--------------------------------------------------------
+
+Support for the pg8000 dialect has been dramatically improved, with help from
+the project's maintainer.
+
+Due to API changes, the pg8000 dialect now requires
+version 1.16.6 or greater. The pg8000 series has dropped Python 2 support as of
+the 1.13 series.  Python 2 users who require pg8000 should ensure their
+requirements are pinned at ``SQLAlchemy<1.4``.
+
+:ticket:`5451`
+
 psycopg2 version 2.7 or higher is required for the PostgreSQL psycopg2 dialect
 ------------------------------------------------------------------------------
 
