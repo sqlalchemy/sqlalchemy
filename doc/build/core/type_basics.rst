@@ -232,7 +232,7 @@ such as `collation` and `charset`::
 
     from sqlalchemy.dialects.mysql import VARCHAR, TEXT
 
-    table = Table('foo', meta,
+    table = Table('foo', metadata_obj,
         Column('col1', VARCHAR(200, collation='binary')),
         Column('col2', TEXT(charset='latin1'))
     )
