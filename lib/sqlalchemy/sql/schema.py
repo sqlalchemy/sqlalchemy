@@ -4897,7 +4897,7 @@ class Computed(FetchedValue, SchemaItem):
 
         from sqlalchemy import Computed
 
-        Table('square', meta,
+        Table('square', metadata_obj,
             Column('side', Float, nullable=False),
             Column('area', Float, Computed('side * side'))
         )
@@ -4994,7 +4994,7 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
 
         from sqlalchemy import Identity
 
-        Table('foo', meta,
+        Table('foo', metadata_obj,
             Column('id', Integer, Identity())
             Column('description', Text),
         )
