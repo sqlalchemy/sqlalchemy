@@ -3035,9 +3035,46 @@ class InhCondTest(fixtures.TestBase):
 
         mapper(Base, base_table)
         assert_raises_message(
-            sa_exc.ArgumentError,
-            "Can't find any foreign key relationships between "
-            "'base' and 'derived'.",
+            sa_exc.NoForeignKeysError,
+            "Can't determine the inherit condition between inherited table "
+            "'base' and inheriting table 'derived'; tables have no foreign "
+            "key relationships established.  Please ensure the inheriting "
+            "table has a foreign key relationship to the inherited table, "
+            "or provide an 'on clause' using the 'inherit_condition' "
+            "mapper argument.",
+            mapper,
+            Derived,
+            derived_table,
+            inherits=Base,
+        )
+
+    def test_inh_cond_ambiguous_fk(self):
+        metadata = MetaData()
+        base_table = Table(
+            "base",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("favorite_derived", ForeignKey("derived.id")),
+        )
+        derived_table = Table(
+            "derived",
+            metadata,
+            Column("id", Integer, ForeignKey("base.id"), primary_key=True),
+        )
+
+        class Base(object):
+            pass
+
+        class Derived(Base):
+            pass
+
+        mapper(Base, base_table)
+        assert_raises_message(
+            sa_exc.AmbiguousForeignKeysError,
+            "Can't determine the inherit condition between inherited table "
+            "'base' and inheriting table 'derived'; tables have more than "
+            "one foreign key relationship established.  Please specify the "
+            "'on clause' using the 'inherit_condition' mapper argument.",
             mapper,
             Derived,
             derived_table,

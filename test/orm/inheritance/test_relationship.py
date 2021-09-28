@@ -4,6 +4,7 @@ from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import util
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import configure_mappers
@@ -53,6 +54,13 @@ class Machine(fixtures.ComparableEntity):
 
 class Paperwork(fixtures.ComparableEntity):
     pass
+
+
+def _aliased_join_warning(arg):
+    return testing.expect_warnings(
+        "An alias is being generated automatically against joined entity "
+        "mapped class %s due to overlapping tables" % (arg,)
+    )
 
 
 class SelfReferentialTestJoinedToBase(fixtures.MappedTest):
@@ -275,7 +283,8 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
             Engineer(name="dilbert"),
         )
 
-    def test_filter_aliasing(self):
+    @testing.combinations((True,), (False,), argnames="autoalias")
+    def test_filter_aliasing(self, autoalias):
         m1 = Manager(name="dogbert")
         m2 = Manager(name="foo")
         e1 = Engineer(name="wally", primary_language="java", reports_to=m1)
@@ -287,32 +296,62 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
         sess.flush()
         sess.expunge_all()
 
-        # filter aliasing applied to Engineer doesn't whack Manager
-        eq_(
-            sess.query(Manager)
-            .join(Manager.engineers)
-            .filter(Manager.name == "dogbert")
-            .all(),
-            [m1],
-        )
+        if autoalias:
+            # filter aliasing applied to Engineer doesn't whack Manager
+            with _aliased_join_warning("Engineer->engineers"):
+                eq_(
+                    sess.query(Manager)
+                    .join(Manager.engineers)
+                    .filter(Manager.name == "dogbert")
+                    .all(),
+                    [m1],
+                )
 
-        eq_(
-            sess.query(Manager)
-            .join(Manager.engineers)
-            .filter(Engineer.name == "dilbert")
-            .all(),
-            [m2],
-        )
+            with _aliased_join_warning("Engineer->engineers"):
+                eq_(
+                    sess.query(Manager)
+                    .join(Manager.engineers)
+                    .filter(Engineer.name == "dilbert")
+                    .all(),
+                    [m2],
+                )
 
-        eq_(
-            sess.query(Manager, Engineer)
-            .join(Manager.engineers)
-            .order_by(Manager.name.desc())
-            .all(),
-            [(m2, e2), (m1, e1)],
-        )
+            with _aliased_join_warning("Engineer->engineers"):
+                eq_(
+                    sess.query(Manager, Engineer)
+                    .join(Manager.engineers)
+                    .order_by(Manager.name.desc())
+                    .all(),
+                    [(m2, e2), (m1, e1)],
+                )
+        else:
+            eng = aliased(Engineer, flat=True)
+            eq_(
+                sess.query(Manager)
+                .join(Manager.engineers.of_type(eng))
+                .filter(Manager.name == "dogbert")
+                .all(),
+                [m1],
+            )
 
-    def test_relationship_compare(self):
+            eq_(
+                sess.query(Manager)
+                .join(Manager.engineers.of_type(eng))
+                .filter(eng.name == "dilbert")
+                .all(),
+                [m2],
+            )
+
+            eq_(
+                sess.query(Manager, eng)
+                .join(Manager.engineers.of_type(eng))
+                .order_by(Manager.name.desc())
+                .all(),
+                [(m2, e2), (m1, e1)],
+            )
+
+    @testing.combinations((True,), (False,), argnames="autoalias")
+    def test_relationship_compare(self, autoalias):
         m1 = Manager(name="dogbert")
         m2 = Manager(name="foo")
         e1 = Engineer(name="dilbert", primary_language="java", reports_to=m1)
@@ -328,21 +367,41 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
         sess.flush()
         sess.expunge_all()
 
-        eq_(
-            sess.query(Manager)
-            .join(Manager.engineers)
-            .filter(Engineer.reports_to == None)
-            .all(),  # noqa
-            [],
-        )
+        if autoalias:
+            with _aliased_join_warning("Engineer->engineers"):
+                eq_(
+                    sess.query(Manager)
+                    .join(Manager.engineers)
+                    .filter(Engineer.reports_to == None)
+                    .all(),
+                    [],
+                )
 
-        eq_(
-            sess.query(Manager)
-            .join(Manager.engineers)
-            .filter(Engineer.reports_to == m1)
-            .all(),
-            [m1],
-        )
+            with _aliased_join_warning("Engineer->engineers"):
+                eq_(
+                    sess.query(Manager)
+                    .join(Manager.engineers)
+                    .filter(Engineer.reports_to == m1)
+                    .all(),
+                    [m1],
+                )
+        else:
+            eng = aliased(Engineer, flat=True)
+            eq_(
+                sess.query(Manager)
+                .join(Manager.engineers.of_type(eng))
+                .filter(eng.reports_to == None)
+                .all(),
+                [],
+            )
+
+            eq_(
+                sess.query(Manager)
+                .join(Manager.engineers.of_type(eng))
+                .filter(eng.reports_to == m1)
+                .all(),
+                [m1],
+            )
 
 
 class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
@@ -728,16 +787,35 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
         sess.add_all([c11, c12, c13, c21, c22, c23])
         sess.flush()
 
+        # auto alias test:
         # test that the join to Child2 doesn't alias Child1 in the select
 
         stmt = select(Child1).join(Child1.left_child2)
+
+        with _aliased_join_warning("Child2->child2"):
+            eq_(
+                set(sess.execute(stmt).scalars().unique()),
+                set([c11, c12, c13]),
+            )
+
+        with _aliased_join_warning("Child2->child2"):
+            eq_(
+                set(sess.query(Child1, Child2).join(Child1.left_child2)),
+                set([(c11, c22), (c12, c22), (c13, c23)]),
+            )
+
+        # manual alias test:
+
+        c2 = aliased(Child2)
+        stmt = select(Child1).join(Child1.left_child2.of_type(c2))
+
         eq_(
             set(sess.execute(stmt).scalars().unique()),
             set([c11, c12, c13]),
         )
 
         eq_(
-            set(sess.query(Child1, Child2).join(Child1.left_child2)),
+            set(sess.query(Child1, c2).join(Child1.left_child2.of_type(c2))),
             set([(c11, c22), (c12, c22), (c13, c23)]),
         )
 
@@ -748,16 +826,48 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
             .join(Child2.right_children)
             .where(Child1.left_child2 == c22)
         )
+        with _aliased_join_warning("Child1->child1"):
+            eq_(
+                set(sess.execute(stmt).scalars().unique()),
+                set([c22]),
+            )
+
+        # manual aliased version
+        c1 = aliased(Child1, flat=True)
+        stmt = (
+            select(Child2)
+            .join(Child2.right_children.of_type(c1))
+            .where(c1.left_child2 == c22)
+        )
         eq_(
             set(sess.execute(stmt).scalars().unique()),
             set([c22]),
         )
 
         # test the same again
+        with _aliased_join_warning("Child1->child1"):
+            self.assert_compile(
+                sess.query(Child2)
+                .join(Child2.right_children)
+                .filter(Child1.left_child2 == c22)
+                .statement,
+                "SELECT child2.id, parent.id AS id_1, parent.cls "
+                "FROM secondary AS secondary_1, parent "
+                "JOIN child2 ON parent.id = child2.id "
+                "JOIN secondary AS secondary_2 ON parent.id = "
+                "secondary_2.left_id "
+                "JOIN (parent AS parent_1 JOIN child1 AS child1_1 "
+                "ON parent_1.id = child1_1.id) ON parent_1.id = "
+                "secondary_2.right_id "
+                "WHERE parent_1.id = secondary_1.right_id "
+                "AND :param_1 = secondary_1.left_id",
+            )
+
+        # non aliased version
         self.assert_compile(
             sess.query(Child2)
-            .join(Child2.right_children)
-            .filter(Child1.left_child2 == c22)
+            .join(Child2.right_children.of_type(c1))
+            .filter(c1.left_child2 == c22)
             .statement,
             "SELECT child2.id, parent.id AS id_1, parent.cls "
             "FROM secondary AS secondary_1, parent "
@@ -2649,7 +2759,9 @@ class MultipleAdaptUsesEntityOverTableTest(
 
     def test_two_joins_adaption(self):
         a, c, d = self.tables.a, self.tables.c, self.tables.d
-        q = self._two_join_fixture()._compile_state()
+
+        with _aliased_join_warning("C->c"), _aliased_join_warning("D->d"):
+            q = self._two_join_fixture()._compile_state()
 
         btoc = q.from_clauses[0].left
 
@@ -2678,15 +2790,18 @@ class MultipleAdaptUsesEntityOverTableTest(
 
     def test_two_joins_sql(self):
         q = self._two_join_fixture()
-        self.assert_compile(
-            q,
-            "SELECT a.name AS a_name, a_1.name AS a_1_name, "
-            "a_2.name AS a_2_name "
-            "FROM a JOIN b ON a.id = b.id JOIN "
-            "(a AS a_1 JOIN c AS c_1 ON a_1.id = c_1.id) ON c_1.bid = b.id "
-            "JOIN (a AS a_2 JOIN d AS d_1 ON a_2.id = d_1.id) "
-            "ON d_1.cid = c_1.id",
-        )
+
+        with _aliased_join_warning("C->c"), _aliased_join_warning("D->d"):
+            self.assert_compile(
+                q,
+                "SELECT a.name AS a_name, a_1.name AS a_1_name, "
+                "a_2.name AS a_2_name "
+                "FROM a JOIN b ON a.id = b.id JOIN "
+                "(a AS a_1 JOIN c AS c_1 ON a_1.id = c_1.id) "
+                "ON c_1.bid = b.id "
+                "JOIN (a AS a_2 JOIN d AS d_1 ON a_2.id = d_1.id) "
+                "ON d_1.cid = c_1.id",
+            )
 
 
 class SameNameOnJoined(fixtures.MappedTest):
@@ -2810,33 +2925,45 @@ class BetweenSubclassJoinWExtraJoinedLoad(
                 backref=backref("last_seen", lazy=False),
             )
 
-    def test_query(self):
+    @testing.combinations((True,), (False,), argnames="autoalias")
+    def test_query_auto(self, autoalias):
         Engineer, Manager = self.classes("Engineer", "Manager")
 
         sess = fixture_session()
 
-        # eager join is both from Enginer->LastSeen as well as
-        # Manager->LastSeen.  In the case of Manager->LastSeen,
-        # Manager is internally aliased, and comes to JoinedEagerLoader
-        # with no "parent" entity but an adapter.
-        q = sess.query(Engineer, Manager).join(Engineer.manager)
-        self.assert_compile(
-            q,
-            "SELECT people.type AS people_type, engineers.id AS engineers_id, "
-            "people.id AS people_id, "
-            "engineers.primary_language AS engineers_primary_language, "
-            "engineers.manager_id AS engineers_manager_id, "
-            "people_1.type AS people_1_type, managers_1.id AS managers_1_id, "
-            "people_1.id AS people_1_id, seen_1.id AS seen_1_id, "
-            "seen_1.timestamp AS seen_1_timestamp, seen_2.id AS seen_2_id, "
-            "seen_2.timestamp AS seen_2_timestamp "
-            "FROM people JOIN engineers ON people.id = engineers.id "
-            "JOIN (people AS people_1 JOIN managers AS managers_1 "
-            "ON people_1.id = managers_1.id) "
-            "ON managers_1.id = engineers.manager_id LEFT OUTER JOIN "
-            "seen AS seen_1 ON people.id = seen_1.id LEFT OUTER JOIN "
-            "seen AS seen_2 ON people_1.id = seen_2.id",
-        )
+        if autoalias:
+            # eager join is both from Enginer->LastSeen as well as
+            # Manager->LastSeen.  In the case of Manager->LastSeen,
+            # Manager is internally aliased, and comes to JoinedEagerLoader
+            # with no "parent" entity but an adapter.
+            q = sess.query(Engineer, Manager).join(Engineer.manager)
+        else:
+            m1 = aliased(Manager, flat=True)
+            q = sess.query(Engineer, m1).join(Engineer.manager.of_type(m1))
+
+        with _aliased_join_warning(
+            "Manager->managers"
+        ) if autoalias else util.nullcontext():
+            self.assert_compile(
+                q,
+                "SELECT people.type AS people_type, engineers.id AS "
+                "engineers_id, "
+                "people.id AS people_id, "
+                "engineers.primary_language AS engineers_primary_language, "
+                "engineers.manager_id AS engineers_manager_id, "
+                "people_1.type AS people_1_type, "
+                "managers_1.id AS managers_1_id, "
+                "people_1.id AS people_1_id, seen_1.id AS seen_1_id, "
+                "seen_1.timestamp AS seen_1_timestamp, "
+                "seen_2.id AS seen_2_id, "
+                "seen_2.timestamp AS seen_2_timestamp "
+                "FROM people JOIN engineers ON people.id = engineers.id "
+                "JOIN (people AS people_1 JOIN managers AS managers_1 "
+                "ON people_1.id = managers_1.id) "
+                "ON managers_1.id = engineers.manager_id LEFT OUTER JOIN "
+                "seen AS seen_1 ON people.id = seen_1.id LEFT OUTER JOIN "
+                "seen AS seen_2 ON people_1.id = seen_2.id",
+            )
 
 
 class M2ODontLoadSiblingTest(fixtures.DeclarativeMappedTest):

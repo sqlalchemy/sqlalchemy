@@ -2251,12 +2251,28 @@ class ColSubclassTest(
             id = Column(ForeignKey("a.id"), primary_key=True)
             x = MySpecialColumn(String)
 
-    def test_polymorphic_adaptation(self):
+    def test_polymorphic_adaptation_auto(self):
         A, B = self.classes.A, self.classes.B
 
         s = fixture_session()
+        with testing.expect_warnings(
+            "An alias is being generated automatically "
+            "against joined entity mapped class B->b due to overlapping"
+        ):
+            self.assert_compile(
+                s.query(A).join(B).filter(B.x == "test"),
+                "SELECT a.id AS a_id FROM a JOIN "
+                "(a AS a_1 JOIN b AS b_1 ON a_1.id = b_1.id) "
+                "ON a.id = b_1.id WHERE b_1.x = :x_1",
+            )
+
+    def test_polymorphic_adaptation_manual_alias(self):
+        A, B = self.classes.A, self.classes.B
+
+        b1 = aliased(B, flat=True)
+        s = fixture_session()
         self.assert_compile(
-            s.query(A).join(B).filter(B.x == "test"),
+            s.query(A).join(b1).filter(b1.x == "test"),
             "SELECT a.id AS a_id FROM a JOIN "
             "(a AS a_1 JOIN b AS b_1 ON a_1.id = b_1.id) "
             "ON a.id = b_1.id WHERE b_1.x = :x_1",

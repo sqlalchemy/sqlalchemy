@@ -261,6 +261,8 @@ views as well as custom column groupings such as mappings.
     :ref:`bundles` - in the ORM loading documentation.
 
 
+.. _orm_queryguide_orm_aliases:
+
 Selecting ORM Aliases
 ^^^^^^^^^^^^^^^^^^^^^
 

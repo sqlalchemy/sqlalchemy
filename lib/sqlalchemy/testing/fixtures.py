@@ -526,6 +526,15 @@ class TablesTest(TestBase):
                 )
 
 
+class NoCache(object):
+    @config.fixture(autouse=True, scope="function")
+    def _disable_cache(self):
+        _cache = config.db._compiled_cache
+        config.db._compiled_cache = None
+        yield
+        config.db._compiled_cache = _cache
+
+
 class RemovesEvents(object):
     @util.memoized_property
     def _event_fns(self):

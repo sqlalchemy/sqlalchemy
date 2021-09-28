@@ -798,7 +798,8 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             relationship(Address),
         )
 
-    def test_add_column_prop_deannotate(self):
+    @testing.combinations((True,), (False,))
+    def test_add_column_prop_deannotate(self, autoalias):
         User, users = self.classes.User, self.tables.users
         Address, addresses = self.classes.Address, self.tables.addresses
 
@@ -817,22 +818,47 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         # needs to be deannotated
         m.add_property("x", column_property(User.name + "name"))
         s = fixture_session()
-        q = s.query(m2).select_from(Address).join(Address.foo)
-        self.assert_compile(
-            q,
-            "SELECT "
-            "addresses_1.id AS addresses_1_id, "
-            "users_1.id AS users_1_id, "
-            "users_1.name AS users_1_name, "
-            "addresses_1.user_id AS addresses_1_user_id, "
-            "addresses_1.email_address AS "
-            "addresses_1_email_address, "
-            "users_1.name || :name_1 AS anon_1 "
-            "FROM addresses JOIN (users AS users_1 JOIN addresses "
-            "AS addresses_1 ON users_1.id = "
-            "addresses_1.user_id) ON "
-            "users_1.id = addresses.user_id",
-        )
+
+        if autoalias:
+            q = s.query(m2).select_from(Address).join(Address.foo)
+
+            with testing.expect_warnings(
+                "An alias is being generated automatically against joined "
+                "entity mapped class SubUser"
+            ):
+                self.assert_compile(
+                    q,
+                    "SELECT "
+                    "addresses_1.id AS addresses_1_id, "
+                    "users_1.id AS users_1_id, "
+                    "users_1.name AS users_1_name, "
+                    "addresses_1.user_id AS addresses_1_user_id, "
+                    "addresses_1.email_address AS "
+                    "addresses_1_email_address, "
+                    "users_1.name || :name_1 AS anon_1 "
+                    "FROM addresses JOIN (users AS users_1 JOIN addresses "
+                    "AS addresses_1 ON users_1.id = "
+                    "addresses_1.user_id) ON "
+                    "users_1.id = addresses.user_id",
+                )
+        else:
+            m3 = aliased(m2, flat=True)
+            q = s.query(m3).select_from(Address).join(Address.foo.of_type(m3))
+            self.assert_compile(
+                q,
+                "SELECT "
+                "addresses_1.id AS addresses_1_id, "
+                "users_1.id AS users_1_id, "
+                "users_1.name AS users_1_name, "
+                "addresses_1.user_id AS addresses_1_user_id, "
+                "addresses_1.email_address AS "
+                "addresses_1_email_address, "
+                "users_1.name || :name_1 AS anon_1 "
+                "FROM addresses JOIN (users AS users_1 JOIN addresses "
+                "AS addresses_1 ON users_1.id = "
+                "addresses_1.user_id) ON "
+                "users_1.id = addresses.user_id",
+            )
 
     def test_column_prop_deannotate(self):
         """test that column property deannotates,

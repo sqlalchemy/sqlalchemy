@@ -13,6 +13,7 @@ from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import fixture_session
 from ._poly_fixtures import _Polymorphic
@@ -29,8 +30,9 @@ from ._poly_fixtures import Paperwork
 from ._poly_fixtures import Person
 
 
-class _PolymorphicTestBase(object):
+class _PolymorphicTestBase(fixtures.NoCache):
     __backend__ = True
+    __dialect__ = "default_enhanced"
 
     @classmethod
     def setup_mappers(cls):
@@ -1143,18 +1145,14 @@ class _PolymorphicTestBase(object):
         # non-polymorphic
         eq_(sess.query(Engineer).join(Person.paperwork).all(), [e1, e2, e3])
 
-    def test_join_to_subclass(self):
+    def test_join_to_subclass_manual_alias(self):
         sess = fixture_session()
 
-        # TODO: these should all be deprecated (?) - these joins are on the
-        # core tables and should not be getting adapted, not sure why
-        # adaptation is happening? (is it?)  emit a warning when the adaptation
-        # occurs?
-
+        target = aliased(Engineer, people.join(engineers))
         eq_(
             sess.query(Company)
-            .join(people.join(engineers), "employees")
-            .filter(Engineer.primary_language == "java")
+            .join(Company.employees.of_type(target))
+            .filter(target.primary_language == "java")
             .all(),
             [c1],
         )
@@ -1164,16 +1162,6 @@ class _PolymorphicTestBase(object):
         eq_(
             sess.query(Company)
             .select_from(companies.join(people).join(engineers))
-            .filter(Engineer.primary_language == "java")
-            .all(),
-            [c1],
-        )
-
-    def test_join_to_subclass_two(self):
-        sess = fixture_session()
-        eq_(
-            sess.query(Company)
-            .join(people.join(engineers), "employees")
             .filter(Engineer.primary_language == "java")
             .all(),
             [c1],
@@ -1192,9 +1180,10 @@ class _PolymorphicTestBase(object):
 
     def test_join_to_subclass_six(self):
         sess = fixture_session()
+
         eq_(
             sess.query(Company)
-            .join(people.join(engineers), "employees")
+            .join(Company.employees.of_type(Engineer))
             .join(Engineer.machines)
             .all(),
             [c1, c2],
@@ -1202,23 +1191,25 @@ class _PolymorphicTestBase(object):
 
     def test_join_to_subclass_six_point_five(self):
         sess = fixture_session()
-        eq_(
+
+        q = (
             sess.query(Company)
-            .join(people.join(engineers), "employees")
+            .join(Company.employees.of_type(Engineer))
             .join(Engineer.machines)
             .filter(Engineer.name == "dilbert")
-            .all(),
-            [c1],
         )
-
-    def test_join_to_subclass_seven(self):
-        sess = fixture_session()
+        self.assert_compile(
+            q,
+            "SELECT companies.company_id AS companies_company_id, "
+            "companies.name AS companies_name FROM companies JOIN "
+            "(people JOIN engineers ON people.person_id = "
+            "engineers.person_id) ON "
+            "companies.company_id = people.company_id "
+            "JOIN machines ON engineers.person_id = machines.engineer_id "
+            "WHERE people.name = :name_1",
+        )
         eq_(
-            sess.query(Company)
-            .join(people.join(engineers), "employees")
-            .join(Engineer.machines)
-            .filter(Machine.name.ilike("%thinkpad%"))
-            .all(),
+            q.all(),
             [c1],
         )
 

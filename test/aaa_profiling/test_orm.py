@@ -18,25 +18,12 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.testing import config
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import profiling
 from sqlalchemy.testing.fixtures import fixture_session
+from sqlalchemy.testing.fixtures import NoCache
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
-
-
-class NoCache(object):
-    run_setup_bind = "each"
-
-    @classmethod
-    def setup_test_class(cls):
-        cls._cache = config.db._compiled_cache
-        config.db._compiled_cache = None
-
-    @classmethod
-    def teardown_test_class(cls):
-        config.db._compiled_cache = cls._cache
 
 
 class MergeTest(NoCache, fixtures.MappedTest):
