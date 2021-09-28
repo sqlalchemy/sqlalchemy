@@ -39,6 +39,8 @@ To listen with the :func:`.listens_for` decorator looks like::
     def my_on_connect(dbapi_con, connection_record):
         print("New DBAPI connection:", dbapi_con)
 
+.. _event_named_argument_styles:
+
 Named Argument Styles
 ---------------------
 
@@ -111,6 +113,9 @@ and objects::
 
     # associate listener with my_engine.pool
     listen(my_engine, 'connect', my_on_connect)
+
+
+.. _event_modifiers:
 
 Modifiers
 ---------
