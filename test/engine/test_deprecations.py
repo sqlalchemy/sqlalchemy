@@ -4,13 +4,8 @@ from unittest.mock import Mock
 import sqlalchemy as tsa
 from sqlalchemy import create_engine
 from sqlalchemy import event
-from sqlalchemy import exc
-from sqlalchemy import insert
-from sqlalchemy import Integer
-from sqlalchemy import MetaData
 from sqlalchemy import pool
 from sqlalchemy import select
-from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.engine import BindTyping
 from sqlalchemy.engine import reflection
@@ -29,10 +24,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_instance_of
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import expect_deprecated
-from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.engines import testing_engine
-from sqlalchemy.testing.schema import Column
-from sqlalchemy.testing.schema import Table
 
 
 def _string_deprecation_expect():
@@ -442,55 +434,11 @@ class ImplicitReturningFlagTest(fixtures.TestBase):
     @testing.combinations(True, False, None, argnames="implicit_returning")
     def test_implicit_returning_engine_parameter(self, implicit_returning):
         if implicit_returning is None:
-            e = engines.testing_engine()
+            engines.testing_engine()
         else:
             with assertions.expect_deprecated(ce_implicit_returning):
-                e = engines.testing_engine(
+                engines.testing_engine(
                     options={"implicit_returning": implicit_returning}
                 )
 
-        if implicit_returning is None:
-            eq_(
-                e.dialect.implicit_returning,
-                testing.db.dialect.implicit_returning,
-            )
-        else:
-            eq_(e.dialect.implicit_returning, implicit_returning)
-
-        t = Table(
-            "t",
-            MetaData(),
-            Column("id", Integer, primary_key=True),
-            Column("data", String(50)),
-        )
-
-        t2 = Table(
-            "t",
-            MetaData(),
-            Column("id", Integer, primary_key=True),
-            Column("data", String(50)),
-            implicit_returning=False,
-        )
-
-        with e.connect() as conn:
-            stmt = insert(t).values(data="data")
-
-            if implicit_returning:
-                if not testing.requires.returning.enabled:
-                    with expect_raises_message(
-                        exc.CompileError, "RETURNING is not supported"
-                    ):
-                        stmt.compile(conn)
-                else:
-                    eq_(stmt.compile(conn).implicit_returning, [t.c.id])
-            elif (
-                implicit_returning is None
-                and testing.db.dialect.implicit_returning
-            ):
-                eq_(stmt.compile(conn).implicit_returning, [t.c.id])
-            else:
-                eq_(stmt.compile(conn).implicit_returning, [])
-
-            # table setting it to False disables it
-            stmt2 = insert(t2).values(data="data")
-            eq_(stmt2.compile(conn).implicit_returning, [])
+            # parameter has no effect

@@ -293,40 +293,16 @@ added in a future release.
 RETURNING Support
 -----------------
 
-The Oracle database supports a limited form of RETURNING, in order to retrieve
-result sets of matched rows from INSERT, UPDATE and DELETE statements.
-Oracle's RETURNING..INTO syntax only supports one row being returned, as it
-relies upon OUT parameters in order to function.  In addition, supported
-DBAPIs have further limitations (see :ref:`cx_oracle_returning`).
+The Oracle database supports RETURNING fully for INSERT, UPDATE and DELETE
+statements that are invoked with a single collection of bound parameters
+(that is, a ``cursor.execute()`` style statement; SQLAlchemy does not generally
+support RETURNING with :term:`executemany` statements).  Multiple rows may be
+returned as well.
 
-SQLAlchemy's "implicit returning" feature, which employs RETURNING within an
-INSERT and sometimes an UPDATE statement in order to fetch newly generated
-primary key values and other SQL defaults and expressions, is normally enabled
-on the Oracle backend.  By default, "implicit returning" typically only
-fetches the value of a single ``nextval(some_seq)`` expression embedded into
-an INSERT in order to increment a sequence within an INSERT statement and get
-the value back at the same time. To disable this feature across the board,
-specify ``implicit_returning=False`` to :func:`_sa.create_engine`::
-
-    engine = create_engine("oracle+cx_oracle://scott:tiger@dsn",
-                           implicit_returning=False)
-
-Implicit returning can also be disabled on a table-by-table basis as a table
-option::
-
-    # Core Table
-    my_table = Table("my_table", metadata, ..., implicit_returning=False)
+.. versionchanged:: 2.0  the Oracle backend has full support for RETURNING
+   on parity with other backends.
 
 
-    # declarative
-    class MyClass(Base):
-        __tablename__ = 'my_table'
-        __table_args__ = {"implicit_returning": False}
-
-.. seealso::
-
-    :ref:`cx_oracle_returning` - additional cx_oracle-specific restrictions on
-    implicit returning.
 
 ON UPDATE CASCADE
 -----------------
@@ -1572,8 +1548,9 @@ class OracleDialect(default.DefaultDialect):
     supports_alter = True
     max_identifier_length = 128
 
-    implicit_returning = True
-    full_returning = True
+    insert_returning = True
+    update_returning = True
+    delete_returning = True
 
     div_is_floordiv = False
 

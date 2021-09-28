@@ -218,9 +218,15 @@ class SequenceExecTest(fixtures.TestBase):
     @testing.combinations(
         ("implicit_returning",),
         ("no_implicit_returning",),
-        ("explicit_returning", testing.requires.returning),
-        ("return_defaults_no_implicit_returning", testing.requires.returning),
-        ("return_defaults_implicit_returning", testing.requires.returning),
+        ("explicit_returning", testing.requires.insert_returning),
+        (
+            "return_defaults_no_implicit_returning",
+            testing.requires.insert_returning,
+        ),
+        (
+            "return_defaults_implicit_returning",
+            testing.requires.insert_returning,
+        ),
         argnames="returning",
     )
     @testing.requires.multivalues_inserts
@@ -264,17 +270,17 @@ class SequenceExecTest(fixtures.TestBase):
         ("no_implicit_returning",),
         (
             "explicit_returning",
-            testing.requires.returning
+            testing.requires.insert_returning
             + testing.requires.insert_executemany_returning,
         ),
         (
             "return_defaults_no_implicit_returning",
-            testing.requires.returning
+            testing.requires.insert_returning
             + testing.requires.insert_executemany_returning,
         ),
         (
             "return_defaults_implicit_returning",
-            testing.requires.returning
+            testing.requires.insert_returning
             + testing.requires.insert_executemany_returning,
         ),
         argnames="returning",
@@ -318,7 +324,7 @@ class SequenceExecTest(fixtures.TestBase):
             [(1, "d1"), (2, "d2"), (3, "d3")],
         )
 
-    @testing.requires.returning
+    @testing.requires.insert_returning
     def test_inserted_pk_implicit_returning(self, connection, metadata):
         """test inserted_primary_key contains the result when
         pk_col=next_value(), when implicit returning is used."""
@@ -435,7 +441,7 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         assert not self._has_sequence(connection, "s1")
         assert not self._has_sequence(connection, "s2")
 
-    @testing.requires.returning
+    @testing.requires.insert_returning
     @testing.requires.supports_sequence_for_autoincrement_column
     @testing.provide_metadata
     def test_freestanding_sequence_via_autoinc(self, connection):
@@ -545,7 +551,7 @@ class TableBoundSequenceTest(fixtures.TablesTest):
         return go
 
     @testing.combinations(
-        (True, testing.requires.returning),
+        (True, testing.requires.insert_returning),
         (False,),
         argnames="implicit_returning",
     )
@@ -571,7 +577,7 @@ class TableBoundSequenceTest(fixtures.TablesTest):
         )
 
     @testing.combinations(
-        (True, testing.requires.returning),
+        (True, testing.requires.insert_returning),
         (False,),
         argnames="implicit_returning",
     )

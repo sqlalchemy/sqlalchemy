@@ -3411,7 +3411,7 @@ class RefreshFlushInReturningTest(fixtures.MappedTest):
         s.add(t1)
         s.flush()
 
-        if testing.requires.returning.enabled:
+        if testing.requires.insert_returning.enabled:
             # ordering is deterministic in this test b.c. the routine
             # appends the "returning" params before the "prefetch"
             # ones.  if there were more than one attribute in each category,

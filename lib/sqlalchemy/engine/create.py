@@ -57,7 +57,7 @@ def create_engine(
     execution_options: _ExecuteOptions = ...,
     future: Literal[True],
     hide_parameters: bool = ...,
-    implicit_returning: bool = ...,
+    implicit_returning: Literal[True] = ...,
     isolation_level: _IsolationLevel = ...,
     json_deserializer: Callable[..., Any] = ...,
     json_serializer: Callable[..., Any] = ...,
@@ -266,18 +266,12 @@ def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> Engine:
             :ref:`dbengine_logging` - further detail on how to configure
             logging.
 
-    :param implicit_returning=True:  Legacy flag that when set to ``False``
-        will disable the use of ``RETURNING`` on supporting backends where it
-        would normally be used to fetch newly generated primary key values for
-        single-row INSERT statements that do not otherwise specify a RETURNING
-        clause.  This behavior applies primarily to the PostgreSQL, Oracle,
-        SQL Server backends.
+    :param implicit_returning=True:  Legacy parameter that may only be set
+        to True. In SQLAlchemy 2.0, this parameter does nothing. In order to
+        disable "implicit returning" for statements invoked by the ORM,
+        configure this on a per-table basis using the
+        :paramref:`.Table.implicit_returning` parameter.
 
-        .. warning:: this flag originally allowed the "implicit returning"
-           feature to be *enabled* back when it was very new and there was not
-           well-established database support.  In modern SQLAlchemy, this flag
-           should **always be set to True**.  Some SQLAlchemy features will
-           fail to function properly if this flag is set to ``False``.
 
     :param isolation_level: optional string name of an isolation level
         which will be set on all new connections unconditionally.

@@ -1817,7 +1817,7 @@ class CursorResult(Result[_T]):
 
     def merge(self, *others: Result[Any]) -> MergedResult[Any]:
         merged_result = super().merge(*others)
-        setup_rowcounts = not self._metadata.returns_rows
+        setup_rowcounts = self.context._has_rowcount
         if setup_rowcounts:
             merged_result.rowcount = sum(
                 cast("CursorResult[Any]", result).rowcount

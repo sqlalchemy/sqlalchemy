@@ -35,13 +35,12 @@ expired, so that when next accessed the newly generated value will be loaded
 from the database.
 
 The feature also has conditional support to work in conjunction with
-primary key columns.  A database that supports RETURNING, e.g. PostgreSQL,
-Oracle, or SQL Server, or as a special case when using SQLite with the pysqlite
-driver and a single auto-increment column, a SQL expression may be assigned
-to a primary key column as well.  This allows both the SQL expression to
-be evaluated, as well as allows any server side triggers that modify the
-primary key value on INSERT, to be successfully retrieved by the ORM as
-part of the object's primary key::
+primary key columns.  For backends that have RETURNING support
+(including Oracle, SQL Server, MariaDB 10.5, SQLite 3.35) a
+SQL expression may be assigned to a primary key column as well.  This allows
+both the SQL expression to be evaluated, as well as allows any server side
+triggers that modify the primary key value on INSERT, to be successfully
+retrieved by the ORM as part of the object's primary key::
 
 
     class Foo(Base):
@@ -271,9 +270,8 @@ so care must be taken to use the appropriate method. The two questions to be
 answered are, 1. is this column part of the primary key or not, and 2. does the
 database support RETURNING or an equivalent, such as "OUTPUT inserted"; these
 are SQL phrases which return a server-generated value at the same time as the
-INSERT or UPDATE statement is invoked. Databases that support RETURNING or
-equivalent include PostgreSQL, Oracle, and SQL Server.  Databases that do not
-include SQLite and MySQL.
+INSERT or UPDATE statement is invoked.   RETURNING is currently supported
+by PostgreSQL, Oracle, MariaDB 10.5, SQLite 3.35, and SQL Server.
 
 Case 1: non primary key, RETURNING or equivalent is supported
 -------------------------------------------------------------

@@ -44,8 +44,6 @@ subsequent insert. Note that when an
 apply; no RETURNING clause is emitted nor is the sequence pre-executed in this
 case.
 
-To force the usage of RETURNING by default off, specify the flag
-``implicit_returning=False`` to :func:`_sa.create_engine`.
 
 PostgreSQL 10 and above IDENTITY columns
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -2351,16 +2349,6 @@ class PGCompiler(compiler.SQLCompiler):
 
         return tmp
 
-    def returning_clause(
-        self, stmt, returning_cols, *, populate_result_map, **kw
-    ):
-        columns = [
-            self._label_returning_column(stmt, c, populate_result_map)
-            for c in expression._select_iterables(returning_cols)
-        ]
-
-        return "RETURNING " + ", ".join(columns)
-
     def visit_substring_func(self, func, **kw):
         s = self.process(func.clauses.clauses[0], **kw)
         start = self.process(func.clauses.clauses[1], **kw)
@@ -3207,8 +3195,9 @@ class PGDialect(default.DefaultDialect):
     execution_ctx_cls = PGExecutionContext
     inspector = PGInspector
 
-    implicit_returning = True
-    full_returning = True
+    update_returning = True
+    delete_returning = True
+    insert_returning = True
 
     connection_characteristics = (
         default.DefaultDialect.connection_characteristics
@@ -3274,7 +3263,9 @@ class PGDialect(default.DefaultDialect):
         super(PGDialect, self).initialize(connection)
 
         if self.server_version_info <= (8, 2):
-            self.full_returning = self.implicit_returning = False
+            self.delete_returning = (
+                self.update_returning
+            ) = self.insert_returning = False
 
         self.supports_native_enum = self.server_version_info >= (8, 3)
         if not self.supports_native_enum:

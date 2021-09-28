@@ -1635,6 +1635,10 @@ class AliasedReturnsRows(NoInit, NamedFromClause):
 
         return name
 
+    @util.ro_non_memoized_property
+    def implicit_returning(self):
+        return self.element.implicit_returning  # type: ignore
+
     @property
     def original(self):
         """Legacy for dialects that are referring to Alias.original."""

@@ -365,15 +365,30 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
-    def full_returning(self):
-        """target platform supports RETURNING completely, including
-        multiple rows returned.
-
-        """
+    def delete_returning(self):
+        """target platform supports DELETE ... RETURNING."""
 
         return exclusions.only_if(
-            lambda config: config.db.dialect.full_returning,
-            "%(database)s %(does_support)s 'RETURNING of multiple rows'",
+            lambda config: config.db.dialect.delete_returning,
+            "%(database)s %(does_support)s 'DELETE ... RETURNING'",
+        )
+
+    @property
+    def insert_returning(self):
+        """target platform supports INSERT ... RETURNING."""
+
+        return exclusions.only_if(
+            lambda config: config.db.dialect.insert_returning,
+            "%(database)s %(does_support)s 'INSERT ... RETURNING'",
+        )
+
+    @property
+    def update_returning(self):
+        """target platform supports UPDATE ... RETURNING."""
+
+        return exclusions.only_if(
+            lambda config: config.db.dialect.update_returning,
+            "%(database)s %(does_support)s 'UPDATE ... RETURNING'",
         )
 
     @property
@@ -388,21 +403,6 @@ class SuiteRequirements(Requirements):
             lambda config: config.db.dialect.insert_executemany_returning,
             "%(database)s %(does_support)s 'RETURNING of "
             "multiple rows with INSERT executemany'",
-        )
-
-    @property
-    def returning(self):
-        """target platform supports RETURNING for at least one row.
-
-        .. seealso::
-
-            :attr:`.Requirements.full_returning`
-
-        """
-
-        return exclusions.only_if(
-            lambda config: config.db.dialect.implicit_returning,
-            "%(database)s %(does_support)s 'RETURNING of a single row'",
         )
 
     @property
