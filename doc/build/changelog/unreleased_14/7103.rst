@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug
+    :tickets: 7103
+
+    Add missing methods added in :ticket:`6991` to ``scoped_session`` and
+    ``async_scoped_session``.

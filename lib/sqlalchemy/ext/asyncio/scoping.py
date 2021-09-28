@@ -40,6 +40,9 @@ from ...util import ScopedRegistry
         "refresh",
         "rollback",
         "scalar",
+        "scalars",
+        "stream",
+        "stream_scalars",
     ],
     attributes=[
         "bind",
