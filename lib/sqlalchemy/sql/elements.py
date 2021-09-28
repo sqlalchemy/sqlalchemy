@@ -3272,6 +3272,36 @@ class Extract(ColumnElement):
         as well as ``func.extract`` from the
         :data:`.func` namespace.
 
+        :param field: The field to extract.
+
+        :param expr: A column or Python scalar expression serving as the
+          right side of the ``EXTRACT`` expression.
+
+        E.g.::
+
+            from sqlalchemy import extract
+            from sqlalchemy import table, column
+
+            logged_table = table("user",
+                    column("id"),
+                    column("date_created"),
+            )
+
+            stmt = select(logged_table.c.id).where(
+                extract("YEAR", logged_table.c.date_created) == 2021
+            )
+
+        In the above example, the statement is used to select ids from the
+        database where the ``YEAR`` component matches a specific value.
+
+        Similarly, one can also select an extracted component::
+
+            stmt = select(
+                extract("YEAR", logged_table.c.date_created)
+            ).where(logged_table.c.id == 1)
+
+        The implementation of ``EXTRACT`` may vary across database backends.
+        Users are reminded to consult their database documentation.
         """
         self.type = type_api.INTEGERTYPE
         self.field = field
