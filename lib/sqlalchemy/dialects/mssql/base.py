@@ -31,11 +31,9 @@ SQL Server provides so-called "auto incrementing" behavior using the
 table. SQLAlchemy considers ``IDENTITY`` within its default "autoincrement"
 behavior for an integer primary key column, described at
 :paramref:`_schema.Column.autoincrement`.  This means that by default,
-the first
-integer primary key column in a :class:`_schema.Table`
-will be considered to be the
-identity column - unless it is associated with a :class:`.Sequence` - and will
-generate DDL as such::
+the first integer primary key column in a :class:`_schema.Table` will be
+considered to be the identity column - unless it is associated with a
+:class:`.Sequence` - and will generate DDL as such::
 
     from sqlalchemy import Table, MetaData, Column, Integer
 
@@ -169,6 +167,70 @@ The CREATE TABLE for the above :class:`_schema.Table` object would be:
    supports real sequences as a separate construct, :class:`.Sequence` will be
    functional in the normal way starting from SQLAlchemy version 1.4.
 
+
+Using IDENTITY with Non-Integer numeric types
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+SQL Server also allows ``IDENTITY`` to be used with ``NUMERIC`` columns.  To
+implement this pattern smoothly in SQLAlchemy, the primary datatype of the
+column should remain as ``Integer``, however the underlying implementation
+type deployed to the SQL Server database can be specified as ``Numeric`` using
+:meth:`.TypeEngine.with_variant`::
+
+    from sqlalchemy import Column
+    from sqlalchemy import Integer
+    from sqlalchemy import Numeric
+    from sqlalchemy import String
+    from sqlalchemy.ext.declarative import declarative_base
+
+    Base = declarative_base()
+
+    class TestTable(Base):
+        __tablename__ = "test"
+        id = Column(
+            Integer().with_variant(Numeric(10, 0), "mssql"),
+            primary_key=True,
+            autoincrement=True,
+        )
+        name = Column(String)
+
+In the above example, ``Integer().with_variant()`` provides clear usage
+information that accurately describes the intent of the code. The general
+restriction that ``autoincrement`` only applies to ``Integer`` is established
+at the metadata level and not at the per-dialect level.
+
+When using the above pattern, the primary key identifier that comes back from
+the insertion of a row, which is also the value that would be assigned to an
+ORM object such as ``TestTable`` above, will be an instance of ``Decimal()``
+and not ``int`` when using SQL Server. The numeric return type of the
+:class:`_types.Numeric` type can be changed to return floats by passing False
+to :paramref:`_types.Numeric.asdecimal`. To normalize the return type of the
+above ``Numeric(10, 0)`` to return Python ints (which also support "long"
+integer values in Python 3), use :class:`_types.TypeDecorator` as follows::
+
+    from sqlalchemy import TypeDecorator
+
+    class NumericAsInteger(TypeDecorator):
+        '''normalize floating point return values into ints'''
+
+        impl = Numeric(10, 0, asdecimal=False)
+        cache_ok = True
+
+        def process_result_value(self, value, dialect):
+            if value is not None:
+                value = int(value)
+            return value
+
+    class TestTable(Base):
+        __tablename__ = "test"
+        id = Column(
+            Integer().with_variant(NumericAsInteger, "mssql"),
+            primary_key=True,
+            autoincrement=True,
+        )
+        name = Column(String)
+
+
 INSERT behavior
 ^^^^^^^^^^^^^^^^
 
@@ -249,8 +311,7 @@ how SQLAlchemy handles this:
 
 
 
-This
-is an auxiliary use case suitable for testing and bulk insert scenarios.
+This is an auxiliary use case suitable for testing and bulk insert scenarios.
 
 SEQUENCE support
 ----------------
