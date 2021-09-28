@@ -105,11 +105,16 @@ class DDLEvents(event.Events):
          event, the checkfirst flag, and other
          elements used by internal events.
 
-        :func:`.event.listen` also accepts the ``propagate=True``
+        :func:`.event.listen` accepts the ``propagate=True``
         modifier for this event; when True, the listener function will
         be established for any copies made of the target object,
         i.e. those copies that are generated when
         :meth:`_schema.Table.to_metadata` is used.
+
+        :func:`.event.listen` accepts the ``insert=True``
+        modifier for this event; when True, the listener function will
+        be prepended to the internal list of events upon discovery, and execute
+        before registered listener functions that do not pass this argument.
 
         """
 
