@@ -3515,7 +3515,7 @@ def _dispose_registries(registries, cascade):
 def reconstructor(fn):
     """Decorate a method as the 'reconstructor' hook.
 
-    Designates a method as the "reconstructor", an ``__init__``-like
+    Designates a single method as the "reconstructor", an ``__init__``-like
     method that will be called by the ORM after the instance has been
     loaded from the database or otherwise reconstituted.
 
