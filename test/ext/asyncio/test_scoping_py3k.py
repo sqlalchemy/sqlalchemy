@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy.ext.asyncio import async_scoped_session
 from sqlalchemy.ext.asyncio import AsyncSession as _AsyncSession
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.testing import async_test
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import is_
@@ -44,3 +45,35 @@ class AsyncScopedSessionTest(AsyncFixture):
             await AsyncSession.delete(u1)
             await AsyncSession.flush()
             eq_(await conn.scalar(stmt), 0)
+
+    @testing.requires.python37
+    def test_attributes(self, async_engine):
+        from asyncio import current_task
+
+        expected = [
+            name
+            for cls in _AsyncSession.mro()
+            for name in vars(cls)
+            if not name.startswith("_")
+        ]
+
+        ignore_list = {
+            "dispatch",
+            "sync_session_class",
+            "run_sync",
+            "get_transaction",
+            "get_nested_transaction",
+            "in_transaction",
+            "in_nested_transaction",
+        }
+
+        SM = async_scoped_session(
+            sessionmaker(async_engine, class_=_AsyncSession), current_task
+        )
+
+        missing = [
+            name
+            for name in expected
+            if not hasattr(SM, name) and name not in ignore_list
+        ]
+        eq_(missing, [])

@@ -209,3 +209,35 @@ class ScopedSessionTest(fixtures.MappedTest):
         ss = scoped_session(sessionmaker(testing.db, class_=MySession))
 
         is_(ss.get_bind(), testing.db)
+
+    def test_attributes(self):
+        expected = [
+            name
+            for cls in Session.mro()
+            for name in vars(cls)
+            if not name.startswith("_")
+        ]
+
+        ignore_list = {
+            "connection_callable",
+            "transaction",
+            "in_transaction",
+            "in_nested_transaction",
+            "get_transaction",
+            "get_nested_transaction",
+            "prepare",
+            "invalidate",
+            "bind_mapper",
+            "bind_table",
+            "enable_relationship_loading",
+            "dispatch",
+        }
+
+        SM = scoped_session(sa.orm.sessionmaker(testing.db))
+
+        missing = [
+            name
+            for name in expected
+            if not hasattr(SM, name) and name not in ignore_list
+        ]
+        eq_(missing, [])

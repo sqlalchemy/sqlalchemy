@@ -105,6 +105,7 @@ class ScopedSessionMixin(object):
         "refresh",
         "rollback",
         "scalar",
+        "scalars",
     ],
     attributes=[
         "bind",
