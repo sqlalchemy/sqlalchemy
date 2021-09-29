@@ -443,6 +443,171 @@ differences are as follows:
    concepts, no third party networking libraries as ``gevent`` and ``eventlet``
    provides are in use.
 
+.. _asyncio_events:
+
+Using events with the asyncio extension
+---------------------------------------
+
+The SQLAlchemy :ref:`event system <event_toplevel>` is not directly exposed
+by the asyncio extension, meaning there is not yet an "async" version of a
+SQLAlchemy event handler.
+
+However, as the asyncio extension surrounds the usual synchronous SQLAlchemy
+API, regular "synchronous" style event handlers are freely available as they
+would be if asyncio were not used.
+
+As detailed below, there are two current strategies to register events given
+asyncio-facing APIs:
+
+* Events can be registered at the instance level (e.g. a specific
+  :class:`_asyncio.AsyncEngine` instance) by associating the event with the
+  ``sync`` attribute that refers to the proxied object. For example to register
+  the :meth:`_events.PoolEvents.connect` event against an
+  :class:`_asyncio.AsyncEngine` instance, use its
+  :attr:`_asyncio.AsyncEngine.sync_engine` attribute as target. Targets
+  include:
+
+      :attr:`_asyncio.AsyncEngine.sync_engine`
+
+      :attr:`_asyncio.AsyncConnection.sync_connection`
+
+      :attr:`_asyncio.AsyncConnection.sync_engine`
+
+      :attr:`_asyncio.AsyncSession.sync_session`
+
+* To register an event at the class level, targeting all instances of the same type (e.g.
+  all :class:`_asyncio.AsyncSession` instances), use the corresponding
+  sync-style class. For example to register the
+  :meth:`_ormevents.SessionEvents.before_commit` event against the
+  :class:`_asyncio.AsyncSession` class, use the :class:`_orm.Session` class as
+  the target.
+
+When working within an event handler that is within an asyncio context, objects
+like the :class:`_engine.Connection` continue to work in their usual
+"synchronous" way without requiring ``await`` or ``async`` usage; when messages
+are ultimately received by the asyncio database adapter, the calling style is
+transparently adapted back into the asyncio calling style.  For events that
+are passed a DBAPI level connection, such as :meth:`_events.PoolEvents.connect`,
+the object is a :term:`pep-249` compliant "connection" object which will adapt
+sync-style calls into the asyncio driver.
+
+Some examples of sync style event handlers associated with async-facing API
+constructs are illustrated below::
+
+    import asyncio
+
+    from sqlalchemy import text
+    from sqlalchemy.engine import Engine
+    from sqlalchemy import event
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy.orm import Session
+
+    ## Core events ##
+
+    engine = create_async_engine(
+        "postgresql+asyncpg://scott:tiger@localhost:5432/test"
+    )
+
+    # connect event on instance of Engine
+    @event.listens_for(engine.sync_engine, "connect")
+    def my_on_connect(dbapi_con, connection_record):
+        print("New DBAPI connection:", dbapi_con)
+        cursor = dbapi_con.cursor()
+
+        # sync style API use for adapted DBAPI connection / cursor
+        cursor.execute("select 'execute from event'")
+        print(cursor.fetchone()[0])
+
+    # before_execute event on all Engine instances
+    @event.listens_for(Engine, "before_execute")
+    def my_before_execute(
+        conn, clauseelement, multiparams, params, execution_options
+    ):
+        print("before execute!")
+
+
+    ## ORM events ##
+
+    session = AsyncSession(engine)
+
+    # before_commit event on instance of Session
+    @event.listens_for(session.sync_session, "before_commit")
+    def my_before_commit(session):
+        print("before commit!")
+
+        # sync style API use on Session
+        connection = session.connection()
+
+        # sync style API use on Connection
+        result = connection.execute(text("select 'execute from event'"))
+        print(result.first())
+
+    # after_commit event on all Session instances
+    @event.listens_for(Session, "after_commit")
+    def my_after_commit(session):
+        print("after commit!")
+
+    async def go():
+        await session.execute(text("select 1"))
+        await session.commit()
+
+        await session.close()
+        await engine.dispose()
+
+    asyncio.run(go())
+
+The above example prints something along the lines of::
+
+    New DBAPI connection: <AdaptedConnection <asyncpg.connection.Connection ...>>
+    execute from event
+    before execute!
+    before commit!
+    execute from event
+    after commit!
+
+.. topic:: asyncio and events, two opposites
+
+    SQLAlchemy events by their nature take place within the **interior** of a
+    particular SQLAlchemy process; that is, an event always occurs *after* some
+    particular SQLAlchemy API has been invoked by end-user code, and *before*
+    some other internal aspect of that API occurs.
+
+    Constrast this to the architecture of the asyncio extension, which takes
+    place on the **exterior** of SQLAlchemy's usual flow from end-user API to
+    DBAPI function.
+
+    The flow of messaging may be visualized as follows::
+
+         SQLAlchemy    SQLAlchemy        SQLAlchemy          SQLAlchemy   plain
+          asyncio      asyncio           ORM/Core            asyncio      asyncio
+          (public      (internal)                            (internal)
+          facing)
+        -------------|------------|------------------------|-----------|------------
+        asyncio API  |            |                        |           |
+        call  ->     |            |                        |           |
+                     |  ->  ->    |                        |  ->  ->   |
+                     |~~~~~~~~~~~~| sync API call ->       |~~~~~~~~~~~|
+                     | asyncio    |  event hooks ->        | sync      |
+                     | to         |   invoke action ->     | to        |
+                     | sync       |    event hooks ->      | asyncio   |
+                     | (greenlet) |     dialect ->         | (leave    |
+                     |~~~~~~~~~~~~|      event hooks ->    | greenlet) |
+                     |  ->  ->    |       sync adapted     |~~~~~~~~~~~|
+                     |            |               DBAPI -> |  ->  ->   | asyncio
+                     |            |                        |           | driver -> database
+
+
+    Where above, an API call always starts as asyncio, flows through the
+    synchronous API, and ends as asyncio, before results are propagated through
+    this same chain in the opposite direction. In between, the message is
+    adapted first into sync-style API use, and then back out to async style.
+    Event hooks then by their nature occur in the middle of the "sync-style API
+    use".  From this it follows that the API presented within event hooks
+    occurs inside the process by which asyncio API requests have been adapted
+    to sync, and outgoing messages to the database API will be converted
+    to asyncio transparently.
+
 Using multiple asyncio event loops
 ----------------------------------
 
