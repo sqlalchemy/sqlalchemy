@@ -1,5 +1,3 @@
-from asyncio import current_task
-
 import sqlalchemy as sa
 from sqlalchemy import func
 from sqlalchemy import select
@@ -48,7 +46,10 @@ class AsyncScopedSessionTest(AsyncFixture):
             await AsyncSession.flush()
             eq_(await conn.scalar(stmt), 0)
 
+    @testing.requires.python37
     def test_attributes(self, async_engine):
+        from asyncio import current_task
+
         expected = [
             name
             for cls in _AsyncSession.mro()
