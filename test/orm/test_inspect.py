@@ -516,7 +516,7 @@ class %s(SuperCls):
 
     @testing.requires.pep520
     def test_all_orm_descriptors_pep520_noinh(self):
-        from sqlalchemy.ext.declarative import declarative_base
+        from sqlalchemy.orm import declarative_base
 
         Base = declarative_base()
 
@@ -529,7 +529,7 @@ class %s(SuperCls):
 
     @testing.requires.pep520
     def test_all_orm_descriptors_pep520_onelevel_inh(self):
-        from sqlalchemy.ext.declarative import declarative_base
+        from sqlalchemy.orm import declarative_base
 
         Base = declarative_base()
 

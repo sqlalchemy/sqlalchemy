@@ -13,12 +13,12 @@ from sqlalchemy import String
 from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import util
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import composite
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import joinedload

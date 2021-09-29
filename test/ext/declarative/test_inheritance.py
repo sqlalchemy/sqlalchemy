@@ -4,15 +4,15 @@ from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy.ext import declarative as decl
 from sqlalchemy.ext.declarative import AbstractConcreteBase
 from sqlalchemy.ext.declarative import ConcreteBase
-from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.ext.declarative import has_inherited_table
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import close_all_sessions
 from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import exc as orm_exc
+from sqlalchemy.orm import has_inherited_table
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
@@ -34,7 +34,7 @@ class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
 
     def setup_test(self):
         global Base
-        Base = decl.declarative_base(testing.db)
+        Base = declarative_base()
 
     def teardown_test(self):
         close_all_sessions()
@@ -348,7 +348,7 @@ class ConcreteInhTest(
             }
 
         Base.metadata.create_all(testing.db)
-        sess = Session()
+        sess = fixture_session()
         sess.add(Engineer(name="d"))
         sess.commit()
 
@@ -691,52 +691,52 @@ class ConcreteExtensionConfigTest(
             __mapper_args__ = {"polymorphic_identity": "c", "concrete": True}
 
         Base.metadata.create_all(testing.db)
-        sess = Session()
-        sess.add_all(
-            [
-                A(
-                    data="a1",
-                    collection=set(
-                        [
-                            B(data="a1b1", b_data="a1b1"),
-                            C(data="a1b2", c_data="a1c1"),
-                            B(data="a1b2", b_data="a1b2"),
-                            C(data="a1c2", c_data="a1c2"),
-                        ]
+        with Session(testing.db) as sess:
+            sess.add_all(
+                [
+                    A(
+                        data="a1",
+                        collection=set(
+                            [
+                                B(data="a1b1", b_data="a1b1"),
+                                C(data="a1b2", c_data="a1c1"),
+                                B(data="a1b2", b_data="a1b2"),
+                                C(data="a1c2", c_data="a1c2"),
+                            ]
+                        ),
                     ),
-                ),
-                A(
-                    data="a2",
-                    collection=set(
-                        [
-                            B(data="a2b1", b_data="a2b1"),
-                            C(data="a2c1", c_data="a2c1"),
-                            B(data="a2b2", b_data="a2b2"),
-                            C(data="a2c2", c_data="a2c2"),
-                        ]
+                    A(
+                        data="a2",
+                        collection=set(
+                            [
+                                B(data="a2b1", b_data="a2b1"),
+                                C(data="a2c1", c_data="a2c1"),
+                                B(data="a2b2", b_data="a2b2"),
+                                C(data="a2c2", c_data="a2c2"),
+                            ]
+                        ),
                     ),
-                ),
-            ]
-        )
-        sess.commit()
-        sess.expunge_all()
+                ]
+            )
+            sess.commit()
 
-        eq_(
-            sess.query(A).filter_by(data="a2").all(),
-            [
-                A(
-                    data="a2",
-                    collection=set(
-                        [
-                            B(data="a2b1", b_data="a2b1"),
-                            B(data="a2b2", b_data="a2b2"),
-                            C(data="a2c1", c_data="a2c1"),
-                            C(data="a2c2", c_data="a2c2"),
-                        ]
-                    ),
-                )
-            ],
-        )
+        with Session(testing.db) as sess:
+            eq_(
+                sess.query(A).filter_by(data="a2").all(),
+                [
+                    A(
+                        data="a2",
+                        collection=set(
+                            [
+                                B(data="a2b1", b_data="a2b1"),
+                                B(data="a2b2", b_data="a2b2"),
+                                C(data="a2c1", c_data="a2c1"),
+                                C(data="a2c2", c_data="a2c2"),
+                            ]
+                        ),
+                    )
+                ],
+            )
 
         self.assert_compile(
             sess.query(A).join(A.collection),

@@ -10,6 +10,7 @@ from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import util
 from sqlalchemy.orm import attributes
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
@@ -2000,8 +2001,6 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
     def test_declarative_column_mapped(self):
         """test that uncompiled attribute usage works with
         column_mapped_collection"""
-
-        from sqlalchemy.ext.declarative import declarative_base
 
         BaseObject = declarative_base()
 

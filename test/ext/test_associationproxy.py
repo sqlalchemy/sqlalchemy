@@ -14,13 +14,13 @@ from sqlalchemy import testing
 from sqlalchemy.engine import default
 from sqlalchemy.ext.associationproxy import _AssociationList
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import collections
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session

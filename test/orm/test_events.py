@@ -9,10 +9,10 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import update
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import events
 from sqlalchemy.orm import EXT_SKIP

@@ -15,6 +15,7 @@ from sqlalchemy.ext.mutable import MutableSet
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import composite
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm.instrumentation import ClassManager
 from sqlalchemy.orm.mapper import Mapper
@@ -1004,7 +1005,6 @@ class MutableColumnCopyJSONTest(_MutableDictTestBase, fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         import json
-        from sqlalchemy.ext.declarative import declarative_base
 
         class JSONEncodedDict(TypeDecorator):
             impl = VARCHAR(50)
@@ -1052,7 +1052,6 @@ class MutableColumnCopyArrayTest(_MutableListTestBase, fixtures.MappedTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        from sqlalchemy.ext.declarative import declarative_base
         from sqlalchemy.sql.sqltypes import ARRAY
 
         MutableList = cls._type_fixture()

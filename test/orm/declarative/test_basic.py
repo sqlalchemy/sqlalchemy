@@ -67,9 +67,9 @@ class DeclarativeTestBase(
         global Base
 
         if self.base_style == "dynamic":
-            Base = declarative_base(testing.db)
+            Base = declarative_base()
         elif self.base_style == "explicit":
-            mapper_registry = registry(_bind=testing.db)
+            mapper_registry = registry()
 
             class Base(with_metaclass(DeclarativeMeta)):
                 __abstract__ = True
@@ -86,6 +86,32 @@ class DeclarativeTestBase(
     ("dynamic",), ("explicit",), argnames="base_style", id_="s"
 )
 class DeclarativeTest(DeclarativeTestBase):
+    def test_unbound_declarative_base(self):
+        Base = declarative_base()
+
+        class User(Base):
+            __tablename__ = "user"
+            id = Column(Integer, primary_key=True)
+
+        s = Session()
+
+        with testing.expect_raises(exc.UnboundExecutionError):
+            s.get_bind(User)
+
+    def test_unbound_cls_registry(self):
+        reg = registry()
+
+        Base = reg.generate_base()
+
+        class User(Base):
+            __tablename__ = "user"
+            id = Column(Integer, primary_key=True)
+
+        s = Session()
+
+        with testing.expect_raises(exc.UnboundExecutionError):
+            s.get_bind(User)
+
     def test_basic(self):
         class User(Base, fixtures.ComparableEntity):
             __tablename__ = "users"
@@ -1056,8 +1082,8 @@ class DeclarativeTest(DeclarativeTestBase):
 
     def test_shared_class_registry(self):
         reg = {}
-        Base1 = declarative_base(testing.db, class_registry=reg)
-        Base2 = declarative_base(testing.db, class_registry=reg)
+        Base1 = declarative_base(class_registry=reg)
+        Base2 = declarative_base(class_registry=reg)
 
         class A(Base1):
             __tablename__ = "a"

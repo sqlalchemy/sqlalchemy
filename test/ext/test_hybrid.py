@@ -12,8 +12,8 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.ext import hybrid
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym

@@ -16,10 +16,10 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import util
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import clear_mappers
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
