@@ -327,11 +327,21 @@ Other guidelines include:
   constructs as noted above.  See :ref:`deferred` for background on
   deferred column loading.
 
+.. _dynamic_asyncio:
+
 * The "dynamic" relationship loader strategy described at
-  :ref:`dynamic_relationship` is not compatible with the asyncio approach and
-  cannot be used, unless invoked within the
+  :ref:`dynamic_relationship` is not compatible by default with the asyncio approach.
+  It can be used directly only if invoked within the
   :meth:`_asyncio.AsyncSession.run_sync` method described at
-  :ref:`session_run_sync`.
+  :ref:`session_run_sync`, or by using its ``.statement`` attribute
+  to obtain a normal select::
+
+      user = await session.get(User, 42)
+      addresses = (await session.scalars(user.addresses.statement)).all()
+      stmt = user.addresses.statement.where(
+          Address.email_address.startswith("patrick")
+      )
+      addresses_filter = (await session.scalars(stmt)).all()
 
 .. _session_run_sync:
 
