@@ -3,12 +3,12 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy.ext import declarative as decl
-from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import close_all_sessions
 from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
@@ -29,7 +29,7 @@ Base = None
 class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
     def setup_test(self):
         global Base
-        Base = decl.declarative_base(testing.db)
+        Base = declarative_base()
 
     def teardown_test(self):
         close_all_sessions()

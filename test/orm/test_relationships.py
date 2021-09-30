@@ -2464,7 +2464,7 @@ class NoLoadBackPopulates(_fixtures.FixtureTest):
 
 class JoinConditionErrorTest(fixtures.TestBase):
     def test_clauseelement_pj(self):
-        from sqlalchemy.ext.declarative import declarative_base
+        from sqlalchemy.orm import declarative_base
 
         Base = declarative_base()
 
@@ -2481,7 +2481,7 @@ class JoinConditionErrorTest(fixtures.TestBase):
         assert_raises(sa.exc.ArgumentError, configure_mappers)
 
     def test_clauseelement_pj_false(self):
-        from sqlalchemy.ext.declarative import declarative_base
+        from sqlalchemy.orm import declarative_base
 
         Base = declarative_base()
 
@@ -2522,7 +2522,7 @@ class JoinConditionErrorTest(fixtures.TestBase):
         assert_raises(sa.exc.ArgumentError, configure_mappers)
 
     def test_invalid_string_args(self):
-        from sqlalchemy.ext.declarative import declarative_base
+        from sqlalchemy.orm import declarative_base
 
         for argname, arg in [
             ("remote_side", ["c1.id"]),

@@ -1239,7 +1239,7 @@ class LazyClauseTest(_JoinFixtures, fixtures.TestBase, AssertsCompiledSQL):
 
 class DeannotateCorrectlyTest(fixtures.TestBase):
     def test_pj_deannotates(self):
-        from sqlalchemy.ext.declarative import declarative_base
+        from sqlalchemy.orm import declarative_base
 
         Base = declarative_base()
 

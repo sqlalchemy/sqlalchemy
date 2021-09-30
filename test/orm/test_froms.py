@@ -18,13 +18,13 @@ from sqlalchemy import true
 from sqlalchemy import union
 from sqlalchemy import util
 from sqlalchemy.engine import default
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import contains_eager
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship

@@ -19,6 +19,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import create_session
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import join as orm_join
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import Load
@@ -1608,8 +1609,6 @@ class CycleTest(_fixtures.FixtureTest):
 
     @testing.provide_metadata
     def test_optimized_get(self):
-
-        from sqlalchemy.ext.declarative import declarative_base
 
         Base = declarative_base(metadata=self.metadata)
 

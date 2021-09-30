@@ -2,8 +2,8 @@ from sqlalchemy import Column
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import String
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import descriptor_props
 from sqlalchemy.orm.interfaces import PropComparator
 from sqlalchemy.orm.properties import ColumnProperty
