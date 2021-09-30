@@ -183,7 +183,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.mapper_registry.map_imperatively(Address, addresses)
 
         sess = fixture_session()
-        user = sess.query(User).get(7)
+        user = sess.get(User, 7)
         assert getattr(User, "addresses").hasparent(
             sa.orm.attributes.instance_state(user.addresses[0]),
             optimistic=True,
@@ -488,7 +488,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             eq_(q.all(), [User(id=7, addresses=[Address(id=1)])])
 
         sess.expunge_all()
-        u = sess.query(User).get(7)
+        u = sess.get(User, 7)
 
         def go():
             eq_(u.addresses[0].user_id, 7)
@@ -524,7 +524,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         sess.expunge_all()
 
         def go():
-            u = sess.query(User).get(8)
+            u = sess.get(User, 8)
             eq_(
                 User(
                     id=8,
@@ -1871,7 +1871,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         def go():
             a = q.filter(addresses.c.id == 1).one()
             is_not(a.user, None)
-            u1 = sess.query(User).get(7)
+            u1 = sess.get(User, 7)
             is_(a.user, u1)
 
         self.assert_sql_count(testing.db, go, 1)
@@ -3810,7 +3810,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
     def test_runs_query_on_refresh(self):
         User, Address, sess = self._eager_config_fixture()
 
-        u1 = sess.query(User).get(8)
+        u1 = sess.get(User, 8)
         assert "addresses" in u1.__dict__
         sess.expire(u1)
 
@@ -3848,7 +3848,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         )
         sess = fixture_session(autoflush=False)
 
-        u1 = sess.query(User).get(8)
+        u1 = sess.get(User, 8)
         assert "addresses" in u1.__dict__
         sess.expire(u1)
 
@@ -3870,7 +3870,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         # out an existing collection to function correctly with
         # populate_existing.
         User, Address, sess = self._eager_config_fixture()
-        u1 = sess.query(User).get(8)
+        u1 = sess.get(User, 8)
         u1.addresses[2].email_address = "foofoo"
         del u1.addresses[1]
         u1 = sess.query(User).populate_existing().filter_by(id=8).one()
@@ -3893,7 +3893,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
     def test_loads_second_level_collection_to_scalar(self):
         User, Address, Dingaling, sess = self._collection_to_scalar_fixture()
 
-        u1 = sess.query(User).get(8)
+        u1 = sess.get(User, 8)
         a1 = Address()
         u1.addresses.append(a1)
         a2 = u1.addresses[0]
@@ -3913,7 +3913,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
     def test_loads_second_level_collection_to_collection(self):
         User, Order, Item, sess = self._collection_to_collection_fixture()
 
-        u1 = sess.query(User).get(7)
+        u1 = sess.get(User, 7)
         u1.orders
         o1 = Order()
         u1.orders.append(o1)

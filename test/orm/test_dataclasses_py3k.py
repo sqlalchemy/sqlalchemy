@@ -195,7 +195,7 @@ class DataclassesTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             session.commit()
 
         with fixture_session() as session:
-            a = session.query(Account).get(42)
+            a = session.get(Account, 42)
             self.check_data_fixture(a)
 
     def test_appending_to_relationship(self):
@@ -208,7 +208,7 @@ class DataclassesTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             account.add_widget(Widget("Xyzzy"))
 
         with Session(testing.db) as session:
-            a = session.query(Account).get(42)
+            a = session.get(Account, 42)
             eq_(a.widget_count, 3)
             eq_(len(a.widgets), 3)
 

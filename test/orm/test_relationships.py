@@ -3222,7 +3222,7 @@ class ViewOnlyOverlappingNames(fixtures.MappedTest):
         sess.flush()
         sess.expunge_all()
 
-        c1 = sess.query(C1).get(c1.id)
+        c1 = sess.get(C1, c1.id)
         assert set([x.id for x in c1.t2s]) == set([c2a.id, c2b.id])
         assert set([x.id for x in c1.t2_view]) == set([c2b.id])
 
@@ -3486,7 +3486,7 @@ class ViewOnlyUniqueNames(fixtures.MappedTest):
         sess.flush()
         sess.expunge_all()
 
-        c1 = sess.query(C1).get(c1.t1id)
+        c1 = sess.get(C1, c1.t1id)
         assert set([x.t2id for x in c1.t2s]) == set([c2a.t2id, c2b.t2id])
         assert set([x.t2id for x in c1.t2_view]) == set([c2b.t2id])
 

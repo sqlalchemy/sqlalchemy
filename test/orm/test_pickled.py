@@ -139,7 +139,7 @@ class PickleTest(fixtures.MappedTest):
 
         sess.expunge_all()
 
-        eq_(u1, sess.query(User).get(u2.id))
+        eq_(u1, sess.get(User, u2.id))
 
     def test_no_mappers(self):
         users = self.tables.users
@@ -199,7 +199,7 @@ class PickleTest(fixtures.MappedTest):
             sess.commit()
 
         with fixture_session() as sess:
-            u1 = sess.query(User).get(u1.id)
+            u1 = sess.get(User, u1.id)
             assert "name" not in u1.__dict__
             assert "addresses" not in u1.__dict__
 
@@ -342,15 +342,15 @@ class PickleTest(fixtures.MappedTest):
             sess.commit()
 
         with fixture_session(expire_on_commit=False) as sess:
-            u1 = (
-                sess.query(User)
-                .options(
+            u1 = sess.get(
+                User,
+                u1.id,
+                options=[
                     sa.orm.defer(User.name),
                     sa.orm.defaultload(User.addresses).defer(
                         Address.email_address
                     ),
-                )
-                .get(u1.id)
+                ],
             )
             assert "name" not in u1.__dict__
             assert "addresses" not in u1.__dict__

@@ -207,25 +207,35 @@ class ShardTest(object):
 
     def test_get(self):
         sess = self._fixture_data()
-        tokyo = sess.query(WeatherLocation).get(1)
+        tokyo = sess.get(WeatherLocation, 1)
         eq_(tokyo.city, "Tokyo")
 
-        newyork = sess.query(WeatherLocation).get(2)
+        newyork = sess.get(WeatherLocation, 2)
         eq_(newyork.city, "New York")
 
-        t2 = sess.query(WeatherLocation).get(1)
+        t2 = sess.get(WeatherLocation, 1)
         is_(t2, tokyo)
 
     def test_get_explicit_shard(self):
         sess = self._fixture_data()
-        tokyo = sess.query(WeatherLocation).set_shard("europe").get(1)
+        tokyo = (
+            sess.query(WeatherLocation)
+            .set_shard("europe")
+            .where(WeatherLocation.id == 1)
+            .first()
+        )
         is_(tokyo, None)
 
-        newyork = sess.query(WeatherLocation).set_shard("north_america").get(2)
+        newyork = (
+            sess.query(WeatherLocation)
+            .set_shard("north_america")
+            .where(WeatherLocation.id == 2)
+            .first()
+        )
         eq_(newyork.city, "New York")
 
         # now it found it
-        t2 = sess.query(WeatherLocation).get(1)
+        t2 = sess.get(WeatherLocation, 1)
         eq_(t2.city, "Tokyo")
 
     def test_query_explicit_shard_via_bind_opts(self):
@@ -294,7 +304,7 @@ class ShardTest(object):
         tokyo.city  # reload 'city' attribute on tokyo
         sess.expire_all()
 
-        t = sess.query(WeatherLocation).get(tokyo.id)
+        t = sess.get(WeatherLocation, tokyo.id)
         eq_(t.city, tokyo.city)
         eq_(t.reports[0].temperature, 80.0)
         north_american_cities = sess.query(WeatherLocation).filter(

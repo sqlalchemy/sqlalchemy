@@ -200,7 +200,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 return User.name.__clause_element__()
 
         s = fixture_session()
-        jill = s.query(User).get(3)
+        jill = s.get(User, 3)
         s.query(User).update(
             {Thing(): "moonbeam"}, synchronize_session="evaluate"
         )
@@ -227,7 +227,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         User = self.classes.User
 
         s = fixture_session()
-        jill = s.query(User).get(3)
+        jill = s.get(User, 3)
         s.query(User).update(
             {column("name"): "moonbeam"}, synchronize_session="evaluate"
         )
@@ -244,7 +244,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         )
 
         s = fixture_session()
-        jill = s.query(Foo).get(3)
+        jill = s.get(Foo, 3)
         s.query(Foo).update(
             {"uname": "moonbeam"}, synchronize_session="evaluate"
         )
@@ -259,7 +259,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         )
 
         s = fixture_session()
-        jill = s.query(Foo).get(3)
+        jill = s.get(Foo, 3)
         s.query(Foo).update(
             {Foo.uname: "moonbeam"}, synchronize_session="evaluate"
         )
@@ -276,7 +276,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         )
 
         s = fixture_session()
-        jill = s.query(Foo).get(3)
+        jill = s.get(Foo, 3)
         s.query(Foo).update(
             {Foo.ufoo: "moonbeam"}, synchronize_session="evaluate"
         )

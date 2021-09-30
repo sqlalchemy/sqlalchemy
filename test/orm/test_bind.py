@@ -527,7 +527,7 @@ class SessionBindTest(fixtures.MappedTest):
                 f = Foo()
                 sess.add(f)
                 sess.flush()
-                assert sess.query(Foo).get(f.id) is f
+                assert sess.get(Foo, f.id) is f
             finally:
                 if hasattr(bind, "close"):
                     bind.close()

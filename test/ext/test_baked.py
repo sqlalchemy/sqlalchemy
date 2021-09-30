@@ -223,7 +223,7 @@ class LikeQueryTest(BakedTest):
 
         self.assert_sql_count(testing.db, go, 1)
 
-        u1 = sess.query(User).get(7)  # noqa
+        u1 = sess.get(User, 7)  # noqa
 
         def go():
             u2 = bq(sess).get(7)
@@ -314,7 +314,7 @@ class LikeQueryTest(BakedTest):
 
         self.assert_sql_count(testing.db, go, 1)
 
-        u1 = sess.query(AddressUser).get((10, None))  # noqa
+        u1 = sess.get(AddressUser, (10, None))  # noqa
 
         def go():
             u2 = bq(sess).get((10, None))

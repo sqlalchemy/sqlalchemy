@@ -123,7 +123,7 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         g1 = sess.query(Graph).first()
         sess.close()
 
-        g = sess.query(Graph).get(g1.id)
+        g = sess.get(Graph, g1.id)
         eq_(
             [(e.start, e.end) for e in g.edges],
             [(Point(3, 4), Point(5, 6)), (Point(14, 5), Point(2, 7))],
@@ -142,7 +142,7 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         g.edges[1].end = Point(18, 4)
         sess.commit()
 
-        e = sess.query(Edge).get(g.edges[1].id)
+        e = sess.get(Edge, g.edges[1].id)
         eq_(e.end, Point(18, 4))
 
     def test_not_none(self):
@@ -178,10 +178,8 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         sess.close()
 
         def go():
-            g2 = (
-                sess.query(Graph)
-                .options(sa.orm.joinedload(Graph.edges))
-                .get(g.id)
+            g2 = sess.get(
+                Graph, g.id, options=[sa.orm.joinedload(Graph.edges)]
             )
 
             eq_(
@@ -407,7 +405,7 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         sess.add(g)
         sess.commit()
 
-        g2 = sess.query(Graph).get(1)
+        g2 = sess.get(Graph, 1)
         assert g2.edges[-1].start.x is None
         assert g2.edges[-1].start.y is None
 
@@ -582,7 +580,7 @@ class PrimaryKeyTest(fixtures.MappedTest):
         sess = self._fixture()
         g = sess.query(Graph).first()
 
-        g2 = sess.query(Graph).get([g.id, g.version_id])
+        g2 = sess.get(Graph, [g.id, g.version_id])
         eq_(g.version, g2.version)
 
     def test_get_by_composite(self):
@@ -591,7 +589,7 @@ class PrimaryKeyTest(fixtures.MappedTest):
         sess = self._fixture()
         g = sess.query(Graph).first()
 
-        g2 = sess.query(Graph).get(Version(g.id, g.version_id))
+        g2 = sess.get(Graph, Version(g.id, g.version_id))
         eq_(g.version, g2.version)
 
     def test_pk_mutation(self):
@@ -603,7 +601,7 @@ class PrimaryKeyTest(fixtures.MappedTest):
 
         g.version = Version(2, 1)
         sess.commit()
-        g2 = sess.query(Graph).get(Version(2, 1))
+        g2 = sess.get(Graph, Version(2, 1))
         eq_(g.version, g2.version)
 
     @testing.fails_on_everything_except("sqlite")

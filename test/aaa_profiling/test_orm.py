@@ -88,7 +88,7 @@ class MergeTest(NoCache, fixtures.MappedTest):
 
         sess = fixture_session()
         sess2 = fixture_session()
-        p1 = sess.query(Parent).get(1)
+        p1 = sess.get(Parent, 1)
         p1.children
 
         # down from 185 on this this is a small slice of a usually
@@ -117,7 +117,7 @@ class MergeTest(NoCache, fixtures.MappedTest):
 
         sess = fixture_session()
         sess2 = fixture_session()
-        p1 = sess.query(Parent).get(1)
+        p1 = sess.get(Parent, 1)
         p1.children
 
         # preloading of collection took this down from 1728 to 1192

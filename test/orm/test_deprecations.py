@@ -138,6 +138,8 @@ query_wparent_dep = (
     r"The Query.with_parent\(\) method is considered legacy as of the 1.x"
 )
 
+query_get_dep = r"The Query.get\(\) method is considered legacy as of the 1.x"
+
 sef_dep = (
     r"The Query.select_entity_from\(\) method is considered "
     "legacy as of the 1.x"
@@ -156,6 +158,107 @@ def _aliased_join_deprecation(arg=None):
         "An alias is being generated automatically against joined entity "
         "mapped class " + (arg if arg else "")
     )
+
+
+class GetTest(QueryTest):
+    def test_get(self):
+        User = self.classes.User
+
+        s = fixture_session()
+        with assertions.expect_deprecated_20(query_get_dep):
+            assert s.query(User).get(19) is None
+        with assertions.expect_deprecated_20(query_get_dep):
+            u = s.query(User).get(7)
+        with assertions.expect_deprecated_20(query_get_dep):
+            u2 = s.query(User).get(7)
+        assert u is u2
+        s.expunge_all()
+        with assertions.expect_deprecated_20(query_get_dep):
+            u2 = s.query(User).get(7)
+        assert u is not u2
+
+    def test_loader_options(self):
+        User = self.classes.User
+
+        s = fixture_session()
+
+        with assertions.expect_deprecated_20(query_get_dep):
+            u1 = s.query(User).options(joinedload(User.addresses)).get(8)
+        eq_(len(u1.__dict__["addresses"]), 3)
+
+    def test_no_criterion_when_already_loaded(self):
+        """test that get()/load() does not use preexisting filter/etc.
+        criterion, even when we're only using the identity map."""
+
+        User, Address = self.classes.User, self.classes.Address
+
+        s = fixture_session()
+
+        s.get(User, 7)
+
+        q = s.query(User).join(User.addresses).filter(Address.user_id == 8)
+        with assertions.expect_deprecated_20(query_get_dep):
+            with assertions.expect_raises_message(
+                sa_exc.InvalidRequestError,
+                r"Query.get\(\) being called on a Query with existing "
+                "criterion.",
+            ):
+                q.get(7)
+
+    def test_no_criterion(self):
+        """test that get()/load() does not use preexisting filter/etc.
+        criterion"""
+
+        User, Address = self.classes.User, self.classes.Address
+
+        s = fixture_session()
+
+        q = s.query(User).join(User.addresses).filter(Address.user_id == 8)
+
+        with assertions.expect_deprecated_20(query_get_dep):
+            with assertions.expect_raises_message(
+                sa_exc.InvalidRequestError,
+                r"Query.get\(\) being called on a Query with existing "
+                "criterion.",
+            ):
+                q.get(7)
+
+        with assertions.expect_deprecated_20(query_get_dep):
+            with assertions.expect_raises_message(
+                sa_exc.InvalidRequestError,
+                r"Query.get\(\) being called on a Query with existing "
+                "criterion.",
+            ):
+                s.query(User).filter(User.id == 7).get(19)
+
+        # order_by()/get() doesn't raise
+        with assertions.expect_deprecated_20(query_get_dep):
+            s.query(User).order_by(User.id).get(8)
+
+    def test_get_against_col(self):
+        User = self.classes.User
+
+        s = fixture_session()
+
+        with assertions.expect_deprecated_20(query_get_dep):
+            with assertions.expect_raises_message(
+                sa_exc.InvalidRequestError,
+                r"get\(\) can only be used against a single mapped class.",
+            ):
+                s.query(User.id).get(5)
+
+    def test_only_full_mapper_zero(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        s = fixture_session()
+        q = s.query(User, Address)
+
+        with assertions.expect_deprecated_20(query_get_dep):
+            with assertions.expect_raises_message(
+                sa_exc.InvalidRequestError,
+                r"get\(\) can only be used against a single mapped class.",
+            ):
+                q.get(5)
 
 
 class CustomJoinTest(QueryTest):
@@ -3048,7 +3151,7 @@ class DeprecatedMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         m.add_property("name", synonym("_name"))
 
         sess = fixture_session(autocommit=False)
-        assert sess.query(User).get(7)
+        assert sess.get(User, 7)
 
         u = sess.query(User).filter_by(name="jack").one()
 
@@ -3507,7 +3610,7 @@ class NonPrimaryRelationshipLoaderTest(_fixtures.FixtureTest):
         self.assert_sql_count(testing.db, go, count)
 
         sess = fixture_session()
-        user = sess.query(User).get(7)
+        user = sess.get(User, 7)
 
         closed_mapper = User.closed_orders.entity
         open_mapper = User.open_orders.entity
@@ -8239,7 +8342,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
-        u1 = sess.query(User).get(7)
+        u1 = sess.get(User, 7)
         with assertions.expect_deprecated_20(query_wparent_dep):
             q = sess.query(Address).select_from(Address).with_parent(u1)
         self.assert_compile(
@@ -8255,7 +8358,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
-        u1 = sess.query(User).get(7)
+        u1 = sess.get(User, 7)
         with assertions.expect_deprecated_20(query_wparent_dep):
             q = sess.query(User, Address).with_parent(
                 u1, User.addresses, from_entity=Address
@@ -8275,7 +8378,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
-        u1 = sess.query(User).get(7)
+        u1 = sess.get(User, 7)
         a1 = aliased(Address)
         with assertions.expect_deprecated_20(query_wparent_dep):
             q = sess.query(a1).with_parent(u1)
@@ -8293,7 +8396,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
-        u1 = sess.query(User).get(7)
+        u1 = sess.get(User, 7)
         a1 = aliased(Address)
         with assertions.expect_deprecated_20(query_wparent_dep):
             q = sess.query(a1).with_parent(u1, User.addresses)
@@ -8311,7 +8414,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
-        u1 = sess.query(User).get(7)
+        u1 = sess.get(User, 7)
         a1 = aliased(Address)
         a2 = aliased(Address)
         with assertions.expect_deprecated_20(query_wparent_dep):
@@ -8335,7 +8438,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
-        u1 = sess.query(User).get(7)
+        u1 = sess.get(User, 7)
         a1 = aliased(Address)
         a2 = aliased(Address)
         with assertions.expect_deprecated_20(query_wparent_dep):

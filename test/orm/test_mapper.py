@@ -280,7 +280,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
         s = fixture_session()
-        u = s.query(User).get(7)
+        u = s.get(User, 7)
         eq_(u._name, "jack")
         eq_(u._id, 7)
         u2 = s.query(User).filter_by(user_name="jack").one()
@@ -724,7 +724,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         m.add_property("addresses", relationship(Address))
 
         sess = fixture_session(autocommit=False)
-        assert sess.query(User).get(7)
+        assert sess.get(User, 7)
 
         u = sess.query(User).filter_by(name="jack").one()
 
@@ -926,8 +926,8 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
         sess = fixture_session()
-        u1 = sess.query(User).get(7)
-        u2 = sess.query(User).get(8)
+        u1 = sess.get(User, 7)
+        u2 = sess.get(User, 8)
         # comparaison ops need to work
         a1 = sess.query(Address).filter(Address.user == u1).one()
         eq_(a1.id, 1)
@@ -1193,7 +1193,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         s = Session(testing.db)
         s.add(u1)
         s.commit()
-        assert s.query(NoBoolAllowed).get(u1.id) is u1
+        assert s.get(NoBoolAllowed, u1.id) is u1
 
     def test_we_dont_call_eq(self):
         class NoEqAllowed(object):
