@@ -304,10 +304,10 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_reflection_with_table_options(self, metadata, connection):
         comment = r"""Comment types type speedily ' " \ '' Fun!"""
-        if testing.against("mariadb"):
+        if testing.against("mariadb") or testing.db.dialect._is_mariadb:
             kwargs = dict(
                 mariadb_engine="MEMORY",
-                mariadb_default_charset="utf8",
+                mariadb_default_charset="utf8mb4",
                 mariadb_auto_increment="5",
                 mariadb_avg_row_length="3",
                 mariadb_password="secret",
@@ -335,10 +335,10 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         def_table.create(conn)
         reflected = Table("mysql_def", MetaData(), autoload_with=conn)
 
-        if testing.against("mariadb"):
+        if testing.against("mariadb") or testing.db.dialect._is_mariadb:
             assert def_table.kwargs["mariadb_engine"] == "MEMORY"
             assert def_table.comment == comment
-            assert def_table.kwargs["mariadb_default_charset"] == "utf8"
+            assert def_table.kwargs["mariadb_default_charset"] == "utf8mb4"
             assert def_table.kwargs["mariadb_auto_increment"] == "5"
             assert def_table.kwargs["mariadb_avg_row_length"] == "3"
             assert def_table.kwargs["mariadb_password"] == "secret"
@@ -348,7 +348,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
 
             assert reflected.comment == comment
             assert reflected.kwargs["mariadb_comment"] == comment
-            assert reflected.kwargs["mariadb_default charset"] == "utf8"
+            assert reflected.kwargs["mariadb_default charset"] == "utf8mb4"
             assert reflected.kwargs["mariadb_avg_row_length"] == "3"
             assert reflected.kwargs["mariadb_connection"] == "fish"
 
