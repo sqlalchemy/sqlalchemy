@@ -307,7 +307,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         if testing.against("mariadb"):
             kwargs = dict(
                 mariadb_engine="MEMORY",
-                mariadb_default_charset="utf8",
+                mariadb_default_charset="utf8mb4",
                 mariadb_auto_increment="5",
                 mariadb_avg_row_length="3",
                 mariadb_password="secret",
@@ -338,7 +338,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
         if testing.against("mariadb"):
             assert def_table.kwargs["mariadb_engine"] == "MEMORY"
             assert def_table.comment == comment
-            assert def_table.kwargs["mariadb_default_charset"] == "utf8"
+            assert def_table.kwargs["mariadb_default_charset"] == "utf8mb4"
             assert def_table.kwargs["mariadb_auto_increment"] == "5"
             assert def_table.kwargs["mariadb_avg_row_length"] == "3"
             assert def_table.kwargs["mariadb_password"] == "secret"
@@ -348,7 +348,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
 
             assert reflected.comment == comment
             assert reflected.kwargs["mariadb_comment"] == comment
-            assert reflected.kwargs["mariadb_default charset"] == "utf8"
+            assert reflected.kwargs["mariadb_default charset"] == "utf8mb4"
             assert reflected.kwargs["mariadb_avg_row_length"] == "3"
             assert reflected.kwargs["mariadb_connection"] == "fish"
 
