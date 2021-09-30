@@ -2070,6 +2070,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         nonpart_options = set(opts).difference(partition_options)
         part_options = set(opts).intersection(partition_options)
 
+        # Handle all the nonpartition options
         for opt in topological.sort(
             [
                 ("DEFAULT_CHARSET", "COLLATE"),
@@ -2107,6 +2108,9 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
             table_opts.append(joiner.join((opt, arg)))
 
+        table_opts.append(super().post_create_table(table))
+
+        # Handle all the partitioning options
         for opt in topological.sort(
             [
                 ("PARTITION_BY", "PARTITIONS"),

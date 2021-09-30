@@ -29,6 +29,8 @@ import itertools
 import operator
 import re
 
+
+
 from . import base
 from . import coercions
 from . import crud
@@ -4214,6 +4216,7 @@ class DDLCompiler(Compiled):
         return text
 
     def visit_create_table(self, create, **kw):
+        # TODO_active
         table = create.element
         preparer = self.preparer
 
@@ -4521,7 +4524,28 @@ class DDLCompiler(Compiled):
         return ""
 
     def post_create_table(self, table):
-        return ""
+        table_opts = []
+
+        # Get everything not prefixed by dialect name
+        opts = dict(
+            (k, v)
+            for k, v in table.kwargs.items()
+            if not k.startswith("%s_" % self.dialect.name)
+        )
+
+        # TODO add sorting
+        for opt in opts:
+            arg = opts[opt]
+
+            # opts without any args (simply true/false)
+            if opt in (
+                "WITH_SYSTEM_VERSIONING"
+            ) and arg:
+                opt = opt.replace("_", " ")
+
+            table_opts.append(opt)
+
+        return " ".join(table_opts)
 
     def get_column_default_string(self, column):
         if isinstance(column.server_default, schema.DefaultClause):
