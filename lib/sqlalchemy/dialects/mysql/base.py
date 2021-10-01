@@ -2012,12 +2012,24 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             sqltypes.TIMESTAMP,
         )
 
+        is_versioning_column = (
+            column.system_versioning == "start" or
+            column.system_versioning == "end"
+        )
+
         if not column.nullable:
             colspec.append("NOT NULL")
 
         # see: https://docs.sqlalchemy.org/en/latest/dialects/mysql.html#mysql_timestamp_null  # noqa
-        elif column.nullable and is_timestamp:
+        elif column.nullable and is_timestamp and not is_versioning_column:
             colspec.append("NULL")
+
+        if column.system_versioning == "start":
+            colspec.append("GENERATED ALWAYS AS ROW START")
+        elif column.system_versioning == "end":
+            colspec.append("GENERATED ALWAYS AS ROW END")
+        elif column.system_versioning == "disable":
+            colspec.append("WITHOUT SYSTEM VERSIONING")
 
         comment = column.comment
         if comment is not None:

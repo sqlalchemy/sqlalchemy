@@ -6,7 +6,9 @@ from sqlalchemy import (
     String,
     MetaData,
     create_engine,
-    Integer
+    Integer,
+    TIMESTAMP,
+    DATE
 )
 from sqlalchemy.schema import (
     CreateTable
@@ -19,7 +21,8 @@ engine = create_engine(uri)
 testtab = Table('user_versioned', metadata_obj,
             Column('user_id', Integer, primary_key=True),
             Column('user_name', String(16), nullable=False),
-            with_system_versioning=True,
+            Column('start', TIMESTAMP, system_versioning="start"),
+            system_versioning=True,
             )
 
 print(CreateTable(testtab).compile(engine))

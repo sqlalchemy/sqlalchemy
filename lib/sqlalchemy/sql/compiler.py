@@ -4501,6 +4501,7 @@ class DDLCompiler(Compiled):
                 column.type, type_expression=column
             )
         )
+
         default = self.get_column_default_string(column)
         if default is not None:
             colspec += " DEFAULT " + default
@@ -4518,6 +4519,14 @@ class DDLCompiler(Compiled):
             not column.identity or not self.dialect.supports_identity_columns
         ):
             colspec += " NOT NULL"
+
+        if column.system_versioning == "start":
+            colspec += " GENERATED ALWAYS AS ROW START"
+        elif column.system_versioning == "end":
+            colspec += " GENERATED ALWAYS AS ROW END"
+        elif column.system_versioning == "disable":
+            colspec += " WITHOUT SYSTEM VERSIONING"
+
         return colspec
 
     def create_table_suffix(self, table):
@@ -4526,24 +4535,8 @@ class DDLCompiler(Compiled):
     def post_create_table(self, table):
         table_opts = []
 
-        # Get everything not prefixed by dialect name
-        opts = dict(
-            (k, v)
-            for k, v in table.kwargs.items()
-            if not k.startswith("%s_" % self.dialect.name)
-        )
-
-        # TODO add sorting
-        for opt in opts:
-            arg = opts[opt]
-
-            # opts without any args (simply true/false)
-            if opt in (
-                "WITH_SYSTEM_VERSIONING"
-            ) and arg:
-                opt = opt.replace("_", " ")
-
-            table_opts.append(opt)
+        if table.system_versioning:
+            table_opts.append("\n WITH SYSTEM VERSIONING")
 
         return " ".join(table_opts)
 

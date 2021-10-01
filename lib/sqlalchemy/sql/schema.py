@@ -329,7 +329,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
             :paramref:`_schema.Table.keep_existing`
 
-
     :param implicit_returning: True by default - indicates that
         RETURNING can be used by default to fetch newly inserted primary key
         values, for backends which support this.  Note that
@@ -363,7 +362,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         .. seealso::
 
             :paramref:`.MetaData.reflect.resolve_fks`
-
 
     :param info: Optional data dictionary which will be populated into the
         :attr:`.SchemaItem.info` attribute of this object.
@@ -482,6 +480,10 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
          .. versionadded:: 1.2 Added the :paramref:`_schema.Table.comment`
             parameter
             to :class:`_schema.Table`.
+
+    :param system_versioning: When ``True``, indicates that this Table should be 
+        created with system versioning using default parameters.
+        TODO: update with specific parameters.
 
     :param \**kw: Additional keyword arguments not mentioned above are
         dialect specific, and passed in the form ``<dialectname>_<argname>``.
@@ -656,6 +658,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         include_columns = kwargs.pop("include_columns", None)
 
         self.implicit_returning = kwargs.pop("implicit_returning", True)
+        self.system_versioning = kwargs.pop("system_versioning", False)
 
         self.comment = kwargs.pop("comment", None)
 
@@ -1558,6 +1561,10 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
              conditionally rendered differently on different backends,
              consider custom compilation rules for :class:`.CreateColumn`.
 
+        :param system_versioning: "disable", indicates that a column should not
+            be part of system versioning. "start" or "end" indicates that this
+            column should be the start or end generate columns, respectively
+
         :param comment: Optional string that will render an SQL comment on
              table creation.
 
@@ -1627,6 +1634,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
         self.comment = kwargs.pop("comment", None)
         self.computed = None
         self.identity = None
+        self.system_versioning = kwargs.pop("system_versioning", None)
 
         # check if this Column is proxying another column
         if "_proxies" in kwargs:
@@ -1667,6 +1675,8 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
                 args.append(
                     DefaultClause(self.server_onupdate, for_update=True)
                 )
+
+        
         self._init_items(*args)
 
         util.set_creation_order(self)
@@ -1938,6 +1948,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             onupdate=self.onupdate,
             server_onupdate=server_onupdate,
             doc=self.doc,
+            system_versioning=self.system_versioning,
             comment=self.comment,
             *args,
             **column_kwargs
