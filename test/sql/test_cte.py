@@ -2165,3 +2165,43 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             " WHERE should_continue.val != true))"
             " SELECT recursive_cte.the_value FROM recursive_cte",
         )
+
+    # def test_recursive_cte_w_union_aliased(self):
+    #     nesting_cte = select(literal(1).label("inner_cte")).cte(
+    #         "nesting", recursive=True, nesting=True
+    #     )
+    #     nesting_cte_a = nesting_cte.alias()
+    #     nesting_cte = nesting_cte.union(
+    #         select(nesting_cte_a.c.inner_cte).where(
+    #             nesting_cte_a.c.inner_cte == literal(1)
+    #         )
+    #     )
+
+    #     stmt = select(nesting_cte.c.inner_cte)
+    #     self.assert_compile(
+    #         stmt,
+    #         "WITH RECURSIVE nesting(inner_cte) AS "
+    #         "(SELECT :param_1 AS inner_cte UNION "
+    #         "SELECT anon_1.inner_cte AS inner_cte FROM nesting AS anon_1 "
+    #         "WHERE anon_1.inner_cte = :param_2) "
+    #         "SELECT nesting.inner_cte FROM nesting",
+    #     )
+
+    def test_recursive_cte_w_union(self):
+        nesting_cte = select(literal(1).label("inner_cte")).cte(
+            "nesting", recursive=True, nesting=True
+        )
+        rec_part = select(nesting_cte.c.inner_cte).where(
+            nesting_cte.c.inner_cte == literal(1)
+        )
+        nesting_cte = nesting_cte.union(rec_part)
+
+        stmt = select(nesting_cte.c.inner_cte)
+        self.assert_compile(
+            stmt,
+            "WITH RECURSIVE nesting(inner_cte) AS "
+            "(SELECT :param_1 AS inner_cte UNION "
+            "SELECT nesting.inner_cte AS inner_cte FROM nesting "
+            "WHERE nesting.inner_cte = :param_2) "
+            "SELECT nesting.inner_cte FROM nesting",
+        )
