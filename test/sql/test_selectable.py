@@ -1469,6 +1469,14 @@ class SelectableTest(
         assert s3._whereclause.left.table is not s1
         assert s3._whereclause.left.table in froms
 
+    def test_table_schema(self):
+        t = table("foo")
+        eq_(t.name, "foo")
+        eq_(t.fullname, "foo")
+        t = table("foo", schema="bar")
+        eq_(t.name, "foo")
+        eq_(t.fullname, "bar.foo")
+
 
 class RefreshForNewColTest(fixtures.TestBase):
     def test_join_uninit(self):

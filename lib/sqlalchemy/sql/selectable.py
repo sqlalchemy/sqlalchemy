@@ -2622,7 +2622,7 @@ class TableClause(roles.DMLTableRole, Immutable, FromClause):
         """
 
         super(TableClause, self).__init__()
-        self.name = self.fullname = name
+        self.name = name
         self._columns = DedupeColumnCollection()
         self.primary_key = ColumnSet()
         self.foreign_keys = set()
@@ -2632,6 +2632,10 @@ class TableClause(roles.DMLTableRole, Immutable, FromClause):
         schema = kw.pop("schema", None)
         if schema is not None:
             self.schema = schema
+        if self.schema is not None:
+            self.fullname = "%s.%s" % (self.schema, self.name)
+        else:
+            self.fullname = self.name
         if kw:
             raise exc.ArgumentError("Unsupported argument(s): %s" % list(kw))
 
