@@ -292,7 +292,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
 
     @testing.combinations(
         (
-            lambda session, Address: session.query(Address),
+            lambda session, Address: session.query(Address).statement,
             lambda Address: {"mapper": inspect(Address), "clause": mock.ANY},
             "e2",
         ),

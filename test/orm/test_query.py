@@ -137,6 +137,36 @@ class MiscTest(QueryTest):
             ).compare(q1.selectable)
         )
 
+    @testing.combinations(("session",), ("connection",), argnames="executor")
+    @testing.combinations(
+        ("execute",), ("scalars",), ("scalar",), argnames="method"
+    )
+    def test_no_query_in_execute(self, executor, method, connection):
+        # even though this test is testing deprecations, these deprecations
+        # become errors when removed so we dont want to remove this test,
+        # just update it
+
+        if executor == "session":
+            exec_obj = Session(connection)
+        else:
+            exec_obj = connection
+
+        meth = getattr(exec_obj, method)
+
+        q = Session().query(literal_column("1"))
+
+        if executor == "session":
+            with testing.expect_deprecated(
+                r"Object .*Query.* should not be used directly in a "
+                r"SQL statement context"
+            ):
+                meth(q)
+        else:
+            with testing.expect_raises_message(
+                sa_exc.ObjectNotExecutableError, "Not an executable object"
+            ):
+                meth(q)
+
 
 class OnlyReturnTuplesTest(QueryTest):
     def test_single_entity_false(self):
@@ -297,7 +327,10 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
 
         q = testing.resolve_lambda(test_case, **locals())
 
-        row = s.execute(q.order_by(User.id)).first()
+        if isinstance(q, Query):
+            row = q.first()
+        else:
+            row = s.execute(q.order_by(User.id)).first()
         assert "jack" in row
 
     @testing.combinations(

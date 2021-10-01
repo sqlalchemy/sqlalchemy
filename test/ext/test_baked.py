@@ -1080,14 +1080,14 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
         q = sess.query(User).filter(User.id == 7).set_cache_key("user7")
 
         eq_(
-            sess.execute(q).all(),
+            sess.execute(q.statement).all(),
             [(User(id=7, addresses=[Address(id=1)]),)],
         )
 
         eq_(list(q.cache), ["user7"])
 
         eq_(
-            sess.execute(q).all(),
+            sess.execute(q.statement).all(),
             [(User(id=7, addresses=[Address(id=1)]),)],
         )
 
