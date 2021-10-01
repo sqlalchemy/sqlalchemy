@@ -768,7 +768,6 @@ class Inspector(object):
             if isinstance(table_name, str):
                 table_name = table_name.decode(dialect.encoding)
 
-        found_table = True if self.has_table(table.name) else False
         cols_by_orig_name = {}
 
         for col_d in self.get_columns(
@@ -782,7 +781,7 @@ class Inspector(object):
                 cols_by_orig_name,
             )
 
-        if not found_table:
+        if not self.has_table(table.name):
             raise exc.NoSuchTableError(table.name)
 
         self._reflect_pk(
