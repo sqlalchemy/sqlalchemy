@@ -1409,6 +1409,85 @@ items in each case::
 Above, the ORM will know that the overlap between ``Parent.c1``,
 ``Parent.c2`` and ``Child.parent`` is intentional.
 
+.. _error_lkrp:
+
+Object cannot be converted to 'persistent' state, as this identity map is no longer valid.
+-------------------------------------------------------------------------------------------
+
+.. versionadded:: 1.4.26
+
+This message was added to accommodate for the case where a
+:class:`_result.Result` object that would yield ORM objects is iterated after
+the originating :class:`_orm.Session` has been closed, or otherwise had its
+:meth:`_orm.Session.expunge_all` method called. When a :class:`_orm.Session`
+expunges all objects at once, the internal :term:`identity map` used by that
+:class:`_orm.Session` is replaced with a new one, and the original one
+discarded. An unconsumed and unbuffered :class:`_result.Result` object will
+internally maintain a reference to that now-discarded identity map. Therefore,
+when the :class:`_result.Result` is consumed, the objects that would be yielded
+cannot be associated with that :class:`_orm.Session`. This arrangement is by
+design as it is generally not recommended to iterate an unbuffered
+:class:`_result.Result` object outside of the transactional context in which it
+was created::
+
+    # context manager creates new Session
+    with Session(engine) as session_obj:
+        result = sess.execute(select(User).where(User.id == 7))
+
+    # context manager is closed, so session_obj above is closed, identity
+    # map is replaced
+
+    # iterating the result object can't associate the object with the
+    # Session, raises this error.
+    user = result.first()
+
+The above situation typically will **not** occur when using the ``asyncio``
+ORM extension, as when :class:`.AsyncSession` returns a sync-style
+:class:`_result.Result`, the results have been pre-buffered when the statement
+was executed.  This is to allow secondary eager loaders to invoke without needing
+an additional ``await`` call.
+
+To pre-buffer results in the above situation using the regular
+:class:`_orm.Session` in the same way that the ``asyncio`` extension does it,
+the ``prebuffer_rows`` execution option may be used as follows::
+
+    # context manager creates new Session
+    with Session(engine) as session_obj:
+
+        # result internally pre-fetches all objects
+        result = sess.execute(
+            select(User).where(User.id == 7),
+            execution_options={"prebuffer_rows": True}
+        )
+
+    # context manager is closed, so session_obj above is closed, identity
+    # map is replaced
+
+    # pre-buffered objects are returned
+    user = result.first()
+
+    # however they are detached from the session, which has been closed
+    assert inspect(user).detached
+    assert inspect(user).session is None
+
+Above, the selected ORM objects are fully generated within the ``session_obj``
+block, associated with ``session_obj`` and buffered within the
+:class:`_result.Result` object for iteration. Outside the block,
+``session_obj`` is closed and expunges these ORM objects. Iterating the
+:class:`_result.Result` object will yield those ORM objects, however as their
+originating :class:`_orm.Session` has expunged them, they will be delivered in
+the :term:`detached` state.
+
+.. note:: The above reference to a "pre-buffered" vs. "un-buffered"
+   :class:`_result.Result` object refers to the process by which the ORM
+   converts incoming raw database rows from the :term:`DBAPI` into ORM
+   objects.  It does not imply whether or not the underyling ``cursor``
+   object itself, which represents pending results from the DBAPI, is itself
+   buffered or unbuffered, as this is essentially a lower layer of buffering.
+   For background on buffering of the ``cursor`` results itself, see the
+   section :ref:`engine_stream_results`.
+
+
 AsyncIO Exceptions
 ==================
 
