@@ -2074,6 +2074,7 @@ class CTE(
         name=None,
         recursive=False,
         nesting=False,
+        _unique_id=None,
         _cte_alias=None,
         _restates=(),
         _prefixes=None,
@@ -2083,6 +2084,9 @@ class CTE(
         self.nesting = nesting
         self._cte_alias = _cte_alias
         self._restates = _restates
+        import uuid
+
+        self.unique_id = _unique_id if _unique_id else uuid.uuid4()
         if _prefixes:
             self._prefixes = _prefixes
         if _suffixes:
@@ -2115,6 +2119,7 @@ class CTE(
             recursive=self.recursive,
             nesting=self.nesting,
             _cte_alias=self,
+            # _unique_id=self.unique_id,
             _prefixes=self._prefixes,
             _suffixes=self._suffixes,
         )
@@ -2125,6 +2130,7 @@ class CTE(
             name=self.name,
             recursive=self.recursive,
             nesting=self.nesting,
+            _unique_id=self.unique_id,
             _restates=self._restates + (self,),
             _prefixes=self._prefixes,
             _suffixes=self._suffixes,
@@ -2136,6 +2142,7 @@ class CTE(
             name=self.name,
             recursive=self.recursive,
             nesting=self.nesting,
+            _unique_id=self.unique_id,
             _restates=self._restates + (self,),
             _prefixes=self._prefixes,
             _suffixes=self._suffixes,
