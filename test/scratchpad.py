@@ -22,6 +22,7 @@ testtab = Table('user_versioned', metadata_obj,
             Column('user_id', Integer, primary_key=True),
             Column('user_name', String(16), nullable=False),
             Column('start', TIMESTAMP, system_versioning="start"),
+            Column('start', TIMESTAMP, system_versioning="end"),
             system_versioning=True,
             )
 
