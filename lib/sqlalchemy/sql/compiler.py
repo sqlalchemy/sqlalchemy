@@ -845,13 +845,10 @@ class SQLCompiler(Compiled):
         self.ctes = util.OrderedDict()
         # Detect same CTE references
         # Dict[(level, name), cte_instance]
-        self.ctes_by_name = {}
-        # Dict[cte_id, cte_instance]
-        # Useful
-        self.ctes_by_id = {}
-        # Dict[cte_id, cte_instance]
-        # To retrieve ctes_by_name key
-        self.names_by_id = {}
+        self.ctes_by_level_name = {}
+        # Dict[cte_id, cte_name]
+        # To retrieve key in self.ctes_by_level_name
+        self.cte_names_by_id = {}
         # Dict[cte_id, level]
         # Remember level for nesting usage
         self.level_by_ctes = {}
@@ -2542,17 +2539,13 @@ class SQLCompiler(Compiled):
             cte_level = self.level_by_ctes[cte.unique_id]
 
         cte_level_name = (cte_level, cte_name)
-        if cte_level_name in self.ctes_by_name:
-            existing_cte = self.ctes_by_name[cte_level_name]
+        if cte_level_name in self.ctes_by_level_name:
+            existing_cte = self.ctes_by_level_name[cte_level_name]
             embedded_in_current_named_cte = visiting_cte is existing_cte
 
             # we've generated a same-named CTE that we are enclosed in,
             # or this is the same CTE.  just return the name.
-            if (
-                cte in existing_cte._restates
-                or cte is existing_cte
-                # or cte.unique_id == existing_cte.unique_id
-            ):
+            if cte in existing_cte._restates or cte is existing_cte:
                 is_new_cte = False
             elif existing_cte in cte._restates:
                 # we've generated a same-named CTE that is
@@ -2579,8 +2572,8 @@ class SQLCompiler(Compiled):
                 cte_pre_alias_name = None
 
         if is_new_cte:
-            self.ctes_by_name[cte_level_name] = cte
-            self.names_by_id[cte.unique_id] = cte_name
+            self.ctes_by_level_name[cte_level_name] = cte
+            self.cte_names_by_id[cte.unique_id] = cte_name
             self.level_by_ctes[cte.unique_id] = cte_level
 
             if (
@@ -3493,7 +3486,7 @@ class SQLCompiler(Compiled):
             ctes = util.OrderedDict()
             for cte in list(self.ctes.keys()):
                 cte_level = self.level_by_ctes[cte.unique_id]
-                cte_name = self.names_by_id[cte.unique_id]
+                cte_name = self.cte_names_by_id[cte.unique_id]
                 is_rendered_level = cte_level == nesting_level or (
                     include_following_stack and cte_level == nesting_level + 1
                 )
@@ -3522,11 +3515,11 @@ class SQLCompiler(Compiled):
         if nesting_level and nesting_level > 1:
             for cte in list(ctes.keys()):
                 cte_level = self.level_by_ctes[cte.unique_id]
-                cte_name = self.names_by_id[cte.unique_id]
+                cte_name = self.cte_names_by_id[cte.unique_id]
                 del self.ctes[cte]
                 del self.level_by_ctes[cte.unique_id]
-                del self.names_by_id[cte.unique_id]
-                del self.ctes_by_name[(cte_level, cte_name)]
+                del self.cte_names_by_id[cte.unique_id]
+                del self.ctes_by_level_name[(cte_level, cte_name)]
 
         return cte_text
 

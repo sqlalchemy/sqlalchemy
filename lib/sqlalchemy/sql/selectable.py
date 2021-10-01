@@ -2118,8 +2118,8 @@ class CTE(
             name=name,
             recursive=self.recursive,
             nesting=self.nesting,
+            # _unique_id is not need as _cte_alias is doing the link
             _cte_alias=self,
-            # _unique_id=self.unique_id,
             _prefixes=self._prefixes,
             _suffixes=self._suffixes,
         )
