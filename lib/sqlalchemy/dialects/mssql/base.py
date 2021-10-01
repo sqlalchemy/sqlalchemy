@@ -1081,6 +1081,10 @@ class TIME(sqltypes.TIME):
 _MSTime = TIME
 
 
+class _BASETIMEIMPL(TIME):
+    __visit_name__ = "_BASETIMEIMPL"
+
+
 class _DateTimeBase(object):
     def bind_processor(self, dialect):
         def process(value):
@@ -1480,6 +1484,9 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
             return self.visit_DATETIME(type_, **kw)
         else:
             return self.visit_DATE(type_, **kw)
+
+    def visit__BASETIMEIMPL(self, type_, **kw):
+        return self.visit_time(type_, **kw)
 
     def visit_time(self, type_, **kw):
         if self.dialect.server_version_info < MS_2008_VERSION:
@@ -2608,9 +2615,13 @@ class MSDialect(default.DefaultDialect):
         sqltypes.JSON: JSON,
         sqltypes.JSON.JSONIndexType: JSONIndexType,
         sqltypes.JSON.JSONPathType: JSONPathType,
-        sqltypes.Time: TIME,
+        sqltypes.Time: _BASETIMEIMPL,
         sqltypes.Unicode: _MSUnicode,
         sqltypes.UnicodeText: _MSUnicodeText,
+        DATETIMEOFFSET: DATETIMEOFFSET,
+        DATETIME2: DATETIME2,
+        SMALLDATETIME: SMALLDATETIME,
+        DATETIME: DATETIME,
     }
 
     engine_config_types = default.DefaultDialect.engine_config_types.union(

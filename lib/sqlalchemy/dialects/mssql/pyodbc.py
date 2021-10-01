@@ -350,7 +350,7 @@ class _ms_binary_pyodbc(object):
         return process
 
 
-class _ODBCDateTime(sqltypes.DateTime):
+class _ODBCDateTimeBindProcessor(object):
     """Add bind processors to handle datetimeoffset behaviors"""
 
     has_tz = False
@@ -381,7 +381,11 @@ class _ODBCDateTime(sqltypes.DateTime):
         return process
 
 
-class _ODBCDATETIMEOFFSET(_ODBCDateTime):
+class _ODBCDateTime(_ODBCDateTimeBindProcessor, sqltypes.DateTime):
+    pass
+
+
+class _ODBCDATETIMEOFFSET(_ODBCDateTimeBindProcessor, DATETIMEOFFSET):
     has_tz = True
 
 

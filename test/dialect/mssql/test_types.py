@@ -395,68 +395,83 @@ class TypeDDLTest(fixtures.TestBase):
             )
             self.assert_(repr(col))
 
-    def test_dates(self):
+    @testing.combinations(
+        # column type, args, kwargs, expected ddl
+        (mssql.MSDateTime, [], {}, "DATETIME", None),
+        (types.DATE, [], {}, "DATE", None),
+        (types.Date, [], {}, "DATE", None),
+        (types.Date, [], {}, "DATETIME", MS_2005_VERSION),
+        (mssql.MSDate, [], {}, "DATE", None),
+        (mssql.MSDate, [], {}, "DATETIME", MS_2005_VERSION),
+        (types.TIME, [], {}, "TIME", None),
+        (types.Time, [], {}, "TIME", None),
+        (mssql.MSTime, [], {}, "TIME", None),
+        (mssql.MSTime, [1], {}, "TIME(1)", None),
+        (types.Time, [], {}, "DATETIME", MS_2005_VERSION),
+        (mssql.MSTime, [], {}, "TIME", None),
+        (mssql.MSSmallDateTime, [], {}, "SMALLDATETIME", None),
+        (mssql.MSDateTimeOffset, [], {}, "DATETIMEOFFSET", None),
+        (mssql.MSDateTimeOffset, [1], {}, "DATETIMEOFFSET(1)", None),
+        (mssql.MSDateTime2, [], {}, "DATETIME2", None),
+        (mssql.MSDateTime2, [0], {}, "DATETIME2(0)", None),
+        (mssql.MSDateTime2, [1], {}, "DATETIME2(1)", None),
+        (mssql.MSTime, [0], {}, "TIME(0)", None),
+        (mssql.MSDateTimeOffset, [0], {}, "DATETIMEOFFSET(0)", None),
+        (types.DateTime, [], {"timezone": True}, "DATETIMEOFFSET", None),
+        (types.DateTime, [], {"timezone": False}, "DATETIME", None),
+        argnames="type_, args, kw, res, server_version",
+    )
+    @testing.combinations((True,), (False,), argnames="use_type_descriptor")
+    @testing.combinations(
+        ("base",), ("pyodbc",), ("pymssql",), argnames="driver"
+    )
+    def test_dates(
+        self, type_, args, kw, res, server_version, use_type_descriptor, driver
+    ):
         "Exercise type specification for date types."
 
-        columns = [
-            # column type, args, kwargs, expected ddl
-            (mssql.MSDateTime, [], {}, "DATETIME", None),
-            (types.DATE, [], {}, "DATE", None),
-            (types.Date, [], {}, "DATE", None),
-            (types.Date, [], {}, "DATETIME", MS_2005_VERSION),
-            (mssql.MSDate, [], {}, "DATE", None),
-            (mssql.MSDate, [], {}, "DATETIME", MS_2005_VERSION),
-            (types.TIME, [], {}, "TIME", None),
-            (types.Time, [], {}, "TIME", None),
-            (mssql.MSTime, [], {}, "TIME", None),
-            (mssql.MSTime, [1], {}, "TIME(1)", None),
-            (types.Time, [], {}, "DATETIME", MS_2005_VERSION),
-            (mssql.MSTime, [], {}, "TIME", None),
-            (mssql.MSSmallDateTime, [], {}, "SMALLDATETIME", None),
-            (mssql.MSDateTimeOffset, [], {}, "DATETIMEOFFSET", None),
-            (mssql.MSDateTimeOffset, [1], {}, "DATETIMEOFFSET(1)", None),
-            (mssql.MSDateTime2, [], {}, "DATETIME2", None),
-            (mssql.MSDateTime2, [0], {}, "DATETIME2(0)", None),
-            (mssql.MSDateTime2, [1], {}, "DATETIME2(1)", None),
-            (mssql.MSTime, [0], {}, "TIME(0)", None),
-            (mssql.MSDateTimeOffset, [0], {}, "DATETIMEOFFSET(0)", None),
-            (types.DateTime, [], {"timezone": True}, "DATETIMEOFFSET", None),
-            (types.DateTime, [], {"timezone": False}, "DATETIME", None),
-        ]
+        if driver == "base":
+            from sqlalchemy.dialects.mssql import base
+
+            dialect = base.MSDialect()
+        elif driver == "pyodbc":
+            from sqlalchemy.dialects.mssql import pyodbc
+
+            dialect = pyodbc.dialect()
+        elif driver == "pymssql":
+            from sqlalchemy.dialects.mssql import pymssql
+
+            dialect = pymssql.dialect()
+        else:
+            assert False
+
+        if server_version:
+            dialect.server_version_info = server_version
+        else:
+            dialect.server_version_info = MS_2008_VERSION
 
         metadata = MetaData()
-        table_args = ["test_mssql_dates", metadata]
-        for index, spec in enumerate(columns):
-            type_, args, kw, res, server_version = spec
-            table_args.append(
-                Column("c%s" % index, type_(*args, **kw), nullable=None)
-            )
 
-        date_table = Table(*table_args)
-        dialect = mssql.dialect()
-        dialect.server_version_info = MS_2008_VERSION
-        ms_2005_dialect = mssql.dialect()
-        ms_2005_dialect.server_version_info = MS_2005_VERSION
+        typ = type_(*args, **kw)
+
+        if use_type_descriptor:
+            typ = dialect.type_descriptor(typ)
+
+        col = Column("date_c", typ, nullable=None)
+
+        date_table = Table("test_mssql_dates", metadata, col)
         gen = dialect.ddl_compiler(dialect, schema.CreateTable(date_table))
-        gen2005 = ms_2005_dialect.ddl_compiler(
-            ms_2005_dialect, schema.CreateTable(date_table)
+
+        testing.eq_(
+            gen.get_column_specification(col),
+            "%s %s"
+            % (
+                col.name,
+                res,
+            ),
         )
 
-        for col in date_table.c:
-            index = int(col.name[1:])
-            server_version = columns[index][4]
-            if not server_version:
-                testing.eq_(
-                    gen.get_column_specification(col),
-                    "%s %s" % (col.name, columns[index][3]),
-                )
-            else:
-                testing.eq_(
-                    gen2005.get_column_specification(col),
-                    "%s %s" % (col.name, columns[index][3]),
-                )
-
-            self.assert_(repr(col))
+        self.assert_(repr(col))
 
     def test_large_type_deprecation(self):
         d1 = mssql.dialect(deprecate_large_types=True)
