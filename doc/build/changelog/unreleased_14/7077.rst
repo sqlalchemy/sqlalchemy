@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 7077
+
+    Implemented proper ``__reduce__()`` methods for all SQLAlchemy exception
+    objects to ensure they all support clean round trips when pickling, as
+    exception objects are often serialized for the purposes of various
+    debugging tools.
