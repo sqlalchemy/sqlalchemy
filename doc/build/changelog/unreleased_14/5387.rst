@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 5387
+
+    Handles "SSL SYSCALL error: Bad address" error and adds unit tests for
+    postgresql :meth:`is_disconnect`.
