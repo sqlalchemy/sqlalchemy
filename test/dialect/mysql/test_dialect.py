@@ -18,6 +18,7 @@ from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
 from ...engine import test_deprecations
@@ -95,6 +96,8 @@ class BackendDialectTest(fixtures.TestBase):
 
 
 class DialectTest(fixtures.TestBase):
+    __backend__ = True
+
     @testing.combinations(
         (None, "cONnection was kILLEd", "InternalError", "pymysql", True),
         (None, "cONnection aLREady closed", "InternalError", "pymysql", True),
@@ -250,14 +253,31 @@ class DialectTest(fixtures.TestBase):
             "mariadb+pymysql",
         ]
     )
-    def test_special_encodings(self):
+    @testing.combinations(
+        ("utf8mb4",),
+        ("utf8",),
+    )
+    def test_special_encodings(self, enc):
 
-        for enc in ["utf8mb4", "utf8"]:
-            eng = engines.testing_engine(
-                options={"connect_args": {"charset": enc, "use_unicode": 0}}
-            )
-            conn = eng.connect()
-            eq_(conn.dialect._connection_charset, enc)
+        eng = engines.testing_engine(
+            options={"connect_args": {"charset": enc, "use_unicode": 0}}
+        )
+        conn = eng.connect()
+
+        detected = conn.dialect._connection_charset
+        if enc == "utf8mb4":
+            eq_(detected, enc)
+        else:
+            in_(detected, ["utf8", "utf8mb3"])
+
+    @testing.only_on("mariadb+mariadbconnector")
+    def test_mariadb_connector_special_encodings(self):
+
+        eng = engines.testing_engine()
+        conn = eng.connect()
+
+        detected = conn.dialect._connection_charset
+        eq_(detected, "utf8mb4")
 
 
 class ParseVersionTest(fixtures.TestBase):

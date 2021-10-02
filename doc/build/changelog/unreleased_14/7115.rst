@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, mysql, tests
-    :tickets: 7115
-
-    Updated test suite to pass correctly for MariaDB 10.6 when using the
-    mariadb-connector driver, which made some adjustments to default encoding.
-    Pull request courtesy Georg Richter.
-
