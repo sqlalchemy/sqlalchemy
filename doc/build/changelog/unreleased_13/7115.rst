@@ -1,0 +1,16 @@
+.. change::
+    :tags: bug, mysql, mariadb
+    :tickets: 7115, 7136
+    :versions: 1.4.26
+
+    Fixes to accommodate for the MariaDB 10.6 series, including backwards
+    incompatible changes in both the mariadb-connector Python driver (supported
+    on SQLAlchemy 1.4 only) as well as the native 10.6 client libraries that
+    are used automatically by the mysqlclient DBAPI (applies to both 1.3 and
+    1.4). The "utf8mb3" encoding symbol is now reported by these client
+    libraries when the encoding is stated as "utf8", leading to lookup and
+    encoding errors within the MySQL dialect that does not expect this symbol.
+    Updates to both the MySQL base library to accommodate for this utf8mb3
+    symbol being reported as well as to the test suite. Thanks to Georg Richter
+    for support.
+

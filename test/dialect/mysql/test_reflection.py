@@ -294,7 +294,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("c1", Integer()),
             mysql_engine="MEMORY",
             comment=comment,
-            mysql_default_charset="utf8",
+            mysql_default_charset="utf8mb4",
             mysql_auto_increment="5",
             mysql_avg_row_length="3",
             mysql_password="secret",
@@ -309,7 +309,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert def_table.kwargs["mysql_engine"] == "MEMORY"
         assert def_table.comment == comment
-        assert def_table.kwargs["mysql_default_charset"] == "utf8"
+        assert def_table.kwargs["mysql_default_charset"] == "utf8mb4"
         assert def_table.kwargs["mysql_auto_increment"] == "5"
         assert def_table.kwargs["mysql_avg_row_length"] == "3"
         assert def_table.kwargs["mysql_password"] == "secret"
@@ -319,7 +319,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
 
         assert reflected.comment == comment
         assert reflected.kwargs["mysql_comment"] == comment
-        assert reflected.kwargs["mysql_default charset"] == "utf8"
+        assert reflected.kwargs["mysql_default charset"] == "utf8mb4"
         assert reflected.kwargs["mysql_avg_row_length"] == "3"
         assert reflected.kwargs["mysql_connection"] == "fish"
 

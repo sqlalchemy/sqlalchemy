@@ -511,14 +511,14 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
             self.metadata,
             Column("id", Integer),
             Column("data", UnicodeText),
-            mysql_default_charset="utf8",
-            mysql_collate="utf8_bin",
+            mysql_default_charset="utf8mb4",
+            mysql_collate="utf8mb4_bin",
         )
         t.create()
         m2 = MetaData(testing.db)
         t2 = Table("foo", m2, autoload=True)
-        eq_(t2.kwargs["mysql_collate"], "utf8_bin")
-        eq_(t2.kwargs["mysql_default charset"], "utf8")
+        eq_(t2.kwargs["mysql_collate"], "utf8mb4_bin")
+        eq_(t2.kwargs["mysql_default charset"], "utf8mb4")
 
         # test [ticket:2906]
         # in order to test the condition here, need to use

@@ -3214,6 +3214,7 @@ class _DecodingRowProxy(object):
         "koi8u": "koi8_u",
         "utf16": "utf-16-be",  # MySQL's uft16 is always bigendian
         "utf8mb4": "utf8",  # real utf8
+        "utf8mb3": "utf8",  # real utf8 - occurs for MariaDB client libs 10.6
         "eucjpms": "ujis",
     }
 
