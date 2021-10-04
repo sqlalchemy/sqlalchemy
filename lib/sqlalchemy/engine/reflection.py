@@ -781,7 +781,7 @@ class Inspector(object):
                 cols_by_orig_name,
             )
 
-        if not self.has_table(table.name):
+        if not self.has_table(table.name, schema):
             raise exc.NoSuchTableError(table.name)
 
         self._reflect_pk(
