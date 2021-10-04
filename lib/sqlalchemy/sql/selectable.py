@@ -2082,6 +2082,7 @@ class CTE(
         self.recursive = recursive
         self.nesting = nesting
         self._cte_alias = _cte_alias
+        # Keep recursivity reference with union/union_all
         self._restates = _restates
         if _prefixes:
             self._prefixes = _prefixes
@@ -2141,7 +2142,12 @@ class CTE(
             _suffixes=self._suffixes,
         )
 
-    def _get_unique_id(self):
+    def _get_reference_cte(self):
+        """
+        A recursive CTE is updated to attach the recursive part.
+        Updated CTEs should still refer to the original CTE.
+        This function returns this reference identifier.
+        """
         return self._restates if self._restates is not None else self
 
 
