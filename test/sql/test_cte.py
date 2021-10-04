@@ -444,13 +444,13 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         cte = s1.cte(name="cte", recursive=True)
 
         bar = select(cte).cte("bar").alias("cs1")
-        cte = cte.union_all(select(cte.c.x + 1).where(cte.c.x < 10)).alias(
+        cte_rec = cte.union_all(select(cte.c.x + 1).where(cte.c.x < 10)).alias(
             "cs2"
         )
 
         # outer cte rendered first, then bar, which
         # includes "inner" cte
-        s2 = select(cte, bar)
+        s2 = select(cte_rec, bar)
         self.assert_compile(
             s2,
             "WITH RECURSIVE cte(x) AS "
@@ -474,7 +474,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         # bar rendered, but then the "outer"
         # cte is rendered.
-        s2 = select(bar, cte)
+        s2 = select(bar, cte_rec)
         self.assert_compile(
             s2,
             "WITH RECURSIVE bar AS (SELECT cte.x AS x FROM cte), "

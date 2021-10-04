@@ -839,8 +839,10 @@ class SQLCompiler(Compiled):
         these collections otherwise.
 
         """
+        # Use as a unique id to identify a CTE part of a compilation
+        self.next_id_counter = 0
         # collect CTEs to tack on top of a SELECT
-        # Dict[cte_id, text_query]
+        # Dict[cte, text_query]
         # To remember the query to print
         self.ctes = util.OrderedDict()
         # Detect same CTE references
@@ -2535,8 +2537,8 @@ class SQLCompiler(Compiled):
         is_new_cte = True
         embedded_in_current_named_cte = False
 
-        if cte.unique_id in self.level_by_ctes:
-            cte_level = self.level_by_ctes[cte.unique_id]
+        if cte._get_unique_id() in self.level_by_ctes:
+            cte_level = self.level_by_ctes[cte._get_unique_id()]
 
         cte_level_name = (cte_level, cte_name)
         if cte_level_name in self.ctes_by_level_name:
@@ -2545,14 +2547,14 @@ class SQLCompiler(Compiled):
 
             # we've generated a same-named CTE that we are enclosed in,
             # or this is the same CTE.  just return the name.
-            if cte in existing_cte._restates or cte is existing_cte:
+            if cte is existing_cte._restates or cte is existing_cte:
                 is_new_cte = False
-            elif existing_cte in cte._restates:
+            elif existing_cte is cte._restates:
                 # we've generated a same-named CTE that is
                 # enclosed in us - we take precedence, so
                 # discard the text for the "inner".
                 del self.ctes[existing_cte]
-                del self.level_by_ctes[existing_cte.unique_id]
+                del self.level_by_ctes[existing_cte._get_unique_id()]
             else:
                 raise exc.CompileError(
                     "Multiple, unrelated CTEs found with "
@@ -2573,8 +2575,8 @@ class SQLCompiler(Compiled):
 
         if is_new_cte:
             self.ctes_by_level_name[cte_level_name] = cte
-            self.cte_names_by_id[cte.unique_id] = cte_name
-            self.level_by_ctes[cte.unique_id] = cte_level
+            self.cte_names_by_id[cte._get_unique_id()] = cte_name
+            self.level_by_ctes[cte._get_unique_id()] = cte_level
 
             if (
                 "autocommit" in cte.element._execution_options
@@ -2588,10 +2590,13 @@ class SQLCompiler(Compiled):
                     }
                 )
 
-            if pre_alias_cte.unique_id not in self.ctes:
+            if pre_alias_cte not in self.ctes:
                 self.visit_cte(pre_alias_cte, **kwargs)
 
-            if not cte_pre_alias_name and cte.unique_id not in self.ctes:
+            if (
+                not cte_pre_alias_name
+                and cte not in self.ctes
+            ):
                 if cte.recursive:
                     self.ctes_recursive = True
                 text = self.preparer.format_alias(cte, cte_name)
@@ -2659,7 +2664,7 @@ class SQLCompiler(Compiled):
                     )
 
                 self.ctes[cte] = text
-                self.level_by_ctes[cte.unique_id] = cte_level
+                self.level_by_ctes[cte._get_unique_id()] = cte_level
 
         if asfrom:
             if from_linter:
@@ -3485,8 +3490,9 @@ class SQLCompiler(Compiled):
         if nesting_level and nesting_level > 1:
             ctes = util.OrderedDict()
             for cte in list(self.ctes.keys()):
-                cte_level = self.level_by_ctes[cte.unique_id]
-                cte_name = self.cte_names_by_id[cte.unique_id]
+                cte._get_unique_id()
+                cte_level = self.level_by_ctes[cte._get_unique_id()]
+                cte_name = self.cte_names_by_id[cte._get_unique_id()]
                 is_rendered_level = cte_level == nesting_level or (
                     include_following_stack and cte_level == nesting_level + 1
                 )
@@ -3514,11 +3520,11 @@ class SQLCompiler(Compiled):
 
         if nesting_level and nesting_level > 1:
             for cte in list(ctes.keys()):
-                cte_level = self.level_by_ctes[cte.unique_id]
-                cte_name = self.cte_names_by_id[cte.unique_id]
+                cte_level = self.level_by_ctes[cte._get_unique_id()]
+                cte_name = self.cte_names_by_id[cte._get_unique_id()]
                 del self.ctes[cte]
-                del self.level_by_ctes[cte.unique_id]
-                del self.cte_names_by_id[cte.unique_id]
+                del self.level_by_ctes[cte._get_unique_id()]
+                del self.cte_names_by_id[cte._get_unique_id()]
                 del self.ctes_by_level_name[(cte_level, cte_name)]
 
         return cte_text

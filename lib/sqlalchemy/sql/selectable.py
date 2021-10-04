@@ -2074,9 +2074,8 @@ class CTE(
         name=None,
         recursive=False,
         nesting=False,
-        _unique_id=None,
         _cte_alias=None,
-        _restates=(),
+        _restates=None,
         _prefixes=None,
         _suffixes=None,
     ):
@@ -2084,9 +2083,6 @@ class CTE(
         self.nesting = nesting
         self._cte_alias = _cte_alias
         self._restates = _restates
-        import uuid
-
-        self.unique_id = _unique_id if _unique_id else uuid.uuid4()
         if _prefixes:
             self._prefixes = _prefixes
         if _suffixes:
@@ -2118,7 +2114,6 @@ class CTE(
             name=name,
             recursive=self.recursive,
             nesting=self.nesting,
-            # _unique_id is not need as _cte_alias is doing the link
             _cte_alias=self,
             _prefixes=self._prefixes,
             _suffixes=self._suffixes,
@@ -2130,8 +2125,7 @@ class CTE(
             name=self.name,
             recursive=self.recursive,
             nesting=self.nesting,
-            _unique_id=self.unique_id,
-            _restates=self._restates + (self,),
+            _restates=self,
             _prefixes=self._prefixes,
             _suffixes=self._suffixes,
         )
@@ -2142,11 +2136,13 @@ class CTE(
             name=self.name,
             recursive=self.recursive,
             nesting=self.nesting,
-            _unique_id=self.unique_id,
-            _restates=self._restates + (self,),
+            _restates=self,
             _prefixes=self._prefixes,
             _suffixes=self._suffixes,
         )
+
+    def _get_unique_id(self):
+        return self._restates if self._restates is not None else self
 
 
 class HasCTE(roles.HasCTERole):
