@@ -2049,7 +2049,7 @@ class CTE(
         AliasedReturnsRows._traverse_internals
         + [
             ("_cte_alias", InternalTraversal.dp_clauseelement),
-            ("_restates", InternalTraversal.dp_clauseelement_list),
+            ("_restates", InternalTraversal.dp_clauseelement),
             ("recursive", InternalTraversal.dp_boolean),
         ]
         + HasPrefixes._has_prefixes_traverse_internals
