@@ -1063,6 +1063,61 @@ class ComponentReflectionTest(fixtures.TablesTest):
             assert id_.get("autoincrement", True)
 
 
+class TableNoColumnsTest(fixtures.TestBase):
+    __requires__ = ("reflect_tables_no_columns",)
+    __backend__ = True
+
+    @testing.fixture
+    def table_no_columns(self, connection, metadata):
+        Table("empty", metadata)
+        metadata.create_all(connection)
+
+    @testing.fixture
+    def view_no_columns(self, connection, metadata):
+        Table("empty", metadata)
+        metadata.create_all(connection)
+
+        Table("empty", metadata)
+        event.listen(
+            metadata,
+            "after_create",
+            DDL("CREATE VIEW empty_v AS SELECT * FROM empty"),
+        )
+
+        # for transactional DDL the transaction is rolled back before this
+        # drop statement is invoked
+        event.listen(
+            metadata, "before_drop", DDL("DROP VIEW IF EXISTS empty_v")
+        )
+        metadata.create_all(connection)
+
+    @testing.requires.reflect_tables_no_columns
+    def test_reflect_table_no_columns(self, connection, table_no_columns):
+        t2 = Table("empty", MetaData(), autoload_with=connection)
+        eq_(list(t2.c), [])
+
+    @testing.requires.reflect_tables_no_columns
+    def test_get_columns_table_no_columns(self, connection, table_no_columns):
+        eq_(inspect(connection).get_columns("empty"), [])
+
+    @testing.requires.reflect_tables_no_columns
+    def test_reflect_incl_table_no_columns(self, connection, table_no_columns):
+        m = MetaData()
+        m.reflect(connection)
+        assert set(m.tables).intersection(["empty"])
+
+    @testing.requires.views
+    @testing.requires.reflect_tables_no_columns
+    def test_reflect_view_no_columns(self, connection, view_no_columns):
+        t2 = Table("empty_v", MetaData(), autoload_with=connection)
+        eq_(list(t2.c), [])
+
+    @testing.requires.views
+    @testing.requires.reflect_tables_no_columns
+    def test_get_columns_view_no_columns(self, connection, view_no_columns):
+        eq_(inspect(connection).get_columns("empty_v"), [])
+
+
 class ComponentReflectionTestExtra(fixtures.TestBase):
 
     __backend__ = True
@@ -1641,6 +1696,7 @@ class CompositeKeyReflectionTest(fixtures.TablesTest):
 __all__ = (
     "ComponentReflectionTest",
     "ComponentReflectionTestExtra",
+    "TableNoColumnsTest",
     "QuotedNameArgumentTest",
     "HasTableTest",
     "HasIndexTest",
