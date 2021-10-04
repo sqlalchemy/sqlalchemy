@@ -1441,6 +1441,15 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def fetch_expression(self):
+        """backend supports fetch / offset with expression in them, like
+
+        SELECT * FROM some_table
+        OFFSET 1 + 1 ROWS FETCH FIRST 1 + 1 ROWS ONLY
+        """
+        return exclusions.closed()
+
+    @property
     def autoincrement_without_sequence(self):
         """If autoincrement=True on a column does not require an explicit
         sequence. This should be false only for oracle.
