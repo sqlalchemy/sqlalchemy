@@ -2801,10 +2801,14 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
         def any(self, other, operator=None):
             """Return ``other operator ANY (array)`` clause.
 
-            Argument places are switched, because ANY requires array
-            expression to be on the right hand-side.
+            .. note:: This method is an :class:`_types.ARRAY` - specific
+                construct that is now superseded by the :func:`_sql.any_`
+                function, which features a different calling style. The
+                :func:`_sql.any_` function is also mirrored at the method level
+                via the :meth:`_sql.ColumnOperators.any_` method.
 
-            E.g.::
+            Usage of array-specific :meth:`_types.ARRAY.Comparator.any`
+            is as follows::
 
                 from sqlalchemy.sql import operators
 
@@ -2841,10 +2845,14 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
         def all(self, other, operator=None):
             """Return ``other operator ALL (array)`` clause.
 
-            Argument places are switched, because ALL requires array
-            expression to be on the right hand-side.
+            .. note:: This method is an :class:`_types.ARRAY` - specific
+                construct that is now superseded by the :func:`_sql.any_`
+                function, which features a different calling style. The
+                :func:`_sql.any_` function is also mirrored at the method level
+                via the :meth:`_sql.ColumnOperators.any_` method.
 
-            E.g.::
+            Usage of array-specific :meth:`_types.ARRAY.Comparator.all`
+            is as follows::
 
                 from sqlalchemy.sql import operators
 

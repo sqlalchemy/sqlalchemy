@@ -3658,26 +3658,52 @@ class CollectionAggregate(UnaryExpression):
     def _create_any(cls, expr):
         """Produce an ANY expression.
 
-        This may apply to an array type for some dialects (e.g. postgresql),
-        or to a subquery for others (e.g. mysql).  e.g.::
+        For dialects such as that of PostgreSQL, this operator applies
+        to usage of the :class:`_types.ARRAY` datatype, for that of
+        MySQL, it may apply to a subquery.  e.g.::
 
-            # postgresql '5 = ANY (somearray)'
+            # renders on PostgreSQL:
+            # '5 = ANY (somearray)'
             expr = 5 == any_(mytable.c.somearray)
 
-            # mysql '5 = ANY (SELECT value FROM table)'
+            # renders on MySQL:
+            # '5 = ANY (SELECT value FROM table)'
             expr = 5 == any_(select(table.c.value))
 
-        The operator is more conveniently available from any
-        :class:`_sql.ColumnElement` object that makes use of the
-        :class:`_types.ARRAY` datatype::
+        Comparison to NULL may work using ``None`` or :func:`_sql.null`::
 
-            expr = mytable.c.somearray.any(5)
+            None == any_(mytable.c.somearray)
+
+        The any_() / all_() operators also feature a special "operand flipping"
+        behavior such that if any_() / all_() are used on the left side of a
+        comparison using a standalone operator such as ``==``, ``!=``, etc.
+        (not including operator methods such as
+        :meth:`_sql.ColumnOperators.is_`) the rendered expression is flipped::
+
+            # would render '5 = ANY (column)`
+            any_(mytable.c.column) == 5
+
+        Or with ``None``, which note will not perform
+        the usual step of rendering "IS" as is normally the case for NULL::
+
+            # would render 'NULL = ANY(somearray)'
+            any_(mytable.c.somearray) == None
+
+        .. versionchanged:: 1.4.26  repaired the use of any_() / all_()
+           comparing to NULL on the right side to be flipped to the left.
+
+        The column-level :meth:`_sql.ColumnElement.any_` method (not to be
+        confused with :class:`_types.ARRAY` level
+        :meth:`_types.ARRAY.Comparator.any`) is shorthand for
+        ``any_(col)``::
+
+            5 = mytable.c.somearray.any_()
 
         .. seealso::
 
-            :func:`_expression.all_`
+            :meth:`_sql.ColumnOperators.any_`
 
-            :meth:`_types.ARRAY.any`
+            :func:`_expression.all_`
 
         """
 
@@ -3695,29 +3721,54 @@ class CollectionAggregate(UnaryExpression):
     def _create_all(cls, expr):
         """Produce an ALL expression.
 
-        This may apply to an array type for some dialects (e.g. postgresql),
-        or to a subquery for others (e.g. mysql).  e.g.::
+        For dialects such as that of PostgreSQL, this operator applies
+        to usage of the :class:`_types.ARRAY` datatype, for that of
+        MySQL, it may apply to a subquery.  e.g.::
 
-            # postgresql '5 = ALL (somearray)'
+            # renders on PostgreSQL:
+            # '5 = ALL (somearray)'
             expr = 5 == all_(mytable.c.somearray)
 
-            # mysql '5 = ALL (SELECT value FROM table)'
+            # renders on MySQL:
+            # '5 = ALL (SELECT value FROM table)'
             expr = 5 == all_(select(table.c.value))
 
-        The operator is more conveniently available from any
-        :class:`_sql.ColumnElement` object that makes use of the
-        :class:`_types.ARRAY` datatype::
+        Comparison to NULL may work using ``None``::
 
-            expr = mytable.c.somearray.all(5)
+            None == all_(mytable.c.somearray)
+
+        The any_() / all_() operators also feature a special "operand flipping"
+        behavior such that if any_() / all_() are used on the left side of a
+        comparison using a standalone operator such as ``==``, ``!=``, etc.
+        (not including operator methods such as
+        :meth:`_sql.ColumnOperators.is_`) the rendered expression is flipped::
+
+            # would render '5 = ALL (column)`
+            all_(mytable.c.column) == 5
+
+        Or with ``None``, which note will not perform
+        the usual step of rendering "IS" as is normally the case for NULL::
+
+            # would render 'NULL = ALL(somearray)'
+            all_(mytable.c.somearray) == None
+
+        .. versionchanged:: 1.4.26  repaired the use of any_() / all_()
+           comparing to NULL on the right side to be flipped to the left.
+
+        The column-level :meth:`_sql.ColumnElement.all_` method (not to be
+        confused with :class:`_types.ARRAY` level
+        :meth:`_types.ARRAY.Comparator.all`) is shorthand for
+        ``all_(col)``::
+
+            5 == mytable.c.somearray.all_()
 
         .. seealso::
 
+            :meth:`_sql.ColumnOperators.all_`
+
             :func:`_expression.any_`
 
-            :meth:`_types.ARRAY.Comparator.all`
-
         """
-
         expr = coercions.expect(roles.ExpressionElementRole, expr)
         expr = expr.self_group()
         return CollectionAggregate(
@@ -3735,7 +3786,7 @@ class CollectionAggregate(UnaryExpression):
             raise exc.ArgumentError(
                 "Only comparison operators may be used with ANY/ALL"
             )
-        kwargs["reverse"] = True
+        kwargs["reverse"] = kwargs["_any_all_expr"] = True
         return self.comparator.operate(operators.mirror(op), *other, **kwargs)
 
     def reverse_operate(self, op, other, **kwargs):

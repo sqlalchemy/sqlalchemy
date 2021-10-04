@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 7140
+
+    Fixed an inconsistency in the any_() / all_() functions / methods where the
+    special behavior these functions have of "flipping" the expression such
+    that the "ANY" / "ALL" expression is always on the right side would not
+    function if the comparison were against the None value, that is,
+    "column.any_() == None" should produce the same SQL expression as "null()
+    == column.any_()". Added more docs to clarify this as well, plus mentions
+    that any_() / all_() generally supersede the ARRAY version "any()" /
+    "all()".
