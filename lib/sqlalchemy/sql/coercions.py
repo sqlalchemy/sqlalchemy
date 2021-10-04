@@ -191,7 +191,6 @@ def expect(
                 resolved = element
     else:
         resolved = element
-
     if (
         apply_propagate_attrs is not None
         and not apply_propagate_attrs._propagate_attrs
@@ -842,6 +841,28 @@ class ReturnsRowsImpl(RoleImpl):
 
 class StatementImpl(_CoerceLiterals, RoleImpl):
     __slots__ = ()
+
+    def _post_coercion(self, resolved, original_element, argname=None, **kw):
+        if resolved is not original_element and not isinstance(
+            original_element, util.string_types
+        ):
+            # use same method as Connection uses; this will later raise
+            # ObjectNotExecutableError
+            try:
+                original_element._execute_on_connection
+            except AttributeError:
+                util.warn_deprecated(
+                    "Object %r should not be used directly in a SQL statement "
+                    "context, such as passing to methods such as "
+                    "session.execute().  This usage will be disallowed in a "
+                    "future release.  "
+                    "Please use Core select() / update() / delete() etc. "
+                    "with Session.execute() and other statement execution "
+                    "methods." % original_element,
+                    "1.4",
+                )
+
+        return resolved
 
     def _implicit_coercions(
         self, original_element, resolved, argname=None, **kw
