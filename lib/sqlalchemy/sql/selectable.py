@@ -2051,6 +2051,7 @@ class CTE(
             ("_cte_alias", InternalTraversal.dp_clauseelement),
             ("_restates", InternalTraversal.dp_clauseelement),
             ("recursive", InternalTraversal.dp_boolean),
+            ("nesting", InternalTraversal.dp_boolean),
         ]
         + HasPrefixes._has_prefixes_traverse_internals
         + HasSuffixes._has_suffixes_traverse_internals
