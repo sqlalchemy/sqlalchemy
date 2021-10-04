@@ -28,8 +28,10 @@ from sqlalchemy.testing import assertions
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
@@ -2174,6 +2176,81 @@ class SessionInterface(fixtures.MappedTest):
                 ],
                 [ForUpdateArg(read=True), ForUpdateArg(), None, None],
             )
+
+
+class NewStyleExecutionTest(_fixtures.FixtureTest):
+    run_setup_mappers = "once"
+    run_inserts = "once"
+    run_deletes = None
+
+    @classmethod
+    def setup_mappers(cls):
+        cls._setup_stock_mapping()
+
+    @testing.combinations(("close",), ("expunge_all",))
+    def test_unbuffered_result_session_is_closed(self, meth):
+        """test #7128"""
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        result = sess.execute(select(User))
+
+        # close or expunge_all
+        getattr(sess, meth)()
+
+        with expect_raises_message(
+            sa.exc.InvalidRequestError,
+            "Object .*User.* cannot be converted to 'persistent' state, "
+            "as this identity map is no longer valid.",
+        ):
+            result.all()
+
+    @testing.combinations((True,), (False,), argnames="prebuffered")
+    @testing.combinations(("close",), ("expunge_all",), argnames="meth")
+    def test_unbuffered_result_before_session_is_closed(
+        self, prebuffered, meth
+    ):
+        """test #7128"""
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        if prebuffered:
+            result = sess.execute(
+                select(User), execution_options={"prebuffer_rows": True}
+            )
+        else:
+            result = sess.execute(select(User))
+        u1 = result.scalars().all()[0]
+
+        is_true(inspect(u1).persistent)
+        is_false(inspect(u1).detached)
+        is_(inspect(u1).session, sess)
+
+        # close or expunge_all
+        getattr(sess, meth)()
+
+        is_true(inspect(u1).detached)
+        is_(inspect(u1).session, None)
+
+    @testing.combinations(("close",), ("expunge_all",))
+    def test_prebuffered_result_session_is_closed(self, meth):
+        """test #7128"""
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        result = sess.execute(
+            select(User), execution_options={"prebuffer_rows": True}
+        )
+        # close or expunge_all
+        getattr(sess, meth)()
+
+        u1 = result.scalars().all()[0]
+
+        is_true(inspect(u1).detached)
+        is_(inspect(u1).session, None)
 
 
 class FlushWarningsTest(fixtures.MappedTest):

@@ -1836,6 +1836,7 @@ class Session(_SessionClassMethods):
         """
 
         all_states = self.identity_map.all_states() + list(self._new)
+        self.identity_map._kill()
         self.identity_map = identity.WeakInstanceDict()
         self._new = {}
         self._deleted = {}
