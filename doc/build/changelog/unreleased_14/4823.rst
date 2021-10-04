@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 4823
+
+    Fix :class:`_sql.CTE` with :class:`_sql.CTE.recursive` set to True
+    and :class:`_sql.CTE.nesting` set to True was not properly compiled.
