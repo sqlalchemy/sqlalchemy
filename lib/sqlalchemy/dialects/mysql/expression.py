@@ -68,7 +68,7 @@ class match(Generative, elements.BinaryExpression):
 
         against = kw.pop("against", None)
 
-        if not against:
+        if against is None:
             raise exc.ArgumentError("against is required")
         against = coercions.expect(
             roles.ExpressionElementRole,
