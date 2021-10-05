@@ -1286,7 +1286,7 @@ class MatchExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_match_expression_supports_bindparam(self):
         firstname = self.match_table.c.firstname
         lastname = self.match_table.c.lastname
-        against = bindparam('against', required=True)
+        against = bindparam("against", required=True)
 
         expr = match(firstname, lastname, against=against)
 
