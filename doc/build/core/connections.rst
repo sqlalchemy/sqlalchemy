@@ -576,9 +576,9 @@ preferable to avoid trying to switch isolation levels on a single
 
 To illustrate how to use "autocommit" in an ad-hoc mode within the scope of a
 single :class:`_engine.Connection` checkout, the
-:paramref:`_engine.Connection.isolation_level` setting must be used explicitly,
-meaning we would need to retrieve the. We can write our above block "correctly"
-as (noting 2.0 style usage below)::
+:paramref:`_engine.Connection.execution_options.isolation_level` parameter
+must be re-applied with the previous isolation level.
+We can write our above block "correctly" as (noting 2.0 style usage below)::
 
     # if we wanted to flip autocommit on and off on a single connection/
     # which... we usually don't.
@@ -589,7 +589,7 @@ as (noting 2.0 style usage below)::
 
         connection.execution_options(isolation_level="AUTOCOMMIT")
 
-        # run statement in autocommit mode
+        # run statement(s) in autocommit mode
         connection.execute(<statement>)
 
         # "commit" the autobegun "transaction" (2.0/future mode only)
@@ -603,9 +603,9 @@ as (noting 2.0 style usage below)::
             connection.execute(<statement>)
 
 Above, to manually revert the isolation level we made use of
-:attr:`_engine.Connection.default_isolation_level` to revert to the normal
-default for our engine (assuming that's what we want here). However, it's
-probably a much better idea to work with the architecture of of the
+:attr:`_engine.Connection.default_isolation_level` to restore the default
+isolation level (assuming that's what we want here). However, it's
+probably a better idea to work with the architecture of of the
 :class:`_engine.Connection` which already handles resetting of isolation level
 automatically upon checkin. The **preferred** way to write the above is to
 use two blocks ::
@@ -626,8 +626,10 @@ To sum up:
 
 1. "DBAPI level autocommit" isolation level is entirely independent of the
    :class:`_engine.Connection` object's notion of "begin" and "commit"
-2. use individual :class:`_engine.Connection` checkouts per isolation level,
-   let the engine do the work of restoring default isolation levels
+2. use individual :class:`_engine.Connection` checkouts per isolation level.
+   Avoid trying to change back and forth between "autocommit" on a single
+   connection checkout; let the engine do the work of restoring default
+   isolation levels
 
 .. _engine_stream_results:
 
