@@ -525,6 +525,11 @@ connections, but does not expose transaction isolation directly.  So in
 order to affect transaction isolation level, we need to act upon the
 :class:`_engine.Engine` or :class:`_engine.Connection` as appropriate.
 
+.. seealso::
+
+    :ref:`dbapi_autocommit` - be sure to review how isolation levels work at
+    the level of the SQLAlchemy :class:`_engine.Connection` object as well.
+
 Setting Isolation For A Sessionmaker / Engine Wide
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
