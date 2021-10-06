@@ -265,7 +265,7 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
         (
             lambda s, User: (User.id,) + tuple([null()] * 3),
             "users.id AS users_id, NULL AS anon_1, NULL AS anon__1, "
-            "NULL AS anon__1",
+            "NULL AS anon__2",
             (7, None, None, None),
         ),
     )

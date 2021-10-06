@@ -9,10 +9,12 @@ from sqlalchemy import Date
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import null
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import true
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import close_all_sessions
@@ -5796,7 +5798,9 @@ class EntityViaMultiplePathTestOne(fixtures.DeclarativeMappedTest):
 
         class A(Base):
             __tablename__ = "a"
-            id = Column(Integer, primary_key=True)
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
             b_id = Column(ForeignKey("b.id"))
             c_id = Column(ForeignKey("c.id"))
 
@@ -5805,20 +5809,26 @@ class EntityViaMultiplePathTestOne(fixtures.DeclarativeMappedTest):
 
         class B(Base):
             __tablename__ = "b"
-            id = Column(Integer, primary_key=True)
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
             c_id = Column(ForeignKey("c.id"))
 
             c = relationship("C")
 
         class C(Base):
             __tablename__ = "c"
-            id = Column(Integer, primary_key=True)
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
             d_id = Column(ForeignKey("d.id"))
             d = relationship("D")
 
         class D(Base):
             __tablename__ = "d"
-            id = Column(Integer, primary_key=True)
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
 
             @classmethod
             def define_tables(cls, metadata):
@@ -5898,7 +5908,9 @@ class EntityViaMultiplePathTestTwo(fixtures.DeclarativeMappedTest):
         class User(Base):
             __tablename__ = "cs_user"
 
-            id = Column(Integer, primary_key=True)
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
             data = Column(Integer)
 
         class LD(Base):
@@ -5906,7 +5918,9 @@ class EntityViaMultiplePathTestTwo(fixtures.DeclarativeMappedTest):
 
             __tablename__ = "cs_ld"
 
-            id = Column(Integer, primary_key=True)
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
             user_id = Column(Integer, ForeignKey("cs_user.id"))
             user = relationship(User, primaryjoin=user_id == User.id)
 
@@ -5915,7 +5929,9 @@ class EntityViaMultiplePathTestTwo(fixtures.DeclarativeMappedTest):
 
             __tablename__ = "cs_a"
 
-            id = Column(Integer, primary_key=True)
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
             ld_id = Column(Integer, ForeignKey("cs_ld.id"))
             ld = relationship(LD, primaryjoin=ld_id == LD.id)
 
@@ -5924,7 +5940,9 @@ class EntityViaMultiplePathTestTwo(fixtures.DeclarativeMappedTest):
 
             __tablename__ = "cs_lda"
 
-            id = Column(Integer, primary_key=True)
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
             ld_id = Column(Integer, ForeignKey("cs_ld.id"))
             a_id = Column(Integer, ForeignKey("cs_a.id"))
             a = relationship(A, primaryjoin=a_id == A.id)
@@ -6004,18 +6022,24 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
 
         class A(Base):
             __tablename__ = "a"
-            id = Column(Integer, primary_key=True)
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
             bs = relationship("B")
 
         class B(Base):
             __tablename__ = "b"
-            id = Column(Integer, primary_key=True)
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
             a_id = Column(ForeignKey("a.id"))
             cs = relationship("C")
 
         class C(Base):
             __tablename__ = "c"
-            id = Column(Integer, primary_key=True)
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
             b_id = Column(ForeignKey("b.id"))
 
     @classmethod
@@ -6638,3 +6662,76 @@ class SecondaryOptionsTest(fixtures.MappedTest):
                 {"pk_1": 4},
             ),
         )
+
+
+class SingletonConstantSubqTest(_fixtures.FixtureTest):
+    """POC test for both #7153 and #7154"""
+
+    run_inserts = "once"
+    run_deletes = None
+
+    __backend__ = True
+
+    @classmethod
+    def setup_mappers(cls):
+        cls._setup_stock_mapping()
+
+    def test_limited_eager_w_null(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        stmt = (
+            select(User, null())
+            .options(joinedload(User.addresses))
+            .where(User.id == 8)
+            .limit(10)
+        )
+
+        session = fixture_session()
+
+        def go():
+            eq_(
+                session.execute(stmt).unique().all(),
+                [
+                    (
+                        User(
+                            id=8, addresses=[Address(), Address(), Address()]
+                        ),
+                        None,
+                    )
+                ],
+            )
+
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_limited_eager_w_multi_null_booleans(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        stmt = (
+            select(User, null(), null(), null(), true(), true())
+            .options(joinedload(User.addresses))
+            .where(User.id == 8)
+            .limit(10)
+        )
+
+        session = fixture_session()
+
+        def go():
+            eq_(
+                session.execute(stmt).unique().all(),
+                [
+                    (
+                        User(
+                            id=8, addresses=[Address(), Address(), Address()]
+                        ),
+                        None,
+                        None,
+                        None,
+                        True,
+                        True,
+                    )
+                ],
+            )
+
+        self.assert_sql_count(testing.db, go, 1)

@@ -983,6 +983,10 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
 
         # test that the outer IS NULL is rendered, not adapted
         # test that the inner query includes the NULL we asked for
+
+        # ironically, this statement would not actually fetch due to the NULL
+        # not allowing adaption and therefore failing on the result set
+        # matching, this was addressed in #7154.
         self.assert_compile(
             stmt,
             "SELECT anon_2.anon_1, anon_2.id, anon_2.name, "

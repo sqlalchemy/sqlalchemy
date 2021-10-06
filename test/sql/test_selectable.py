@@ -6,6 +6,7 @@ from sqlalchemy import cast
 from sqlalchemy import Column
 from sqlalchemy import exc
 from sqlalchemy import exists
+from sqlalchemy import false
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
@@ -22,6 +23,7 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import text
+from sqlalchemy import true
 from sqlalchemy import type_coerce
 from sqlalchemy import TypeDecorator
 from sqlalchemy import union
@@ -512,6 +514,21 @@ class SelectableTest(
         stmt2 = visitors.cloned_traverse(stmt, {}, {"select": add_column})
         eq_(list(stmt.c.keys()), ["q"])
         eq_(list(stmt2.c.keys()), ["q", "p"])
+
+    @testing.combinations(
+        func.now(), null(), true(), false(), literal_column("10"), column("x")
+    )
+    def test_const_object_correspondence(self, c):
+        """test #7154"""
+
+        stmt = select(c).subquery()
+
+        stmt2 = select(stmt)
+
+        is_(
+            stmt2.selected_columns.corresponding_column(c),
+            stmt2.selected_columns[0],
+        )
 
     def test_append_column_after_visitor_replace(self):
         # test for a supported idiom that matches the deprecated / removed
@@ -3180,7 +3197,7 @@ class ReprTest(fixtures.TestBase):
             repr(obj)
 
 
-class WithLabelsTest(fixtures.TestBase):
+class WithLabelsTest(AssertsCompiledSQL, fixtures.TestBase):
     def _assert_result_keys(self, s, keys):
         compiled = s.compile()
 
@@ -3265,6 +3282,54 @@ class WithLabelsTest(fixtures.TestBase):
         eq_(list(sel.selected_columns.keys()), ["t1_x", "t1_y", "t1_x_1"])
         eq_(list(sel.subquery().c.keys()), ["t1_x", "t1_y", "t1_x_1"])
         self._assert_result_keys(sel, ["t1_x__1", "t1_x", "t1_y"])
+
+    def _columns_repeated_identity(self):
+        m = MetaData()
+        t1 = Table("t1", m, Column("x", Integer), Column("y", Integer))
+        return select(t1.c.x, t1.c.y, t1.c.x, t1.c.x, t1.c.x).set_label_style(
+            LABEL_STYLE_NONE
+        )
+
+    def _anon_columns_repeated_identity_one(self):
+        m = MetaData()
+        t1 = Table("t1", m, Column("x", Integer), Column("y", Integer))
+        return select(t1.c.x, null(), null(), null()).set_label_style(
+            LABEL_STYLE_NONE
+        )
+
+    def _anon_columns_repeated_identity_two(self):
+        fn = func.now()
+        return select(fn, fn, fn, fn).set_label_style(LABEL_STYLE_NONE)
+
+    def test_columns_repeated_identity_disambiguate(self):
+        """test #7153"""
+        sel = self._columns_repeated_identity().set_label_style(
+            LABEL_STYLE_DISAMBIGUATE_ONLY
+        )
+
+        self.assert_compile(
+            sel,
+            "SELECT t1.x, t1.y, t1.x AS x__1, t1.x AS x__2, "
+            "t1.x AS x__3 FROM t1",
+        )
+
+    def test_columns_repeated_identity_subquery_disambiguate(self):
+        """test #7153"""
+        sel = self._columns_repeated_identity()
+
+        stmt = select(sel.subquery()).set_label_style(
+            LABEL_STYLE_DISAMBIGUATE_ONLY
+        )
+
+        # databases like MySQL won't allow the subquery to have repeated labels
+        # even if we don't try to access them
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.x, anon_1.y, anon_1.x AS x_1, anon_1.x AS x_2, "
+            "anon_1.x AS x_3 FROM "
+            "(SELECT t1.x AS x, t1.y AS y, t1.x AS x__1, t1.x AS x__2, "
+            "t1.x AS x__3 FROM t1) AS anon_1",
+        )
 
     def _labels_overlap(self):
         m = MetaData()

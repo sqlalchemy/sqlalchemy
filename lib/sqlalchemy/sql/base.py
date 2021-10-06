@@ -39,6 +39,8 @@ NO_ARG = util.symbol("NO_ARG")
 class Immutable(object):
     """mark a ClauseElement as 'immutable' when expressions are cloned."""
 
+    _is_immutable = True
+
     def unique_params(self, *optionaldict, **kwargs):
         raise NotImplementedError("Immutable objects do not support copying")
 
@@ -55,6 +57,8 @@ class Immutable(object):
 class SingletonConstant(Immutable):
     """Represent SQL constants like NULL, TRUE, FALSE"""
 
+    _is_singleton_constant = True
+
     def __new__(cls, *arg, **kw):
         return cls._singleton
 
@@ -62,14 +66,16 @@ class SingletonConstant(Immutable):
     def _create_singleton(cls):
         obj = object.__new__(cls)
         obj.__init__()
-        cls._singleton = obj
 
-    # don't proxy singletons.   this means that a SingletonConstant
-    # will never be a "corresponding column" in a statement; the constant
-    # can be named directly and as it is often/usually compared against using
-    # "IS", it can't be adapted to a subquery column in any case.
-    # see :ticket:`6259`.
-    proxy_set = frozenset()
+        # for a long time this was an empty frozenset, meaning
+        # a SingletonConstant would never be a "corresponding column" in
+        # a statement.  This referred to #6259.  However, in #7154 we see
+        # that we do in fact need "correspondence" to work when matching cols
+        # in result sets, so the non-correspondence was moved to a more
+        # specific level when we are actually adapting expressions for SQL
+        # render only.
+        obj.proxy_set = frozenset([obj])
+        cls._singleton = obj
 
 
 def _from_objects(*elements):
