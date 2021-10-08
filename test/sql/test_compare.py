@@ -502,6 +502,7 @@ class CoreFixtures(object):
         ),
         lambda: (
             select(table_a.c.a).cte(),
+            select(table_a.c.a).cte(nesting=True),
             select(table_a.c.a).cte(recursive=True),
             select(table_a.c.a).cte(name="some_cte", recursive=True),
             select(table_a.c.a).cte(name="some_cte"),
@@ -830,7 +831,17 @@ class CoreFixtures(object):
             )
             return stmt
 
-        return [one(), one_diff(), two(), three()]
+        def four():
+            stmt = select(table_a.c.a).cte(recursive=True)
+            stmt = stmt.union(select(stmt.c.a + 1).where(stmt.c.a < 10))
+            return stmt
+
+        def five():
+            stmt = select(table_a.c.a).cte(recursive=True, nesting=True)
+            stmt = stmt.union(select(stmt.c.a + 1).where(stmt.c.a < 10))
+            return stmt
+
+        return [one(), one_diff(), two(), three(), four(), five()]
 
     fixtures.append(_complex_fixtures)
 
