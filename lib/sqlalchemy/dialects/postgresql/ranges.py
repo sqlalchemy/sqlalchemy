@@ -98,6 +98,18 @@ class RangeOperators(object):
             """
             return self.expr.op("+")(other)
 
+        def __mul__(self, other):
+            """Range expression. Returns the intersection of the two ranges.
+            """
+            return self.expr.op("*")(other)
+
+        def __sub__(self, other):
+            """Range expression. Returns the difference of the two ranges.
+            Will raise an exception if the resulting range is not
+            contiguous.
+            """
+            return self.expr.op("-")(other)
+
 
 class INT4RANGE(RangeOperators, sqltypes.TypeEngine):
     """Represent the PostgreSQL INT4RANGE type."""
