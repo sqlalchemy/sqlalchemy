@@ -848,7 +848,6 @@ class ResultTest(BakedTest):
             for cond1, cond2 in itertools.product(
                 *[(False, True) for j in range(2)]
             ):
-                print("HI----")
                 bq = base_bq._clone()
 
                 sess = fixture_session()
