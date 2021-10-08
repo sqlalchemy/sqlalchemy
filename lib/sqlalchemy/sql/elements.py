@@ -214,6 +214,8 @@ class ClauseElement(
     _is_bind_parameter = False
     _is_clause_list = False
     _is_lambda_element = False
+    _is_singleton_constant = False
+    _is_immutable = False
 
     _order_by_label_element = None
 
@@ -1023,19 +1025,39 @@ class ColumnElement(
         """
         return Label(name, self, self.type)
 
-    def _anon_label(self, seed):
+    def _anon_label(self, seed, add_hash=None):
         while self._is_clone_of is not None:
             self = self._is_clone_of
 
         # as of 1.4 anonymous label for ColumnElement uses hash(), not id(),
         # as the identifier, because a column and its annotated version are
         # the same thing in a SQL statement
+        hash_value = hash(self)
+
+        if add_hash:
+            # this path is used for disambiguating anon labels that would
+            # otherwise be the same name for the same element repeated.
+            # an additional numeric value is factored in for each label.
+
+            # shift hash(self) (which is id(self), typically 8 byte integer)
+            # 16 bits leftward.  fill extra add_hash on right
+            assert add_hash < (2 << 15)
+            assert seed
+            hash_value = (hash_value << 16) | add_hash
+
+            # extra underscore is added for labels with extra hash
+            # values, to isolate the "deduped anon" namespace from the
+            # regular namespace.  eliminates chance of these
+            # manufactured hash values overlapping with regular ones for some
+            # undefined python interpreter
+            seed = seed + "_"
+
         if isinstance(seed, _anonymous_label):
             return _anonymous_label.safe_construct(
-                hash(self), "", enclosing_label=seed
+                hash_value, "", enclosing_label=seed
             )
 
-        return _anonymous_label.safe_construct(hash(self), seed or "anon")
+        return _anonymous_label.safe_construct(hash_value, seed or "anon")
 
     @util.memoized_property
     def _anon_name_label(self):
@@ -1093,8 +1115,7 @@ class ColumnElement(
     def anon_key_label(self):
         return self._anon_key_label
 
-    @util.memoized_property
-    def _dedupe_anon_label(self):
+    def _dedupe_anon_label_idx(self, idx):
         """label to apply to a column that is anon labeled, but repeated
         in the SELECT, so that we have to make an "extra anon" label that
         disambiguates it from the previous appearance.
@@ -1113,9 +1134,9 @@ class ColumnElement(
         # "CAST(casttest.v1 AS DECIMAL) AS anon__1"
 
         if label is None:
-            return self._dedupe_anon_tq_label
+            return self._dedupe_anon_tq_label_idx(idx)
         else:
-            return self._anon_label(label + "_")
+            return self._anon_label(label, add_hash=idx)
 
     @util.memoized_property
     def _anon_tq_label(self):
@@ -1125,10 +1146,10 @@ class ColumnElement(
     def _anon_tq_key_label(self):
         return self._anon_label(getattr(self, "_tq_key_label", None))
 
-    @util.memoized_property
-    def _dedupe_anon_tq_label(self):
+    def _dedupe_anon_tq_label_idx(self, idx):
         label = getattr(self, "_tq_label", None) or "anon"
-        return self._anon_label(label + "_")
+
+        return self._anon_label(label, add_hash=idx)
 
 
 class WrapsColumnExpression(object):
@@ -1178,14 +1199,13 @@ class WrapsColumnExpression(object):
                 return wce._anon_name_label
         return super(WrapsColumnExpression, self)._anon_name_label
 
-    @property
-    def _dedupe_anon_label(self):
+    def _dedupe_anon_label_idx(self, idx):
         wce = self.wrapped_column_expression
         nal = wce._non_anon_label
         if nal:
             return self._anon_label(nal + "_")
         else:
-            return self._dedupe_anon_tq_label
+            return self._dedupe_anon_tq_label_idx(idx)
 
 
 class BindParameter(roles.InElementRole, ColumnElement):
