@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, examples
+    :tickets: 7169
+
+    Repaired the examples in examples/versioned_rows to use SQLAlchemy 1.4 APIs
+    correctly; these examples had been missed when API changes like removing
+    "passive" from ``Session.is_modified()`` were made as well as the
+    ``do_orm_execute()`` event hook were added.

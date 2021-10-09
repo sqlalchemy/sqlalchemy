@@ -64,7 +64,7 @@ def before_flush(session, flush_context, instances):
     for instance in session.dirty:
         if not isinstance(instance, Versioned):
             continue
-        if not session.is_modified(instance, passive=True):
+        if not session.is_modified(instance):
             continue
 
         if not attributes.instance_state(instance).has_identity:
