@@ -132,7 +132,9 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def foreign_key_constraint_option_reflection_ondelete(self):
-        return only_on(["postgresql", "mysql", "mariadb", "sqlite", "oracle"])
+        return only_on(
+            ["postgresql", "mysql", "mariadb", "sqlite", "oracle", "mssql"]
+        )
 
     @property
     def fk_constraint_option_reflection_ondelete_restrict(self):
@@ -140,11 +142,11 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def fk_constraint_option_reflection_ondelete_noaction(self):
-        return only_on(["postgresql", "mysql", "mariadb", "sqlite"])
+        return only_on(["postgresql", "mysql", "mariadb", "sqlite", "mssql"])
 
     @property
     def foreign_key_constraint_option_reflection_onupdate(self):
-        return only_on(["postgresql", "mysql", "mariadb", "sqlite"])
+        return only_on(["postgresql", "mysql", "mariadb", "sqlite", "mssql"])
 
     @property
     def fk_constraint_option_reflection_onupdate_restrict(self):
