@@ -1,0 +1,10 @@
+.. change::
+    :tags: engine, bug
+    :tickets: 7161
+
+    The :meth:`_engine.Inspector.has_table` method will now consistently check
+    for views of the given name as well as tables. Previously this behavior was
+    dialect dependent, with PostgreSQL, MySQL/MariaDB and SQLite supporting it,
+    and Oracle and SQL Server not supporting it. Third party dialects should
+    also seek to ensure their :meth:`_engine.Inspector.has_table` method
+    searches for views as well as tables for the given name.

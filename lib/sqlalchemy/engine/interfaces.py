@@ -463,7 +463,7 @@ class Dialect(object):
 
     def has_table(self, connection, table_name, schema=None, **kw):
         """For internal dialect use, check the existence of a particular table
-        in the database.
+        or view in the database.
 
         Given a :class:`_engine.Connection` object, a string table_name and
         optional schema name, return True if the given table exists in the
@@ -480,6 +480,13 @@ class Dialect(object):
            presence. Please use the :meth:`.Inspector.has_table` method.
            Alternatively, for legacy cross-compatibility, the
            :meth:`_engine.Engine.has_table` method may be used.
+
+        .. versionchanged:: 2.0
+
+            The :meth:`_engine.Dialect.has_table` method should also check
+            for the presence of views.  In previous versions this
+            behavior was dialect specific. New dialect suite tests were added
+            to ensure that dialects conform with this behavior consistently.
 
         """
 

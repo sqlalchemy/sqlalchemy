@@ -268,14 +268,18 @@ class Inspector(object):
             )
 
     def has_table(self, table_name, schema=None):
-        """Return True if the backend has a table of the given name.
-
+        """Return True if the backend has a table or view of the given name.
 
         :param table_name: name of the table to check
         :param schema: schema name to query, if not the default schema.
 
         .. versionadded:: 1.4 - the :meth:`.Inspector.has_table` method
            replaces the :meth:`_engine.Engine.has_table` method.
+
+        .. versionchanged:: 2.0:: The method checks also for views.
+           In previous version this behaviour was dialect specific. New
+           dialect suite tests were added to ensure all dialect conform with
+           this behaviour.
 
         """
         # TODO: info_cache?

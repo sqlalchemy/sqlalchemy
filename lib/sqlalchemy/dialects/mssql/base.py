@@ -2888,6 +2888,8 @@ class MSDialect(default.DefaultDialect):
     def has_table(self, connection, tablename, dbname, owner, schema):
         self._ensure_has_table_connection(connection)
         if tablename.startswith("#"):  # temporary table
+            # mssql does not support temporary views
+            # SQL Error [4103] [S0001]: "#v": Temporary views are not allowed
             tables = ischema.mssql_temp_table_columns
 
             s = sql.select(tables.c.table_name).where(
@@ -2915,7 +2917,10 @@ class MSDialect(default.DefaultDialect):
 
             s = sql.select(tables.c.table_name).where(
                 sql.and_(
-                    tables.c.table_type == "BASE TABLE",
+                    sql.or_(
+                        tables.c.table_type == "BASE TABLE",
+                        tables.c.table_type == "VIEW",
+                    ),
                     tables.c.table_name == tablename,
                 )
             )

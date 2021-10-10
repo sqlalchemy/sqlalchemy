@@ -77,6 +77,32 @@ class HasTableTest(fixtures.TablesTest):
                 )
             )
 
+    @testing.requires.views
+    def test_has_table_view(self, connection):
+        query = "CREATE VIEW vv AS SELECT * FROM test_table"
+        connection.execute(sa.sql.text(query))
+        insp = inspect(connection)
+        try:
+            is_true(insp.has_table("vv"))
+        finally:
+            connection.execute(sa.sql.text("DROP VIEW vv"))
+
+    @testing.requires.views
+    @testing.requires.schemas
+    def test_has_table_view_schema(self, connection):
+        query = "CREATE VIEW %s.vv AS SELECT * FROM %s.test_table_s" % (
+            config.test_schema,
+            config.test_schema,
+        )
+        connection.execute(sa.sql.text(query))
+        insp = inspect(connection)
+        try:
+            is_true(insp.has_table("vv", config.test_schema))
+        finally:
+            connection.execute(
+                sa.sql.text("DROP VIEW %s.vv" % config.test_schema)
+            )
+
 
 class HasIndexTest(fixtures.TablesTest):
     __backend__ = True
