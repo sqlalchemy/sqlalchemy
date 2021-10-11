@@ -12,7 +12,7 @@ of the same test environment and standard suites available to
 SQLAlchemy/Alembic themselves without the need to ship/install a separate
 package outside of SQLAlchemy.
 
-NOTE:  copied/adapted from SQLAlchemy master for backwards compatibility;
+NOTE:  copied/adapted from SQLAlchemy main for backwards compatibility;
 this should be removable when Alembic targets SQLAlchemy 1.0.0.
 
 """
