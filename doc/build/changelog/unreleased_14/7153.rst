@@ -1,0 +1,25 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 7153
+
+    Adjusted the "column disambiguation" logic that's new in 1.4, where the
+    same expression repeated gets an "extra anonymous" label, so that the logic
+    more aggressively deduplicates those labels when the repeated element
+    is the same Python expression object each time, as occurs in cases like
+    when using "singleton" values like :func:`_sql.null`.  This is based on
+    the observation that at least some databases (e.g. MySQL, but not SQLite)
+    will raise an error if the same label is repeated inside of a subquery.
+
+.. change::
+    :tags: bug, orm
+    :tickets: 7154
+
+    Related to :ticket:`7153`, fixed an issue where result column lookups would
+    fail for "adapted" SELECT statements that selected for "constant" value
+    expressions most typically the NULL expression, as would occur in such
+    places as joined eager loading in conjunction with limit/offset. This was
+    overall a regression due to issue :ticket:`6259` which removed all
+    "adaption" for constants like NULL, "true", and "false" when rewriting
+    expressions in a SQL statement, but this broke the case where the same
+    adaption logic were used to resolve the constant to a labeled expression
+    for the purposes of result set targeting.
