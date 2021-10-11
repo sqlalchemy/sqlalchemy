@@ -434,7 +434,7 @@ def _engine_uri(options, file_config):
     for db_url in expanded_urls:
         log.info("Adding database URL: %s", db_url)
 
-        if options.write_idents and provision.FOLLOWER_IDENT:  # != 'master':
+        if options.write_idents and provision.FOLLOWER_IDENT:
             with open(options.write_idents, "a") as file_:
                 file_.write(provision.FOLLOWER_IDENT + " " + db_url + "\n")
 

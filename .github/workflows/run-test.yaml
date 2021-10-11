@@ -1,10 +1,10 @@
 name: Run tests
 
 on:
-  # run on push in master or rel_* branches excluding changes are only on doc or example folders
+  # run on push in main or rel_* branches excluding changes are only on doc or example folders
   push:
     branches:
-      - master
+      - main
       - "rel_*"
       # branches used to test the workflow
       - "workflow_test_*"

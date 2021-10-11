@@ -3636,7 +3636,7 @@ class ExternalColumnsTest(QueryTest):
         # TODO: ISSUE: BUG:  cached metadata is confusing the user.id
         # column here with the anon_1 for some reason, when we
         # use compiled cache.  this bug may even be present in
-        # regular master / 1.3.  right now the caching of result
+        # regular main / 1.3.  right now the caching of result
         # metadata is disabled.
         eq_(sess.query(Address).all(), address_result)
 

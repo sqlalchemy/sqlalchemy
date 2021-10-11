@@ -1211,9 +1211,9 @@ class DeclarativeTest(DeclarativeTestBase):
 
         # test [ticket:1492]
 
-        class Master(Base):
+        class Topic(Base):
 
-            __tablename__ = "master"
+            __tablename__ = "topic"
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
             )
@@ -1224,23 +1224,23 @@ class DeclarativeTest(DeclarativeTestBase):
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
             )
-            master_id = Column(None, ForeignKey(Master.id))
-            master = relationship(Master)
+            topic_id = Column(None, ForeignKey(Topic.id))
+            topic = relationship(Topic)
 
         Base.metadata.create_all(testing.db)
         configure_mappers()
-        assert class_mapper(Detail).get_property("master").strategy.use_get
-        m1 = Master()
-        d1 = Detail(master=m1)
+        assert class_mapper(Detail).get_property("topic").strategy.use_get
+        t1 = Topic()
+        d1 = Detail(topic=t1)
         sess = fixture_session()
         sess.add(d1)
         sess.flush()
         sess.expunge_all()
         d1 = sess.query(Detail).first()
-        m1 = sess.query(Master).first()
+        t1 = sess.query(Topic).first()
 
         def go():
-            assert d1.master
+            assert d1.topic
 
         self.assert_sql_count(testing.db, go, 0)
 

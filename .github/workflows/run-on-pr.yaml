@@ -1,10 +1,10 @@
 name: Run tests on a pr
 
 on:
-  # run on pull request to master excluding changes that are only on doc or example folders
+  # run on pull request to main excluding changes that are only on doc or example folders
   pull_request:
     branches:
-      - master
+      - main
     paths-ignore:
       - "examples/**"
 
@@ -118,7 +118,7 @@ jobs:
       - name: Run tests
         run: tox -e pep8
 
-  # Arm emulation is quite slow (~20min) so for now just run it when merging to master
+  # Arm emulation is quite slow (~20min) so for now just run it when merging to main
   # run-test-arm64:
   #   name: ${{ matrix.python-version }}-${{ matrix.build-type }}-arm64-ubuntu-latest
   #   runs-on: ubuntu-latest
