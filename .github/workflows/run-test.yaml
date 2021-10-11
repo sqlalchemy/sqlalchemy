@@ -33,7 +33,7 @@ jobs:
           - "3.7"
           - "3.8"
           - "3.9"
-          - "3.10.0-beta - 3.10"
+          - "3.10"
           - "pypy3"
         build-type:
           - "cext"
@@ -99,6 +99,7 @@ jobs:
           - cp37-cp37m
           - cp38-cp38
           - cp39-cp39
+          - cp310-cp310
         build-type:
           - "cext"
           - "nocext"
@@ -139,7 +140,7 @@ jobs:
           - "3.7"
           - "3.8"
           - "3.9"
-          - "3.10.0-beta - 3.10"
+          - "3.10"
 
       fail-fast: false
 
