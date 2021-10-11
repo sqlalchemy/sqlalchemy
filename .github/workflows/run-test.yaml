@@ -34,7 +34,7 @@ jobs:
           - "3.8"
           - "3.9"
           - "3.10"
-          - "pypy3"
+          - "pypy-3.8"
         build-type:
           - "cext"
           - "nocext"
@@ -44,7 +44,7 @@ jobs:
 
         include:
           # autocommit tests fail on the ci for some reason
-          - python-version: "pypy3"
+          - python-version: "pypy-3.8"
             pytest-args: "-k 'not test_autocommit_on and not test_turn_autocommit_off_via_default_iso_level and not test_autocommit_isolation_level'"
           # add aiosqlite on linux
           - os: "ubuntu-latest"
@@ -61,11 +61,8 @@ jobs:
           - os: "macos-latest"
             architecture: x86
           # pypy does not have cext
-          - python-version: "pypy3"
+          - python-version: "pypy-3.8"
             build-type: "cext"
-          # pypy on windows has an ancient sqlite version (3.6)
-          - os: "windows-latest"
-            python-version: "pypy3"
 
       fail-fast: false
 
