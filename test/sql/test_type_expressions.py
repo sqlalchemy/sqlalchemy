@@ -182,6 +182,29 @@ class SelectTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
             "test_table WHERE test_table.y = lower(:y_1)",
         )
 
+    def test_in_binds(self):
+        table = self._fixture()
+
+        self.assert_compile(
+            select(table).where(
+                table.c.y.in_(["hi", "there", "some", "expr"])
+            ),
+            "SELECT test_table.x, lower(test_table.y) AS y FROM "
+            "test_table WHERE test_table.y IN "
+            "([POSTCOMPILE_y_1~~lower(~~REPL~~)~~])",
+            render_postcompile=False,
+        )
+
+        self.assert_compile(
+            select(table).where(
+                table.c.y.in_(["hi", "there", "some", "expr"])
+            ),
+            "SELECT test_table.x, lower(test_table.y) AS y FROM "
+            "test_table WHERE test_table.y IN "
+            "(lower(:y_1_1), lower(:y_1_2), lower(:y_1_3), lower(:y_1_4))",
+            render_postcompile=True,
+        )
+
     def test_dialect(self):
         table = self._fixture()
         dialect = self._dialect_level_fixture()
