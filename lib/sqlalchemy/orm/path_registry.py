@@ -11,7 +11,7 @@
 from itertools import chain
 import logging
 
-from .base import class_mapper
+from . import base as orm_base
 from .. import exc
 from .. import inspection
 from .. import util
@@ -66,7 +66,7 @@ class PathRegistry(HasCacheKey):
 
     def __eq__(self, other):
         try:
-            return other is not None and self.path == other.path
+            return other is not None and self.path == other._path_for_compare
         except AttributeError:
             util.warn(
                 "Comparison of PathRegistry to %r is not supported"
@@ -76,13 +76,17 @@ class PathRegistry(HasCacheKey):
 
     def __ne__(self, other):
         try:
-            return other is None or self.path != other.path
+            return other is None or self.path != other._path_for_compare
         except AttributeError:
             util.warn(
                 "Comparison of PathRegistry to %r is not supported"
                 % (type(other))
             )
             return True
+
+    @property
+    def _path_for_compare(self):
+        return self.path
 
     def set(self, attributes, key, value):
         log.debug("set '%s' on path '%s' to '%s'", key, self, value)
@@ -131,21 +135,45 @@ class PathRegistry(HasCacheKey):
     def _serialize_path(cls, path):
         return list(
             zip(
-                [m.class_ for m in [path[i] for i in range(0, len(path), 2)]],
-                [path[i].key for i in range(1, len(path), 2)] + [None],
+                [
+                    m.class_ if (m.is_mapper or m.is_aliased_class) else str(m)
+                    for m in [path[i] for i in range(0, len(path), 2)]
+                ],
+                [
+                    path[i].key if (path[i].is_property) else str(path[i])
+                    for i in range(1, len(path), 2)
+                ]
+                + [None],
             )
         )
 
     @classmethod
     def _deserialize_path(cls, path):
+        def _deserialize_mapper_token(mcls):
+            return (
+                # note: we likely dont want configure=True here however
+                # this is maintained at the moment for backwards compatibility
+                orm_base._inspect_mapped_class(mcls, configure=True)
+                if mcls not in PathToken._intern
+                else PathToken._intern[mcls]
+            )
+
+        def _deserialize_key_token(mcls, key):
+            if key is None:
+                return None
+            elif key in PathToken._intern:
+                return PathToken._intern[key]
+            else:
+                return orm_base._inspect_mapped_class(
+                    mcls, configure=True
+                ).attrs[key]
+
         p = tuple(
             chain(
                 *[
                     (
-                        class_mapper(mcls),
-                        class_mapper(mcls).attrs[key]
-                        if key is not None
-                        else None,
+                        _deserialize_mapper_token(mcls),
+                        _deserialize_key_token(mcls, key),
                     )
                     for mcls, key in path
                 ]
@@ -224,19 +252,26 @@ class RootRegistry(PathRegistry):
     is_root = True
 
     def __getitem__(self, entity):
-        return entity._path_registry
+        if entity in PathToken._intern:
+            return PathToken._intern[entity]
+        else:
+            return entity._path_registry
 
 
 PathRegistry.root = RootRegistry()
 
 
-class PathToken(HasCacheKey, str):
+class PathToken(orm_base.InspectionAttr, HasCacheKey, str):
     """cacheable string token"""
 
     _intern = {}
 
     def _gen_cache_key(self, anon_map, bindparams):
         return (str(self),)
+
+    @property
+    def _path_for_compare(self):
+        return None
 
     @classmethod
     def intern(cls, strvalue):
@@ -445,6 +480,8 @@ class AbstractEntityRegistry(PathRegistry):
     def __getitem__(self, entity):
         if isinstance(entity, (int, slice)):
             return self.path[entity]
+        elif entity in PathToken._intern:
+            return TokenRegistry(self, PathToken._intern[entity])
         else:
             return PropRegistry(self, entity)
 

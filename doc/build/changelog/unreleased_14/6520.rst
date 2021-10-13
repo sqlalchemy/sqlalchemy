@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 6520
+
+    Fixed issue where SQL queries using the
+    :meth:`_functions.FunctionElement.within_group` construct could not be
+    pickled, typically when using the ``sqlalchemy.ext.serializer`` extension
+    but also for general generic pickling.
