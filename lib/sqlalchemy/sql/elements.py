@@ -4319,6 +4319,9 @@ class WithinGroup(ColumnElement):
                 *util.to_list(order_by), _literal_as_text_role=roles.ByOfRole
             )
 
+    def __reduce__(self):
+        return self.__class__, (self.element,) + tuple(self.order_by)
+
     def over(self, partition_by=None, order_by=None, range_=None, rows=None):
         """Produce an OVER clause against this :class:`.WithinGroup`
         construct.
