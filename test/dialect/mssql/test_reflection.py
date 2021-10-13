@@ -309,6 +309,53 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         found_it = testing.db.dialect.has_table(connection, table_name)
         eq_(found_it, exists)
 
+    def test_has_table_temp_not_present_but_another_session(self):
+        """test #6910"""
+
+        with testing.db.connect() as c1, testing.db.connect() as c2:
+
+            try:
+                with c1.begin():
+                    c1.exec_driver_sql(
+                        "create table #myveryveryuniquetemptablename (a int)"
+                    )
+                assert not c2.dialect.has_table(
+                    c2, "#myveryveryuniquetemptablename"
+                )
+            finally:
+                with c1.begin():
+                    c1.exec_driver_sql(
+                        "drop table #myveryveryuniquetemptablename"
+                    )
+
+    def test_has_table_temp_temp_present_both_sessions(self):
+        """test #7168, continues from #6910"""
+
+        with testing.db.connect() as c1, testing.db.connect() as c2:
+            try:
+                with c1.begin():
+                    c1.exec_driver_sql(
+                        "create table #myveryveryuniquetemptablename (a int)"
+                    )
+
+                with c2.begin():
+                    c2.exec_driver_sql(
+                        "create table #myveryveryuniquetemptablename (a int)"
+                    )
+
+                assert c2.dialect.has_table(
+                    c2, "#myveryveryuniquetemptablename"
+                )
+            finally:
+                with c1.begin():
+                    c1.exec_driver_sql(
+                        "drop table #myveryveryuniquetemptablename"
+                    )
+                with c2.begin():
+                    c2.exec_driver_sql(
+                        "drop table #myveryveryuniquetemptablename"
+                    )
+
     def test_db_qualified_items(self, metadata, connection):
         Table("foo", metadata, Column("id", Integer, primary_key=True))
         Table(

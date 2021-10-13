@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, mssql
+    :tickets: 7168
+
+    Fixed issue with :meth:`.Inspector.has_table` where it would return False
+    if a local temp table with the same name from a different session happened
+    to be returned first when querying tempdb.  This is a continuation of
+    :ticket:`6910` which accounted for the temp table existing only in the
+    alternate session and not the current one.
