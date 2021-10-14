@@ -2,6 +2,7 @@ import unicodedata
 
 import sqlalchemy as sa
 from sqlalchemy import Computed
+from sqlalchemy import Connection
 from sqlalchemy import DefaultClause
 from sqlalchemy import event
 from sqlalchemy import FetchedValue
@@ -17,6 +18,7 @@ from sqlalchemy import sql
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import UniqueConstraint
+from sqlalchemy.engine import Inspector
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -1254,12 +1256,13 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         m2 = MetaData()
         t2 = Table("x", m2, autoload_with=connection)
 
-        ck = [
+        cks = [
             const
             for const in t2.constraints
             if isinstance(const, sa.CheckConstraint)
-        ][0]
-
+        ]
+        eq_(len(cks), 1)
+        ck = cks[0]
         eq_regex(ck.sqltext.text, r"[\(`]*q[\)`]* > 10")
         eq_(ck.name, "ck1")
 
@@ -1268,11 +1271,17 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         sa.Index("x_ix", t.c.a, t.c.b)
         metadata.create_all(connection)
 
-        def mock_get_columns(self, connection, table_name, **kw):
-            return [{"name": "b", "type": Integer, "primary_key": False}]
+        gri = Inspector._get_reflection_info
+
+        def mock_gri(self, *a, **kw):
+            res = gri(self, *a, **kw)
+            res.columns[(None, "x")] = [
+                col for col in res.columns[(None, "x")] if col["name"] == "b"
+            ]
+            return res
 
         with testing.mock.patch.object(
-            connection.dialect, "get_columns", mock_get_columns
+            Inspector, "_get_reflection_info", mock_gri
         ):
             m = MetaData()
             with testing.expect_warnings(
@@ -1409,44 +1418,68 @@ class CreateDropTest(fixtures.TablesTest):
         eq_(ua, ["users", "email_addresses"])
         eq_(oi, ["orders", "items"])
 
-    def test_checkfirst(self, connection):
+    def test_checkfirst(self, connection: Connection) -> None:
         insp = inspect(connection)
+
         users = self.tables.users
 
         is_false(insp.has_table("users"))
         users.create(connection)
+        insp.clear_cache()
         is_true(insp.has_table("users"))
         users.create(connection, checkfirst=True)
         users.drop(connection)
         users.drop(connection, checkfirst=True)
+        insp.clear_cache()
         is_false(insp.has_table("users"))
         users.create(connection, checkfirst=True)
         users.drop(connection)
 
-    def test_createdrop(self, connection):
+    def test_createdrop(self, connection: Connection) -> None:
         insp = inspect(connection)
 
         metadata = self.tables_test_metadata
+        assert metadata is not None
 
         metadata.create_all(connection)
         is_true(insp.has_table("items"))
         is_true(insp.has_table("email_addresses"))
         metadata.create_all(connection)
+        insp.clear_cache()
         is_true(insp.has_table("items"))
 
         metadata.drop_all(connection)
+        insp.clear_cache()
         is_false(insp.has_table("items"))
         is_false(insp.has_table("email_addresses"))
         metadata.drop_all(connection)
+        insp.clear_cache()
         is_false(insp.has_table("items"))
 
-    def test_tablenames(self, connection):
+    def test_has_table_and_table_names(self, connection):
+        """establish that has_table and get_table_names are consistent w/
+        each other with regard to caching
+
+        """
         metadata = self.tables_test_metadata
         metadata.create_all(bind=connection)
         insp = inspect(connection)
 
         # ensure all tables we created are in the list.
         is_true(set(insp.get_table_names()).issuperset(metadata.tables))
+
+        assert insp.has_table("items")
+        assert "items" in insp.get_table_names()
+
+        self.tables.items.drop(connection)
+
+        # cached
+        assert insp.has_table("items")
+        assert "items" in insp.get_table_names()
+
+        insp = inspect(connection)
+        assert not insp.has_table("items")
+        assert "items" not in insp.get_table_names()
 
 
 class SchemaManipulationTest(fixtures.TestBase):
@@ -1602,13 +1635,7 @@ class SchemaTest(fixtures.TestBase):
     __backend__ = True
 
     @testing.requires.schemas
-    @testing.requires.cross_schema_fk_reflection
     def test_has_schema(self):
-        if not hasattr(testing.db.dialect, "has_schema"):
-            testing.config.skip_test(
-                "dialect %s doesn't have a has_schema method"
-                % testing.db.dialect.name
-            )
         with testing.db.connect() as conn:
             eq_(
                 testing.db.dialect.has_schema(

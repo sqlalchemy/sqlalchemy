@@ -1,0 +1,69 @@
+.. change::
+    :tags: performance, schema
+    :tickets: 4379
+
+    Rearchitected the schema reflection API to allow some dialects to make use
+    of high performing batch queries to reflect the schemas of many tables at
+    once using much fewer queries. The new performance features are targeted
+    first at the PostgreSQL and Oracle backends, and may be applied to any
+    dialect that makes use of SELECT queries against system catalog tables to
+    reflect tables (currently this omits the MySQL and SQLite dialects which
+    instead make use of parsing the "CREATE TABLE" statement, however these
+    dialects do not have a pre-existing performance issue with reflection. MS
+    SQL Server is still a TODO).
+
+    The new API is backwards compatible with the previous system, and should
+    require no changes to third party dialects to retain compatibility;
+    third party dialects can also opt into the new system by implementing
+    batched queries for schema reflection.
+
+    Along with this change is an updated reflection API that is fully
+    :pep:`484` typed, features many new methods and some changes.
+
+.. change::
+    :tags: bug, schema
+
+    For SQLAlchemy-included dialects for SQLite, PostgreSQL, MySQL/MariaDB,
+    Oracle, and SQL Server, the :meth:`.Inspector.has_table`,
+    :meth:`.Inspector.has_sequence`, :meth:`.Inspector.has_index`,
+    :meth:`.Inspector.get_table_names` and
+    :meth:`.Inspector.get_sequence_names` now all behave consistently in terms
+    of caching: they all fully cache their result after being called the first
+    time for a particular :class:`.Inspector` object. Programs that create or
+    drop tables/sequences while calling upon the same :class:`.Inspector`
+    object will not receive updated status after the state of the database has
+    changed. A call to :meth:`.Inspector.clear_cache` or a new
+    :class:`.Inspector` should be used when DDL changes are to be executed.
+    Previously, the :meth:`.Inspector.has_table`,
+    :meth:`.Inspector.has_sequence` methods did not implement caching nor did
+    the :class:`.Inspector` support caching for these methods, while the
+    :meth:`.Inspector.get_table_names` and
+    :meth:`.Inspector.get_sequence_names` methods were, leading to inconsistent
+    results between the two types of method.
+
+    Behavior for third party dialects is dependent on whether or not they
+    implement the "reflection cache" decorator for the dialect-level
+    implementation of these methods.
+
+.. change::
+    :tags: change, schema
+    :tickets: 4379
+
+    Improvements to the :class:`.Inspector` object:
+
+    * added a method
+      :meth:`.Inspector.has_schema` that returns if a schema
+      is present in the target database
+    * added a method :meth:`.Inspector.has_index` that returns if a table has
+      a particular index.
+    * Inspection methods such as :meth:`.Inspector.get_columns` that work
+      on a single table at a time should now all consistently
+      raise :class:`_exc.NoSuchTableError` if a
+      table or view is not found; this change is specific to individual
+      dialects, so may not be the case for existing third-party dialects.
+    * Separated the handling of "views" and "materialized views", as in
+      real world use cases, these two constructs make use of different DDL
+      for CREATE and DROP; this includes that there are now separate
+      :meth:`.Inspector.get_view_names` and
+      :meth:`.Inspector.get_materialized_view_names` methods.
+

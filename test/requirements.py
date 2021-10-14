@@ -76,12 +76,28 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(no_support("sqlite", "not supported by database"))
 
     @property
+    def foreign_keys_reflect_as_index(self):
+        return only_on(["mysql", "mariadb"])
+
+    @property
+    def unique_index_reflect_as_unique_constraints(self):
+        return only_on(["mysql", "mariadb"])
+
+    @property
+    def unique_constraints_reflect_as_index(self):
+        return only_on(["mysql", "mariadb", "oracle", "postgresql", "mssql"])
+
+    @property
     def foreign_key_constraint_name_reflection(self):
         return fails_if(
             lambda config: against(config, ["mysql", "mariadb"])
             and not self._mysql_80(config)
             and not self._mariadb_105(config)
         )
+
+    @property
+    def reflect_indexes_with_ascdesc(self):
+        return fails_if(["oracle"])
 
     @property
     def table_ddl_if_exists(self):
@@ -508,6 +524,12 @@ class DefaultRequirements(SuiteRequirements):
         return exclusions.open()
 
     @property
+    def schema_create_delete(self):
+        """target database supports schema create and dropped with
+        'CREATE SCHEMA' and 'DROP SCHEMA'"""
+        return exclusions.skip_if(["sqlite", "oracle"])
+
+    @property
     def cross_schema_fk_reflection(self):
         """target system must support reflection of inter-schema foreign
         keys"""
@@ -547,11 +569,13 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def check_constraint_reflection(self):
-        return fails_on_everything_except(
-            "postgresql",
-            "sqlite",
-            "oracle",
-            self._mysql_and_check_constraints_exist,
+        return only_on(
+            [
+                "postgresql",
+                "sqlite",
+                "oracle",
+                self._mysql_and_check_constraints_exist,
+            ]
         )
 
     @property
@@ -562,7 +586,9 @@ class DefaultRequirements(SuiteRequirements):
     def temp_table_names(self):
         """target dialect supports listing of temporary table names"""
 
-        return only_on(["sqlite", "oracle"]) + skip_if(self._sqlite_file_db)
+        return only_on(["sqlite", "oracle", "postgresql"]) + skip_if(
+            self._sqlite_file_db
+        )
 
     @property
     def temporary_views(self):
@@ -792,8 +818,7 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def views(self):
         """Target database must support VIEWs."""
-
-        return skip_if("drizzle", "no VIEW support")
+        return exclusions.open()
 
     @property
     def empty_strings_varchar(self):
@@ -1336,14 +1361,28 @@ class DefaultRequirements(SuiteRequirements):
             )
         )
 
+    def _has_oracle_test_dblink(self, key):
+        def check(config):
+            assert config.db.dialect.name == "oracle"
+            name = config.file_config.get("sqla_testing", key)
+            if not name:
+                return False
+            with config.db.connect() as conn:
+                links = config.db.dialect._list_dblinks(conn)
+                return config.db.dialect.normalize_name(name) in links
+
+        return only_on(["oracle"]) + only_if(
+            check,
+            f"{key} option not specified in config or dblink not found in db",
+        )
+
     @property
     def oracle_test_dblink(self):
-        return skip_if(
-            lambda config: not config.file_config.has_option(
-                "sqla_testing", "oracle_db_link"
-            ),
-            "oracle_db_link option not specified in config",
-        )
+        return self._has_oracle_test_dblink("oracle_db_link")
+
+    @property
+    def oracle_test_dblink2(self):
+        return self._has_oracle_test_dblink("oracle_db_link2")
 
     @property
     def postgresql_test_dblink(self):
@@ -1780,6 +1819,19 @@ class DefaultRequirements(SuiteRequirements):
                 return res is not None
 
         return only_on(["mssql"]) + only_if(check)
+
+    @property
+    def reflect_table_options(self):
+        return only_on(["mysql", "mariadb", "oracle"])
+
+    @property
+    def materialized_views(self):
+        """Target database must support MATERIALIZED VIEWs."""
+        return only_on(["postgresql", "oracle"])
+
+    @property
+    def materialized_views_reflect_pk(self):
+        return only_on(["oracle"])
 
     @property
     def uuid_data_type(self):

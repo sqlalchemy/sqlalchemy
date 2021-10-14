@@ -38,6 +38,7 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import cast
+from typing import Collection
 from typing import Dict
 from typing import Iterable
 from typing import Iterator
@@ -99,6 +100,7 @@ if typing.TYPE_CHECKING:
     from ..engine.interfaces import _ExecuteOptionsParameter
     from ..engine.interfaces import ExecutionContext
     from ..engine.mock import MockConnection
+    from ..engine.reflection import _ReflectionInfo
     from ..sql.selectable import FromClause
 
 _T = TypeVar("_T", bound="Any")
@@ -493,7 +495,7 @@ class Table(
         keep_existing: bool = False,
         extend_existing: bool = False,
         resolve_fks: bool = True,
-        include_columns: Optional[Iterable[str]] = None,
+        include_columns: Optional[Collection[str]] = None,
         implicit_returning: bool = True,
         comment: Optional[str] = None,
         info: Optional[Dict[Any, Any]] = None,
@@ -829,6 +831,7 @@ class Table(
             self.fullname = self.name
 
         self.implicit_returning = implicit_returning
+        _reflect_info = kw.pop("_reflect_info", None)
 
         self.comment = comment
 
@@ -852,6 +855,7 @@ class Table(
                 autoload_with,
                 include_columns,
                 _extend_on=_extend_on,
+                _reflect_info=_reflect_info,
                 resolve_fks=resolve_fks,
             )
 
@@ -869,10 +873,11 @@ class Table(
         self,
         metadata: MetaData,
         autoload_with: Union[Engine, Connection],
-        include_columns: Optional[Iterable[str]],
-        exclude_columns: Iterable[str] = (),
+        include_columns: Optional[Collection[str]],
+        exclude_columns: Collection[str] = (),
         resolve_fks: bool = True,
         _extend_on: Optional[Set[Table]] = None,
+        _reflect_info: _ReflectionInfo | None = None,
     ) -> None:
         insp = inspection.inspect(autoload_with)
         with insp._inspection_context() as conn_insp:
@@ -882,6 +887,7 @@ class Table(
                 exclude_columns,
                 resolve_fks,
                 _extend_on=_extend_on,
+                _reflect_info=_reflect_info,
             )
 
     @property
@@ -924,6 +930,7 @@ class Table(
         autoload_replace = kwargs.pop("autoload_replace", True)
         schema = kwargs.pop("schema", None)
         _extend_on = kwargs.pop("_extend_on", None)
+        _reflect_info = kwargs.pop("_reflect_info", None)
         # these arguments are only used with _init()
         kwargs.pop("extend_existing", False)
         kwargs.pop("keep_existing", False)
@@ -972,6 +979,7 @@ class Table(
                 exclude_columns,
                 resolve_fks,
                 _extend_on=_extend_on,
+                _reflect_info=_reflect_info,
             )
 
         self._extra_kwargs(**kwargs)
@@ -3165,7 +3173,7 @@ class IdentityOptions:
         nominvalue: Optional[bool] = None,
         nomaxvalue: Optional[bool] = None,
         cycle: Optional[bool] = None,
-        cache: Optional[bool] = None,
+        cache: Optional[int] = None,
         order: Optional[bool] = None,
     ) -> None:
         """Construct a :class:`.IdentityOptions` object.
@@ -5130,6 +5138,7 @@ class MetaData(HasSchemaAttr):
             sorted(self.tables.values(), key=lambda t: t.key)  # type: ignore
         )
 
+    @util.preload_module("sqlalchemy.engine.reflection")
     def reflect(
         self,
         bind: Union[Engine, Connection],
@@ -5159,7 +5168,7 @@ class MetaData(HasSchemaAttr):
           is used, if any.
 
         :param views:
-          If True, also reflect views.
+          If True, also reflect views (materialized and plain).
 
         :param only:
           Optional.  Load only a sub-set of available named tables.  May be
@@ -5225,7 +5234,7 @@ class MetaData(HasSchemaAttr):
         """
 
         with inspection.inspect(bind)._inspection_context() as insp:
-            reflect_opts = {
+            reflect_opts: Any = {
                 "autoload_with": insp,
                 "extend_existing": extend_existing,
                 "autoload_replace": autoload_replace,
@@ -5241,15 +5250,21 @@ class MetaData(HasSchemaAttr):
             if schema is not None:
                 reflect_opts["schema"] = schema
 
+            kind = util.preloaded.engine_reflection.ObjectKind.TABLE
             available: util.OrderedSet[str] = util.OrderedSet(
                 insp.get_table_names(schema)
             )
             if views:
+                kind = util.preloaded.engine_reflection.ObjectKind.ANY
                 available.update(insp.get_view_names(schema))
+                try:
+                    available.update(insp.get_materialized_view_names(schema))
+                except NotImplementedError:
+                    pass
 
             if schema is not None:
                 available_w_schema: util.OrderedSet[str] = util.OrderedSet(
-                    ["%s.%s" % (schema, name) for name in available]
+                    [f"{schema}.{name}" for name in available]
                 )
             else:
                 available_w_schema = available
@@ -5282,6 +5297,17 @@ class MetaData(HasSchemaAttr):
                     for name in only
                     if extend_existing or name not in current
                 ]
+            # pass the available tables so the inspector can
+            # choose to ignore the filter_names
+            _reflect_info = insp._get_reflection_info(
+                schema=schema,
+                filter_names=load,
+                available=available,
+                kind=kind,
+                scope=util.preloaded.engine_reflection.ObjectScope.ANY,
+                **dialect_kwargs,
+            )
+            reflect_opts["_reflect_info"] = _reflect_info
 
             for name in load:
                 try:
@@ -5489,7 +5515,7 @@ class Identity(IdentityOptions, FetchedValue, SchemaItem):
         nominvalue: Optional[bool] = None,
         nomaxvalue: Optional[bool] = None,
         cycle: Optional[bool] = None,
-        cache: Optional[bool] = None,
+        cache: Optional[int] = None,
         order: Optional[bool] = None,
     ) -> None:
         """Construct a GENERATED { ALWAYS | BY DEFAULT } AS IDENTITY DDL

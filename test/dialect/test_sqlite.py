@@ -50,6 +50,7 @@ from sqlalchemy.testing import combinations
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -856,27 +857,15 @@ class AttachedDBTest(fixtures.TestBase):
             ["foo", "bar"],
         )
 
-        eq_(
-            [
-                d["name"]
-                for d in insp.get_columns("nonexistent", schema="test_schema")
-            ],
-            [],
-        )
-        eq_(
-            [
-                d["name"]
-                for d in insp.get_columns("another_created", schema=None)
-            ],
-            [],
-        )
-        eq_(
-            [
-                d["name"]
-                for d in insp.get_columns("local_only", schema="test_schema")
-            ],
-            [],
-        )
+        with expect_raises(exc.NoSuchTableError):
+            insp.get_columns("nonexistent", schema="test_schema")
+
+        with expect_raises(exc.NoSuchTableError):
+            insp.get_columns("another_created", schema=None)
+
+        with expect_raises(exc.NoSuchTableError):
+            insp.get_columns("local_only", schema="test_schema")
+
         eq_([d["name"] for d in insp.get_columns("local_only")], ["q", "p"])
 
     def test_table_names_present(self):

@@ -38,6 +38,8 @@ from .interfaces import ExecutionContext as ExecutionContext
 from .interfaces import TypeCompiler as TypeCompiler
 from .mock import create_mock_engine as create_mock_engine
 from .reflection import Inspector as Inspector
+from .reflection import ObjectKind as ObjectKind
+from .reflection import ObjectScope as ObjectScope
 from .result import ChunkedIteratorResult as ChunkedIteratorResult
 from .result import FrozenResult as FrozenResult
 from .result import IteratorResult as IteratorResult

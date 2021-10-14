@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 from typing import Any
+from typing import Collection
 from typing import DefaultDict
 from typing import Iterable
 from typing import Iterator
@@ -27,7 +28,7 @@ __all__ = ["sort", "sort_as_subsets", "find_cycles"]
 
 
 def sort_as_subsets(
-    tuples: Iterable[Tuple[_T, _T]], allitems: Iterable[_T]
+    tuples: Collection[Tuple[_T, _T]], allitems: Collection[_T]
 ) -> Iterator[Sequence[_T]]:
 
     edges: DefaultDict[_T, Set[_T]] = util.defaultdict(set)
@@ -56,8 +57,8 @@ def sort_as_subsets(
 
 
 def sort(
-    tuples: Iterable[Tuple[_T, _T]],
-    allitems: Iterable[_T],
+    tuples: Collection[Tuple[_T, _T]],
+    allitems: Collection[_T],
     deterministic_order: bool = True,
 ) -> Iterator[_T]:
     """sort the given list of items by dependency.
@@ -76,8 +77,7 @@ def sort(
 
 
 def find_cycles(
-    tuples: Iterable[Tuple[_T, _T]],
-    allitems: Iterable[_T],
+    tuples: Iterable[Tuple[_T, _T]], allitems: Iterable[_T]
 ) -> Set[_T]:
     # adapted from:
     # https://neopythonic.blogspot.com/2009/01/detecting-cycles-in-directed-graph.html

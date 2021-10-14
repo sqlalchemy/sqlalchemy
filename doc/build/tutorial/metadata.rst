@@ -515,7 +515,7 @@ using the :paramref:`_schema.Table.autoload_with` parameter:
     {opensql}BEGIN (implicit)
     PRAGMA main.table_...info("some_table")
     [raw sql] ()
-    SELECT sql FROM  (SELECT * FROM sqlite_master UNION ALL   SELECT * FROM sqlite_temp_master) WHERE name = ? AND type = 'table'
+    SELECT sql FROM  (SELECT * FROM sqlite_master UNION ALL   SELECT * FROM sqlite_temp_master) WHERE name = ? AND type in ('table', 'view')
     [raw sql] ('some_table',)
     PRAGMA main.foreign_key_list("some_table")
     ...

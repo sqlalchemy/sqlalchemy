@@ -107,6 +107,8 @@ from .base import PGIdentifierPreparer
 from .json import JSON
 from .json import JSONB
 from .json import JSONPathType
+from .pg_catalog import _SpaceVector
+from .pg_catalog import OIDVECTOR
 from ... import exc
 from ... import util
 from ...engine import processors
@@ -245,6 +247,10 @@ class _PGARRAY(PGARRAY):
     render_bind_cast = True
 
 
+class _PGOIDVECTOR(_SpaceVector, OIDVECTOR):
+    pass
+
+
 _server_side_id = util.counter()
 
 
@@ -376,6 +382,7 @@ class PGDialect_pg8000(PGDialect):
             sqltypes.BigInteger: _PGBigInteger,
             sqltypes.Enum: _PGEnum,
             sqltypes.ARRAY: _PGARRAY,
+            OIDVECTOR: _PGOIDVECTOR,
         },
     )
 

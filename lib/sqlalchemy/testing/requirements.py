@@ -65,6 +65,25 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def foreign_keys_reflect_as_index(self):
+        """Target database creates an index that's reflected for
+        foreign keys."""
+
+        return exclusions.closed()
+
+    @property
+    def unique_index_reflect_as_unique_constraints(self):
+        """Target database reflects unique indexes as unique constrains."""
+
+        return exclusions.closed()
+
+    @property
+    def unique_constraints_reflect_as_index(self):
+        """Target database reflects unique constraints as indexes."""
+
+        return exclusions.closed()
+
+    @property
     def table_value_constructor(self):
         """Database / dialect supports a query like::
 
@@ -629,6 +648,12 @@ class SuiteRequirements(Requirements):
         return self.schemas
 
     @property
+    def schema_create_delete(self):
+        """target database supports schema create and dropped with
+        'CREATE SCHEMA' and 'DROP SCHEMA'"""
+        return exclusions.closed()
+
+    @property
     def primary_key_constraint_reflection(self):
         return exclusions.open()
 
@@ -690,6 +715,12 @@ class SuiteRequirements(Requirements):
     @property
     def indexes_with_ascdesc(self):
         """target database supports CREATE INDEX with per-column ASC/DESC."""
+        return exclusions.open()
+
+    @property
+    def reflect_indexes_with_ascdesc(self):
+        """target database supports reflecting INDEX with per-column
+        ASC/DESC."""
         return exclusions.open()
 
     @property
@@ -1566,4 +1597,19 @@ class SuiteRequirements(Requirements):
     @property
     def json_deserializer_binary(self):
         "indicates if the json_deserializer function is called with bytes"
+        return exclusions.closed()
+
+    @property
+    def reflect_table_options(self):
+        """Target database must support reflecting table_options."""
+        return exclusions.closed()
+
+    @property
+    def materialized_views(self):
+        """Target database must support MATERIALIZED VIEWs."""
+        return exclusions.closed()
+
+    @property
+    def materialized_views_reflect_pk(self):
+        """Target database reflect MATERIALIZED VIEWs pks."""
         return exclusions.closed()

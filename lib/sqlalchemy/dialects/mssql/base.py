@@ -831,6 +831,7 @@ from ... import util
 from ...engine import cursor as _cursor
 from ...engine import default
 from ...engine import reflection
+from ...engine.reflection import ReflectionDefaults
 from ...sql import coercions
 from ...sql import compiler
 from ...sql import elements
@@ -3010,55 +3011,16 @@ class MSDialect(default.DefaultDialect):
             return self.schema_name
 
     @_db_plus_owner
-    def has_table(self, connection, tablename, dbname, owner, schema):
+    def has_table(self, connection, tablename, dbname, owner, schema, **kw):
         self._ensure_has_table_connection(connection)
-        if tablename.startswith("#"):  # temporary table
-            # mssql does not support temporary views
-            # SQL Error [4103] [S0001]: "#v": Temporary views are not allowed
-            tables = ischema.mssql_temp_table_columns
 
-            s = sql.select(tables.c.table_name).where(
-                tables.c.table_name.like(
-                    self._temp_table_name_like_pattern(tablename)
-                )
-            )
+        return self._internal_has_table(connection, tablename, owner, **kw)
 
-            # #7168: fetch all (not just first match) in case some other #temp
-            #        table with the same name happens to appear first
-            table_names = connection.execute(s).scalars().fetchall()
-            # #6910: verify it's not a temp table from another session
-            for table_name in table_names:
-                if bool(
-                    connection.scalar(
-                        text("SELECT object_id(:table_name)"),
-                        {"table_name": "tempdb.dbo.[{}]".format(table_name)},
-                    )
-                ):
-                    return True
-            else:
-                return False
-        else:
-            tables = ischema.tables
-
-            s = sql.select(tables.c.table_name).where(
-                sql.and_(
-                    sql.or_(
-                        tables.c.table_type == "BASE TABLE",
-                        tables.c.table_type == "VIEW",
-                    ),
-                    tables.c.table_name == tablename,
-                )
-            )
-
-            if owner:
-                s = s.where(tables.c.table_schema == owner)
-
-            c = connection.execute(s)
-
-            return c.first() is not None
-
+    @reflection.cache
     @_db_plus_owner
-    def has_sequence(self, connection, sequencename, dbname, owner, schema):
+    def has_sequence(
+        self, connection, sequencename, dbname, owner, schema, **kw
+    ):
         sequences = ischema.sequences
 
         s = sql.select(sequences.c.sequence_name).where(
@@ -3128,6 +3090,60 @@ class MSDialect(default.DefaultDialect):
         return view_names
 
     @reflection.cache
+    def _internal_has_table(self, connection, tablename, owner, **kw):
+        if tablename.startswith("#"):  # temporary table
+            # mssql does not support temporary views
+            # SQL Error [4103] [S0001]: "#v": Temporary views are not allowed
+            tables = ischema.mssql_temp_table_columns
+
+            s = sql.select(tables.c.table_name).where(
+                tables.c.table_name.like(
+                    self._temp_table_name_like_pattern(tablename)
+                )
+            )
+
+            # #7168: fetch all (not just first match) in case some other #temp
+            #        table with the same name happens to appear first
+            table_names = connection.scalars(s).all()
+            # #6910: verify it's not a temp table from another session
+            for table_name in table_names:
+                if bool(
+                    connection.scalar(
+                        text("SELECT object_id(:table_name)"),
+                        {"table_name": "tempdb.dbo.[{}]".format(table_name)},
+                    )
+                ):
+                    return True
+            else:
+                return False
+        else:
+            tables = ischema.tables
+
+            s = sql.select(tables.c.table_name).where(
+                sql.and_(
+                    sql.or_(
+                        tables.c.table_type == "BASE TABLE",
+                        tables.c.table_type == "VIEW",
+                    ),
+                    tables.c.table_name == tablename,
+                )
+            )
+
+            if owner:
+                s = s.where(tables.c.table_schema == owner)
+
+            c = connection.execute(s)
+
+            return c.first() is not None
+
+    def _default_or_error(self, connection, tablename, owner, method, **kw):
+        # TODO: try to avoid having to run a separate query here
+        if self._internal_has_table(connection, tablename, owner, **kw):
+            return method()
+        else:
+            raise exc.NoSuchTableError(f"{owner}.{tablename}")
+
+    @reflection.cache
     @_db_plus_owner
     def get_indexes(self, connection, tablename, dbname, owner, schema, **kw):
         filter_definition = (
@@ -3138,14 +3154,14 @@ class MSDialect(default.DefaultDialect):
         rp = connection.execution_options(future_result=True).execute(
             sql.text(
                 "select ind.index_id, ind.is_unique, ind.name, "
-                "%s "
+                f"{filter_definition} "
                 "from sys.indexes as ind join sys.tables as tab on "
                 "ind.object_id=tab.object_id "
                 "join sys.schemas as sch on sch.schema_id=tab.schema_id "
                 "where tab.name = :tabname "
                 "and sch.name=:schname "
-                "and ind.is_primary_key=0 and ind.type != 0"
-                % filter_definition
+                "and ind.is_primary_key=0 and ind.type != 0 "
+                "order by ind.name "
             )
             .bindparams(
                 sql.bindparam("tabname", tablename, ischema.CoerceUnicode()),
@@ -3203,31 +3219,34 @@ class MSDialect(default.DefaultDialect):
                 "mssql_include"
             ] = index_info["include_columns"]
 
-        return list(indexes.values())
+        if indexes:
+            return list(indexes.values())
+        else:
+            return self._default_or_error(
+                connection, tablename, owner, ReflectionDefaults.indexes, **kw
+            )
 
     @reflection.cache
     @_db_plus_owner
     def get_view_definition(
         self, connection, viewname, dbname, owner, schema, **kw
     ):
-        rp = connection.execute(
+        view_def = connection.execute(
             sql.text(
-                "select definition from sys.sql_modules as mod, "
-                "sys.views as views, "
-                "sys.schemas as sch"
-                " where "
-                "mod.object_id=views.object_id and "
-                "views.schema_id=sch.schema_id and "
-                "views.name=:viewname and sch.name=:schname"
+                "select mod.definition "
+                "from sys.sql_modules as mod "
+                "join sys.views as views on mod.object_id = views.object_id "
+                "join sys.schemas as sch on views.schema_id = sch.schema_id "
+                "where views.name=:viewname and sch.name=:schname"
             ).bindparams(
                 sql.bindparam("viewname", viewname, ischema.CoerceUnicode()),
                 sql.bindparam("schname", owner, ischema.CoerceUnicode()),
             )
-        )
-
-        if rp:
-            view_def = rp.scalar()
+        ).scalar()
+        if view_def:
             return view_def
+        else:
+            raise exc.NoSuchTableError(f"{owner}.{viewname}")
 
     def _temp_table_name_like_pattern(self, tablename):
         # LIKE uses '%' to match zero or more characters and '_' to match any
@@ -3417,7 +3436,12 @@ class MSDialect(default.DefaultDialect):
 
             cols.append(cdict)
 
-        return cols
+        if cols:
+            return cols
+        else:
+            return self._default_or_error(
+                connection, tablename, owner, ReflectionDefaults.columns, **kw
+            )
 
     @reflection.cache
     @_db_plus_owner
@@ -3450,7 +3474,16 @@ class MSDialect(default.DefaultDialect):
                 pkeys.append(row["COLUMN_NAME"])
                 if constraint_name is None:
                     constraint_name = row[C.c.constraint_name.name]
-        return {"constrained_columns": pkeys, "name": constraint_name}
+        if pkeys:
+            return {"constrained_columns": pkeys, "name": constraint_name}
+        else:
+            return self._default_or_error(
+                connection,
+                tablename,
+                owner,
+                ReflectionDefaults.pk_constraint,
+                **kw,
+            )
 
     @reflection.cache
     @_db_plus_owner
@@ -3591,7 +3624,7 @@ index_info AS (
 
         fkeys = util.defaultdict(fkey_rec)
 
-        for r in connection.execute(s).fetchall():
+        for r in connection.execute(s).all():
             (
                 _,  # constraint schema
                 rfknm,
@@ -3632,4 +3665,13 @@ index_info AS (
             local_cols.append(scol)
             remote_cols.append(rcol)
 
-        return list(fkeys.values())
+        if fkeys:
+            return list(fkeys.values())
+        else:
+            return self._default_or_error(
+                connection,
+                tablename,
+                owner,
+                ReflectionDefaults.foreign_keys,
+                **kw,
+            )

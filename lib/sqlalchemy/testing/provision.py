@@ -230,40 +230,17 @@ def drop_all_schema_objects(cfg, eng):
 
     drop_all_schema_objects_pre_tables(cfg, eng)
 
+    drop_views(cfg, eng)
+
+    if config.requirements.materialized_views.enabled:
+        drop_materialized_views(cfg, eng)
+
     inspector = inspect(eng)
-    try:
-        view_names = inspector.get_view_names()
-    except NotImplementedError:
-        pass
-    else:
-        with eng.begin() as conn:
-            for vname in view_names:
-                conn.execute(
-                    ddl._DropView(schema.Table(vname, schema.MetaData()))
-                )
 
+    consider_schemas = (None,)
     if config.requirements.schemas.enabled_for_config(cfg):
-        try:
-            view_names = inspector.get_view_names(schema="test_schema")
-        except NotImplementedError:
-            pass
-        else:
-            with eng.begin() as conn:
-                for vname in view_names:
-                    conn.execute(
-                        ddl._DropView(
-                            schema.Table(
-                                vname,
-                                schema.MetaData(),
-                                schema="test_schema",
-                            )
-                        )
-                    )
-
-    util.drop_all_tables(eng, inspector)
-    if config.requirements.schemas.enabled_for_config(cfg):
-        util.drop_all_tables(eng, inspector, schema=cfg.test_schema)
-        util.drop_all_tables(eng, inspector, schema=cfg.test_schema_2)
+        consider_schemas += (cfg.test_schema, cfg.test_schema_2)
+    util.drop_all_tables(eng, inspector, consider_schemas=consider_schemas)
 
     drop_all_schema_objects_post_tables(cfg, eng)
 
@@ -281,6 +258,59 @@ def drop_all_schema_objects(cfg, eng):
                                 schema.Sequence(seq, schema=schema_name)
                             )
                         )
+
+
+def drop_views(cfg, eng):
+    inspector = inspect(eng)
+
+    try:
+        view_names = inspector.get_view_names()
+    except NotImplementedError:
+        pass
+    else:
+        with eng.begin() as conn:
+            for vname in view_names:
+                conn.execute(
+                    ddl._DropView(schema.Table(vname, schema.MetaData()))
+                )
+
+    if config.requirements.schemas.enabled_for_config(cfg):
+        try:
+            view_names = inspector.get_view_names(schema=cfg.test_schema)
+        except NotImplementedError:
+            pass
+        else:
+            with eng.begin() as conn:
+                for vname in view_names:
+                    conn.execute(
+                        ddl._DropView(
+                            schema.Table(
+                                vname,
+                                schema.MetaData(),
+                                schema=cfg.test_schema,
+                            )
+                        )
+                    )
+
+
+def drop_materialized_views(cfg, eng):
+    inspector = inspect(eng)
+
+    mview_names = inspector.get_materialized_view_names()
+
+    with eng.begin() as conn:
+        for vname in mview_names:
+            conn.exec_driver_sql(f"DROP MATERIALIZED VIEW {vname}")
+
+    if config.requirements.schemas.enabled_for_config(cfg):
+        mview_names = inspector.get_materialized_view_names(
+            schema=cfg.test_schema
+        )
+        with eng.begin() as conn:
+            for vname in mview_names:
+                conn.exec_driver_sql(
+                    f"DROP MATERIALIZED VIEW {cfg.test_schema}.{vname}"
+                )
 
 
 @register.init
