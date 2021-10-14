@@ -784,8 +784,9 @@ class Inspector(object):
                 cols_by_orig_name,
             )
 
-        if not found_table:
-            raise exc.NoSuchTableError(table.name)
+        # NOTE: support tables/views with no columns
+        if not found_table and not self.has_table(table_name, schema):
+            raise exc.NoSuchTableError(table_name)
 
         self._reflect_pk(
             table_name, schema, table, cols_by_orig_name, exclude_columns

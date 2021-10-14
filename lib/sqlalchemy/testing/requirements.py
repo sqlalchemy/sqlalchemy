@@ -589,7 +589,15 @@ class SuiteRequirements(Requirements):
 
     @property
     def table_reflection(self):
+        """target database has general support for table reflection"""
         return exclusions.open()
+
+    @property
+    def reflect_tables_no_columns(self):
+        """target database supports creation and reflection of tables with no
+        columns, or at least tables that seem to have no columns."""
+
+        return exclusions.closed()
 
     @property
     def comment_reflection(self):

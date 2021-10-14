@@ -1,0 +1,9 @@
+.. change::
+    :tags: engine, bug, postgresql
+    :tickets: 3247
+
+    The :meth:`_engine.Inspector.reflect_table` method now supports reflecting
+    tables that do not have user defined columns. This allows
+    :meth:`_schema.MetaData.reflect` to properly complete reflection on
+    databases that contain such tables.   Currently, only PostgreSQL is known
+    to support such a construct among the common database backends.

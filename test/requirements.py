@@ -1805,3 +1805,8 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def autoincrement_without_sequence(self):
         return skip_if("oracle")
+
+    @property
+    def reflect_tables_no_columns(self):
+        # so far sqlite, mariadb, mysql don't support this
+        return only_on(["postgresql"])
