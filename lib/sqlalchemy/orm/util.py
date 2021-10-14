@@ -1012,6 +1012,13 @@ class LoaderCriteriaOption(CriteriaOption):
         argument.  The given class will expand to include all mapped subclass
         and need not itself be a mapped class.
 
+        .. note:: The :func:`_orm.with_loader_criteria` option only applies to
+           loader options that **render their own SQL**, which means it does
+           **not** apply to the :func:`_orm.contains_eager` option.  To apply
+           additional criteria to the JOIN used in conjunction with
+           :func:`_orm.contains_eager`, specify additional criteria within
+           the :meth:`_sql.select.join` or :meth:`_orm.Query.join` method.
+
         .. warning:: The use of a lambda inside of the call to
           :func:`_orm.with_loader_criteria` is only invoked **once per unique
           class**. Custom functions should not be invoked within this lambda.
