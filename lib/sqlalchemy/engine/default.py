@@ -1584,7 +1584,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         from the bind parameter's ``TypeEngine`` objects.
 
         This method only called by those dialects which require it,
-        currently cx_oracle.
+        currently cx_oracle, asyncpg and pg8000.
 
         """
         if self.isddl or self.is_text:

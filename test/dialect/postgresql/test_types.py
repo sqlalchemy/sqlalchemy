@@ -1198,6 +1198,45 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
             postgresql.ARRAY(Unicode(30), dimensions=3), "VARCHAR(30)[][][]"
         )
 
+    def test_array_in_enum_psycopg2_cast(self):
+        expr = column(
+            "x",
+            postgresql.ARRAY(
+                postgresql.ENUM("one", "two", "three", name="myenum")
+            ),
+        ).in_([["one", "two"], ["three", "four"]])
+
+        self.assert_compile(
+            expr,
+            "x IN ([POSTCOMPILE_x_1~~~~REPL~~::myenum[]~~])",
+            dialect=postgresql.psycopg2.dialect(),
+        )
+
+        self.assert_compile(
+            expr,
+            "x IN (%(x_1_1)s::myenum[], %(x_1_2)s::myenum[])",
+            dialect=postgresql.psycopg2.dialect(),
+            render_postcompile=True,
+        )
+
+    def test_array_in_str_psycopg2_cast(self):
+        expr = column("x", postgresql.ARRAY(String(15))).in_(
+            [["one", "two"], ["three", "four"]]
+        )
+
+        self.assert_compile(
+            expr,
+            "x IN ([POSTCOMPILE_x_1~~~~REPL~~::VARCHAR(15)[]~~])",
+            dialect=postgresql.psycopg2.dialect(),
+        )
+
+        self.assert_compile(
+            expr,
+            "x IN (%(x_1_1)s::VARCHAR(15)[], %(x_1_2)s::VARCHAR(15)[])",
+            dialect=postgresql.psycopg2.dialect(),
+            render_postcompile=True,
+        )
+
     def test_array_type_render_str_collate_multidim(self):
         self.assert_compile(
             postgresql.ARRAY(Unicode(30, collation="en_US"), dimensions=2),
@@ -1457,10 +1496,78 @@ class ArrayRoundTripTest(object):
         t = Table(
             "t",
             metadata,
-            Column("data", sqltypes.ARRAY(String(50, collation="en_US"))),
+            Column("data", self.ARRAY(String(50, collation="en_US"))),
         )
 
         t.create(connection)
+
+    @testing.fixture
+    def array_in_fixture(self, connection):
+        arrtable = self.tables.arrtable
+
+        connection.execute(
+            arrtable.insert(),
+            [
+                {
+                    "id": 1,
+                    "intarr": [1, 2, 3],
+                    "strarr": [u"one", u"two", u"three"],
+                },
+                {
+                    "id": 2,
+                    "intarr": [4, 5, 6],
+                    "strarr": [u"four", u"five", u"six"],
+                },
+                {"id": 3, "intarr": [1, 5], "strarr": [u"one", u"five"]},
+                {"id": 4, "intarr": [], "strarr": []},
+            ],
+        )
+
+    def test_array_in_int(self, array_in_fixture, connection):
+        """test #7177"""
+
+        arrtable = self.tables.arrtable
+
+        stmt = (
+            select(arrtable.c.intarr)
+            .where(arrtable.c.intarr.in_([[1, 5], [4, 5, 6], [9, 10]]))
+            .order_by(arrtable.c.id)
+        )
+
+        eq_(
+            connection.execute(stmt).all(),
+            [
+                ([4, 5, 6],),
+                ([1, 5],),
+            ],
+        )
+
+    def test_array_in_str(self, array_in_fixture, connection):
+        """test #7177"""
+
+        arrtable = self.tables.arrtable
+
+        stmt = (
+            select(arrtable.c.strarr)
+            .where(
+                arrtable.c.strarr.in_(
+                    [
+                        [u"one", u"five"],
+                        [u"four", u"five", u"six"],
+                        [u"nine", u"ten"],
+                    ]
+                )
+            )
+            .order_by(arrtable.c.id)
+        )
+
+        eq_(
+            connection.execute(stmt).all(),
+            [
+                (["four", "five", "six"],),
+                (["one", "five"],),
+            ],
+        )
 
     def test_array_agg(self, metadata, connection):
         values_table = Table("values", metadata, Column("value", Integer))
@@ -2151,6 +2258,9 @@ class _ArrayOfEnum(TypeDecorator):
     impl = postgresql.ARRAY
     cache_ok = True
 
+    # note expanding logic is checking _is_array here so that has to
+    # translate through the TypeDecorator
+
     def bind_expression(self, bindvalue):
         return sa.cast(bindvalue, self)
 
@@ -2207,56 +2317,93 @@ class ArrayEnum(fixtures.TestBase):
             connection,
         )
 
-    @testing.combinations(sqltypes.Enum, postgresql.ENUM, argnames="enum_cls")
-    @testing.combinations(
-        sqltypes.ARRAY,
-        postgresql.ARRAY,
-        (_ArrayOfEnum, testing.only_on("postgresql+psycopg2")),
-        argnames="array_cls",
-    )
-    def test_array_of_enums(self, array_cls, enum_cls, metadata, connection):
-        tbl = Table(
-            "enum_table",
-            self.metadata,
-            Column("id", Integer, primary_key=True),
-            Column(
-                "enum_col",
-                array_cls(enum_cls("foo", "bar", "baz", name="an_enum")),
-            ),
-        )
-
-        if util.py3k:
-            from enum import Enum
-
-            class MyEnum(Enum):
-                a = "aaa"
-                b = "bbb"
-                c = "ccc"
-
-            tbl.append_column(
+    @testing.fixture
+    def array_of_enum_fixture(self, metadata, connection):
+        def go(array_cls, enum_cls):
+            tbl = Table(
+                "enum_table",
+                metadata,
+                Column("id", Integer, primary_key=True),
                 Column(
-                    "pyenum_col",
-                    array_cls(enum_cls(MyEnum)),
+                    "enum_col",
+                    array_cls(enum_cls("foo", "bar", "baz", name="an_enum")),
                 ),
             )
+            if util.py3k:
+                from enum import Enum
 
-        self.metadata.create_all(connection)
+                class MyEnum(Enum):
+                    a = "aaa"
+                    b = "bbb"
+                    c = "ccc"
 
-        connection.execute(
-            tbl.insert(), [{"enum_col": ["foo"]}, {"enum_col": ["foo", "bar"]}]
+                tbl.append_column(
+                    Column(
+                        "pyenum_col",
+                        array_cls(enum_cls(MyEnum)),
+                    ),
+                )
+            else:
+                MyEnum = None
+
+            metadata.create_all(connection)
+            connection.execute(
+                tbl.insert(),
+                [{"enum_col": ["foo"]}, {"enum_col": ["foo", "bar"]}],
+            )
+            return tbl, MyEnum
+
+        yield go
+
+    def _enum_combinations(fn):
+        return testing.combinations(
+            sqltypes.Enum, postgresql.ENUM, argnames="enum_cls"
+        )(
+            testing.combinations(
+                sqltypes.ARRAY,
+                postgresql.ARRAY,
+                (_ArrayOfEnum, testing.only_on("postgresql+psycopg2")),
+                argnames="array_cls",
+            )(fn)
         )
 
+    @_enum_combinations
+    def test_array_of_enums_roundtrip(
+        self, array_of_enum_fixture, connection, array_cls, enum_cls
+    ):
+        tbl, MyEnum = array_of_enum_fixture(array_cls, enum_cls)
+
+        # test select back
         sel = select(tbl.c.enum_col).order_by(tbl.c.id)
         eq_(
             connection.execute(sel).fetchall(), [(["foo"],), (["foo", "bar"],)]
         )
 
-        if util.py3k:
-            connection.execute(tbl.insert(), {"pyenum_col": [MyEnum.a]})
-            sel = select(tbl.c.pyenum_col).order_by(tbl.c.id.desc())
-            eq_(connection.scalar(sel), [MyEnum.a])
+    @_enum_combinations
+    def test_array_of_enums_expanding_in(
+        self, array_of_enum_fixture, connection, array_cls, enum_cls
+    ):
+        tbl, MyEnum = array_of_enum_fixture(array_cls, enum_cls)
 
-        self.metadata.drop_all(connection)
+        # test select with WHERE using expanding IN against arrays
+        # #7177
+        sel = (
+            select(tbl.c.enum_col)
+            .where(tbl.c.enum_col.in_([["foo", "bar"], ["bar", "foo"]]))
+            .order_by(tbl.c.id)
+        )
+        eq_(connection.execute(sel).fetchall(), [(["foo", "bar"],)])
+
+    @_enum_combinations
+    @testing.requires.python3
+    def test_array_of_enums_native_roundtrip(
+        self, array_of_enum_fixture, connection, array_cls, enum_cls
+    ):
+        tbl, MyEnum = array_of_enum_fixture(array_cls, enum_cls)
+
+        connection.execute(tbl.insert(), {"pyenum_col": [MyEnum.a]})
+        sel = select(tbl.c.pyenum_col).order_by(tbl.c.id.desc())
+        eq_(connection.scalar(sel), [MyEnum.a])
 
 
 class ArrayJSON(fixtures.TestBase):

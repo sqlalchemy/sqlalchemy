@@ -473,6 +473,8 @@ import logging
 import re
 from uuid import UUID as _python_UUID
 
+from .array import ARRAY as PGARRAY
+from .base import _ColonCast
 from .base import _DECIMAL_TYPES
 from .base import _FLOAT_TYPES
 from .base import _INT_TYPES
@@ -490,7 +492,6 @@ from ... import processors
 from ... import types as sqltypes
 from ... import util
 from ...engine import cursor as _cursor
-from ...sql import elements
 from ...util import collections_abc
 
 
@@ -554,6 +555,11 @@ class _PGHStore(HSTORE):
             return None
         else:
             return super(_PGHStore, self).result_processor(dialect, coltype)
+
+
+class _PGARRAY(PGARRAY):
+    def bind_expression(self, bindvalue):
+        return _ColonCast(bindvalue, self)
 
 
 class _PGJSON(JSON):
@@ -638,25 +644,7 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
 
 
 class PGCompiler_psycopg2(PGCompiler):
-    def visit_bindparam(self, bindparam, skip_bind_expression=False, **kw):
-
-        text = super(PGCompiler_psycopg2, self).visit_bindparam(
-            bindparam, skip_bind_expression=skip_bind_expression, **kw
-        )
-        # note that if the type has a bind_expression(), we will get a
-        # double compile here
-        if not skip_bind_expression and (
-            bindparam.type._is_array or bindparam.type._is_type_decorator
-        ):
-            typ = bindparam.type._unwrapped_dialect_impl(self.dialect)
-
-            if typ._is_array:
-                text += "::%s" % (
-                    elements.TypeClause(typ)._compiler_dispatch(
-                        self, skip_bind_expression=skip_bind_expression, **kw
-                    ),
-                )
-        return text
+    pass
 
 
 class PGIdentifierPreparer_psycopg2(PGIdentifierPreparer):
@@ -713,6 +701,7 @@ class PGDialect_psycopg2(PGDialect):
             sqltypes.JSON: _PGJSON,
             JSONB: _PGJSONB,
             UUID: _PGUUID,
+            sqltypes.ARRAY: _PGARRAY,
         },
     )
 

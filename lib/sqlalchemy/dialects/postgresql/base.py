@@ -2047,6 +2047,15 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
             self.drop(bind=bind, checkfirst=checkfirst)
 
 
+class _ColonCast(elements.Cast):
+    __visit_name__ = "colon_cast"
+
+    def __init__(self, expression, type_):
+        self.type = type_
+        self.clause = expression
+        self.typeclause = elements.TypeClause(type_)
+
+
 colspecs = {
     sqltypes.ARRAY: _array.ARRAY,
     sqltypes.Interval: INTERVAL,
@@ -2102,6 +2111,12 @@ ischema_names = {
 
 
 class PGCompiler(compiler.SQLCompiler):
+    def visit_colon_cast(self, element, **kw):
+        return "%s::%s" % (
+            element.clause._compiler_dispatch(self, **kw),
+            element.typeclause._compiler_dispatch(self, **kw),
+        )
+
     def visit_array(self, element, **kw):
         return "ARRAY[%s]" % self.visit_clauselist(element, **kw)
 

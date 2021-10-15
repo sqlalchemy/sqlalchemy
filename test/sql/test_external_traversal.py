@@ -188,7 +188,10 @@ class TraversalTest(
         ("clone",), ("pickle",), ("conv_to_unique"), ("none"), argnames="meth"
     )
     @testing.combinations(
-        ("name with space",), ("name with [brackets]",), argnames="name"
+        ("name with space",),
+        ("name with [brackets]",),
+        ("name with~~tildes~~",),
+        argnames="name",
     )
     def test_bindparam_key_proc_for_copies(self, meth, name):
         r"""test :ticket:`6249`.
@@ -199,7 +202,7 @@ class TraversalTest(
 
         Currently, the bind key reg is::
 
-            re.sub(r"[%\(\) \$]+", "_", body).strip("_")
+            re.sub(r"[%\(\) \$\[\]]", "_", name)
 
         and the compiler postcompile reg is::
 
@@ -218,7 +221,8 @@ class TraversalTest(
             expr.right.unique = False
             expr.right._convert_to_unique()
 
-        token = re.sub(r"[%\(\) \$]+", "_", name).strip("_")
+        token = re.sub(r"[%\(\) \$\[\]]", "_", name)
+
         self.assert_compile(
             expr,
             '"%(name)s" IN (:%(token)s_1_1, '
