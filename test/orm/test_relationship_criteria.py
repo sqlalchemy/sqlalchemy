@@ -279,6 +279,26 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             "AND addresses.email_address != :email_address_1",
         )
 
+    def test_select_implicit_join_mapper_mapper_criteria(
+        self, user_address_fixture
+    ):
+        User, Address = user_address_fixture
+
+        stmt = (
+            select(User)
+            .join(Address)
+            .options(
+                with_loader_criteria(Address, Address.email_address != "name")
+            )
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT users.id, users.name FROM users "
+            "JOIN addresses ON users.id = addresses.user_id "
+            "AND addresses.email_address != :email_address_1",
+        )
+
     def test_select_joinm2m_mapper_mapper_criteria(self, order_item_fixture):
         Order, Item = order_item_fixture
 
