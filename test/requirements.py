@@ -351,6 +351,18 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if(["mssql", "mysql", "mariadb"], "no driver support")
 
     @property
+    def cursor_works_post_rollback(self):
+        """Driver quirk where the cursor.fetchall() will work even if
+        the connection has been rolled back.
+
+        This generally refers to buffered cursors but also seems to work
+        with cx_oracle, for example.
+
+        """
+
+        return skip_if(["+pyodbc"], "no driver support")
+
+    @property
     def independent_connections(self):
         """
         Target must support simultaneous, independent database connections.

@@ -2187,7 +2187,10 @@ class NewStyleExecutionTest(_fixtures.FixtureTest):
     def setup_mappers(cls):
         cls._setup_stock_mapping()
 
-    @testing.combinations(("close",), ("expunge_all",))
+    @testing.combinations(
+        ("close", testing.requires.cursor_works_post_rollback),
+        ("expunge_all",),
+    )
     def test_unbuffered_result_session_is_closed(self, meth):
         """test #7128"""
         User = self.classes.User
