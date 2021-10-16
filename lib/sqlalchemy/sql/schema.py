@@ -4195,6 +4195,9 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         :class:`.Index`, using the given :class:`.Connectable`
         for connectivity.
 
+        .. note:: the "bind" argument will be required in
+           SQLAlchemy 2.0.
+
         .. seealso::
 
             :meth:`_schema.MetaData.create_all`.
@@ -4209,6 +4212,9 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         """Issue a ``DROP`` statement for this
         :class:`.Index`, using the given :class:`.Connectable`
         for connectivity.
+
+        .. note:: the "bind" argument will be required in
+           SQLAlchemy 2.0.
 
         .. seealso::
 
