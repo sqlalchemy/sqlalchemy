@@ -4521,19 +4521,31 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
 
         """
 
-        if isinstance(element, Label):
-            self._resolve_label = element._label
-
+        orig_element = element
+        element = coercions.expect(
+            roles.ExpressionElementRole,
+            element,
+            apply_propagate_attrs=self,
+        )
         while isinstance(element, Label):
+            # TODO: this is only covered in test_text.py, but nothing
+            # fails if it's removed.  determine rationale
             element = element.element
 
         if name:
             self.name = name
+
+            # TODO: nothing fails if this is removed.  this is related
+            # to the order_by() string feature tested in test_text.py.
             self._resolve_label = self.name
         else:
             self.name = _anonymous_label.safe_construct(
                 id(self), getattr(element, "name", "anon")
             )
+            if isinstance(orig_element, Label):
+                # TODO: no coverage for this block, again would be in
+                # test_text.py where the resolve_label concept is important
+                self._resolve_label = orig_element._label
 
         self.key = self._tq_label = self._tq_key_label = self.name
         self._element = element
