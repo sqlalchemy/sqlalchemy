@@ -1005,7 +1005,6 @@ from ...types import VARBINARY
 from ...util import topological
 
 
-
 AUTOCOMMIT_RE = re.compile(
     r"\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER|LOAD +DATA|REPLACE)",
     re.I | re.UNICODE,
