@@ -7,6 +7,7 @@ from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import literal_column
 from sqlalchemy import orm
 from sqlalchemy import select
 from sqlalchemy import sql
@@ -26,6 +27,7 @@ from sqlalchemy.orm.decl_api import declared_attr
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import fixture_session
+from sqlalchemy.testing.util import resolve_lambda
 from test.orm import _fixtures
 
 
@@ -448,6 +450,40 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
             stmt,
             "SELECT users_1.id, users_1.name "
             "FROM users AS users_1 WHERE users_1.name != :name_1",
+        )
+
+    @testing.combinations(
+        (lambda User: [User.id], "users.id"),
+        (lambda User: [User.id.label("foo")], "users.id AS foo"),
+        (lambda User: [User.name + "bar"], "users.name || :name_1 AS anon_1"),
+        (
+            lambda User: [(User.name + "bar").label("foo")],
+            "users.name || :name_1 AS foo",
+        ),
+        (lambda User: [func.count(User.id)], "count(users.id) AS count_1"),
+        (
+            lambda User: [func.count(User.id).label("foo")],
+            "count(users.id) AS foo",
+        ),
+        argnames="case, expected",
+    )
+    def test_select_expr_with_criteria(
+        self, case, expected, user_address_fixture
+    ):
+        """test #7205"""
+        User, Address = user_address_fixture
+
+        stmt = select(*resolve_lambda(case, User=User)).options(
+            # use non-bound value so that we dont have to accommodate for
+            # the "anon" counter
+            with_loader_criteria(
+                User, User.name != literal_column("some_crit")
+            )
+        )
+
+        self.assert_compile(
+            stmt,
+            "SELECT %s FROM users WHERE users.name != some_crit" % (expected,),
         )
 
     def test_select_from_aliased_inclaliased_criteria(
