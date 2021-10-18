@@ -69,7 +69,6 @@ def setup_filters():
         # ORM Query
         #
         r"The Query\.get\(\) method",
-        r"The Query\.from_self\(\) method",
         r"The Query\.with_parent\(\) method",
         r"The Query\.with_parent\(\) method",
         r"The Query\.select_entity_from\(\) method",
