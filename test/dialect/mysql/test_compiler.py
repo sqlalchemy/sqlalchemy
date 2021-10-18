@@ -1093,14 +1093,14 @@ class RegexpCommon(testing.AssertsCompiledSQL):
 
     def test_regexp_match_column(self):
         self.assert_compile(
-            self.table.c.myid.regexp_match(self.table.c.name),
+            self.table.c.myid.regexp_match(self.table.c.name_column),
             "mytable.myid REGEXP mytable.name_column",
             checkpositional=(),
         )
 
     def test_regexp_match_str(self):
         self.assert_compile(
-            literal("string").regexp_match(self.table.c.name),
+            literal("string").regexp_match(self.table.c.name_column),
             "%s REGEXP mytable.name_column",
             checkpositional=("string",),
         )
@@ -1114,14 +1114,14 @@ class RegexpCommon(testing.AssertsCompiledSQL):
 
     def test_not_regexp_match_column(self):
         self.assert_compile(
-            ~self.table.c.myid.regexp_match(self.table.c.name),
+            ~self.table.c.myid.regexp_match(self.table.c.name_column),
             "mytable.myid NOT REGEXP mytable.name_column",
             checkpositional=(),
         )
 
     def test_not_regexp_match_str(self):
         self.assert_compile(
-            ~literal("string").regexp_match(self.table.c.name),
+            ~literal("string").regexp_match(self.table.c.name_column),
             "%s NOT REGEXP mytable.name_column",
             checkpositional=("string",),
         )
@@ -1135,22 +1135,28 @@ class RegexpCommon(testing.AssertsCompiledSQL):
 
     def test_regexp_replace_column(self):
         self.assert_compile(
-            self.table.c.myid.regexp_replace("pattern", self.table.c.name),
-            "REGEXP_REPLACE(mytable.myid, %s, mytable.name)",
+            self.table.c.myid.regexp_replace(
+                "pattern", self.table.c.name_column
+            ),
+            "REGEXP_REPLACE(mytable.myid, %s, mytable.name_column)",
             checkpositional=("pattern",),
         )
 
     def test_regexp_replace_column2(self):
         self.assert_compile(
-            self.table.c.myid.regexp_replace(self.table.c.name, "replacement"),
-            "REGEXP_REPLACE(mytable.myid, mytable.name, %s)",
+            self.table.c.myid.regexp_replace(
+                self.table.c.name_column, "replacement"
+            ),
+            "REGEXP_REPLACE(mytable.myid, mytable.name_column, %s)",
             checkpositional=("replacement",),
         )
 
     def test_regexp_replace_string(self):
         self.assert_compile(
-            literal("string").regexp_replace("pattern", self.table.c.name),
-            "REGEXP_REPLACE(%s, %s, mytable.name)",
+            literal("string").regexp_replace(
+                "pattern", self.table.c.name_column
+            ),
+            "REGEXP_REPLACE(%s, %s, mytable.name_column)",
             checkpositional=("string", "pattern"),
         )
 
