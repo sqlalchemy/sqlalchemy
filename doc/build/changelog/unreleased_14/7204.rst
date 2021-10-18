@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 7204
+
+    Fixed installation issue where the ``sqlalchemy.dialects.mysql`` module
+    would not be importable if "greenlet" were not installed.
