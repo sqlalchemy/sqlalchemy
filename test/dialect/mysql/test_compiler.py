@@ -431,14 +431,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_mariadb_for_update(self):
         table1 = table(
-            "mytable", column("myid"), column("name"), column("description")
+            "mytable",
+            column("myid"),
+            column("name_column"),
+            column("description"),
         )
 
         self.assert_compile(
             table1.select()
             .where(table1.c.myid == 7)
             .with_for_update(of=table1),
-            "SELECT mytable.myid, mytable.name, mytable.description "
+            "SELECT mytable.myid, mytable.name_column, mytable.description "
             "FROM mytable WHERE mytable.myid = %s "
             "FOR UPDATE",
             dialect="mariadb",
@@ -1078,7 +1081,7 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
 class RegexpCommon(testing.AssertsCompiledSQL):
     def setup_test(self):
         self.table = table(
-            "mytable", column("myid", Integer), column("name", String)
+            "mytable", column("myid", Integer), column("name_column", String)
         )
 
     def test_regexp_match(self):
@@ -1091,14 +1094,14 @@ class RegexpCommon(testing.AssertsCompiledSQL):
     def test_regexp_match_column(self):
         self.assert_compile(
             self.table.c.myid.regexp_match(self.table.c.name),
-            "mytable.myid REGEXP mytable.name",
+            "mytable.myid REGEXP mytable.name_column",
             checkpositional=(),
         )
 
     def test_regexp_match_str(self):
         self.assert_compile(
             literal("string").regexp_match(self.table.c.name),
-            "%s REGEXP mytable.name",
+            "%s REGEXP mytable.name_column",
             checkpositional=("string",),
         )
 
@@ -1112,14 +1115,14 @@ class RegexpCommon(testing.AssertsCompiledSQL):
     def test_not_regexp_match_column(self):
         self.assert_compile(
             ~self.table.c.myid.regexp_match(self.table.c.name),
-            "mytable.myid NOT REGEXP mytable.name",
+            "mytable.myid NOT REGEXP mytable.name_column",
             checkpositional=(),
         )
 
     def test_not_regexp_match_str(self):
         self.assert_compile(
             ~literal("string").regexp_match(self.table.c.name),
-            "%s NOT REGEXP mytable.name",
+            "%s NOT REGEXP mytable.name_column",
             checkpositional=("string",),
         )
 
