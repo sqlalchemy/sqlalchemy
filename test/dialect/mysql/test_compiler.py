@@ -83,28 +83,28 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_create_index_simple(self):
         m = MetaData()
-        tbl = Table("testtbl", m, Column("data", String(255)))
-        idx = Index("test_idx1", tbl.c.data)
+        tbl = Table("testtbl", m, Column("data_column", String(255)))
+        idx = Index("test_idx1", tbl.c.data_column)
 
         self.assert_compile(
-            schema.CreateIndex(idx), "CREATE INDEX test_idx1 ON testtbl (data)"
+            schema.CreateIndex(idx), "CREATE INDEX test_idx1 ON testtbl (data_column)"
         )
 
     def test_create_index_with_prefix(self):
         m = MetaData()
-        tbl = Table("testtbl", m, Column("data", String(255)))
+        tbl = Table("testtbl", m, Column("data_column", String(255)))
         idx = Index(
-            "test_idx1", tbl.c.data, mysql_length=10, mysql_prefix="FULLTEXT"
+            "test_idx1", tbl.c.data_column, mysql_length=10, mysql_prefix="FULLTEXT"
         )
 
         self.assert_compile(
             schema.CreateIndex(idx),
-            "CREATE FULLTEXT INDEX test_idx1 " "ON testtbl (data(10))",
+            "CREATE FULLTEXT INDEX test_idx1 " "ON testtbl (data_column(10))",
         )
 
     def test_create_index_with_text(self):
         m = MetaData()
-        tbl = Table("testtbl", m, Column("data", String(255)))
+        tbl = Table("testtbl", m, Column("data_column", String(255)))
         idx = Index("test_idx1", text("created_at desc"), _table=tbl)
 
         self.assert_compile(
@@ -129,7 +129,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             return compiler.process(element.text, **kw)
 
         m = MetaData()
-        tbl = Table("testtbl", m, Column("data", String(255)))
+        tbl = Table("testtbl", m, Column("data_column", String(255)))
         idx = Index(
             "test_idx1",
             _textual_index_element(tbl, text("created_at desc")),
@@ -143,10 +143,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_create_index_with_parser(self):
         m = MetaData()
-        tbl = Table("testtbl", m, Column("data", String(255)))
+        tbl = Table("testtbl", m, Column("data_column", String(255)))
         idx = Index(
             "test_idx1",
-            tbl.c.data,
+            tbl.c.data_column,
             mysql_length=10,
             mysql_prefix="FULLTEXT",
             mysql_with_parser="ngram",
@@ -155,30 +155,30 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateIndex(idx),
             "CREATE FULLTEXT INDEX test_idx1 "
-            "ON testtbl (data(10)) WITH PARSER ngram",
+            "ON testtbl (data_column(10)) WITH PARSER ngram",
         )
 
     def test_create_index_with_length(self):
         m = MetaData()
-        tbl = Table("testtbl", m, Column("data", String(255)))
-        idx1 = Index("test_idx1", tbl.c.data, mysql_length=10)
-        idx2 = Index("test_idx2", tbl.c.data, mysql_length=5)
+        tbl = Table("testtbl", m, Column("data_column", String(255)))
+        idx1 = Index("test_idx1", tbl.c.data_column, mysql_length=10)
+        idx2 = Index("test_idx2", tbl.c.data_column, mysql_length=5)
 
         self.assert_compile(
             schema.CreateIndex(idx1),
-            "CREATE INDEX test_idx1 ON testtbl (data(10))",
+            "CREATE INDEX test_idx1 ON testtbl (data_column(10))",
         )
         self.assert_compile(
             schema.CreateIndex(idx2),
-            "CREATE INDEX test_idx2 ON testtbl (data(5))",
+            "CREATE INDEX test_idx2 ON testtbl (data_column(5))",
         )
 
     def test_drop_constraint_mysql(self):
         m = MetaData()
         table_name = "testtbl"
         constraint_name = "constraint"
-        constraint = CheckConstraint("data IS NOT NULL", name=constraint_name)
-        Table(table_name, m, Column("data", String(255)), constraint)
+        constraint = CheckConstraint("data_column IS NOT NULL", name=constraint_name)
+        Table(table_name, m, Column("data_column", String(255)), constraint)
         dialect = mysql.dialect()
         self.assert_compile(
             schema.DropConstraint(constraint),
@@ -190,8 +190,8 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         m = MetaData()
         table_name = "testtbl"
         constraint_name = "constraint"
-        constraint = CheckConstraint("data IS NOT NULL", name=constraint_name)
-        Table(table_name, m, Column("data", String(255)), constraint)
+        constraint = CheckConstraint("data_column IS NOT NULL", name=constraint_name)
+        Table(table_name, m, Column("data_column", String(255)), constraint)
         self.assert_compile(
             schema.DropConstraint(constraint),
             "ALTER TABLE %s DROP CONSTRAINT `%s`"
@@ -280,17 +280,17 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_create_index_with_using(self):
         m = MetaData()
-        tbl = Table("testtbl", m, Column("data", String(255)))
-        idx1 = Index("test_idx1", tbl.c.data, mysql_using="btree")
-        idx2 = Index("test_idx2", tbl.c.data, mysql_using="hash")
+        tbl = Table("testtbl", m, Column("data_column", String(255)))
+        idx1 = Index("test_idx1", tbl.c.data_column, mysql_using="btree")
+        idx2 = Index("test_idx2", tbl.c.data_column, mysql_using="hash")
 
         self.assert_compile(
             schema.CreateIndex(idx1),
-            "CREATE INDEX test_idx1 ON testtbl (data) USING btree",
+            "CREATE INDEX test_idx1 ON testtbl (data_column) USING btree",
         )
         self.assert_compile(
             schema.CreateIndex(idx2),
-            "CREATE INDEX test_idx2 ON testtbl (data) USING hash",
+            "CREATE INDEX test_idx2 ON testtbl (data_column) USING hash",
         )
 
     def test_create_pk_plain(self):
@@ -298,14 +298,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         tbl = Table(
             "testtbl",
             m,
-            Column("data", String(255)),
-            PrimaryKeyConstraint("data"),
+            Column("data_column", String(255)),
+            PrimaryKeyConstraint("data_column"),
         )
 
         self.assert_compile(
             schema.CreateTable(tbl),
-            "CREATE TABLE testtbl (data VARCHAR(255) NOT NULL, "
-            "PRIMARY KEY (data))",
+            "CREATE TABLE testtbl (data_column VARCHAR(255) NOT NULL, "
+            "PRIMARY KEY (data_column))",
         )
 
     def test_create_pk_with_using(self):
@@ -313,14 +313,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         tbl = Table(
             "testtbl",
             m,
-            Column("data", String(255)),
-            PrimaryKeyConstraint("data", mysql_using="btree"),
+            Column("data_column", String(255)),
+            PrimaryKeyConstraint("data_column", mysql_using="btree"),
         )
 
         self.assert_compile(
             schema.CreateTable(tbl),
-            "CREATE TABLE testtbl (data VARCHAR(255) NOT NULL, "
-            "PRIMARY KEY (data) USING btree)",
+            "CREATE TABLE testtbl (data_column VARCHAR(255) NOT NULL, "
+            "PRIMARY KEY (data_column) USING btree)",
         )
 
     def test_create_index_expr(self):
@@ -356,22 +356,22 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_create_index_expr_func(self):
         m = MetaData()
-        tbl = Table("testtbl", m, Column("data", Integer))
-        idx1 = Index("test_idx1", func.radians(tbl.c.data))
+        tbl = Table("testtbl", m, Column("data_column", Integer))
+        idx1 = Index("test_idx1", func.radians(tbl.c.data_column))
 
         self.assert_compile(
             schema.CreateIndex(idx1),
-            "CREATE INDEX test_idx1 ON testtbl ((radians(data)))",
+            "CREATE INDEX test_idx1 ON testtbl ((radians(data_column)))",
         )
 
     def test_create_index_expr_func_unary(self):
         m = MetaData()
-        tbl = Table("testtbl", m, Column("data", Integer))
-        idx1 = Index("test_idx1", -tbl.c.data)
+        tbl = Table("testtbl", m, Column("data_column", Integer))
+        idx1 = Index("test_idx1", -tbl.c.data_column)
 
         self.assert_compile(
             schema.CreateIndex(idx1),
-            "CREATE INDEX test_idx1 ON testtbl ((-data))",
+            "CREATE INDEX test_idx1 ON testtbl ((-data_column))",
         )
 
     def test_deferrable_initially_kw_not_ignored(self):
