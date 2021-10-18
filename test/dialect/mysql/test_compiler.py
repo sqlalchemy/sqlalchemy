@@ -1214,7 +1214,7 @@ class MatchExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = mysql.dialect()
 
     match_table = table(
-        "user",
+        "user_tbl",
         column("firstname", String),
         column("lastname", String),
     )
@@ -1261,28 +1261,28 @@ class MatchExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
     @testing.combinations(
         (
             lambda expr: expr,
-            "MATCH (user.firstname, user.lastname) AGAINST (%s)",
+            "MATCH (user_tbl.firstname, user_tbl.lastname) AGAINST (%s)",
         ),
         (
             lambda expr: expr.in_boolean_mode(),
-            "MATCH (user.firstname, user.lastname) AGAINST "
+            "MATCH (user_tbl.firstname, user_tbl.lastname) AGAINST "
             "(%s IN BOOLEAN MODE)",
         ),
         (
             lambda expr: expr.in_natural_language_mode(),
-            "MATCH (user.firstname, user.lastname) AGAINST "
+            "MATCH (user_tbl.firstname, user_tbl.lastname) AGAINST "
             "(%s IN NATURAL LANGUAGE MODE)",
         ),
         (
             lambda expr: expr.with_query_expansion(),
-            "MATCH (user.firstname, user.lastname) AGAINST "
+            "MATCH (user_tbl.firstname, user_tbl.lastname) AGAINST "
             "(%s WITH QUERY EXPANSION)",
         ),
         (
             lambda expr: (
                 expr.in_natural_language_mode().with_query_expansion()
             ),
-            "MATCH (user.firstname, user.lastname) AGAINST "
+            "MATCH (user_tbl.firstname, user_tbl.lastname) AGAINST "
             "(%s IN NATURAL LANGUAGE MODE WITH QUERY EXPANSION)",
         ),
     )
@@ -1310,7 +1310,7 @@ class MatchExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
         expr = match(firstname, lastname, against=against)
 
         expected = (
-            "MATCH (user.firstname, user.lastname) AGAINST (%s)"
+            "MATCH (user_tbl.firstname, user_tbl.lastname) AGAINST (%s)"
             % expected_segment
         )
         self.assert_compile(expr, expected)
