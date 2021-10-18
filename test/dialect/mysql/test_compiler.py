@@ -87,14 +87,18 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         idx = Index("test_idx1", tbl.c.data_column)
 
         self.assert_compile(
-            schema.CreateIndex(idx), "CREATE INDEX test_idx1 ON testtbl (data_column)"
+            schema.CreateIndex(idx),
+            "CREATE INDEX test_idx1 ON testtbl (data_column)",
         )
 
     def test_create_index_with_prefix(self):
         m = MetaData()
         tbl = Table("testtbl", m, Column("data_column", String(255)))
         idx = Index(
-            "test_idx1", tbl.c.data_column, mysql_length=10, mysql_prefix="FULLTEXT"
+            "test_idx1",
+            tbl.c.data_column,
+            mysql_length=10,
+            mysql_prefix="FULLTEXT",
         )
 
         self.assert_compile(
@@ -177,7 +181,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         m = MetaData()
         table_name = "testtbl"
         constraint_name = "constraint"
-        constraint = CheckConstraint("data_column IS NOT NULL", name=constraint_name)
+        constraint = CheckConstraint(
+            "data_column IS NOT NULL", name=constraint_name
+        )
         Table(table_name, m, Column("data_column", String(255)), constraint)
         dialect = mysql.dialect()
         self.assert_compile(
@@ -190,7 +196,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         m = MetaData()
         table_name = "testtbl"
         constraint_name = "constraint"
-        constraint = CheckConstraint("data_column IS NOT NULL", name=constraint_name)
+        constraint = CheckConstraint(
+            "data_column IS NOT NULL", name=constraint_name
+        )
         Table(table_name, m, Column("data_column", String(255)), constraint)
         self.assert_compile(
             schema.DropConstraint(constraint),
