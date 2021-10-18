@@ -353,6 +353,10 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         """part of #2992; make sure string label references can't
         access an eager loader, else an eager load can corrupt the query.
 
+        This behavior relies upon the allow_label_resolve flag to disable
+        a column expression from being resolvable in an "order by label"
+        context.
+
         """
         Address, addresses, users, User = (
             self.classes.Address,

@@ -4486,7 +4486,7 @@ class SelectState(util.MemoizedSlots, CompileState):
 
     def _memoized_attr__label_resolve_dict(self):
         with_cols = dict(
-            (c._resolve_label or c._tq_label or c.key, c)
+            (c._tq_label or c.key, c)
             for c in self.statement._all_selected_columns
             if c._allow_label_resolve
         )

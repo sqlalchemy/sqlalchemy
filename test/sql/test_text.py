@@ -31,6 +31,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.types import NullType
 
 table1 = table(
@@ -812,6 +813,15 @@ class OrderByLabelResolutionTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             stmt, "SELECT mytable.myid AS foo FROM mytable ORDER BY foo"
         )
+
+    def test_no_order_by_text(self):
+        stmt = select(text("foo")).order_by("foo")
+
+        with expect_raises_message(
+            exc.CompileError,
+            r"Can't resolve label reference for ORDER BY / GROUP BY / ",
+        ):
+            stmt.compile()
 
     def test_order_by_colname(self):
         stmt = select(table1.c.myid).order_by("name")
