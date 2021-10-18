@@ -1025,7 +1025,7 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
             bar=stmt.inserted.bar, baz=stmt.inserted.baz
         )
         expected_sql = (
-            "INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) "
+            "INSERT INTO foos (`id`, bar) VALUES (%s, %s), (%s, %s) "
             "ON DUPLICATE KEY UPDATE bar = VALUES(bar), baz = VALUES(baz)"
         )
         self.assert_compile(stmt, expected_sql)
@@ -1036,7 +1036,7 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         stmt = stmt.on_duplicate_key_update(bar=literal_column("bb"))
         expected_sql = (
-            "INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) "
+            "INSERT INTO foos (`id`, bar) VALUES (%s, %s), (%s, %s) "
             "ON DUPLICATE KEY UPDATE bar = bb"
         )
         self.assert_compile(stmt, expected_sql)
@@ -1047,7 +1047,7 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
         )
         stmt = stmt.on_duplicate_key_update(bar="foobar")
         expected_sql = (
-            "INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) "
+            "INSERT INTO foos (`id`, bar) VALUES (%s, %s), (%s, %s) "
             "ON DUPLICATE KEY UPDATE bar = %s"
         )
         self.assert_compile(stmt, expected_sql)
@@ -1061,7 +1061,7 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
             baz=stmt.inserted.baz + "some literal",
         )
         expected_sql = (
-            "INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) ON "
+            "INSERT INTO foos (`id`, bar) VALUES (%s, %s), (%s, %s) ON "
             "DUPLICATE KEY UPDATE bar = coalesce(VALUES(bar)), "
             "baz = (concat(VALUES(baz), %s))"
         )
