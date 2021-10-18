@@ -99,6 +99,8 @@ Currently maintained external dialect projects for SQLAlchemy include:
 +-----------------------------------------+---------------------------------------+
 | Firebird                                | sqlalchemy-firebird_                  |
 +-----------------------------------------+---------------------------------------+
+| Firebolt                                | firebolt-sqlalchemy_                  |
++-----------------------------------------+---------------------------------------+
 | Google BigQuery                         | pybigquery_                           |
 +-----------------------------------------+---------------------------------------+
 | Google Sheets                           | gsheets_                              |
@@ -151,3 +153,4 @@ Currently maintained external dialect projects for SQLAlchemy include:
 .. _sqlalchemy-cockroachdb: https://github.com/cockroachdb/sqlalchemy-cockroachdb
 .. _sqlalchemy-turbodbc: https://pypi.org/project/sqlalchemy-turbodbc/
 .. _sqlalchemy-sybase: https://pypi.org/project/sqlalchemy-sybase/
+.. _firebolt-sqlalchemy: https://pypi.org/project/firebolt-sqlalchemy/
