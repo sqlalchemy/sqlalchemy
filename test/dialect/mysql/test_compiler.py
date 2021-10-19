@@ -81,10 +81,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_reserved_words_mysql_vs_mariadb(self):
-        # note: in the event that MariaDB adds "lead" to the list of reserved words
-        # at https://mariadb.com/kb/en/reserved-words/ this test will need to be
-        # updated. Similarly, if MySQL adds page_checksum as a reserved word, this
-        # will need to be updated. As of Oct. 19, 2021 this test is valid.
+        # note: in the event that MariaDB adds "lead" to the list of reserved
+        # words at https://mariadb.com/kb/en/reserved-words/ this test will
+        # need to be updated. Similarly, if MySQL adds page_checksum as a
+        # reserved word, this will need to be updated. As of Oct. 19, 2021
+        # this test is valid.
         #
         # values were taken from diff in Github pull request 7207
         table = Table(
