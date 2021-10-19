@@ -1,3 +1,6 @@
+# https://mariadb.com/kb/en/reserved-words/
+# includes: Reserved Words
+# excludes: Exceptions, Oracle Mode, Function Names
 RESERVED_WORDS_MARIADB = set(
     [
         "accessible",
@@ -252,6 +255,12 @@ RESERVED_WORDS_MARIADB = set(
     ]
 )
 
+# https://dev.mysql.com/doc/refman/8.0/en/keywords.html
+# https://dev.mysql.com/doc/refman/5.7/en/keywords.html
+# https://dev.mysql.com/doc/refman/5.6/en/keywords.html
+# includes: MySQL x.0 Keywords and Reserved Words
+# excludes: MySQL x.0 New Keywords and Reserved Words,
+#       MySQL x.0 Removed Keywords and Reserved Words
 RESERVED_WORDS_MYSQL = set(
     [
         "accessible",
