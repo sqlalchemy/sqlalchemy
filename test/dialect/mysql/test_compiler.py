@@ -80,6 +80,38 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "mysql_table.`master_ssl_verify_server_cert` FROM mysql_table",
         )
 
+    def test_reserved_words_mysql_vs_mariadb(self):
+        # note: in the event that MariaDB adds "lead" to the list of reserved words
+        # at https://mariadb.com/kb/en/reserved-words/ this test will need to be
+        # updated. Similarly, if MySQL adds page_checksum as a reserved word, this
+        # will need to be updated. As of Oct. 19, 2021 this test is valid.
+        #
+        # values were taken from diff in Github pull request 7207
+        table = Table(
+            "rw_table",
+            MetaData(),
+            Column("lead", Integer),
+            Column("master_ssl_verify_server_cert", Integer),
+            Column("page_checksum", Integer),
+        )
+        x = select(table)
+
+        self.assert_compile(
+            x,
+            "SELECT rw_table.lead, "
+            "rw_table.`master_ssl_verify_server_cert`, "
+            "rw_table.`page_checksum` FROM rw_table",
+            dialect="mariadb",
+        )
+
+        self.assert_compile(
+            x,
+            "SELECT rw_table.`lead`, "
+            "rw_table.`master_ssl_verify_server_cert`, "
+            "rw_table.page_checksum FROM rw_table",
+            dialect="mysql",
+        )
+
     def test_create_index_simple(self):
         m = MetaData()
         tbl = Table("testtbl", m, Column("data", String(255)))
