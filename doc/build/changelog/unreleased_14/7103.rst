@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 7103
-
-    Add missing methods added in :ticket:`6991` to
-    :class:`_scoping.scoped_session` and :func:`_asyncio.async_scoped_session`.

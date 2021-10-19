@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm, regression
-    :tickets: 7134
-
-    Fixed regression where ORM loaded objects could not be pickled in cases
-    where loader options making use of ``"*"`` were used in certain
-    combinations, such as combining the :func:`_orm.joinedload` loader strategy
-    with ``raiseload('*')`` of sub-elements.
-

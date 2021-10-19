@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 7189
-
-    Fixed issue with :func:`_orm.with_loader_criteria` feature where ON
-    criteria would not be added to a JOIN for a query of the form
-    ``select(A).join(B)``, stating a target while making use of an implicit
-    ON clause.

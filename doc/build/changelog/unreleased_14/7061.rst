@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, sql
-    :tickets: 7061
-
-    Account for the :paramref:`_sql.table.schema` parameter passed to
-    the :func:`_sql.table` construct, such that it is taken into account
-    when accessing the :attr:`_sql.TableClause.fullname` attribute.
