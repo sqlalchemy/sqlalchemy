@@ -2,16 +2,16 @@
     :tags: bug, orm, regression
     :tickets: 7209
 
-    Fixed regression where the use of a :class:`_orm.hybrid_property` attribute
-    or a mapped :func:`_orm.composite` attribute as a key passed to the
-    :meth:`_dml.Update.values` method for an ORM-enabled :class:`_dml.Update`
-    statement, as well as when using it via the legacy
+    Fixed regression where the use of a :class:`_hybrid.hybrid_property`
+    attribute or a mapped :func:`_orm.composite` attribute as a key passed to
+    the :meth:`_dml.Update.values` method for an ORM-enabled
+    :class:`_dml.Update` statement, as well as when using it via the legacy
     :meth:`_orm.Query.update` method, would be processed for incoming
     ORM/hybrid/composite values within the compilation stage of the UPDATE
     statement, which meant that in those cases where caching occurred,
     subsequent invocations of the same statement would no longer receive the
     correct values. This would include not only hybrids that use the
-    :meth:`_orm.hybrid_property.update_expression` method, but any use of a
+    :meth:`_hybrid.hybrid_property.update_expression` method, but any use of a
     plain hybrid attribute as well. For composites, the issue instead caused a
     non-repeatable cache key to be generated, which would break caching and
     could fill up the statement cache with repeated statements.
