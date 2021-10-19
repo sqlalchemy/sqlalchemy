@@ -2177,49 +2177,21 @@ class BulkORMUpdate(UpdateDMLState, BulkUDCompileState):
     def _get_crud_kv_pairs(cls, statement, kv_iterator):
         plugin_subject = statement._propagate_attrs["plugin_subject"]
 
-        if plugin_subject:
-            mapper = plugin_subject.mapper
-        else:
-            mapper = None
-
-        values = []
         core_get_crud_kv_pairs = UpdateDMLState._get_crud_kv_pairs
 
-        for k, v in kv_iterator:
-            if mapper:
-                k = coercions.expect(roles.DMLColumnRole, k)
+        if not plugin_subject or not plugin_subject.mapper:
+            return core_get_crud_kv_pairs(statement, kv_iterator)
 
-                if isinstance(k, util.string_types):
-                    desc = _entity_namespace_key(mapper, k, default=NO_VALUE)
-                    if desc is NO_VALUE:
-                        values.append(
-                            (
-                                k,
-                                coercions.expect(
-                                    roles.ExpressionElementRole,
-                                    v,
-                                    type_=sqltypes.NullType(),
-                                    is_crud=True,
-                                ),
-                            )
-                        )
-                    else:
-                        values.extend(
-                            core_get_crud_kv_pairs(
-                                statement, desc._bulk_update_tuples(v)
-                            )
-                        )
-                elif "entity_namespace" in k._annotations:
-                    k_anno = k._annotations
-                    attr = _entity_namespace_key(
-                        k_anno["entity_namespace"], k_anno["proxy_key"]
-                    )
-                    values.extend(
-                        core_get_crud_kv_pairs(
-                            statement, attr._bulk_update_tuples(v)
-                        )
-                    )
-                else:
+        mapper = plugin_subject.mapper
+
+        values = []
+
+        for k, v in kv_iterator:
+            k = coercions.expect(roles.DMLColumnRole, k)
+
+            if isinstance(k, util.string_types):
+                desc = _entity_namespace_key(mapper, k, default=NO_VALUE)
+                if desc is NO_VALUE:
                     values.append(
                         (
                             k,
@@ -2231,8 +2203,34 @@ class BulkORMUpdate(UpdateDMLState, BulkUDCompileState):
                             ),
                         )
                     )
+                else:
+                    values.extend(
+                        core_get_crud_kv_pairs(
+                            statement, desc._bulk_update_tuples(v)
+                        )
+                    )
+            elif "entity_namespace" in k._annotations:
+                k_anno = k._annotations
+                attr = _entity_namespace_key(
+                    k_anno["entity_namespace"], k_anno["proxy_key"]
+                )
+                values.extend(
+                    core_get_crud_kv_pairs(
+                        statement, attr._bulk_update_tuples(v)
+                    )
+                )
             else:
-                values.extend(core_get_crud_kv_pairs(statement, [(k, v)]))
+                values.append(
+                    (
+                        k,
+                        coercions.expect(
+                            roles.ExpressionElementRole,
+                            v,
+                            type_=sqltypes.NullType(),
+                            is_crud=True,
+                        ),
+                    )
+                )
         return values
 
     @classmethod
