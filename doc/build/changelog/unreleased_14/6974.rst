@@ -13,10 +13,10 @@
 
     The automatic aliasing within ORM join() which occurs for overlapping
     mapped tables does not work consistently with all APIs such as
-    ``contains_eager()``, and rather than continue to try to make these use
-    cases work everywhere, replacing with a more user-explicit pattern
-    is clearer, less prone to bugs and simplifies SQLAlchemy's internals
-    further.
+    :func:`_orm.contains_eager()`, and rather than continue to try to make
+    these use cases work everywhere, replacing with a more user-explicit
+    pattern is clearer, less prone to bugs and simplifies SQLAlchemy's
+    internals further.
 
     The warnings include links to the errors.rst page where each pattern is
     demonstrated along with the recommended pattern to fix.

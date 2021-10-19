@@ -160,6 +160,7 @@ zzzeeksphinx_module_prefixes = {
     # ORM is sqlalchemy.orm.<cls>.
     "_ormevent": "sqlalchemy.orm",
     "_ormevents": "sqlalchemy.orm",
+    "_scoping": "sqlalchemy.orm.scoping",
     "_exc": "sqlalchemy.exc",
     "_reflection": "sqlalchemy.engine.reflection",
     "_orm": "sqlalchemy.orm",
