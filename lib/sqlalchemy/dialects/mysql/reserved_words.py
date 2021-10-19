@@ -1,4 +1,5 @@
-# generated using https://gist.github.com/kkirsche/4f31f2153ed7a3248be1ec44ca6ddbc9
+# generated using:
+# https://gist.github.com/kkirsche/4f31f2153ed7a3248be1ec44ca6ddbc9
 #
 # https://mariadb.com/kb/en/reserved-words/
 # includes: Reserved Words
