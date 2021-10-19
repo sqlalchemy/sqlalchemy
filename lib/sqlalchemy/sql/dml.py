@@ -52,6 +52,21 @@ class DMLState(CompileState):
     def dml_table(self):
         return self.statement.table
 
+    @classmethod
+    def _get_crud_kv_pairs(cls, statement, kv_iterator):
+        return [
+            (
+                coercions.expect(roles.DMLColumnRole, k),
+                coercions.expect(
+                    roles.ExpressionElementRole,
+                    v,
+                    type_=NullType(),
+                    is_crud=True,
+                ),
+            )
+            for k, v in kv_iterator
+        ]
+
     def _make_extra_froms(self, statement):
         froms = []
 
@@ -674,30 +689,12 @@ class ValuesBase(UpdateBase):
         # crud.py now intercepts bound parameters with unique=True from here
         # and ensures they get the "crud"-style name when rendered.
 
+        kv_generator = DMLState.get_plugin_class(self)._get_crud_kv_pairs
+
         if self._preserve_parameter_order:
-            arg = [
-                (
-                    coercions.expect(roles.DMLColumnRole, k),
-                    coercions.expect(
-                        roles.ExpressionElementRole,
-                        v,
-                        type_=NullType(),
-                        is_crud=True,
-                    ),
-                )
-                for k, v in arg
-            ]
-            self._ordered_values = arg
+            self._ordered_values = kv_generator(self, arg)
         else:
-            arg = {
-                coercions.expect(roles.DMLColumnRole, k): coercions.expect(
-                    roles.ExpressionElementRole,
-                    v,
-                    type_=NullType(),
-                    is_crud=True,
-                )
-                for k, v in arg.items()
-            }
+            arg = {k: v for k, v in kv_generator(self, arg.items())}
             if self._values:
                 self._values = self._values.union(arg)
             else:
@@ -1319,19 +1316,9 @@ class Update(DMLWhereBase, ValuesBase):
             raise exc.ArgumentError(
                 "This statement already has ordered values present"
             )
-        arg = [
-            (
-                coercions.expect(roles.DMLColumnRole, k),
-                coercions.expect(
-                    roles.ExpressionElementRole,
-                    v,
-                    type_=NullType(),
-                    is_crud=True,
-                ),
-            )
-            for k, v in args
-        ]
-        self._ordered_values = arg
+
+        kv_generator = DMLState.get_plugin_class(self)._get_crud_kv_pairs
+        self._ordered_values = kv_generator(self, args)
 
     @_generative
     def inline(self):

@@ -1674,11 +1674,37 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
         s = fixture_session()
 
         q = s.query(User).filter(User.id == Document.user_id)
+
         assert_raises_message(
             exc.InvalidRequestError,
             "Could not evaluate current criteria in Python.",
             q.update,
-            {"name": "ed"},
+            {"samename": "ed"},
+        )
+
+    @testing.requires.multi_table_update
+    def test_multi_table_criteria_ok_wo_eval(self):
+        User = self.classes.User
+        Document = self.classes.Document
+
+        s = fixture_session()
+
+        q = s.query(User).filter(User.id == Document.user_id)
+
+        q.update({Document.samename: "ed"}, synchronize_session="fetch")
+        eq_(
+            s.query(User.id, Document.samename, User.samename)
+            .filter(User.id == Document.user_id)
+            .order_by(User.id)
+            .all(),
+            [
+                (1, "ed", None),
+                (1, "ed", None),
+                (2, "ed", None),
+                (2, "ed", None),
+                (3, "ed", None),
+                (3, "ed", None),
+            ],
         )
 
     @testing.requires.update_where_target_in_subquery
@@ -1744,7 +1770,7 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
             ),
         )
 
-    @testing.only_on("mysql", "Multi table update")
+    @testing.requires.multi_table_update
     def test_update_from_multitable_same_names(self):
         Document = self.classes.Document
         User = self.classes.User

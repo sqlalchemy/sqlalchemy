@@ -1493,7 +1493,6 @@ class BindParameter(roles.InElementRole, ColumnElement):
                 :ref:`change_4808`.
 
         """
-
         if required is NO_ARG:
             required = value is NO_ARG and callable_ is None
         if value is NO_ARG:

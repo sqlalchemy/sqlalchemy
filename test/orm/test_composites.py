@@ -273,6 +273,15 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
 
         eq_(e1.end, Point(16, 10))
 
+        stmt = (
+            update(Edge)
+            .filter(Edge.start == Point(14, 5))
+            .values({Edge.end: Point(17, 8)})
+        )
+        sess.execute(stmt)
+
+        eq_(e1.end, Point(17, 8))
+
     def test_bulk_update_fetch(self):
         Edge, Point = (self.classes.Edge, self.classes.Point)
 
@@ -286,6 +295,10 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         q.update({Edge.end: Point(16, 10)}, synchronize_session="fetch")
 
         eq_(e1.end, Point(16, 10))
+
+        q.update({Edge.end: Point(17, 8)}, synchronize_session="fetch")
+
+        eq_(e1.end, Point(17, 8))
 
     def test_get_history(self):
         Edge = self.classes.Edge

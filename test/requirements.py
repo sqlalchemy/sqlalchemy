@@ -509,6 +509,10 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def multi_table_update(self):
+        return only_on(["mysql", "mariadb"], "Multi table update")
+
+    @property
     def update_from(self):
         """Target must support UPDATE..FROM syntax"""
 
