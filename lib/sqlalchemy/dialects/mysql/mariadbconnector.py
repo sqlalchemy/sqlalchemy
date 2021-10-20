@@ -32,7 +32,6 @@ import re
 from .base import MySQLCompiler
 from .base import MySQLDialect
 from .base import MySQLExecutionContext
-from .base import MySQLIdentifierPreparer
 from ... import sql
 from ... import util
 
@@ -48,10 +47,6 @@ class MySQLExecutionContext_mariadbconnector(MySQLExecutionContext):
 
 
 class MySQLCompiler_mariadbconnector(MySQLCompiler):
-    pass
-
-
-class MySQLIdentifierPreparer_mariadbconnector(MySQLIdentifierPreparer):
     pass
 
 
@@ -78,7 +73,6 @@ class MySQLDialect_mariadbconnector(MySQLDialect):
     default_paramstyle = "qmark"
     execution_ctx_cls = MySQLExecutionContext_mariadbconnector
     statement_compiler = MySQLCompiler_mariadbconnector
-    preparer = MySQLIdentifierPreparer_mariadbconnector
 
     supports_server_side_cursors = True
 

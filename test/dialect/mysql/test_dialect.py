@@ -9,6 +9,7 @@ from sqlalchemy import exc
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
+from sqlalchemy import select
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy.dialects import mysql
@@ -21,12 +22,37 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import AssertsCompiledSQL
+from .test_compiler import ReservedWordFixture
 from ...engine import test_deprecations
 
 
-class BackendDialectTest(fixtures.TestBase):
+class BackendDialectTest(
+    ReservedWordFixture, fixtures.TestBase, AssertsCompiledSQL
+):
     __backend__ = True
     __only_on__ = "mysql", "mariadb"
+
+    def test_reserved_words_mysql_vs_mariadb(
+        self, mysql_mariadb_reserved_words
+    ):
+        """test #7167 - real backend level
+
+        We want to make sure that the "is mariadb" flag as well as the
+        correct identifier preparer are set up for dialects no matter how they
+        determine their "is_mariadb" flag.
+
+        """
+
+        dialect = testing.db.dialect
+        expect_mariadb = testing.only_on("mariadb").enabled
+
+        table, expected_mysql, expected_mdb = mysql_mariadb_reserved_words
+        self.assert_compile(
+            select(table),
+            expected_mdb if expect_mariadb else expected_mysql,
+            dialect=dialect,
+        )
 
     def test_no_show_variables(self):
         from sqlalchemy.testing import mock

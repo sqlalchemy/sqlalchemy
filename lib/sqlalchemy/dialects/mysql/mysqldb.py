@@ -120,10 +120,6 @@ class MySQLCompiler_mysqldb(MySQLCompiler):
     pass
 
 
-class MySQLIdentifierPreparer_mysqldb(MySQLIdentifierPreparer):
-    pass
-
-
 class MySQLDialect_mysqldb(MySQLDialect):
     driver = "mysqldb"
     supports_statement_cache = True
@@ -136,7 +132,7 @@ class MySQLDialect_mysqldb(MySQLDialect):
     default_paramstyle = "format"
     execution_ctx_cls = MySQLExecutionContext_mysqldb
     statement_compiler = MySQLCompiler_mysqldb
-    preparer = MySQLIdentifierPreparer_mysqldb
+    preparer = MySQLIdentifierPreparer
 
     def __init__(self, **kwargs):
         super(MySQLDialect_mysqldb, self).__init__(**kwargs)
