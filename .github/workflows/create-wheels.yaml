@@ -159,7 +159,7 @@ jobs:
         # the command `echo "::set-output ...` is used to create an step output that can be used in following steps
         # this is from https://github.community/t5/GitHub-Actions/Using-the-output-of-run-inside-of-if-condition/td-p/33920
         run: |
-          version="${py_tag: 2:1}.${py_tag: 3:1}"
+          version="`echo $py_tag | sed --regexp-extended 's/cp([0-9])([0-9]+)-.*/\1.\2/g'`"
           echo $version
           echo "::set-output name=python-version::$version"
 
@@ -297,17 +297,6 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v2
-
-      - name: Get python version
-        id: linux-py-version
-        env:
-          py_tag: ${{ matrix.python-version }}
-        # the command `echo "::set-output ...` is used to create an step output that can be used in following steps
-        # this is from https://github.community/t5/GitHub-Actions/Using-the-output-of-run-inside-of-if-condition/td-p/33920
-        run: |
-          version="${py_tag: 2:1}.${py_tag: 3:1}"
-          echo $version
-          echo "::set-output name=python-version::$version"
 
       - name: Remove tag_build from setup.cfg
         # sqlalchemy has `tag_build` set to `dev` in setup.cfg. We need to remove it before creating the weel
