@@ -4504,6 +4504,12 @@ class MetaData(SchemaItem):
             engine = create_engine("someurl://")
             metadata.bind = engine
 
+        .. deprecated :: 1.4
+
+            The metadata.bind attribute, as part of the deprecated system
+            of "implicit execution", is itself deprecated and will be
+            removed in SQLAlchemy 2.0.
+
         .. seealso::
 
            :ref:`dbengine_implicit` - background on "bound metadata"
