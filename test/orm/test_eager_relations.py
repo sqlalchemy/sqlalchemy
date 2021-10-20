@@ -754,7 +754,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         def go():
             eq_(
                 self.static.item_keyword_result[0:2],
-                q.join("keywords").filter(Keyword.name == "red").all(),
+                q.join(Item.keywords).filter(Keyword.name == "red").all(),
             )
 
         self.assert_sql_count(testing.db, go, 1)
@@ -763,7 +763,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             ka = aliased(Keyword)
             eq_(
                 self.static.item_keyword_result[0:2],
-                (q.join(ka, "keywords").filter(ka.name == "red")).all(),
+                (
+                    q.join(Item.keywords.of_type(ka)).filter(ka.name == "red")
+                ).all(),
             )
 
         self.assert_sql_count(testing.db, go, 1)
@@ -1401,7 +1403,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         if not testing.against("mssql"):
             result = (
-                q.join("orders")
+                q.join(User.orders)
                 .order_by(Order.user_id.desc())
                 .limit(2)
                 .offset(1)
@@ -1423,7 +1425,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             )
 
         result = (
-            q.join("addresses")
+            q.join(User.addresses)
             .order_by(Address.email_address.desc())
             .limit(1)
             .offset(0)
@@ -4040,7 +4042,7 @@ class AddEntityTest(_fixtures.FixtureTest):
         def go():
             ret = (
                 sess.query(User, oalias)
-                .join(oalias, "orders")
+                .join(User.orders.of_type(oalias))
                 .order_by(User.id, oalias.id)
                 .all()
             )
@@ -4099,7 +4101,7 @@ class AddEntityTest(_fixtures.FixtureTest):
             ret = (
                 sess.query(User, oalias)
                 .options(joinedload(User.addresses))
-                .join(oalias, "orders")
+                .join(User.orders.of_type(oalias))
                 .order_by(User.id, oalias.id)
                 .all()
             )
@@ -4113,7 +4115,7 @@ class AddEntityTest(_fixtures.FixtureTest):
             ret = (
                 sess.query(User, oalias)
                 .options(joinedload(User.addresses), joinedload(oalias.items))
-                .join(oalias, "orders")
+                .join(User.orders.of_type(oalias))
                 .order_by(User.id, oalias.id)
                 .all()
             )
@@ -5972,7 +5974,9 @@ class EntityViaMultiplePathTestTwo(fixtures.DeclarativeMappedTest):
             s.query(LDA)
             .join(LDA.ld)
             .options(contains_eager(LDA.ld))
-            .join("a", (l_ac, "ld"), (u_ac, "user"))
+            .join(LDA.a)
+            .join(A.ld.of_type(l_ac))
+            .join(l_ac.user.of_type(u_ac))
             .options(
                 contains_eager(LDA.a)
                 .contains_eager(A.ld, alias=l_ac)

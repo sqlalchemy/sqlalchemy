@@ -1211,7 +1211,9 @@ class MergeTest(_fixtures.FixtureTest):
             sess.commit()
 
         sess2 = fixture_session()
-        u2 = sess2.query(User).options(sa.orm.joinedload("addresses")).get(7)
+        u2 = (
+            sess2.query(User).options(sa.orm.joinedload(User.addresses)).get(7)
+        )
 
         sess3 = fixture_session()
         u3 = sess3.merge(u2, load=False)  # noqa

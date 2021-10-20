@@ -352,7 +352,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         def go():
             eq_(
                 self.static.item_keyword_result[0:2],
-                q.join("keywords").filter(Keyword.name == "red").all(),
+                q.join(Item.keywords).filter(Keyword.name == "red").all(),
             )
 
         self.assert_sql_count(testing.db, go, 2)
@@ -386,7 +386,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             ka = aliased(Keyword)
             eq_(
                 self.static.item_keyword_result[0:2],
-                (q.join(ka, "keywords").filter(ka.name == "red")).all(),
+                (q.join(ka, Item.keywords).filter(ka.name == "red")).all(),
             )
 
         self.assert_sql_count(testing.db, go, 2)
@@ -1571,7 +1571,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         a2 = u1.addresses[0]
         a2.email_address = "foo"
         sess.query(User).options(
-            selectinload("addresses").selectinload("dingaling")
+            selectinload(User.addresses).selectinload(Address.dingaling)
         ).filter_by(id=8).all()
         assert u1.addresses[-1] is a1
         for a in u1.addresses:
@@ -1590,7 +1590,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         o1 = Order()
         u1.orders.append(o1)
         sess.query(User).options(
-            selectinload("orders").selectinload("items")
+            selectinload(User.orders).selectinload(Order.items)
         ).filter_by(id=7).all()
         for o in u1.orders:
             if o is not o1:
@@ -1604,11 +1604,11 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         u1 = (
             sess.query(User)
             .filter_by(id=8)
-            .options(selectinload("addresses"))
+            .options(selectinload(User.addresses))
             .one()
         )
         sess.query(User).filter_by(id=8).options(
-            selectinload("addresses").selectinload("dingaling")
+            selectinload(User.addresses).selectinload(Address.dingaling)
         ).first()
         assert "dingaling" in u1.addresses[0].__dict__
 
@@ -1618,11 +1618,11 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         u1 = (
             sess.query(User)
             .filter_by(id=7)
-            .options(selectinload("orders"))
+            .options(selectinload(User.orders))
             .one()
         )
         sess.query(User).filter_by(id=7).options(
-            selectinload("orders").selectinload("items")
+            selectinload(User.orders).selectinload(Order.items)
         ).first()
         assert "items" in u1.orders[0].__dict__
 
@@ -2784,7 +2784,7 @@ class SelfReferentialTest(fixtures.MappedTest):
             eq_(
                 Node(data="n1", children=[Node(data="n11"), Node(data="n12")]),
                 sess.query(Node)
-                .options(undefer("data"))
+                .options(undefer(Node.data))
                 .order_by(Node.id)
                 .first(),
             )
@@ -2797,7 +2797,10 @@ class SelfReferentialTest(fixtures.MappedTest):
             eq_(
                 Node(data="n1", children=[Node(data="n11"), Node(data="n12")]),
                 sess.query(Node)
-                .options(undefer("data"), undefer("children.data"))
+                .options(
+                    undefer(Node.data),
+                    defaultload(Node.children).undefer(Node.data),
+                )
                 .first(),
             )
 
@@ -2832,7 +2835,9 @@ class SelfReferentialTest(fixtures.MappedTest):
                 sess.query(Node)
                 .filter_by(data="n1")
                 .order_by(Node.id)
-                .options(selectinload("children").selectinload("children"))
+                .options(
+                    selectinload(Node.children).selectinload(Node.children)
+                )
                 .first()
             )
             eq_(

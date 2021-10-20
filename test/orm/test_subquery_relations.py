@@ -10,6 +10,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import close_all_sessions
+from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import joinedload
@@ -443,7 +444,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         def go():
             eq_(
                 self.static.item_keyword_result[0:2],
-                q.join("keywords").filter(Keyword.name == "red").all(),
+                q.join(Item.keywords).filter(Keyword.name == "red").all(),
             )
 
         self.assert_sql_count(testing.db, go, 2)
@@ -477,7 +478,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             ka = aliased(Keyword)
             eq_(
                 self.static.item_keyword_result[0:2],
-                (q.join(ka, "keywords").filter(ka.name == "red")).all(),
+                (q.join(ka, Item.keywords).filter(ka.name == "red")).all(),
             )
 
         self.assert_sql_count(testing.db, go, 2)
@@ -1598,7 +1599,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         a2 = u1.addresses[0]
         a2.email_address = "foo"
         sess.query(User).options(
-            subqueryload("addresses").subqueryload("dingaling")
+            subqueryload(User.addresses).subqueryload(Address.dingaling)
         ).filter_by(id=8).all()
         assert u1.addresses[-1] is a1
         for a in u1.addresses:
@@ -1617,7 +1618,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         o1 = Order()
         u1.orders.append(o1)
         sess.query(User).options(
-            subqueryload("orders").subqueryload("items")
+            subqueryload(User.orders).subqueryload(Order.items)
         ).filter_by(id=7).all()
         for o in u1.orders:
             if o is not o1:
@@ -1631,11 +1632,11 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         u1 = (
             sess.query(User)
             .filter_by(id=8)
-            .options(subqueryload("addresses"))
+            .options(subqueryload(User.addresses))
             .one()
         )
         sess.query(User).filter_by(id=8).options(
-            subqueryload("addresses").subqueryload("dingaling")
+            subqueryload(User.addresses).subqueryload(Address.dingaling)
         ).first()
         assert "dingaling" in u1.addresses[0].__dict__
 
@@ -1645,11 +1646,11 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         u1 = (
             sess.query(User)
             .filter_by(id=7)
-            .options(subqueryload("orders"))
+            .options(subqueryload(User.orders))
             .one()
         )
         sess.query(User).filter_by(id=7).options(
-            subqueryload("orders").subqueryload("items")
+            subqueryload(User.orders).subqueryload(Order.items)
         ).first()
         assert "items" in u1.orders[0].__dict__
 
@@ -2536,7 +2537,7 @@ class SelfReferentialTest(fixtures.MappedTest):
             eq_(
                 Node(data="n1", children=[Node(data="n11"), Node(data="n12")]),
                 sess.query(Node)
-                .options(undefer("data"))
+                .options(undefer(Node.data))
                 .order_by(Node.id)
                 .first(),
             )
@@ -2549,7 +2550,10 @@ class SelfReferentialTest(fixtures.MappedTest):
             eq_(
                 Node(data="n1", children=[Node(data="n11"), Node(data="n12")]),
                 sess.query(Node)
-                .options(undefer("data"), undefer("children.data"))
+                .options(
+                    undefer(Node.data),
+                    defaultload(Node.children).undefer(Node.data),
+                )
                 .first(),
             )
 
@@ -2584,7 +2588,9 @@ class SelfReferentialTest(fixtures.MappedTest):
                 sess.query(Node)
                 .filter_by(data="n1")
                 .order_by(Node.id)
-                .options(subqueryload("children").subqueryload("children"))
+                .options(
+                    subqueryload(Node.children).subqueryload(Node.children)
+                )
                 .first()
             )
             eq_(
@@ -3189,7 +3195,9 @@ class JoinedNoLoadConflictTest(fixtures.DeclarativeMappedTest):
         # Parent->subqueryload->Child->joinedload->parent->noload->children.
         # the actual subqueryload has to emit *after* we've started populating
         # Parent->subqueryload->child.
-        parent = s.query(Parent).options([subqueryload("children")]).first()
+        parent = (
+            s.query(Parent).options([subqueryload(Parent.children)]).first()
+        )
         eq_(parent.children, [Child(name="c1")])
 
 

@@ -81,7 +81,8 @@ class _PolymorphicTestBase(object):
         sess = fixture_session()
         eq_(
             sess.query(Company)
-            .join(Company.employees.of_type(Engineer), "machines")
+            .join(Company.employees.of_type(Engineer))
+            .join(Engineer.machines)
             .filter(Machine.name.ilike("%thinkpad%"))
             .all(),
             [self.c1],

@@ -7,6 +7,7 @@ from sqlalchemy import event
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import literal_column
 from sqlalchemy import MetaData
@@ -31,18 +32,24 @@ from sqlalchemy.orm import contains_alias
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import declared_attr
+from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import eagerload
+from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import foreign
 from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import Load
+from sqlalchemy.orm import load_only
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relation
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import strategy_options
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm import undefer
@@ -70,14 +77,22 @@ from sqlalchemy.testing.mock import call
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
+from sqlalchemy.util import pickle
 from . import _fixtures
 from .inheritance import _poly_fixtures
+from .inheritance._poly_fixtures import _Polymorphic
+from .inheritance._poly_fixtures import Company
+from .inheritance._poly_fixtures import Engineer
+from .test_ac_relationships import PartitionByFixture
 from .test_bind import GetBindTest as _GetBindTest
 from .test_dynamic import _DynamicFixture
 from .test_events import _RemoveListeners
 from .test_options import PathTest as OptionsPathTest
+from .test_options import PathTest
+from .test_options import QueryTest as OptionsQueryTest
 from .test_query import QueryTest
 from .test_transaction import _LocalFixture
+from ..sql.test_compare import CacheKeyFixture
 
 
 join_aliased_dep = (
@@ -94,10 +109,25 @@ join_chain_dep = (
     r"Passing a chain of multiple join conditions to Query.join\(\)"
 )
 
+undefer_needs_chaining = (
+    r"The \*addl_attrs on orm.(?:un)?defer is deprecated.  "
+    "Please use method chaining"
+)
+
 join_strings_dep = "Using strings to indicate relationship names in Query.join"
 join_tuple_form = (
     r"Query.join\(\) will no longer accept tuples as "
     "arguments in SQLAlchemy 2.0."
+)
+
+opt_strings_dep = (
+    "Using strings to indicate column or relationship "
+    "paths in loader options"
+)
+
+wparent_strings_dep = (
+    r"Using strings to indicate relationship names "
+    r"in the ORM with_parent\(\) function"
 )
 
 
@@ -113,6 +143,337 @@ def _aliased_join_deprecation(arg=None):
         "An alias is being generated automatically against joined entity "
         "mapped class " + (arg if arg else "")
     )
+
+
+class CustomJoinTest(QueryTest):
+    run_setup_mappers = None
+
+    def test_double_same_mappers_flag_alias(self):
+        """test aliasing of joins with a custom join condition"""
+
+        (
+            addresses,
+            items,
+            order_items,
+            orders,
+            Item,
+            User,
+            Address,
+            Order,
+            users,
+        ) = (
+            self.tables.addresses,
+            self.tables.items,
+            self.tables.order_items,
+            self.tables.orders,
+            self.classes.Item,
+            self.classes.User,
+            self.classes.Address,
+            self.classes.Order,
+            self.tables.users,
+        )
+
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(
+            Order,
+            orders,
+            properties={
+                "items": relationship(
+                    Item,
+                    secondary=order_items,
+                    lazy="select",
+                    order_by=items.c.id,
+                )
+            },
+        )
+        self.mapper_registry.map_imperatively(Item, items)
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties=dict(
+                addresses=relationship(Address, lazy="select"),
+                open_orders=relationship(
+                    Order,
+                    primaryjoin=and_(
+                        orders.c.isopen == 1, users.c.id == orders.c.user_id
+                    ),
+                    lazy="select",
+                    viewonly=True,
+                ),
+                closed_orders=relationship(
+                    Order,
+                    primaryjoin=and_(
+                        orders.c.isopen == 0, users.c.id == orders.c.user_id
+                    ),
+                    lazy="select",
+                    viewonly=True,
+                ),
+            ),
+        )
+        q = fixture_session().query(User)
+
+        with assertions.expect_deprecated_20(
+            join_aliased_dep,
+            join_strings_dep,
+            join_chain_dep,
+            raise_on_any_unexpected=True,
+        ):
+            eq_(
+                q.join("open_orders", "items", aliased=True)
+                .filter(Item.id == 4)
+                .join("closed_orders", "items", aliased=True)
+                .filter(Item.id == 3)
+                .all(),
+                [User(id=7)],
+            )
+
+
+class PickleTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "users",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("name", String(30), nullable=False),
+            test_needs_acid=True,
+            test_needs_fk=True,
+        )
+
+        Table(
+            "addresses",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("user_id", None, ForeignKey("users.id")),
+            Column("email_address", String(50), nullable=False),
+            test_needs_acid=True,
+            test_needs_fk=True,
+        )
+        Table(
+            "orders",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("user_id", None, ForeignKey("users.id")),
+            Column("address_id", None, ForeignKey("addresses.id")),
+            Column("description", String(30)),
+            Column("isopen", Integer),
+            test_needs_acid=True,
+            test_needs_fk=True,
+        )
+        Table(
+            "dingalings",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("address_id", None, ForeignKey("addresses.id")),
+            Column("data", String(30)),
+            test_needs_acid=True,
+            test_needs_fk=True,
+        )
+
+    def _option_test_fixture(self):
+        users, addresses, dingalings = (
+            self.tables.users,
+            self.tables.addresses,
+            self.tables.dingalings,
+        )
+
+        # these must be module level for pickling
+        from .test_pickled import User, Address, Dingaling
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={"addresses": relationship(Address, backref="user")},
+        )
+        self.mapper_registry.map_imperatively(
+            Address,
+            addresses,
+            properties={"dingaling": relationship(Dingaling)},
+        )
+        self.mapper_registry.map_imperatively(Dingaling, dingalings)
+        sess = fixture_session()
+        u1 = User(name="ed")
+        u1.addresses.append(Address(email_address="ed@bar.com"))
+        sess.add(u1)
+        sess.flush()
+        sess.expunge_all()
+        return sess, User, Address, Dingaling
+
+    @testing.requires.non_broken_pickle
+    def test_became_bound_options(self):
+        sess, User, Address, Dingaling = self._option_test_fixture()
+
+        for opt in [
+            sa.orm.joinedload("addresses"),
+            sa.orm.defer("name"),
+            sa.orm.joinedload("addresses").joinedload(Address.dingaling),
+        ]:
+            with assertions.expect_deprecated_20(opt_strings_dep):
+                context = sess.query(User).options(opt)._compile_context()
+            opt = [
+                v
+                for v in context.attributes.values()
+                if isinstance(v, sa.orm.Load)
+            ][0]
+
+            opt2 = pickle.loads(pickle.dumps(opt))
+            eq_(opt.path, opt2.path)
+            eq_(opt.local_opts, opt2.local_opts)
+
+        u1 = sess.query(User).options(opt).first()
+        pickle.loads(pickle.dumps(u1))
+
+    @testing.requires.non_broken_pickle
+    @testing.combinations(
+        lambda: sa.orm.joinedload("addresses"),
+        lambda: sa.orm.defer("name"),
+        lambda Address: sa.orm.joinedload("addresses").joinedload(
+            Address.dingaling
+        ),
+        lambda: sa.orm.joinedload("addresses").raiseload("*"),
+    )
+    def test_unbound_options(self, test_case):
+        sess, User, Address, Dingaling = self._option_test_fixture()
+
+        opt = testing.resolve_lambda(test_case, User=User, Address=Address)
+        opt2 = pickle.loads(pickle.dumps(opt))
+        eq_(opt.path, opt2.path)
+
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            u1 = sess.query(User).options(opt).first()
+        pickle.loads(pickle.dumps(u1))
+
+    @testing.requires.non_broken_pickle
+    @testing.combinations(
+        lambda User: sa.orm.Load(User).joinedload("addresses"),
+        lambda User: sa.orm.Load(User).joinedload("addresses").raiseload("*"),
+        lambda User: sa.orm.Load(User).defer("name"),
+        lambda User, Address: sa.orm.Load(User)
+        .joinedload("addresses")
+        .joinedload(Address.dingaling),
+        lambda User, Address: sa.orm.Load(User)
+        .joinedload("addresses", innerjoin=True)
+        .joinedload(Address.dingaling),
+    )
+    def test_bound_options(self, test_case):
+        sess, User, Address, Dingaling = self._option_test_fixture()
+
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            opt = testing.resolve_lambda(test_case, User=User, Address=Address)
+
+        opt2 = pickle.loads(pickle.dumps(opt))
+        eq_(opt.path, opt2.path)
+        eq_(opt.context.keys(), opt2.context.keys())
+        eq_(opt.local_opts, opt2.local_opts)
+
+        u1 = sess.query(User).options(opt).first()
+        pickle.loads(pickle.dumps(u1))
+
+
+class SynonymTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    @classmethod
+    def setup_mappers(cls):
+        (
+            users,
+            Keyword,
+            items,
+            order_items,
+            orders,
+            Item,
+            User,
+            Address,
+            keywords,
+            Order,
+            item_keywords,
+            addresses,
+        ) = (
+            cls.tables.users,
+            cls.classes.Keyword,
+            cls.tables.items,
+            cls.tables.order_items,
+            cls.tables.orders,
+            cls.classes.Item,
+            cls.classes.User,
+            cls.classes.Address,
+            cls.tables.keywords,
+            cls.classes.Order,
+            cls.tables.item_keywords,
+            cls.tables.addresses,
+        )
+
+        cls.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "name_syn": synonym("name"),
+                "addresses": relationship(Address),
+                "orders": relationship(
+                    Order, backref="user", order_by=orders.c.id
+                ),  # o2m, m2o
+                "orders_syn": synonym("orders"),
+                "orders_syn_2": synonym("orders_syn"),
+            },
+        )
+        cls.mapper_registry.map_imperatively(Address, addresses)
+        cls.mapper_registry.map_imperatively(
+            Order,
+            orders,
+            properties={
+                "items": relationship(Item, secondary=order_items),  # m2m
+                "address": relationship(Address),  # m2o
+                "items_syn": synonym("items"),
+            },
+        )
+        cls.mapper_registry.map_imperatively(
+            Item,
+            items,
+            properties={
+                "keywords": relationship(
+                    Keyword, secondary=item_keywords
+                )  # m2m
+            },
+        )
+        cls.mapper_registry.map_imperatively(Keyword, keywords)
+
+    def test_options_syn_of_syn_string(self):
+        User, Order = self.classes.User, self.classes.Order
+
+        s = fixture_session()
+
+        def go():
+            with testing.expect_deprecated_20(opt_strings_dep):
+                result = (
+                    s.query(User)
+                    .filter_by(name="jack")
+                    .options(joinedload("orders_syn_2"))
+                    .all()
+                )
+            eq_(
+                result,
+                [
+                    User(
+                        id=7,
+                        name="jack",
+                        orders=[
+                            Order(description="order 1"),
+                            Order(description="order 3"),
+                            Order(description="order 5"),
+                        ],
+                    )
+                ],
+            )
+
+        self.assert_sql_count(testing.db, go, 1)
 
 
 class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
@@ -310,10 +671,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         q1 = s.query(User).options(joinedload("addresses"))
 
-        with testing.expect_deprecated_20(
-            "Using strings to indicate column or relationship "
-            "paths in loader options"
-        ):
+        with testing.expect_deprecated_20(opt_strings_dep):
             self.assert_compile(
                 q1,
                 "SELECT users.id AS users_id, users.name AS users_name, "
@@ -2754,16 +3112,10 @@ class DeprecatedOptionAllTest(OptionsPathTest, _fixtures.FixtureTest):
 
         sess = fixture_session()
 
-        with testing.expect_deprecated(
-            r"The \*addl_attrs on orm.defer is deprecated.  "
-            "Please use method chaining"
-        ):
+        with testing.expect_deprecated(undefer_needs_chaining):
             sess.query(User).options(defer("addresses", "email_address"))
 
-        with testing.expect_deprecated(
-            r"The \*addl_attrs on orm.undefer is deprecated.  "
-            "Please use method chaining"
-        ):
+        with testing.expect_deprecated(undefer_needs_chaining):
             sess.query(User).options(undefer("addresses", "email_address"))
 
 
@@ -3128,20 +3480,22 @@ class NonPrimaryRelationshipLoaderTest(_fixtures.FixtureTest):
 
         closed_mapper = User.closed_orders.entity
         open_mapper = User.open_orders.entity
-        eq_(
-            [Order(id=1), Order(id=5)],
-            fixture_session()
-            .query(closed_mapper)
-            .with_parent(user, property="closed_orders")
-            .all(),
-        )
-        eq_(
-            [Order(id=3)],
-            fixture_session()
-            .query(open_mapper)
-            .with_parent(user, property="open_orders")
-            .all(),
-        )
+        with testing.expect_deprecated_20(wparent_strings_dep):
+            eq_(
+                [Order(id=1), Order(id=5)],
+                fixture_session()
+                .query(closed_mapper)
+                .with_parent(user, property="closed_orders")
+                .all(),
+            )
+        with testing.expect_deprecated_20(wparent_strings_dep):
+            eq_(
+                [Order(id=3)],
+                fixture_session()
+                .query(open_mapper)
+                .with_parent(user, property="open_orders")
+                .all(),
+            )
 
 
 class ViewonlyFlagWarningTest(fixtures.MappedTest):
@@ -4077,6 +4431,43 @@ class DeclarativeBind(fixtures.TestBase):
 
 class JoinTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = "default"
+
+    @testing.combinations(
+        "string_relationship",
+        "string_relationship_only",
+    )
+    def test_filter_by_from_join(self, onclause_type):
+        User, Address = self.classes("User", "Address")
+        (address_table,) = self.tables("addresses")
+        (user_table,) = self.tables("users")
+
+        sess = fixture_session()
+        q = sess.query(User)
+
+        with assertions.expect_deprecated_20(join_strings_dep):
+            if onclause_type == "string_relationship":
+                q = q.join(Address, "addresses")
+            elif onclause_type == "string_relationship_only":
+                q = q.join("addresses")
+            else:
+                assert False
+
+        q2 = q.filter_by(email_address="foo")
+
+        self.assert_compile(
+            q2,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN addresses ON users.id = addresses.user_id "
+            "WHERE addresses.email_address = :email_address_1",
+        )
+
+        q2 = q.reset_joinpoint().filter_by(name="user")
+        self.assert_compile(
+            q2,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN addresses ON users.id = addresses.user_id "
+            "WHERE users.name = :name_1",
+        )
 
     def test_implicit_joins_from_aliases(self):
         Item, User, Order = (
@@ -5266,6 +5657,75 @@ class InheritedJoinTest(
     AssertsCompiledSQL,
 ):
     run_setup_mappers = "once"
+    __dialect__ = "default"
+
+    def test_load_only_alias_subclass(self):
+        Manager = self.classes.Manager
+
+        s = fixture_session()
+        m1 = aliased(Manager, flat=True)
+        q = (
+            s.query(m1)
+            .order_by(m1.person_id)
+            .options(load_only("status", "manager_name"))
+        )
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self.assert_compile(
+                q,
+                "SELECT managers_1.person_id AS managers_1_person_id, "
+                "people_1.person_id AS people_1_person_id, "
+                "people_1.type AS people_1_type, "
+                "managers_1.status AS managers_1_status, "
+                "managers_1.manager_name AS managers_1_manager_name "
+                "FROM people AS people_1 JOIN managers AS "
+                "managers_1 ON people_1.person_id = managers_1.person_id "
+                "ORDER BY managers_1.person_id",
+            )
+
+    def test_load_only_alias_subclass_bound(self):
+        Manager = self.classes.Manager
+
+        s = fixture_session()
+        m1 = aliased(Manager, flat=True)
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            q = (
+                s.query(m1)
+                .order_by(m1.person_id)
+                .options(Load(m1).load_only("status", "manager_name"))
+            )
+        self.assert_compile(
+            q,
+            "SELECT managers_1.person_id AS managers_1_person_id, "
+            "people_1.person_id AS people_1_person_id, "
+            "people_1.type AS people_1_type, "
+            "managers_1.status AS managers_1_status, "
+            "managers_1.manager_name AS managers_1_manager_name "
+            "FROM people AS people_1 JOIN managers AS "
+            "managers_1 ON people_1.person_id = managers_1.person_id "
+            "ORDER BY managers_1.person_id",
+        )
+
+    def test_load_only_of_type_with_polymorphic(self):
+        Company, Person, Manager = self.classes("Company", "Person", "Manager")
+        s = fixture_session()
+
+        wp = with_polymorphic(Person, [Manager], flat=True)
+
+        # needs to be explicit, we don't currently dig onto all the
+        # sub-entities in the wp
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            assert_raises_message(
+                sa.exc.ArgumentError,
+                r'Can\'t find property named "status" on '
+                r"with_polymorphic\(Person, \[Manager\]\) in this Query.",
+                s.query(Company)
+                .options(
+                    joinedload(Company.employees.of_type(wp)).load_only(
+                        "status"
+                    )
+                )
+                ._compile_context,
+            )
 
     def test_join_to_selectable(self):
         people, Company, engineers, Engineer = (
@@ -5957,3 +6417,834 @@ class RequirementsTest(fixtures.MappedTest):
             # TODO: is weakref support detectable without an instance?
             # self.assertRaises(
             #  sa.exc.ArgumentError, mapper, NoWeakrefSupport, t2)
+
+
+class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
+    __dialect__ = "default"
+
+    def test_load_only_synonym(self):
+        orders, Order = self.tables.orders, self.classes.Order
+
+        self.mapper_registry.map_imperatively(
+            Order,
+            orders,
+            properties={"desc": synonym("description")},
+        )
+
+        opt = load_only("isopen", "desc")
+
+        sess = fixture_session()
+        q = sess.query(Order).options(opt)
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self.assert_compile(
+                q,
+                "SELECT orders.id AS orders_id, orders.description "
+                "AS orders_description, orders.isopen AS orders_isopen "
+                "FROM orders",
+            )
+
+    def test_deep_options(self):
+        users, items, order_items, Order, Item, User, orders = (
+            self.tables.users,
+            self.tables.items,
+            self.tables.order_items,
+            self.classes.Order,
+            self.classes.Item,
+            self.classes.User,
+            self.tables.orders,
+        )
+
+        self.mapper_registry.map_imperatively(
+            Item,
+            items,
+            properties=dict(description=deferred(items.c.description)),
+        )
+        self.mapper_registry.map_imperatively(
+            Order,
+            orders,
+            properties=dict(items=relationship(Item, secondary=order_items)),
+        )
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties=dict(orders=relationship(Order, order_by=orders.c.id)),
+        )
+
+        sess = fixture_session()
+        q = sess.query(User).order_by(User.id)
+        result = q.all()
+        item = result[0].orders[1].items[1]
+
+        def go():
+            eq_(item.description, "item 4")
+
+        self.sql_count_(1, go)
+        eq_(item.description, "item 4")
+
+        sess.expunge_all()
+        with assertions.expect_deprecated(undefer_needs_chaining):
+            result = q.options(
+                undefer(User.orders, Order.items, Item.description)
+            ).all()
+        item = result[0].orders[1].items[1]
+
+        def go():
+            eq_(item.description, "item 4")
+
+        self.sql_count_(0, go)
+        eq_(item.description, "item 4")
+
+
+class OptionsTest(PathTest, OptionsQueryTest):
+    def _option_fixture(self, *arg):
+        return strategy_options._UnboundLoad._from_keys(
+            strategy_options._UnboundLoad.joinedload, arg, True, {}
+        )
+
+    def test_chained(self):
+        User = self.classes.User
+        Order = self.classes.Order
+        sess = fixture_session()
+        q = sess.query(User)
+        opt = self._option_fixture(User.orders).joinedload("items")
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self._assert_path_result(
+                opt, q, [(User, "orders"), (User, "orders", Order, "items")]
+            )
+
+    def test_chained_plus_dotted(self):
+        User = self.classes.User
+        Order = self.classes.Order
+        Item = self.classes.Item
+        sess = fixture_session()
+        q = sess.query(User)
+        opt = self._option_fixture("orders.items").joinedload("keywords")
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self._assert_path_result(
+                opt,
+                q,
+                [
+                    (User, "orders"),
+                    (User, "orders", Order, "items"),
+                    (User, "orders", Order, "items", Item, "keywords"),
+                ],
+            )
+
+    def test_with_current_matching_string(self):
+        Item, User, Order = (
+            self.classes.Item,
+            self.classes.User,
+            self.classes.Order,
+        )
+
+        sess = fixture_session()
+        q = sess.query(Item)._with_current_path(
+            self._make_path_registry([User, "orders", Order, "items"])
+        )
+
+        opt = self._option_fixture("orders.items.keywords")
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self._assert_path_result(opt, q, [(Item, "keywords")])
+
+    def test_with_current_nonmatching_string(self):
+        Item, User, Order = (
+            self.classes.Item,
+            self.classes.User,
+            self.classes.Order,
+        )
+
+        sess = fixture_session()
+        q = sess.query(Item)._with_current_path(
+            self._make_path_registry([User, "orders", Order, "items"])
+        )
+
+        opt = self._option_fixture("keywords")
+        self._assert_path_result(opt, q, [])
+
+        opt = self._option_fixture("items.keywords")
+        self._assert_path_result(opt, q, [])
+
+    def test_path_multilevel_string(self):
+        Item, User, Order = (
+            self.classes.Item,
+            self.classes.User,
+            self.classes.Order,
+        )
+
+        sess = fixture_session()
+        q = sess.query(User)
+
+        opt = self._option_fixture("orders.items.keywords")
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self._assert_path_result(
+                opt,
+                q,
+                [
+                    (User, "orders"),
+                    (User, "orders", Order, "items"),
+                    (User, "orders", Order, "items", Item, "keywords"),
+                ],
+            )
+
+    def test_chained_plus_multi(self):
+        User = self.classes.User
+        Order = self.classes.Order
+        Item = self.classes.Item
+        sess = fixture_session()
+        q = sess.query(User)
+        opt = self._option_fixture(User.orders, Order.items).joinedload(
+            "keywords"
+        )
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self._assert_path_result(
+                opt,
+                q,
+                [
+                    (User, "orders"),
+                    (User, "orders", Order, "items"),
+                    (User, "orders", Order, "items", Item, "keywords"),
+                ],
+            )
+
+    def test_multi_entity_opt_on_string(self):
+        Item = self.classes.Item
+        Order = self.classes.Order
+        opt = self._option_fixture("items")
+        sess = fixture_session()
+        q = sess.query(Item, Order)
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self._assert_path_result(opt, q, [])
+
+    def test_get_path_one_level_string(self):
+        User = self.classes.User
+
+        sess = fixture_session()
+        q = sess.query(User)
+
+        opt = self._option_fixture("addresses")
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self._assert_path_result(opt, q, [(User, "addresses")])
+
+    def test_get_path_one_level_with_unrelated(self):
+        Order = self.classes.Order
+
+        sess = fixture_session()
+        q = sess.query(Order)
+        opt = self._option_fixture("addresses")
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self._assert_path_result(opt, q, [])
+
+
+class SubOptionsTest(PathTest, OptionsQueryTest):
+    run_create_tables = False
+    run_inserts = None
+    run_deletes = None
+
+    def _assert_opts(self, q, sub_opt, non_sub_opts):
+        attr_a = {}
+
+        for val in sub_opt._to_bind:
+            val._bind_loader(
+                [
+                    ent.entity_zero
+                    for ent in q._compile_state()._lead_mapper_entities
+                ],
+                q._compile_options._current_path,
+                attr_a,
+                False,
+            )
+
+        attr_b = {}
+
+        for opt in non_sub_opts:
+            for val in opt._to_bind:
+                val._bind_loader(
+                    [
+                        ent.entity_zero
+                        for ent in q._compile_state()._lead_mapper_entities
+                    ],
+                    q._compile_options._current_path,
+                    attr_b,
+                    False,
+                )
+
+        for k, l in attr_b.items():
+            if not l.strategy:
+                del attr_b[k]
+
+        def strat_as_tuple(strat):
+            return (
+                strat.strategy,
+                strat.local_opts,
+                strat.propagate_to_loaders,
+                strat._of_type,
+                strat.is_class_strategy,
+                strat.is_opts_only,
+            )
+
+        eq_(
+            {path: strat_as_tuple(load) for path, load in attr_a.items()},
+            {path: strat_as_tuple(load) for path, load in attr_b.items()},
+        )
+
+    def test_invalid_two(self):
+        User, Address, Order, Item, SubItem = self.classes(
+            "User", "Address", "Order", "Item", "SubItem"
+        )
+
+        # these options are "invalid", in that User.orders -> Item.keywords
+        # is not a path.  However, the "normal" option is not generating
+        # an error for now, which is bad, but we're testing here only that
+        # it works the same way, so there you go.   If and when we make this
+        # case raise, then both cases should raise in the same way.
+        sub_opt = joinedload("orders").options(
+            joinedload("keywords"), joinedload("items")
+        )
+        non_sub_opts = [
+            joinedload(User.orders).joinedload(Item.keywords),
+            defaultload(User.orders).joinedload(Order.items),
+        ]
+        sess = fixture_session()
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
+
+    def test_four_strings(self):
+        User, Address, Order, Item, SubItem, Keyword = self.classes(
+            "User", "Address", "Order", "Item", "SubItem", "Keyword"
+        )
+        sub_opt = joinedload("orders").options(
+            defer("description"),
+            joinedload("items").options(
+                joinedload("keywords").options(defer("name")),
+                defer("description"),
+            ),
+        )
+        non_sub_opts = [
+            joinedload(User.orders),
+            defaultload(User.orders).defer(Order.description),
+            defaultload(User.orders).joinedload(Order.items),
+            defaultload(User.orders)
+            .defaultload(Order.items)
+            .joinedload(Item.keywords),
+            defaultload(User.orders)
+            .defaultload(Order.items)
+            .defer(Item.description),
+            defaultload(User.orders)
+            .defaultload(Order.items)
+            .defaultload(Item.keywords)
+            .defer(Keyword.name),
+        ]
+        sess = fixture_session()
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
+
+    def test_five_strings(self):
+        User, Address, Order, Item, SubItem, Keyword = self.classes(
+            "User", "Address", "Order", "Item", "SubItem", "Keyword"
+        )
+        sub_opt = joinedload("orders").options(load_only("description"))
+        non_sub_opts = [
+            joinedload(User.orders),
+            defaultload(User.orders).load_only(Order.description),
+        ]
+        sess = fixture_session()
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
+
+
+class OptionsNoPropTest(_fixtures.FixtureTest):
+    """test the error messages emitted when using property
+    options in conjunction with column-only entities, or
+    for not existing options
+
+    """
+
+    run_create_tables = False
+    run_inserts = None
+    run_deletes = None
+
+    def test_option_with_column_basestring(self):
+        Item = self.classes.Item
+
+        message = (
+            "Query has only expression-based entities - can't "
+            'find property named "keywords".'
+        )
+        self._assert_eager_with_just_column_exception(
+            Item.id, "keywords", message
+        )
+
+    def test_option_against_nonexistent_basestring(self):
+        Item = self.classes.Item
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self._assert_eager_with_entity_exception(
+                [Item],
+                (joinedload("foo"),),
+                'Can\'t find property named "foo" on mapped class '
+                "Item->items in this Query.",
+            )
+
+    def test_option_against_nonexistent_twolevel_basestring(self):
+        Item = self.classes.Item
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self._assert_eager_with_entity_exception(
+                [Item],
+                (joinedload("keywords.foo"),),
+                'Can\'t find property named "foo" on mapped class '
+                "Keyword->keywords in this Query.",
+            )
+
+    def test_option_against_nonexistent_twolevel_chained(self):
+        Item = self.classes.Item
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self._assert_eager_with_entity_exception(
+                [Item],
+                (joinedload("keywords").joinedload("foo"),),
+                'Can\'t find property named "foo" on mapped class '
+                "Keyword->keywords in this Query.",
+            )
+
+    @testing.fails_if(
+        lambda: True,
+        "PropertyOption doesn't yet check for relation/column on end result",
+    )
+    def test_option_against_non_relation_basestring(self):
+        Item = self.classes.Item
+        Keyword = self.classes.Keyword
+        self._assert_eager_with_entity_exception(
+            [Keyword, Item],
+            (joinedload("keywords"),),
+            r"Attribute 'keywords' of entity 'Mapper\|Keyword\|keywords' "
+            "does not refer to a mapped entity",
+        )
+
+    @testing.fails_if(
+        lambda: True,
+        "PropertyOption doesn't yet check for relation/column on end result",
+    )
+    def test_option_against_multi_non_relation_basestring(self):
+        Item = self.classes.Item
+        Keyword = self.classes.Keyword
+        self._assert_eager_with_entity_exception(
+            [Keyword, Item],
+            (joinedload("keywords"),),
+            r"Attribute 'keywords' of entity 'Mapper\|Keyword\|keywords' "
+            "does not refer to a mapped entity",
+        )
+
+    def test_option_against_wrong_entity_type_basestring(self):
+        Item = self.classes.Item
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self._assert_loader_strategy_exception(
+                [Item],
+                (joinedload("id").joinedload("keywords"),),
+                'Can\'t apply "joined loader" strategy to property "Item.id", '
+                'which is a "column property"; this loader strategy is '
+                'intended to be used with a "relationship property".',
+            )
+
+    def test_col_option_against_relationship_basestring(self):
+        Item = self.classes.Item
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self._assert_loader_strategy_exception(
+                [Item],
+                (load_only("keywords"),),
+                'Can\'t apply "column loader" strategy to property '
+                '"Item.keywords", which is a "relationship property"; this '
+                "loader strategy is intended to be used with a "
+                '"column property".',
+            )
+
+    def test_option_against_multi_non_relation_twolevel_basestring(self):
+        Item = self.classes.Item
+        Keyword = self.classes.Keyword
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self._assert_loader_strategy_exception(
+                [Keyword, Item],
+                (joinedload("id").joinedload("keywords"),),
+                'Can\'t apply "joined loader" strategy to property '
+                '"Keyword.id", '
+                'which is a "column property"; this loader strategy is '
+                "intended "
+                'to be used with a "relationship property".',
+            )
+
+    def test_option_against_multi_nonexistent_basestring(self):
+        Item = self.classes.Item
+        Keyword = self.classes.Keyword
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self._assert_eager_with_entity_exception(
+                [Keyword, Item],
+                (joinedload("description"),),
+                'Can\'t find property named "description" on mapped class '
+                "Keyword->keywords in this Query.",
+            )
+
+    def test_option_against_multi_no_entities_basestring(self):
+        Item = self.classes.Item
+        Keyword = self.classes.Keyword
+        self._assert_eager_with_entity_exception(
+            [Keyword.id, Item.id],
+            (joinedload("keywords"),),
+            r"Query has only expression-based entities - can't find property "
+            'named "keywords".',
+        )
+
+    def test_option_with_mapper_then_column_basestring(self):
+        Item = self.classes.Item
+
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self._assert_option([Item, Item.id], "keywords")
+
+    def test_option_with_mapper_basestring(self):
+        Item = self.classes.Item
+
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self._assert_option([Item], "keywords")
+
+    def test_option_with_column_then_mapper_basestring(self):
+        Item = self.classes.Item
+
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self._assert_option([Item.id, Item], "keywords")
+
+    @classmethod
+    def setup_mappers(cls):
+        users, User, addresses, Address, orders, Order = (
+            cls.tables.users,
+            cls.classes.User,
+            cls.tables.addresses,
+            cls.classes.Address,
+            cls.tables.orders,
+            cls.classes.Order,
+        )
+        cls.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(Address),
+                "orders": relationship(Order),
+            },
+        )
+        cls.mapper_registry.map_imperatively(Address, addresses)
+        cls.mapper_registry.map_imperatively(Order, orders)
+        keywords, items, item_keywords, Keyword, Item = (
+            cls.tables.keywords,
+            cls.tables.items,
+            cls.tables.item_keywords,
+            cls.classes.Keyword,
+            cls.classes.Item,
+        )
+        cls.mapper_registry.map_imperatively(
+            Keyword,
+            keywords,
+            properties={
+                "keywords": column_property(keywords.c.name + "some keyword")
+            },
+        )
+        cls.mapper_registry.map_imperatively(
+            Item,
+            items,
+            properties=dict(
+                keywords=relationship(Keyword, secondary=item_keywords)
+            ),
+        )
+
+        class OrderWProp(cls.classes.Order):
+            @property
+            def some_attr(self):
+                return "hi"
+
+        cls.mapper_registry.map_imperatively(
+            OrderWProp, None, inherits=cls.classes.Order
+        )
+
+    def _assert_option(self, entity_list, option):
+        Item = self.classes.Item
+
+        context = (
+            fixture_session()
+            .query(*entity_list)
+            .options(joinedload(option))
+            ._compile_state()
+        )
+        key = ("loader", (inspect(Item), inspect(Item).attrs.keywords))
+        assert key in context.attributes
+
+    def _assert_loader_strategy_exception(self, entity_list, options, message):
+        assert_raises_message(
+            orm_exc.LoaderStrategyException,
+            message,
+            fixture_session()
+            .query(*entity_list)
+            .options(*options)
+            ._compile_state,
+        )
+
+    def _assert_eager_with_entity_exception(
+        self, entity_list, options, message
+    ):
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            message,
+            fixture_session()
+            .query(*entity_list)
+            .options(*options)
+            ._compile_state,
+        )
+
+    def _assert_eager_with_just_column_exception(
+        self, column, eager_option, message
+    ):
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            message,
+            fixture_session()
+            .query(column)
+            .options(joinedload(eager_option))
+            ._compile_state,
+        )
+
+
+class OptionsNoPropTestInh(_Polymorphic):
+    def test_missing_str_attr_of_type_subclass(self):
+        s = fixture_session()
+
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            assert_raises_message(
+                sa.exc.ArgumentError,
+                r'Can\'t find property named "manager_name" on '
+                r"mapped class Engineer->engineers in this Query.$",
+                s.query(Company)
+                .options(
+                    joinedload(Company.employees.of_type(Engineer)).load_only(
+                        "manager_name"
+                    )
+                )
+                ._compile_state,
+            )
+
+
+class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
+    """In these tests we've moved / adapted all the tests from
+    test_cache_key that make use of string options or string join().  Because
+    we are ensuring cache keys are distinct we still keep a lot of the
+    non-deprecated cases in the lists that we are testing.
+
+    """
+
+    run_setup_mappers = "once"
+    run_inserts = None
+    run_deletes = None
+
+    @classmethod
+    def setup_mappers(cls):
+        cls._setup_stock_mapping()
+
+    def _stmt_20(self, *elements):
+        return tuple(
+            elem._statement_20() if isinstance(elem, sa.orm.Query) else elem
+            for elem in elements
+        )
+
+    def _deprecated_opt(self, fn):
+        with assertions.expect_deprecated_20(
+            opt_strings_dep, raise_on_any_unexpected=True
+        ):
+            return fn()
+
+    def _deprecated_join(self, fn):
+        with assertions.expect_deprecated_20(
+            join_strings_dep, raise_on_any_unexpected=True
+        ):
+            return fn()
+
+    def _deprecated_join_w_aliased(self, fn):
+        with assertions.expect_deprecated_20(
+            join_strings_dep, join_aliased_dep, raise_on_any_unexpected=True
+        ):
+            return fn()
+
+    def test_bound_options(self):
+        User, Address, Keyword, Order, Item = self.classes(
+            "User", "Address", "Keyword", "Order", "Item"
+        )
+
+        self._run_cache_key_fixture(
+            lambda: (
+                Load(User).joinedload(User.addresses),
+                Load(User).joinedload(
+                    User.addresses.of_type(aliased(Address))
+                ),
+                Load(User).joinedload(User.orders),
+                self._deprecated_opt(
+                    lambda: Load(User).subqueryload("addresses")
+                ),
+                self._deprecated_opt(lambda: Load(Address).defer("id")),
+                Load(Address).defer("*"),
+                self._deprecated_opt(
+                    lambda: Load(aliased(Address)).defer("id")
+                ),
+                Load(User).joinedload(User.addresses).defer(Address.id),
+                Load(User).joinedload(User.orders).joinedload(Order.items),
+                Load(User).joinedload(User.orders).subqueryload(Order.items),
+                Load(User).subqueryload(User.orders).subqueryload(Order.items),
+                Load(Address).raiseload("*"),
+                self._deprecated_opt(lambda: Load(Address).raiseload("user")),
+            ),
+            compare_values=True,
+        )
+
+    def test_bound_options_equiv_on_strname(self):
+        """Bound loader options resolve on string name so test that the cache
+        key for the string version matches the resolved version.
+
+        """
+        User, Address, Keyword, Order, Item = self.classes(
+            "User", "Address", "Keyword", "Order", "Item"
+        )
+
+        for left, right in [
+            (
+                Load(User).defer(User.id),
+                self._deprecated_opt(lambda: Load(User).defer("id")),
+            ),
+            (
+                Load(User).joinedload(User.addresses),
+                self._deprecated_opt(
+                    lambda: Load(User).joinedload("addresses")
+                ),
+            ),
+            (
+                Load(User).joinedload(User.orders).joinedload(Order.items),
+                self._deprecated_opt(
+                    lambda: Load(User).joinedload("orders").joinedload("items")
+                ),
+            ),
+        ]:
+            eq_(left._generate_cache_key(), right._generate_cache_key())
+
+    def test_orm_query_w_orm_joins(self):
+
+        User, Address, Keyword, Order, Item = self.classes(
+            "User", "Address", "Keyword", "Order", "Item"
+        )
+
+        a1 = aliased(Address)
+
+        self._run_cache_key_fixture(
+            lambda: self._stmt_20(
+                fixture_session().query(User).join(User.addresses),
+                fixture_session().query(User).join(User.orders),
+                fixture_session()
+                .query(User)
+                .join(User.addresses)
+                .join(User.orders),
+                self._deprecated_join_w_aliased(
+                    lambda: fixture_session()
+                    .query(User)
+                    .join("addresses")
+                    .join("dingalings", from_joinpoint=True)
+                ),
+                self._deprecated_join(
+                    lambda: fixture_session().query(User).join("addresses")
+                ),
+                self._deprecated_join(
+                    lambda: fixture_session().query(User).join("orders")
+                ),
+                self._deprecated_join(
+                    lambda: fixture_session()
+                    .query(User)
+                    .join("addresses")
+                    .join("orders")
+                ),
+                fixture_session().query(User).join(Address, User.addresses),
+                self._deprecated_join(
+                    lambda: fixture_session().query(User).join(a1, "addresses")
+                ),
+                self._deprecated_join_w_aliased(
+                    lambda: fixture_session()
+                    .query(User)
+                    .join(a1, "addresses", aliased=True)
+                ),
+                fixture_session().query(User).join(User.addresses.of_type(a1)),
+            ),
+            compare_values=True,
+        )
+
+    def test_unbound_options(self):
+        User, Address, Keyword, Order, Item = self.classes(
+            "User", "Address", "Keyword", "Order", "Item"
+        )
+
+        # unbound options dont emit a deprecation warning during cache
+        # key generation
+        self._run_cache_key_fixture(
+            lambda: (
+                joinedload(User.addresses),
+                joinedload(User.addresses.of_type(aliased(Address))),
+                joinedload("addresses"),
+                joinedload(User.orders),
+                joinedload(User.orders.and_(Order.id != 5)),
+                joinedload(User.orders).selectinload("items"),
+                joinedload(User.orders).selectinload(Order.items),
+                defer(User.id),
+                defer("id"),
+                defer("*"),
+                defer(Address.id),
+                joinedload(User.addresses).defer(Address.id),
+                joinedload(User.addresses).defer("id"),
+                subqueryload(User.orders)
+                .subqueryload(Order.items)
+                .defer(Item.description),
+                defaultload(User.orders).defaultload(Order.items),
+                defaultload(User.orders),
+            ),
+            compare_values=True,
+        )
+
+    def test_unbound_sub_options(self):
+        """test #6869"""
+
+        User, Address, Keyword, Order, Item = self.classes(
+            "User", "Address", "Keyword", "Order", "Item"
+        )
+
+        self._run_cache_key_fixture(
+            lambda: (
+                joinedload(User.addresses).options(
+                    joinedload(Address.dingaling)
+                ),
+                joinedload(User.addresses).options(
+                    joinedload(Address.dingaling).options(load_only("name"))
+                ),
+                joinedload(User.orders).options(
+                    joinedload(Order.items).options(joinedload(Item.keywords))
+                ),
+            ),
+            compare_values=True,
+        )
+
+
+class AliasedClassRelationshipTest(
+    PartitionByFixture, testing.AssertsCompiledSQL
+):
+    __requires__ = ("window_functions",)
+    __dialect__ = "default"
+
+    def test_selectinload_w_joinedload_after(self):
+        """test has been enhanced to also test #7224"""
+
+        A, B, C = self.classes("A", "B", "C")
+
+        s = Session(testing.db)
+
+        opt = selectinload(A.partitioned_bs).joinedload("cs")
+
+        def go():
+            for a1 in s.query(A).options(opt):
+                for b in a1.partitioned_bs:
+                    eq_(len(b.cs), 2)
+
+        with assertions.expect_deprecated_20(opt_strings_dep):
+            self.assert_sql_count(testing.db, go, 2)

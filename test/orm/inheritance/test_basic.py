@@ -224,7 +224,7 @@ class PolyExpressionEagerLoad(fixtures.DeclarativeMappedTest):
         result = (
             session.query(A)
             .filter_by(child_id=None)
-            .options(joinedload("child"))
+            .options(joinedload(A.child))
             .one()
         )
 

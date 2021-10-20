@@ -264,11 +264,13 @@ class RelationshipsTest(_fixtures.FixtureTest):
         """Query.join"""
 
         User, Address = self.classes.User, self.classes.Address
+        Order = self.classes.Order
 
         session = fixture_session()
         q = (
             session.query(User)
-            .join("orders", "addresses")
+            .outerjoin(User.orders)
+            .outerjoin(Order.addresses)
             .filter(Address.id == 1)
         )
         eq_([User(id=7)], q.all())
@@ -285,7 +287,8 @@ class RelationshipsTest(_fixtures.FixtureTest):
         session = fixture_session()
         q = (
             session.query(User)
-            .outerjoin("orders", "addresses")
+            .outerjoin(User.orders)
+            .outerjoin(Order.addresses)
             .filter(sa.or_(Order.id == None, Address.id == 1))
         )  # noqa
         eq_(set([User(id=7), User(id=8), User(id=10)]), set(q.all()))
@@ -303,7 +306,8 @@ class RelationshipsTest(_fixtures.FixtureTest):
 
         q = (
             session.query(User)
-            .outerjoin("orders", "addresses")
+            .outerjoin(User.orders)
+            .outerjoin(Order.addresses)
             .filter(sa.or_(Order.id == None, Address.id == 1))
         )  # noqa
         eq_(q.count(), 4)

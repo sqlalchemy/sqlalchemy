@@ -658,14 +658,14 @@ class LazyTest(_fixtures.FixtureTest):
             [Order(id=1), Order(id=5)],
             fixture_session()
             .query(closed_mapper)
-            .with_parent(user, property="closed_orders")
+            .with_parent(user, property=User.closed_orders)
             .all(),
         )
         eq_(
             [Order(id=3)],
             fixture_session()
             .query(open_mapper)
-            .with_parent(user, property="open_orders")
+            .with_parent(user, property=User.open_orders)
             .all(),
         )
 
@@ -720,7 +720,7 @@ class LazyTest(_fixtures.FixtureTest):
 
         eq_(
             self.static.item_keyword_result[0:2],
-            q.join("keywords").filter(keywords.c.name == "red").all(),
+            q.join(Item.keywords).filter(keywords.c.name == "red").all(),
         )
 
     def test_uses_get(self):

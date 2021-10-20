@@ -2277,9 +2277,9 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_join_separate_attr(self):
         User = self.classes.User
         self.assert_compile(
-            self.session.query(User).join(
-                User.keywords.local_attr, User.keywords.remote_attr
-            ),
+            self.session.query(User)
+            .join(User.keywords.local_attr)
+            .join(User.keywords.remote_attr),
             "SELECT users.id AS users_id, users.name AS users_name, "
             "users.singular_id AS users_singular_id "
             "FROM users JOIN userkeywords ON users.id = "
@@ -2290,7 +2290,9 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_join_single_attr(self):
         User = self.classes.User
         self.assert_compile(
-            self.session.query(User).join(*User.keywords.attr),
+            self.session.query(User)
+            .join(User.keywords.attr[0])
+            .join(User.keywords.attr[1]),
             "SELECT users.id AS users_id, users.name AS users_name, "
             "users.singular_id AS users_singular_id "
             "FROM users JOIN userkeywords ON users.id = "

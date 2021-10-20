@@ -1498,7 +1498,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         session = fixture_session()
         q = (
             session.query(Item)
-            .join("keywords")
+            .join(Item.keywords)
             .distinct()
             .filter(Keyword.name == "red")
         )
@@ -2376,7 +2376,7 @@ class RequirementsTest(fixtures.MappedTest):
         h1.h2s.extend([H2("abc"), H2("def")])
         s.flush()
 
-        h1s = s.query(H1).options(sa.orm.joinedload("h2s")).all()
+        h1s = s.query(H1).options(sa.orm.joinedload(H1.h2s)).all()
         eq_(len(h1s), 5)
 
         self.assert_unordered_result(
@@ -2394,15 +2394,15 @@ class RequirementsTest(fixtures.MappedTest):
             {"h2s": (H2, [{"value": "def"}])},
         )
 
-        h1s = s.query(H1).options(sa.orm.joinedload("h3s")).all()
+        h1s = s.query(H1).options(sa.orm.joinedload(H1.h3s)).all()
 
         eq_(len(h1s), 5)
         h1s = (
             s.query(H1)
             .options(
-                sa.orm.joinedload("t6a").joinedload("h1b"),
-                sa.orm.joinedload("h2s"),
-                sa.orm.joinedload("h3s").joinedload("h1s"),
+                sa.orm.joinedload(H1.t6a).joinedload(H6.h1b),
+                sa.orm.joinedload(H1.h2s),
+                sa.orm.joinedload(H1.h3s).joinedload(H3.h1s),
             )
             .all()
         )
@@ -3151,13 +3151,13 @@ class ConfigureOrNotConfigureTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         if use_bound:
             stmt = select(User).options(
-                Load(User).load_only("name"),
+                Load(User).load_only(User.name),
             )
 
             is_true(um.configured)
         else:
             stmt = select(User).options(
-                load_only("name"),
+                load_only(User.name),
             )
             is_false(um.configured)
 

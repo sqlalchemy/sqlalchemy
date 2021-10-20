@@ -234,7 +234,7 @@ class UnicodeSchemaTest(fixtures.MappedTest):
 
         new_a1 = (
             session.query(A)
-            .options(sa.orm.joinedload("t2s"))
+            .options(sa.orm.joinedload(A.t2s))
             .filter(t1.c.a == a1.a)
         ).one()
         assert new_a1.a == a1.a

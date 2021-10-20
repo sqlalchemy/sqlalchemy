@@ -49,7 +49,7 @@ class PartitionByFixture(fixtures.DeclarativeMappedTest):
             .label("index"),
         ).alias()
 
-        partitioned_b = cls.partitioned_b = aliased(B, alias=partition)
+        cls.partitioned_b = partitioned_b = aliased(B, alias=partition)
 
         A.partitioned_bs = relationship(
             partitioned_b,
@@ -141,7 +141,7 @@ class AliasedClassRelationshipTest(
 
         self.assert_sql_count(testing.db, go, 2)
 
-    @testing.combinations("string", "ac_attribute", "ac_attr_w_of_type")
+    @testing.combinations("ac_attribute", "ac_attr_w_of_type")
     def test_selectinload_w_joinedload_after(self, calling_style):
         """test has been enhanced to also test #7224"""
 
@@ -151,9 +151,7 @@ class AliasedClassRelationshipTest(
 
         partitioned_b = self.partitioned_b
 
-        if calling_style == "string":
-            opt = selectinload(A.partitioned_bs).joinedload("cs")
-        elif calling_style == "ac_attribute":
+        if calling_style == "ac_attribute":
             opt = selectinload(A.partitioned_bs).joinedload(partitioned_b.cs)
         elif calling_style == "ac_attr_w_of_type":
             # this would have been a workaround for people who encountered

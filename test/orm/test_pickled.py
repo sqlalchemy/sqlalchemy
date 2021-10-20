@@ -345,8 +345,10 @@ class PickleTest(fixtures.MappedTest):
             u1 = (
                 sess.query(User)
                 .options(
-                    sa.orm.defer("name"),
-                    sa.orm.defer("addresses.email_address"),
+                    sa.orm.defer(User.name),
+                    sa.orm.defaultload(User.addresses).defer(
+                        Address.email_address
+                    ),
                 )
                 .get(u1.id)
             )
@@ -496,13 +498,11 @@ class PickleTest(fixtures.MappedTest):
     @testing.requires.non_broken_pickle
     @testing.combinations(
         lambda User: sa.orm.joinedload(User.addresses),
-        lambda: sa.orm.joinedload("addresses"),
-        lambda: sa.orm.defer("name"),
         lambda User: sa.orm.defer(User.name),
-        lambda Address: sa.orm.joinedload("addresses").joinedload(
+        lambda Address: sa.orm.joinedload(User.addresses).joinedload(
             Address.dingaling
         ),
-        lambda: sa.orm.joinedload("addresses").raiseload("*"),
+        lambda: sa.orm.joinedload(User.addresses).raiseload("*"),
         lambda: sa.orm.raiseload("*"),
     )
     def test_unbound_options(self, test_case):
@@ -518,15 +518,15 @@ class PickleTest(fixtures.MappedTest):
     @testing.requires.non_broken_pickle
     @testing.combinations(
         lambda User: sa.orm.Load(User).joinedload(User.addresses),
-        lambda User: sa.orm.Load(User).joinedload("addresses"),
-        lambda User: sa.orm.Load(User).joinedload("addresses").raiseload("*"),
-        lambda User: sa.orm.Load(User).defer("name"),
+        lambda User: sa.orm.Load(User)
+        .joinedload(User.addresses)
+        .raiseload("*"),
         lambda User: sa.orm.Load(User).defer(User.name),
         lambda User, Address: sa.orm.Load(User)
-        .joinedload("addresses")
+        .joinedload(User.addresses)
         .joinedload(Address.dingaling),
         lambda User, Address: sa.orm.Load(User)
-        .joinedload("addresses", innerjoin=True)
+        .joinedload(User.addresses, innerjoin=True)
         .joinedload(Address.dingaling),
     )
     def test_bound_options(self, test_case):
@@ -548,10 +548,8 @@ class PickleTest(fixtures.MappedTest):
 
         for opt in [
             sa.orm.joinedload(User.addresses),
-            sa.orm.joinedload("addresses"),
-            sa.orm.defer("name"),
             sa.orm.defer(User.name),
-            sa.orm.joinedload("addresses").joinedload(Address.dingaling),
+            sa.orm.joinedload(User.addresses).joinedload(Address.dingaling),
         ]:
             context = sess.query(User).options(opt)._compile_context()
             opt = [

@@ -226,8 +226,6 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
                 [
                     "relationship",
                     "relationship_only",
-                    "string_relationship",
-                    "string_relationship_only",
                     "none",
                     "explicit",
                     "table_none",
@@ -235,11 +233,6 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
                 ],
                 [True, False],
             )
-        ).difference(
-            [
-                ("string_relationship", False),
-                ("string_relationship_only", False),
-            ]
         ),
         argnames="onclause_type, use_legacy",
     )
@@ -256,12 +249,8 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         if onclause_type == "relationship":
             q = q.join(Address, User.addresses)
-        elif onclause_type == "string_relationship":
-            q = q.join(Address, "addresses")
         elif onclause_type == "relationship_only":
             q = q.join(User.addresses)
-        elif onclause_type == "string_relationship_only":
-            q = q.join("addresses")
         elif onclause_type == "none":
             q = q.join(Address)
         elif onclause_type == "explicit":

@@ -358,7 +358,7 @@ class M2ODontOverwriteFKTest(fixtures.MappedTest):
         sess.commit()
 
         # test that was broken by #3060
-        a1 = sess.query(A).options(joinedload("b")).first()
+        a1 = sess.query(A).options(joinedload(A.b)).first()
         a1.bid = b1.id
         sess.flush()
 
@@ -6081,7 +6081,11 @@ class RaiseLoadTest(_fixtures.FixtureTest):
             users,
             properties=dict(addresses=relationship(Address, lazy="raise")),
         )
-        q = fixture_session().query(User).options(sa.orm.lazyload("addresses"))
+        q = (
+            fixture_session()
+            .query(User)
+            .options(sa.orm.lazyload(User.addresses))
+        )
         result = [None]
 
         def go():
@@ -6110,7 +6114,7 @@ class RaiseLoadTest(_fixtures.FixtureTest):
         a1 = (
             s.query(Address)
             .filter_by(id=1)
-            .options(sa.orm.raiseload("user"))
+            .options(sa.orm.raiseload(Address.user))
             .first()
         )
 
@@ -6138,7 +6142,7 @@ class RaiseLoadTest(_fixtures.FixtureTest):
         a1 = (
             s.query(Address)
             .filter_by(id=1)
-            .options(sa.orm.raiseload("user", sql_only=True))
+            .options(sa.orm.raiseload(Address.user, sql_only=True))
             .first()
         )
 
@@ -6157,7 +6161,7 @@ class RaiseLoadTest(_fixtures.FixtureTest):
         a1 = (
             s.query(Address)
             .filter_by(id=1)
-            .options(sa.orm.raiseload("user", sql_only=True))
+            .options(sa.orm.raiseload(Address.user, sql_only=True))
             .first()
         )
         assert "user" not in a1.__dict__
@@ -6189,7 +6193,7 @@ class RaiseLoadTest(_fixtures.FixtureTest):
         a1 = (
             s.query(Address)
             .filter_by(id=1)
-            .options(sa.orm.raiseload("user", sql_only=True))
+            .options(sa.orm.raiseload(Address.user, sql_only=True))
             .first()
         )
 

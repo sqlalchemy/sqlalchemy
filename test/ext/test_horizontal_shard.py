@@ -863,7 +863,7 @@ class SelectinloadRegressionTest(fixtures.DeclarativeMappedTest):
         session.add(book)
         session.commit()
 
-        result = session.query(Book).options(selectinload("pages")).all()
+        result = session.query(Book).options(selectinload(Book.pages)).all()
         eq_(result, [book])
 
 

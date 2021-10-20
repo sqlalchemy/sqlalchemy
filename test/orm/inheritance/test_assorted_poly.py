@@ -641,7 +641,7 @@ class RelationshipTest4(fixtures.MappedTest):
 
         def go():
             testcar = session.get(
-                Car, car1.car_id, options=[joinedload("employee")]
+                Car, car1.car_id, options=[joinedload(Car.employee)]
             )
             assert str(testcar.employee) == "Engineer E4, status X"
 
@@ -662,7 +662,7 @@ class RelationshipTest4(fixtures.MappedTest):
             testcar = session.get(
                 Car,
                 car1.car_id,
-                options=[joinedload("employee")],
+                options=[joinedload(Car.employee)],
             )
             assert str(testcar.employee) == "Engineer E4, status X"
 
@@ -670,7 +670,7 @@ class RelationshipTest4(fixtures.MappedTest):
 
         session.expunge_all()
         s = session.query(Car)
-        c = s.join("employee").filter(Person.name == "E4")[0]
+        c = s.join(Car.employee).filter(Person.name == "E4")[0]
         assert c.car_id == car1.car_id
 
 
@@ -1449,7 +1449,7 @@ class GenerativeTest(fixtures.MappedTest, AssertsExecutionResults):
         r = (
             session.query(Person)
             .filter(Person.name.like("%2"))
-            .join("status")
+            .join(Person.status)
             .filter_by(name="active")
             .order_by(Person.person_id)
         )
@@ -1472,7 +1472,7 @@ class GenerativeTest(fixtures.MappedTest, AssertsExecutionResults):
         session = fixture_session()
         r = (
             session.query(Engineer)
-            .join("status")
+            .join(Engineer.status)
             .filter(
                 Person.name.in_(["E2", "E3", "E4", "M4", "M2", "M1"])
                 & (Status.name == "active")
@@ -2226,7 +2226,7 @@ class Ticket2419Test(fixtures.DeclarativeMappedTest):
 
         s.commit()
 
-        q = s.query(B, B.ds.any(D.id == 1)).options(joinedload("es"))
+        q = s.query(B, B.ds.any(D.id == 1)).options(joinedload(B.es))
         q = q.join(C, C.b_id == B.id)
         q = q.limit(5)
         eq_(q.all(), [(b, True)])

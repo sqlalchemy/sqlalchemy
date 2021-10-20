@@ -764,7 +764,7 @@ class RelationshipFromSingleTest(
         sess = fixture_session()
 
         with self.sql_execution_asserter(testing.db) as asserter:
-            sess.query(Manager).options(subqueryload("stuff")).all()
+            sess.query(Manager).options(subqueryload(Manager.stuff)).all()
 
         asserter.assert_(
             CompiledSQL(
@@ -992,7 +992,7 @@ class RelationshipToSingleTest(
 
         sess = fixture_session()
         self.assert_compile(
-            sess.query(Company, Engineer.name).outerjoin("engineers"),
+            sess.query(Company, Engineer.name).outerjoin(Company.engineers),
             "SELECT companies.company_id AS companies_company_id, "
             "companies.name AS companies_name, "
             "employees.name AS employees_name "
@@ -1378,7 +1378,7 @@ class RelationshipToSingleTest(
         sess.expunge_all()
         eq_(
             sess.query(Company)
-            .options(joinedload("engineers"))
+            .options(joinedload(Company.engineers))
             .order_by(Company.name)
             .all(),
             [

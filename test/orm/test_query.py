@@ -1340,7 +1340,7 @@ class GetTest(QueryTest):
 
         s = fixture_session()
 
-        q = s.query(User).join("addresses").filter(Address.user_id == 8)
+        q = s.query(User).join(User.addresses).filter(Address.user_id == 8)
         assert_raises(sa_exc.InvalidRequestError, q.get, 7)
         assert_raises(
             sa_exc.InvalidRequestError,
@@ -1361,7 +1361,7 @@ class GetTest(QueryTest):
 
         s.query(User).get(7)
 
-        q = s.query(User).join("addresses").filter(Address.user_id == 8)
+        q = s.query(User).join(User.addresses).filter(Address.user_id == 8)
         assert_raises(sa_exc.InvalidRequestError, q.get, 7)
 
     def test_unique_param_names(self):
@@ -1428,6 +1428,7 @@ class GetTest(QueryTest):
 
     def test_populate_existing(self):
         User, Address = self.classes.User, self.classes.Address
+        Order = self.classes.Order
 
         s = fixture_session(autoflush=False)
 
@@ -1457,13 +1458,15 @@ class GetTest(QueryTest):
 
         # eager load does
         s.query(User).options(
-            joinedload("addresses"), joinedload("orders").joinedload("items")
+            joinedload(User.addresses),
+            joinedload(User.orders).joinedload(Order.items),
         ).populate_existing().all()
         assert u.addresses[0].email_address == "jack@bean.com"
         assert u.orders[1].items[2].description == "item 5"
 
     def test_populate_existing_future(self):
         User, Address = self.classes.User, self.classes.Address
+        Order = self.classes.Order
 
         s = fixture_session(autoflush=False)
 
@@ -1500,8 +1503,8 @@ class GetTest(QueryTest):
         stmt = (
             select(User)
             .options(
-                joinedload("addresses"),
-                joinedload("orders").joinedload("items"),
+                joinedload(User.addresses),
+                joinedload(User.orders).joinedload(Order.items),
             )
             .execution_options(populate_existing=True)
         )
@@ -1545,7 +1548,7 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
 
         q = testing.resolve_lambda(test_case, User=User, s=s)
 
-        assert_raises(sa_exc.InvalidRequestError, q.join, "addresses")
+        assert_raises(sa_exc.InvalidRequestError, q.join, User.addresses)
 
         assert_raises(sa_exc.InvalidRequestError, q.filter, User.name == "ed")
 
@@ -1557,7 +1560,7 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
 
         assert_raises(sa_exc.InvalidRequestError, q.having, "foo")
 
-        q.enable_assertions(False).join("addresses")
+        q.enable_assertions(False).join(User.addresses)
         q.enable_assertions(False).filter(User.name == "ed")
         q.enable_assertions(False).order_by("foo")
         q.enable_assertions(False).group_by("foo")
@@ -1570,7 +1573,7 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
         q = s.query(User).select_from(users)
         assert_raises(sa_exc.InvalidRequestError, q.select_from, users)
 
-        q = s.query(User).join("addresses")
+        q = s.query(User).join(User.addresses)
         assert_raises(sa_exc.InvalidRequestError, q.select_from, users)
 
         q = s.query(User).order_by(User.id)
@@ -3360,13 +3363,13 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         # test that the contents are not adapted by the aliased join
         ua = aliased(Address)
         assert [User(id=7), User(id=8)] == sess.query(User).join(
-            ua, "addresses"
+            ua, User.addresses
         ).filter(
             ~User.addresses.any(Address.email_address == "fred@fred.com")
         ).all()
 
         assert [User(id=10)] == sess.query(User).outerjoin(
-            ua, "addresses"
+            ua, User.addresses
         ).filter(~User.addresses.any()).all()
 
     def test_any_doesnt_overcorrelate(self):
@@ -3378,7 +3381,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
 
         # test that any() doesn't overcorrelate
         assert [User(id=7), User(id=8)] == sess.query(User).join(
-            "addresses"
+            User.addresses
         ).filter(
             ~User.addresses.any(Address.email_address == "fred@fred.com")
         ).all()
@@ -3417,7 +3420,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         # test has() doesn't overcorrelate
         assert [Address(id=2), Address(id=3), Address(id=4)] == sess.query(
             Address
-        ).join("user").filter(
+        ).join(Address.user).filter(
             Address.user.has(User.name.like("%ed%"), id=8)
         ).order_by(
             Address.id
@@ -3427,7 +3430,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         ua = aliased(User)
         assert [Address(id=2), Address(id=3), Address(id=4)] == sess.query(
             Address
-        ).join(ua, "user").filter(
+        ).join(ua, Address.user).filter(
             Address.user.has(User.name.like("%ed%"), id=8)
         ).order_by(
             Address.id
@@ -4409,7 +4412,7 @@ class AggregateTest(QueryTest):
         sess = fixture_session()
         assert [User(name="ed", id=8)] == sess.query(User).order_by(
             User.id
-        ).group_by(User).join("addresses").having(
+        ).group_by(User).join(User.addresses).having(
             func.count(Address.id) > 2
         ).all()
 
@@ -4417,7 +4420,7 @@ class AggregateTest(QueryTest):
             User(name="jack", id=7),
             User(name="fred", id=9),
         ] == sess.query(User).order_by(User.id).group_by(User).join(
-            "addresses"
+            User.addresses
         ).having(
             func.count(Address.id) < 2
         ).all()
@@ -4828,7 +4831,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
 
         subq = (
             sess.query(User, Address.email_address)
-            .join("addresses")
+            .join(User.addresses)
             .distinct()
             .subquery()
         )
@@ -4850,7 +4853,7 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
         sess = fixture_session()
         q = (
             sess.query(User, Address.email_address)
-            .join("addresses")
+            .join(User.addresses)
             .distinct()
         )
 
@@ -4875,9 +4878,9 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
         # test that it works on embedded joinedload/LIMIT subquery
         q = (
             sess.query(User)
-            .join("addresses")
+            .join(User.addresses)
             .distinct()
-            .options(joinedload("addresses"))
+            .options(joinedload(User.addresses))
             .order_by(desc(Address.email_address))
             .limit(2)
         )
@@ -5227,9 +5230,9 @@ class DistinctTest(QueryTest, AssertsCompiledSQL):
 
         q = (
             sess.query(User)
-            .join("addresses")
+            .join(User.addresses)
             .distinct(Address.email_address)
-            .options(joinedload("addresses"))
+            .options(joinedload(User.addresses))
             .order_by(desc(Address.email_address))
             .limit(2)
         )
@@ -5407,7 +5410,7 @@ class YieldTest(_fixtures.FixtureTest):
 
         User = self.classes.User
         sess = fixture_session()
-        q = sess.query(User).options(joinedload("addresses")).yield_per(1)
+        q = sess.query(User).options(joinedload(User.addresses)).yield_per(1)
         assert_raises_message(
             sa_exc.InvalidRequestError,
             "Can't use yield_per with eager loaders that require "
@@ -5420,7 +5423,7 @@ class YieldTest(_fixtures.FixtureTest):
 
         User = self.classes.User
         sess = fixture_session()
-        q = sess.query(User).options(subqueryload("addresses")).yield_per(1)
+        q = sess.query(User).options(subqueryload(User.addresses)).yield_per(1)
         assert_raises_message(
             sa_exc.InvalidRequestError,
             "Can't use yield_per with eager loaders that require "
@@ -5455,7 +5458,7 @@ class YieldTest(_fixtures.FixtureTest):
         sess = fixture_session()
         q = (
             sess.query(User)
-            .options(subqueryload("addresses"))
+            .options(subqueryload(User.addresses))
             .enable_eagerloads(False)
             .yield_per(1)
         )
@@ -5463,7 +5466,7 @@ class YieldTest(_fixtures.FixtureTest):
 
         q = (
             sess.query(User)
-            .options(joinedload("addresses"))
+            .options(joinedload(User.addresses))
             .enable_eagerloads(False)
             .yield_per(1)
         )
@@ -5475,7 +5478,7 @@ class YieldTest(_fixtures.FixtureTest):
         sess = fixture_session()
         q = (
             sess.query(Address)
-            .options(lazyload("*"), joinedload("user"))
+            .options(lazyload("*"), joinedload(Address.user))
             .yield_per(1)
             .filter_by(id=1)
         )
@@ -6154,7 +6157,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
 
         q = (
             s.query(User)
-            .options(joinedload("addresses"))
+            .options(joinedload(User.addresses))
             .order_by(desc("name"))
             .limit(1)
         )
@@ -6172,7 +6175,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
 
         q = (
             s.query(User)
-            .options(joinedload("addresses"))
+            .options(joinedload(User.addresses))
             .order_by("name")
             .limit(1)
         )
@@ -6190,7 +6193,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             s.query(User)
-            .options(joinedload("addresses"))
+            .options(joinedload(User.addresses))
             .order_by("users_name")
             .limit(1),
             "SELECT anon_1.users_id AS anon_1_users_id, "
@@ -6209,7 +6212,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         # however! this works (again?)
         eq_(
             s.query(User)
-            .options(joinedload("addresses"))
+            .options(joinedload(User.addresses))
             .order_by("users_name")
             .first(),
             User(name="chuck", addresses=[]),
@@ -6222,7 +6225,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             s.query(User)
-            .options(joinedload("addresses"))
+            .options(joinedload(User.addresses))
             .order_by(desc("users_name"))
             .limit(1),
             "SELECT anon_1.users_id AS anon_1_users_id, "
@@ -6241,7 +6244,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         # however! this works (again?)
         eq_(
             s.query(User)
-            .options(joinedload("addresses"))
+            .options(joinedload(User.addresses))
             .order_by(desc("users_name"))
             .first(),
             User(name="jack", addresses=[Address()]),
@@ -6260,7 +6263,7 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         q = sess.query(User, Address.email_address.label("email_address"))
 
         result = (
-            q.join("addresses")
+            q.join(User.addresses)
             .options(joinedload(User.orders))
             .order_by("email_address desc")
             .limit(1)
@@ -6330,13 +6333,6 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         ] == o
 
         # test with explicit property
-        o = sess.query(Order).with_parent(u1, property="orders").all()
-        assert [
-            Order(description="order 1"),
-            Order(description="order 3"),
-            Order(description="order 5"),
-        ] == o
-
         o = sess.query(Order).with_parent(u1, property=User.orders).all()
         assert [
             Order(description="order 1"),
@@ -6385,7 +6381,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         sess = fixture_session()
         u1 = sess.query(User).get(7)
         q = sess.query(User, Address).filter(
-            with_parent(u1, "addresses", from_entity=Address)
+            with_parent(u1, User.addresses, from_entity=Address)
         )
         self.assert_compile(
             q,
@@ -6404,7 +6400,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         sess = fixture_session()
         u1 = sess.query(User).get(7)
         q = sess.query(User, Address).with_parent(
-            u1, "addresses", from_entity=Address
+            u1, User.addresses, from_entity=Address
         )
         self.assert_compile(
             q,
@@ -6440,7 +6436,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         sess = fixture_session()
         u1 = sess.query(User).get(7)
         a1 = aliased(Address)
-        q = sess.query(a1).with_parent(u1, "addresses")
+        q = sess.query(a1).with_parent(u1, User.addresses)
         self.assert_compile(
             q,
             "SELECT addresses_1.id AS addresses_1_id, "
@@ -6530,7 +6526,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         q = sess.query(User)
         u1 = q.filter_by(name="jack").one()
         utrans = User(id=u1.id)
-        o = sess.query(Order).with_parent(utrans, "orders")
+        o = sess.query(Order).with_parent(utrans, User.orders)
         eq_(
             [
                 Order(description="order 1"),
@@ -6540,7 +6536,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
             o.all(),
         )
 
-        o = sess.query(Order).filter(with_parent(utrans, "orders"))
+        o = sess.query(Order).filter(with_parent(utrans, User.orders))
         eq_(
             [
                 Order(description="order 1"),
@@ -6559,11 +6555,11 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         opending = Order(id=20, user_id=o1.user_id)
         sess.add(opending)
         eq_(
-            sess.query(User).with_parent(opending, "user").one(),
+            sess.query(User).with_parent(opending, Order.user).one(),
             User(id=o1.user_id),
         )
         eq_(
-            sess.query(User).filter(with_parent(opending, "user")).one(),
+            sess.query(User).filter(with_parent(opending, Order.user)).one(),
             User(id=o1.user_id),
         )
 
@@ -6576,7 +6572,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         opending = Order(user_id=o1.user_id)
         sess.add(opending)
         eq_(
-            sess.query(User).with_parent(opending, "user").one(),
+            sess.query(User).with_parent(opending, Order.user).one(),
             User(id=o1.user_id),
         )
 
@@ -6587,8 +6583,8 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         sess = fixture_session()
         u1, u2 = sess.query(User).order_by(User.id)[0:2]
 
-        q1 = sess.query(Address).with_parent(u1, "addresses")
-        q2 = sess.query(Address).with_parent(u2, "addresses")
+        q1 = sess.query(Address).with_parent(u1, User.addresses)
+        q2 = sess.query(Address).with_parent(u2, User.addresses)
 
         self.assert_compile(
             q1.union(q2),
@@ -6614,7 +6610,10 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_compile(
             sess.query(Address).filter(
-                or_(with_parent(u1, "addresses"), with_parent(u2, "addresses"))
+                or_(
+                    with_parent(u1, User.addresses),
+                    with_parent(u2, User.addresses),
+                )
             ),
             "SELECT addresses.id AS addresses_id, addresses.user_id AS "
             "addresses_user_id, addresses.email_address AS "
@@ -6832,7 +6831,7 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         sess = fixture_session()
 
-        q = sess.query(User).with_parent(Address(user_id=None), "user")
+        q = sess.query(User).with_parent(Address(user_id=None), Address.user)
         with expect_warnings("Got None for value of column"):
             self.assert_compile(
                 q,
@@ -6847,7 +6846,7 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         s = fixture_session()
         q = s.query(User).with_parent(
-            Address(user_id=None, email_address=None), "special_user"
+            Address(user_id=None, email_address=None), Address.special_user
         )
         with expect_warnings("Got None for value of column"):
 
@@ -7025,35 +7024,6 @@ class SynonymTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_sql_count(testing.db, go, 1)
 
-    def test_options_syn_of_syn_string(self):
-        User, Order = self.classes.User, self.classes.Order
-
-        s = fixture_session()
-
-        def go():
-            result = (
-                s.query(User)
-                .filter_by(name="jack")
-                .options(joinedload("orders_syn_2"))
-                .all()
-            )
-            eq_(
-                result,
-                [
-                    User(
-                        id=7,
-                        name="jack",
-                        orders=[
-                            Order(description="order 1"),
-                            Order(description="order 3"),
-                            Order(description="order 5"),
-                        ],
-                    )
-                ],
-            )
-
-        self.assert_sql_count(testing.db, go, 1)
-
     def test_joins(self):
         User, Order = self.classes.User, self.classes.Order
 
@@ -7084,12 +7054,12 @@ class SynonymTest(QueryTest, AssertsCompiledSQL):
         Order, User = self.classes.Order, self.classes.User
 
         for nameprop, orderprop in (
-            ("name", "orders"),
-            ("name_syn", "orders"),
-            ("name", "orders_syn"),
-            ("name", "orders_syn_2"),
-            ("name_syn", "orders_syn"),
-            ("name_syn", "orders_syn_2"),
+            ("name", User.orders),
+            ("name_syn", User.orders),
+            ("name", User.orders_syn),
+            ("name", User.orders_syn_2),
+            ("name_syn", User.orders_syn),
+            ("name_syn", User.orders_syn_2),
         ):
             with fixture_session() as sess:
                 q = sess.query(User)

@@ -164,7 +164,7 @@ class SelfReferentialTestJoinedToBase(fixtures.MappedTest):
         pa = aliased(Person)
         eq_(
             sess.query(Engineer)
-            .join(pa, "reports_to")
+            .join(pa, Engineer.reports_to)
             .filter(pa.name == "dogbert")
             .first(),
             Engineer(name="dilbert"),
@@ -276,7 +276,7 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
 
         eq_(
             sess.query(Engineer)
-            .join(ma, "reports_to")
+            .join(ma, Engineer.reports_to)
             .filter(ma.name == "dogbert")
             .first(),
             Engineer(name="dilbert"),
@@ -507,7 +507,7 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
         ea = aliased(Engineer)
         eq_(
             sess.query(Engineer)
-            .join(ea, "reports_to")
+            .join(ea, Engineer.reports_to)
             .filter(ea.name == "wally")
             .first(),
             Engineer(name="dilbert"),
@@ -937,7 +937,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         # test that the splicing of the join works here, doesn't break in
         # the middle of "parent join child1"
-        q = sess.query(Child1).options(joinedload("left_child2"))
+        q = sess.query(Child1).options(joinedload(Child1.left_child2))
         self.assert_compile(
             q.limit(1).statement,
             "SELECT child1.id, parent.id AS id_1, parent.cls, "
@@ -969,7 +969,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
         sess.flush()
         sess.expunge_all()
 
-        query_ = sess.query(Child1).options(subqueryload("left_child2"))
+        query_ = sess.query(Child1).options(subqueryload(Child1.left_child2))
         for row in query_.all():
             assert row.left_child2
 
@@ -1283,7 +1283,9 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
 
         def go():
             eq_(
-                sess.query(Subparent).options(joinedload("children")).all(),
+                sess.query(Subparent)
+                .options(joinedload(Subparent.children))
+                .all(),
                 [p1, p2],
             )
 
@@ -1311,7 +1313,7 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
             eq_(
                 sess.query(Subparent)
                 .join(Subparent.children)
-                .options(contains_eager("children"))
+                .options(contains_eager(Subparent.children))
                 .all(),
                 [p1, p2],
             )
@@ -1337,7 +1339,9 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
 
         def go():
             eq_(
-                sess.query(Subparent).options(subqueryload("children")).all(),
+                sess.query(Subparent)
+                .options(subqueryload(Subparent.children))
+                .all(),
                 [p1, p2],
             )
 
@@ -1770,7 +1774,8 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
         s = fixture_session()
         self.assert_compile(
             s.query(Parent)
-            .join(Parent.sub1, Sub1.sub2)
+            .join(Parent.sub1)
+            .join(Sub1.sub2)
             .join(Sub2.ep1)
             .join(Sub2.ep2),
             "SELECT parent.id AS parent_id, parent.data AS parent_data "

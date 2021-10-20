@@ -1157,7 +1157,7 @@ class ExpireTest(_fixtures.FixtureTest):
         assert "addresses" not in u.__dict__
         (
             sess.query(User)
-            .options(sa.orm.joinedload("addresses"))
+            .options(sa.orm.joinedload(User.addresses))
             .filter_by(id=8)
             .all()
         )
@@ -1206,7 +1206,7 @@ class ExpireTest(_fixtures.FixtureTest):
         sess.expunge_all()
 
         # same tests, using deferred at the options level
-        o = sess.query(Order).options(sa.orm.defer("description")).get(3)
+        o = sess.query(Order).options(sa.orm.defer(Order.description)).get(3)
 
         assert "description" not in o.__dict__
 
@@ -1983,7 +1983,7 @@ class RefreshTest(_fixtures.FixtureTest):
                 )
             },
         )
-        q = s.query(User).options(sa.orm.lazyload("addresses"))
+        q = s.query(User).options(sa.orm.lazyload(User.addresses))
         u = q.filter(users.c.id == 8).first()
 
         def go():
@@ -2049,7 +2049,9 @@ class RefreshTest(_fixtures.FixtureTest):
         q = (
             s.query(User)
             .filter_by(name="fred")
-            .options(sa.orm.lazyload("addresses").joinedload("dingalings"))
+            .options(
+                sa.orm.lazyload(User.addresses).joinedload(Address.dingalings)
+            )
         )
 
         u1 = q.one()

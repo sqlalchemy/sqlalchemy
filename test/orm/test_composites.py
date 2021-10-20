@@ -179,7 +179,9 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
 
         def go():
             g2 = (
-                sess.query(Graph).options(sa.orm.joinedload("edges")).get(g.id)
+                sess.query(Graph)
+                .options(sa.orm.joinedload(Graph.edges))
+                .get(g.id)
             )
 
             eq_(

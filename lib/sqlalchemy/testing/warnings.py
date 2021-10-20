@@ -73,16 +73,8 @@ def setup_filters():
         r"The Query\.with_parent\(\) method",
         r"The Query\.select_entity_from\(\) method",
         r"The ``aliased`` and ``from_joinpoint`` keyword arguments",
-        r"Using strings to indicate relationship names in Query.join",
-        r"Using strings to indicate column or relationship paths in "
-        "loader options",
-        r"Using strings to indicate relationship names in the ORM "
-        r"with_parent\(\)",
         r"The Query.with_polymorphic\(\) method is considered "
         "legacy as of the 1.x series",
-        r"Passing a chain of multiple join conditions to Query.join\(\) "
-        r"is deprecated and will be removed in SQLAlchemy 2.0.",
-        r"Query.join\(\) will no longer accept tuples as arguments",
         #
         # ORM Session
         #

@@ -332,7 +332,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         sess = fixture_session()
         eq_(
             sess.query(Person)
-            .join("paperwork")
+            .join(Person.paperwork)
             .filter(Paperwork.description.like("%review%"))
             .all(),
             [b1, m1],
@@ -357,7 +357,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         eq_(
             sess.query(Person)
             .order_by(Person.person_id)
-            .join("paperwork")
+            .join(Person.paperwork)
             .filter(Paperwork.description.like("%#2%"))
             .all(),
             [e1, m1],
@@ -368,7 +368,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         eq_(
             sess.query(Engineer)
             .order_by(Person.person_id)
-            .join("paperwork")
+            .join(Person.paperwork)
             .filter(Paperwork.description.like("%#2%"))
             .all(),
             [e1],
@@ -379,7 +379,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         eq_(
             sess.query(Person)
             .order_by(Person.person_id)
-            .join("paperwork")
+            .join(Person.paperwork)
             .filter(Person.name.like("%dog%"))
             .filter(Paperwork.description.like("%#2%"))
             .all(),
@@ -391,7 +391,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         eq_(
             sess.query(Person)
             .order_by(Person.person_id)
-            .join("paperwork", aliased=True)
+            .join(Person.paperwork, aliased=True)
             .filter(Paperwork.description.like("%review%"))
             .all(),
             [b1, m1],
@@ -420,7 +420,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         eq_(
             sess.query(Person)
             .order_by(Person.person_id)
-            .join(pa, "paperwork")
+            .join(pa, Person.paperwork)
             .filter(pa.description.like("%review%"))
             .all(),
             [b1, m1],
@@ -431,7 +431,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         eq_(
             sess.query(Person)
             .order_by(Person.person_id)
-            .join("paperwork", aliased=True)
+            .join(Person.paperwork, aliased=True)
             .filter(Paperwork.description.like("%#2%"))
             .all(),
             [e1, m1],
@@ -443,7 +443,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         eq_(
             sess.query(Person)
             .order_by(Person.person_id)
-            .join(pa, "paperwork")
+            .join(pa, Person.paperwork)
             .filter(pa.description.like("%#2%"))
             .all(),
             [e1, m1],
@@ -454,7 +454,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         eq_(
             sess.query(Engineer)
             .order_by(Person.person_id)
-            .join("paperwork", aliased=True)
+            .join(Person.paperwork, aliased=True)
             .filter(Paperwork.description.like("%#2%"))
             .all(),
             [e1],
@@ -466,7 +466,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         eq_(
             sess.query(Engineer)
             .order_by(Person.person_id)
-            .join(pa, "paperwork")
+            .join(pa, Person.paperwork)
             .filter(pa.description.like("%#2%"))
             .all(),
             [e1],
@@ -478,7 +478,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         eq_(
             sess.query(Person)
             .order_by(Person.person_id)
-            .join(pa, "paperwork")
+            .join(pa, Person.paperwork)
             .filter(Person.name.like("%dog%"))
             .filter(pa.description.like("%#2%"))
             .all(),
@@ -491,7 +491,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
             sess.query(Person)
             .with_polymorphic(Manager)
             .order_by(Person.person_id)
-            .join("paperwork")
+            .join(Person.paperwork)
             .filter(Paperwork.description.like("%review%"))
             .all(),
             [b1, m1],
@@ -520,7 +520,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
             sess.query(Person)
             .with_polymorphic([Manager, Engineer])
             .order_by(Person.person_id)
-            .join("paperwork")
+            .join(Person.paperwork)
             .filter(Paperwork.description.like("%#2%"))
             .all(),
             [e1, m1],
@@ -532,7 +532,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
             sess.query(Person)
             .with_polymorphic([Manager, Engineer])
             .order_by(Person.person_id)
-            .join("paperwork")
+            .join(Person.paperwork)
             .filter(Person.name.like("%dog%"))
             .filter(Paperwork.description.like("%#2%"))
             .all(),
@@ -544,7 +544,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         eq_(
             sess.query(Person)
             .with_polymorphic(Manager)
-            .join("paperwork", aliased=True)
+            .join(Person.paperwork, aliased=True)
             .filter(Paperwork.description.like("%review%"))
             .all(),
             [b1, m1],
@@ -556,7 +556,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         eq_(
             sess.query(Person)
             .with_polymorphic(Manager)
-            .join(pa, "paperwork")
+            .join(pa, Person.paperwork)
             .filter(pa.description.like("%review%"))
             .all(),
             [b1, m1],
@@ -568,7 +568,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
             sess.query(Person)
             .with_polymorphic([Manager, Engineer])
             .order_by(Person.person_id)
-            .join("paperwork", aliased=True)
+            .join(Person.paperwork, aliased=True)
             .filter(Paperwork.description.like("%#2%"))
             .all(),
             [e1, m1],
@@ -581,7 +581,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
             sess.query(Person)
             .with_polymorphic([Manager, Engineer])
             .order_by(Person.person_id)
-            .join(pa, "paperwork")
+            .join(pa, Person.paperwork)
             .filter(pa.description.like("%#2%"))
             .all(),
             [e1, m1],
@@ -595,7 +595,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
             sess.query(Person)
             .with_polymorphic([Manager, Engineer])
             .order_by(Person.person_id)
-            .join(pa, "paperwork")
+            .join(pa, Person.paperwork)
             .filter(Person.name.like("%dog%"))
             .filter(pa.description.like("%#2%"))
             .all(),
@@ -606,7 +606,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         sess = fixture_session()
         eq_(
             sess.query(Company)
-            .join("employees")
+            .join(Company.employees)
             .filter(Person.name == "vlad")
             .one(),
             c2,
@@ -616,7 +616,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         sess = fixture_session()
         eq_(
             sess.query(Company)
-            .join("employees", aliased=True)
+            .join(Company.employees, aliased=True)
             .filter(Person.name == "vlad")
             .one(),
             c2,
@@ -627,7 +627,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         ea = aliased(Person)
         eq_(
             sess.query(Company)
-            .join(ea, "employees")
+            .join(ea, Company.employees)
             .filter(ea.name == "vlad")
             .one(),
             c2,
@@ -646,7 +646,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         any_ = Company.employees.any(Person.name == "wally")
         eq_(
             sess.query(Company)
-            .join("employees", aliased=True)
+            .join(Company.employees, aliased=True)
             .filter(Person.name == "dilbert")
             .filter(any_)
             .all(),
@@ -1172,7 +1172,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         ealias = aliased(Engineer)
         eq_(
             sess.query(Company)
-            .join(ealias, "employees")
+            .join(ealias, Company.employees)
             .filter(ealias.primary_language == "java")
             .all(),
             [c1],
@@ -1231,7 +1231,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         sess = fixture_session()
         eq_(
             sess.query(Company)
-            .join("employees")
+            .join(Company.employees)
             .filter(Engineer.primary_language == "java")
             .all(),
             [c1],
@@ -1264,7 +1264,10 @@ class _PolymorphicTestBase(fixtures.NoCache):
     def test_join_to_subclass_fourteen(self):
         sess = fixture_session()
         eq_(
-            sess.query(Company).join("employees", Engineer.machines).all(),
+            sess.query(Company)
+            .join(Company.employees)
+            .join(Engineer.machines)
+            .all(),
             [c1, c2],
         )
 
@@ -1272,7 +1275,8 @@ class _PolymorphicTestBase(fixtures.NoCache):
         sess = fixture_session()
         eq_(
             sess.query(Company)
-            .join("employees", Engineer.machines)
+            .join(Company.employees)
+            .join(Engineer.machines)
             .filter(Machine.name.ilike("%thinkpad%"))
             .all(),
             [c1],
@@ -1365,7 +1369,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         sess = fixture_session()
         eq_(
             sess.query(Company)
-            .join("employees")
+            .join(Company.employees)
             .filter(Person.name.in_(["dilbert", "vlad"]))
             .join(Person.paperwork)
             .filter(Paperwork.description.like("%#2%"))
@@ -1377,7 +1381,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         sess = fixture_session()
         eq_(
             sess.query(Company)
-            .join("employees")
+            .join(Company.employees)
             .filter(Person.name.in_(["dilbert", "vlad"]))
             .join(Person.paperwork)
             .filter(Paperwork.description.like("%#%"))
@@ -1445,7 +1449,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
         pa = aliased(Paperwork)
         eq_(
             sess.query(Company)
-            .join(ea, "employees")
+            .join(ea, Company.employees)
             .filter(ea.name.in_(["dilbert", "vlad"]))
             .join(pa, ea.paperwork)
             .filter(pa.description.like("%#2%"))

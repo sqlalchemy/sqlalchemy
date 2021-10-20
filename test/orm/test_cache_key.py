@@ -249,6 +249,8 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
             "User", "Address", "Keyword", "Order", "Item"
         )
 
+        a1 = aliased(Address)
+
         self._run_cache_key_fixture(
             lambda: (
                 Load(User).joinedload(User.addresses),
@@ -261,10 +263,10 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                     User.orders.and_(Order.description != "somename")
                 ),
                 Load(User).defer(User.id),
-                Load(User).subqueryload("addresses"),
-                Load(Address).defer("id"),
+                Load(User).subqueryload(User.addresses),
+                Load(Address).defer(Address.id),
                 Load(Address).defer("*"),
-                Load(aliased(Address)).defer("id"),
+                Load(a1).defer(a1.id),
                 Load(User).joinedload(User.addresses).defer(Address.id),
                 Load(User).joinedload(User.orders).joinedload(Order.items),
                 Load(User).joinedload(User.orders).subqueryload(Order.items),
@@ -276,32 +278,10 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                 Load(User).defaultload(User.orders).defaultload(Order.items),
                 Load(User).defaultload(User.orders),
                 Load(Address).raiseload("*"),
-                Load(Address).raiseload("user"),
+                Load(Address).raiseload(Address.user),
             ),
             compare_values=True,
         )
-
-    def test_bound_options_equiv_on_strname(self):
-        """Bound loader options resolve on string name so test that the cache
-        key for the string version matches the resolved version.
-
-        """
-        User, Address, Keyword, Order, Item = self.classes(
-            "User", "Address", "Keyword", "Order", "Item"
-        )
-
-        for left, right in [
-            (Load(User).defer(User.id), Load(User).defer("id")),
-            (
-                Load(User).joinedload(User.addresses),
-                Load(User).joinedload("addresses"),
-            ),
-            (
-                Load(User).joinedload(User.orders).joinedload(Order.items),
-                Load(User).joinedload("orders").joinedload("items"),
-            ),
-        ]:
-            eq_(left._generate_cache_key(), right._generate_cache_key())
 
     def test_selects_w_orm_joins(self):
 
@@ -353,16 +333,10 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                 .join(User.orders),
                 fixture_session()
                 .query(User)
-                .join("addresses")
-                .join("dingalings", from_joinpoint=True),
-                fixture_session().query(User).join("addresses"),
-                fixture_session().query(User).join("orders"),
-                fixture_session().query(User).join("addresses").join("orders"),
+                .join(User.addresses)
+                .join(Address.dingaling),
                 fixture_session().query(User).join(Address, User.addresses),
-                fixture_session().query(User).join(a1, "addresses"),
-                fixture_session()
-                .query(User)
-                .join(a1, "addresses", aliased=True),
+                fixture_session().query(User).join(a1, User.addresses),
                 fixture_session().query(User).join(User.addresses.of_type(a1)),
             ),
             compare_values=True,
