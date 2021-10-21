@@ -764,6 +764,18 @@ class DropColumnComment(_CreateDropBase):
     __visit_name__ = "drop_column_comment"
 
 
+class AddSystemVersioning(_CreateDropBase):
+    """Represents a ADD SYSTEM VERSIONING statment"""
+
+    __visit_name__ = "add_system_versioning"
+
+
+class DropSystemVersioning(_CreateDropBase):
+    """Represents a DROP SYSTEM VERSIONING statment"""
+
+    __visit_name__ = "drop_system_versioning"
+
+
 class DDLBase(SchemaVisitor):
     def __init__(self, connection):
         self.connection = connection

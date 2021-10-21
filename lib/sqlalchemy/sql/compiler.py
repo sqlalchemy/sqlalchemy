@@ -29,8 +29,6 @@ import itertools
 import operator
 import re
 
-
-
 from . import base
 from . import coercions
 from . import crud
@@ -4435,6 +4433,18 @@ class DDLCompiler(Compiled):
     def visit_drop_column_comment(self, drop, **kw):
         return "COMMENT ON COLUMN %s IS NULL" % self.preparer.format_column(
             drop.element, use_table=True
+        )
+
+    def visit_add_system_versioning(self, create, **kw):
+        return (
+            "ALTER TABLE %s ADD SYSTEM VERSIONING"
+            % self.preparer.format_table(create.element)
+        )
+
+    def visit_drop_system_versioning(self, drop, **kw):
+        return (
+            "ALTER TABLE %s ADD SYSTEM VERSIONING"
+            % self.preparer.format_table(drop.element)
         )
 
     def get_identity_options(self, identity_options):

@@ -14,6 +14,7 @@ from .sql.ddl import _CreateDropBase  # noqa
 from .sql.ddl import _DDLCompiles  # noqa
 from .sql.ddl import _DropView  # noqa
 from .sql.ddl import AddConstraint  # noqa
+from .sql.ddl import AddSystemVersioning  # noqa
 from .sql.ddl import CreateColumn  # noqa
 from .sql.ddl import CreateIndex  # noqa
 from .sql.ddl import CreateSchema  # noqa
@@ -27,6 +28,7 @@ from .sql.ddl import DropConstraint  # noqa
 from .sql.ddl import DropIndex  # noqa
 from .sql.ddl import DropSchema  # noqa
 from .sql.ddl import DropSequence  # noqa
+from .sql.ddl import DropSystemVersioning  # noqa
 from .sql.ddl import DropTable  # noqa
 from .sql.ddl import DropTableComment  # noqa
 from .sql.ddl import SetColumnComment  # noqa
