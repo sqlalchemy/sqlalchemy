@@ -698,9 +698,9 @@ Full Text Search
 ----------------
 
 SQLAlchemy makes available the PostgreSQL ``@@`` operator via the
-:meth:`_expression.ColumnElement.match`
-method on any textual column expression.
-On a PostgreSQL dialect, an expression like the following::
+:meth:`_expression.ColumnElement.match` method on any textual column expression.
+
+On the PostgreSQL dialect, an expression like the following::
 
     select(sometable.c.text.match("search string"))
 
@@ -708,9 +708,11 @@ will emit to the database::
 
     SELECT text @@ to_tsquery('search string') FROM table
 
-The PostgreSQL text search functions such as ``to_tsquery()``
-and ``to_tsvector()`` are available
-explicitly using the standard :data:`.func` construct.  For example::
+Various other PostgreSQL text search functions such as ``to_tsquery()``,
+``to_tsvector()``, and ``plainto_tsquery()`` are available by explicitly using
+the standard SQLAlchemy :data:`.func` construct.
+
+For example::
 
     select(func.to_tsvector('fat cats ate rats').match('cat & rat'))
 
@@ -727,6 +729,23 @@ The :class:`_postgresql.TSVECTOR` type can provide for explicit CAST::
 produces a statement equivalent to::
 
     SELECT CAST('some text' AS TSVECTOR) AS anon_1
+
+.. tip::
+
+    It's important to remember that text searching in PostgreSQL is powerful but complicated,
+    and SQLAlchemy users are advised to reference the PostgreSQL documentation
+    regarding
+    `Full Text Search <https://www.postgresql.org/docs/13/textsearch-controls.html>`_.
+
+    There are important differences between ``to_tsquery`` and
+    ``plainto_tsquery``, the most significant of which is that ``to_tsquery``
+    expects specially formatted "querytext" that is written to PostgreSQL's own
+    specification, while ``plainto_tsquery`` expects unformatted text that is
+    transformed into ``to_tsquery`` compatible querytext. This means the input to
+    ``.match()`` under PostgreSQL may be incompatible with the input to
+    ``.match()`` under another database backend. SQLAlchemy users who support
+    multiple backends are advised to carefully implement their usage of
+    ``.match()`` to work around these constraints.
 
 Full Text Searches in PostgreSQL are influenced by a combination of: the
 PostgreSQL setting of ``default_text_search_config``, the ``regconfig`` used

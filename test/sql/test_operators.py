@@ -76,7 +76,11 @@ class LoopOperate(operators.ColumnOperators):
         return op
 
 
-class DefaultColumnComparatorTest(fixtures.TestBase):
+class DefaultColumnComparatorTest(
+    testing.AssertsCompiledSQL, fixtures.TestBase
+):
+    dialect = "default_enhanced"
+
     @testing.combinations((operators.desc_op, desc), (operators.asc_op, asc))
     def test_scalar(self, operator, compare_to):
         left = column("left")
@@ -158,6 +162,32 @@ class DefaultColumnComparatorTest(fixtures.TestBase):
     def _loop_test(self, operator, *arg):
         loop = LoopOperate()
         is_(operator(loop, *arg), operator)
+
+    def test_null_true_false_is_sanity_checks(self):
+
+        d = default.DefaultDialect()
+        d.supports_native_boolean = True
+
+        self.assert_compile(
+            column("q") == None,
+            "q IS NULL",
+        )
+        self.assert_compile(
+            column("q") == null(),
+            "q IS NULL",
+        )
+        # IS coercion only occurs from left to right (just discovered this)
+        self.assert_compile(
+            null() == column("q"),
+            "NULL = q",
+        )
+        self.assert_compile(column("q") == true(), "q = true", dialect=d)
+        self.assert_compile(true() == column("q"), "true = q", dialect=d)
+        self.assert_compile(column("q") == True, "q = true", dialect=d)
+
+        # this comes out reversed; no choice, column.__eq__() is called
+        # and we don't get to know it's "reverse"
+        self.assert_compile(True == column("q"), "q = true", dialect=d)
 
     def test_no_getitem(self):
         assert_raises_message(
@@ -3391,6 +3421,24 @@ class AnyAllTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             Column("data", Integer),
         )
         return t
+
+    @testing.combinations(
+        lambda col: any_(col) == None,
+        lambda col: col.any_() == None,
+        lambda col: any_(col) == null(),
+        lambda col: col.any_() == null(),
+        lambda col: null() == any_(col),
+        lambda col: null() == col.any_(),
+        lambda col: None == any_(col),
+        lambda col: None == col.any_(),
+        argnames="expr",
+    )
+    @testing.combinations("int", "array", argnames="datatype")
+    def test_any_generic_null(self, datatype, expr, t_fixture):
+
+        col = t_fixture.c.data if datatype == "int" else t_fixture.c.arrval
+
+        self.assert_compile(expr(col), "NULL = ANY (tab1.%s)" % col.name)
 
     def test_any_array(self, t_fixture):
         t = t_fixture

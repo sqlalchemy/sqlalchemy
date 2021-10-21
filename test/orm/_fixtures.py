@@ -4,7 +4,6 @@ from sqlalchemy import String
 from sqlalchemy import util
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import configure_mappers
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.schema import Column
@@ -99,7 +98,7 @@ class FixtureTest(fixtures.MappedTest):
 
         # use OrderedDict on this one to support some tests that
         # assert the order of attributes (e.g. orm/test_inspect)
-        mapper(
+        cls.mapper_registry.map_imperatively(
             User,
             users,
             properties=util.OrderedDict(
@@ -119,7 +118,7 @@ class FixtureTest(fixtures.MappedTest):
                 ]
             ),
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
@@ -129,8 +128,8 @@ class FixtureTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(Dingaling, dingalings)
-        mapper(
+        cls.mapper_registry.map_imperatively(Dingaling, dingalings)
+        cls.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -141,7 +140,7 @@ class FixtureTest(fixtures.MappedTest):
                 "address": relationship(Address),  # m2o
             },
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Item,
             items,
             properties={
@@ -150,8 +149,8 @@ class FixtureTest(fixtures.MappedTest):
                 )  # m2m
             },
         )
-        mapper(Keyword, keywords)
-        mapper(
+        cls.mapper_registry.map_imperatively(Keyword, keywords)
+        cls.mapper_registry.map_imperatively(
             Node,
             nodes,
             properties={
@@ -161,7 +160,7 @@ class FixtureTest(fixtures.MappedTest):
             },
         )
 
-        mapper(CompositePk, composite_pk_table)
+        cls.mapper_registry.map_imperatively(CompositePk, composite_pk_table)
 
         configure_mappers()
 

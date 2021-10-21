@@ -1161,24 +1161,16 @@ class ColumnOperators(Operators):
         return self.operate(distinct_op)
 
     def any_(self):
-        """Produce a :func:`_expression.any_` clause against the
+        """Produce an :func:`_expression.any_` clause against the
         parent object.
 
-        This operator is only appropriate against a scalar subquery
-        object, or for some backends an column expression that is
-        against the ARRAY type, e.g.::
+        See the documentation for :func:`_sql.any_` for examples.
 
-            # postgresql '5 = ANY (somearray)'
-            expr = 5 == mytable.c.somearray.any_()
-
-            # mysql '5 = ANY (SELECT value FROM table)'
-            expr = 5 == select(table.c.value).scalar_subquery().any_()
-
-        .. seealso::
-
-            :func:`_expression.any_` - standalone version
-
-            :func:`_expression.all_` - ALL operator
+        .. note:: be sure to not confuse the newer
+            :meth:`_sql.ColumnOperators.any_` method with its older
+            :class:`_types.ARRAY`-specific counterpart, the
+            :meth:`_types.ARRAY.Comparator.any` method, which a different
+            calling syntax and usage pattern.
 
         .. versionadded:: 1.1
 
@@ -1186,24 +1178,17 @@ class ColumnOperators(Operators):
         return self.operate(any_op)
 
     def all_(self):
-        """Produce a :func:`_expression.all_` clause against the
+        """Produce an :func:`_expression.all_` clause against the
         parent object.
 
-        This operator is only appropriate against a scalar subquery
-        object, or for some backends an column expression that is
-        against the ARRAY type, e.g.::
+        See the documentation for :func:`_sql.all_` for examples.
 
-            # postgresql '5 = ALL (somearray)'
-            expr = 5 == mytable.c.somearray.all_()
+        .. note:: be sure to not confuse the newer
+            :meth:`_sql.ColumnOperators.all_` method with its older
+            :class:`_types.ARRAY`-specific counterpart, the
+            :meth:`_types.ARRAY.Comparator.all` method, which a different
+            calling syntax and usage pattern.
 
-            # mysql '5 = ALL (SELECT value FROM table)'
-            expr = 5 == select(table.c.value).scalar_subquery().all_()
-
-        .. seealso::
-
-            :func:`_expression.all_` - standalone version
-
-            :func:`_expression.any_` - ANY operator
 
         .. versionadded:: 1.1
 

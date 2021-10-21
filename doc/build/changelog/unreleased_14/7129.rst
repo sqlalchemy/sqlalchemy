@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, mssql, regression
+    :tickets: 7129
+
+    Fixed bug in SQL Server ``DATETIMEOFFSET`` where the ODBC implementation
+    would not generate the correct DDL, for cases where the type were converted
+    using the ``dialect.type_descriptor()`` method, the usage of which is
+    illustrated in some documented examples for :class:`.TypeDecorator`, though
+    not necessary for most datatypes. Regression was introduced by
+    :ticket:`6366`. As part of this change, the full list of SQL Server date
+    types have been amended to return a "dialect impl" that generates the same
+    DDL name as the supertype.

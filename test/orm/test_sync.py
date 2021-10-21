@@ -4,7 +4,6 @@ from sqlalchemy import testing
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import exc as orm_exc
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import sync
 from sqlalchemy.orm import unitofwork
 from sqlalchemy.testing import assert_raises_message
@@ -56,8 +55,8 @@ class SyncTest(
 
     @classmethod
     def setup_mappers(cls):
-        mapper(cls.classes.A, cls.tables.t1)
-        mapper(cls.classes.B, cls.tables.t2)
+        cls.mapper_registry.map_imperatively(cls.classes.A, cls.tables.t1)
+        cls.mapper_registry.map_imperatively(cls.classes.B, cls.tables.t2)
 
     def _fixture(self):
         A, B = self.classes.A, self.classes.B

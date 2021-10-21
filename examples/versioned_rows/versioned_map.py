@@ -53,9 +53,7 @@ def before_flush(session, flush_context, instances):
 
     """
     for instance in session.dirty:
-        if hasattr(instance, "new_version") and session.is_modified(
-            instance, passive=True
-        ):
+        if hasattr(instance, "new_version") and session.is_modified(instance):
 
             # make it transient
             instance.new_version(session)

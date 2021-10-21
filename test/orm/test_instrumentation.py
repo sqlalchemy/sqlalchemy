@@ -8,7 +8,6 @@ from sqlalchemy.orm import attributes
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import instrumentation
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -491,7 +490,7 @@ class InitTest(fixtures.ORMTest):
         assert o.o is Y.outofscope
 
 
-class MapperInitTest(fixtures.ORMTest):
+class MapperInitTest(fixtures.MappedTest):
     def fixture(self):
         return Table(
             "t",
@@ -513,7 +512,7 @@ class MapperInitTest(fixtures.ORMTest):
             def __init__(self, x):
                 pass
 
-        mapper(A, self.fixture())
+        self.mapper_registry.map_imperatively(A, self.fixture())
 
         # B is not mapped in the current implementation
         assert_raises(sa.orm.exc.UnmappedClassError, class_mapper, B)
@@ -533,7 +532,7 @@ class MapperInitTest(fixtures.ORMTest):
             r"unreachable cycles and memory leaks, as SQLAlchemy "
             r"instrumentation often creates reference cycles.  "
             r"Please remove this method.",
-            mapper,
+            self.mapper_registry.map_imperatively,
             A,
             self.fixture(),
         )
@@ -565,7 +564,7 @@ class OnLoadTest(fixtures.ORMTest):
             del A
 
 
-class NativeInstrumentationTest(fixtures.ORMTest):
+class NativeInstrumentationTest(fixtures.MappedTest):
     def test_register_reserved_attribute(self):
         class T(object):
             pass
@@ -597,7 +596,7 @@ class NativeInstrumentationTest(fixtures.ORMTest):
         class T(object):
             pass
 
-        assert_raises(KeyError, mapper, T, t)
+        assert_raises(KeyError, self.mapper_registry.map_imperatively, T, t)
 
     def test_mapped_managerattr(self):
         t = Table(
@@ -610,7 +609,7 @@ class NativeInstrumentationTest(fixtures.ORMTest):
         class T(object):
             pass
 
-        assert_raises(KeyError, mapper, T, t)
+        assert_raises(KeyError, self.mapper_registry.map_imperatively, T, t)
 
 
 class Py3KFunctionInstTest(fixtures.ORMTest):
@@ -693,7 +692,7 @@ def _kw_opt_fixture(self):
         setattr(Py3KFunctionInstTest, k, _locals[k])
 
 
-class MiscTest(fixtures.ORMTest):
+class MiscTest(fixtures.MappedTest):
     """Seems basic, but not directly covered elsewhere!"""
 
     def test_compileonattr(self):
@@ -707,7 +706,7 @@ class MiscTest(fixtures.ORMTest):
         class A(object):
             pass
 
-        mapper(A, t)
+        self.mapper_registry.map_imperatively(A, t)
 
         a = A()
         assert a.id is None
@@ -733,8 +732,10 @@ class MiscTest(fixtures.ORMTest):
         class B(object):
             pass
 
-        mapper(A, t1, properties=dict(bs=relationship(B)))
-        mapper(B, t2)
+        self.mapper_registry.map_imperatively(
+            A, t1, properties=dict(bs=relationship(B))
+        )
+        self.mapper_registry.map_imperatively(B, t2)
 
         a = A()
         assert not a.bs
@@ -780,8 +781,10 @@ class MiscTest(fixtures.ORMTest):
             class B(base):
                 pass
 
-            mapper(A, t1, properties=dict(bs=relationship(B, backref="a")))
-            mapper(B, t2)
+            self.mapper_registry.map_imperatively(
+                A, t1, properties=dict(bs=relationship(B, backref="a"))
+            )
+            self.mapper_registry.map_imperatively(B, t2)
 
             b = B()
             assert b.a is None
@@ -825,8 +828,10 @@ class MiscTest(fixtures.ORMTest):
             class B(base):
                 pass
 
-            mapper(A, t1)
-            mapper(B, t2, properties=dict(a=relationship(A, backref="bs")))
+            self.mapper_registry.map_imperatively(A, t1)
+            self.mapper_registry.map_imperatively(
+                B, t2, properties=dict(a=relationship(A, backref="bs"))
+            )
 
             a = A()
             b = B()

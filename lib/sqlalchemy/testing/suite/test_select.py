@@ -467,6 +467,7 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
         )
 
     @testing.requires.fetch_first
+    @testing.requires.fetch_expression
     def test_expr_fetch_offset(self, connection):
         table = self.tables.some_table
         self._assert_result(

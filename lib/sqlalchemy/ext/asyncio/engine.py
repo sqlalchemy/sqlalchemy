@@ -91,6 +91,29 @@ class AsyncConnection(ProxyComparable, StartableContext, AsyncConnectable):
         self.sync_engine = async_engine.sync_engine
         self.sync_connection = self._assign_proxied(sync_connection)
 
+    sync_connection: Connection
+    """Reference to the sync-style :class:`_engine.Connection` this
+    :class:`_asyncio.AsyncConnection` proxies requests towards.
+
+    This instance can be used as an event target.
+
+    .. seealso::
+
+        :ref:`asyncio_events`
+    """
+
+    sync_engine: Engine
+    """Reference to the sync-style :class:`_engine.Engine` this
+    :class:`_asyncio.AsyncConnection` is associated with via its underlying
+    :class:`_engine.Connection`.
+
+    This instance can be used as an event target.
+
+    .. seealso::
+
+        :ref:`asyncio_events`
+    """
+
     @classmethod
     def _regenerate_proxy_for_target(cls, target):
         return AsyncConnection(
@@ -577,6 +600,17 @@ class AsyncEngine(ProxyComparable, AsyncConnectable):
                 f"The loaded {sync_engine.dialect.driver!r} is not async."
             )
         self.sync_engine = self._proxied = self._assign_proxied(sync_engine)
+
+    sync_engine: Engine
+    """Reference to the sync-style :class:`_engine.Engine` this
+    :class:`_asyncio.AsyncEngine` proxies requests towards.
+
+    This instance can be used as an event target.
+
+    .. seealso::
+
+        :ref:`asyncio_events`
+    """
 
     @classmethod
     def _regenerate_proxy_for_target(cls, target):

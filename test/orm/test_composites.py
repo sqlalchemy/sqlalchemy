@@ -9,7 +9,6 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import CompositeProperty
 from sqlalchemy.orm import configure_mappers
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.testing import assert_raises_message
@@ -79,8 +78,10 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
                 if args:
                     self.start, self.end = args
 
-        mapper(Graph, graphs, properties={"edges": relationship(Edge)})
-        mapper(
+        cls.mapper_registry.map_imperatively(
+            Graph, graphs, properties={"edges": relationship(Edge)}
+        )
+        cls.mapper_registry.map_imperatively(
             Edge,
             edges,
             properties={
@@ -475,7 +476,7 @@ class NestedTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
                 self.ab = ab
 
         stuff = self.tables.stuff
-        mapper(
+        self.mapper_registry.map_imperatively(
             Thing,
             stuff,
             properties={
@@ -541,7 +542,7 @@ class PrimaryKeyTest(fixtures.MappedTest):
             def __init__(self, version):
                 self.version = version
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Graph,
             graphs,
             properties={
@@ -658,7 +659,7 @@ class DefaultsTest(fixtures.MappedTest):
                     self.x4,
                 )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Foobar,
             foobars,
             properties=dict(
@@ -754,7 +755,7 @@ class MappedSelectTest(fixtures.MappedTest):
             .alias("descriptions_values")
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Descriptions,
             descriptions,
             properties={
@@ -765,7 +766,7 @@ class MappedSelectTest(fixtures.MappedTest):
             },
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Values,
             desc_values,
             properties={
@@ -851,12 +852,12 @@ class ManyToOneTest(fixtures.MappedTest):
                     and other.b2 == self.b2
                 )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             A,
             a,
             properties={"b2": relationship(B), "c": composite(C, "b1", "b2")},
         )
-        mapper(B, b)
+        cls.mapper_registry.map_imperatively(B, b)
 
     def test_early_configure(self):
         # test [ticket:2935], that we can call a composite
@@ -955,7 +956,7 @@ class ConfigurationTest(fixtures.MappedTest):
             self.classes.Point,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Edge,
             edge,
             properties={
@@ -973,7 +974,7 @@ class ConfigurationTest(fixtures.MappedTest):
             self.classes.Point,
         )
 
-        m = mapper(Edge, edge)
+        m = self.mapper_registry.map_imperatively(Edge, edge)
         m.add_property("start", sa.orm.composite(Point, Edge.x1, Edge.y1))
         m.add_property("end", sa.orm.composite(Point, Edge.x2, Edge.y2))
 
@@ -986,7 +987,7 @@ class ConfigurationTest(fixtures.MappedTest):
             self.classes.Point,
         )
 
-        m = mapper(Edge, edge)
+        m = self.mapper_registry.map_imperatively(Edge, edge)
         m.add_property("start", sa.orm.composite(Point, "x1", "y1"))
         m.add_property("end", sa.orm.composite(Point, "x2", "y2"))
 
@@ -998,7 +999,7 @@ class ConfigurationTest(fixtures.MappedTest):
             self.classes.Edge,
             self.classes.Point,
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Edge,
             edge,
             properties={
@@ -1018,7 +1019,7 @@ class ConfigurationTest(fixtures.MappedTest):
             self.classes.Edge,
             self.classes.Point,
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Edge,
             edge,
             properties={
@@ -1098,7 +1099,7 @@ class ComparatorTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
                     diff_y = clauses[1] - other.y
                     return diff_x * diff_x + diff_y * diff_y <= d * d
 
-            mapper(
+            self.mapper_registry.map_imperatively(
                 Edge,
                 edge,
                 properties={
@@ -1112,7 +1113,7 @@ class ComparatorTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
                 },
             )
         else:
-            mapper(
+            self.mapper_registry.map_imperatively(
                 Edge,
                 edge,
                 properties={

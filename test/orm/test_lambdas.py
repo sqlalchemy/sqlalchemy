@@ -9,7 +9,6 @@ from sqlalchemy import testing
 from sqlalchemy import update
 from sqlalchemy.future import select
 from sqlalchemy.orm import aliased
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
@@ -44,7 +43,7 @@ class LambdaTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -52,7 +51,7 @@ class LambdaTest(QueryTest, AssertsCompiledSQL):
             },
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
@@ -444,7 +443,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         Address = cls.classes.Address
         addresses = cls.tables.addresses
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -452,7 +451,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 "addresses": relationship(Address),
             },
         )
-        mapper(Address, addresses)
+        cls.mapper_registry.map_imperatively(Address, addresses)
 
     def test_update(self):
         User, Address = self.classes("User", "Address")

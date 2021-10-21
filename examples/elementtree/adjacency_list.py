@@ -29,26 +29,26 @@ from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
-from sqlalchemy import MetaData
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import Unicode
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import mapper
+from sqlalchemy.orm import registry
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 
 
 e = create_engine("sqlite://")
-meta = MetaData()
+mapper_registry = registry()
 
 # PART II - Table Metadata
 
 # stores a top level record of an XML document.
 documents = Table(
     "documents",
-    meta,
+    mapper_registry.metadata,
     Column("document_id", Integer, primary_key=True),
     Column("filename", String(30), unique=True),
     Column("element_id", Integer, ForeignKey("elements.element_id")),
@@ -58,7 +58,7 @@ documents = Table(
 # Element and SubElement objects.
 elements = Table(
     "elements",
-    meta,
+    mapper_registry.metadata,
     Column("element_id", Integer, primary_key=True),
     Column("parent_id", Integer, ForeignKey("elements.element_id")),
     Column("tag", Unicode(30), nullable=False),
@@ -70,7 +70,7 @@ elements = Table(
 # stored by an Element or SubElement.
 attributes = Table(
     "attributes",
-    meta,
+    mapper_registry.metadata,
     Column(
         "element_id",
         Integer,
@@ -81,7 +81,7 @@ attributes = Table(
     Column("value", Unicode(255)),
 )
 
-meta.create_all(e)
+mapper_registry.metadata.create_all(e)
 
 # PART III - Model
 

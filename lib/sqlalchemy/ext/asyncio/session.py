@@ -122,6 +122,18 @@ class AsyncSession(ReversibleProxy):
 
     """
 
+    sync_session: Session
+    """Reference to the underlying :class:`_orm.Session` this
+    :class:`_asyncio.AsyncSession` proxies requests towards.
+
+    This instance can be used as an event target.
+
+    .. seealso::
+
+        :ref:`asyncio_events`
+
+    """
+
     async def refresh(
         self, instance, attribute_names=None, with_for_update=None
     ):

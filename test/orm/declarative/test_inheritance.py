@@ -3,15 +3,13 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy.ext import declarative as decl
-from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import class_mapper
-from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import close_all_sessions
 from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import deferred
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm.decl_api import registry
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -29,11 +27,12 @@ Base = None
 class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
     def setup_test(self):
         global Base
-        Base = decl.declarative_base(testing.db)
+        self.mapper_registry = registry()
+        Base = self.mapper_registry.generate_base()
 
     def teardown_test(self):
         close_all_sessions()
-        clear_mappers()
+        self.mapper_registry.dispose()
         Base.metadata.drop_all(testing.db)
 
 
@@ -334,7 +333,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             Column("kind", String(50)),
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Person,
             person_table,
             polymorphic_on="kind",
@@ -367,7 +366,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             Column("kind", String(50)),
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Person,
             person_table,
             polymorphic_on="kind",
@@ -400,7 +399,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             Column("kind", String(50)),
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Person,
             person_table,
             polymorphic_on="kind",

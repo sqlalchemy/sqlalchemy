@@ -1769,7 +1769,9 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def fetch_first(self):
-        return only_on(["postgresql", "mssql >= 11", "oracle >= 12"])
+        return only_on(
+            ["postgresql", "mssql >= 11", "oracle >= 12", "mariadb >= 10.6"]
+        )
 
     @property
     def fetch_percent(self):
@@ -1777,15 +1779,28 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def fetch_ties(self):
-        return only_on(["postgresql >= 13", "mssql >= 11", "oracle >= 12"])
+        return only_on(
+            [
+                "postgresql >= 13",
+                "mssql >= 11",
+                "oracle >= 12",
+                "mariadb >= 10.6",
+            ]
+        )
 
     @property
     def fetch_no_order_by(self):
-        return only_on(["postgresql", "oracle >= 12"])
+        return only_on(["postgresql", "oracle >= 12", "mariadb >= 10.6"])
 
     @property
     def fetch_offset_with_options(self):
+        # use together with fetch_first
         return skip_if("mssql")
+
+    @property
+    def fetch_expression(self):
+        # use together with fetch_first
+        return skip_if("mariadb")
 
     @property
     def autoincrement_without_sequence(self):

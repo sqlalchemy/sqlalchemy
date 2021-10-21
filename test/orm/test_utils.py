@@ -9,7 +9,7 @@ from sqlalchemy import util
 from sqlalchemy.ext.hybrid import hybrid_method
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import aliased
-from sqlalchemy.orm import mapper
+from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm import util as orm_util
@@ -28,7 +28,7 @@ from test.orm import _fixtures
 from .inheritance import _poly_fixtures
 
 
-class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
+class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
     __dialect__ = "default"
 
     def _fixture(self, cls, properties={}):
@@ -39,7 +39,10 @@ class AliasedClassTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("x", Integer),
             Column("y", Integer),
         )
-        mapper(cls, table, properties=properties)
+        clear_mappers()
+        self.mapper_registry.map_imperatively(
+            cls, table, properties=properties
+        )
         return table
 
     def test_simple(self):
@@ -469,7 +472,7 @@ class IdentityKeyTest(_fixtures.FixtureTest):
     def test_identity_key_1(self, ormutil):
         User, users = self.classes.User, self.tables.users
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         key = ormutil.identity_key(User, [1])
         eq_(key, (User, (1,), None))
@@ -480,7 +483,7 @@ class IdentityKeyTest(_fixtures.FixtureTest):
     def test_identity_key_scalar(self, ormutil):
         User, users = self.classes.User, self.tables.users
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         key = ormutil.identity_key(User, 1)
         eq_(key, (User, (1,), None))
@@ -491,7 +494,7 @@ class IdentityKeyTest(_fixtures.FixtureTest):
     def test_identity_key_2(self, ormutil):
         users, User = self.tables.users, self.classes.User
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
         s = fixture_session()
         u = User(name="u1")
         s.add(u)
@@ -503,7 +506,7 @@ class IdentityKeyTest(_fixtures.FixtureTest):
     def test_identity_key_3(self, ormutil):
         User, users = self.classes.User, self.tables.users
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         row = {users.c.id: 1, users.c.name: "Frank"}
         key = ormutil.identity_key(User, row=row)
@@ -512,7 +515,7 @@ class IdentityKeyTest(_fixtures.FixtureTest):
     def test_identity_key_token(self):
         User, users = self.classes.User, self.tables.users
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         key = orm_util.identity_key(User, [1], identity_token="token")
         eq_(key, (User, (1,), "token"))

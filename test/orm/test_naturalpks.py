@@ -12,7 +12,6 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import TypeDecorator
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.session import make_transient
 from sqlalchemy.testing import assert_raises
@@ -108,7 +107,7 @@ class NaturalPKTest(fixtures.MappedTest):
     def test_entity(self):
         users, User = self.tables.users, self.classes.User
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         sess = fixture_session()
         u1 = User(username="jack", fullname="jack")
@@ -134,7 +133,7 @@ class NaturalPKTest(fixtures.MappedTest):
     def test_load_after_expire(self):
         users, User = self.tables.users, self.classes.User
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         sess = fixture_session()
         u1 = User(username="jack", fullname="jack")
@@ -161,7 +160,7 @@ class NaturalPKTest(fixtures.MappedTest):
     def test_update_to_sql_expr(self):
         users, User = self.tables.users, self.classes.User
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         sess = fixture_session()
         u1 = User(username="jack", fullname="jack")
@@ -180,7 +179,7 @@ class NaturalPKTest(fixtures.MappedTest):
         # such as to bump a server side trigger
         users, User = self.tables.users, self.classes.User
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         sess = fixture_session()
         u1 = User(username="jack", fullname="jack")
@@ -197,7 +196,7 @@ class NaturalPKTest(fixtures.MappedTest):
     def test_flush_new_pk_after_expire(self):
         User, users = self.classes.User, self.tables.users
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
         sess = fixture_session()
         u1 = User(username="jack", fullname="jack")
 
@@ -226,7 +225,7 @@ class NaturalPKTest(fixtures.MappedTest):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -235,7 +234,7 @@ class NaturalPKTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         sess = fixture_session()
         u1 = User(username="jack", fullname="jack")
@@ -325,8 +324,8 @@ class NaturalPKTest(fixtures.MappedTest):
                 addresses.insert(), dict(email="jack2", username="jack")
             )
 
-        mapper(User, users)
-        mapper(
+        self.mapper_registry.map_imperatively(User, users)
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={"user": relationship(User, passive_updates=False)},
@@ -350,8 +349,8 @@ class NaturalPKTest(fixtures.MappedTest):
             self.classes.User,
         )
 
-        mapper(User, users)
-        mapper(
+        self.mapper_registry.map_imperatively(User, users)
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
@@ -429,7 +428,7 @@ class NaturalPKTest(fixtures.MappedTest):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -438,7 +437,7 @@ class NaturalPKTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         sess = fixture_session()
         u1 = User(username="jack", fullname="jack")
@@ -484,8 +483,8 @@ class NaturalPKTest(fixtures.MappedTest):
             self.classes.User,
         )
 
-        mapper(User, users)
-        mapper(
+        self.mapper_registry.map_imperatively(User, users)
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
@@ -564,7 +563,7 @@ class NaturalPKTest(fixtures.MappedTest):
             self.tables.users_to_items,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -576,7 +575,7 @@ class NaturalPKTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(Item, items)
+        self.mapper_registry.map_imperatively(Item, items)
 
         sess = fixture_session()
         u1 = User(username="jack")
@@ -635,8 +634,8 @@ class NaturalPKTest(fixtures.MappedTest):
             self.classes.User,
         )
 
-        mapper(User, users)
-        mapper(
+        self.mapper_registry.map_imperatively(User, users)
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
@@ -761,8 +760,10 @@ class TransientExceptionTesst(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        mapper(User, users)
-        mapper(Address, addresses, properties={"user": relationship(User)})
+        self.mapper_registry.map_imperatively(User, users)
+        self.mapper_registry.map_imperatively(
+            Address, addresses, properties={"user": relationship(User)}
+        )
 
         sess = fixture_session()
         u1 = User(id=5, name="u1")
@@ -815,7 +816,7 @@ class ReversePKsTest(fixtures.MappedTest):
 
         PUBLISHED, EDITABLE, ARCHIVED = 1, 2, 3
 
-        mapper(User, user)
+        self.mapper_registry.map_imperatively(User, user)
 
         session = fixture_session()
 
@@ -855,7 +856,7 @@ class ReversePKsTest(fixtures.MappedTest):
 
         PUBLISHED, EDITABLE, ARCHIVED = 1, 2, 3
 
-        mapper(User, user)
+        self.mapper_registry.map_imperatively(User, user)
 
         session = fixture_session()
 
@@ -909,7 +910,7 @@ class SelfReferentialTest(fixtures.MappedTest):
     def test_one_to_many_on_m2o(self):
         Node, nodes = self.classes.Node, self.tables.nodes
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Node,
             nodes,
             properties={
@@ -948,7 +949,7 @@ class SelfReferentialTest(fixtures.MappedTest):
     def test_one_to_many_on_o2m(self):
         Node, nodes = self.classes.Node, self.tables.nodes
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Node,
             nodes,
             properties={
@@ -993,7 +994,7 @@ class SelfReferentialTest(fixtures.MappedTest):
     def _test_many_to_one(self, passive):
         Node, nodes = self.classes.Node, self.tables.nodes
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Node,
             nodes,
             properties={
@@ -1079,7 +1080,7 @@ class NonPKCascadeTest(fixtures.MappedTest):
             self.tables.addresses,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -1088,7 +1089,7 @@ class NonPKCascadeTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         sess = fixture_session()
         u1 = User(username="jack", fullname="jack")
@@ -1227,7 +1228,7 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             self.tables.addresses,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -1236,7 +1237,7 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
                 )
             },
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         sess = fixture_session()
         a1 = Address(username="ed", email="ed@host1")
@@ -1268,7 +1269,7 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             self.tables.addresses,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -1277,7 +1278,7 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
                 )
             },
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         sess = fixture_session(autoflush=False)
         a1 = Address(username="ed", email="ed@host1")
@@ -1315,8 +1316,8 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             self.tables.addresses,
         )
 
-        mapper(User, users)
-        mapper(
+        self.mapper_registry.map_imperatively(User, users)
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
@@ -1357,8 +1358,8 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         )
 
         # tests [ticket:1856]
-        mapper(User, users)
-        mapper(
+        self.mapper_registry.map_imperatively(User, users)
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
@@ -1384,8 +1385,8 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             self.tables.addresses,
         )
 
-        mapper(User, users)
-        mapper(
+        self.mapper_registry.map_imperatively(User, users)
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={"user": relationship(User, passive_updates=True)},
@@ -1442,7 +1443,7 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             self.tables.addresses,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -1451,7 +1452,7 @@ class CascadeToFKPKTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
                 )
             },
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         sess = fixture_session()
         a1, a2 = (
@@ -1565,7 +1566,7 @@ class JoinedInheritanceTest(fixtures.MappedTest):
             "person", "manager", "engineer", "owner"
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Person,
             person,
             polymorphic_on=person.c.type,
@@ -1573,7 +1574,7 @@ class JoinedInheritanceTest(fixtures.MappedTest):
             passive_updates=passive_updates,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Engineer,
             engineer,
             inherits=Person,
@@ -1587,12 +1588,12 @@ class JoinedInheritanceTest(fixtures.MappedTest):
             },
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Manager, manager, inherits=Person, polymorphic_identity="manager"
         )
 
         if threelevel:
-            mapper(
+            self.mapper_registry.map_imperatively(
                 Owner, owner, inherits=Manager, polymorphic_identity="owner"
             )
 
@@ -1816,7 +1817,7 @@ class UnsortablePKTest(fixtures.MappedTest):
 
     @classmethod
     def setup_mappers(cls):
-        mapper(cls.classes.Data, cls.tables.data)
+        cls.mapper_registry.map_imperatively(cls.classes.Data, cls.tables.data)
 
     def test_updates_sorted(self):
         Data = self.classes.Data
@@ -1898,14 +1899,14 @@ class JoinedInheritancePKOnFKTest(fixtures.MappedTest):
             self.tables.engineer,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Person,
             person,
             polymorphic_on=person.c.type,
             polymorphic_identity="person",
             passive_updates=passive_updates,
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Engineer,
             engineer,
             inherits=Person,

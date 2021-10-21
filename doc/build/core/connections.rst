@@ -376,18 +376,22 @@ emitted.
 
 DBAPIs that support isolation levels also usually support the concept of true
 "autocommit", which means that the DBAPI connection itself will be placed into
-a non-transactional autocommit mode.   This usually means that the typical
-DBAPI behavior of emitting "BEGIN" to the database automatically no longer
-occurs, but it may also include other directives.   When using this mode,
-**the DBAPI does not use a transaction under any circumstances**.  SQLAlchemy
-methods like ``.begin()``, ``.commit()`` and ``.rollback()`` pass silently
-and have no effect.
+a non-transactional autocommit mode. This usually means that the typical DBAPI
+behavior of emitting "BEGIN" to the database automatically no longer occurs,
+but it may also include other directives. SQLAlchemy treats the concept of
+"autocommit" like any other isolation level; in that it is an isolation level
+that loses not only "read committed" but also loses atomicity.
 
-Instead, each statement invoked upon the connection will commit any changes
-automatically; it sometimes also means that the connection itself will use
-fewer server-side database resources. For this reason and others, "autocommit"
-mode is often desirable for non-transactional applications that need to read
-individual tables or rows outside the scope of a true ACID transaction.
+.. tip::
+
+  It is important to note, as will be discussed further in the section below at
+  :ref:`dbapi_autocommit_understanding`, that "autocommit" isolation level like
+  any other isolation level does **not** affect the "transactional" behavior of
+  the :class:`_engine.Connection` object, which continues to call upon DBAPI
+  ``.commit()`` and ``.rollback()`` methods (they just have no effect under
+  autocommit), and for which the ``.begin()`` method assumes the DBAPI will
+  start a transaction implicitly (which means that SQLAlchemy's "begin" **does
+  not change autocommit mode**).
 
 SQLAlchemy dialects should support these isolation levels as well as autocommit
 to as great a degree as possible.   The levels are set via family of
@@ -413,6 +417,19 @@ begin a transaction::
   with engine.connect().execution_options(isolation_level="REPEATABLE READ") as connection:
       with connection.begin():
           connection.execute(<statement>)
+
+.. note::  The return value of
+   the :meth:`_engine.Connection.execution_options` method is a so-called
+   "branched" connection under the SQLAlchemy 1.x series when not using
+   :paramref:`_sa.create_engine.future` mode, which is a shallow
+   copy of the original :class:`_engine.Connection` object.  Despite this,
+   the ``isolation_level`` execution option applies to the
+   original :class:`_engine.Connection` object and all "branches" overall.
+
+   When using :paramref:`_sa.create_engine.future` mode (i.e. :term:`2.0 style`
+   usage), the concept of these so-called "branched" connections is removed,
+   and :meth:`_engine.Connection.execution_options` returns the **same**
+   :class:`_engine.Connection` object without creating any copies.
 
 The :paramref:`_engine.Connection.execution_options.isolation_level` option may
 also be set engine wide, as is often preferable.  This is achieved by
@@ -478,6 +495,141 @@ reverted when a connection is returned to the connection pool.
       :ref:`faq_execute_retry_autocommit` - a recipe that uses DBAPI autocommit
       to transparently reconnect to the database for read-only operations
 
+.. _dbapi_autocommit_understanding:
+
+Understanding the DBAPI-Level Autocommit Isolation Level
+---------------------------------------------------------
+
+In the parent section, we introduced the concept of the :paramref:`_engine.Connection.execution_options.isolation_level`
+parameter and how it can be used to set database isolation levels, including
+DBAPI-level "autocommit" which is treated by SQLAlchemy as another transaction
+isolation level.   In this section we will attempt to clarify the implications
+of this approach.
+
+If we wanted to check out a :class:`_engine.Connection` object and use it
+"autocommit" mode, we would proceed as follows::
+
+  with engine.connect() as connection:
+      connection.execution_options(isolation_level="AUTOCOMMIT")
+      connection.execute(<statement>)
+      connection.execute(<statement>)
+
+Above illustrates normal usage of "DBAPI autocommit" mode.   There is no
+need to make use of methods such as :meth:`_engine.Connection.begin`
+or :meth:`_future.Connection.commit` (noting the latter applies to :term:`2.0 style` usage).
+
+What's important to note however is that the above autocommit mode is
+**persistent on that particular Connection until we change it directly using
+isolation_level again**.  The isolation level is also reset on the DBAPI
+connection when we :term:`release` the connection
+back to the connection pool.  However, calling upon :meth:`_engine.Connection.begin`
+**will not** change the isolation level, meaning we stay in autocommit.  The
+example below illustrates this::
+
+  with engine.connect() as connection:
+      connection = connection.execution_options(isolation_level="AUTOCOMMIT")
+
+      # this begin() does nothing, isolation stays at AUTOCOMMIT
+      with connection.begin() as trans:
+          connection.execute(<statement>)
+          connection.execute(<statement>)
+
+When we run a block like the above with logging turned on, the logging
+will attempt to indicate that while a DBAPI level ``.commit()`` is called,
+it probably will have no effect due to autocommit mode::
+
+    INFO sqlalchemy.engine.Engine BEGIN (implicit)
+    ...
+    INFO sqlalchemy.engine.Engine COMMIT using DBAPI connection.commit(), DBAPI should ignore due to autocommit mode
+
+Similarly, when using :term:`2.0 style` :paramref:`_sa.create_engine.future`
+mode, the :class:`_engine.Connection` will use :ref:`autobegin <migration_20_autocommit>`
+behavior, meaning that the pattern below will raise an error::
+
+  engine = create_engine(..., future=True)
+
+  with engine.connect() as connection:
+      connection = connection.execution_options(isolation_level="AUTOCOMMIT")
+
+      # "transaction" is autobegin (but has no effect due to autocommit)
+      connection.execute(<statement>)
+
+      # this will raise; "transaction" is already begun
+      with connection.begin() as trans:
+          connection.execute(<statement>)
+
+This is all to demonstrate that the autocommit isolation level setting is
+**completely independent from the begin/commit behavior of the SQLAlchemy
+Connection object**. The "autocommit" mode will not interact with :meth:`_engine.Connection.begin`
+in any way and the :class:`_engine.Connection` does not consult this status
+when performing its own state changes with regards to the transaction (with
+the exception of suggesting within engine logging that these blocks are not
+actually committing).  The rationale for this design is to maintain a
+completely consistent usage pattern with the :class:`_engine.Connection` where
+DBAPI-autocommit mode can be changed independently without indicating any code
+changes elsewhere.
+
+Isolation level settings, including autocommit mode, are reset automatically
+when the connection is released back to the connection pool. Therefore it is
+preferable to avoid trying to switch isolation levels on a single
+:class:`_engine.Connection` object as this leads to excess verbosity.
+
+To illustrate how to use "autocommit" in an ad-hoc mode within the scope of a
+single :class:`_engine.Connection` checkout, the
+:paramref:`_engine.Connection.execution_options.isolation_level` parameter
+must be re-applied with the previous isolation level.
+We can write our above block "correctly" as (noting 2.0 style usage below)::
+
+    # if we wanted to flip autocommit on and off on a single connection/
+    # which... we usually don't.
+
+    engine = create_engine(..., future=True)
+
+    with engine.connect() as connection:
+
+        connection.execution_options(isolation_level="AUTOCOMMIT")
+
+        # run statement(s) in autocommit mode
+        connection.execute(<statement>)
+
+        # "commit" the autobegun "transaction" (2.0/future mode only)
+        connection.commit()
+
+        # switch to default isolation level
+        connection.execution_options(isolation_level=connection.default_isolation_level)
+
+        # use a begin block
+        with connection.begin() as trans:
+            connection.execute(<statement>)
+
+Above, to manually revert the isolation level we made use of
+:attr:`_engine.Connection.default_isolation_level` to restore the default
+isolation level (assuming that's what we want here). However, it's
+probably a better idea to work with the architecture of of the
+:class:`_engine.Connection` which already handles resetting of isolation level
+automatically upon checkin. The **preferred** way to write the above is to
+use two blocks ::
+
+    engine = create_engine(..., future=True)
+
+    # use an autocommit block
+    with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
+
+        # run statement in autocommit mode
+        connection.execute(<statement>)
+
+    # use a regular block
+    with engine.begin() as connection:
+        connection.execute(<statement>)
+
+To sum up:
+
+1. "DBAPI level autocommit" isolation level is entirely independent of the
+   :class:`_engine.Connection` object's notion of "begin" and "commit"
+2. use individual :class:`_engine.Connection` checkouts per isolation level.
+   Avoid trying to change back and forth between "autocommit" on a single
+   connection checkout; let the engine do the work of restoring default
+   isolation levels
 
 .. _engine_stream_results:
 

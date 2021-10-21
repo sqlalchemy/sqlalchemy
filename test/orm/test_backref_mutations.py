@@ -13,7 +13,6 @@ from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.testing import eq_
@@ -34,8 +33,8 @@ class O2MCollectionTest(_fixtures.FixtureTest):
             cls.classes.User,
         )
 
-        mapper(Address, addresses)
-        mapper(
+        cls.mapper_registry.map_imperatively(Address, addresses)
+        cls.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(addresses=relationship(Address, backref="user")),
@@ -397,8 +396,8 @@ class O2OScalarBackrefMoveTest(_fixtures.FixtureTest):
             cls.classes.User,
         )
 
-        mapper(Address, addresses)
-        mapper(
+        cls.mapper_registry.map_imperatively(Address, addresses)
+        cls.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -596,8 +595,8 @@ class O2OScalarMoveTest(_fixtures.FixtureTest):
             cls.classes.User,
         )
 
-        mapper(Address, addresses)
-        mapper(
+        cls.mapper_registry.map_imperatively(Address, addresses)
+        cls.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -648,8 +647,8 @@ class O2OScalarOrphanTest(_fixtures.FixtureTest):
             cls.classes.User,
         )
 
-        mapper(Address, addresses)
-        mapper(
+        cls.mapper_registry.map_imperatively(Address, addresses)
+        cls.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -697,7 +696,7 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
             cls.classes.Item,
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Item,
             items,
             properties={
@@ -706,7 +705,7 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
                 )
             },
         )
-        mapper(Keyword, keywords)
+        cls.mapper_registry.map_imperatively(Keyword, keywords)
 
     def test_add_remove_pending_backref(self):
         """test that pending doesn't add an item that's not a net add."""
@@ -834,7 +833,7 @@ class M2MScalarMoveTest(_fixtures.FixtureTest):
             cls.classes.Item,
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Item,
             items,
             properties={
@@ -846,7 +845,7 @@ class M2MScalarMoveTest(_fixtures.FixtureTest):
                 )
             },
         )
-        mapper(Keyword, keywords)
+        cls.mapper_registry.map_imperatively(Keyword, keywords)
 
     def test_collection_move_preloaded(self):
         Item, Keyword = self.classes.Item, self.classes.Keyword
@@ -926,8 +925,8 @@ class O2MStaleBackrefTest(_fixtures.FixtureTest):
             cls.classes.User,
         )
 
-        mapper(Address, addresses)
-        mapper(
+        cls.mapper_registry.map_imperatively(Address, addresses)
+        cls.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(addresses=relationship(Address, backref="user")),
@@ -962,7 +961,7 @@ class M2MStaleBackrefTest(_fixtures.FixtureTest):
             cls.classes.Item,
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Item,
             items,
             properties={
@@ -971,7 +970,7 @@ class M2MStaleBackrefTest(_fixtures.FixtureTest):
                 )
             },
         )
-        mapper(Keyword, keywords)
+        cls.mapper_registry.map_imperatively(Keyword, keywords)
 
     def test_backref_pop_m2m(self):
         Keyword, Item = self.classes.Keyword, self.classes.Item

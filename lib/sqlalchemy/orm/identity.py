@@ -18,6 +18,9 @@ class IdentityMap(object):
         self._modified = set()
         self._wr = weakref.ref(self)
 
+    def _kill(self):
+        self._add_unpresent = _killed
+
     def keys(self):
         return self._dict.keys()
 
@@ -238,3 +241,14 @@ class WeakInstanceDict(IdentityMap):
                 if st is state:
                     self._dict.pop(state.key, None)
                     self._manage_removed_state(state)
+
+
+def _killed(state, key):
+    # external function to avoid creating cycles when assigned to
+    # the IdentityMap
+    raise sa_exc.InvalidRequestError(
+        "Object %s cannot be converted to 'persistent' state, as this "
+        "identity map is no longer valid.  Has the owning Session "
+        "been closed?" % orm_util.state_str(state),
+        code="lkrp",
+    )

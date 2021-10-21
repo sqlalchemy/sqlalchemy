@@ -9,7 +9,6 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import declared_attr
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import registry as declarative_registry
 from sqlalchemy.orm import registry
 from sqlalchemy.orm import relationship
@@ -88,19 +87,21 @@ class DataclassesTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         Widget = cls.classes.Widget
         SpecialWidget = cls.classes.SpecialWidget
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Widget,
             widgets,
             polymorphic_on=widgets.c.type,
             polymorphic_identity="normal",
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             SpecialWidget,
             widgets,
             inherits=Widget,
             polymorphic_identity="special",
         )
-        mapper(Account, accounts, properties={"widgets": relationship(Widget)})
+        cls.mapper_registry.map_imperatively(
+            Account, accounts, properties={"widgets": relationship(Widget)}
+        )
 
     def check_account_dataclass(self, obj):
         assert dataclasses.is_dataclass(obj)

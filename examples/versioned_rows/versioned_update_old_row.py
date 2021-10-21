@@ -1,6 +1,6 @@
 """Illustrates the same UPDATE into INSERT technique of ``versioned_rows.py``,
 but also emits an UPDATE on the **old** row to affect a change in timestamp.
-Also includes a :meth:`.QueryEvents.before_compile` hook to limit queries
+Also includes a :meth:`.SessionEvents.do_orm_execute` hook to limit queries
 to only the most recent version.
 
 """
@@ -8,22 +8,22 @@ to only the most recent version.
 import datetime
 import time
 
+from sqlalchemy import and_
 from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import DateTime
 from sqlalchemy import event
 from sqlalchemy import inspect
 from sqlalchemy import Integer
-from sqlalchemy import literal
 from sqlalchemy import String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import make_transient
 from sqlalchemy.orm import make_transient_to_detached
-from sqlalchemy.orm import Query
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import with_loader_criteria
 
 
 Base = declarative_base()
@@ -38,6 +38,9 @@ def current_time():
 
 
 class VersionedStartEnd(object):
+    start = Column(DateTime, primary_key=True)
+    end = Column(DateTime, primary_key=True)
+
     def __init__(self, **kw):
         # reduce some verbosity when we make a new object
         kw.setdefault("start", current_time() - datetime.timedelta(days=3))
@@ -88,7 +91,7 @@ def before_flush(session, flush_context, instances):
     for instance in session.dirty:
         if not isinstance(instance, VersionedStartEnd):
             continue
-        if not session.is_modified(instance, passive=True):
+        if not session.is_modified(instance):
             continue
 
         if not attributes.instance_state(instance).has_identity:
@@ -100,27 +103,18 @@ def before_flush(session, flush_context, instances):
         session.add(instance)
 
 
-@event.listens_for(Query, "before_compile", retval=True)
-def before_compile(query):
+@event.listens_for(Session, "do_orm_execute", retval=True)
+def do_orm_execute(execute_state):
     """ensure all queries for VersionedStartEnd include criteria"""
 
-    for ent in query.column_descriptions:
-        entity = ent["entity"]
-        if entity is None:
-            continue
-        insp = inspect(ent["entity"])
-        mapper = getattr(insp, "mapper", None)
-        if mapper and issubclass(mapper.class_, VersionedStartEnd):
-            query = query.enable_assertions(False).filter(
-                # using a literal "now" because SQLite's "between"
-                # seems to be inclusive. In practice, this would be
-                # ``func.now()`` and we'd be using PostgreSQL
-                literal(
-                    current_time() + datetime.timedelta(seconds=1)
-                ).between(ent["entity"].start, ent["entity"].end)
-            )
-
-    return query
+    ct = current_time() + datetime.timedelta(seconds=1)
+    execute_state.statement = execute_state.statement.options(
+        with_loader_criteria(
+            VersionedStartEnd,
+            lambda cls: and_(ct > cls.start, ct < cls.end),
+            include_aliases=True,
+        )
+    )
 
 
 class Parent(VersionedStartEnd, Base):

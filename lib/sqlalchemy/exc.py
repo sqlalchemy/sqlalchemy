@@ -124,6 +124,10 @@ class ObjectNotExecutableError(ArgumentError):
         super(ObjectNotExecutableError, self).__init__(
             "Not an executable object: %r" % target
         )
+        self.target = target
+
+    def __reduce__(self):
+        return self.__class__, (self.target,)
 
 
 class NoSuchModuleError(ArgumentError):
@@ -170,7 +174,11 @@ class CircularDependencyError(SQLAlchemyError):
         self.edges = edges
 
     def __reduce__(self):
-        return self.__class__, (None, self.cycles, self.edges, self.args[0])
+        return (
+            self.__class__,
+            (None, self.cycles, self.edges, self.args[0]),
+            {"code": self.code} if self.code is not None else {},
+        )
 
 
 class CompileError(SQLAlchemyError):
@@ -194,6 +202,12 @@ class UnsupportedCompilationError(CompileError):
             "Compiler %r can't render element of type %s%s"
             % (compiler, element_type, ": %s" % message if message else "")
         )
+        self.compiler = compiler
+        self.element_type = element_type
+        self.message = message
+
+    def __reduce__(self):
+        return self.__class__, (self.compiler, self.element_type, self.message)
 
 
 class IdentifierError(SQLAlchemyError):
@@ -264,7 +278,7 @@ class ResourceClosedError(InvalidRequestError):
     object that's in a closed state."""
 
 
-class NoSuchColumnError(KeyError, InvalidRequestError):
+class NoSuchColumnError(InvalidRequestError, KeyError):
     """A nonexistent column is requested from a ``Row``."""
 
 
@@ -437,8 +451,10 @@ class StatementError(SQLAlchemyError):
                 self.params,
                 self.orig,
                 self.hide_parameters,
+                self.__dict__.get("code"),
                 self.ismulti,
             ),
+            {"detail": self.detail},
         )
 
     @_preloaded.preload_module("sqlalchemy.sql.util")
@@ -577,8 +593,10 @@ class DBAPIError(StatementError):
                 self.orig,
                 self.hide_parameters,
                 self.connection_invalidated,
+                self.__dict__.get("code"),
                 self.ismulti,
             ),
+            {"detail": self.detail},
         )
 
     def __init__(

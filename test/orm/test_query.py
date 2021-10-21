@@ -44,13 +44,13 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import Bundle
+from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import lazyload
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import Query
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
@@ -137,6 +137,36 @@ class MiscTest(QueryTest):
             ).compare(q1.selectable)
         )
 
+    @testing.combinations(("session",), ("connection",), argnames="executor")
+    @testing.combinations(
+        ("execute",), ("scalars",), ("scalar",), argnames="method"
+    )
+    def test_no_query_in_execute(self, executor, method, connection):
+        # even though this test is testing deprecations, these deprecations
+        # become errors when removed so we dont want to remove this test,
+        # just update it
+
+        if executor == "session":
+            exec_obj = Session(connection)
+        else:
+            exec_obj = connection
+
+        meth = getattr(exec_obj, method)
+
+        q = Session().query(literal_column("1"))
+
+        if executor == "session":
+            with testing.expect_deprecated(
+                r"Object .*Query.* should not be used directly in a "
+                r"SQL statement context"
+            ):
+                meth(q)
+        else:
+            with testing.expect_raises_message(
+                sa_exc.ObjectNotExecutableError, "Not an executable object"
+            ):
+                meth(q)
+
 
 class OnlyReturnTuplesTest(QueryTest):
     def test_single_entity_false(self):
@@ -196,9 +226,11 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
                 Column("id", Integer, primary_key=True),
                 Column("name", String, key="uname"),
             )
-            mapper(User, uwkey)
+            self.mapper_registry.map_imperatively(User, uwkey)
         else:
-            mapper(User, users, properties={"uname": users.c.name})
+            self.mapper_registry.map_imperatively(
+                User, users, properties={"uname": users.c.name}
+            )
 
         s = fixture_session()
         if legacy:
@@ -233,7 +265,7 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
         (
             lambda s, User: (User.id,) + tuple([null()] * 3),
             "users.id AS users_id, NULL AS anon_1, NULL AS anon__1, "
-            "NULL AS anon__1",
+            "NULL AS anon__2",
             (7, None, None, None),
         ),
     )
@@ -241,7 +273,7 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
         """test #6979"""
         User, users = self.classes.User, self.tables.users
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         s = fixture_session()
 
@@ -267,7 +299,7 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
 
         User, users = self.classes.User, self.tables.users
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         s = fixture_session()
 
@@ -289,13 +321,16 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
 
         User, users = self.classes.User, self.tables.users
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         s = fixture_session()
 
         q = testing.resolve_lambda(test_case, **locals())
 
-        row = s.execute(q.order_by(User.id)).first()
+        if isinstance(q, Query):
+            row = q.first()
+        else:
+            row = s.execute(q.order_by(User.id)).first()
         assert "jack" in row
 
     @testing.combinations(
@@ -307,7 +342,7 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
 
         User, users = self.classes.User, self.tables.users
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         s = fixture_session()
 
@@ -322,8 +357,10 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
         User, users = self.classes.User, self.tables.users
         Address, addresses = self.classes.Address, self.tables.addresses
 
-        mapper(User, users, properties={"addresses": relationship(Address)})
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(
+            User, users, properties={"addresses": relationship(Address)}
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         s = fixture_session()
 
@@ -551,8 +588,8 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(User, users)
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(User, users)
+        self.mapper_registry.map_imperatively(Address, addresses)
         sess = fixture_session()
         user_alias = aliased(User)
         user_alias_id_label = user_alias.id.label("foo")
@@ -579,8 +616,10 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
 
         User, users = self.classes.User, self.tables.users
         Address, addresses = self.classes.Address, self.tables.addresses
-        mapper(User, users, properties={"addresses": relationship(Address)})
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(
+            User, users, properties={"addresses": relationship(Address)}
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         s = fixture_session()
         q = (
@@ -615,8 +654,10 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
 
         User, users = self.classes.User, self.tables.users
         Address, addresses = self.classes.Address, self.tables.addresses
-        mapper(User, users, properties={"addresses": relationship(Address)})
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(
+            User, users, properties={"addresses": relationship(Address)}
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         s = fixture_session()
 
@@ -641,8 +682,10 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
 
         User, users = self.classes.User, self.tables.users
         Address, addresses = self.classes.Address, self.tables.addresses
-        mapper(User, users, properties={"addresses": relationship(Address)})
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(
+            User, users, properties={"addresses": relationship(Address)}
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         s = fixture_session()
 
@@ -672,8 +715,10 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
 
         User, users = self.classes.User, self.tables.users
         Address, addresses = self.classes.Address, self.tables.addresses
-        mapper(User, users, properties={"addresses": relationship(Address)})
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(
+            User, users, properties={"addresses": relationship(Address)}
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         s = fixture_session()
 
@@ -702,8 +747,10 @@ class RowTupleTest(QueryTest, AssertsCompiledSQL):
 
         User, users = self.classes.User, self.tables.users
         Address, addresses = self.classes.Address, self.tables.addresses
-        mapper(User, users, properties={"addresses": relationship(Address)})
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(
+            User, users, properties={"addresses": relationship(Address)}
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         class MyType(TypeDecorator):
             impl = Integer
@@ -975,10 +1022,15 @@ class RowLabelingTest(QueryTest):
                     String,
                 ),
             )
-            mapper(Foo, users, properties={"uname": users.c.name})
+            self.mapper_registry.map_imperatively(
+                Foo, users, properties={"uname": users.c.name}
+            )
         else:
             users = self.tables.users
-            mapper(Foo, users, properties={"uname": users.c.name})
+            clear_mappers()
+            self.mapper_registry.map_imperatively(
+                Foo, users, properties={"uname": users.c.name}
+            )
 
         return Foo
 
@@ -1226,7 +1278,7 @@ class GetTest(QueryTest):
         assert_raises(sa_exc.InvalidRequestError, q.get, (5,))
 
     @testing.fixture
-    def outerjoin_mapping(self):
+    def outerjoin_mapping(self, registry):
         users, addresses = self.tables.users, self.tables.addresses
 
         s = users.outerjoin(addresses)
@@ -1234,7 +1286,7 @@ class GetTest(QueryTest):
         class UserThing(fixtures.ComparableEntity):
             pass
 
-        mapper(
+        registry.map_imperatively(
             UserThing,
             s,
             properties={
@@ -1319,7 +1371,7 @@ class GetTest(QueryTest):
             pass
 
         s = users.select().where(users.c.id != 12).alias("users")
-        m = mapper(SomeUser, s)
+        m = self.mapper_registry.map_imperatively(SomeUser, s)
         assert s.primary_key == m.primary_key
 
         sess = fixture_session()
@@ -1367,7 +1419,7 @@ class GetTest(QueryTest):
         class LocalFoo(self.classes.Base):
             pass
 
-        mapper(LocalFoo, table)
+        self.mapper_registry.map_imperatively(LocalFoo, table)
         with Session(connection) as sess:
             eq_(
                 sess.get(LocalFoo, ustring),
@@ -2614,20 +2666,20 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         else:
             stmt = stmt.scalar_subquery()
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={"ead": column_property(stmt)},
             with_polymorphic="*" if polymorphic else None,
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
     def _func_fixture(self, label=False):
         User = self.classes.User
         users = self.tables.users
 
         if label:
-            mapper(
+            self.mapper_registry.map_imperatively(
                 User,
                 users,
                 properties={
@@ -2637,7 +2689,7 @@ class ColumnPropertyTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 },
             )
         else:
-            mapper(
+            self.mapper_registry.map_imperatively(
                 User,
                 users,
                 properties={
@@ -4147,7 +4199,7 @@ class SetOpsWDeferredTest(QueryTest, AssertsCompiledSQL):
         User = self.classes.User
         users = self.tables.users
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -5254,7 +5306,7 @@ class YieldTest(_fixtures.FixtureTest):
     def _eagerload_mappings(self, addresses_lazy=True, user_lazy=True):
         User, Address = self.classes("User", "Address")
         users, addresses = self.tables("users", "addresses")
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -5265,7 +5317,7 @@ class YieldTest(_fixtures.FixtureTest):
                 )
             },
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
     def test_basic(self):
         self._eagerload_mappings()
@@ -5461,7 +5513,7 @@ class YieldIterationTest(_fixtures.FixtureTest):
     def setup_mappers(cls):
         User = cls.classes.User
         users = cls.tables.users
-        mapper(User, users)
+        cls.mapper_registry.map_imperatively(User, users)
 
     @classmethod
     def fixtures(cls):
@@ -6590,8 +6642,8 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
             self.tables.has_dingaling,
         )
 
-        mapper(User, users)
-        mapper(
+        self.mapper_registry.map_imperatively(User, users)
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
@@ -6606,8 +6658,8 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
                 ),
             },
         )
-        mapper(Dingaling, dingalings)
-        mapper(
+        self.mapper_registry.map_imperatively(Dingaling, dingalings)
+        self.mapper_registry.map_imperatively(
             HasDingaling,
             has_dingaling,
             properties={
@@ -6881,7 +6933,7 @@ class SynonymTest(QueryTest, AssertsCompiledSQL):
             cls.tables.addresses,
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -6894,8 +6946,8 @@ class SynonymTest(QueryTest, AssertsCompiledSQL):
                 "orders_syn_2": synonym("orders_syn"),
             },
         )
-        mapper(Address, addresses)
-        mapper(
+        cls.mapper_registry.map_imperatively(Address, addresses)
+        cls.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -6904,7 +6956,7 @@ class SynonymTest(QueryTest, AssertsCompiledSQL):
                 "items_syn": synonym("items"),
             },
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Item,
             items,
             properties={
@@ -6913,7 +6965,7 @@ class SynonymTest(QueryTest, AssertsCompiledSQL):
                 )  # m2m
             },
         )
-        mapper(Keyword, keywords)
+        cls.mapper_registry.map_imperatively(Keyword, keywords)
 
     def test_options(self):
         User, Order = self.classes.User, self.classes.Order
@@ -7079,9 +7131,11 @@ class ImmediateTest(_fixtures.FixtureTest):
             cls.classes.User,
         )
 
-        mapper(Address, addresses)
+        cls.mapper_registry.map_imperatively(Address, addresses)
 
-        mapper(User, users, properties=dict(addresses=relationship(Address)))
+        cls.mapper_registry.map_imperatively(
+            User, users, properties=dict(addresses=relationship(Address))
+        )
 
     def test_one(self):
         User, Address = self.classes.User, self.classes.Address

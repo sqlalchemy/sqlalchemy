@@ -14,13 +14,13 @@ from sqlalchemy import testing
 from sqlalchemy.engine import default
 from sqlalchemy.ext.associationproxy import _AssociationList
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import collections
 from sqlalchemy.orm import composite
 from sqlalchemy.orm import configure_mappers
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
@@ -76,7 +76,7 @@ class ObjectCollection(object):
         return iter(self.values)
 
 
-class AutoFlushTest(fixtures.TablesTest):
+class AutoFlushTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -102,9 +102,6 @@ class AutoFlushTest(fixtures.TablesTest):
             Column("name", String(50)),
         )
 
-    def teardown_test(self):
-        clear_mappers()
-
     def _fixture(self, collection_class, is_dict=False):
         class Parent(object):
             collection = association_proxy("_collection", "child")
@@ -124,7 +121,7 @@ class AutoFlushTest(fixtures.TablesTest):
                 def __init__(self, child):
                     self.child = child
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Parent,
             self.tables.parent,
             properties={
@@ -135,12 +132,12 @@ class AutoFlushTest(fixtures.TablesTest):
                 )
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Association,
             self.tables.association,
             properties={"child": relationship(Child, backref="association")},
         )
-        mapper(Child, self.tables.child)
+        self.mapper_registry.map_imperatively(Child, self.tables.child)
 
         return Parent, Child, Association
 
@@ -198,13 +195,10 @@ class AutoFlushTest(fixtures.TablesTest):
         )
 
 
-class _CollectionOperations(fixtures.TestBase):
-    def setup_test(self):
-        collection_class = self.collection_class
-
-        metadata = MetaData()
-
-        parents_table = Table(
+class _CollectionOperations(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
             "Parent",
             metadata,
             Column(
@@ -212,7 +206,7 @@ class _CollectionOperations(fixtures.TestBase):
             ),
             Column("name", String(128)),
         )
-        children_table = Table(
+        Table(
             "Children",
             metadata,
             Column(
@@ -223,13 +217,17 @@ class _CollectionOperations(fixtures.TestBase):
             Column("name", String(128)),
         )
 
-        class Parent(object):
+    @classmethod
+    def setup_mappers(cls):
+        collection_class = cls.collection_class
+
+        class Parent(cls.Basic):
             children = association_proxy("_children", "name")
 
             def __init__(self, name):
                 self.name = name
 
-        class Child(object):
+        class Child(cls.Basic):
             if collection_class and issubclass(collection_class, dict):
 
                 def __init__(self, foo, name):
@@ -241,7 +239,8 @@ class _CollectionOperations(fixtures.TestBase):
                 def __init__(self, name):
                     self.name = name
 
-        mapper(
+        parents_table, children_table = cls.tables("Parent", "Children")
+        cls.mapper_registry.map_imperatively(
             Parent,
             parents_table,
             properties={
@@ -253,16 +252,7 @@ class _CollectionOperations(fixtures.TestBase):
                 )
             },
         )
-        mapper(Child, children_table)
-
-        metadata.create_all(testing.db)
-
-        self.metadata = metadata
-        self.session = fixture_session()
-        self.Parent, self.Child = Parent, Child
-
-    def teardown_test(self):
-        self.metadata.drop_all(testing.db)
+        cls.mapper_registry.map_imperatively(Child, children_table)
 
     def roundtrip(self, obj):
         if obj not in self.session:
@@ -273,7 +263,8 @@ class _CollectionOperations(fixtures.TestBase):
         return self.session.query(type_).get(id_)
 
     def _test_sequence_ops(self):
-        Parent, Child = self.Parent, self.Child
+        Parent, Child = self.classes("Parent", "Child")
+        self.session = fixture_session()
 
         p1 = Parent("P1")
 
@@ -495,7 +486,9 @@ class CustomDictTest(_CollectionOperations):
     collection_class = DictCollection
 
     def test_mapping_ops(self):
-        Parent, Child = self.Parent, self.Child
+        Parent, Child = self.classes("Parent", "Child")
+
+        self.session = fixture_session()
 
         p1 = Parent("P1")
 
@@ -573,7 +566,7 @@ class CustomDictTest(_CollectionOperations):
         assert_raises(TypeError, set, [p1.children])
 
     def test_bulk_replace(self):
-        Parent = self.Parent
+        Parent = self.classes.Parent
 
         p1 = Parent("foo")
         p1.children = {"a": "v a", "b": "v b", "c": "v c"}
@@ -596,7 +589,9 @@ class SetTest(_CollectionOperations):
     collection_class = set
 
     def test_set_operations(self):
-        Parent, Child = self.Parent, self.Child
+        Parent, Child = self.classes.Parent, self.classes.Child
+
+        self.session = fixture_session()
 
         p1 = Parent("P1")
 
@@ -703,7 +698,7 @@ class SetTest(_CollectionOperations):
         assert_raises(TypeError, set, [p1.children])
 
     def test_set_comparisons(self):
-        Parent = self.Parent
+        Parent = self.classes.Parent
 
         p1 = Parent("P1")
         p1.children = ["a", "b", "c"]
@@ -740,7 +735,7 @@ class SetTest(_CollectionOperations):
     @testing.requires.python_fixed_issue_8743
     def test_set_comparison_empty_to_empty(self):
         # test issue #3265 which was fixed in Python version 2.7.8
-        Parent = self.Parent
+        Parent = self.classes.Parent
 
         p1 = Parent("P1")
         p1.children = []
@@ -763,7 +758,9 @@ class SetTest(_CollectionOperations):
         is_(set_0 != set_a, False)
 
     def test_set_mutation(self):
-        Parent = self.Parent
+        Parent = self.classes.Parent
+
+        self.session = fixture_session()
 
         # mutations
         for op in (
@@ -845,7 +842,7 @@ class SetTest(_CollectionOperations):
                         raise
 
     def test_bulk_replace(self):
-        Parent = self.Parent
+        Parent = self.classes.Parent
 
         p1 = Parent("foo")
         p1.children = {"a", "b", "c"}
@@ -869,7 +866,9 @@ class CustomObjectTest(_CollectionOperations):
     collection_class = ObjectCollection
 
     def test_basic(self):
-        Parent = self.Parent
+        Parent = self.classes.Parent
+
+        self.session = fixture_session()
 
         p = Parent("p1")
         self.assert_(len(list(p.children)) == 0)
@@ -886,10 +885,9 @@ class CustomObjectTest(_CollectionOperations):
 
 
 class ProxyFactoryTest(ListTest):
-    def setup_test(self):
-        metadata = MetaData()
-
-        parents_table = Table(
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
             "Parent",
             metadata,
             Column(
@@ -897,7 +895,7 @@ class ProxyFactoryTest(ListTest):
             ),
             Column("name", String(128)),
         )
-        children_table = Table(
+        Table(
             "Children",
             metadata,
             Column(
@@ -908,6 +906,10 @@ class ProxyFactoryTest(ListTest):
             Column("name", String(128)),
         )
 
+    @classmethod
+    def setup_mappers(cls):
+        parents_table, children_table = cls.tables("Parent", "Children")
+
         class CustomProxy(_AssociationList):
             def __init__(self, lazy_collection, creator, value_attr, parent):
                 getter, setter = parent._default_getset(lazy_collection)
@@ -915,7 +917,7 @@ class ProxyFactoryTest(ListTest):
                     self, lazy_collection, creator, getter, setter, parent
                 )
 
-        class Parent(object):
+        class Parent(cls.Basic):
             children = association_proxy(
                 "_children",
                 "name",
@@ -926,11 +928,11 @@ class ProxyFactoryTest(ListTest):
             def __init__(self, name):
                 self.name = name
 
-        class Child(object):
+        class Child(cls.Basic):
             def __init__(self, name):
                 self.name = name
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Parent,
             parents_table,
             properties={
@@ -939,19 +941,13 @@ class ProxyFactoryTest(ListTest):
                 )
             },
         )
-        mapper(Child, children_table)
-
-        metadata.create_all(testing.db)
-
-        self.metadata = metadata
-        self.session = fixture_session()
-        self.Parent, self.Child = Parent, Child
+        cls.mapper_registry.map_imperatively(Child, children_table)
 
     def test_sequence_ops(self):
         self._test_sequence_ops()
 
 
-class ScalarTest(fixtures.TestBase):
+class ScalarTest(fixtures.MappedTest):
     @testing.provide_metadata
     def test_scalar_proxy(self):
         metadata = self.metadata
@@ -993,7 +989,7 @@ class ScalarTest(fixtures.TestBase):
                 for attr in kw:
                     setattr(self, attr, kw[attr])
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Parent,
             parents_table,
             properties={
@@ -1002,7 +998,7 @@ class ScalarTest(fixtures.TestBase):
                 )
             },
         )
-        mapper(Child, children_table)
+        self.mapper_registry.map_imperatively(Child, children_table)
 
         metadata.create_all(testing.db)
         session = fixture_session()
@@ -1107,12 +1103,14 @@ class ScalarTest(fixtures.TestBase):
         class B(object):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             A, a, properties=dict(a2b_single=relationship(A2B, uselist=False))
         )
 
-        mapper(A2B, a2b, properties=dict(b=relationship(B)))
-        mapper(B, b)
+        self.mapper_registry.map_imperatively(
+            A2B, a2b, properties=dict(b=relationship(B))
+        )
+        self.mapper_registry.map_imperatively(B, b)
 
         a1 = A()
         assert a1.a2b_name is None
@@ -1145,8 +1143,10 @@ class ScalarTest(fixtures.TestBase):
             def __init__(self, foo):
                 self.foo = foo
 
-        mapper(Parent, p, properties={"child": relationship(Child)})
-        mapper(Child, c)
+        self.mapper_registry.map_imperatively(
+            Parent, p, properties={"child": relationship(Child)}
+        )
+        self.mapper_registry.map_imperatively(Child, c)
 
         p1 = Parent()
 
@@ -1157,11 +1157,11 @@ class ScalarTest(fixtures.TestBase):
         eq_(set_.mock_calls, [call(child, "y")])
 
 
-class LazyLoadTest(fixtures.TestBase):
-    def setup_test(self):
-        metadata = MetaData()
+class LazyLoadTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
 
-        parents_table = Table(
+        Table(
             "Parent",
             metadata,
             Column(
@@ -1169,7 +1169,7 @@ class LazyLoadTest(fixtures.TestBase):
             ),
             Column("name", String(128)),
         )
-        children_table = Table(
+        Table(
             "Children",
             metadata,
             Column(
@@ -1180,26 +1180,19 @@ class LazyLoadTest(fixtures.TestBase):
             Column("name", String(128)),
         )
 
-        class Parent(object):
+    @classmethod
+    def setup_mappers(cls):
+        class Parent(cls.Basic):
             children = association_proxy("_children", "name")
 
             def __init__(self, name):
                 self.name = name
 
-        class Child(object):
+        class Child(cls.Basic):
             def __init__(self, name):
                 self.name = name
 
-        mapper(Child, children_table)
-        metadata.create_all(testing.db)
-
-        self.metadata = metadata
-        self.session = fixture_session()
-        self.Parent, self.Child = Parent, Child
-        self.table = parents_table
-
-    def teardown_test(self):
-        self.metadata.drop_all(testing.db)
+        cls.mapper_registry.map_imperatively(Child, cls.tables.Children)
 
     def roundtrip(self, obj):
         self.session.add(obj)
@@ -1209,11 +1202,13 @@ class LazyLoadTest(fixtures.TestBase):
         return self.session.query(type_).get(id_)
 
     def test_lazy_list(self):
-        Parent, Child = self.Parent, self.Child
+        Parent, Child = self.classes("Parent", "Child")
 
-        mapper(
+        self.session = fixture_session()
+
+        self.mapper_registry.map_imperatively(
             Parent,
-            self.table,
+            self.tables.Parent,
             properties={
                 "_children": relationship(
                     Child, lazy="select", collection_class=list
@@ -1233,11 +1228,13 @@ class LazyLoadTest(fixtures.TestBase):
         self.assert_("_children" in p.__dict__)
 
     def test_eager_list(self):
-        Parent, Child = self.Parent, self.Child
+        Parent, Child = self.classes("Parent", "Child")
 
-        mapper(
+        self.session = fixture_session()
+
+        self.mapper_registry.map_imperatively(
             Parent,
-            self.table,
+            self.tables.Parent,
             properties={
                 "_children": relationship(
                     Child, lazy="joined", collection_class=list
@@ -1254,11 +1251,13 @@ class LazyLoadTest(fixtures.TestBase):
         self.assert_(len(p._children) == 3)
 
     def test_slicing_list(self):
-        Parent, Child = self.Parent, self.Child
+        Parent, Child = self.classes("Parent", "Child")
 
-        mapper(
+        self.session = fixture_session()
+
+        self.mapper_registry.map_imperatively(
             Parent,
-            self.table,
+            self.tables.Parent,
             properties={
                 "_children": relationship(
                     Child, lazy="select", collection_class=list
@@ -1276,11 +1275,13 @@ class LazyLoadTest(fixtures.TestBase):
         eq_(["b", "c"], p.children[-2:])
 
     def test_lazy_scalar(self):
-        Parent, Child = self.Parent, self.Child
+        Parent, Child = self.classes("Parent", "Child")
 
-        mapper(
+        self.session = fixture_session()
+
+        self.mapper_registry.map_imperatively(
             Parent,
-            self.table,
+            self.tables.Parent,
             properties={
                 "_children": relationship(Child, lazy="select", uselist=False)
             },
@@ -1295,11 +1296,13 @@ class LazyLoadTest(fixtures.TestBase):
         self.assert_(p._children is not None)
 
     def test_eager_scalar(self):
-        Parent, Child = self.Parent, self.Child
+        Parent, Child = self.classes("Parent", "Child")
 
-        mapper(
+        self.session = fixture_session()
+
+        self.mapper_registry.map_imperatively(
             Parent,
-            self.table,
+            self.tables.Parent,
             properties={
                 "_children": relationship(Child, lazy="joined", uselist=False)
             },
@@ -1364,12 +1367,12 @@ class ReconstitutionTest(fixtures.MappedTest):
         Parent.kids = association_proxy("children", "name")
 
     def test_weak_identity_map(self):
-        mapper(
+        self.mapper_registry.map_imperatively(
             Parent,
             self.tables.parents,
             properties=dict(children=relationship(Child)),
         )
-        mapper(Child, self.tables.children)
+        self.mapper_registry.map_imperatively(Child, self.tables.children)
         session = fixture_session()
 
         def add_child(parent_name, child_name):
@@ -1384,12 +1387,12 @@ class ReconstitutionTest(fixtures.MappedTest):
         assert set(p.kids) == set(["c1", "c2"]), p.kids
 
     def test_copy(self):
-        mapper(
+        self.mapper_registry.map_imperatively(
             Parent,
             self.tables.parents,
             properties=dict(children=relationship(Child)),
         )
-        mapper(Child, self.tables.children)
+        self.mapper_registry.map_imperatively(Child, self.tables.children)
         p = Parent("p1")
         p.kids.extend(["c1", "c2"])
         p_copy = copy.copy(p)
@@ -1398,12 +1401,12 @@ class ReconstitutionTest(fixtures.MappedTest):
         assert set(p_copy.kids) == set(["c1", "c2"]), p_copy.kids
 
     def test_pickle_list(self):
-        mapper(
+        self.mapper_registry.map_imperatively(
             Parent,
             self.tables.parents,
             properties=dict(children=relationship(Child)),
         )
-        mapper(Child, self.tables.children)
+        self.mapper_registry.map_imperatively(Child, self.tables.children)
         p = Parent("p1")
         p.kids.extend(["c1", "c2"])
         r1 = pickle.loads(pickle.dumps(p))
@@ -1414,14 +1417,14 @@ class ReconstitutionTest(fixtures.MappedTest):
         # assert r2 == ['c1', 'c2']
 
     def test_pickle_set(self):
-        mapper(
+        self.mapper_registry.map_imperatively(
             Parent,
             self.tables.parents,
             properties=dict(
                 children=relationship(Child, collection_class=set)
             ),
         )
-        mapper(Child, self.tables.children)
+        self.mapper_registry.map_imperatively(Child, self.tables.children)
         p = Parent("p1")
         p.kids.update(["c1", "c2"])
         r1 = pickle.loads(pickle.dumps(p))
@@ -1432,7 +1435,7 @@ class ReconstitutionTest(fixtures.MappedTest):
         # assert r2 == set(['c1', 'c2'])
 
     def test_pickle_dict(self):
-        mapper(
+        self.mapper_registry.map_imperatively(
             Parent,
             self.tables.parents,
             properties=dict(
@@ -1444,7 +1447,7 @@ class ReconstitutionTest(fixtures.MappedTest):
                 )
             ),
         )
-        mapper(KVChild, self.tables.children)
+        self.mapper_registry.map_imperatively(KVChild, self.tables.children)
         p = Parent("p1")
         p.kids.update({"c1": "v1", "c2": "v2"})
         assert p.kids == {"c1": "c1", "c2": "c2"}
@@ -1603,8 +1606,10 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
             cls.classes.Singular,
         )
 
-        mapper(User, users, properties={"singular": relationship(Singular)})
-        mapper(
+        cls.mapper_registry.map_imperatively(
+            User, users, properties={"singular": relationship(Singular)}
+        )
+        cls.mapper_registry.map_imperatively(
             Keyword,
             keywords,
             properties={
@@ -1615,7 +1620,7 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
             },
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             UserKeyword,
             userkeywords,
             properties={
@@ -1625,7 +1630,7 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
                 ),
             },
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Singular, singular, properties={"keywords": relationship(Keyword)}
         )
 
@@ -2294,26 +2299,33 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
 
-class DictOfTupleUpdateTest(fixtures.TestBase):
-    def setup_test(self):
-        class B(object):
-            def __init__(self, key, elem):
-                self.key = key
-                self.elem = elem
+class DictOfTupleUpdateTest(fixtures.MappedTest):
+    run_create_tables = None
 
-        class A(object):
-            elements = association_proxy("orig", "elem", creator=B)
-
-        m = MetaData()
-        a = Table("a", m, Column("id", Integer, primary_key=True))
-        b = Table(
+    @classmethod
+    def define_tables(cls, metadata):
+        Table("a", metadata, Column("id", Integer, primary_key=True))
+        Table(
             "b",
-            m,
+            metadata,
             Column("id", Integer, primary_key=True),
             Column("aid", Integer, ForeignKey("a.id")),
             Column("elem", String),
         )
-        mapper(
+
+    @classmethod
+    def setup_mappers(cls):
+        a, b = cls.tables("a", "b")
+
+        class B(cls.Basic):
+            def __init__(self, key, elem):
+                self.key = key
+                self.elem = elem
+
+        class A(cls.Basic):
+            elements = association_proxy("orig", "elem", creator=B)
+
+        cls.mapper_registry.map_imperatively(
             A,
             a,
             properties={
@@ -2322,32 +2334,31 @@ class DictOfTupleUpdateTest(fixtures.TestBase):
                 )
             },
         )
-        mapper(B, b)
-        self.A = A
-        self.B = B
+        cls.mapper_registry.map_imperatively(B, b)
 
     def test_update_one_elem_dict(self):
-        a1 = self.A()
+
+        a1 = self.classes.A()
         a1.elements.update({("B", 3): "elem2"})
         eq_(a1.elements, {("B", 3): "elem2"})
 
     def test_update_multi_elem_dict(self):
-        a1 = self.A()
+        a1 = self.classes.A()
         a1.elements.update({("B", 3): "elem2", ("C", 4): "elem3"})
         eq_(a1.elements, {("B", 3): "elem2", ("C", 4): "elem3"})
 
     def test_update_one_elem_list(self):
-        a1 = self.A()
+        a1 = self.classes.A()
         a1.elements.update([(("B", 3), "elem2")])
         eq_(a1.elements, {("B", 3): "elem2"})
 
     def test_update_multi_elem_list(self):
-        a1 = self.A()
+        a1 = self.classes.A()
         a1.elements.update([(("B", 3), "elem2"), (("C", 4), "elem3")])
         eq_(a1.elements, {("B", 3): "elem2", ("C", 4): "elem3"})
 
     def test_update_one_elem_varg(self):
-        a1 = self.A()
+        a1 = self.classes.A()
         assert_raises_message(
             ValueError,
             "dictionary update sequence requires " "2-element tuples",
@@ -2356,7 +2367,7 @@ class DictOfTupleUpdateTest(fixtures.TestBase):
         )
 
     def test_update_multi_elem_varg(self):
-        a1 = self.A()
+        a1 = self.classes.A()
         assert_raises_message(
             TypeError,
             "update expected at most 1 arguments, got 2",
@@ -2367,6 +2378,8 @@ class DictOfTupleUpdateTest(fixtures.TestBase):
 
 
 class CompositeAccessTest(fixtures.DeclarativeMappedTest):
+    run_create_tables = None
+
     @classmethod
     def setup_classes(cls):
         class Point(cls.Basic):
@@ -2835,6 +2848,7 @@ class ScalarRemoveListObjectCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
 
+    run_create_tables = None
     useobject = True
     cascade_scalar_deletes = True
     uselist = True
@@ -2844,6 +2858,7 @@ class ScalarRemoveScalarObjectCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
 
+    run_create_tables = None
     useobject = True
     cascade_scalar_deletes = True
     uselist = False
@@ -2853,6 +2868,7 @@ class ScalarRemoveListScalarCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
 
+    run_create_tables = None
     useobject = False
     cascade_scalar_deletes = True
     uselist = True
@@ -2862,6 +2878,7 @@ class ScalarRemoveScalarScalarCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
 
+    run_create_tables = None
     useobject = False
     cascade_scalar_deletes = True
     uselist = False
@@ -2871,6 +2888,7 @@ class ScalarRemoveListObjectNoCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
 
+    run_create_tables = None
     useobject = True
     cascade_scalar_deletes = False
     uselist = True
@@ -2880,6 +2898,7 @@ class ScalarRemoveScalarObjectNoCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
 
+    run_create_tables = None
     useobject = True
     cascade_scalar_deletes = False
     uselist = False
@@ -2889,6 +2908,7 @@ class ScalarRemoveListScalarNoCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
 
+    run_create_tables = None
     useobject = False
     cascade_scalar_deletes = False
     uselist = True
@@ -2898,6 +2918,7 @@ class ScalarRemoveScalarScalarNoCascade(
     ScalarRemoveTest, fixtures.DeclarativeMappedTest
 ):
 
+    run_create_tables = None
     useobject = False
     cascade_scalar_deletes = False
     uselist = False
@@ -3300,6 +3321,8 @@ class SynonymOfProxyTest(AssertsCompiledSQL, fixtures.DeclarativeMappedTest):
 class ProxyHybridTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
     __dialect__ = "default"
 
+    run_create_tables = None
+
     @classmethod
     def setup_classes(cls):
         from sqlalchemy.ext.hybrid import hybrid_property
@@ -3436,6 +3459,8 @@ class ProxyHybridTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
 
 
 class ProxyPlainPropertyTest(fixtures.DeclarativeMappedTest):
+    run_create_tables = None
+
     @classmethod
     def setup_classes(cls):
 

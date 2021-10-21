@@ -8,7 +8,6 @@ from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import assert_raises
@@ -149,15 +148,17 @@ class ConcreteTest(fixtures.MappedTest):
             "type",
             "pjoin",
         )
-        employee_mapper = mapper(Employee, pjoin, polymorphic_on=pjoin.c.type)
-        mapper(
+        employee_mapper = self.mapper_registry.map_imperatively(
+            Employee, pjoin, polymorphic_on=pjoin.c.type
+        )
+        self.mapper_registry.map_imperatively(
             Manager,
             managers_table,
             inherits=employee_mapper,
             concrete=True,
             polymorphic_identity="manager",
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Engineer,
             engineers_table,
             inherits=employee_mapper,
@@ -200,15 +201,17 @@ class ConcreteTest(fixtures.MappedTest):
             "type",
             "pjoin2",
         )
-        employee_mapper = mapper(Employee, pjoin, polymorphic_on=pjoin.c.type)
-        mapper(
+        employee_mapper = self.mapper_registry.map_imperatively(
+            Employee, pjoin, polymorphic_on=pjoin.c.type
+        )
+        self.mapper_registry.map_imperatively(
             Manager,
             managers_table,
             inherits=employee_mapper,
             concrete=True,
             polymorphic_identity="manager",
         )
-        engineer_mapper = mapper(
+        engineer_mapper = self.mapper_registry.map_imperatively(
             Engineer,
             engineers_table,
             with_polymorphic=("*", pjoin2),
@@ -217,7 +220,7 @@ class ConcreteTest(fixtures.MappedTest):
             concrete=True,
             polymorphic_identity="engineer",
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Hacker,
             hackers_table,
             inherits=engineer_mapper,
@@ -331,15 +334,17 @@ class ConcreteTest(fixtures.MappedTest):
                 test_calls.engineer_info_class()
                 return cls.manager_data
 
-        employee_mapper = mapper(Employee, pjoin, polymorphic_on=pjoin.c.type)
-        mapper(
+        employee_mapper = self.mapper_registry.map_imperatively(
+            Employee, pjoin, polymorphic_on=pjoin.c.type
+        )
+        self.mapper_registry.map_imperatively(
             ManagerWHybrid,
             managers_table,
             inherits=employee_mapper,
             concrete=True,
             polymorphic_identity="manager",
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Engineer,
             engineers_table,
             inherits=employee_mapper,
@@ -392,20 +397,20 @@ class ConcreteTest(fixtures.MappedTest):
             "type",
             "pjoin2",
         )
-        employee_mapper = mapper(
+        employee_mapper = self.mapper_registry.map_imperatively(
             Employee,
             employees_table,
             with_polymorphic=("*", pjoin),
             polymorphic_on=pjoin.c.type,
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Manager,
             managers_table,
             inherits=employee_mapper,
             concrete=True,
             polymorphic_identity="manager",
         )
-        engineer_mapper = mapper(
+        engineer_mapper = self.mapper_registry.map_imperatively(
             Engineer,
             engineers_table,
             with_polymorphic=("*", pjoin2),
@@ -414,7 +419,7 @@ class ConcreteTest(fixtures.MappedTest):
             concrete=True,
             polymorphic_identity="engineer",
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Hacker,
             hackers_table,
             inherits=engineer_mapper,
@@ -484,24 +489,24 @@ class ConcreteTest(fixtures.MappedTest):
             "type",
             "pjoin2",
         )
-        employee_mapper = mapper(
+        employee_mapper = self.mapper_registry.map_imperatively(
             Employee, employees_table, polymorphic_identity="employee"
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Manager,
             managers_table,
             inherits=employee_mapper,
             concrete=True,
             polymorphic_identity="manager",
         )
-        engineer_mapper = mapper(
+        engineer_mapper = self.mapper_registry.map_imperatively(
             Engineer,
             engineers_table,
             inherits=employee_mapper,
             concrete=True,
             polymorphic_identity="engineer",
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Hacker,
             hackers_table,
             inherits=engineer_mapper,
@@ -613,20 +618,22 @@ class ConcreteTest(fixtures.MappedTest):
             "type",
             "pjoin",
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Company,
             companies,
             properties={"employees": relationship(Employee)},
         )
-        employee_mapper = mapper(Employee, pjoin, polymorphic_on=pjoin.c.type)
-        mapper(
+        employee_mapper = self.mapper_registry.map_imperatively(
+            Employee, pjoin, polymorphic_on=pjoin.c.type
+        )
+        self.mapper_registry.map_imperatively(
             Manager,
             managers_table,
             inherits=employee_mapper,
             concrete=True,
             polymorphic_identity="manager",
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Engineer,
             engineers_table,
             inherits=employee_mapper,
@@ -732,24 +739,36 @@ class PropertyInheritanceTest(fixtures.MappedTest):
             self.tables.dest_table,
         )
 
-        mapper(A, a_table, properties={"some_dest": relationship(Dest)})
-        mapper(B, b_table, inherits=A, concrete=True)
-        mapper(Dest, dest_table)
+        self.mapper_registry.map_imperatively(
+            A, a_table, properties={"some_dest": relationship(Dest)}
+        )
+        self.mapper_registry.map_imperatively(
+            B, b_table, inherits=A, concrete=True
+        )
+        self.mapper_registry.map_imperatively(Dest, dest_table)
         b = B()
         dest = Dest()
         assert_raises(AttributeError, setattr, b, "some_dest", dest)
         clear_mappers()
 
-        mapper(A, a_table, properties={"a_id": a_table.c.id})
-        mapper(B, b_table, inherits=A, concrete=True)
-        mapper(Dest, dest_table)
+        self.mapper_registry.map_imperatively(
+            A, a_table, properties={"a_id": a_table.c.id}
+        )
+        self.mapper_registry.map_imperatively(
+            B, b_table, inherits=A, concrete=True
+        )
+        self.mapper_registry.map_imperatively(Dest, dest_table)
         b = B()
         assert_raises(AttributeError, setattr, b, "a_id", 3)
         clear_mappers()
 
-        mapper(A, a_table, properties={"a_id": a_table.c.id})
-        mapper(B, b_table, inherits=A, concrete=True)
-        mapper(Dest, dest_table)
+        self.mapper_registry.map_imperatively(
+            A, a_table, properties={"a_id": a_table.c.id}
+        )
+        self.mapper_registry.map_imperatively(
+            B, b_table, inherits=A, concrete=True
+        )
+        self.mapper_registry.map_imperatively(Dest, dest_table)
 
     def test_inheriting(self):
         A, B, b_table, a_table, Dest, dest_table = (
@@ -761,14 +780,14 @@ class PropertyInheritanceTest(fixtures.MappedTest):
             self.tables.dest_table,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             a_table,
             properties={
                 "some_dest": relationship(Dest, back_populates="many_a")
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             B,
             b_table,
             inherits=A,
@@ -778,7 +797,7 @@ class PropertyInheritanceTest(fixtures.MappedTest):
             },
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Dest,
             dest_table,
             properties={
@@ -817,9 +836,11 @@ class PropertyInheritanceTest(fixtures.MappedTest):
         )
 
         # test issue #3630, no error or warning is generated
-        mapper(A, a_table)
-        mapper(B, b_table, inherits=A, concrete=True)
-        mapper(
+        self.mapper_registry.map_imperatively(A, a_table)
+        self.mapper_registry.map_imperatively(
+            B, b_table, inherits=A, concrete=True
+        )
+        self.mapper_registry.map_imperatively(
             Dest,
             dest_table,
             properties={
@@ -841,17 +862,17 @@ class PropertyInheritanceTest(fixtures.MappedTest):
 
         # this is the opposite mapping as that of #3630, never generated
         # an error / warning
-        mapper(
+        self.mapper_registry.map_imperatively(
             A, a_table, properties={"dest": relationship(Dest, backref="a")}
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             B,
             b_table,
             inherits=A,
             concrete=True,
             properties={"dest": relationship(Dest, backref="a1")},
         )
-        mapper(Dest, dest_table)
+        self.mapper_registry.map_imperatively(Dest, dest_table)
         configure_mappers()
 
     def test_polymorphic_backref(self):
@@ -872,7 +893,7 @@ class PropertyInheritanceTest(fixtures.MappedTest):
         ajoin = polymorphic_union(
             {"a": a_table, "b": b_table, "c": c_table}, "type", "ajoin"
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             a_table,
             with_polymorphic=("*", ajoin),
@@ -882,7 +903,7 @@ class PropertyInheritanceTest(fixtures.MappedTest):
                 "some_dest": relationship(Dest, back_populates="many_a")
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             B,
             b_table,
             inherits=A,
@@ -893,7 +914,7 @@ class PropertyInheritanceTest(fixtures.MappedTest):
             },
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             C,
             c_table,
             inherits=A,
@@ -904,7 +925,7 @@ class PropertyInheritanceTest(fixtures.MappedTest):
             },
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Dest,
             dest_table,
             properties={
@@ -973,7 +994,7 @@ class PropertyInheritanceTest(fixtures.MappedTest):
         ajoin = polymorphic_union(
             {"a": a_table, "b": b_table, "c": c_table}, "type", "ajoin"
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             a_table,
             with_polymorphic=("*", ajoin),
@@ -983,7 +1004,7 @@ class PropertyInheritanceTest(fixtures.MappedTest):
                 "some_dest": relationship(Dest, back_populates="many_a")
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             B,
             b_table,
             inherits=A,
@@ -994,7 +1015,7 @@ class PropertyInheritanceTest(fixtures.MappedTest):
             },
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             C,
             c_table,
             inherits=A,
@@ -1005,7 +1026,7 @@ class PropertyInheritanceTest(fixtures.MappedTest):
             },
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Dest,
             dest_table,
             properties={
@@ -1106,7 +1127,7 @@ class ManyToManyTest(fixtures.MappedTest):
             self.classes.Sub,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Base,
             base,
             properties={
@@ -1118,7 +1139,7 @@ class ManyToManyTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Sub,
             sub,
             inherits=Base,
@@ -1132,7 +1153,7 @@ class ManyToManyTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(Related, related)
+        self.mapper_registry.map_imperatively(Related, related)
         sess = fixture_session()
         b1, s1, r1, r2, r3 = Base(), Sub(), Related(), Related(), Related()
         b1.related.append(r1)
@@ -1205,20 +1226,20 @@ class ColKeysTest(fixtures.MappedTest):
         class Office(Location):
             pass
 
-        location_mapper = mapper(
+        location_mapper = self.mapper_registry.map_imperatively(
             Location,
             pjoin,
             polymorphic_on=pjoin.c.type,
             polymorphic_identity="location",
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Office,
             offices_table,
             inherits=location_mapper,
             concrete=True,
             polymorphic_identity="office",
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Refugee,
             refugees_table,
             inherits=location_mapper,

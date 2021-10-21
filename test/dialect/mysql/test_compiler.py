@@ -53,6 +53,7 @@ from sqlalchemy.dialects.mysql import insert
 from sqlalchemy.dialects.mysql import match
 from sqlalchemy.sql import column
 from sqlalchemy.sql import table
+from sqlalchemy.sql.expression import bindparam
 from sqlalchemy.sql.expression import literal_column
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -1281,6 +1282,26 @@ class MatchExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
         expr = match(firstname, lastname, against="Firstname Lastname")
 
         expr = case(expr)
+        self.assert_compile(expr, expected)
+
+    @testing.combinations(
+        (bindparam("against_expr"), "%s"),
+        (
+            column("some col") + column("some other col"),
+            "`some col` + `some other col`",
+        ),
+        (column("some col") + bindparam("against_expr"), "`some col` + %s"),
+    )
+    def test_match_expression_against_expr(self, against, expected_segment):
+        firstname = self.match_table.c.firstname
+        lastname = self.match_table.c.lastname
+
+        expr = match(firstname, lastname, against=against)
+
+        expected = (
+            "MATCH (user.firstname, user.lastname) AGAINST (%s)"
+            % expected_segment
+        )
         self.assert_compile(expr, expected)
 
     def test_cols_required(self):

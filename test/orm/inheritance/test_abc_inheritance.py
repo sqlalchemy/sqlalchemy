@@ -3,7 +3,6 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import class_mapper
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm.interfaces import MANYTOONE
@@ -175,14 +174,14 @@ class ABCTest(fixtures.MappedTest):
         class C(B):
             pass
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             A,
             ta,
             polymorphic_on=abcjoin.c.type,
             with_polymorphic=("*", abcjoin),
             polymorphic_identity="a",
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             B,
             tb,
             polymorphic_on=bcjoin.c.type,
@@ -191,7 +190,7 @@ class ABCTest(fixtures.MappedTest):
             inherits=A,
             inherit_condition=atob,
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             C,
             tc,
             polymorphic_identity="c",

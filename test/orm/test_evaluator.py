@@ -11,7 +11,6 @@ from sqlalchemy import String
 from sqlalchemy import tuple_
 from sqlalchemy.orm import evaluator
 from sqlalchemy.orm import exc as orm_exc
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -62,7 +61,7 @@ class EvaluateTest(fixtures.MappedTest):
     def setup_mappers(cls):
         users, User = cls.tables.users, cls.classes.User
 
-        mapper(User, users)
+        cls.mapper_registry.map_imperatively(User, users)
 
     def test_compare_to_value(self):
         User = self.classes.User

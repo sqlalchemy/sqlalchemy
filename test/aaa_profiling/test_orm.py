@@ -13,7 +13,6 @@ from sqlalchemy.orm import defer
 from sqlalchemy.orm import join as orm_join
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import Load
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
@@ -68,12 +67,12 @@ class MergeTest(NoCache, fixtures.MappedTest):
             cls.tables.child,
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Parent,
             parent,
             properties={"children": relationship(Child, backref="parent")},
         )
-        mapper(Child, child)
+        cls.mapper_registry.map_imperatively(Child, child)
 
     @classmethod
     def insert_data(cls, connection):
@@ -189,8 +188,10 @@ class LoadManyToOneFromIdentityTest(fixtures.MappedTest):
             cls.tables.child,
         )
 
-        mapper(Parent, parent, properties={"child": relationship(Child)})
-        mapper(Child, child)
+        cls.mapper_registry.map_imperatively(
+            Parent, parent, properties={"child": relationship(Child)}
+        )
+        cls.mapper_registry.map_imperatively(Child, child)
 
     @classmethod
     def insert_data(cls, connection):
@@ -284,7 +285,7 @@ class MergeBackrefsTest(NoCache, fixtures.MappedTest):
     def setup_mappers(cls):
         A, B, C, D = cls.classes.A, cls.classes.B, cls.classes.C, cls.classes.D
         a, b, c, d = cls.tables.a, cls.tables.b, cls.tables.c, cls.tables.d
-        mapper(
+        cls.mapper_registry.map_imperatively(
             A,
             a,
             properties={
@@ -293,9 +294,9 @@ class MergeBackrefsTest(NoCache, fixtures.MappedTest):
                 "ds": relationship(D, backref="a"),
             },
         )
-        mapper(B, b)
-        mapper(C, c)
-        mapper(D, d)
+        cls.mapper_registry.map_imperatively(B, b)
+        cls.mapper_registry.map_imperatively(C, c)
+        cls.mapper_registry.map_imperatively(D, d)
 
     @classmethod
     def insert_data(cls, connection):
@@ -361,7 +362,7 @@ class DeferOptionsTest(NoCache, fixtures.MappedTest):
     def setup_mappers(cls):
         A = cls.classes.A
         a = cls.tables.a
-        mapper(A, a)
+        cls.mapper_registry.map_imperatively(A, a)
 
     @classmethod
     def insert_data(cls, connection):
@@ -441,12 +442,12 @@ class AttributeOverheadTest(NoCache, fixtures.MappedTest):
             cls.tables.child,
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Parent,
             parent,
             properties={"children": relationship(Child, backref="parent")},
         )
-        mapper(Child, child)
+        cls.mapper_registry.map_imperatively(Child, child)
 
     def test_attribute_set(self):
         Parent, Child = self.classes.Parent, self.classes.Child
@@ -520,12 +521,12 @@ class SessionTest(NoCache, fixtures.MappedTest):
             cls.tables.child,
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Parent,
             parent,
             properties={"children": relationship(Child, backref="parent")},
         )
-        mapper(Child, child)
+        cls.mapper_registry.map_imperatively(Child, child)
 
     def test_expire_lots(self):
         Parent, Child = self.classes.Parent, self.classes.Child
@@ -571,7 +572,7 @@ class QueryTest(NoCache, fixtures.MappedTest):
         Parent = cls.classes.Parent
         parent = cls.tables.parent
 
-        mapper(Parent, parent)
+        cls.mapper_registry.map_imperatively(Parent, parent)
 
     def _fixture(self):
         Parent = self.classes.Parent
@@ -668,9 +669,13 @@ class SelectInEagerLoadTest(NoCache, fixtures.MappedTest):
         A, B, C = cls.classes("A", "B", "C")
         a, b, c = cls.tables("a", "b", "c")
 
-        mapper(A, a, properties={"bs": relationship(B)})
-        mapper(B, b, properties={"cs": relationship(C)})
-        mapper(C, c)
+        cls.mapper_registry.map_imperatively(
+            A, a, properties={"bs": relationship(B)}
+        )
+        cls.mapper_registry.map_imperatively(
+            B, b, properties={"cs": relationship(C)}
+        )
+        cls.mapper_registry.map_imperatively(C, c)
 
     @classmethod
     def insert_data(cls, connection):
@@ -799,13 +804,21 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
         A, B, C, D, E, F, G = cls.classes("A", "B", "C", "D", "E", "F", "G")
         a, b, c, d, e, f, g = cls.tables("a", "b", "c", "d", "e", "f", "g")
 
-        mapper(A, a, properties={"bs": relationship(B), "es": relationship(E)})
-        mapper(B, b, properties={"cs": relationship(C)})
-        mapper(C, c, properties={"ds": relationship(D)})
-        mapper(D, d)
-        mapper(E, e, properties={"fs": relationship(F), "gs": relationship(G)})
-        mapper(F, f)
-        mapper(G, g)
+        cls.mapper_registry.map_imperatively(
+            A, a, properties={"bs": relationship(B), "es": relationship(E)}
+        )
+        cls.mapper_registry.map_imperatively(
+            B, b, properties={"cs": relationship(C)}
+        )
+        cls.mapper_registry.map_imperatively(
+            C, c, properties={"ds": relationship(D)}
+        )
+        cls.mapper_registry.map_imperatively(D, d)
+        cls.mapper_registry.map_imperatively(
+            E, e, properties={"fs": relationship(F), "gs": relationship(G)}
+        )
+        cls.mapper_registry.map_imperatively(F, f)
+        cls.mapper_registry.map_imperatively(G, g)
 
     @classmethod
     def insert_data(cls, connection):
@@ -1094,8 +1107,10 @@ class BranchedOptionTest(NoCache, fixtures.MappedTest):
         A, B, C, D, E, F, G = cls.classes("A", "B", "C", "D", "E", "F", "G")
         a, b, c, d, e, f, g = cls.tables("a", "b", "c", "d", "e", "f", "g")
 
-        mapper(A, a, properties={"bs": relationship(B), "gs": relationship(G)})
-        mapper(
+        cls.mapper_registry.map_imperatively(
+            A, a, properties={"bs": relationship(B), "gs": relationship(G)}
+        )
+        cls.mapper_registry.map_imperatively(
             B,
             b,
             properties={
@@ -1105,11 +1120,11 @@ class BranchedOptionTest(NoCache, fixtures.MappedTest):
                 "fs": relationship(F),
             },
         )
-        mapper(C, c)
-        mapper(D, d)
-        mapper(E, e)
-        mapper(F, f)
-        mapper(G, g)
+        cls.mapper_registry.map_imperatively(C, c)
+        cls.mapper_registry.map_imperatively(D, d)
+        cls.mapper_registry.map_imperatively(E, e)
+        cls.mapper_registry.map_imperatively(F, f)
+        cls.mapper_registry.map_imperatively(G, g)
 
         configure_mappers()
 
@@ -1192,7 +1207,7 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
         A = cls.classes.A
         a = cls.tables.a
 
-        mapper(A, a)
+        cls.mapper_registry.map_imperatively(A, a)
 
     @classmethod
     def insert_data(cls, connection):

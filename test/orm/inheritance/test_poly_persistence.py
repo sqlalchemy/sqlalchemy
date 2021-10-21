@@ -6,7 +6,6 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
@@ -131,7 +130,7 @@ class InsertOrderTest(PolymorphTest):
             "pjoin",
         )
 
-        person_mapper = mapper(
+        person_mapper = self.mapper_registry.map_imperatively(
             Person,
             people,
             with_polymorphic=("*", person_join),
@@ -139,19 +138,19 @@ class InsertOrderTest(PolymorphTest):
             polymorphic_identity="person",
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Engineer,
             engineers,
             inherits=person_mapper,
             polymorphic_identity="engineer",
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Manager,
             managers,
             inherits=person_mapper,
             polymorphic_identity="manager",
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Company,
             companies,
             properties={
@@ -272,7 +271,7 @@ class RoundTripTest(PolymorphTest):
             manager_with_polymorphic = None
 
         if redefine_colprop:
-            person_mapper = mapper(
+            person_mapper = cls.mapper_registry.map_imperatively(
                 Person,
                 people,
                 with_polymorphic=person_with_polymorphic,
@@ -281,7 +280,7 @@ class RoundTripTest(PolymorphTest):
                 properties={"person_name": people.c.name},
             )
         else:
-            person_mapper = mapper(
+            person_mapper = cls.mapper_registry.map_imperatively(
                 Person,
                 people,
                 with_polymorphic=person_with_polymorphic,
@@ -289,13 +288,13 @@ class RoundTripTest(PolymorphTest):
                 polymorphic_identity="person",
             )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Engineer,
             engineers,
             inherits=person_mapper,
             polymorphic_identity="engineer",
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Manager,
             managers,
             inherits=person_mapper,
@@ -303,9 +302,11 @@ class RoundTripTest(PolymorphTest):
             polymorphic_identity="manager",
         )
 
-        mapper(Boss, boss, inherits=Manager, polymorphic_identity="boss")
+        cls.mapper_registry.map_imperatively(
+            Boss, boss, inherits=Manager, polymorphic_identity="boss"
+        )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Company,
             companies,
             properties={

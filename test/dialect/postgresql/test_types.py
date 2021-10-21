@@ -45,7 +45,7 @@ from sqlalchemy.dialects.postgresql import NUMRANGE
 from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.dialects.postgresql import TSTZRANGE
 from sqlalchemy.exc import CompileError
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import sqltypes
@@ -3034,17 +3034,15 @@ class HStoreRoundTripTest(fixtures.TablesTest):
         )
         self._assert_data([{r"key \"foo\"": r'value \"bar"\ xyz'}], connection)
 
-    def test_orm_round_trip(self, connection):
-        from sqlalchemy import orm
-
+    def test_orm_round_trip(self, registry):
         class Data(object):
             def __init__(self, name, data):
                 self.name = name
                 self.data = data
 
-        orm.mapper(Data, self.tables.data_table)
+        registry.map_imperatively(Data, self.tables.data_table)
 
-        with orm.Session(connection) as s:
+        with fixtures.fixture_session() as s:
             d = Data(
                 name="r1",
                 data={"key1": "value1", "key2": "value2", "key3": "value3"},

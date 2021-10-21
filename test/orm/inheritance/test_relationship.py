@@ -10,7 +10,6 @@ from sqlalchemy.orm import backref
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
@@ -99,14 +98,14 @@ class SelfReferentialTestJoinedToBase(fixtures.MappedTest):
     def setup_mappers(cls):
         engineers, people = cls.tables.engineers, cls.tables.people
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Person,
             people,
             polymorphic_on=people.c.type,
             polymorphic_identity="person",
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Engineer,
             engineers,
             inherits=Person,
@@ -221,18 +220,18 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
         managers = cls.tables.managers
         people = cls.tables.people
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Person,
             people,
             polymorphic_on=people.c.type,
             polymorphic_identity="person",
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Manager, managers, inherits=Person, polymorphic_identity="manager"
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Engineer,
             engineers,
             inherits=Person,
@@ -442,14 +441,14 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
         engineers = cls.tables.engineers
         people = cls.tables.people
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Person,
             people,
             polymorphic_on=people.c.type,
             polymorphic_identity="person",
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Engineer,
             engineers,
             inherits=Person,
@@ -615,7 +614,7 @@ class M2MFilterTest(fixtures.MappedTest):
         class Organization(cls.Comparable):
             pass
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Organization,
             organizations,
             properties={
@@ -627,14 +626,14 @@ class M2MFilterTest(fixtures.MappedTest):
             },
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Person,
             people,
             polymorphic_on=people.c.type,
             polymorphic_identity="person",
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Engineer,
             engineers,
             inherits=Person,
@@ -755,9 +754,11 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
         Child2 = cls.classes.Child2
         secondary = cls.tables.secondary
 
-        mapper(Parent, parent, polymorphic_on=parent.c.cls)
+        cls.mapper_registry.map_imperatively(
+            Parent, parent, polymorphic_on=parent.c.cls
+        )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Child1,
             child1,
             inherits=Parent,
@@ -774,7 +775,9 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
             },
         )
 
-        mapper(Child2, child2, inherits=Parent, polymorphic_identity="child2")
+        cls.mapper_registry.map_imperatively(
+            Child2, child2, inherits=Parent, polymorphic_identity="child2"
+        )
 
     def test_query_crit(self):
         Child1, Child2 = self.classes.Child1, self.classes.Child2
@@ -1044,13 +1047,13 @@ class EagerToSubclassTest(fixtures.MappedTest):
         related = cls.tables.related
         Related = cls.classes.Related
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Parent,
             parent,
             properties={"children": relationship(Sub, order_by=sub.c.data)},
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Base,
             base,
             polymorphic_on=base.c.type,
@@ -1058,9 +1061,11 @@ class EagerToSubclassTest(fixtures.MappedTest):
             properties={"related": relationship(Related)},
         )
 
-        mapper(Sub, sub, inherits=Base, polymorphic_identity="s")
+        cls.mapper_registry.map_imperatively(
+            Sub, sub, inherits=Base, polymorphic_identity="s"
+        )
 
-        mapper(Related, related)
+        cls.mapper_registry.map_imperatively(Related, related)
 
     @classmethod
     def insert_data(cls, connection):
@@ -1220,14 +1225,14 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
         subparent = cls.tables.subparent
         Subparent = cls.classes.Subparent
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Parent,
             parent,
             polymorphic_on=parent.c.type,
             polymorphic_identity="b",
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Subparent,
             subparent,
             inherits=Parent,
@@ -1235,11 +1240,13 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
             properties={"children": relationship(Sub, order_by=base.c.id)},
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Base, base, polymorphic_on=base.c.type, polymorphic_identity="b"
         )
 
-        mapper(Sub, sub, inherits=Base, polymorphic_identity="s")
+        cls.mapper_registry.map_imperatively(
+            Sub, sub, inherits=Base, polymorphic_identity="s"
+        )
 
     @classmethod
     def insert_data(cls, connection):
@@ -1411,22 +1418,24 @@ class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
         C = cls.classes.C
         D = cls.classes.D
 
-        mapper(A, cls.tables.a, polymorphic_on=cls.tables.a.c.type)
-        mapper(
+        cls.mapper_registry.map_imperatively(
+            A, cls.tables.a, polymorphic_on=cls.tables.a.c.type
+        )
+        cls.mapper_registry.map_imperatively(
             B,
             cls.tables.b,
             inherits=A,
             polymorphic_identity="b",
             properties={"related": relationship(D, secondary=cls.tables.btod)},
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             C,
             cls.tables.c,
             inherits=A,
             polymorphic_identity="c",
             properties={"related": relationship(D, secondary=cls.tables.ctod)},
         )
-        mapper(D, cls.tables.d)
+        cls.mapper_registry.map_imperatively(D, cls.tables.d)
 
     @classmethod
     def insert_data(cls, connection):
@@ -1576,15 +1585,15 @@ class SubClassToSubClassFromParentTest(fixtures.MappedTest):
         B = cls.classes.B
         D = cls.classes.D
 
-        mapper(Z, cls.tables.z)
-        mapper(
+        cls.mapper_registry.map_imperatively(Z, cls.tables.z)
+        cls.mapper_registry.map_imperatively(
             A,
             cls.tables.a,
             polymorphic_on=cls.tables.a.c.type,
             with_polymorphic="*",
             properties={"zs": relationship(Z, lazy="subquery")},
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             B,
             cls.tables.b,
             inherits=A,
@@ -1597,7 +1606,9 @@ class SubClassToSubClassFromParentTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(D, cls.tables.d, inherits=A, polymorphic_identity="d")
+        cls.mapper_registry.map_imperatively(
+            D, cls.tables.d, inherits=A, polymorphic_identity="d"
+        )
 
     @classmethod
     def insert_data(cls, connection):
@@ -1733,21 +1744,25 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
     def setup_mappers(cls):
         Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = cls._classes()
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Parent, cls.tables.parent, properties={"sub1": relationship(Sub1)}
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Base1, cls.tables.base1, properties={"sub2": relationship(Sub2)}
         )
-        mapper(Sub1, cls.tables.sub1, inherits=Base1)
-        mapper(
+        cls.mapper_registry.map_imperatively(
+            Sub1, cls.tables.sub1, inherits=Base1
+        )
+        cls.mapper_registry.map_imperatively(
             Base2,
             cls.tables.base2,
             properties={"ep1": relationship(EP1), "ep2": relationship(EP2)},
         )
-        mapper(Sub2, cls.tables.sub2, inherits=Base2)
-        mapper(EP1, cls.tables.ep1)
-        mapper(EP2, cls.tables.ep2)
+        cls.mapper_registry.map_imperatively(
+            Sub2, cls.tables.sub2, inherits=Base2
+        )
+        cls.mapper_registry.map_imperatively(EP1, cls.tables.ep1)
+        cls.mapper_registry.map_imperatively(EP2, cls.tables.ep2)
 
     def test_one(self):
         Parent, Base1, Base2, Sub1, Sub2, EP1, EP2 = self._classes()
@@ -2742,10 +2757,10 @@ class MultipleAdaptUsesEntityOverTableTest(
     def setup_mappers(cls):
         A, B, C, D = cls.classes.A, cls.classes.B, cls.classes.C, cls.classes.D
         a, b, c, d = cls.tables.a, cls.tables.b, cls.tables.c, cls.tables.d
-        mapper(A, a)
-        mapper(B, b, inherits=A)
-        mapper(C, c, inherits=A)
-        mapper(D, d, inherits=A)
+        cls.mapper_registry.map_imperatively(A, a)
+        cls.mapper_registry.map_imperatively(B, b, inherits=A)
+        cls.mapper_registry.map_imperatively(C, c, inherits=A)
+        cls.mapper_registry.map_imperatively(D, d, inherits=A)
 
     def _two_join_fixture(self):
         B, C, D = (self.classes.B, self.classes.C, self.classes.D)
@@ -2845,7 +2860,7 @@ class SameNameOnJoined(fixtures.MappedTest):
         class B(cls.Comparable):
             pass
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             A,
             cls.tables.a,
             polymorphic_on=cls.tables.a.c.t,
@@ -2853,7 +2868,7 @@ class SameNameOnJoined(fixtures.MappedTest):
             properties={"bs": relationship(B, cascade="all, delete-orphan")},
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             ASub,
             cls.tables.a_sub,
             inherits=A,
@@ -2861,7 +2876,7 @@ class SameNameOnJoined(fixtures.MappedTest):
             properties={"bs": relationship(B, cascade="all, delete-orphan")},
         )
 
-        mapper(B, cls.tables.b)
+        cls.mapper_registry.map_imperatively(B, cls.tables.b)
 
     def test_persist(self):
         A, ASub, B = self.classes("A", "ASub", "B")

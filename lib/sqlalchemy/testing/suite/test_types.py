@@ -39,7 +39,7 @@ from ... import TypeDecorator
 from ... import Unicode
 from ... import UnicodeText
 from ... import util
-from ...ext.declarative import declarative_base
+from ...orm import declarative_base
 from ...orm import Session
 from ...util import u
 

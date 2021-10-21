@@ -15,7 +15,6 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy.orm import backref
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.testing import eq_
@@ -112,11 +111,11 @@ class EagerTest(fixtures.MappedTest):
             cls.tables.categories,
         )
 
-        mapper(Owner, owners)
+        cls.mapper_registry.map_imperatively(Owner, owners)
 
-        mapper(Category, categories)
+        cls.mapper_registry.map_imperatively(Category, categories)
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Option,
             options,
             properties=dict(
@@ -125,7 +124,7 @@ class EagerTest(fixtures.MappedTest):
             ),
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Thing,
             tests,
             properties=dict(
@@ -396,9 +395,9 @@ class EagerTest2(fixtures.MappedTest):
         )
 
         # set up bi-directional eager loads
-        mapper(Left, left)
-        mapper(Right, right)
-        mapper(
+        cls.mapper_registry.map_imperatively(Left, left)
+        cls.mapper_registry.map_imperatively(Right, right)
+        cls.mapper_registry.map_imperatively(
             Middle,
             middle,
             properties=dict(
@@ -495,8 +494,8 @@ class EagerTest3(fixtures.MappedTest):
             self.tables.datas,
         )
 
-        mapper(Data, datas)
-        mapper(
+        self.mapper_registry.map_imperatively(Data, datas)
+        self.mapper_registry.map_imperatively(
             Foo,
             foo,
             properties={
@@ -506,7 +505,9 @@ class EagerTest3(fixtures.MappedTest):
             },
         )
 
-        mapper(Stat, stats, properties={"data": relationship(Data)})
+        self.mapper_registry.map_imperatively(
+            Stat, stats, properties={"data": relationship(Data)}
+        )
 
         session = fixture_session()
 
@@ -613,8 +614,8 @@ class EagerTest4(fixtures.MappedTest):
             self.tables.departments,
         )
 
-        mapper(Employee, employees)
-        mapper(
+        self.mapper_registry.map_imperatively(Employee, employees)
+        self.mapper_registry.map_imperatively(
             Department,
             departments,
             properties=dict(
@@ -734,9 +735,9 @@ class EagerTest5(fixtures.MappedTest):
             self.tables.derivedII,
         )
 
-        mapper(Comment, comments)
+        self.mapper_registry.map_imperatively(Comment, comments)
 
-        baseMapper = mapper(
+        baseMapper = self.mapper_registry.map_imperatively(
             Base,
             base,
             properties=dict(
@@ -746,9 +747,13 @@ class EagerTest5(fixtures.MappedTest):
             ),
         )
 
-        mapper(Derived, derived, inherits=baseMapper)
+        self.mapper_registry.map_imperatively(
+            Derived, derived, inherits=baseMapper
+        )
 
-        mapper(DerivedII, derivedII, inherits=baseMapper)
+        self.mapper_registry.map_imperatively(
+            DerivedII, derivedII, inherits=baseMapper
+        )
 
         sess = fixture_session()
         d = Derived("uid1", "x", "y")
@@ -873,15 +878,15 @@ class EagerTest6(fixtures.MappedTest):
             self.classes.InheritedPart,
         )
 
-        p_m = mapper(Part, parts)
+        p_m = self.mapper_registry.map_imperatively(Part, parts)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             InheritedPart,
             inherited_part,
             properties=dict(part=relationship(Part, lazy="joined")),
         )
 
-        d_m = mapper(
+        d_m = self.mapper_registry.map_imperatively(
             Design,
             design,
             properties=dict(
@@ -893,7 +898,7 @@ class EagerTest6(fixtures.MappedTest):
             ),
         )
 
-        mapper(DesignType, design_types)
+        self.mapper_registry.map_imperatively(DesignType, design_types)
 
         d_m.add_property(
             "type", relationship(DesignType, lazy="joined", backref="designs")
@@ -1004,15 +1009,15 @@ class EagerTest7(fixtures.MappedTest):
             self.classes.Address,
         )
 
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Company,
             companies,
             properties={"addresses": relationship(Address, lazy="joined")},
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Invoice,
             invoices,
             properties={"company": relationship(Company, lazy="joined")},
@@ -1148,7 +1153,7 @@ class EagerTest8(fixtures.MappedTest):
         # concerning corresponding_column() being extremely accurate
         # as well as how mapper sets up its column properties
 
-        mapper(Task_Type, task_type)
+        self.mapper_registry.map_imperatively(Task_Type, task_type)
 
         j = sa.outerjoin(task, msg, task.c.id == msg.c.task_id)
         jj = (
@@ -1162,7 +1167,7 @@ class EagerTest8(fixtures.MappedTest):
         )
         jjj = sa.join(task, jj, task.c.id == jj.c.task_id)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Joined,
             jjj,
             properties=dict(type=relationship(Task_Type, lazy="joined")),
@@ -1255,11 +1260,11 @@ class EagerTest9(fixtures.MappedTest):
             cls.classes.Entry,
         )
 
-        mapper(Account, accounts)
+        cls.mapper_registry.map_imperatively(Account, accounts)
 
-        mapper(Transaction, transactions)
+        cls.mapper_registry.map_imperatively(Transaction, transactions)
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Entry,
             entries,
             properties=dict(

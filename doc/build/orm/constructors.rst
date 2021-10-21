@@ -21,7 +21,7 @@ If you need to do some setup on database-loaded instances before they're ready
 to use, there is an event hook known as :meth:`.InstanceEvents.load` which
 can achieve this; it is also available via a class-specific decorator called
 :func:`_orm.reconstructor`.   When using :func:`_orm.reconstructor`,
-the mapper will invoke the decorated method with no
+the mapper will invoke a single decorated method with no
 arguments every time it loads or reconstructs an instance of the
 class. This is
 useful for recreating transient properties that are normally assigned in
@@ -45,7 +45,7 @@ loaded during a :class:`~sqlalchemy.orm.query.Query` operation as in
 ``query(MyMappedClass).one()``, ``init_on_load`` is called.
 
 Any method may be tagged as the :func:`_orm.reconstructor`, even
-the ``__init__`` method itself.    It is invoked after all immediate
+the ``__init__`` method itself, but only one method may be tagged as such.    It is invoked after all immediate
 column-level attributes are loaded as well as after eagerly-loaded scalar
 relationships.  Eagerly loaded collections may be only partially populated
 or not populated at all, depending on the kind of eager loading used.

@@ -16,7 +16,6 @@ from sqlalchemy.orm import deferred
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import Load
 from sqlalchemy.orm import load_only
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import query_expression
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
@@ -48,7 +47,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
 
         Order, orders = self.classes.Order, self.tables.orders
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={"description": deferred(orders.c.description)},
@@ -88,7 +87,9 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
 
         Order, orders = self.classes.Order, self.tables.orders
 
-        mapper(Order, orders, properties={"id": deferred(orders.c.id)})
+        self.mapper_registry.map_imperatively(
+            Order, orders, properties={"id": deferred(orders.c.id)}
+        )
 
         # right now, it's not that graceful :)
         q = fixture_session().query(Order)
@@ -101,7 +102,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
 
         Order, orders = self.classes.Order, self.tables.orders
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={"description": deferred(orders.c.description)},
@@ -120,7 +121,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
     def test_synonym_group_bug(self):
         orders, Order = self.tables.orders, self.classes.Order
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -136,7 +137,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
     def test_unsaved_2(self):
         Order, orders = self.classes.Order, self.tables.orders
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={"description": deferred(orders.c.description)},
@@ -156,7 +157,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
 
         orders, Order = self.tables.orders, self.classes.Order
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties=dict(
@@ -178,7 +179,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
     def test_unsaved_group_2(self):
         orders, Order = self.tables.orders, self.classes.Order
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties=dict(
@@ -199,7 +200,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
     def test_save(self):
         Order, orders = self.classes.Order, self.tables.orders
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={"description": deferred(orders.c.description)},
@@ -215,7 +216,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
 
         orders, Order = self.tables.orders, self.classes.Order
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties=util.OrderedDict(
@@ -279,7 +280,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
 
         orders, Order = self.tables.orders, self.classes.Order
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -310,7 +311,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
 
         orders, Order = self.tables.orders, self.classes.Order
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -346,7 +347,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             orders.c.description,
             orders.c.isopen,
         ).alias()
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             order_select,
             properties={"description": deferred(order_select.c.description)},
@@ -366,7 +367,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
 
         orders, Order = self.tables.orders, self.classes.Order
 
-        mapper(Order, orders)
+        self.mapper_registry.map_imperatively(Order, orders)
 
         sess = fixture_session()
         q = sess.query(Order).order_by(Order.id).options(defer("user_id"))
@@ -413,7 +414,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
     def test_undefer_group(self):
         orders, Order = self.tables.orders, self.classes.Order
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties=util.OrderedDict(
@@ -456,7 +457,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
     def test_undefer_group_multi(self):
         orders, Order = self.tables.orders, self.classes.Order
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties=util.OrderedDict(
@@ -501,7 +502,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
     def test_undefer_group_multi_pathed(self):
         orders, Order = self.tables.orders, self.classes.Order
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties=util.OrderedDict(
@@ -551,12 +552,12 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             self.tables.orders,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(orders=relationship(Order, order_by=orders.c.id)),
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties=util.OrderedDict(
@@ -614,12 +615,12 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             self.tables.orders,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(orders=relationship(Order, order_by=orders.c.id)),
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties=util.OrderedDict(
@@ -680,12 +681,12 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             self.tables.orders,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(orders=relationship(Order, order_by=orders.c.id)),
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties=util.OrderedDict(
@@ -740,12 +741,12 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             self.tables.orders,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(orders=relationship(Order, order_by=orders.c.id)),
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties=util.OrderedDict(
@@ -799,7 +800,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
     def test_undefer_star(self):
         orders, Order = self.tables.orders, self.classes.Order
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties=util.OrderedDict(
@@ -829,7 +830,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
 
         orders, Order = self.tables.orders, self.classes.Order
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={"description": deferred(orders.c.description)},
@@ -862,7 +863,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
 
         orders, Order = self.tables.orders, self.classes.Order
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={"description": deferred(orders.c.description)},
@@ -882,7 +883,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
     def test_raise_on_col_rowproc_only(self):
         orders, Order = self.tables.orders, self.classes.Order
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -905,7 +906,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
     def test_locates_col_w_option_rowproc_only(self):
         orders, Order = self.tables.orders, self.classes.Order
 
-        mapper(Order, orders)
+        self.mapper_registry.map_imperatively(Order, orders)
 
         sess = fixture_session()
         stmt = sa.select(Order).order_by(Order.id)
@@ -926,7 +927,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
     def test_raise_on_col_w_option_rowproc_only(self):
         orders, Order = self.tables.orders, self.classes.Order
 
-        mapper(Order, orders)
+        self.mapper_registry.map_imperatively(Order, orders)
 
         sess = fixture_session()
         stmt = sa.select(Order).order_by(Order.id)
@@ -956,17 +957,17 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             self.tables.orders,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Item,
             items,
             properties=dict(description=deferred(items.c.description)),
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties=dict(items=relationship(Item, secondary=order_items)),
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(orders=relationship(Order, order_by=orders.c.id)),
@@ -1005,12 +1006,12 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         items = self.tables.items
         order_items = self.tables.order_items
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={"orders": relationship(Order, lazy="joined")},
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -1019,7 +1020,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
                 )
             },
         )
-        mapper(Item, items)
+        self.mapper_registry.map_imperatively(Item, items)
 
         sess = fixture_session()
 
@@ -1047,8 +1048,10 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         users, User = self.tables.users, self.classes.User
         orders, Order = self.tables.orders, self.classes.Order
 
-        mapper(User, users, properties={"orders": relationship(Order)})
-        mapper(Order, orders)
+        self.mapper_registry.map_imperatively(
+            User, users, properties={"orders": relationship(Order)}
+        )
+        self.mapper_registry.map_imperatively(Order, orders)
 
         sess = fixture_session()
         q = sess.query(User).options(
@@ -1069,7 +1072,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
     def test_load_only_no_pk(self):
         orders, Order = self.tables.orders, self.classes.Order
 
-        mapper(Order, orders)
+        self.mapper_registry.map_imperatively(Order, orders)
 
         sess = fixture_session()
         q = sess.query(Order).options(load_only("isopen", "description"))
@@ -1083,7 +1086,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
     def test_load_only_no_pk_rt(self):
         orders, Order = self.tables.orders, self.classes.Order
 
-        mapper(Order, orders)
+        self.mapper_registry.map_imperatively(Order, orders)
 
         sess = fixture_session()
         q = (
@@ -1096,7 +1099,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
     def test_load_only_w_deferred(self):
         orders, Order = self.tables.orders, self.classes.Order
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={"description": deferred(orders.c.description)},
@@ -1118,7 +1121,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
     def test_load_only_synonym(self, type_):
         orders, Order = self.tables.orders, self.classes.Order
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={"desc": synonym("description")},
@@ -1151,8 +1154,10 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         users = self.tables.users
         addresses = self.tables.addresses
 
-        mapper(User, users, properties={"addresses": relationship(Address)})
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(
+            User, users, properties={"addresses": relationship(Address)}
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         sess = fixture_session()
         expected = [
@@ -1200,9 +1205,9 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         addresses = self.tables.addresses
         orders = self.tables.orders
 
-        mapper(User, users)
-        mapper(Address, addresses)
-        mapper(Order, orders)
+        self.mapper_registry.map_imperatively(User, users)
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(Order, orders)
 
         sess = fixture_session()
         q = sess.query(User, Order, Address).options(
@@ -1230,7 +1235,7 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         addresses = self.tables.addresses
         orders = self.tables.orders
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=util.OrderedDict(
@@ -1241,8 +1246,8 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             ),
         )
 
-        mapper(Address, addresses)
-        mapper(Order, orders)
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(Order, orders)
 
         sess = fixture_session()
 
@@ -2196,8 +2201,12 @@ class DeferredPopulationTest(fixtures.MappedTest):
         class Thing(cls.Basic):
             pass
 
-        mapper(Human, human, properties={"thing": relationship(Thing)})
-        mapper(Thing, thing, properties={"name": deferred(thing.c.name)})
+        cls.mapper_registry.map_imperatively(
+            Human, human, properties={"thing": relationship(Thing)}
+        )
+        cls.mapper_registry.map_imperatively(
+            Thing, thing, properties={"name": deferred(thing.c.name)}
+        )
 
     @classmethod
     def insert_data(cls, connection):

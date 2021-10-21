@@ -37,6 +37,9 @@ Dynamic Relationship Loaders
    method of use.  For relationships that shouldn't load, set
    :paramref:`_orm.relationship.lazy` to ``noload``.
 
+.. note:: This loader is in the general case not compatible with the :ref:`asyncio_toplevel` extension.
+   It can be used with some limitations, as indicated in :ref:`Asyncio dynamic guidelines <dynamic_asyncio>`.
+
 A :func:`_orm.relationship` which corresponds to a large collection can be
 configured so that it returns a legacy :class:`_orm.Query` object when
 accessed, which allows filtering of the relationship on criteria. The class is

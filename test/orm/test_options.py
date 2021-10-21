@@ -16,7 +16,6 @@ from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import Load
 from sqlalchemy.orm import load_only
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import strategy_options
 from sqlalchemy.orm import subqueryload
@@ -26,6 +25,7 @@ from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import AssertsCompiledSQL
+from sqlalchemy.testing.assertions import emits_warning
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
@@ -52,7 +52,7 @@ class QueryTest(_fixtures.FixtureTest):
         class SubItem(cls.classes.Item):
             pass
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             SubItem,
             None,
             inherits=cls.classes.Item,
@@ -70,7 +70,9 @@ class QueryTest(_fixtures.FixtureTest):
             def some_attr(self):
                 return "hi"
 
-        mapper(OrderWProp, None, inherits=cls.classes.Order)
+        cls.mapper_registry.map_imperatively(
+            OrderWProp, None, inherits=cls.classes.Order
+        )
 
 
 class PathTest(object):
@@ -273,7 +275,7 @@ class OfTypePathingTest(PathTest, QueryTest):
         class SubAddr(Address):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             SubAddr,
             inherits=Address,
             properties={
@@ -284,6 +286,7 @@ class OfTypePathingTest(PathTest, QueryTest):
 
         return User, Address, SubAddr
 
+    @emits_warning("This declarative base already contains a class")
     def test_oftype_only_col_attr_unbound(self):
         User, Address, SubAddr = self._fixture()
 
@@ -299,6 +302,7 @@ class OfTypePathingTest(PathTest, QueryTest):
             [(User, "addresses"), (User, "addresses", SubAddr, "sub_attr")],
         )
 
+    @emits_warning("This declarative base already contains a class")
     def test_oftype_only_col_attr_bound(self):
         User, Address, SubAddr = self._fixture()
 
@@ -316,6 +320,7 @@ class OfTypePathingTest(PathTest, QueryTest):
             [(User, "addresses"), (User, "addresses", SubAddr, "sub_attr")],
         )
 
+    @emits_warning("This declarative base already contains a class")
     def test_oftype_only_col_attr_string_unbound(self):
         User, Address, SubAddr = self._fixture()
 
@@ -329,6 +334,7 @@ class OfTypePathingTest(PathTest, QueryTest):
             [(User, "addresses"), (User, "addresses", SubAddr, "sub_attr")],
         )
 
+    @emits_warning("This declarative base already contains a class")
     def test_oftype_only_col_attr_string_bound(self):
         User, Address, SubAddr = self._fixture()
 
@@ -346,6 +352,7 @@ class OfTypePathingTest(PathTest, QueryTest):
             [(User, "addresses"), (User, "addresses", SubAddr, "sub_attr")],
         )
 
+    @emits_warning("This declarative base already contains a class")
     def test_oftype_only_rel_attr_unbound(self):
         User, Address, SubAddr = self._fixture()
 
@@ -359,6 +366,7 @@ class OfTypePathingTest(PathTest, QueryTest):
             l1, q, [(User, "addresses"), (User, "addresses", SubAddr, "dings")]
         )
 
+    @emits_warning("This declarative base already contains a class")
     def test_oftype_only_rel_attr_bound(self):
         User, Address, SubAddr = self._fixture()
 
@@ -374,6 +382,7 @@ class OfTypePathingTest(PathTest, QueryTest):
             l1, q, [(User, "addresses"), (User, "addresses", SubAddr, "dings")]
         )
 
+    @emits_warning("This declarative base already contains a class")
     def test_oftype_only_rel_attr_string_unbound(self):
         User, Address, SubAddr = self._fixture()
 
@@ -385,6 +394,7 @@ class OfTypePathingTest(PathTest, QueryTest):
             l1, q, [(User, "addresses"), (User, "addresses", SubAddr, "dings")]
         )
 
+    @emits_warning("This declarative base already contains a class")
     def test_oftype_only_rel_attr_string_bound(self):
         User, Address, SubAddr = self._fixture()
 
@@ -700,6 +710,7 @@ class OptionsTest(PathTest, QueryTest):
         opt = self._option_fixture(ac.orders, Order.items)
         self._assert_path_result(opt, q, [])
 
+    @emits_warning("This declarative base already contains a class")
     def test_from_base_to_subclass_attr(self):
         Dingaling, Address = self.classes.Dingaling, self.classes.Address
 
@@ -708,7 +719,7 @@ class OptionsTest(PathTest, QueryTest):
         class SubAddr(Address):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             SubAddr,
             inherits=Address,
             properties={"flub": relationship(Dingaling, viewonly=True)},
@@ -719,6 +730,7 @@ class OptionsTest(PathTest, QueryTest):
 
         self._assert_path_result(opt, q, [(SubAddr, "flub")])
 
+    @emits_warning("This declarative base already contains a class")
     def test_from_subclass_to_subclass_attr(self):
         Dingaling, Address = self.classes.Dingaling, self.classes.Address
 
@@ -727,7 +739,7 @@ class OptionsTest(PathTest, QueryTest):
         class SubAddr(Address):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             SubAddr,
             inherits=Address,
             properties={"flub": relationship(Dingaling, viewonly=True)},
@@ -746,7 +758,7 @@ class OptionsTest(PathTest, QueryTest):
         class SubAddr(Address):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             SubAddr,
             inherits=Address,
             properties={"flub": relationship(Dingaling, viewonly=True)},
@@ -759,6 +771,7 @@ class OptionsTest(PathTest, QueryTest):
             opt, q, [(Address, inspect(Address).attrs.user)]
         )
 
+    @emits_warning("This declarative base already contains a class")
     def test_of_type(self):
         User, Address = self.classes.User, self.classes.Address
 
@@ -767,7 +780,7 @@ class OptionsTest(PathTest, QueryTest):
         class SubAddr(Address):
             pass
 
-        mapper(SubAddr, inherits=Address)
+        self.mapper_registry.map_imperatively(SubAddr, inherits=Address)
 
         q = sess.query(User)
         opt = self._option_fixture(
@@ -790,6 +803,7 @@ class OptionsTest(PathTest, QueryTest):
             ],
         )
 
+    @emits_warning("This declarative base already contains a class")
     def test_of_type_string_attr(self):
         User, Address = self.classes.User, self.classes.Address
 
@@ -798,7 +812,7 @@ class OptionsTest(PathTest, QueryTest):
         class SubAddr(Address):
             pass
 
-        mapper(SubAddr, inherits=Address)
+        self.mapper_registry.map_imperatively(SubAddr, inherits=Address)
 
         q = sess.query(User)
         opt = self._option_fixture(User.addresses.of_type(SubAddr), "user")
@@ -819,6 +833,7 @@ class OptionsTest(PathTest, QueryTest):
             ],
         )
 
+    @emits_warning("This declarative base already contains a class")
     def test_of_type_plus_level(self):
         Dingaling, User, Address = (
             self.classes.Dingaling,
@@ -831,7 +846,7 @@ class OptionsTest(PathTest, QueryTest):
         class SubAddr(Address):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             SubAddr,
             inherits=Address,
             properties={"flub": relationship(Dingaling, viewonly=True)},
@@ -1316,7 +1331,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
             cls.tables.orders,
             cls.classes.Order,
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -1324,8 +1339,8 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
                 "orders": relationship(Order),
             },
         )
-        mapper(Address, addresses)
-        mapper(Order, orders)
+        cls.mapper_registry.map_imperatively(Address, addresses)
+        cls.mapper_registry.map_imperatively(Order, orders)
         keywords, items, item_keywords, Keyword, Item = (
             cls.tables.keywords,
             cls.tables.items,
@@ -1333,14 +1348,14 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
             cls.classes.Keyword,
             cls.classes.Item,
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Keyword,
             keywords,
             properties={
                 "keywords": column_property(keywords.c.name + "some keyword")
             },
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Item,
             items,
             properties=dict(
@@ -1353,7 +1368,9 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
             def some_attr(self):
                 return "hi"
 
-        mapper(OrderWProp, None, inherits=cls.classes.Order)
+        cls.mapper_registry.map_imperatively(
+            OrderWProp, None, inherits=cls.classes.Order
+        )
 
     def _assert_option(self, entity_list, option):
         Item = self.classes.Item
@@ -1995,12 +2012,12 @@ class MapperOptionsTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
                 addresses=relationship(
-                    mapper(Address, addresses),
+                    self.mapper_registry.map_imperatively(Address, addresses),
                     lazy="select",
                     order_by=addresses.c.id,
                 ),
@@ -2030,12 +2047,13 @@ class MapperOptionsTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
                 addresses=relationship(
-                    mapper(Address, addresses), order_by=addresses.c.id
+                    self.mapper_registry.map_imperatively(Address, addresses),
+                    order_by=addresses.c.id,
                 )
             ),
         )
@@ -2060,12 +2078,13 @@ class MapperOptionsTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
                 addresses=relationship(
-                    mapper(Address, addresses), lazy="select"
+                    self.mapper_registry.map_imperatively(Address, addresses),
+                    lazy="select",
                 )
             ),
         )
@@ -2097,12 +2116,13 @@ class MapperOptionsTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
                 addresses=relationship(
-                    mapper(Address, addresses), lazy="joined"
+                    self.mapper_registry.map_imperatively(Address, addresses),
+                    lazy="joined",
                 )
             ),
         )
@@ -2131,12 +2151,12 @@ class MapperOptionsTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
                 addresses=relationship(
-                    mapper(Address, addresses),
+                    self.mapper_registry.map_imperatively(Address, addresses),
                     lazy="joined",
                     order_by=addresses.c.id,
                 )
@@ -2201,11 +2221,11 @@ class MapperOptionsTest(_fixtures.FixtureTest):
         # users, they will have no addresses or orders.  the number of lazy
         # loads when traversing the whole thing will be three for the
         # addresses and three for the orders.
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
-        mapper(Keyword, keywords)
+        self.mapper_registry.map_imperatively(Keyword, keywords)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Item,
             items,
             properties=dict(
@@ -2218,7 +2238,7 @@ class MapperOptionsTest(_fixtures.FixtureTest):
             ),
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties=dict(
@@ -2231,7 +2251,7 @@ class MapperOptionsTest(_fixtures.FixtureTest):
             ),
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
@@ -2277,12 +2297,13 @@ class MapperOptionsTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
                 addresses=relationship(
-                    mapper(Address, addresses), lazy="joined"
+                    self.mapper_registry.map_imperatively(Address, addresses),
+                    lazy="joined",
                 )
             ),
         )
@@ -2310,13 +2331,15 @@ class MapperOptionsTest(_fixtures.FixtureTest):
             self.tables.orders,
         )
 
-        mapper(User, users, properties=dict(orders=relationship(Order)))
-        mapper(
+        self.mapper_registry.map_imperatively(
+            User, users, properties=dict(orders=relationship(Order))
+        )
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties=dict(items=relationship(Item, secondary=order_items)),
         )
-        mapper(Item, items)
+        self.mapper_registry.map_imperatively(Item, items)
 
         sess = fixture_session()
 

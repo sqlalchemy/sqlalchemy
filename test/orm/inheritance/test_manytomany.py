@@ -5,7 +5,6 @@ from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy.orm import class_mapper
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -88,10 +87,10 @@ class InheritTest(fixtures.MappedTest):
         class Group(Principal):
             pass
 
-        mapper(Principal, principals)
-        mapper(User, users, inherits=Principal)
+        self.mapper_registry.map_imperatively(Principal, principals)
+        self.mapper_registry.map_imperatively(User, users, inherits=Principal)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Group,
             groups,
             inherits=Principal,
@@ -159,8 +158,8 @@ class InheritTest2(fixtures.MappedTest):
         class Bar(Foo):
             pass
 
-        mapper(Foo, foo)
-        mapper(Bar, bar, inherits=Foo)
+        self.mapper_registry.map_imperatively(Foo, foo)
+        self.mapper_registry.map_imperatively(Bar, bar, inherits=Foo)
         print(foo.join(bar).primary_key)
         print(class_mapper(Bar).primary_key)
         b = Bar("somedata")
@@ -178,12 +177,12 @@ class InheritTest2(fixtures.MappedTest):
             def __init__(self, data=None):
                 self.data = data
 
-        mapper(Foo, foo)
+        self.mapper_registry.map_imperatively(Foo, foo)
 
         class Bar(Foo):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Bar,
             bar,
             inherits=Foo,
@@ -289,13 +288,13 @@ class InheritTest3(fixtures.MappedTest):
             def __repr__(self):
                 return "Foo id %d, data %s" % (self.id, self.data)
 
-        mapper(Foo, foo)
+        self.mapper_registry.map_imperatively(Foo, foo)
 
         class Bar(Foo):
             def __repr__(self):
                 return "Bar id %d, data %s" % (self.id, self.data)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Bar,
             bar,
             inherits=Foo,
@@ -325,13 +324,13 @@ class InheritTest3(fixtures.MappedTest):
             def __repr__(self):
                 return "Foo id %d, data %s" % (self.id, self.data)
 
-        mapper(Foo, foo)
+        self.mapper_registry.map_imperatively(Foo, foo)
 
         class Bar(Foo):
             def __repr__(self):
                 return "Bar id %d, data %s" % (self.id, self.data)
 
-        mapper(Bar, bar, inherits=Foo)
+        self.mapper_registry.map_imperatively(Bar, bar, inherits=Foo)
 
         class Blub(Bar):
             def __repr__(self):
@@ -342,7 +341,7 @@ class InheritTest3(fixtures.MappedTest):
                     repr([f for f in self.foos]),
                 )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Blub,
             blub,
             inherits=Bar,

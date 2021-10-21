@@ -593,6 +593,7 @@ Glossary
             :ref:`pooling_toplevel`
 
     DBAPI
+    pep-249
         DBAPI is shorthand for the phrase "Python Database API
         Specification".  This is a widely used specification
         within Python to define common usage patterns for all

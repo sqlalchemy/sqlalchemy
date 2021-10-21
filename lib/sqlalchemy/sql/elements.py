@@ -214,6 +214,8 @@ class ClauseElement(
     _is_bind_parameter = False
     _is_clause_list = False
     _is_lambda_element = False
+    _is_singleton_constant = False
+    _is_immutable = False
 
     _order_by_label_element = None
 
@@ -1023,19 +1025,39 @@ class ColumnElement(
         """
         return Label(name, self, self.type)
 
-    def _anon_label(self, seed):
+    def _anon_label(self, seed, add_hash=None):
         while self._is_clone_of is not None:
             self = self._is_clone_of
 
         # as of 1.4 anonymous label for ColumnElement uses hash(), not id(),
         # as the identifier, because a column and its annotated version are
         # the same thing in a SQL statement
+        hash_value = hash(self)
+
+        if add_hash:
+            # this path is used for disambiguating anon labels that would
+            # otherwise be the same name for the same element repeated.
+            # an additional numeric value is factored in for each label.
+
+            # shift hash(self) (which is id(self), typically 8 byte integer)
+            # 16 bits leftward.  fill extra add_hash on right
+            assert add_hash < (2 << 15)
+            assert seed
+            hash_value = (hash_value << 16) | add_hash
+
+            # extra underscore is added for labels with extra hash
+            # values, to isolate the "deduped anon" namespace from the
+            # regular namespace.  eliminates chance of these
+            # manufactured hash values overlapping with regular ones for some
+            # undefined python interpreter
+            seed = seed + "_"
+
         if isinstance(seed, _anonymous_label):
             return _anonymous_label.safe_construct(
-                hash(self), "", enclosing_label=seed
+                hash_value, "", enclosing_label=seed
             )
 
-        return _anonymous_label.safe_construct(hash(self), seed or "anon")
+        return _anonymous_label.safe_construct(hash_value, seed or "anon")
 
     @util.memoized_property
     def _anon_name_label(self):
@@ -1093,8 +1115,7 @@ class ColumnElement(
     def anon_key_label(self):
         return self._anon_key_label
 
-    @util.memoized_property
-    def _dedupe_anon_label(self):
+    def _dedupe_anon_label_idx(self, idx):
         """label to apply to a column that is anon labeled, but repeated
         in the SELECT, so that we have to make an "extra anon" label that
         disambiguates it from the previous appearance.
@@ -1113,9 +1134,9 @@ class ColumnElement(
         # "CAST(casttest.v1 AS DECIMAL) AS anon__1"
 
         if label is None:
-            return self._dedupe_anon_tq_label
+            return self._dedupe_anon_tq_label_idx(idx)
         else:
-            return self._anon_label(label + "_")
+            return self._anon_label(label, add_hash=idx)
 
     @util.memoized_property
     def _anon_tq_label(self):
@@ -1125,10 +1146,10 @@ class ColumnElement(
     def _anon_tq_key_label(self):
         return self._anon_label(getattr(self, "_tq_key_label", None))
 
-    @util.memoized_property
-    def _dedupe_anon_tq_label(self):
+    def _dedupe_anon_tq_label_idx(self, idx):
         label = getattr(self, "_tq_label", None) or "anon"
-        return self._anon_label(label + "_")
+
+        return self._anon_label(label, add_hash=idx)
 
 
 class WrapsColumnExpression(object):
@@ -1178,14 +1199,13 @@ class WrapsColumnExpression(object):
                 return wce._anon_name_label
         return super(WrapsColumnExpression, self)._anon_name_label
 
-    @property
-    def _dedupe_anon_label(self):
+    def _dedupe_anon_label_idx(self, idx):
         wce = self.wrapped_column_expression
         nal = wce._non_anon_label
         if nal:
             return self._anon_label(nal + "_")
         else:
-            return self._dedupe_anon_tq_label
+            return self._dedupe_anon_tq_label_idx(idx)
 
 
 class BindParameter(roles.InElementRole, ColumnElement):
@@ -3272,6 +3292,36 @@ class Extract(ColumnElement):
         as well as ``func.extract`` from the
         :data:`.func` namespace.
 
+        :param field: The field to extract.
+
+        :param expr: A column or Python scalar expression serving as the
+          right side of the ``EXTRACT`` expression.
+
+        E.g.::
+
+            from sqlalchemy import extract
+            from sqlalchemy import table, column
+
+            logged_table = table("user",
+                    column("id"),
+                    column("date_created"),
+            )
+
+            stmt = select(logged_table.c.id).where(
+                extract("YEAR", logged_table.c.date_created) == 2021
+            )
+
+        In the above example, the statement is used to select ids from the
+        database where the ``YEAR`` component matches a specific value.
+
+        Similarly, one can also select an extracted component::
+
+            stmt = select(
+                extract("YEAR", logged_table.c.date_created)
+            ).where(logged_table.c.id == 1)
+
+        The implementation of ``EXTRACT`` may vary across database backends.
+        Users are reminded to consult their database documentation.
         """
         self.type = type_api.INTEGERTYPE
         self.field = field
@@ -3628,26 +3678,52 @@ class CollectionAggregate(UnaryExpression):
     def _create_any(cls, expr):
         """Produce an ANY expression.
 
-        This may apply to an array type for some dialects (e.g. postgresql),
-        or to a subquery for others (e.g. mysql).  e.g.::
+        For dialects such as that of PostgreSQL, this operator applies
+        to usage of the :class:`_types.ARRAY` datatype, for that of
+        MySQL, it may apply to a subquery.  e.g.::
 
-            # postgresql '5 = ANY (somearray)'
+            # renders on PostgreSQL:
+            # '5 = ANY (somearray)'
             expr = 5 == any_(mytable.c.somearray)
 
-            # mysql '5 = ANY (SELECT value FROM table)'
+            # renders on MySQL:
+            # '5 = ANY (SELECT value FROM table)'
             expr = 5 == any_(select(table.c.value))
 
-        The operator is more conveniently available from any
-        :class:`_sql.ColumnElement` object that makes use of the
-        :class:`_types.ARRAY` datatype::
+        Comparison to NULL may work using ``None`` or :func:`_sql.null`::
 
-            expr = mytable.c.somearray.any(5)
+            None == any_(mytable.c.somearray)
+
+        The any_() / all_() operators also feature a special "operand flipping"
+        behavior such that if any_() / all_() are used on the left side of a
+        comparison using a standalone operator such as ``==``, ``!=``, etc.
+        (not including operator methods such as
+        :meth:`_sql.ColumnOperators.is_`) the rendered expression is flipped::
+
+            # would render '5 = ANY (column)`
+            any_(mytable.c.column) == 5
+
+        Or with ``None``, which note will not perform
+        the usual step of rendering "IS" as is normally the case for NULL::
+
+            # would render 'NULL = ANY(somearray)'
+            any_(mytable.c.somearray) == None
+
+        .. versionchanged:: 1.4.26  repaired the use of any_() / all_()
+           comparing to NULL on the right side to be flipped to the left.
+
+        The column-level :meth:`_sql.ColumnElement.any_` method (not to be
+        confused with :class:`_types.ARRAY` level
+        :meth:`_types.ARRAY.Comparator.any`) is shorthand for
+        ``any_(col)``::
+
+            5 = mytable.c.somearray.any_()
 
         .. seealso::
 
-            :func:`_expression.all_`
+            :meth:`_sql.ColumnOperators.any_`
 
-            :meth:`_types.ARRAY.any`
+            :func:`_expression.all_`
 
         """
 
@@ -3665,29 +3741,54 @@ class CollectionAggregate(UnaryExpression):
     def _create_all(cls, expr):
         """Produce an ALL expression.
 
-        This may apply to an array type for some dialects (e.g. postgresql),
-        or to a subquery for others (e.g. mysql).  e.g.::
+        For dialects such as that of PostgreSQL, this operator applies
+        to usage of the :class:`_types.ARRAY` datatype, for that of
+        MySQL, it may apply to a subquery.  e.g.::
 
-            # postgresql '5 = ALL (somearray)'
+            # renders on PostgreSQL:
+            # '5 = ALL (somearray)'
             expr = 5 == all_(mytable.c.somearray)
 
-            # mysql '5 = ALL (SELECT value FROM table)'
+            # renders on MySQL:
+            # '5 = ALL (SELECT value FROM table)'
             expr = 5 == all_(select(table.c.value))
 
-        The operator is more conveniently available from any
-        :class:`_sql.ColumnElement` object that makes use of the
-        :class:`_types.ARRAY` datatype::
+        Comparison to NULL may work using ``None``::
 
-            expr = mytable.c.somearray.all(5)
+            None == all_(mytable.c.somearray)
+
+        The any_() / all_() operators also feature a special "operand flipping"
+        behavior such that if any_() / all_() are used on the left side of a
+        comparison using a standalone operator such as ``==``, ``!=``, etc.
+        (not including operator methods such as
+        :meth:`_sql.ColumnOperators.is_`) the rendered expression is flipped::
+
+            # would render '5 = ALL (column)`
+            all_(mytable.c.column) == 5
+
+        Or with ``None``, which note will not perform
+        the usual step of rendering "IS" as is normally the case for NULL::
+
+            # would render 'NULL = ALL(somearray)'
+            all_(mytable.c.somearray) == None
+
+        .. versionchanged:: 1.4.26  repaired the use of any_() / all_()
+           comparing to NULL on the right side to be flipped to the left.
+
+        The column-level :meth:`_sql.ColumnElement.all_` method (not to be
+        confused with :class:`_types.ARRAY` level
+        :meth:`_types.ARRAY.Comparator.all`) is shorthand for
+        ``all_(col)``::
+
+            5 == mytable.c.somearray.all_()
 
         .. seealso::
 
+            :meth:`_sql.ColumnOperators.all_`
+
             :func:`_expression.any_`
 
-            :meth:`_types.ARRAY.Comparator.all`
-
         """
-
         expr = coercions.expect(roles.ExpressionElementRole, expr)
         expr = expr.self_group()
         return CollectionAggregate(
@@ -3705,7 +3806,7 @@ class CollectionAggregate(UnaryExpression):
             raise exc.ArgumentError(
                 "Only comparison operators may be used with ANY/ALL"
             )
-        kwargs["reverse"] = True
+        kwargs["reverse"] = kwargs["_any_all_expr"] = True
         return self.comparator.operate(operators.mirror(op), *other, **kwargs)
 
     def reverse_operate(self, op, other, **kwargs):

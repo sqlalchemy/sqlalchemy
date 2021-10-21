@@ -23,7 +23,6 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import foreign
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import remote
 from sqlalchemy.orm import selectinload
@@ -257,7 +256,7 @@ class DependencyTwoParentTest(fixtures.MappedTest):
             cls.tables.tbl_d,
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             A,
             tbl_a,
             properties=dict(
@@ -266,8 +265,8 @@ class DependencyTwoParentTest(fixtures.MappedTest):
                 )
             ),
         )
-        mapper(B, tbl_b)
-        mapper(
+        cls.mapper_registry.map_imperatively(B, tbl_b)
+        cls.mapper_registry.map_imperatively(
             C,
             tbl_c,
             properties=dict(
@@ -276,7 +275,9 @@ class DependencyTwoParentTest(fixtures.MappedTest):
                 )
             ),
         )
-        mapper(D, tbl_d, properties=dict(b_row=relationship(B)))
+        cls.mapper_registry.map_imperatively(
+            D, tbl_d, properties=dict(b_row=relationship(B))
+        )
 
     @classmethod
     def insert_data(cls, connection):
@@ -338,8 +339,10 @@ class M2ODontOverwriteFKTest(fixtures.MappedTest):
         class B(fixtures.BasicEntity):
             pass
 
-        mapper(A, a, properties={"b": relationship(B, uselist=uselist)})
-        mapper(B, b)
+        self.mapper_registry.map_imperatively(
+            A, a, properties={"b": relationship(B, uselist=uselist)}
+        )
+        self.mapper_registry.map_imperatively(B, b)
         return A, B
 
     def test_joinedload_doesnt_produce_bogus_event(self):
@@ -461,7 +464,7 @@ class DirectSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
         Entity = self.classes.Entity
         entity = self.tables.entity
 
-        m = mapper(
+        m = self.mapper_registry.map_imperatively(
             Entity,
             entity,
             properties={
@@ -484,7 +487,7 @@ class DirectSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
         Entity = self.classes.Entity
         entity = self.tables.entity
 
-        m = mapper(
+        m = self.mapper_registry.map_imperatively(
             Entity,
             entity,
             properties={
@@ -632,14 +635,13 @@ class DirectSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
 
-class OverlappingFksSiblingTest(fixtures.TestBase):
+class OverlappingFksSiblingTest(fixtures.MappedTest):
     """Test multiple relationships that use sections of the same
     composite foreign key.
 
     """
 
-    def teardown_test(self):
-        clear_mappers()
+    run_define_tables = "each"
 
     def _fixture_one(
         self,
@@ -651,7 +653,7 @@ class OverlappingFksSiblingTest(fixtures.TestBase):
         add_b_a_overlaps=None,
     ):
 
-        Base = declarative_base(metadata=self.metadata)
+        Base = self.mapper_registry.generate_base()
 
         class A(Base):
 
@@ -717,13 +719,14 @@ class OverlappingFksSiblingTest(fixtures.TestBase):
             __mapper_args__ = {"polymorphic_identity": "bsub2"}
 
         configure_mappers()
-        self.metadata.create_all(testing.db)
+        assert self.tables_test_metadata is Base.metadata
+        self.tables_test_metadata.create_all(testing.db)
 
         return A, AMember, B, BSub1, BSub2
 
     def _fixture_two(self, setup_backrefs=False, setup_overlaps=False):
 
-        Base = declarative_base(metadata=self.metadata)
+        Base = self.mapper_registry.generate_base()
 
         # purposely using the comma to make sure parsing the comma works
 
@@ -752,7 +755,7 @@ class OverlappingFksSiblingTest(fixtures.TestBase):
         configure_mappers()
 
     def _fixture_three(self, use_same_mappers, setup_overlaps):
-        Base = declarative_base(metadata=self.metadata)
+        Base = self.mapper_registry.generate_base()
 
         class Child(Base):
             __tablename__ = "child"
@@ -804,7 +807,7 @@ class OverlappingFksSiblingTest(fixtures.TestBase):
         configure_mappers()
 
     def _fixture_four(self):
-        Base = declarative_base(metadata=self.metadata)
+        Base = self.mapper_registry.generate_base()
 
         class A(Base):
             __tablename__ = "a"
@@ -879,7 +882,7 @@ class OverlappingFksSiblingTest(fixtures.TestBase):
 
     @testing.combinations((True,), (False,), argnames="set_overlaps")
     def test_fixture_five(self, metadata, set_overlaps):
-        Base = declarative_base(metadata=self.metadata)
+        Base = self.mapper_registry.generate_base()
 
         if set_overlaps:
             overlaps = "as,cs"
@@ -1109,8 +1112,8 @@ class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
             self.tables.company_t,
         )
 
-        mapper(Company, company_t)
-        mapper(
+        self.mapper_registry.map_imperatively(Company, company_t)
+        self.mapper_registry.map_imperatively(
             Employee,
             employee_t,
             properties={
@@ -1152,8 +1155,8 @@ class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
             self.tables.company_t,
         )
 
-        mapper(Company, company_t)
-        mapper(
+        self.mapper_registry.map_imperatively(Company, company_t)
+        self.mapper_registry.map_imperatively(
             Employee,
             employee_t,
             properties={
@@ -1186,8 +1189,8 @@ class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
             self.tables.company_t,
         )
 
-        mapper(Company, company_t)
-        mapper(
+        self.mapper_registry.map_imperatively(Company, company_t)
+        self.mapper_registry.map_imperatively(
             Employee,
             employee_t,
             properties={
@@ -1210,8 +1213,8 @@ class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
             self.tables.company_t,
         )
 
-        mapper(Company, company_t)
-        mapper(
+        self.mapper_registry.map_imperatively(Company, company_t)
+        self.mapper_registry.map_imperatively(
             Employee,
             employee_t,
             properties={
@@ -1247,8 +1250,8 @@ class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
             self.tables.company_t,
         )
 
-        mapper(Company, company_t)
-        mapper(
+        self.mapper_registry.map_imperatively(Company, company_t)
+        self.mapper_registry.map_imperatively(
             Employee,
             employee_t,
             properties={
@@ -1277,8 +1280,8 @@ class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
             self.tables.company_t,
         )
 
-        mapper(Company, company_t)
-        mapper(
+        self.mapper_registry.map_imperatively(Company, company_t)
+        self.mapper_registry.map_imperatively(
             Employee,
             employee_t,
             properties={
@@ -1311,8 +1314,8 @@ class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
             self.tables.company_t,
         )
 
-        mapper(Company, company_t)
-        mapper(
+        self.mapper_registry.map_imperatively(Company, company_t)
+        self.mapper_registry.map_imperatively(
             Employee,
             employee_t,
             properties={
@@ -1496,7 +1499,7 @@ class CompositeJoinPartialFK(fixtures.MappedTest, AssertsCompiledSQL):
         class Child(cls.Comparable):
             pass
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Parent,
             parent,
             properties={
@@ -1510,7 +1513,7 @@ class CompositeJoinPartialFK(fixtures.MappedTest, AssertsCompiledSQL):
                 )
             },
         )
-        mapper(Child, child)
+        cls.mapper_registry.map_imperatively(Child, child)
 
     def test_joins_fully(self):
         Parent = self.classes.Parent
@@ -1564,10 +1567,10 @@ class SynonymsAsFKsTest(fixtures.MappedTest):
             self.tables.tableA,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             B, tableB, properties={"a_id": synonym("_a_id", map_column=True)}
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             tableA,
             properties={
@@ -1635,7 +1638,7 @@ class FKsAsPksTest(fixtures.MappedTest):
             self.tables.tableA,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             tableA,
             properties={
@@ -1644,7 +1647,7 @@ class FKsAsPksTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(B, tableB)
+        self.mapper_registry.map_imperatively(B, tableB)
 
         configure_mappers()
         assert A.b.property.strategy.use_get
@@ -1669,12 +1672,12 @@ class FKsAsPksTest(fixtures.MappedTest):
             self.tables.tableA,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             tableA,
             properties={"bs": relationship(B, cascade="save-update")},
         )
-        mapper(B, tableB)
+        self.mapper_registry.map_imperatively(B, tableB)
 
         a1 = A()
         a1.bs.append(B())
@@ -1699,10 +1702,10 @@ class FKsAsPksTest(fixtures.MappedTest):
             self.tables.tableA,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             B, tableB, properties={"a": relationship(A, cascade="save-update")}
         )
-        mapper(A, tableA)
+        self.mapper_registry.map_imperatively(A, tableA)
 
         b1 = B()
         a1 = A()
@@ -1742,10 +1745,10 @@ class FKsAsPksTest(fixtures.MappedTest):
         class C(fixtures.BasicEntity):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             C, tableC, properties={"a": relationship(A, cascade="save-update")}
         )
-        mapper(A, tableA)
+        self.mapper_registry.map_imperatively(A, tableA)
 
         c1 = C()
         c1.id = 5
@@ -1755,7 +1758,12 @@ class FKsAsPksTest(fixtures.MappedTest):
             # test that no error is raised.
             sess.flush()
 
-    def test_delete_cascade_BtoA(self):
+    @testing.combinations(
+        "save-update, delete",
+        # "save-update, delete-orphan",
+        "save-update, delete, delete-orphan",
+    )
+    def test_delete_cascade_BtoA(self, cascade):
         """No 'blank the PK' error when the child is to
         be deleted as part of a cascade"""
 
@@ -1766,34 +1774,32 @@ class FKsAsPksTest(fixtures.MappedTest):
             self.tables.tableA,
         )
 
-        for cascade in (
-            "save-update, delete",
-            # "save-update, delete-orphan",
-            "save-update, delete, delete-orphan",
-        ):
-            mapper(
-                B,
-                tableB,
-                properties={
-                    "a": relationship(A, cascade=cascade, single_parent=True)
-                },
-            )
-            mapper(A, tableA)
+        self.mapper_registry.map_imperatively(
+            B,
+            tableB,
+            properties={
+                "a": relationship(A, cascade=cascade, single_parent=True)
+            },
+        )
+        self.mapper_registry.map_imperatively(A, tableA)
 
-            b1 = B()
-            a1 = A()
-            b1.a = a1
-            with fixture_session() as sess:
-                sess.add(b1)
-                sess.flush()
-                sess.delete(b1)
-                sess.flush()
-                assert a1 not in sess
-                assert b1 not in sess
+        b1 = B()
+        a1 = A()
+        b1.a = a1
+        with fixture_session() as sess:
+            sess.add(b1)
+            sess.flush()
+            sess.delete(b1)
+            sess.flush()
+            assert a1 not in sess
+            assert b1 not in sess
 
-            sa.orm.clear_mappers()
-
-    def test_delete_cascade_AtoB(self):
+    @testing.combinations(
+        "save-update, delete",
+        # "save-update, delete-orphan",
+        "save-update, delete, delete-orphan",
+    )
+    def test_delete_cascade_AtoB(self, cascade):
         """No 'blank the PK' error when the child is to
         be deleted as part of a cascade"""
 
@@ -1804,29 +1810,22 @@ class FKsAsPksTest(fixtures.MappedTest):
             self.tables.tableA,
         )
 
-        for cascade in (
-            "save-update, delete",
-            # "save-update, delete-orphan",
-            "save-update, delete, delete-orphan",
-        ):
-            mapper(
-                A, tableA, properties={"bs": relationship(B, cascade=cascade)}
-            )
-            mapper(B, tableB)
+        self.mapper_registry.map_imperatively(
+            A, tableA, properties={"bs": relationship(B, cascade=cascade)}
+        )
+        self.mapper_registry.map_imperatively(B, tableB)
 
-            a1 = A()
-            b1 = B()
-            a1.bs.append(b1)
-            with fixture_session() as sess:
-                sess.add(a1)
-                sess.flush()
+        a1 = A()
+        b1 = B()
+        a1.bs.append(b1)
+        with fixture_session() as sess:
+            sess.add(a1)
+            sess.flush()
 
-                sess.delete(a1)
-                sess.flush()
-                assert a1 not in sess
-                assert b1 not in sess
-
-            sa.orm.clear_mappers()
+            sess.delete(a1)
+            sess.flush()
+            assert a1 not in sess
+            assert b1 not in sess
 
     def test_delete_manual_AtoB(self):
         tableB, A, B, tableA = (
@@ -1836,8 +1835,10 @@ class FKsAsPksTest(fixtures.MappedTest):
             self.tables.tableA,
         )
 
-        mapper(A, tableA, properties={"bs": relationship(B, cascade="none")})
-        mapper(B, tableB)
+        self.mapper_registry.map_imperatively(
+            A, tableA, properties={"bs": relationship(B, cascade="none")}
+        )
+        self.mapper_registry.map_imperatively(B, tableB)
 
         a1 = A()
         b1 = B()
@@ -1861,8 +1862,10 @@ class FKsAsPksTest(fixtures.MappedTest):
             self.tables.tableA,
         )
 
-        mapper(B, tableB, properties={"a": relationship(A, cascade="none")})
-        mapper(A, tableA)
+        self.mapper_registry.map_imperatively(
+            B, tableB, properties={"a": relationship(A, cascade="none")}
+        )
+        self.mapper_registry.map_imperatively(A, tableA)
 
         b1 = B()
         a1 = A()
@@ -1924,8 +1927,10 @@ class UniqueColReferenceSwitchTest(fixtures.MappedTest):
             self.tables.table_a,
         )
 
-        mapper(A, table_a)
-        mapper(B, table_b, properties={"a": relationship(A, backref="bs")})
+        self.mapper_registry.map_imperatively(A, table_a)
+        self.mapper_registry.map_imperatively(
+            B, table_b, properties={"a": relationship(A, backref="bs")}
+        )
 
         session = fixture_session()
         a1, a2 = A(ident="uuid1"), A(ident="uuid2")
@@ -1987,9 +1992,9 @@ class RelationshipToSelectableTest(fixtures.MappedTest):
             .alias("container_select")
         )
 
-        mapper(LineItem, items)
+        self.mapper_registry.map_imperatively(LineItem, items)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Container,
             container_select,
             properties=dict(
@@ -2073,7 +2078,7 @@ class FKEquatedToConstantTest(fixtures.MappedTest):
         class TagInstance(fixtures.ComparableEntity):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Tag,
             tags,
             properties={
@@ -2088,7 +2093,7 @@ class FKEquatedToConstantTest(fixtures.MappedTest):
             },
         )
 
-        mapper(TagInstance, tag_foo)
+        self.mapper_registry.map_imperatively(TagInstance, tag_foo)
 
         sess = fixture_session()
         t1 = Tag(data="some tag")
@@ -2148,7 +2153,7 @@ class BackrefPropagatesForwardsArgs(fixtures.MappedTest):
             self.tables.addresses,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -2160,7 +2165,7 @@ class BackrefPropagatesForwardsArgs(fixtures.MappedTest):
                 )
             },
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         sess = fixture_session()
         u1 = User(name="u1", addresses=[Address(email="a1")])
@@ -2224,9 +2229,9 @@ class AmbiguousJoinInterpretedAsSelfRef(fixtures.MappedTest):
         class Subscriber(cls.Comparable):
             pass
 
-        mapper(Address, address)
+        cls.mapper_registry.map_imperatively(Address, address)
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Subscriber,
             subscriber_and_address,
             properties={
@@ -2281,7 +2286,7 @@ class ManualBackrefTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -2289,7 +2294,7 @@ class ManualBackrefTest(_fixtures.FixtureTest):
             },
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
@@ -2319,7 +2324,7 @@ class ManualBackrefTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -2327,7 +2332,7 @@ class ManualBackrefTest(_fixtures.FixtureTest):
             },
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
@@ -2347,7 +2352,7 @@ class ManualBackrefTest(_fixtures.FixtureTest):
             self.tables.users,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -2355,8 +2360,8 @@ class ManualBackrefTest(_fixtures.FixtureTest):
             },
         )
 
-        mapper(Dingaling, dingalings)
-        mapper(
+        self.mapper_registry.map_imperatively(Dingaling, dingalings)
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={"dingaling": relationship(Dingaling)},
@@ -2380,7 +2385,7 @@ class ManualBackrefTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -2388,7 +2393,7 @@ class ManualBackrefTest(_fixtures.FixtureTest):
             },
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Addr,
             addr,
             properties={
@@ -2419,7 +2424,7 @@ class NoLoadBackPopulates(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -2429,7 +2434,9 @@ class NoLoadBackPopulates(_fixtures.FixtureTest):
             },
         )
 
-        mapper(Address, addresses, properties={"user": relationship(User)})
+        self.mapper_registry.map_imperatively(
+            Address, addresses, properties={"user": relationship(User)}
+        )
 
         u1 = User()
         a1 = Address()
@@ -2444,9 +2451,11 @@ class NoLoadBackPopulates(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        mapper(User, users, properties={"addresses": relationship(Address)})
+        self.mapper_registry.map_imperatively(
+            User, users, properties={"addresses": relationship(Address)}
+        )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
@@ -2463,10 +2472,8 @@ class NoLoadBackPopulates(_fixtures.FixtureTest):
 
 
 class JoinConditionErrorTest(fixtures.TestBase):
-    def test_clauseelement_pj(self):
-        from sqlalchemy.ext.declarative import declarative_base
-
-        Base = declarative_base()
+    def test_clauseelement_pj(self, registry):
+        Base = registry.generate_base()
 
         class C1(Base):
             __tablename__ = "c1"
@@ -2480,10 +2487,8 @@ class JoinConditionErrorTest(fixtures.TestBase):
 
         assert_raises(sa.exc.ArgumentError, configure_mappers)
 
-    def test_clauseelement_pj_false(self):
-        from sqlalchemy.ext.declarative import declarative_base
-
-        Base = declarative_base()
+    def test_clauseelement_pj_false(self, registry):
+        Base = registry.generate_base()
 
         class C1(Base):
             __tablename__ = "c1"
@@ -2497,7 +2502,7 @@ class JoinConditionErrorTest(fixtures.TestBase):
 
         assert_raises(sa.exc.ArgumentError, configure_mappers)
 
-    def test_only_column_elements(self):
+    def test_only_column_elements(self, registry):
         m = MetaData()
         t1 = Table(
             "t1",
@@ -2513,46 +2518,45 @@ class JoinConditionErrorTest(fixtures.TestBase):
         class C2(object):
             pass
 
-        mapper(
+        registry.map_imperatively(
             C1,
             t1,
             properties={"c2": relationship(C2, primaryjoin=t1.join(t2))},
         )
-        mapper(C2, t2)
+        registry.map_imperatively(C2, t2)
         assert_raises(sa.exc.ArgumentError, configure_mappers)
 
-    def test_invalid_string_args(self):
-        from sqlalchemy.ext.declarative import declarative_base
+    @testing.combinations(
+        ("remote_side", ["c1.id"]),
+        ("remote_side", ["id"]),
+        ("foreign_keys", ["c1id"]),
+        ("foreign_keys", ["C2.c1id"]),
+        ("order_by", ["id"]),
+        argnames="argname, arg",
+    )
+    def test_invalid_string_args(self, registry, argname, arg):
 
-        for argname, arg in [
-            ("remote_side", ["c1.id"]),
-            ("remote_side", ["id"]),
-            ("foreign_keys", ["c1id"]),
-            ("foreign_keys", ["C2.c1id"]),
-            ("order_by", ["id"]),
-        ]:
-            clear_mappers()
-            kw = {argname: arg}
-            Base = declarative_base()
+        kw = {argname: arg}
+        Base = registry.generate_base()
 
-            class C1(Base):
-                __tablename__ = "c1"
-                id = Column("id", Integer, primary_key=True)
+        class C1(Base):
+            __tablename__ = "c1"
+            id = Column("id", Integer, primary_key=True)
 
-            class C2(Base):
-                __tablename__ = "c2"
-                id_ = Column("id", Integer, primary_key=True)
-                c1id = Column("c1id", Integer, ForeignKey("c1.id"))
-                c2 = relationship(C1, **kw)
+        class C2(Base):
+            __tablename__ = "c2"
+            id_ = Column("id", Integer, primary_key=True)
+            c1id = Column("c1id", Integer, ForeignKey("c1.id"))
+            c2 = relationship(C1, **kw)
 
-            assert_raises_message(
-                sa.exc.ArgumentError,
-                "Column expression expected "
-                "for argument '%s'; got '%s'" % (argname, arg[0]),
-                configure_mappers,
-            )
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            "Column expression expected "
+            "for argument '%s'; got '%s'" % (argname, arg[0]),
+            configure_mappers,
+        )
 
-    def test_fk_error_not_raised_unrelated(self):
+    def test_fk_error_not_raised_unrelated(self, registry):
         m = MetaData()
         t1 = Table(
             "t1",
@@ -2575,11 +2579,11 @@ class JoinConditionErrorTest(fixtures.TestBase):
         class C2(object):
             pass
 
-        mapper(C1, t1, properties={"c2": relationship(C2)})
-        mapper(C2, t3)
+        registry.map_imperatively(C1, t1, properties={"c2": relationship(C2)})
+        registry.map_imperatively(C2, t3)
         assert C1.c2.property.primaryjoin.compare(t1.c.id == t3.c.t1id)
 
-    def test_join_error_raised(self):
+    def test_join_error_raised(self, registry):
         m = MetaData()
         t1 = Table("t1", m, Column("id", Integer, primary_key=True))
         t2 = Table("t2", m, Column("id", Integer, primary_key=True))  # noqa
@@ -2597,8 +2601,8 @@ class JoinConditionErrorTest(fixtures.TestBase):
         class C2(object):
             pass
 
-        mapper(C1, t1, properties={"c2": relationship(C2)})
-        mapper(C2, t3)
+        registry.map_imperatively(C1, t1, properties={"c2": relationship(C2)})
+        registry.map_imperatively(C2, t3)
 
         assert_raises(sa.exc.ArgumentError, configure_mappers)
 
@@ -2661,9 +2665,11 @@ class TypeMatchTest(fixtures.MappedTest):
         class C(fixtures.BasicEntity):
             pass
 
-        mapper(A, a, properties={"bs": relationship(B)})
-        mapper(B, b)
-        mapper(C, c)
+        self.mapper_registry.map_imperatively(
+            A, a, properties={"bs": relationship(B)}
+        )
+        self.mapper_registry.map_imperatively(B, b)
+        self.mapper_registry.map_imperatively(C, c)
 
         a1 = A()
         b1 = B()
@@ -2693,9 +2699,11 @@ class TypeMatchTest(fixtures.MappedTest):
         class C(fixtures.BasicEntity):
             pass
 
-        mapper(A, a, properties={"bs": relationship(B, cascade="none")})
-        mapper(B, b)
-        mapper(C, c)
+        self.mapper_registry.map_imperatively(
+            A, a, properties={"bs": relationship(B, cascade="none")}
+        )
+        self.mapper_registry.map_imperatively(B, b)
+        self.mapper_registry.map_imperatively(C, c)
 
         a1 = A()
         b1 = B()
@@ -2722,9 +2730,11 @@ class TypeMatchTest(fixtures.MappedTest):
         class C(B):
             pass
 
-        mapper(A, a, properties={"bs": relationship(B, cascade="none")})
-        mapper(B, b)
-        mapper(C, c, inherits=B)
+        self.mapper_registry.map_imperatively(
+            A, a, properties={"bs": relationship(B, cascade="none")}
+        )
+        self.mapper_registry.map_imperatively(B, b)
+        self.mapper_registry.map_imperatively(C, c, inherits=B)
 
         a1 = A()
         b1 = B()
@@ -2751,9 +2761,11 @@ class TypeMatchTest(fixtures.MappedTest):
         class D(fixtures.BasicEntity):
             pass
 
-        mapper(A, a)
-        mapper(B, b, inherits=A)
-        mapper(D, d, properties={"a": relationship(A, cascade="none")})
+        self.mapper_registry.map_imperatively(A, a)
+        self.mapper_registry.map_imperatively(B, b, inherits=A)
+        self.mapper_registry.map_imperatively(
+            D, d, properties={"a": relationship(A, cascade="none")}
+        )
         b1 = B()
         d1 = D()
         d1.a = b1
@@ -2776,9 +2788,11 @@ class TypeMatchTest(fixtures.MappedTest):
         class D(fixtures.BasicEntity):
             pass
 
-        mapper(A, a)
-        mapper(B, b)
-        mapper(D, d, properties={"a": relationship(A)})
+        self.mapper_registry.map_imperatively(A, a)
+        self.mapper_registry.map_imperatively(B, b)
+        self.mapper_registry.map_imperatively(
+            D, d, properties={"a": relationship(A)}
+        )
         b1 = B()
         d1 = D()
         d1.a = b1
@@ -2831,8 +2845,8 @@ class TypedAssociationTable(fixtures.MappedTest):
         class T2(fixtures.BasicEntity):
             pass
 
-        mapper(T2, t2)
-        mapper(
+        self.mapper_registry.map_imperatively(T2, t2)
+        self.mapper_registry.map_imperatively(
             T1,
             t1,
             properties={"t2s": relationship(T2, secondary=t3, backref="t1s")},
@@ -2894,7 +2908,7 @@ class CustomOperatorTest(fixtures.MappedTest, AssertsCompiledSQL):
         class B(fixtures.BasicEntity):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             self.tables.a,
             properties={
@@ -2907,7 +2921,7 @@ class CustomOperatorTest(fixtures.MappedTest, AssertsCompiledSQL):
                 )
             },
         )
-        mapper(B, self.tables.b)
+        self.mapper_registry.map_imperatively(B, self.tables.b)
         self.assert_compile(
             fixture_session().query(A).join(A.bs),
             "SELECT a.id AS a_id, a.foo AS a_foo "
@@ -2955,7 +2969,7 @@ class ViewOnlyHistoryTest(fixtures.MappedTest):
         class B(fixtures.ComparableEntity):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             self.tables.t1,
             properties={
@@ -2964,7 +2978,7 @@ class ViewOnlyHistoryTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(B, self.tables.t2)
+        self.mapper_registry.map_imperatively(B, self.tables.t2)
 
         configure_mappers()
 
@@ -2988,7 +3002,7 @@ class ViewOnlyHistoryTest(fixtures.MappedTest):
         class B(fixtures.ComparableEntity):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             self.tables.t1,
             properties={
@@ -2997,7 +3011,7 @@ class ViewOnlyHistoryTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(B, self.tables.t2)
+        self.mapper_registry.map_imperatively(B, self.tables.t2)
 
         configure_mappers()
 
@@ -3021,12 +3035,12 @@ class ViewOnlyHistoryTest(fixtures.MappedTest):
         class B(fixtures.ComparableEntity):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             self.tables.t1,
             properties={"bs": relationship(B, viewonly=True)},
         )
-        mapper(B, self.tables.t2)
+        self.mapper_registry.map_imperatively(B, self.tables.t2)
 
         a1 = A()
         b1 = B()
@@ -3042,8 +3056,8 @@ class ViewOnlyHistoryTest(fixtures.MappedTest):
         class B(fixtures.ComparableEntity):
             pass
 
-        mapper(A, self.tables.t1)
-        mapper(
+        self.mapper_registry.map_imperatively(A, self.tables.t1)
+        self.mapper_registry.map_imperatively(
             B, self.tables.t2, properties={"a": relationship(A, viewonly=True)}
         )
 
@@ -3090,7 +3104,7 @@ class ViewOnlyM2MBackrefTest(fixtures.MappedTest):
         class B(fixtures.ComparableEntity):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             t1,
             properties={
@@ -3099,7 +3113,7 @@ class ViewOnlyM2MBackrefTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(B, t2)
+        self.mapper_registry.map_imperatively(B, t2)
 
         configure_mappers()
 
@@ -3168,7 +3182,7 @@ class ViewOnlyOverlappingNames(fixtures.MappedTest):
         class C3(fixtures.BasicEntity):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             C1,
             t1,
             properties={
@@ -3184,8 +3198,10 @@ class ViewOnlyOverlappingNames(fixtures.MappedTest):
                 ),
             },
         )
-        mapper(C2, t2)
-        mapper(C3, t3, properties={"t2": relationship(C2)})
+        self.mapper_registry.map_imperatively(C2, t2)
+        self.mapper_registry.map_imperatively(
+            C3, t3, properties={"t2": relationship(C2)}
+        )
 
         c1 = C1()
         c1.data = "c1data"
@@ -3324,12 +3340,12 @@ class ViewOnlySyncBackref(fixtures.MappedTest):
             )
             return
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             self.tables.t1,
             properties={"bs": rel()},
         )
-        mapper(B, self.tables.t2)
+        self.mapper_registry.map_imperatively(B, self.tables.t2)
 
         if case.B_a_init_error:
             assert_raises_message(
@@ -3430,7 +3446,7 @@ class ViewOnlyUniqueNames(fixtures.MappedTest):
         class C3(fixtures.BasicEntity):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             C1,
             t1,
             properties={
@@ -3446,8 +3462,10 @@ class ViewOnlyUniqueNames(fixtures.MappedTest):
                 ),
             },
         )
-        mapper(C2, t2)
-        mapper(C3, t3, properties={"t2": relationship(C2)})
+        self.mapper_registry.map_imperatively(C2, t2)
+        self.mapper_registry.map_imperatively(
+            C3, t3, properties={"t2": relationship(C2)}
+        )
 
         c1 = C1()
         c1.data = "c1data"
@@ -3473,7 +3491,7 @@ class ViewOnlyLocalRemoteM2M(fixtures.TestBase):
 
     """test that local-remote is correctly determined for m2m"""
 
-    def test_local_remote(self):
+    def test_local_remote(self, registry):
         meta = MetaData()
 
         t1 = Table("t1", meta, Column("id", Integer, primary_key=True))
@@ -3491,8 +3509,8 @@ class ViewOnlyLocalRemoteM2M(fixtures.TestBase):
         class B(object):
             pass
 
-        mapper(B, t2)
-        m = mapper(
+        registry.map_imperatively(B, t2)
+        m = registry.map_imperatively(
             A,
             t1,
             properties=dict(
@@ -3531,7 +3549,7 @@ class ViewOnlyNonEquijoin(fixtures.MappedTest):
         class Bar(fixtures.ComparableEntity):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -3544,7 +3562,7 @@ class ViewOnlyNonEquijoin(fixtures.MappedTest):
             },
         )
 
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
 
         with fixture_session() as sess:
             sess.add_all(
@@ -3604,7 +3622,7 @@ class ViewOnlyRepeatedRemoteColumn(fixtures.MappedTest):
         class Bar(fixtures.ComparableEntity):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -3618,7 +3636,7 @@ class ViewOnlyRepeatedRemoteColumn(fixtures.MappedTest):
                 )
             },
         )
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
 
         sess = fixture_session()
         b1 = Bar(id=1, data="b1")
@@ -3679,7 +3697,7 @@ class ViewOnlyRepeatedLocalColumn(fixtures.MappedTest):
         class Bar(fixtures.ComparableEntity):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -3692,7 +3710,7 @@ class ViewOnlyRepeatedLocalColumn(fixtures.MappedTest):
                 )
             },
         )
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
 
         sess = fixture_session()
         f1 = Foo(id=1, data="f1")
@@ -3779,7 +3797,7 @@ class ViewOnlyComplexJoin(_RelationshipErrors, fixtures.MappedTest):
             self.tables.t1,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             T1,
             t1,
             properties={
@@ -3796,7 +3814,7 @@ class ViewOnlyComplexJoin(_RelationshipErrors, fixtures.MappedTest):
                 )
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             T2,
             t2,
             properties={
@@ -3804,7 +3822,7 @@ class ViewOnlyComplexJoin(_RelationshipErrors, fixtures.MappedTest):
                 "t3s": relationship(T3, secondary=t2tot3),
             },
         )
-        mapper(T3, t3)
+        self.mapper_registry.map_imperatively(T3, t3)
 
         sess = fixture_session()
         sess.add(T2(data="t2", t1=T1(data="t1"), t3s=[T3(data="t3")]))
@@ -3825,7 +3843,7 @@ class ViewOnlyComplexJoin(_RelationshipErrors, fixtures.MappedTest):
             self.tables.t1,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             T1,
             t1,
             properties={
@@ -3841,7 +3859,7 @@ class ViewOnlyComplexJoin(_RelationshipErrors, fixtures.MappedTest):
                 )
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             T2,
             t2,
             properties={
@@ -3849,7 +3867,7 @@ class ViewOnlyComplexJoin(_RelationshipErrors, fixtures.MappedTest):
                 "t3s": relationship(T3, secondary=t2tot3),
             },
         )
-        mapper(T3, t3)
+        self.mapper_registry.map_imperatively(T3, t3)
         self._assert_raises_no_local_remote(configure_mappers, "T1.t3s")
 
 
@@ -4033,7 +4051,7 @@ class ExplicitLocalRemoteTest(fixtures.MappedTest):
         )
 
         # old _local_remote_pairs
-        mapper(
+        self.mapper_registry.map_imperatively(
             T1,
             t1,
             properties={
@@ -4045,7 +4063,7 @@ class ExplicitLocalRemoteTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(T2, t2)
+        self.mapper_registry.map_imperatively(T2, t2)
         self._test_onetomany()
 
     def test_onetomany_funcfk_annotated(self):
@@ -4057,7 +4075,7 @@ class ExplicitLocalRemoteTest(fixtures.MappedTest):
         )
 
         # use annotation
-        mapper(
+        self.mapper_registry.map_imperatively(
             T1,
             t1,
             properties={
@@ -4067,7 +4085,7 @@ class ExplicitLocalRemoteTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(T2, t2)
+        self.mapper_registry.map_imperatively(T2, t2)
         self._test_onetomany()
 
     def _test_onetomany(self):
@@ -4109,8 +4127,8 @@ class ExplicitLocalRemoteTest(fixtures.MappedTest):
             self.tables.t1,
         )
 
-        mapper(T1, t1)
-        mapper(
+        self.mapper_registry.map_imperatively(T1, t1)
+        self.mapper_registry.map_imperatively(
             T2,
             t2,
             properties={
@@ -4150,7 +4168,7 @@ class ExplicitLocalRemoteTest(fixtures.MappedTest):
             self.tables.t1,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             T1,
             t1,
             properties={
@@ -4162,7 +4180,7 @@ class ExplicitLocalRemoteTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(T2, t2)
+        self.mapper_registry.map_imperatively(T2, t2)
 
         sess = fixture_session()
         a1 = T1(id="NuMbeR1", data="a1")
@@ -4194,8 +4212,8 @@ class ExplicitLocalRemoteTest(fixtures.MappedTest):
             self.tables.t1,
         )
 
-        mapper(T1, t1)
-        mapper(
+        self.mapper_registry.map_imperatively(T1, t1)
+        self.mapper_registry.map_imperatively(
             T2,
             t2,
             properties={
@@ -4235,7 +4253,7 @@ class ExplicitLocalRemoteTest(fixtures.MappedTest):
             self.tables.t1,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             T1,
             t1,
             properties={
@@ -4248,7 +4266,7 @@ class ExplicitLocalRemoteTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(T2, t2)
+        self.mapper_registry.map_imperatively(T2, t2)
         assert_raises(sa.exc.ArgumentError, sa.orm.configure_mappers)
 
     def test_escalation_2(self):
@@ -4259,7 +4277,7 @@ class ExplicitLocalRemoteTest(fixtures.MappedTest):
             self.tables.t1,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             T1,
             t1,
             properties={
@@ -4270,7 +4288,7 @@ class ExplicitLocalRemoteTest(fixtures.MappedTest):
                 )
             },
         )
-        mapper(T2, t2)
+        self.mapper_registry.map_imperatively(T2, t2)
         assert_raises(sa.exc.ArgumentError, sa.orm.configure_mappers)
 
 
@@ -4293,7 +4311,9 @@ class InvalidRemoteSideTest(fixtures.MappedTest):
     def test_o2m_backref(self):
         T1, t1 = self.classes.T1, self.tables.t1
 
-        mapper(T1, t1, properties={"t1s": relationship(T1, backref="parent")})
+        self.mapper_registry.map_imperatively(
+            T1, t1, properties={"t1s": relationship(T1, backref="parent")}
+        )
 
         assert_raises_message(
             sa.exc.ArgumentError,
@@ -4306,7 +4326,7 @@ class InvalidRemoteSideTest(fixtures.MappedTest):
     def test_m2o_backref(self):
         T1, t1 = self.classes.T1, self.tables.t1
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             T1,
             t1,
             properties={
@@ -4329,7 +4349,7 @@ class InvalidRemoteSideTest(fixtures.MappedTest):
     def test_o2m_explicit(self):
         T1, t1 = self.classes.T1, self.tables.t1
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             T1,
             t1,
             properties={
@@ -4349,7 +4369,7 @@ class InvalidRemoteSideTest(fixtures.MappedTest):
     def test_m2o_explicit(self):
         T1, t1 = self.classes.T1, self.tables.t1
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             T1,
             t1,
             properties={
@@ -4403,17 +4423,19 @@ class AmbiguousFKResolutionTest(_RelationshipErrors, fixtures.MappedTest):
     def test_ambiguous_fks_o2m(self):
         A, B = self.classes.A, self.classes.B
         a, b = self.tables.a, self.tables.b
-        mapper(A, a, properties={"bs": relationship(B)})
-        mapper(B, b)
+        self.mapper_registry.map_imperatively(
+            A, a, properties={"bs": relationship(B)}
+        )
+        self.mapper_registry.map_imperatively(B, b)
         self._assert_raises_ambig_join(configure_mappers, "A.bs", None)
 
     def test_with_fks_o2m(self):
         A, B = self.classes.A, self.classes.B
         a, b = self.tables.a, self.tables.b
-        mapper(
+        self.mapper_registry.map_imperatively(
             A, a, properties={"bs": relationship(B, foreign_keys=b.c.aid_1)}
         )
-        mapper(B, b)
+        self.mapper_registry.map_imperatively(B, b)
         sa.orm.configure_mappers()
         assert A.bs.property.primaryjoin.compare(a.c.id == b.c.aid_1)
         eq_(A.bs.property._calculated_foreign_keys, set([b.c.aid_1]))
@@ -4421,14 +4443,14 @@ class AmbiguousFKResolutionTest(_RelationshipErrors, fixtures.MappedTest):
     def test_with_pj_o2m(self):
         A, B = self.classes.A, self.classes.B
         a, b = self.tables.a, self.tables.b
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             a,
             properties={
                 "bs": relationship(B, primaryjoin=a.c.id == b.c.aid_1)
             },
         )
-        mapper(B, b)
+        self.mapper_registry.map_imperatively(B, b)
         sa.orm.configure_mappers()
         assert A.bs.property.primaryjoin.compare(a.c.id == b.c.aid_1)
         eq_(A.bs.property._calculated_foreign_keys, set([b.c.aid_1]))
@@ -4436,14 +4458,14 @@ class AmbiguousFKResolutionTest(_RelationshipErrors, fixtures.MappedTest):
     def test_with_annotated_pj_o2m(self):
         A, B = self.classes.A, self.classes.B
         a, b = self.tables.a, self.tables.b
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             a,
             properties={
                 "bs": relationship(B, primaryjoin=a.c.id == foreign(b.c.aid_1))
             },
         )
-        mapper(B, b)
+        self.mapper_registry.map_imperatively(B, b)
         sa.orm.configure_mappers()
         assert A.bs.property.primaryjoin.compare(a.c.id == b.c.aid_1)
         eq_(A.bs.property._calculated_foreign_keys, set([b.c.aid_1]))
@@ -4451,15 +4473,19 @@ class AmbiguousFKResolutionTest(_RelationshipErrors, fixtures.MappedTest):
     def test_no_fks_m2m(self):
         A, B = self.classes.A, self.classes.B
         a, b, a_to_b = self.tables.a, self.tables.b, self.tables.atob
-        mapper(A, a, properties={"bs": relationship(B, secondary=a_to_b)})
-        mapper(B, b)
+        self.mapper_registry.map_imperatively(
+            A, a, properties={"bs": relationship(B, secondary=a_to_b)}
+        )
+        self.mapper_registry.map_imperatively(B, b)
         self._assert_raises_no_join(sa.orm.configure_mappers, "A.bs", a_to_b)
 
     def test_ambiguous_fks_m2m(self):
         A, B = self.classes.A, self.classes.B
         a, b, a_to_b = self.tables.a, self.tables.b, self.tables.atob_ambiguous
-        mapper(A, a, properties={"bs": relationship(B, secondary=a_to_b)})
-        mapper(B, b)
+        self.mapper_registry.map_imperatively(
+            A, a, properties={"bs": relationship(B, secondary=a_to_b)}
+        )
+        self.mapper_registry.map_imperatively(B, b)
 
         self._assert_raises_ambig_join(
             configure_mappers, "A.bs", "atob_ambiguous"
@@ -4468,7 +4494,7 @@ class AmbiguousFKResolutionTest(_RelationshipErrors, fixtures.MappedTest):
     def test_with_fks_m2m(self):
         A, B = self.classes.A, self.classes.B
         a, b, a_to_b = self.tables.a, self.tables.b, self.tables.atob_ambiguous
-        mapper(
+        self.mapper_registry.map_imperatively(
             A,
             a,
             properties={
@@ -4479,7 +4505,7 @@ class AmbiguousFKResolutionTest(_RelationshipErrors, fixtures.MappedTest):
                 )
             },
         )
-        mapper(B, b)
+        self.mapper_registry.map_imperatively(B, b)
         sa.orm.configure_mappers()
 
 
@@ -4600,7 +4626,7 @@ class SecondaryNestedJoinTest(
         j = sa.join(b, d, b.c.d_id == d.c.id).join(c, c.c.d_id == d.c.id)
         # j = join(b, d, b.c.d_id == d.c.id).join(c, c.c.d_id == d.c.id) \
         # .alias()
-        mapper(
+        cls.mapper_registry.map_imperatively(
             A,
             a,
             properties={
@@ -4615,9 +4641,13 @@ class SecondaryNestedJoinTest(
                 ),
             },
         )
-        mapper(B, b, properties={"d": relationship(D)})
-        mapper(C, c, properties={"a": relationship(A), "d": relationship(D)})
-        mapper(D, d)
+        cls.mapper_registry.map_imperatively(
+            B, b, properties={"d": relationship(D)}
+        )
+        cls.mapper_registry.map_imperatively(
+            C, c, properties={"a": relationship(A), "d": relationship(D)}
+        )
+        cls.mapper_registry.map_imperatively(D, d)
 
     @classmethod
     def insert_data(cls, connection):
@@ -4774,8 +4804,10 @@ class InvalidRelationshipEscalationTest(
             self.tables.foos,
         )
 
-        mapper(Foo, foos, properties={"bars": relationship(Bar)})
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(
+            Foo, foos, properties={"bars": relationship(Bar)}
+        )
+        self.mapper_registry.map_imperatively(Bar, bars)
 
         self._assert_raises_no_join(sa.orm.configure_mappers, "Foo.bars", None)
 
@@ -4787,8 +4819,10 @@ class InvalidRelationshipEscalationTest(
             self.tables.foos,
         )
 
-        mapper(Foo, foos, properties={"foos": relationship(Foo)})
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(
+            Foo, foos, properties={"foos": relationship(Foo)}
+        )
+        self.mapper_registry.map_imperatively(Bar, bars)
 
         self._assert_raises_no_join(configure_mappers, "Foo.foos", None)
 
@@ -4800,14 +4834,14 @@ class InvalidRelationshipEscalationTest(
             self.tables.foos,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
                 "bars": relationship(Bar, primaryjoin=foos.c.id > bars.c.fid)
             },
         )
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
 
         self._assert_raises_no_relevant_fks(
             configure_mappers, "foos.id > bars.fid", "Foo.bars", "primary"
@@ -4821,7 +4855,7 @@ class InvalidRelationshipEscalationTest(
             self.tables.foos,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -4832,7 +4866,7 @@ class InvalidRelationshipEscalationTest(
                 )
             },
         )
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
         self._assert_raises_no_equality(
             sa.orm.configure_mappers,
             "foos.id > bars.fid",
@@ -4856,7 +4890,7 @@ class InvalidRelationshipEscalationTest(
         # in this case we don't get eq_pairs, but we hit the
         # "works if viewonly" rule.  so here we add another clause regarding
         # "try foreign keys".
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -4869,7 +4903,7 @@ class InvalidRelationshipEscalationTest(
                 )
             },
         )
-        mapper(Bar, bars_with_fks)
+        self.mapper_registry.map_imperatively(Bar, bars_with_fks)
 
         self._assert_raises_no_equality(
             sa.orm.configure_mappers,
@@ -4887,7 +4921,7 @@ class InvalidRelationshipEscalationTest(
             self.tables.foos,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -4898,7 +4932,7 @@ class InvalidRelationshipEscalationTest(
                 )
             },
         )
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
 
         self._assert_raises_ambiguous_direction(
             sa.orm.configure_mappers, "Foo.bars"
@@ -4912,7 +4946,7 @@ class InvalidRelationshipEscalationTest(
             self.tables.foos,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -4925,7 +4959,7 @@ class InvalidRelationshipEscalationTest(
                 )
             },
         )
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
 
         self._assert_raises_no_local_remote(configure_mappers, "Foo.bars")
 
@@ -4937,7 +4971,7 @@ class InvalidRelationshipEscalationTest(
             self.tables.foos,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -4950,7 +4984,7 @@ class InvalidRelationshipEscalationTest(
                 )
             },
         )
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
 
         self._assert_raises_no_local_remote(configure_mappers, "Foo.bars")
 
@@ -4962,14 +4996,14 @@ class InvalidRelationshipEscalationTest(
             self.tables.foos,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
                 "foos": relationship(Foo, primaryjoin=foos.c.id > foos.c.fid)
             },
         )
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
 
         self._assert_raises_no_relevant_fks(
             configure_mappers, "foos.id > foos.fid", "Foo.foos", "primary"
@@ -4983,7 +5017,7 @@ class InvalidRelationshipEscalationTest(
             self.tables.foos,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -4994,7 +5028,7 @@ class InvalidRelationshipEscalationTest(
                 )
             },
         )
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
 
         self._assert_raises_no_equality(
             configure_mappers, "foos.id > foos.fid", "Foo.foos", "primary"
@@ -5010,7 +5044,7 @@ class InvalidRelationshipEscalationTest(
             self.tables.foos,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -5019,7 +5053,7 @@ class InvalidRelationshipEscalationTest(
                 )
             },
         )
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
 
         self._assert_raises_no_relevant_fks(
             sa.orm.configure_mappers,
@@ -5028,8 +5062,8 @@ class InvalidRelationshipEscalationTest(
             "primary",
         )
 
-        sa.orm.clear_mappers()
-        mapper(
+        self.mapper_registry.dispose()
+        self.mapper_registry.map_imperatively(
             Foo,
             foos_with_fks,
             properties={
@@ -5040,7 +5074,7 @@ class InvalidRelationshipEscalationTest(
                 )
             },
         )
-        mapper(Bar, bars_with_fks)
+        self.mapper_registry.map_imperatively(Bar, bars_with_fks)
         sa.orm.configure_mappers()
 
     def test_no_equated_self_ref_viewonly(self):
@@ -5053,7 +5087,7 @@ class InvalidRelationshipEscalationTest(
             self.tables.foos,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -5062,7 +5096,7 @@ class InvalidRelationshipEscalationTest(
                 )
             },
         )
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
 
         self._assert_raises_no_relevant_fks(
             sa.orm.configure_mappers,
@@ -5071,8 +5105,8 @@ class InvalidRelationshipEscalationTest(
             "primary",
         )
 
-        sa.orm.clear_mappers()
-        mapper(
+        self.mapper_registry.dispose()
+        self.mapper_registry.map_imperatively(
             Foo,
             foos_with_fks,
             properties={
@@ -5083,13 +5117,13 @@ class InvalidRelationshipEscalationTest(
                 )
             },
         )
-        mapper(Bar, bars_with_fks)
+        self.mapper_registry.map_imperatively(Bar, bars_with_fks)
         sa.orm.configure_mappers()
 
     def test_no_equated_self_ref_viewonly_fks(self):
         Foo, foos = self.classes.Foo, self.tables.foos
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -5115,21 +5149,22 @@ class InvalidRelationshipEscalationTest(
             self.tables.foos,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
                 "bars": relationship(Bar, primaryjoin=foos.c.id == bars.c.fid)
             },
         )
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
 
         self._assert_raises_no_relevant_fks(
             configure_mappers, "foos.id = bars.fid", "Foo.bars", "primary"
         )
 
-        sa.orm.clear_mappers()
-        mapper(
+        self.mapper_registry.dispose()
+
+        self.mapper_registry.map_imperatively(
             Foo,
             foos_with_fks,
             properties={
@@ -5138,13 +5173,13 @@ class InvalidRelationshipEscalationTest(
                 )
             },
         )
-        mapper(Bar, bars_with_fks)
+        self.mapper_registry.map_imperatively(Bar, bars_with_fks)
         sa.orm.configure_mappers()
 
     def test_equated_self_ref(self):
         Foo, foos = self.classes.Foo, self.tables.foos
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -5163,7 +5198,7 @@ class InvalidRelationshipEscalationTest(
             self.tables.foos,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -5226,12 +5261,12 @@ class InvalidRelationshipEscalationTestM2M(
             self.tables.foos,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={"bars": relationship(Bar, secondary=foobars)},
         )
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
 
         self._assert_raises_no_join(configure_mappers, "Foo.bars", "foobars")
 
@@ -5244,7 +5279,7 @@ class InvalidRelationshipEscalationTestM2M(
             self.tables.foos,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -5255,7 +5290,7 @@ class InvalidRelationshipEscalationTestM2M(
                 )
             },
         )
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
 
         self._assert_raises_no_join(configure_mappers, "Foo.bars", "foobars")
 
@@ -5269,7 +5304,7 @@ class InvalidRelationshipEscalationTestM2M(
             self.tables.foos,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -5281,7 +5316,7 @@ class InvalidRelationshipEscalationTestM2M(
                 )
             },
         )
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
         sa.orm.configure_mappers()
         eq_(Foo.bars.property.synchronize_pairs, [(foos.c.id, foobars.c.fid)])
         eq_(
@@ -5289,8 +5324,8 @@ class InvalidRelationshipEscalationTestM2M(
             [(bars.c.id, foobars.c.bid)],
         )
 
-        sa.orm.clear_mappers()
-        mapper(
+        self.mapper_registry.dispose()
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -5302,7 +5337,7 @@ class InvalidRelationshipEscalationTestM2M(
                 )
             },
         )
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
         sa.orm.configure_mappers()
         eq_(
             Foo.bars.property.synchronize_pairs,
@@ -5324,7 +5359,7 @@ class InvalidRelationshipEscalationTestM2M(
 
         # ensure m2m backref is set up with correct annotations
         # [ticket:2578]
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -5333,7 +5368,7 @@ class InvalidRelationshipEscalationTestM2M(
                 )
             },
         )
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
         sa.orm.configure_mappers()
         eq_(Foo.bars.property._join_condition.local_columns, set([foos.c.id]))
         eq_(Bar.foos.property._join_condition.local_columns, set([bars.c.id]))
@@ -5348,7 +5383,7 @@ class InvalidRelationshipEscalationTestM2M(
             self.tables.foos,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -5360,14 +5395,14 @@ class InvalidRelationshipEscalationTestM2M(
                 )
             },
         )
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
 
         self._assert_raises_no_equality(
             configure_mappers, "foos.id > foobars.fid", "Foo.bars", "primary"
         )
 
-        sa.orm.clear_mappers()
-        mapper(
+        self.mapper_registry.dispose()
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -5379,7 +5414,7 @@ class InvalidRelationshipEscalationTestM2M(
                 )
             },
         )
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
         self._assert_raises_no_equality(
             configure_mappers,
             "foos.id > foobars_with_fks.fid",
@@ -5387,8 +5422,8 @@ class InvalidRelationshipEscalationTestM2M(
             "primary",
         )
 
-        sa.orm.clear_mappers()
-        mapper(
+        self.mapper_registry.dispose()
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -5401,7 +5436,7 @@ class InvalidRelationshipEscalationTestM2M(
                 )
             },
         )
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
         sa.orm.configure_mappers()
 
     def test_bad_secondaryjoin(self):
@@ -5413,7 +5448,7 @@ class InvalidRelationshipEscalationTestM2M(
             self.tables.foos,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -5426,7 +5461,7 @@ class InvalidRelationshipEscalationTestM2M(
                 )
             },
         )
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
         self._assert_raises_no_relevant_fks(
             configure_mappers,
             "foobars.bid <= bars.id",
@@ -5443,7 +5478,7 @@ class InvalidRelationshipEscalationTestM2M(
             self.tables.foos,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             foos,
             properties={
@@ -5456,7 +5491,7 @@ class InvalidRelationshipEscalationTestM2M(
                 )
             },
         )
-        mapper(Bar, bars)
+        self.mapper_registry.map_imperatively(Bar, bars)
 
         self._assert_raises_no_equality(
             configure_mappers,
@@ -5487,7 +5522,7 @@ class ActiveHistoryFlagTest(_fixtures.FixtureTest):
     def test_column_property_flag(self):
         User, users = self.classes.User, self.tables.users
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -5505,12 +5540,12 @@ class ActiveHistoryFlagTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={"user": relationship(User, active_history=True)},
         )
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
         u1 = User(name="jack")
         u2 = User(name="ed")
         a1 = Address(email_address="a1", user=u1)
@@ -5533,7 +5568,7 @@ class ActiveHistoryFlagTest(_fixtures.FixtureTest):
                     and other.description == self.description
                 )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -5869,14 +5904,14 @@ class InactiveHistoryNoRaiseTest(_fixtures.FixtureTest):
             opts["lazy"] = "raise"
         opts["_legacy_inactive_history_style"] = legacy_inactive_history_style
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
                 "user": relationship(User, back_populates="addresses", **opts)
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -5978,8 +6013,8 @@ class RaiseLoadTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        mapper(Address, addresses)
-        mapper(
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(addresses=relationship(Address, lazy="raise")),
@@ -6008,8 +6043,10 @@ class RaiseLoadTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        mapper(Address, addresses)
-        mapper(User, users, properties=dict(addresses=relationship(Address)))
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(
+            User, users, properties=dict(addresses=relationship(Address))
+        )
         q = fixture_session().query(User)
         result = [None]
 
@@ -6038,8 +6075,8 @@ class RaiseLoadTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        mapper(Address, addresses)
-        mapper(
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(addresses=relationship(Address, lazy="raise")),
@@ -6065,8 +6102,10 @@ class RaiseLoadTest(_fixtures.FixtureTest):
             self.tables.users,
             self.classes.User,
         )
-        mapper(Address, addresses, properties={"user": relationship(User)})
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(
+            Address, addresses, properties={"user": relationship(User)}
+        )
+        self.mapper_registry.map_imperatively(User, users)
         s = fixture_session()
         a1 = (
             s.query(Address)
@@ -6091,8 +6130,10 @@ class RaiseLoadTest(_fixtures.FixtureTest):
             self.tables.users,
             self.classes.User,
         )
-        mapper(Address, addresses, properties={"user": relationship(User)})
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(
+            Address, addresses, properties={"user": relationship(User)}
+        )
+        self.mapper_registry.map_imperatively(User, users)
         s = fixture_session()
         a1 = (
             s.query(Address)
@@ -6129,7 +6170,7 @@ class RaiseLoadTest(_fixtures.FixtureTest):
             self.tables.users,
             self.classes.User,
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
@@ -6142,7 +6183,7 @@ class RaiseLoadTest(_fixtures.FixtureTest):
                 )
             },
         )
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
         s = fixture_session()
         u1 = s.query(User).first()  # noqa
         a1 = (
@@ -6167,8 +6208,8 @@ class RaiseLoadTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        mapper(Address, addresses)
-        mapper(
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(addresses=relationship(Address, backref="user")),
@@ -6205,8 +6246,8 @@ class RaiseLoadTest(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        mapper(Address, addresses)
-        mapper(
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(addresses=relationship(Address, backref="user")),
@@ -6302,12 +6343,12 @@ class RelationDeprecationTest(fixtures.MappedTest):
             self.classes.Address,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users_table,
             properties=dict(addresses=relationship(Address, backref="user")),
         )
-        mapper(Address, addresses_table)
+        self.mapper_registry.map_imperatively(Address, addresses_table)
 
         session = fixture_session()
 
@@ -6347,7 +6388,7 @@ class SecondaryIncludesLocalColsTest(fixtures.MappedTest):
             .alias()
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             A,
             a,
             properties=dict(
@@ -6359,7 +6400,7 @@ class SecondaryIncludesLocalColsTest(fixtures.MappedTest):
                 )
             ),
         )
-        mapper(B, b)
+        cls.mapper_registry.map_imperatively(B, b)
 
     @classmethod
     def insert_data(cls, connection):

@@ -16,7 +16,6 @@ from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
@@ -68,7 +67,7 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
     def setup_mappers(cls):
         global Session
         Session = scoped_session(sessionmaker(testing.db))
-        mapper(
+        cls.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -77,7 +76,7 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
                 )
             },
         )
-        mapper(Address, addresses)
+        cls.mapper_registry.map_imperatively(Address, addresses)
         configure_mappers()
 
     @classmethod

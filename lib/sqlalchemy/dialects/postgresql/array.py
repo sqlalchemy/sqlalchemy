@@ -16,13 +16,8 @@ from ...sql import roles
 
 
 def Any(other, arrexpr, operator=operators.eq):
-    """A synonym for the :meth:`.ARRAY.Comparator.any` method.
-
-    This method is legacy and is here for backwards-compatibility.
-
-    .. seealso::
-
-        :func:`_expression.any_`
+    """A synonym for the ARRAY-level :meth:`.ARRAY.Comparator.any` method.
+    See that method for details.
 
     """
 
@@ -30,13 +25,8 @@ def Any(other, arrexpr, operator=operators.eq):
 
 
 def All(other, arrexpr, operator=operators.eq):
-    """A synonym for the :meth:`.ARRAY.Comparator.all` method.
-
-    This method is legacy and is here for backwards-compatibility.
-
-    .. seealso::
-
-        :func:`_expression.all_`
+    """A synonym for the ARRAY-level :meth:`.ARRAY.Comparator.all` method.
+    See that method for details.
 
     """
 

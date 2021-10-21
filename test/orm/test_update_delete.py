@@ -17,7 +17,6 @@ from sqlalchemy import text
 from sqlalchemy import update
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
@@ -87,7 +86,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         Address = cls.classes.Address
         addresses = cls.tables.addresses
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -95,7 +94,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
                 "addresses": relationship(Address),
             },
         )
-        mapper(Address, addresses)
+        cls.mapper_registry.map_imperatively(Address, addresses)
 
     def test_illegal_eval(self):
         User = self.classes.User
@@ -240,7 +239,9 @@ class UpdateDeleteTest(fixtures.MappedTest):
         class Foo(object):
             pass
 
-        mapper(Foo, self.tables.users, properties={"uname": synonym("name")})
+        self.mapper_registry.map_imperatively(
+            Foo, self.tables.users, properties={"uname": synonym("name")}
+        )
 
         s = fixture_session()
         jill = s.query(Foo).get(3)
@@ -253,7 +254,9 @@ class UpdateDeleteTest(fixtures.MappedTest):
         class Foo(object):
             pass
 
-        mapper(Foo, self.tables.users, properties={"uname": synonym("name")})
+        self.mapper_registry.map_imperatively(
+            Foo, self.tables.users, properties={"uname": synonym("name")}
+        )
 
         s = fixture_session()
         jill = s.query(Foo).get(3)
@@ -266,7 +269,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         class Foo(object):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Foo,
             self.tables.users,
             properties={"uname": synonym("name"), "ufoo": synonym("uname")},
@@ -1490,8 +1493,8 @@ class UpdateDeleteIgnoresLoadersTest(fixtures.MappedTest):
             cls.tables.users,
         )
 
-        mapper(User, users)
-        mapper(
+        cls.mapper_registry.map_imperatively(User, users)
+        cls.mapper_registry.map_imperatively(
             Document,
             documents,
             properties={
@@ -1608,8 +1611,8 @@ class UpdateDeleteFromTest(fixtures.MappedTest):
             cls.tables.users,
         )
 
-        mapper(User, users)
-        mapper(
+        cls.mapper_registry.map_imperatively(User, users)
+        cls.mapper_registry.map_imperatively(
             Document,
             documents,
             properties={"user": relationship(User, backref="documents")},
@@ -1790,7 +1793,9 @@ class ExpressionUpdateTest(fixtures.MappedTest):
     @classmethod
     def setup_mappers(cls):
         data = cls.tables.data
-        mapper(cls.classes.Data, data, properties={"cnt": data.c.counter})
+        cls.mapper_registry.map_imperatively(
+            cls.classes.Data, data, properties={"cnt": data.c.counter}
+        )
 
     @testing.provide_metadata
     def test_update_attr_names(self):
@@ -2125,7 +2130,7 @@ class LoadFromReturningTest(fixtures.MappedTest):
         User = cls.classes.User
         users = cls.tables.users
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             User,
             users,
             properties={

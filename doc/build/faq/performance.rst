@@ -313,36 +313,61 @@ a small degree of ORM-based automation.
 
 The example below illustrates time-based tests for several different
 methods of inserting rows, going from the most automated to the least.
-With cPython 2.7, runtimes observed::
+With cPython, runtimes observed::
 
-    SQLAlchemy ORM: Total time for 100000 records 6.89754080772 secs
-    SQLAlchemy ORM pk given: Total time for 100000 records 4.09481811523 secs
-    SQLAlchemy ORM bulk_save_objects(): Total time for 100000 records 1.65821218491 secs
-    SQLAlchemy ORM bulk_insert_mappings(): Total time for 100000 records 0.466513156891 secs
-    SQLAlchemy Core: Total time for 100000 records 0.21024107933 secs
-    sqlite3: Total time for 100000 records 0.137335062027 sec
+    Python: 3.8.12 | packaged by conda-forge | (default, Sep 29 2021, 19:42:05)  [Clang 11.1.0 ]
+    sqlalchemy v1.4.22 (future=True)
+    SQLA ORM:
+            Total time for 100000 records 5.722 secs
+    SQLA ORM pk given:
+            Total time for 100000 records 3.781 secs
+    SQLA ORM bulk_save_objects:
+            Total time for 100000 records 1.385 secs
+    SQLA ORM bulk_save_objects, return_defaults:
+            Total time for 100000 records 3.858 secs
+    SQLA ORM bulk_insert_mappings:
+            Total time for 100000 records 0.472 secs
+    SQLA ORM bulk_insert_mappings, return_defaults:
+            Total time for 100000 records 2.840 secs
+    SQLA Core:
+            Total time for 100000 records 0.246 secs
+    sqlite3:
+            Total time for 100000 records 0.153 secs
 
 We can reduce the time by a factor of nearly three using recent versions of `PyPy <https://pypy.org/>`_::
 
-    SQLAlchemy ORM: Total time for 100000 records 2.39429616928 secs
-    SQLAlchemy ORM pk given: Total time for 100000 records 1.51412987709 secs
-    SQLAlchemy ORM bulk_save_objects(): Total time for 100000 records 0.568987131119 secs
-    SQLAlchemy ORM bulk_insert_mappings(): Total time for 100000 records 0.320806980133 secs
-    SQLAlchemy Core: Total time for 100000 records 0.206904888153 secs
-    sqlite3: Total time for 100000 records 0.165791988373 sec
+    Python: 3.7.10 | packaged by conda-forge | (77787b8f, Sep 07 2021, 14:06:31) [PyPy 7.3.5 with GCC Clang 11.1.0]
+    sqlalchemy v1.4.25 (future=True)
+    SQLA ORM:
+            Total time for 100000 records 2.976 secs
+    SQLA ORM pk given:
+            Total time for 100000 records 1.676 secs
+    SQLA ORM bulk_save_objects:
+            Total time for 100000 records 0.658 secs
+    SQLA ORM bulk_save_objects, return_defaults:
+            Total time for 100000 records 1.158 secs
+    SQLA ORM bulk_insert_mappings:
+            Total time for 100000 records 0.403 secs
+    SQLA ORM bulk_insert_mappings, return_defaults:
+            Total time for 100000 records 0.976 secs
+    SQLA Core:
+            Total time for 100000 records 0.241 secs
+    sqlite3:
+            Total time for 100000 records 0.128 secs
 
 Script::
 
-    import time
+    import contextlib
     import sqlite3
+    import sys
+    import tempfile
+    import time
 
     from sqlalchemy.ext.declarative import declarative_base
-    from sqlalchemy import Column, Integer, String,  create_engine
-    from sqlalchemy.orm import scoped_session, sessionmaker
+    from sqlalchemy import __version__, Column, Integer, String, create_engine, insert
+    from sqlalchemy.orm import Session
 
     Base = declarative_base()
-    DBSession = scoped_session(sessionmaker())
-    engine = None
 
 
     class Customer(Base):
@@ -351,118 +376,135 @@ Script::
         name = Column(String(255))
 
 
-    def init_sqlalchemy(dbname='sqlite:///sqlalchemy.db'):
-        global engine
-        engine = create_engine(dbname, echo=False)
-        DBSession.remove()
-        DBSession.configure(bind=engine, autoflush=False, expire_on_commit=False)
-        Base.metadata.drop_all(engine)
-        Base.metadata.create_all(engine)
-
-
-    def test_sqlalchemy_orm(n=100000):
-        init_sqlalchemy()
-        t0 = time.time()
-        for i in xrange(n):
-            customer = Customer()
-            customer.name = 'NAME ' + str(i)
-            DBSession.add(customer)
-            if i % 1000 == 0:
-                DBSession.flush()
-        DBSession.commit()
-        print(
-            "SQLAlchemy ORM: Total time for " + str(n) +
-            " records " + str(time.time() - t0) + " secs")
-
-
-    def test_sqlalchemy_orm_pk_given(n=100000):
-        init_sqlalchemy()
-        t0 = time.time()
-        for i in xrange(n):
-            customer = Customer(id=i + 1, name="NAME " + str(i))
-            DBSession.add(customer)
-            if i % 1000 == 0:
-                DBSession.flush()
-        DBSession.commit()
-        print(
-            "SQLAlchemy ORM pk given: Total time for " + str(n) +
-            " records " + str(time.time() - t0) + " secs")
-
-
-    def test_sqlalchemy_orm_bulk_save_objects(n=100000):
-        init_sqlalchemy()
-        t0 = time.time()
-        for chunk in range(0, n, 10000):
-            DBSession.bulk_save_objects(
-                [
-                    Customer(name="NAME " + str(i))
-                    for i in xrange(chunk, min(chunk + 10000, n))
-                ]
+    @contextlib.contextmanager
+    def sqlalchemy_session(future):
+        with tempfile.NamedTemporaryFile(suffix=".db") as handle:
+            dbpath = handle.name
+            engine = create_engine(f"sqlite:///{dbpath}", future=future, echo=False)
+            session = Session(
+                bind=engine, future=future, autoflush=False, expire_on_commit=False
             )
-        DBSession.commit()
-        print(
-            "SQLAlchemy ORM bulk_save_objects(): Total time for " + str(n) +
-            " records " + str(time.time() - t0) + " secs")
+            Base.metadata.create_all(engine)
+            yield session
+            session.close()
 
 
-    def test_sqlalchemy_orm_bulk_insert(n=100000):
-        init_sqlalchemy()
-        t0 = time.time()
-        for chunk in range(0, n, 10000):
-            DBSession.bulk_insert_mappings(
-                Customer,
-                [
-                    dict(name="NAME " + str(i))
-                    for i in xrange(chunk, min(chunk + 10000, n))
-                ]
+    def print_result(name, nrows, seconds):
+        print(f"{name}:\n{' '*10}Total time for {nrows} records {seconds:.3f} secs")
+
+
+    def test_sqlalchemy_orm(n=100000, future=True):
+        with sqlalchemy_session(future) as session:
+            t0 = time.time()
+            for i in range(n):
+                customer = Customer()
+                customer.name = "NAME " + str(i)
+                session.add(customer)
+                if i % 1000 == 0:
+                    session.flush()
+            session.commit()
+            print_result("SQLA ORM", n, time.time() - t0)
+
+
+    def test_sqlalchemy_orm_pk_given(n=100000, future=True):
+        with sqlalchemy_session(future) as session:
+            t0 = time.time()
+            for i in range(n):
+                customer = Customer(id=i + 1, name="NAME " + str(i))
+                session.add(customer)
+                if i % 1000 == 0:
+                    session.flush()
+            session.commit()
+            print_result("SQLA ORM pk given", n, time.time() - t0)
+
+
+    def test_sqlalchemy_orm_bulk_save_objects(n=100000, future=True, return_defaults=False):
+        with sqlalchemy_session(future) as session:
+            t0 = time.time()
+            for chunk in range(0, n, 10000):
+                session.bulk_save_objects(
+                    [
+                        Customer(name="NAME " + str(i))
+                        for i in range(chunk, min(chunk + 10000, n))
+                    ],
+                    return_defaults=return_defaults,
+                )
+            session.commit()
+            print_result(
+                f"SQLA ORM bulk_save_objects{', return_defaults' if return_defaults else ''}",
+                n,
+                time.time() - t0,
             )
-        DBSession.commit()
-        print(
-            "SQLAlchemy ORM bulk_insert_mappings(): Total time for " + str(n) +
-            " records " + str(time.time() - t0) + " secs")
 
 
-    def test_sqlalchemy_core(n=100000):
-        init_sqlalchemy()
-        t0 = time.time()
-        engine.execute(
-            Customer.__table__.insert(),
-            [{"name": 'NAME ' + str(i)} for i in xrange(n)]
-        )
-        print(
-            "SQLAlchemy Core: Total time for " + str(n) +
-            " records " + str(time.time() - t0) + " secs")
+    def test_sqlalchemy_orm_bulk_insert(n=100000, future=True, return_defaults=False):
+        with sqlalchemy_session(future) as session:
+            t0 = time.time()
+            for chunk in range(0, n, 10000):
+                session.bulk_insert_mappings(
+                    Customer,
+                    [
+                        dict(name="NAME " + str(i))
+                        for i in range(chunk, min(chunk + 10000, n))
+                    ],
+                    return_defaults=return_defaults,
+                )
+            session.commit()
+            print_result(
+                f"SQLA ORM bulk_insert_mappings{', return_defaults' if return_defaults else ''}",
+                n,
+                time.time() - t0,
+            )
 
 
-    def init_sqlite3(dbname):
-        conn = sqlite3.connect(dbname)
-        c = conn.cursor()
-        c.execute("DROP TABLE IF EXISTS customer")
-        c.execute(
-            "CREATE TABLE customer (id INTEGER NOT NULL, "
-            "name VARCHAR(255), PRIMARY KEY(id))")
-        conn.commit()
-        return conn
+    def test_sqlalchemy_core(n=100000, future=True):
+        with sqlalchemy_session(future) as session:
+            with session.bind.begin() as conn:
+                t0 = time.time()
+                conn.execute(
+                    insert(Customer.__table__),
+                    [{"name": "NAME " + str(i)} for i in range(n)],
+                )
+                conn.commit()
+                print_result("SQLA Core", n, time.time() - t0)
 
 
-    def test_sqlite3(n=100000, dbname='sqlite3.db'):
-        conn = init_sqlite3(dbname)
-        c = conn.cursor()
-        t0 = time.time()
-        for i in xrange(n):
-            row = ('NAME ' + str(i),)
-            c.execute("INSERT INTO customer (name) VALUES (?)", row)
-        conn.commit()
-        print(
-            "sqlite3: Total time for " + str(n) +
-            " records " + str(time.time() - t0) + " sec")
-
-    if __name__ == '__main__':
-        test_sqlalchemy_orm(100000)
-        test_sqlalchemy_orm_pk_given(100000)
-        test_sqlalchemy_orm_bulk_save_objects(100000)
-        test_sqlalchemy_orm_bulk_insert(100000)
-        test_sqlalchemy_core(100000)
-        test_sqlite3(100000)
+    @contextlib.contextmanager
+    def sqlite3_conn():
+        with tempfile.NamedTemporaryFile(suffix=".db") as handle:
+            dbpath = handle.name
+            conn = sqlite3.connect(dbpath)
+            c = conn.cursor()
+            c.execute("DROP TABLE IF EXISTS customer")
+            c.execute(
+                "CREATE TABLE customer (id INTEGER NOT NULL, "
+                "name VARCHAR(255), PRIMARY KEY(id))"
+            )
+            conn.commit()
+            yield conn
 
 
+    def test_sqlite3(n=100000):
+        with sqlite3_conn() as conn:
+            c = conn.cursor()
+            t0 = time.time()
+            for i in range(n):
+                row = ("NAME " + str(i),)
+                c.execute("INSERT INTO customer (name) VALUES (?)", row)
+            conn.commit()
+            print_result("sqlite3", n, time.time() - t0)
+
+
+    if __name__ == "__main__":
+        rows = 100000
+        _future = True
+        print(f"Python: {' '.join(sys.version.splitlines())}")
+        print(f"sqlalchemy v{__version__} (future={_future})")
+        test_sqlalchemy_orm(rows, _future)
+        test_sqlalchemy_orm_pk_given(rows, _future)
+        test_sqlalchemy_orm_bulk_save_objects(rows, _future)
+        test_sqlalchemy_orm_bulk_save_objects(rows, _future, True)
+        test_sqlalchemy_orm_bulk_insert(rows, _future)
+        test_sqlalchemy_orm_bulk_insert(rows, _future, True)
+        test_sqlalchemy_core(rows, _future)
+        test_sqlite3(rows)

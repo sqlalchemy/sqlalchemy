@@ -18,15 +18,14 @@ from sqlalchemy import true
 from sqlalchemy import union
 from sqlalchemy import util
 from sqlalchemy.engine import default
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import column_property
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import contains_eager
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.context import ORMSelectCompileState
@@ -92,7 +91,7 @@ class QueryTest(_fixtures.FixtureTest):
             cls.tables.addresses,
         )
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -104,7 +103,7 @@ class QueryTest(_fixtures.FixtureTest):
                 ),  # o2m, m2o
             },
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
@@ -113,8 +112,8 @@ class QueryTest(_fixtures.FixtureTest):
                 )  # o2o
             },
         )
-        mapper(Dingaling, dingalings)
-        mapper(
+        cls.mapper_registry.map_imperatively(Dingaling, dingalings)
+        cls.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -124,16 +123,16 @@ class QueryTest(_fixtures.FixtureTest):
                 "address": relationship(Address),  # m2o
             },
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Item,
             items,
             properties={
                 "keywords": relationship(Keyword, secondary=item_keywords)
             },
         )  # m2m
-        mapper(Keyword, keywords)
+        cls.mapper_registry.map_imperatively(Keyword, keywords)
 
-        mapper(
+        cls.mapper_registry.map_imperatively(
             Node,
             nodes,
             properties={
@@ -143,7 +142,7 @@ class QueryTest(_fixtures.FixtureTest):
             },
         )
 
-        mapper(CompositePk, composite_pk_table)
+        cls.mapper_registry.map_imperatively(CompositePk, composite_pk_table)
 
         configure_mappers()
 
@@ -986,8 +985,6 @@ class AddEntityEquivalenceTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     @classmethod
     def setup_classes(cls):
-        a, c, b, d = (cls.tables.a, cls.tables.c, cls.tables.b, cls.tables.d)
-
         class A(cls.Comparable):
             pass
 
@@ -1000,7 +997,12 @@ class AddEntityEquivalenceTest(fixtures.MappedTest, AssertsCompiledSQL):
         class D(A):
             pass
 
-        mapper(
+    @classmethod
+    def setup_mappers(cls):
+        a, c, b, d = (cls.tables.a, cls.tables.c, cls.tables.b, cls.tables.d)
+        A, B, C, D = cls.classes("A", "B", "C", "D")
+
+        cls.mapper_registry.map_imperatively(
             A,
             a,
             polymorphic_identity="a",
@@ -1010,15 +1012,19 @@ class AddEntityEquivalenceTest(fixtures.MappedTest, AssertsCompiledSQL):
                 "link": relationship(B, uselist=False, backref="back")
             },
         )
-        mapper(
+        cls.mapper_registry.map_imperatively(
             B,
             b,
             polymorphic_identity="b",
             polymorphic_on=b.c.type,
             with_polymorphic=("*", None),
         )
-        mapper(C, c, inherits=B, polymorphic_identity="c")
-        mapper(D, d, inherits=A, polymorphic_identity="d")
+        cls.mapper_registry.map_imperatively(
+            C, c, inherits=B, polymorphic_identity="c"
+        )
+        cls.mapper_registry.map_imperatively(
+            D, d, inherits=A, polymorphic_identity="d"
+        )
 
     @classmethod
     def insert_data(cls, connection):
@@ -2718,8 +2724,10 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(User, users, properties={"addresses": relationship(Address)})
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(
+            User, users, properties={"addresses": relationship(Address)}
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         sel = users.select().where(users.c.id.in_([7, 8])).alias()
         sess = fixture_session()
@@ -2764,7 +2772,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
     def test_select_from_aliased_one(self):
         User, users = self.classes.User, self.tables.users
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         sess = fixture_session()
 
@@ -2782,7 +2790,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
     def test_select_from_aliased_two(self):
         User, users = self.classes.User, self.tables.users
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         sess = fixture_session()
 
@@ -2799,7 +2807,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
     def test_select_from_core_alias_one(self):
         User, users = self.classes.User, self.tables.users
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         sess = fixture_session()
 
@@ -2819,7 +2827,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
 
         users, User = self.tables.users, self.classes.User
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         sess = fixture_session()
 
@@ -2893,7 +2901,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
 
     def test_aliased_class_vs_nonaliased(self):
         User, users = self.classes.User, self.tables.users
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         ua = aliased(User)
 
@@ -2945,7 +2953,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
     def test_join_no_order_by(self):
         User, users = self.classes.User, self.tables.users
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         sel = users.select().where(users.c.id.in_([7, 8]))
         sess = fixture_session()
@@ -2958,12 +2966,13 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
     def test_join_relname_from_selected_from(self):
         User, Address = self.classes.User, self.classes.Address
         users, addresses = self.tables.users, self.tables.addresses
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
                 "addresses": relationship(
-                    mapper(Address, addresses), backref="user"
+                    self.mapper_registry.map_imperatively(Address, addresses),
+                    backref="user",
                 )
             },
         )
@@ -2979,10 +2988,14 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
     def test_filter_by_selected_from(self):
         User, Address = self.classes.User, self.classes.Address
         users, addresses = self.tables.users, self.tables.addresses
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
-            properties={"addresses": relationship(mapper(Address, addresses))},
+            properties={
+                "addresses": relationship(
+                    self.mapper_registry.map_imperatively(Address, addresses)
+                )
+            },
         )
 
         sess = fixture_session()
@@ -3000,10 +3013,14 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
     def test_join_ent_selected_from(self):
         User, Address = self.classes.User, self.classes.Address
         users, addresses = self.tables.users, self.tables.addresses
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
-            properties={"addresses": relationship(mapper(Address, addresses))},
+            properties={
+                "addresses": relationship(
+                    self.mapper_registry.map_imperatively(Address, addresses)
+                )
+            },
         )
 
         sess = fixture_session()
@@ -3022,8 +3039,10 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(User, users, properties={"addresses": relationship(Address)})
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(
+            User, users, properties={"addresses": relationship(Address)}
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         sel = users.select().where(users.c.id.in_([7, 8]))
         sess = fixture_session()
@@ -3110,12 +3129,12 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             self.tables.item_keywords,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={"orders": relationship(Order, backref="user")},
         )  # o2m, m2o
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -3125,7 +3144,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             },
         )  # m2m
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Item,
             items,
             properties={
@@ -3134,7 +3153,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
                 )
             },
         )  # m2m
-        mapper(Keyword, keywords)
+        self.mapper_registry.map_imperatively(Keyword, keywords)
 
         sess = fixture_session()
         sel = users.select().where(users.c.id.in_([7, 8]))
@@ -3173,12 +3192,12 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             self.tables.item_keywords,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={"orders": relationship(Order, backref="user")},
         )  # o2m, m2o
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -3187,7 +3206,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
                 )
             },
         )  # m2m
-        mapper(
+        self.mapper_registry.map_imperatively(
             Item,
             items,
             properties={
@@ -3196,7 +3215,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
                 )
             },
         )  # m2m
-        mapper(Keyword, keywords)
+        self.mapper_registry.map_imperatively(Keyword, keywords)
 
         sess = fixture_session()
 
@@ -3303,14 +3322,14 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
                 "addresses": relationship(Address, order_by=addresses.c.id)
             },
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         sel = users.select().where(users.c.id.in_([7, 8]))
         sess = fixture_session()
@@ -3404,8 +3423,8 @@ class CustomJoinTest(QueryTest):
             self.tables.users,
         )
 
-        mapper(Address, addresses)
-        mapper(
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -3417,8 +3436,8 @@ class CustomJoinTest(QueryTest):
                 )
             },
         )
-        mapper(Item, items)
-        mapper(
+        self.mapper_registry.map_imperatively(Item, items)
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
@@ -3477,8 +3496,8 @@ class CustomJoinTest(QueryTest):
             self.tables.users,
         )
 
-        mapper(Address, addresses)
-        mapper(
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -3490,8 +3509,8 @@ class CustomJoinTest(QueryTest):
                 )
             },
         )
-        mapper(Item, items)
-        mapper(
+        self.mapper_registry.map_imperatively(Item, items)
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties=dict(
@@ -3549,7 +3568,7 @@ class ExternalColumnsTest(QueryTest):
         assert_raises_message(
             sa_exc.ArgumentError,
             "not represented in the mapper's table",
-            mapper,
+            self.mapper_registry.map_imperatively,
             User,
             users,
             properties={"concat": (users.c.id * 2)},
@@ -3567,7 +3586,7 @@ class ExternalColumnsTest(QueryTest):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -3583,7 +3602,7 @@ class ExternalColumnsTest(QueryTest):
             },
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
@@ -3735,7 +3754,7 @@ class ExternalColumnsTest(QueryTest):
         # subquery, but "user" still needs to be adapted. therefore the long
         # standing practice of eager adapters being "chained" has been removed
         # since its unnecessary and breaks this exact condition.
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -3753,8 +3772,8 @@ class ExternalColumnsTest(QueryTest):
                 ),
             },
         )
-        mapper(Address, addresses)
-        mapper(
+        self.mapper_registry.map_imperatively(Address, addresses)
+        self.mapper_registry.map_imperatively(
             Order, orders, properties={"address": relationship(Address)}
         )  # m2o
 
@@ -3791,13 +3810,13 @@ class ExternalColumnsTest(QueryTest):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={"fullname": column_property(users.c.name.label("x"))},
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
@@ -3867,7 +3886,7 @@ class TestOverlyEagerEquivalentCols(fixtures.MappedTest):
         class Sub2(fixtures.ComparableEntity):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Base,
             base,
             properties={
@@ -3876,8 +3895,8 @@ class TestOverlyEagerEquivalentCols(fixtures.MappedTest):
             },
         )
 
-        mapper(Sub1, sub1)
-        mapper(Sub2, sub2)
+        self.mapper_registry.map_imperatively(Sub1, sub1)
+        self.mapper_registry.map_imperatively(Sub2, sub2)
         sess = fixture_session()
 
         s11 = Sub1(data="s11")
@@ -3917,8 +3936,10 @@ class LabelCollideTest(fixtures.MappedTest):
 
     @classmethod
     def setup_mappers(cls):
-        mapper(cls.classes.Foo, cls.tables.foo)
-        mapper(cls.classes.Bar, cls.tables.foo_bar)
+        cls.mapper_registry.map_imperatively(cls.classes.Foo, cls.tables.foo)
+        cls.mapper_registry.map_imperatively(
+            cls.classes.Bar, cls.tables.foo_bar
+        )
 
     @classmethod
     def insert_data(cls, connection):

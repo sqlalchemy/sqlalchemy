@@ -3,7 +3,6 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import query
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import scoped_session
@@ -54,12 +53,12 @@ class ScopedSessionTest(fixtures.MappedTest):
             query = Session.query_property()
             custom_query = Session.query_property(query_cls=CustomQuery)
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             SomeObject,
             table1,
             properties={"options": relationship(SomeOtherObject)},
         )
-        mapper(SomeOtherObject, table2)
+        self.mapper_registry.map_imperatively(SomeOtherObject, table2)
 
         s = SomeObject(id=1, data="hello")
         sso = SomeOtherObject()
@@ -209,3 +208,35 @@ class ScopedSessionTest(fixtures.MappedTest):
         ss = scoped_session(sessionmaker(testing.db, class_=MySession))
 
         is_(ss.get_bind(), testing.db)
+
+    def test_attributes(self):
+        expected = [
+            name
+            for cls in Session.mro()
+            for name in vars(cls)
+            if not name.startswith("_")
+        ]
+
+        ignore_list = {
+            "connection_callable",
+            "transaction",
+            "in_transaction",
+            "in_nested_transaction",
+            "get_transaction",
+            "get_nested_transaction",
+            "prepare",
+            "invalidate",
+            "bind_mapper",
+            "bind_table",
+            "enable_relationship_loading",
+            "dispatch",
+        }
+
+        SM = scoped_session(sa.orm.sessionmaker(testing.db))
+
+        missing = [
+            name
+            for name in expected
+            if not hasattr(SM, name) and name not in ignore_list
+        ]
+        eq_(missing, [])

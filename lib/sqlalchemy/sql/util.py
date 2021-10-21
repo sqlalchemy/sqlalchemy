@@ -847,7 +847,7 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
         return newcol
 
     @util.preload_module("sqlalchemy.sql.functions")
-    def replace(self, col):
+    def replace(self, col, _include_singleton_constants=False):
         functions = util.preloaded.sql_functions
 
         if isinstance(col, FromClause) and not isinstance(
@@ -880,6 +880,14 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
                 return None
 
         elif not isinstance(col, ColumnElement):
+            return None
+        elif not _include_singleton_constants and col._is_singleton_constant:
+            # dont swap out NULL, TRUE, FALSE for a label name
+            # in a SQL statement that's being rewritten,
+            # leave them as the constant.  This is first noted in #6259,
+            # however the logic to check this moved here as of #7154 so that
+            # it is made specific to SQL rewriting and not all column
+            # correspondence
             return None
 
         if "adapt_column" in col._annotations:
@@ -1001,8 +1009,25 @@ class ColumnAdapter(ClauseAdapter):
         return newcol
 
     def _locate_col(self, col):
+        # both replace and traverse() are overly complicated for what
+        # we are doing here and we would do better to have an inlined
+        # version that doesn't build up as much overhead.  the issue is that
+        # sometimes the lookup does in fact have to adapt the insides of
+        # say a labeled scalar subquery.   However, if the object is an
+        # Immutable, i.e. Column objects, we can skip the "clone" /
+        # "copy internals" part since those will be no-ops in any case.
+        # additionally we want to catch singleton objects null/true/false
+        # and make sure they are adapted as well here.
 
-        c = ClauseAdapter.traverse(self, col)
+        if col._is_immutable:
+            for vis in self.visitor_iterator:
+                c = vis.replace(col, _include_singleton_constants=True)
+                if c is not None:
+                    break
+            else:
+                c = col
+        else:
+            c = ClauseAdapter.traverse(self, col)
 
         if self._wrap:
             c2 = self._wrap._locate_col(c)

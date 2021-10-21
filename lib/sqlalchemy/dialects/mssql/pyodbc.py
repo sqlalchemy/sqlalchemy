@@ -30,7 +30,7 @@ is configured on the client, a basic DSN-based connection looks like::
 
 Which above, will pass the following connection string to PyODBC::
 
-    dsn=mydsn;UID=user;PWD=pass
+    DSN=some_dsn;UID=scott;PWD=tiger
 
 If the username and password are omitted, the DSN form will also add
 the ``Trusted_Connection=yes`` directive to the ODBC string.
@@ -47,7 +47,7 @@ When using a hostname connection, the driver name must also be specified in the
 query parameters of the URL.  As these names usually have spaces in them, the
 name must be URL encoded which means using plus signs for spaces::
 
-    engine = create_engine("mssql+pyodbc://scott:tiger@myhost:port/databasename?driver=SQL+Server+Native+Client+10.0")
+    engine = create_engine("mssql+pyodbc://scott:tiger@myhost:port/databasename?driver=ODBC+Driver+17+for+SQL+Server")
 
 Other keywords interpreted by the Pyodbc dialect to be passed to
 ``pyodbc.connect()`` in both the DSN and hostname cases include:
@@ -59,9 +59,25 @@ Multiple additional keyword arguments must be separated by an
 ampersand (``&``), not a semicolon::
 
     engine = create_engine(
-        "mssql+pyodbc://scott:tiger@myhost:port/databasename"
+        "mssql+pyodbc://scott:tiger@myhost:49242/databasename"
         "?driver=ODBC+Driver+17+for+SQL+Server"
         "&authentication=ActiveDirectoryIntegrated"
+    )
+
+The equivalent URL can be constructed using :class:`_sa.engine.URL`::
+
+    from sqlalchemy.engine import URL
+    connection_url = URL.create(
+        "mssql+pyodbc",
+        username="scott",
+        password="tiger",
+        host="myhost",
+        port=49242,
+        database="databasename",
+        query={
+            "driver": "ODBC Driver 17 for SQL Server",
+            "authentication": "ActiveDirectoryIntegrated",
+        },
     )
 
 
@@ -139,6 +155,29 @@ database using Azure credentials::
     stating that a connection string when using an access token must not contain
     ``UID``, ``PWD``, ``Authentication`` or ``Trusted_Connection`` parameters.
 
+Enable autocommit for Azure SQL Data Warehouse (DW) connections
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Azure SQL Data Warehouse does not support transactions,
+and that can cause problems with SQLAlchemy's "autobegin" (and implicit
+commit/rollback) behavior. We can avoid these problems by enabling autocommit
+at both the pyodbc and engine levels::
+
+    connection_url = sa.engine.URL.create(
+        "mssql+pyodbc",
+        username="scott",
+        password="tiger",
+        host="dw.azure.example.com",
+        database="mydb",
+        query={
+            "driver": "ODBC Driver 17 for SQL Server",
+            "autocommit": "True",
+        },
+    )
+
+    engine = create_engine(connection_url).execution_options(
+        isolation_level="AUTOCOMMIT"
+    )
 
 Pyodbc Pooling / connection close behavior
 ------------------------------------------
@@ -350,7 +389,7 @@ class _ms_binary_pyodbc(object):
         return process
 
 
-class _ODBCDateTime(sqltypes.DateTime):
+class _ODBCDateTimeBindProcessor(object):
     """Add bind processors to handle datetimeoffset behaviors"""
 
     has_tz = False
@@ -381,7 +420,11 @@ class _ODBCDateTime(sqltypes.DateTime):
         return process
 
 
-class _ODBCDATETIMEOFFSET(_ODBCDateTime):
+class _ODBCDateTime(_ODBCDateTimeBindProcessor, sqltypes.DateTime):
+    pass
+
+
+class _ODBCDATETIMEOFFSET(_ODBCDateTimeBindProcessor, DATETIMEOFFSET):
     has_tz = True
 
 

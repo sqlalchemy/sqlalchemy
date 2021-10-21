@@ -58,6 +58,7 @@ changelog_sections = [
     "orm declarative",
     "orm querying",
     "orm configuration",
+    "examples",
     "engine",
     "sql",
     "schema",
@@ -151,13 +152,18 @@ zzzeeksphinx_module_prefixes = {
     "_ddl": "sqlalchemy.schema",
     "_functions": "sqlalchemy.sql.functions",
     "_pool": "sqlalchemy.pool",
+    # base event API, like listen() etc.
     "_event": "sqlalchemy.event",
+    # core events like PoolEvents, ConnectionEvents
     "_events": "sqlalchemy.events",
+    # note Core events are linked as sqlalchemy.event.<cls>
+    # ORM is sqlalchemy.orm.<cls>.
+    "_ormevent": "sqlalchemy.orm",
+    "_ormevents": "sqlalchemy.orm",
     "_exc": "sqlalchemy.exc",
     "_reflection": "sqlalchemy.engine.reflection",
     "_orm": "sqlalchemy.orm",
     "_query": "sqlalchemy.orm",
-    "_ormevent": "sqlalchemy.orm.events",
     "_ormexc": "sqlalchemy.orm.exc",
     "_roles": "sqlalchemy.sql.roles",
     "_baked": "sqlalchemy.ext.baked",

@@ -78,6 +78,7 @@ from sqlalchemy.sql import operators
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql.elements import BooleanClauseList
+from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy.sql.expression import ClauseList
 from sqlalchemy.sql.expression import HasPrefixes
@@ -88,6 +89,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import eq_ignore_whitespace
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -839,9 +841,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "foo_bar.id AS foo_bar_id_1, "  # 2. 1st foo_bar.id, disamb from 1
             "foo.bar_id AS foo_bar_id__1, "  # 3. 2nd foo.bar_id, dedupe from 1
             "foo.id AS foo_id__1, "
-            "foo.bar_id AS foo_bar_id__1, "  # 4. 3rd foo.bar_id, same as 3
-            "foo_bar.id AS foo_bar_id__2, "  # 5. 2nd foo_bar.id
-            "foo_bar.id AS foo_bar_id__2 "  # 6. 3rd foo_bar.id, same as 5
+            "foo.bar_id AS foo_bar_id__2, "  # 4. 3rd foo.bar_id, dedupe again
+            "foo_bar.id AS foo_bar_id__3, "  # 5. 2nd foo_bar.id
+            "foo_bar.id AS foo_bar_id__4 "  # 6. 3rd foo_bar.id, dedupe again
             "FROM foo, foo_bar",
         )
         eq_(
@@ -878,9 +880,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "foo_bar.id AS foo_bar_id_1, "  # 2. 1st foo_bar.id, disamb from 1
             "foo.bar_id AS foo_bar_id__1, "  # 3. 2nd foo.bar_id, dedupe from 1
             "foo.id AS foo_id__1, "
-            "foo.bar_id AS foo_bar_id__1, "  # 4. 3rd foo.bar_id, same as 3
-            "foo_bar.id AS foo_bar_id__2, "  # 5. 2nd foo_bar.id
-            "foo_bar.id AS foo_bar_id__2 "  # 6. 3rd foo_bar.id, same as 5
+            "foo.bar_id AS foo_bar_id__2, "  # 4. 3rd foo.bar_id, dedupe again
+            "foo_bar.id AS foo_bar_id__3, "  # 5. 2nd foo_bar.id
+            "foo_bar.id AS foo_bar_id__4 "  # 6. 3rd foo_bar.id, dedupe again
             "FROM foo, foo_bar"
             ") AS anon_1",
         )
@@ -952,9 +954,9 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "foo_bar.id AS foo_bar_id_1, "  # 2. 1st foo_bar.id, disamb from 1
             "foo.bar_id AS foo_bar_id__1, "  # 3. 2nd foo.bar_id, dedupe from 1
             "foo.id AS foo_id__1, "
-            "foo.bar_id AS foo_bar_id__1, "  # 4. 3rd foo.bar_id, same as 3
-            "foo_bar.id AS foo_bar_id__2, "  # 5. 2nd foo_bar.id
-            "foo_bar.id AS foo_bar_id__2 "  # 6. 3rd foo_bar.id, same as 5
+            "foo.bar_id AS foo_bar_id__2, "  # 4. 3rd foo.bar_id, dedupe again
+            "foo_bar.id AS foo_bar_id__3, "  # 5. 2nd foo_bar.id
+            "foo_bar.id AS foo_bar_id__4 "  # 6. 3rd foo_bar.id, dedupe again
             "FROM foo, foo_bar",
         )
 
@@ -965,7 +967,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 LABEL_STYLE_TABLENAME_PLUS_COL
             ),
             "SELECT t.a AS t_a, t.a AS t_a__1, t.b AS t_b, "
-            "t.a AS t_a__1 FROM t",
+            "t.a AS t_a__2 FROM t",
         )
 
     def test_dupe_columns_use_labels_derived_selectable(self):
@@ -979,7 +981,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(stmt).set_label_style(LABEL_STYLE_NONE),
             "SELECT anon_1.t_a, anon_1.t_a, anon_1.t_b, anon_1.t_a FROM "
-            "(SELECT t.a AS t_a, t.a AS t_a__1, t.b AS t_b, t.a AS t_a__1 "
+            "(SELECT t.a AS t_a, t.a AS t_a__1, t.b AS t_b, t.a AS t_a__2 "
             "FROM t) AS anon_1",
         )
 
@@ -992,7 +994,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 LABEL_STYLE_TABLENAME_PLUS_COL
             ),
             "SELECT t.a AS t_a, t.a AS t_a__1, t.b AS t_b, "
-            "t.a AS t_a__1 FROM t",
+            "t.a AS t_a__2 FROM t",
         )
 
         self.assert_compile(
@@ -1000,7 +1002,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 LABEL_STYLE_TABLENAME_PLUS_COL
             ),
             "SELECT t.a AS t_a, t.a AS t_a__1, t.b AS t_b, "
-            "t.a AS t_a__1 FROM t",
+            "t.a AS t_a__2 FROM t",
         )
 
         self.assert_compile(
@@ -1008,7 +1010,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 LABEL_STYLE_TABLENAME_PLUS_COL
             ),
             "SELECT t.a AS t_a, t.a AS t_a__1, t.b AS t_b, "
-            "t.a AS t_a__1 FROM t",
+            "t.a AS t_a__2 FROM t",
         )
 
     def test_dupe_columns_use_labels_derived_selectable_mix_annotations(self):
@@ -1023,7 +1025,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             select(stmt).set_label_style(LABEL_STYLE_NONE),
             "SELECT anon_1.t_a, anon_1.t_a, anon_1.t_b, anon_1.t_a FROM "
-            "(SELECT t.a AS t_a, t.a AS t_a__1, t.b AS t_b, t.a AS t_a__1 "
+            "(SELECT t.a AS t_a, t.a AS t_a__1, t.b AS t_b, t.a AS t_a__2 "
             "FROM t) AS anon_1",
         )
 
@@ -1044,8 +1046,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             stmt,
             "SELECT foo.bar_id AS foo_bar_id, foo_bar.id AS foo_bar_id_1, "
-            "foo_bar.id AS foo_bar_id__1, foo_bar.id AS foo_bar_id__1, "
-            "foo_bar.id AS foo_bar_id__1 FROM foo, foo_bar",
+            "foo_bar.id AS foo_bar_id__1, foo_bar.id AS foo_bar_id__2, "
+            "foo_bar.id AS foo_bar_id__3 FROM foo, foo_bar",
         )
 
     def test_dupe_columns_use_labels_from_anon(self):
@@ -1060,7 +1062,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 LABEL_STYLE_TABLENAME_PLUS_COL
             ),
             "SELECT t_1.a AS t_1_a, t_1.a AS t_1_a__1, t_1.b AS t_1_b, "
-            "t_1.a AS t_1_a__1 "
+            "t_1.a AS t_1_a__2 "
             "FROM t AS t_1",
         )
 
@@ -2536,6 +2538,62 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "WHERE mytable.myid = myothertable.otherid ORDER BY myid",
         )
 
+    def test_deduping_hash_algo(self):
+        """related to #7153.
+
+        testing new feature "add_hash" of _anon_label which adds an additional
+        integer value as part of what the anon label is deduplicated upon.
+
+        """
+
+        class Thing(ColumnElement):
+            def __init__(self, hash_):
+                self._hash = hash_
+
+            def __hash__(self):
+                return self._hash
+
+        t1 = Thing(10)
+        t2 = Thing(11)
+
+        # this is the collision case.  therefore we assert that this
+        # add_hash  has to be below 16 bits.
+        # eq_(
+        #     t1._anon_label('hi', add_hash=65537),
+        #     t2._anon_label('hi', add_hash=1)
+        # )
+        with expect_raises(AssertionError):
+            t1._anon_label("hi", add_hash=65536)
+
+        for i in range(50):
+            ne_(
+                t1._anon_label("hi", add_hash=i),
+                t2._anon_label("hi", add_hash=1),
+            )
+
+    def test_deduping_unique_across_selects(self):
+        """related to #7153
+
+        looking to see that dedupe anon labels use a unique hash not only
+        within each statement but across multiple statements.
+
+        """
+
+        s1 = select(null(), null())
+
+        s2 = select(true(), true())
+
+        s3 = union(s1, s2)
+
+        self.assert_compile(
+            s3,
+            "SELECT NULL AS anon_1, NULL AS anon__1 " "UNION "
+            # without the feature tested in test_deduping_hash_algo we'd get
+            # "SELECT true AS anon_2, true AS anon__1",
+            "SELECT true AS anon_2, true AS anon__2",
+            dialect="default_enhanced",
+        )
+
     def test_compound_grouping(self):
         s = select(column("foo"), column("bar")).select_from(text("bat"))
 
@@ -3602,7 +3660,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         # the label name, but that's a different issue
         self.assert_compile(
             stmt1,
-            "SELECT :foo_1 AS anon_1, :foo_1 AS anon__1, :foo_1 AS anon__1",
+            "SELECT :foo_1 AS anon_1, :foo_1 AS anon__1, :foo_1 AS anon__2",
         )
 
     def _test_binds_no_hash_collision(self):

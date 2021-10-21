@@ -10,7 +10,6 @@ from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import exc as orm_exc
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import noload
 from sqlalchemy.orm import Query
 from sqlalchemy.orm import relationship
@@ -34,7 +33,7 @@ class _DynamicFixture(object):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -43,7 +42,7 @@ class _DynamicFixture(object):
                 )
             },
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
         return User, Address
 
     def _order_item_fixture(self, items_args={}):
@@ -55,7 +54,7 @@ class _DynamicFixture(object):
             self.classes.Item,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -64,7 +63,7 @@ class _DynamicFixture(object):
                 )
             },
         )
-        mapper(Item, items)
+        self.mapper_registry.map_imperatively(Item, items)
         return Order, Item
 
     def _user_order_item_fixture(self):
@@ -92,7 +91,7 @@ class _DynamicFixture(object):
             self.tables.orders,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -101,7 +100,7 @@ class _DynamicFixture(object):
                 )
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -110,7 +109,7 @@ class _DynamicFixture(object):
                 ),
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Item,
             items,
             properties={
@@ -119,7 +118,7 @@ class _DynamicFixture(object):
                 )  # m2m
             },
         )
-        mapper(Keyword, keywords)
+        self.mapper_registry.map_imperatively(Keyword, keywords)
 
         return User, Order, Item, Keyword
 
@@ -293,12 +292,12 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             self.tables.addresses,
             self.classes.User,
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={"user": relationship(User, lazy="dynamic")},
         )
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
         assert_raises_message(
             exc.InvalidRequestError,
             "On relationship Address.user, 'dynamic' loaders cannot be "
@@ -314,14 +313,14 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             self.tables.addresses,
             self.classes.User,
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
                 "user": relationship(User, uselist=True, lazy="dynamic")
             },
         )
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
         assert_raises_message(
             exc.SAWarning,
             "On relationship Address.user, 'dynamic' loaders cannot be "
@@ -431,7 +430,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Address,
             addresses,
             properties={
@@ -440,7 +439,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
                 )
             },
         )
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
 
         sess = fixture_session()
         ad = sess.query(Address).get(1)
@@ -548,7 +547,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             self.classes.Item,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -560,7 +559,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
                 )
             },
         )
-        mapper(Item, items)
+        self.mapper_registry.map_imperatively(Item, items)
 
         sess = fixture_session()
         o = sess.query(Order).first()
@@ -589,7 +588,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             self.classes.Item,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -598,7 +597,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
                 )
             },
         )
-        mapper(Item, items)
+        self.mapper_registry.map_imperatively(Item, items)
 
         sess = fixture_session()
         u1 = sess.query(User).first()
@@ -632,7 +631,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
         class ItemKeyword(object):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -641,12 +640,12 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
                 )
             },
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             ItemKeyword,
             item_keywords,
             primary_key=[item_keywords.c.item_id, item_keywords.c.keyword_id],
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Item,
             items,
             properties={"item_keywords": relationship(ItemKeyword)},
@@ -981,7 +980,7 @@ class UOWTest(
     def test_self_referential(self):
         Node, nodes = self.classes.Node, self.tables.nodes
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Node,
             nodes,
             properties={

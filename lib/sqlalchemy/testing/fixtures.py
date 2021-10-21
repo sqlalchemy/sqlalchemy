@@ -638,12 +638,17 @@ class MappedTest(TablesTest, assertions.AssertsExecutionResults):
     @classmethod
     def _setup_once_mappers(cls):
         if cls.run_setup_mappers == "once":
-            cls.mapper = cls._generate_mapper()
+            cls.mapper_registry, cls.mapper = cls._generate_registry()
             cls._with_register_classes(cls.setup_mappers)
 
     def _setup_each_mappers(self):
+        if self.run_setup_mappers != "once":
+            (
+                self.__class__.mapper_registry,
+                self.__class__.mapper,
+            ) = self._generate_registry()
+
         if self.run_setup_mappers == "each":
-            self.__class__.mapper = self._generate_mapper()
             self._with_register_classes(self.setup_mappers)
 
     def _setup_each_classes(self):
@@ -651,9 +656,9 @@ class MappedTest(TablesTest, assertions.AssertsExecutionResults):
             self._with_register_classes(self.setup_classes)
 
     @classmethod
-    def _generate_mapper(cls):
-        decl = registry()
-        return decl.map_imperatively
+    def _generate_registry(cls):
+        decl = registry(metadata=cls._tables_metadata)
+        return decl, decl.map_imperatively
 
     @classmethod
     def _with_register_classes(cls, fn):

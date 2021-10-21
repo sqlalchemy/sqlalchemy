@@ -85,7 +85,7 @@ class URL(
     """
 
     def __new__(self, *arg, **kw):
-        if not kw and len(arg) == 7:
+        if kw.pop("_new_ok", False):
             return super(URL, self).__new__(self, *arg, **kw)
         else:
             util.warn_deprecated(
@@ -151,6 +151,7 @@ class URL(
             cls._assert_port(port),
             cls._assert_none_str(database, "database"),
             cls._str_dict(query),
+            _new_ok=True,
         )
 
     @classmethod
@@ -466,6 +467,7 @@ class URL(
                     for key in set(self.query).difference(names)
                 }
             ),
+            _new_ok=True,
         )
 
     @util.memoized_property

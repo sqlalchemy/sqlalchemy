@@ -34,6 +34,7 @@ def _boolean_compare(
     negate=None,
     reverse=False,
     _python_is_types=(util.NoneType, bool),
+    _any_all_expr=False,
     result_type=None,
     **kwargs
 ):
@@ -42,7 +43,6 @@ def _boolean_compare(
         result_type = type_api.BOOLEANTYPE
 
     if isinstance(obj, _python_is_types + (Null, True_, False_)):
-
         # allow x ==/!= True/False to be treated as a literal.
         # this comes out to "== / != true/false" or "1/0" if those
         # constants aren't supported and works on all platforms
@@ -69,8 +69,12 @@ def _boolean_compare(
                 negate=negate,
                 modifiers=kwargs,
             )
+        elif _any_all_expr:
+            obj = coercions.expect(
+                roles.ConstExprRole, element=obj, operator=op, expr=expr
+            )
         else:
-            # all other None/True/False uses IS, IS NOT
+            # all other None uses IS, IS NOT
             if op in (operators.eq, operators.is_):
                 return BinaryExpression(
                     expr,

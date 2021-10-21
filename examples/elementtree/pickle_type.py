@@ -16,16 +16,16 @@ from xml.etree import ElementTree
 from sqlalchemy import Column
 from sqlalchemy import create_engine
 from sqlalchemy import Integer
-from sqlalchemy import MetaData
 from sqlalchemy import PickleType
 from sqlalchemy import String
 from sqlalchemy import Table
-from sqlalchemy.orm import mapper
+from sqlalchemy.orm import registry
 from sqlalchemy.orm import Session
 
 
 e = create_engine("sqlite://")
-meta = MetaData()
+mapper_registry = registry()
+
 
 # setup a comparator for the PickleType since it's a mutable
 # element.
@@ -39,13 +39,13 @@ def are_elements_equal(x, y):
 # the "element" column will store the ElementTree document as a BLOB.
 documents = Table(
     "documents",
-    meta,
+    mapper_registry.metadata,
     Column("document_id", Integer, primary_key=True),
     Column("filename", String(30), unique=True),
     Column("element", PickleType(comparator=are_elements_equal)),
 )
 
-meta.create_all(e)
+mapper_registry.metadata.create_all(e)
 
 # our document class.  contains a string name,
 # and the ElementTree root element.
@@ -58,7 +58,7 @@ class Document(object):
 
 
 # setup mapper.
-mapper(Document, documents)
+mapper_registry.map_imperatively(Document, documents)
 
 # time to test !
 

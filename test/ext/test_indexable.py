@@ -3,8 +3,8 @@ from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import testing
 from sqlalchemy import Text
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.indexable import index_property
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.sqltypes import ARRAY
 from sqlalchemy.sql.sqltypes import JSON

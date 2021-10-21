@@ -255,6 +255,42 @@ $$ LANGUAGE plpgsql;"""
         eq_(cargs, [])
         eq_(cparams["host"], "hostA:portA,hostB,hostC")
 
+    def test_psycopg2_disconnect(self):
+        class Error(Exception):
+            pass
+
+        dbapi = mock.Mock()
+        dbapi.Error = Error
+
+        dialect = psycopg2_dialect.dialect(dbapi=dbapi)
+
+        for error in [
+            # these error messages from libpq: interfaces/libpq/fe-misc.c
+            # and interfaces/libpq/fe-secure.c.
+            "terminating connection",
+            "closed the connection",
+            "connection not open",
+            "could not receive data from server",
+            "could not send data to server",
+            # psycopg2 client errors, psycopg2/conenction.h,
+            # psycopg2/cursor.h
+            "connection already closed",
+            "cursor already closed",
+            # not sure where this path is originally from, it may
+            # be obsolete.   It really says "losed", not "closed".
+            "losed the connection unexpectedly",
+            # these can occur in newer SSL
+            "connection has been closed unexpectedly",
+            "SSL error: decryption failed or bad record mac",
+            "SSL SYSCALL error: Bad file descriptor",
+            "SSL SYSCALL error: EOF detected",
+            "SSL SYSCALL error: Operation timed out",
+            "SSL SYSCALL error: Bad address",
+        ]:
+            eq_(dialect.is_disconnect(Error(error), None, None), True)
+
+        eq_(dialect.is_disconnect("not an error", None, None), False)
+
 
 class PGCodeTest(fixtures.TestBase):
     __only_on__ = "postgresql"

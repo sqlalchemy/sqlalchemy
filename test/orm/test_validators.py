@@ -1,6 +1,5 @@
 from sqlalchemy import exc
 from sqlalchemy.orm import collections
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import validates
 from sqlalchemy.testing import assert_raises
@@ -26,7 +25,7 @@ class ValidatorTest(_fixtures.FixtureTest):
                 ne_(name, "fred")
                 return name + " modified"
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
         sess = fixture_session()
         u1 = User(name="ed")
         eq_(u1.name, "ed modified")
@@ -58,8 +57,10 @@ class ValidatorTest(_fixtures.FixtureTest):
                 assert "@" in ad.email_address
                 return ad
 
-        mapper(User, users, properties={"addresses": relationship(Address)})
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(
+            User, users, properties={"addresses": relationship(Address)}
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
         sess = fixture_session()
         u1 = User(name="edward")
         a0 = Address(email_address="noemail")
@@ -98,10 +99,10 @@ class ValidatorTest(_fixtures.FixtureTest):
             def simple_function(self, key, value):
                 return key, value
 
-        u_m = mapper(
+        u_m = self.mapper_registry.map_imperatively(
             User, users, properties={"addresses": relationship(Address)}
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         eq_(
             dict((k, v[0].__name__) for k, v in list(u_m.validators.items())),
@@ -127,8 +128,10 @@ class ValidatorTest(_fixtures.FixtureTest):
                 canary(key, item, remove)
                 return item
 
-        mapper(User, users, properties={"addresses": relationship(Address)})
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(
+            User, users, properties={"addresses": relationship(Address)}
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         u1 = User()
         u1.name = "ed"
@@ -180,8 +183,10 @@ class ValidatorTest(_fixtures.FixtureTest):
                 item = Address(email_address=item)
                 return item
 
-        mapper(User, users, properties={"addresses": relationship(Address)})
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(
+            User, users, properties={"addresses": relationship(Address)}
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         u1 = User()
         u1.addresses.append("e1")
@@ -213,7 +218,7 @@ class ValidatorTest(_fixtures.FixtureTest):
                 item = Address(email_address=item)
                 return item
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
@@ -225,7 +230,7 @@ class ValidatorTest(_fixtures.FixtureTest):
                 )
             },
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         u1 = User()
         u1.addresses["e1"] = "e1"
@@ -260,7 +265,7 @@ class ValidatorTest(_fixtures.FixtureTest):
         class User(fixtures.ComparableEntity):
             sv = validates("name")(SomeValidator())
 
-        mapper(User, users)
+        self.mapper_registry.map_imperatively(User, users)
         u1 = User(name="ed")
         eq_(u1.name, "ed modified")
 
@@ -280,7 +285,7 @@ class ValidatorTest(_fixtures.FixtureTest):
             exc.InvalidRequestError,
             "A validation function for mapped attribute "
             "'name' on mapper Mapper|Foo|users already exists",
-            mapper,
+            self.mapper_registry.map_imperatively,
             Foo,
             users,
         )
@@ -298,7 +303,7 @@ class ValidatorTest(_fixtures.FixtureTest):
             exc.InvalidRequestError,
             "A validation function for mapped attribute "
             "'name' on mapper Mapper|Bar|users already exists",
-            mapper,
+            self.mapper_registry.map_imperatively,
             Bar,
             users,
         )
@@ -362,12 +367,12 @@ class ValidatorTest(_fixtures.FixtureTest):
                     canary(key, item)
                     return item
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={"addresses": relationship(Address, backref="user")},
         )
-        mapper(Address, addresses)
+        self.mapper_registry.map_imperatively(Address, addresses)
 
         u1 = User()
         u2 = User()

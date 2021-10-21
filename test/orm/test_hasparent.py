@@ -5,7 +5,6 @@ from sqlalchemy import Integer
 from sqlalchemy import testing
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import exc as orm_exc
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -62,8 +61,10 @@ class ParentRemovalTest(fixtures.MappedTest):
 
     @classmethod
     def setup_mappers(cls):
-        mapper(cls.classes.Address, cls.tables.addresses)
-        mapper(
+        cls.mapper_registry.map_imperatively(
+            cls.classes.Address, cls.tables.addresses
+        )
+        cls.mapper_registry.map_imperatively(
             cls.classes.User,
             cls.tables.users,
             properties={

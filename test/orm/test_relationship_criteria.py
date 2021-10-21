@@ -16,7 +16,6 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import lazyload
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import registry
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
@@ -40,12 +39,13 @@ class _Fixtures(_fixtures.FixtureTest):
             self.classes.User,
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={
                 "addresses": relationship(
-                    mapper(Address, addresses), order_by=Address.id
+                    self.mapper_registry.map_imperatively(Address, addresses),
+                    order_by=Address.id,
                 )
             },
         )
@@ -58,7 +58,7 @@ class _Fixtures(_fixtures.FixtureTest):
             "orders", "items", "order_items"
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -68,7 +68,7 @@ class _Fixtures(_fixtures.FixtureTest):
                 ),
             },
         )
-        mapper(Item, items)
+        self.mapper_registry.map_imperatively(Item, items)
 
         return Order, Item
 
@@ -79,12 +79,12 @@ class _Fixtures(_fixtures.FixtureTest):
             "users", "orders", "items", "order_items"
         )
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             User,
             users,
             properties={"orders": relationship(Order, order_by=orders.c.id)},
         )
-        mapper(
+        self.mapper_registry.map_imperatively(
             Order,
             orders,
             properties={
@@ -94,7 +94,7 @@ class _Fixtures(_fixtures.FixtureTest):
                 ),
             },
         )
-        mapper(Item, items)
+        self.mapper_registry.map_imperatively(Item, items)
 
         return User, Order, Item
 
@@ -108,7 +108,7 @@ class _Fixtures(_fixtures.FixtureTest):
         class UserWFoob(HasFoob, self.Comparable):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             UserWFoob,
             users,
         )
@@ -126,7 +126,7 @@ class _Fixtures(_fixtures.FixtureTest):
         class UserWFoob(HasFoob, self.Comparable):
             pass
 
-        mapper(
+        self.mapper_registry.map_imperatively(
             UserWFoob,
             users,
         )

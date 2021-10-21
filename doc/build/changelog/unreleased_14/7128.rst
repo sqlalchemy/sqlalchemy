@@ -1,0 +1,18 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 7128
+
+    Fixed bug where iterating a :class:`.Result` from a :class:`_orm.Session`
+    after that :class:`_orm.Session` were closed would partially attach objects
+    to that session in an essentially invalid state.   It now raises an exception
+    with a link to new documentation if an **un-buffered** result is iterated
+    from a :class:`_orm.Session` that was closed or otherwise had the
+    :meth:`_orm.Session.expunge_all` method called after that :class:`.Result`
+    was generated.  The "prebuffer_rows" execution option, as is used by the
+    asyncio extension, may be used to produce a :class:`.Result` where the ORM
+    objects are prebuffered, and in this case iterating the result will produce
+    a series of detached objects.
+
+    .. seealso::
+
+        :ref:`error_lkrp`
