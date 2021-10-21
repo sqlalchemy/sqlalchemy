@@ -2120,6 +2120,8 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
             table_opts.append(joiner.join((opt, arg)))
 
+        return " ".join(table_opts)
+
     def create_table_partitioning(self, table):
         # Handle all the partitioning options
         table_part_opts = []

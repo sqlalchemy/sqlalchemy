@@ -4274,7 +4274,7 @@ class DDLCompiler(Compiled):
             text += " " + vers
 
         if part != "":
-            text += "\n" + vers
+            text += " \n" + part
 
         text += "\n\n"
 
