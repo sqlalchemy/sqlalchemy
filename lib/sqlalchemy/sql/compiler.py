@@ -4552,6 +4552,7 @@ class DDLCompiler(Compiled):
     def create_table_system_versioning(self, table):
         if table.system_versioning:
             return "WITH SYSTEM VERSIONING"
+        return ""
 
     def create_table_partitioning(self, table):
         return ""
