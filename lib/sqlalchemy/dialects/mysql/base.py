@@ -1340,6 +1340,12 @@ SET_RE = re.compile(
     r"\s*SET\s+(?:(?:GLOBAL|SESSION)\s+)?\w", re.I | re.UNICODE
 )
 
+PARTITION_OPTIONS = [
+    "PARTITION_BY",
+    "PARTITIONS",
+    "SUBPARTITIONS",
+    "SUBPARTITION_BY",
+]
 
 # old names
 MSTime = TIME
@@ -1994,6 +2000,8 @@ class MySQLCompiler(compiler.SQLCompiler):
 
 
 class MySQLDDLCompiler(compiler.DDLCompiler):
+    _opts = {}
+
     def get_column_specification(self, column, **kw):
         """Builds column DDL."""
 
@@ -2013,8 +2021,8 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         )
 
         is_versioning_column = (
-            column.system_versioning == "start" or
-            column.system_versioning == "end"
+            column.system_versioning == "start"
+            or column.system_versioning == "end"
         )
 
         if not column.nullable:
@@ -2063,24 +2071,16 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
         table_opts = []
 
-        opts = dict(
+        self._opts = dict(
             (k[len(self.dialect.name) + 1 :].upper(), v)
             for k, v in table.kwargs.items()
             if k.startswith("%s_" % self.dialect.name)
         )
 
         if table.comment is not None:
-            opts["COMMENT"] = table.comment
+            self._opts["COMMENT"] = table.comment
 
-        partition_options = [
-            "PARTITION_BY",
-            "PARTITIONS",
-            "SUBPARTITIONS",
-            "SUBPARTITION_BY",
-        ]
-
-        nonpart_options = set(opts).difference(partition_options)
-        part_options = set(opts).intersection(partition_options)
+        nonpart_options = set(self._opts).difference(PARTITION_OPTIONS)
 
         # Handle all the nonpartition options
         for opt in topological.sort(
@@ -2092,7 +2092,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             ],
             nonpart_options,
         ):
-            arg = opts[opt]
+            arg = self._opts[opt]
             if opt in _reflection._options_of_type_string:
 
                 arg = self.sql_compiler.render_literal_value(
@@ -2120,9 +2120,12 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
             table_opts.append(joiner.join((opt, arg)))
 
-        table_opts.append(super().post_create_table(table))
-
+    def create_table_partitioning(self, table):
         # Handle all the partitioning options
+        table_part_opts = []
+
+        part_options = set(self._opts).intersection(PARTITION_OPTIONS)
+
         for opt in topological.sort(
             [
                 ("PARTITION_BY", "PARTITIONS"),
@@ -2134,7 +2137,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             ],
             part_options,
         ):
-            arg = opts[opt]
+            arg = self._opts[opt]
             if opt in _reflection._options_of_type_string:
                 arg = self.sql_compiler.render_literal_value(
                     arg, sqltypes.String()
@@ -2143,9 +2146,9 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
             opt = opt.replace("_", " ")
             joiner = " "
 
-            table_opts.append(joiner.join((opt, arg)))
+            table_part_opts.append(joiner.join((opt, arg)))
 
-        return " ".join(table_opts)
+        return " ".join(table_part_opts)
 
     def visit_create_index(self, create, **kw):
         index = create.element

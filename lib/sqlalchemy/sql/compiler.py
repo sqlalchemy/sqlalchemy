@@ -4266,7 +4266,11 @@ class DDLCompiler(Compiled):
         if const:
             text += separator + "\t" + const
 
-        text += "\n)%s\n\n" % self.post_create_table(table)
+        text += "\n)%s %s\n%s\n\n" % (
+            self.post_create_table(table),
+            self.create_table_system_versioning(table),
+            self.create_table_partitioning(table),
+        )
         return text
 
     def visit_create_column(self, create, first_pk=False, **kw):
@@ -4543,12 +4547,14 @@ class DDLCompiler(Compiled):
         return ""
 
     def post_create_table(self, table):
-        table_opts = []
+        return ""
 
+    def create_table_system_versioning(self, table):
         if table.system_versioning:
-            table_opts.append("\n WITH SYSTEM VERSIONING")
+            return "WITH SYSTEM VERSIONING"
 
-        return " ".join(table_opts)
+    def create_table_partitioning(self, table):
+        return ""
 
     def get_column_default_string(self, column):
         if isinstance(column.server_default, schema.DefaultClause):
