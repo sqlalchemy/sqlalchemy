@@ -4266,11 +4266,18 @@ class DDLCompiler(Compiled):
         if const:
             text += separator + "\t" + const
 
-        text += "\n)%s %s\n%s\n\n" % (
-            self.post_create_table(table),
-            self.create_table_system_versioning(table),
-            self.create_table_partitioning(table),
-        )
+        text += "\n)%s" % self.post_create_table(table)
+        vers = self.create_table_system_versioning(table)
+        part = self.create_table_partitioning(table)
+
+        if vers != "":
+            text += " " + vers
+
+        if part != "":
+            text += "\n" + vers
+
+        text += "\n\n"
+
         return text
 
     def visit_create_column(self, create, first_pk=False, **kw):
