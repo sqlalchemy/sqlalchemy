@@ -33,30 +33,27 @@ from __future__ import absolute_import
 import collections
 
 import sqlalchemy
-from . import coercions
-from . import ddl
-from . import roles
-from . import type_api
-from . import visitors
-from .base import _bind_or_error
-from .base import DedupeColumnCollection
-from .base import DialectKWArgs
-from .base import Executable
-from .base import SchemaEventTarget
+
+from .. import event, exc, inspection, util
+from . import coercions, ddl, roles, type_api, visitors
+from .base import (
+    DedupeColumnCollection,
+    DialectKWArgs,
+    Executable,
+    SchemaEventTarget,
+    _bind_or_error,
+)
 from .coercions import _document_text_coercion
-from .elements import ClauseElement
-from .elements import ColumnClause
-from .elements import ColumnElement
-from .elements import quoted_name
-from .elements import TextClause
+from .elements import (
+    ClauseElement,
+    ColumnClause,
+    ColumnElement,
+    TextClause,
+    quoted_name,
+)
 from .selectable import TableClause
 from .type_api import to_instance
 from .visitors import InternalTraversal
-from .. import event
-from .. import exc
-from .. import inspection
-from .. import util
-
 
 RETAIN_SCHEMA = util.symbol("retain_schema")
 
@@ -481,7 +478,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             parameter
             to :class:`_schema.Table`.
 
-    :param system_versioning: When ``True``, indicates that this Table should be 
+    :param system_versioning: When ``True``, indicates that this Table should be
         created with system versioning using default parameters.
         TODO: update with specific parameters.
 
@@ -531,6 +528,9 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             :meth:`_reflection.Inspector.get_indexes`
 
     """
+
+    _versioning_columns = {}
+    """A collection of "start" and "end" columns used for system versioning"""
 
     _traverse_internals = TableClause._traverse_internals + [
         ("schema", InternalTraversal.dp_string)
@@ -1676,7 +1676,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
                     DefaultClause(self.server_onupdate, for_update=True)
                 )
 
-        
+
         self._init_items(*args)
 
         util.set_creation_order(self)

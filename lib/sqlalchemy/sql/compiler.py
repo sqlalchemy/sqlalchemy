@@ -29,20 +29,22 @@ import itertools
 import operator
 import re
 
-from . import base
-from . import coercions
-from . import crud
-from . import elements
-from . import functions
-from . import operators
-from . import schema
-from . import selectable
-from . import sqltypes
-from .base import NO_ARG
-from .base import prefix_anon_map
+from sqlalchemy.sql.schema import Column
+
+from .. import exc, util
+from . import (
+    base,
+    coercions,
+    crud,
+    elements,
+    functions,
+    operators,
+    schema,
+    selectable,
+    sqltypes,
+)
+from .base import NO_ARG, prefix_anon_map
 from .elements import quoted_name
-from .. import exc
-from .. import util
 
 RESERVED_WORDS = set(
     [
@@ -4266,6 +4268,20 @@ class DDLCompiler(Compiled):
         if const:
             text += separator + "\t" + const
 
+        # NOTE: This is proof of concept, needs to be moved into
+        # create_table_constraints once I figure that out
+        if table._versioning_columns != {}:
+            try:
+                text += ", \n\tPERIOD FOR SYSTEM_TIME (%s, %s)" % (
+                    table._versioning_columns["start"],
+                    table._versioning_columns["end"],
+                )
+            except KeyError:
+                raise exc.CompileError(
+                    "Unable to compile system versioning period. "
+                    'Did you set both "start" and "end" columns?'
+                ) from KeyError
+
         text += "\n)%s" % self.post_create_table(table)
         vers = self.create_table_system_versioning(table)
         part = self.create_table_partitioning(table)
@@ -4541,14 +4557,43 @@ class DDLCompiler(Compiled):
         ):
             colspec += " NOT NULL"
 
-        if column.system_versioning == "start":
-            colspec += " GENERATED ALWAYS AS ROW START"
-        elif column.system_versioning == "end":
-            colspec += " GENERATED ALWAYS AS ROW END"
-        elif column.system_versioning == "disable":
-            colspec += " WITHOUT SYSTEM VERSIONING"
+        if column.system_versioning:
+            option = self.get_column_versioning_options(self, column)
+            colspec += " %s" % option
 
         return colspec
+
+    def get_column_versioning_options(self, *args, **kw) -> str:
+        """Return strings to allow system versioning for columns
+        Raise errors if there is more than one column marked start or end"""
+        # TODO For some reason I can't just have an arg named column,
+        # some issue about too many arguments that I don't understand
+        column = args[1]
+        if column.system_versioning == "start":
+            try:
+                assert "start" not in column.table._versioning_columns
+            except AssertionError:
+                raise exc.CompileError(
+                    "Can't generate DDL for %r; "
+                    "too many system versioning "
+                    '"start" columns' % column.name
+                )
+            column.table._versioning_columns["start"] = column.name
+            return "GENERATED ALWAYS AS ROW START"
+        elif column.system_versioning == "end":
+            try:
+                assert "end" not in column.table._versioning_columns
+            except AssertionError:
+                raise exc.CompileError(
+                    "Can't generate DDL for %r; "
+                    "too many system versioning "
+                    '"end" columns' % column.name
+                )
+            column.table._versioning_columns["end"] = column.name
+            return "GENERATED ALWAYS AS ROW END"
+        elif column.system_versioning == "disabled":
+            return "WITHOUT SYSTEM VERSIONING"
+        return ""
 
     def create_table_suffix(self, table):
         return ""

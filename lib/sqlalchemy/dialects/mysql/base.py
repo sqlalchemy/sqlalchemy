@@ -969,74 +969,61 @@ output::
 
 """  # noqa
 
+import re
 from array import array as _array
 from collections import defaultdict
 from itertools import compress
-import re
 
-from sqlalchemy import literal_column
-from sqlalchemy import text
+from sqlalchemy import literal_column, text
 from sqlalchemy.sql import visitors
-from . import reflection as _reflection
-from .enumerated import ENUM
-from .enumerated import SET
-from .json import JSON
-from .json import JSONIndexType
-from .json import JSONPathType
-from .types import _FloatType
-from .types import _IntegerType
-from .types import _MatchType
-from .types import _NumericType
-from .types import _StringType
-from .types import BIGINT
-from .types import BIT
-from .types import CHAR
-from .types import DATETIME
-from .types import DECIMAL
-from .types import DOUBLE
-from .types import FLOAT
-from .types import INTEGER
-from .types import LONGBLOB
-from .types import LONGTEXT
-from .types import MEDIUMBLOB
-from .types import MEDIUMINT
-from .types import MEDIUMTEXT
-from .types import NCHAR
-from .types import NUMERIC
-from .types import NVARCHAR
-from .types import REAL
-from .types import SMALLINT
-from .types import TEXT
-from .types import TIME
-from .types import TIMESTAMP
-from .types import TINYBLOB
-from .types import TINYINT
-from .types import TINYTEXT
-from .types import VARCHAR
-from .types import YEAR
-from ... import exc
-from ... import log
+
+from ... import exc, log
 from ... import schema as sa_schema
 from ... import sql
 from ... import types as sqltypes
 from ... import util
-from ...engine import default
-from ...engine import reflection
-from ...sql import coercions
-from ...sql import compiler
-from ...sql import elements
-from ...sql import functions
-from ...sql import operators
-from ...sql import roles
+from ...engine import default, reflection
+from ...sql import coercions, compiler, elements, functions, operators, roles
 from ...sql import util as sql_util
 from ...sql.sqltypes import Unicode
-from ...types import BINARY
-from ...types import BLOB
-from ...types import BOOLEAN
-from ...types import DATE
-from ...types import VARBINARY
+from ...types import BINARY, BLOB, BOOLEAN, DATE, VARBINARY
 from ...util import topological
-
+from . import reflection as _reflection
+from .enumerated import ENUM, SET
+from .json import JSON, JSONIndexType, JSONPathType
+from .types import (
+    BIGINT,
+    BIT,
+    CHAR,
+    DATETIME,
+    DECIMAL,
+    DOUBLE,
+    FLOAT,
+    INTEGER,
+    LONGBLOB,
+    LONGTEXT,
+    MEDIUMBLOB,
+    MEDIUMINT,
+    MEDIUMTEXT,
+    NCHAR,
+    NUMERIC,
+    NVARCHAR,
+    REAL,
+    SMALLINT,
+    TEXT,
+    TIME,
+    TIMESTAMP,
+    TINYBLOB,
+    TINYINT,
+    TINYTEXT,
+    VARCHAR,
+    YEAR,
+    _FloatType,
+    _IntegerType,
+    _MatchType,
+    _NumericType,
+    _StringType,
+)
 
 RESERVED_WORDS = set(
     [
@@ -2032,12 +2019,8 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
         elif column.nullable and is_timestamp and not is_versioning_column:
             colspec.append("NULL")
 
-        if column.system_versioning == "start":
-            colspec.append("GENERATED ALWAYS AS ROW START")
-        elif column.system_versioning == "end":
-            colspec.append("GENERATED ALWAYS AS ROW END")
-        elif column.system_versioning == "disable":
-            colspec.append("WITHOUT SYSTEM VERSIONING")
+        if column.system_versioning:
+            colspec.append(self.get_column_versioning_options(self, column))
 
         comment = column.comment
         if comment is not None:

@@ -1,32 +1,41 @@
-from sqlalchemy import CheckConstraint
-from sqlalchemy import Column
-from sqlalchemy import exc
-from sqlalchemy import ForeignKey
-from sqlalchemy import ForeignKeyConstraint
-from sqlalchemy import func
-from sqlalchemy import Index
-from sqlalchemy import Integer
-from sqlalchemy import MetaData
-from sqlalchemy import PrimaryKeyConstraint
-from sqlalchemy import schema
-from sqlalchemy import String
-from sqlalchemy import Table
-from sqlalchemy import testing
-from sqlalchemy import text
-from sqlalchemy import UniqueConstraint
+import pytest
+from sqlalchemy import (
+    CheckConstraint,
+    Column,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Index,
+    Integer,
+    MetaData,
+    PrimaryKeyConstraint,
+    String,
+    Table,
+    UniqueConstraint,
+    exc,
+    func,
+    schema,
+    testing,
+    text,
+)
 from sqlalchemy.engine import default
-from sqlalchemy.testing import assert_raises
-from sqlalchemy.testing import assert_raises_message
-from sqlalchemy.testing import AssertsCompiledSQL
-from sqlalchemy.testing import AssertsExecutionResults
-from sqlalchemy.testing import engines
-from sqlalchemy.testing import eq_
-from sqlalchemy.testing import fixtures
+from sqlalchemy.exc import CompileError
+from sqlalchemy.sql.sqltypes import TIMESTAMP
+from sqlalchemy.testing import (
+    AssertsCompiledSQL,
+    AssertsExecutionResults,
+    assert_raises,
+    assert_raises_message,
+    engines,
+    eq_,
+    fixtures,
+)
 from sqlalchemy.testing.assertions import expect_warnings
-from sqlalchemy.testing.assertsql import AllOf
-from sqlalchemy.testing.assertsql import CompiledSQL
-from sqlalchemy.testing.assertsql import DialectSQL
-from sqlalchemy.testing.assertsql import RegexSQL
+from sqlalchemy.testing.assertsql import (
+    AllOf,
+    CompiledSQL,
+    DialectSQL,
+    RegexSQL,
+)
 
 
 class ConstraintGenTest(fixtures.TestBase, AssertsExecutionResults):
@@ -1341,3 +1350,94 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             schema.CreateIndex(constraint), "CREATE INDEX name ON tbl (a + 5)"
         )
+
+
+# I just added this class here, anyone can refactor it to wherever it fits best
+class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def test_create_table_versioning_no_columns(self):
+        m = MetaData()
+        t1 = Table("t1", m, Column("x", Integer), system_versioning=True)
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE t1 (x INTEGER) WITH SYSTEM VERSIONING",
+        )
+
+    def test_create_table_versioning_columns_specified(self):
+        m = MetaData()
+        t1 = Table(
+            "t1",
+            m,
+            Column("x", Integer),
+            Column("y", Integer, system_versioning="disabled"),
+            Column("start_timestamp", TIMESTAMP(6), system_versioning="start"),
+            Column("end_timestamp", TIMESTAMP(6), system_versioning="end"),
+            system_versioning=True,
+        )
+        self.assert_compile(
+            schema.CreateTable(t1),
+            "CREATE TABLE t1 ("
+            "x INTEGER, "
+            "y INTEGER WITHOUT SYSTEM VERSIONING, "
+            "start_timestamp TIMESTAMP GENERATED ALWAYS AS ROW START, "
+            "end_timestamp TIMESTAMP GENERATED ALWAYS AS ROW END, "
+            "PERIOD FOR SYSTEM_TIME (start_timestamp, end_timestamp)"
+            ") WITH SYSTEM VERSIONING",
+        )
+
+    # TODO Need assistance compiling an object without assert_compile
+    # def test_catch_versioning_errors(self):
+    #     # Test without both start and end columns
+    #     with pytest.raises(CompileError, match=".*Did you set both.*"):
+    #         m = MetaData()
+    #         t1 = Table(
+    #             "t1",
+    #             m,
+    #             Column("x", Integer),
+    #             Column(
+    #                 "start_timestamp", TIMESTAMP(6), system_versioning="start"
+    #             ),
+    #             Column("end_timestamp ", TIMESTAMP(6)),
+    #             system_versioning=True,
+    #         )
+
+    #         schema.CreateTable(t1).compile.__func__(
+    #             dialect="default",
+    #         )
+
+    #     # Test with two start columns
+    #     with pytest.raises(
+    #         CompileError, match=".*too many system versioning.*"
+    #     ):
+    #         m = MetaData()
+    #         t2 = Table(
+    #             "t2",
+    #             m,
+    #             Column("x", Integer),
+    #             Column(
+    #                 "start_timestamp", TIMESTAMP(6), system_versioning="start"
+    #             ),
+    #             Column(
+    #                 "end_timestamp ", TIMESTAMP(6), system_versioning="start"
+    #             ),
+    #             system_versioning=True,
+    #         )
+    #         schema.CreateTable(t2)
+
+    # Need some better way to verify this
+    # def test_add_versioning(self):
+    #     m = MetaData()
+    #     t = Table("t", Column("x", Integer))
+    #     self.assert_compile(
+    #         schema.AddSystemVersioning(t),
+    #         "ALTER TABLE t ADD SYSTEM VERSIONING",
+    #     )
+
+    # def test_drop_versioning(self):
+    #     m = MetaData()
+    #     t = Table("t", Column("x", Integer))
+    #     self.assert_compile(
+    #         schema.DropSystemVersioning(t),
+    #         "ALTER TABLE t DROP SYSTEM VERSIONING",
+    #     )
