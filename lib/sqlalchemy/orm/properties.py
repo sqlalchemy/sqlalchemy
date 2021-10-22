@@ -46,6 +46,7 @@ class ColumnProperty(StrategizedProperty):
 
     strategy_wildcard_key = "column"
     inherit_cache = True
+    _links_to_entity = False
 
     __slots__ = (
         "_orig_columns",

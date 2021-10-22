@@ -120,6 +120,15 @@ class MapperProperty(
 
     """
 
+    @property
+    def _links_to_entity(self):
+        """True if this MapperProperty refers to a mapped entity.
+
+        Should only be True for RelationshipProperty, False for all others.
+
+        """
+        raise NotImplementedError()
+
     def _memoized_attr_info(self):
         """Info dictionary associated with the object, allowing user-defined
         data to be associated with this :class:`.InspectionAttr`.
