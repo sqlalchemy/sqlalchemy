@@ -105,6 +105,8 @@ class RelationshipProperty(StrategizedProperty):
     strategy_wildcard_key = "relationship"
     inherit_cache = True
 
+    _links_to_entity = True
+
     _persistence_only = dict(
         passive_deletes=False,
         passive_updates=True,

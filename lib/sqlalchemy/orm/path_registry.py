@@ -398,15 +398,15 @@ class PropRegistry(PathRegistry):
 
     @util.memoized_property
     def has_entity(self):
-        return hasattr(self.prop, "mapper")
+        return self.prop._links_to_entity
 
     @util.memoized_property
     def entity(self):
-        return self.prop.mapper
+        return self.prop.entity
 
     @property
     def mapper(self):
-        return self.entity
+        return self.prop.mapper
 
     @property
     def entity_path(self):
