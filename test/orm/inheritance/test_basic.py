@@ -3684,7 +3684,7 @@ class UnexpectedPolymorphicIdentityTest(fixtures.DeclarativeMappedTest):
 
         s = fixture_session()
 
-        q = s.query(ASingleSubA).select_entity_from(select(ASingle).subquery())
+        q = s.query(ASingleSubA).from_statement(select(ASingle))
 
         assert_raises_message(
             sa_exc.InvalidRequestError,
@@ -3700,7 +3700,7 @@ class UnexpectedPolymorphicIdentityTest(fixtures.DeclarativeMappedTest):
 
         s = fixture_session()
 
-        q = s.query(AJoinedSubA).select_entity_from(select(AJoined).subquery())
+        q = s.query(AJoinedSubA).from_statement(select(AJoined))
 
         assert_raises_message(
             sa_exc.InvalidRequestError,

@@ -71,7 +71,6 @@ def setup_filters():
         r"The Query\.get\(\) method",
         r"The Query\.with_parent\(\) method",
         r"The Query\.with_parent\(\) method",
-        r"The Query\.select_entity_from\(\) method",
         r"The ``aliased`` and ``from_joinpoint`` keyword arguments",
         r"The Query.with_polymorphic\(\) method is considered "
         "legacy as of the 1.x series",

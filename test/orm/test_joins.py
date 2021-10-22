@@ -1271,10 +1271,9 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_clause_onclause(self):
-        Item, Order, users, order_items, User = (
+        Item, Order, order_items, User = (
             self.classes.Item,
             self.classes.Order,
-            self.tables.users,
             self.tables.order_items,
             self.classes.User,
         )
@@ -1319,17 +1318,6 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         ua = aliased(User, subq)
         eq_(
             sess.query(ua).join(Order, ua.id == Order.user_id).all(),
-            [User(name="fred")],
-        )
-
-        # same with an explicit select_from()
-        eq_(
-            sess.query(User)
-            .select_entity_from(
-                select(users).order_by(User.id).offset(2).alias()
-            )
-            .join(Order, User.id == Order.user_id)
-            .all(),
             [User(name="fred")],
         )
 
@@ -3053,26 +3041,24 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
             "WHERE people.people_id = books.book_owner_id) AS anon_1 ON true",
         )
 
-    # sef == select_entity_from
-    def test_select_subquery_sef_implicit_correlate(self):
+    # "aas" == "aliased against select"
+    def test_select_subquery_aas_implicit_correlate(self):
         Person, Book = self.classes("Person", "Book")
 
         s = fixture_session()
 
         stmt = s.query(Person).subquery()
+
+        pa = aliased(Person, stmt)
 
         subq = (
             s.query(Book.book_id)
-            .filter(Person.people_id == Book.book_owner_id)
+            .filter(pa.people_id == Book.book_owner_id)
             .subquery()
             .lateral()
         )
 
-        stmt = (
-            s.query(Person, subq.c.book_id)
-            .select_entity_from(stmt)
-            .join(subq, true())
-        )
+        stmt = s.query(pa, subq.c.book_id).join(subq, true())
 
         self.assert_compile(
             stmt,
@@ -3087,25 +3073,23 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
             "WHERE anon_1.people_id = books.book_owner_id) AS anon_2 ON true",
         )
 
-    def test_select_subquery_sef_implicit_correlate_coreonly(self):
+    def test_select_subquery_aas_implicit_correlate_coreonly(self):
         Person, Book = self.classes("Person", "Book")
 
         s = fixture_session()
 
         stmt = s.query(Person).subquery()
+
+        pa = aliased(Person, stmt)
 
         subq = (
             select(Book.book_id)
-            .where(Person.people_id == Book.book_owner_id)
+            .where(pa.people_id == Book.book_owner_id)
             .subquery()
             .lateral()
         )
 
-        stmt = (
-            s.query(Person, subq.c.book_id)
-            .select_entity_from(stmt)
-            .join(subq, true())
-        )
+        stmt = s.query(pa, subq.c.book_id).join(subq, true())
 
         self.assert_compile(
             stmt,
@@ -3120,26 +3104,24 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
             "WHERE anon_1.people_id = books.book_owner_id) AS anon_2 ON true",
         )
 
-    def test_select_subquery_sef_explicit_correlate_coreonly(self):
+    def test_select_subquery_aas_explicit_correlate_coreonly(self):
         Person, Book = self.classes("Person", "Book")
 
         s = fixture_session()
 
         stmt = s.query(Person).subquery()
+
+        pa = aliased(Person, stmt)
 
         subq = (
             select(Book.book_id)
-            .correlate(Person)
-            .where(Person.people_id == Book.book_owner_id)
+            .correlate(pa)
+            .where(pa.people_id == Book.book_owner_id)
             .subquery()
             .lateral()
         )
 
-        stmt = (
-            s.query(Person, subq.c.book_id)
-            .select_entity_from(stmt)
-            .join(subq, true())
-        )
+        stmt = s.query(pa, subq.c.book_id).join(subq, true())
 
         self.assert_compile(
             stmt,
@@ -3154,26 +3136,23 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
             "WHERE anon_1.people_id = books.book_owner_id) AS anon_2 ON true",
         )
 
-    def test_select_subquery_sef_explicit_correlate(self):
+    def test_select_subquery_aas_explicit_correlate(self):
         Person, Book = self.classes("Person", "Book")
 
         s = fixture_session()
 
         stmt = s.query(Person).subquery()
+        pa = aliased(Person, stmt)
 
         subq = (
             s.query(Book.book_id)
-            .correlate(Person)
-            .filter(Person.people_id == Book.book_owner_id)
+            .correlate(pa)
+            .filter(pa.people_id == Book.book_owner_id)
             .subquery()
             .lateral()
         )
 
-        stmt = (
-            s.query(Person, subq.c.book_id)
-            .select_entity_from(stmt)
-            .join(subq, true())
-        )
+        stmt = s.query(pa, subq.c.book_id).join(subq, true())
 
         self.assert_compile(
             stmt,
@@ -3206,17 +3185,19 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
             "bookcases.bookcase_shelves) AS anon_1 ON true",
         )
 
-    def test_from_function_select_entity_from(self):
+    def test_from_function_aas(self):
         Bookcase = self.classes.Bookcase
 
         s = fixture_session()
 
         subq = s.query(Bookcase).subquery()
 
-        srf = lateral(func.generate_series(1, Bookcase.bookcase_shelves))
+        ba = aliased(Bookcase, subq)
+
+        srf = lateral(func.generate_series(1, ba.bookcase_shelves))
 
         self.assert_compile(
-            s.query(Bookcase).select_entity_from(subq).join(srf, true()),
+            s.query(ba).join(srf, true()),
             "SELECT anon_1.bookcase_id AS anon_1_bookcase_id, "
             "anon_1.bookcase_owner_id AS anon_1_bookcase_owner_id, "
             "anon_1.bookcase_shelves AS anon_1_bookcase_shelves, "

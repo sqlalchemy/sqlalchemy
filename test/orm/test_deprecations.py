@@ -9,6 +9,8 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
+from sqlalchemy import join
+from sqlalchemy import lateral
 from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import or_
@@ -128,6 +130,11 @@ opt_strings_dep = (
 wparent_strings_dep = (
     r"Using strings to indicate relationship names "
     r"in the ORM with_parent\(\) function"
+)
+
+sef_dep = (
+    r"The Query.select_entity_from\(\) method is considered "
+    "legacy as of the 1.x"
 )
 
 
@@ -3992,6 +3999,25 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
         self.assert_sql_count(testing.db, go, 1)
 
 
+class TextTest(QueryTest):
+    def test_via_textasfrom_select_from(self):
+        User = self.classes.User
+        s = fixture_session()
+
+        with assertions.expect_deprecated_20(sef_dep):
+            eq_(
+                s.query(User)
+                .select_entity_from(
+                    text("select * from users")
+                    .columns(User.id, User.name)
+                    .subquery()
+                )
+                .order_by(User.id)
+                .all(),
+                [User(id=7), User(id=8), User(id=9), User(id=10)],
+            )
+
+
 class TestDeprecation20(fixtures.TestBase):
     def test_relation(self):
         with testing.expect_deprecated_20(".*relationship"):
@@ -7248,3 +7274,824 @@ class AliasedClassRelationshipTest(
 
         with assertions.expect_deprecated_20(opt_strings_dep):
             self.assert_sql_count(testing.db, go, 2)
+
+
+class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
+    """test access of columns after _from_selectable has been applied"""
+
+    __dialect__ = "default"
+
+    def test_select_entity_from(self):
+        User = self.classes.User
+        sess = fixture_session()
+
+        q = sess.query(User)
+        with assertions.expect_deprecated_20(sef_dep):
+            q = sess.query(User).select_entity_from(q.statement.subquery())
+        self.assert_compile(
+            q.filter(User.name == "ed"),
+            "SELECT anon_1.id AS anon_1_id, anon_1.name AS anon_1_name "
+            "FROM (SELECT users.id AS id, users.name AS name FROM "
+            "users) AS anon_1 WHERE anon_1.name = :name_1",
+        )
+
+    def test_select_entity_from_no_entities(self):
+        User = self.classes.User
+        sess = fixture_session()
+
+        with assertions.expect_deprecated_20(sef_dep):
+            assert_raises_message(
+                sa.exc.ArgumentError,
+                r"A selectable \(FromClause\) instance is "
+                "expected when the base alias is being set",
+                sess.query(User).select_entity_from(User)._compile_context,
+            )
+
+
+class SelectFromTest(QueryTest, AssertsCompiledSQL):
+    run_setup_mappers = None
+    __dialect__ = "default"
+
+    def test_aliased_class_vs_nonaliased(self):
+        User, users = self.classes.User, self.tables.users
+        self.mapper_registry.map_imperatively(User, users)
+
+        sess = fixture_session()
+        with assertions.expect_deprecated_20(sef_dep):
+            self.assert_compile(
+                sess.query(User.name).select_entity_from(
+                    users.select().where(users.c.id > 5).subquery()
+                ),
+                "SELECT anon_1.name AS anon_1_name FROM "
+                "(SELECT users.id AS id, "
+                "users.name AS name FROM users WHERE users.id > :id_1) "
+                "AS anon_1",
+            )
+
+    def test_join_no_order_by(self):
+        User, users = self.classes.User, self.tables.users
+
+        self.mapper_registry.map_imperatively(User, users)
+
+        sel = users.select().where(users.c.id.in_([7, 8]))
+        sess = fixture_session()
+
+        with assertions.expect_deprecated_20(sef_dep):
+            eq_(
+                sess.query(User).select_entity_from(sel.subquery()).all(),
+                [User(name="jack", id=7), User(name="ed", id=8)],
+            )
+
+    def test_join(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User, users, properties={"addresses": relationship(Address)}
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
+
+        sel = users.select().where(users.c.id.in_([7, 8]))
+        sess = fixture_session()
+
+        with assertions.expect_deprecated_20(sef_dep):
+            eq_(
+                sess.query(User)
+                .select_entity_from(sel.subquery())
+                .join("addresses")
+                .add_entity(Address)
+                .order_by(User.id)
+                .order_by(Address.id)
+                .all(),
+                [
+                    (
+                        User(name="jack", id=7),
+                        Address(
+                            user_id=7, email_address="jack@bean.com", id=1
+                        ),
+                    ),
+                    (
+                        User(name="ed", id=8),
+                        Address(user_id=8, email_address="ed@wood.com", id=2),
+                    ),
+                    (
+                        User(name="ed", id=8),
+                        Address(
+                            user_id=8, email_address="ed@bettyboop.com", id=3
+                        ),
+                    ),
+                    (
+                        User(name="ed", id=8),
+                        Address(user_id=8, email_address="ed@lala.com", id=4),
+                    ),
+                ],
+            )
+
+        adalias = aliased(Address)
+        with assertions.expect_deprecated_20(sef_dep):
+            eq_(
+                sess.query(User)
+                .select_entity_from(sel.subquery())
+                .join(adalias, "addresses")
+                .add_entity(adalias)
+                .order_by(User.id)
+                .order_by(adalias.id)
+                .all(),
+                [
+                    (
+                        User(name="jack", id=7),
+                        Address(
+                            user_id=7, email_address="jack@bean.com", id=1
+                        ),
+                    ),
+                    (
+                        User(name="ed", id=8),
+                        Address(user_id=8, email_address="ed@wood.com", id=2),
+                    ),
+                    (
+                        User(name="ed", id=8),
+                        Address(
+                            user_id=8, email_address="ed@bettyboop.com", id=3
+                        ),
+                    ),
+                    (
+                        User(name="ed", id=8),
+                        Address(user_id=8, email_address="ed@lala.com", id=4),
+                    ),
+                ],
+            )
+
+    def test_more_joins(self):
+        (
+            users,
+            Keyword,
+            orders,
+            items,
+            order_items,
+            Order,
+            Item,
+            User,
+            keywords,
+            item_keywords,
+        ) = (
+            self.tables.users,
+            self.classes.Keyword,
+            self.tables.orders,
+            self.tables.items,
+            self.tables.order_items,
+            self.classes.Order,
+            self.classes.Item,
+            self.classes.User,
+            self.tables.keywords,
+            self.tables.item_keywords,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={"orders": relationship(Order, backref="user")},
+        )  # o2m, m2o
+        self.mapper_registry.map_imperatively(
+            Order,
+            orders,
+            properties={
+                "items": relationship(
+                    Item, secondary=order_items, order_by=items.c.id
+                )
+            },
+        )  # m2m
+
+        self.mapper_registry.map_imperatively(
+            Item,
+            items,
+            properties={
+                "keywords": relationship(
+                    Keyword, secondary=item_keywords, order_by=keywords.c.id
+                )
+            },
+        )  # m2m
+        self.mapper_registry.map_imperatively(Keyword, keywords)
+
+        sess = fixture_session()
+        sel = users.select().where(users.c.id.in_([7, 8]))
+
+        with assertions.expect_deprecated_20(sef_dep):
+            eq_(
+                sess.query(User)
+                .select_entity_from(sel.subquery())
+                .join(User.orders, Order.items, Item.keywords)
+                .filter(Keyword.name.in_(["red", "big", "round"]))
+                .all(),
+                [User(name="jack", id=7)],
+            )
+
+    def test_very_nested_joins_with_joinedload(self):
+        (
+            users,
+            Keyword,
+            orders,
+            items,
+            order_items,
+            Order,
+            Item,
+            User,
+            keywords,
+            item_keywords,
+        ) = (
+            self.tables.users,
+            self.classes.Keyword,
+            self.tables.orders,
+            self.tables.items,
+            self.tables.order_items,
+            self.classes.Order,
+            self.classes.Item,
+            self.classes.User,
+            self.tables.keywords,
+            self.tables.item_keywords,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={"orders": relationship(Order, backref="user")},
+        )  # o2m, m2o
+        self.mapper_registry.map_imperatively(
+            Order,
+            orders,
+            properties={
+                "items": relationship(
+                    Item, secondary=order_items, order_by=items.c.id
+                )
+            },
+        )  # m2m
+        self.mapper_registry.map_imperatively(
+            Item,
+            items,
+            properties={
+                "keywords": relationship(
+                    Keyword, secondary=item_keywords, order_by=keywords.c.id
+                )
+            },
+        )  # m2m
+        self.mapper_registry.map_imperatively(Keyword, keywords)
+
+        sess = fixture_session()
+
+        sel = users.select().where(users.c.id.in_([7, 8]))
+
+        def go():
+            with assertions.expect_deprecated_20(sef_dep):
+                eq_(
+                    sess.query(User)
+                    .select_entity_from(sel.subquery())
+                    .options(
+                        joinedload("orders")
+                        .joinedload("items")
+                        .joinedload("keywords")
+                    )
+                    .join(User.orders, Order.items, Item.keywords)
+                    .filter(Keyword.name.in_(["red", "big", "round"]))
+                    .all(),
+                    [
+                        User(
+                            name="jack",
+                            orders=[
+                                Order(
+                                    description="order 1",
+                                    items=[
+                                        Item(
+                                            description="item 1",
+                                            keywords=[
+                                                Keyword(name="red"),
+                                                Keyword(name="big"),
+                                                Keyword(name="round"),
+                                            ],
+                                        ),
+                                        Item(
+                                            description="item 2",
+                                            keywords=[
+                                                Keyword(name="red", id=2),
+                                                Keyword(name="small", id=5),
+                                                Keyword(name="square"),
+                                            ],
+                                        ),
+                                        Item(
+                                            description="item 3",
+                                            keywords=[
+                                                Keyword(name="green", id=3),
+                                                Keyword(name="big", id=4),
+                                                Keyword(name="round", id=6),
+                                            ],
+                                        ),
+                                    ],
+                                ),
+                                Order(
+                                    description="order 3",
+                                    items=[
+                                        Item(
+                                            description="item 3",
+                                            keywords=[
+                                                Keyword(name="green", id=3),
+                                                Keyword(name="big", id=4),
+                                                Keyword(name="round", id=6),
+                                            ],
+                                        ),
+                                        Item(
+                                            description="item 4",
+                                            keywords=[],
+                                            id=4,
+                                        ),
+                                        Item(
+                                            description="item 5",
+                                            keywords=[],
+                                            id=5,
+                                        ),
+                                    ],
+                                ),
+                                Order(
+                                    description="order 5",
+                                    items=[
+                                        Item(description="item 5", keywords=[])
+                                    ],
+                                ),
+                            ],
+                        )
+                    ],
+                )
+
+        self.assert_sql_count(testing.db, go, 1)
+
+        sess.expunge_all()
+        sel2 = orders.select().where(orders.c.id.in_([1, 2, 3]))
+        with assertions.expect_deprecated_20(sef_dep):
+            eq_(
+                sess.query(Order)
+                .select_entity_from(sel2.subquery())
+                .join(Order.items)
+                .join(Item.keywords)
+                .filter(Keyword.name == "red")
+                .order_by(Order.id)
+                .all(),
+                [
+                    Order(description="order 1", id=1),
+                    Order(description="order 2", id=2),
+                ],
+            )
+
+    def test_replace_with_eager(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(Address, order_by=addresses.c.id)
+            },
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
+
+        sel = users.select().where(users.c.id.in_([7, 8]))
+        sess = fixture_session()
+
+        def go():
+            with assertions.expect_deprecated_20(sef_dep):
+                eq_(
+                    sess.query(User)
+                    .options(joinedload("addresses"))
+                    .select_entity_from(sel.subquery())
+                    .order_by(User.id)
+                    .all(),
+                    [
+                        User(id=7, addresses=[Address(id=1)]),
+                        User(
+                            id=8,
+                            addresses=[
+                                Address(id=2),
+                                Address(id=3),
+                                Address(id=4),
+                            ],
+                        ),
+                    ],
+                )
+
+        self.assert_sql_count(testing.db, go, 1)
+        sess.expunge_all()
+
+        def go():
+            with assertions.expect_deprecated_20(sef_dep):
+                eq_(
+                    sess.query(User)
+                    .options(joinedload("addresses"))
+                    .select_entity_from(sel.subquery())
+                    .filter(User.id == 8)
+                    .order_by(User.id)
+                    .all(),
+                    [
+                        User(
+                            id=8,
+                            addresses=[
+                                Address(id=2),
+                                Address(id=3),
+                                Address(id=4),
+                            ],
+                        )
+                    ],
+                )
+
+        self.assert_sql_count(testing.db, go, 1)
+        sess.expunge_all()
+
+        def go():
+            with assertions.expect_deprecated_20(sef_dep):
+                eq_(
+                    sess.query(User)
+                    .options(joinedload("addresses"))
+                    .select_entity_from(sel.subquery())
+                    .order_by(User.id)[1],
+                    User(
+                        id=8,
+                        addresses=[
+                            Address(id=2),
+                            Address(id=3),
+                            Address(id=4),
+                        ],
+                    ),
+                )
+
+        self.assert_sql_count(testing.db, go, 1)
+
+    def test_select_from_aliased_one(self):
+        User, users = self.classes.User, self.tables.users
+
+        self.mapper_registry.map_imperatively(User, users)
+
+        sess = fixture_session()
+
+        not_users = table("users", column("id"), column("name"))
+        ua = aliased(User, select(not_users).alias(), adapt_on_names=True)
+
+        with assertions.expect_deprecated_20(sef_dep):
+            q = (
+                sess.query(User.name)
+                .select_entity_from(ua)
+                .order_by(User.name)
+            )
+        self.assert_compile(
+            q,
+            "SELECT anon_1.name AS anon_1_name FROM (SELECT users.id AS id, "
+            "users.name AS name FROM users) AS anon_1 ORDER BY anon_1.name",
+        )
+        eq_(q.all(), [("chuck",), ("ed",), ("fred",), ("jack",)])
+
+    def test_select_from_aliased_two(self):
+        User, users = self.classes.User, self.tables.users
+
+        self.mapper_registry.map_imperatively(User, users)
+
+        sess = fixture_session()
+
+        ua = aliased(User)
+
+        with assertions.expect_deprecated_20(sef_dep):
+            q = (
+                sess.query(User.name)
+                .select_entity_from(ua)
+                .order_by(User.name)
+            )
+        self.assert_compile(
+            q,
+            "SELECT users_1.name AS users_1_name FROM users AS users_1 "
+            "ORDER BY users_1.name",
+        )
+        eq_(q.all(), [("chuck",), ("ed",), ("fred",), ("jack",)])
+
+    def test_select_from_core_alias_one(self):
+        User, users = self.classes.User, self.tables.users
+
+        self.mapper_registry.map_imperatively(User, users)
+
+        sess = fixture_session()
+
+        ua = users.alias()
+
+        with assertions.expect_deprecated_20(sef_dep):
+            q = (
+                sess.query(User.name)
+                .select_entity_from(ua)
+                .order_by(User.name)
+            )
+        self.assert_compile(
+            q,
+            "SELECT users_1.name AS users_1_name FROM users AS users_1 "
+            "ORDER BY users_1.name",
+        )
+        eq_(q.all(), [("chuck",), ("ed",), ("fred",), ("jack",)])
+
+    def test_differentiate_self_external(self):
+        """test some different combinations of joining a table to a subquery of
+        itself."""
+
+        users, User = self.tables.users, self.classes.User
+
+        self.mapper_registry.map_imperatively(User, users)
+
+        sess = fixture_session()
+
+        sel = sess.query(User).filter(User.id.in_([7, 8])).subquery()
+        ualias = aliased(User)
+
+        with assertions.expect_deprecated_20(sef_dep):
+            self.assert_compile(
+                sess.query(ualias)
+                .select_entity_from(sel)
+                .filter(ualias.id > sel.c.id),
+                "SELECT users_1.id AS users_1_id, "
+                "users_1.name AS users_1_name "
+                "FROM users AS users_1, ("
+                "SELECT users.id AS id, users.name AS name FROM users "
+                "WHERE users.id IN ([POSTCOMPILE_id_1])) AS anon_1 "
+                "WHERE users_1.id > anon_1.id",
+                check_post_param={"id_1": [7, 8]},
+            )
+
+        with assertions.expect_deprecated_20(sef_dep):
+            self.assert_compile(
+                sess.query(ualias)
+                .select_entity_from(sel)
+                .join(ualias, ualias.id > sel.c.id),
+                "SELECT users_1.id AS users_1_id, "
+                "users_1.name AS users_1_name "
+                "FROM (SELECT users.id AS id, users.name AS name "
+                "FROM users WHERE users.id IN ([POSTCOMPILE_id_1])) AS anon_1 "
+                "JOIN users AS users_1 ON users_1.id > anon_1.id",
+                check_post_param={"id_1": [7, 8]},
+            )
+
+        with assertions.expect_deprecated_20(sef_dep):
+            self.assert_compile(
+                sess.query(ualias)
+                .select_entity_from(sel)
+                .join(ualias, ualias.id > User.id),
+                "SELECT users_1.id AS users_1_id, "
+                "users_1.name AS users_1_name "
+                "FROM (SELECT users.id AS id, users.name AS name FROM "
+                "users WHERE users.id IN ([POSTCOMPILE_id_1])) AS anon_1 "
+                "JOIN users AS users_1 ON users_1.id > anon_1.id",
+                check_post_param={"id_1": [7, 8]},
+            )
+
+        with assertions.expect_deprecated_20(sef_dep):
+            self.assert_compile(
+                sess.query(ualias).select_entity_from(
+                    join(sel, ualias, ualias.id > sel.c.id)
+                ),
+                "SELECT users_1.id AS users_1_id, "
+                "users_1.name AS users_1_name "
+                "FROM "
+                "(SELECT users.id AS id, users.name AS name "
+                "FROM users WHERE users.id "
+                "IN ([POSTCOMPILE_id_1])) AS anon_1 "
+                "JOIN users AS users_1 ON users_1.id > anon_1.id",
+                check_post_param={"id_1": [7, 8]},
+            )
+
+
+class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
+    __dialect__ = default.DefaultDialect(supports_native_boolean=True)
+
+    run_setup_bind = None
+    run_setup_mappers = "once"
+
+    run_create_tables = None
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "people",
+            metadata,
+            Column("people_id", Integer, primary_key=True),
+            Column("age", Integer),
+            Column("name", String(30)),
+        )
+        Table(
+            "bookcases",
+            metadata,
+            Column("bookcase_id", Integer, primary_key=True),
+            Column(
+                "bookcase_owner_id", Integer, ForeignKey("people.people_id")
+            ),
+            Column("bookcase_shelves", Integer),
+            Column("bookcase_width", Integer),
+        )
+        Table(
+            "books",
+            metadata,
+            Column("book_id", Integer, primary_key=True),
+            Column(
+                "bookcase_id", Integer, ForeignKey("bookcases.bookcase_id")
+            ),
+            Column("book_owner_id", Integer, ForeignKey("people.people_id")),
+            Column("book_weight", Integer),
+        )
+
+    @classmethod
+    def setup_classes(cls):
+        class Person(cls.Comparable):
+            pass
+
+        class Bookcase(cls.Comparable):
+            pass
+
+        class Book(cls.Comparable):
+            pass
+
+    @classmethod
+    def setup_mappers(cls):
+        Person, Bookcase, Book = cls.classes("Person", "Bookcase", "Book")
+        people, bookcases, books = cls.tables("people", "bookcases", "books")
+        cls.mapper_registry.map_imperatively(Person, people)
+        cls.mapper_registry.map_imperatively(
+            Bookcase,
+            bookcases,
+            properties={
+                "owner": relationship(Person),
+                "books": relationship(Book),
+            },
+        )
+        cls.mapper_registry.map_imperatively(Book, books)
+
+    # "sef" == "select entity from"
+    def test_select_subquery_sef_implicit_correlate(self):
+        Person, Book = self.classes("Person", "Book")
+
+        s = fixture_session()
+
+        stmt = s.query(Person).subquery()
+
+        subq = (
+            s.query(Book.book_id)
+            .filter(Person.people_id == Book.book_owner_id)
+            .subquery()
+            .lateral()
+        )
+
+        with assertions.expect_deprecated_20(sef_dep):
+            stmt = (
+                s.query(Person, subq.c.book_id)
+                .select_entity_from(stmt)
+                .join(subq, true())
+            )
+
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.people_id AS anon_1_people_id, "
+            "anon_1.age AS anon_1_age, anon_1.name AS anon_1_name, "
+            "anon_2.book_id AS anon_2_book_id "
+            "FROM "
+            "(SELECT people.people_id AS people_id, people.age AS age, "
+            "people.name AS name FROM people) AS anon_1 "
+            "JOIN LATERAL "
+            "(SELECT books.book_id AS book_id FROM books "
+            "WHERE anon_1.people_id = books.book_owner_id) AS anon_2 ON true",
+        )
+
+    def test_select_subquery_sef_implicit_correlate_coreonly(self):
+        Person, Book = self.classes("Person", "Book")
+
+        s = fixture_session()
+
+        stmt = s.query(Person).subquery()
+
+        subq = (
+            select(Book.book_id)
+            .where(Person.people_id == Book.book_owner_id)
+            .subquery()
+            .lateral()
+        )
+
+        with assertions.expect_deprecated_20(sef_dep):
+            stmt = (
+                s.query(Person, subq.c.book_id)
+                .select_entity_from(stmt)
+                .join(subq, true())
+            )
+
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.people_id AS anon_1_people_id, "
+            "anon_1.age AS anon_1_age, anon_1.name AS anon_1_name, "
+            "anon_2.book_id AS anon_2_book_id "
+            "FROM "
+            "(SELECT people.people_id AS people_id, people.age AS age, "
+            "people.name AS name FROM people) AS anon_1 "
+            "JOIN LATERAL "
+            "(SELECT books.book_id AS book_id FROM books "
+            "WHERE anon_1.people_id = books.book_owner_id) AS anon_2 ON true",
+        )
+
+    def test_select_subquery_sef_explicit_correlate_coreonly(self):
+        Person, Book = self.classes("Person", "Book")
+
+        s = fixture_session()
+
+        stmt = s.query(Person).subquery()
+
+        subq = (
+            select(Book.book_id)
+            .correlate(Person)
+            .where(Person.people_id == Book.book_owner_id)
+            .subquery()
+            .lateral()
+        )
+
+        with assertions.expect_deprecated_20(sef_dep):
+            stmt = (
+                s.query(Person, subq.c.book_id)
+                .select_entity_from(stmt)
+                .join(subq, true())
+            )
+
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.people_id AS anon_1_people_id, "
+            "anon_1.age AS anon_1_age, anon_1.name AS anon_1_name, "
+            "anon_2.book_id AS anon_2_book_id "
+            "FROM "
+            "(SELECT people.people_id AS people_id, people.age AS age, "
+            "people.name AS name FROM people) AS anon_1 "
+            "JOIN LATERAL "
+            "(SELECT books.book_id AS book_id FROM books "
+            "WHERE anon_1.people_id = books.book_owner_id) AS anon_2 ON true",
+        )
+
+    def test_select_subquery_sef_explicit_correlate(self):
+        Person, Book = self.classes("Person", "Book")
+
+        s = fixture_session()
+
+        stmt = s.query(Person).subquery()
+
+        subq = (
+            s.query(Book.book_id)
+            .correlate(Person)
+            .filter(Person.people_id == Book.book_owner_id)
+            .subquery()
+            .lateral()
+        )
+
+        with assertions.expect_deprecated_20(sef_dep):
+            stmt = (
+                s.query(Person, subq.c.book_id)
+                .select_entity_from(stmt)
+                .join(subq, true())
+            )
+
+        self.assert_compile(
+            stmt,
+            "SELECT anon_1.people_id AS anon_1_people_id, "
+            "anon_1.age AS anon_1_age, anon_1.name AS anon_1_name, "
+            "anon_2.book_id AS anon_2_book_id "
+            "FROM "
+            "(SELECT people.people_id AS people_id, people.age AS age, "
+            "people.name AS name FROM people) AS anon_1 "
+            "JOIN LATERAL "
+            "(SELECT books.book_id AS book_id FROM books "
+            "WHERE anon_1.people_id = books.book_owner_id) AS anon_2 ON true",
+        )
+
+    def test_from_function_sef(self):
+        Bookcase = self.classes.Bookcase
+
+        s = fixture_session()
+
+        subq = s.query(Bookcase).subquery()
+
+        srf = lateral(func.generate_series(1, Bookcase.bookcase_shelves))
+
+        with assertions.expect_deprecated_20(sef_dep):
+            q = s.query(Bookcase).select_entity_from(subq).join(srf, true())
+
+        self.assert_compile(
+            q,
+            "SELECT anon_1.bookcase_id AS anon_1_bookcase_id, "
+            "anon_1.bookcase_owner_id AS anon_1_bookcase_owner_id, "
+            "anon_1.bookcase_shelves AS anon_1_bookcase_shelves, "
+            "anon_1.bookcase_width AS anon_1_bookcase_width "
+            "FROM (SELECT bookcases.bookcase_id AS bookcase_id, "
+            "bookcases.bookcase_owner_id AS bookcase_owner_id, "
+            "bookcases.bookcase_shelves AS bookcase_shelves, "
+            "bookcases.bookcase_width AS bookcase_width FROM bookcases) "
+            "AS anon_1 "
+            "JOIN LATERAL "
+            "generate_series(:generate_series_1, anon_1.bookcase_shelves) "
+            "AS anon_2 ON true",
+        )

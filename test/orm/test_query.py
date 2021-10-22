@@ -6105,19 +6105,17 @@ class TextTest(QueryTest, AssertsCompiledSQL):
             [User(id=7), User(id=8), User(id=9), User(id=10)],
         )
 
-    def test_via_textasfrom_select_from(self):
+    def test_via_textasfrom_aliased(self):
         User = self.classes.User
         s = fixture_session()
 
+        ua = aliased(
+            User,
+            text("select * from users").columns(User.id, User.name).subquery(),
+        )
+
         eq_(
-            s.query(User)
-            .select_entity_from(
-                text("select * from users")
-                .columns(User.id, User.name)
-                .subquery()
-            )
-            .order_by(User.id)
-            .all(),
+            s.query(ua).order_by(ua.id).all(),
             [User(id=7), User(id=8), User(id=9), User(id=10)],
         )
 
