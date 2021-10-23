@@ -63,6 +63,7 @@ changelog_sections = [
     "sql",
     "schema",
     "extensions",
+    "typing",
     "mypy",
     "asyncio",
     "postgresql",
@@ -76,6 +77,7 @@ changelog_sections = [
 # tags to sort on inside of sections
 changelog_inner_tag_sort = [
     "feature",
+    "improvement",
     "usecase",
     "change",
     "changed",

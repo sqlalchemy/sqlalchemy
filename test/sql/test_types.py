@@ -86,6 +86,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import pickleable
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import pep435_enum
 from sqlalchemy.testing.schema import Table
@@ -1515,15 +1516,26 @@ class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
         assert_raises_message(
             exc.ArgumentError,
             "Dialect 'postgresql' is already present "
-            "in the mapping for this Variant",
+            "in the mapping for this UTypeOne()",
             lambda: v.with_variant(self.UTypeThree(), "postgresql"),
         )
+
+    def test_no_variants_of_variants(self):
+        t = Integer().with_variant(Float(), "postgresql")
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            r"can't pass a type that already has variants as a "
+            r"dialect-level type to with_variant\(\)",
+        ):
+            String().with_variant(t, "mysql")
 
     def test_compile(self):
         self.assert_compile(self.variant, "UTYPEONE", use_default_dialect=True)
         self.assert_compile(
             self.variant, "UTYPEONE", dialect=dialects.mysql.dialect()
         )
+
         self.assert_compile(
             self.variant, "UTYPETWO", dialect=dialects.postgresql.dialect()
         )
@@ -1534,6 +1546,27 @@ class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
             "UTYPETWO",
             dialect=dialects.postgresql.dialect(),
         )
+
+    def test_typedec_gen_dialect_impl(self):
+        """test that gen_dialect_impl passes onto a TypeDecorator, as
+        TypeDecorator._gen_dialect_impl() itself has special behaviors.
+
+        """
+
+        class MyDialectString(String):
+            pass
+
+        class MyString(TypeDecorator):
+            impl = String
+            cache_ok = True
+
+            def load_dialect_impl(self, dialect):
+                return MyDialectString()
+
+        variant = String().with_variant(MyString(), "mysql")
+
+        dialect_impl = variant._gen_dialect_impl(mysql.dialect())
+        is_(dialect_impl.impl.__class__, MyDialectString)
 
     def test_compile_composite(self):
         self.assert_compile(
@@ -1984,12 +2017,60 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         )
 
     @testing.requires.enforces_check_constraints
-    @testing.provide_metadata
-    def test_variant_we_are_default(self):
+    def test_variant_default_is_not_schematype(self, metadata):
+        t = Table(
+            "my_table",
+            metadata,
+            Column(
+                "data",
+                String(50).with_variant(
+                    Enum(
+                        "four",
+                        "five",
+                        "six",
+                        native_enum=False,
+                        name="e2",
+                        create_constraint=True,
+                    ),
+                    testing.db.dialect.name,
+                ),
+            ),
+        )
+
+        # the base String() didnt create a constraint or even do any
+        # events.  But Column looked for SchemaType in _variant_mapping
+        # and found our type anyway.
+        eq_(
+            len([c for c in t.constraints if isinstance(c, CheckConstraint)]),
+            1,
+        )
+
+        metadata.create_all(testing.db)
+
+        # not using the connection fixture because we need to rollback and
+        # start again in the middle
+        with testing.db.connect() as connection:
+            # postgresql needs this in order to continue after the exception
+            trans = connection.begin()
+            assert_raises(
+                (exc.DBAPIError,),
+                connection.exec_driver_sql,
+                "insert into my_table (data) values('two')",
+            )
+            trans.rollback()
+
+            with connection.begin():
+                connection.exec_driver_sql(
+                    "insert into my_table (data) values ('four')"
+                )
+                eq_(connection.execute(select(t.c.data)).scalar(), "four")
+
+    @testing.requires.enforces_check_constraints
+    def test_variant_we_are_default(self, metadata):
         # test that the "variant" does not create a constraint
         t = Table(
             "my_table",
-            self.metadata,
+            metadata,
             Column(
                 "data",
                 Enum(
@@ -2019,7 +2100,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             2,
         )
 
-        self.metadata.create_all(testing.db)
+        metadata.create_all(testing.db)
 
         # not using the connection fixture because we need to rollback and
         # start again in the middle
@@ -2040,12 +2121,11 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
                 eq_(connection.execute(select(t.c.data)).scalar(), "two")
 
     @testing.requires.enforces_check_constraints
-    @testing.provide_metadata
-    def test_variant_we_are_not_default(self):
+    def test_variant_we_are_not_default(self, metadata):
         # test that the "variant" does not create a constraint
         t = Table(
             "my_table",
-            self.metadata,
+            metadata,
             Column(
                 "data",
                 Enum(
@@ -2075,7 +2155,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             2,
         )
 
-        self.metadata.create_all(testing.db)
+        metadata.create_all(testing.db)
 
         # not using the connection fixture because we need to rollback and
         # start again in the middle

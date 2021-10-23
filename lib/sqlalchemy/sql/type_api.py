@@ -9,6 +9,7 @@
 
 """
 
+import typing
 
 from . import operators
 from .base import SchemaEventTarget
@@ -27,6 +28,10 @@ MATCHTYPE = None
 INDEXABLE = None
 TABLEVALUE = None
 _resolve_value_to_type = None
+
+
+# replace with pep-673 when applicable
+SelfTypeEngine = typing.TypeVar("SelfTypeEngine", bound="TypeEngine")
 
 
 class TypeEngine(Traversible):
@@ -191,6 +196,8 @@ class TypeEngine(Traversible):
 
 
     """
+
+    _variant_mapping = util.EMPTY_DICT
 
     def evaluates_none(self):
         """Return a copy of this type which has the :attr:`.should_evaluate_none`
@@ -532,8 +539,10 @@ class TypeEngine(Traversible):
         """
         raise NotImplementedError()
 
-    def with_variant(self, type_, dialect_name):
-        r"""Produce a new type object that will utilize the given
+    def with_variant(
+        self: SelfTypeEngine, type_: "TypeEngine", dialect_name: str
+    ) -> SelfTypeEngine:
+        r"""Produce a copy of this type object that will utilize the given
         type when applied to the dialect of the given name.
 
         e.g.::
@@ -541,15 +550,21 @@ class TypeEngine(Traversible):
             from sqlalchemy.types import String
             from sqlalchemy.dialects import mysql
 
-            s = String()
+            string_type = String()
 
-            s = s.with_variant(mysql.VARCHAR(collation='foo'), 'mysql')
+            string_type = string_type.with_variant(
+                mysql.VARCHAR(collation='foo'), 'mysql'
+            )
 
-        The construction of :meth:`.TypeEngine.with_variant` is always
-        from the "fallback" type to that which is dialect specific.
-        The returned type is an instance of :class:`.Variant`, which
-        itself provides a :meth:`.Variant.with_variant`
-        that can be called repeatedly.
+        The variant mapping indicates that when this type is
+        interpreted by a specific dialect, it will instead be
+        transmuted into the given type, rather than using the
+        primary type.
+
+        .. versionchanged:: 2.0 the :meth:`_types.TypeEngine.with_variant`
+           method now works with a :class:`_types.TypeEngine` object "in
+           place", returning a copy of the original type rather than returning
+           a wrapping object; the ``Variant`` class is no longer used.
 
         :param type\_: a :class:`.TypeEngine` that will be selected
          as a variant from the originating type, when a dialect
@@ -558,7 +573,24 @@ class TypeEngine(Traversible):
          this type. (i.e. ``'postgresql'``, ``'mysql'``, etc.)
 
         """
-        return Variant(self, {dialect_name: to_instance(type_)})
+
+        if dialect_name in self._variant_mapping:
+            raise exc.ArgumentError(
+                "Dialect '%s' is already present in "
+                "the mapping for this %r" % (dialect_name, self)
+            )
+        new_type = self.copy()
+        if isinstance(type_, type):
+            type_ = type_()
+        elif type_._variant_mapping:
+            raise exc.ArgumentError(
+                "can't pass a type that already has variants as a "
+                "dialect-level type to with_variant()"
+            )
+        new_type._variant_mapping = self._variant_mapping.union(
+            {dialect_name: type_}
+        )
+        return new_type
 
     @util.memoized_property
     def _type_affinity(self):
@@ -735,7 +767,12 @@ class TypeEngine(Traversible):
             return d
 
     def _gen_dialect_impl(self, dialect):
-        return dialect.type_descriptor(self)
+        if dialect.name in self._variant_mapping:
+            return self._variant_mapping[dialect.name]._gen_dialect_impl(
+                dialect
+            )
+        else:
+            return dialect.type_descriptor(self)
 
     @util.memoized_property
     def _static_cache_key(self):
@@ -1361,7 +1398,12 @@ class TypeDecorator(ExternalType, SchemaEventTarget, TypeEngine):
         """
         #todo
         """
-        adapted = dialect.type_descriptor(self)
+        if dialect.name in self._variant_mapping:
+            adapted = dialect.type_descriptor(
+                self._variant_mapping[dialect.name]
+            )
+        else:
+            adapted = dialect.type_descriptor(self)
         if adapted is not self:
             return adapted
 
@@ -1818,97 +1860,16 @@ class TypeDecorator(ExternalType, SchemaEventTarget, TypeEngine):
 
 
 class Variant(TypeDecorator):
-    """A wrapping type that selects among a variety of
-    implementations based on dialect in use.
-
-    The :class:`.Variant` type is typically constructed
-    using the :meth:`.TypeEngine.with_variant` method.
-
-    .. seealso:: :meth:`.TypeEngine.with_variant` for an example of use.
+    """deprecated.  symbol is present for backwards-compatibility with
+    workaround recipes, however this actual type should not be used.
 
     """
 
-    cache_ok = True
-
-    def __init__(self, base, mapping):
-        """Construct a new :class:`.Variant`.
-
-        :param base: the base 'fallback' type
-        :param mapping: dictionary of string dialect names to
-          :class:`.TypeEngine` instances.
-
-        """
-        self.impl = base
-        self.mapping = mapping
-
-    @util.memoized_property
-    def _static_cache_key(self):
-        # TODO: needs tests in test/sql/test_compare.py
-        return (self.__class__,) + (
-            self.impl._static_cache_key,
-            tuple(
-                (key, self.mapping[key]._static_cache_key)
-                for key in sorted(self.mapping)
-            ),
+    def __init__(self, *arg, **kw):
+        raise NotImplementedError(
+            "Variant is no longer used in SQLAlchemy; this is a "
+            "placeholder symbol for backwards compatibility."
         )
-
-    def coerce_compared_value(self, operator, value):
-        result = self.impl.coerce_compared_value(operator, value)
-        if result is self.impl:
-            return self
-        else:
-            return result
-
-    def load_dialect_impl(self, dialect):
-        if dialect.name in self.mapping:
-            return self.mapping[dialect.name]
-        else:
-            return self.impl
-
-    def _set_parent(self, column, outer=False, **kw):
-        """Support SchemaEventTarget"""
-
-        if isinstance(self.impl, SchemaEventTarget):
-            self.impl._set_parent(column, **kw)
-        for impl in self.mapping.values():
-            if isinstance(impl, SchemaEventTarget):
-                impl._set_parent(column, **kw)
-
-    def _set_parent_with_dispatch(self, parent):
-        """Support SchemaEventTarget"""
-
-        if isinstance(self.impl, SchemaEventTarget):
-            self.impl._set_parent_with_dispatch(parent)
-        for impl in self.mapping.values():
-            if isinstance(impl, SchemaEventTarget):
-                impl._set_parent_with_dispatch(parent)
-
-    def with_variant(self, type_, dialect_name):
-        r"""Return a new :class:`.Variant` which adds the given
-        type + dialect name to the mapping, in addition to the
-        mapping present in this :class:`.Variant`.
-
-        :param type\_: a :class:`.TypeEngine` that will be selected
-         as a variant from the originating type, when a dialect
-         of the given name is in use.
-        :param dialect_name: base name of the dialect which uses
-         this type. (i.e. ``'postgresql'``, ``'mysql'``, etc.)
-
-        """
-
-        if dialect_name in self.mapping:
-            raise exc.ArgumentError(
-                "Dialect '%s' is already present in "
-                "the mapping for this Variant" % dialect_name
-            )
-        mapping = self.mapping.copy()
-        mapping[dialect_name] = type_
-        return Variant(self.impl, mapping)
-
-    @property
-    def comparator_factory(self):
-        """express comparison behavior in terms of the base type"""
-        return self.impl.comparator_factory
 
 
 def _reconstitute_comparator(expression):

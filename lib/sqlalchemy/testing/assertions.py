@@ -515,6 +515,10 @@ class AssertsCompiledSQL:
                     if hasattr(test_statement, "_return_defaults"):
                         self._return_defaults = test_statement._return_defaults
 
+            @property
+            def _variant_mapping(self):
+                return self.test_statement._variant_mapping
+
             def _default_dialect(self):
                 return self.test_statement._default_dialect()
 

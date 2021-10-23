@@ -50,7 +50,6 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import sqltypes
-from sqlalchemy.sql.type_api import Variant
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
@@ -779,24 +778,33 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         connection.execute(t1.insert(), {"data": "two"})
         eq_(connection.scalar(select(t1.c.data)), "twoHITHERE")
 
-    def test_generic_w_pg_variant(self, metadata, connection):
+    @testing.combinations(
+        (
+            Enum(
+                "one",
+                "two",
+                "three",
+                native_enum=True  # make sure this is True because
+                # it should *not* take effect due to
+                # the variant
+            ).with_variant(
+                postgresql.ENUM("four", "five", "six", name="my_enum"),
+                "postgresql",
+            )
+        ),
+        (
+            String(50).with_variant(
+                postgresql.ENUM("four", "five", "six", name="my_enum"),
+                "postgresql",
+            )
+        ),
+        argnames="datatype",
+    )
+    def test_generic_w_pg_variant(self, metadata, connection, datatype):
         some_table = Table(
             "some_table",
             self.metadata,
-            Column(
-                "data",
-                Enum(
-                    "one",
-                    "two",
-                    "three",
-                    native_enum=True  # make sure this is True because
-                    # it should *not* take effect due to
-                    # the variant
-                ).with_variant(
-                    postgresql.ENUM("four", "five", "six", name="my_enum"),
-                    "postgresql",
-                ),
-            ),
+            Column("data", datatype),
         )
 
         assert "my_enum" not in [
@@ -2134,7 +2142,7 @@ class ArrayRoundTripTest:
 
         new_gen = gen(3)
 
-        if isinstance(table.c.bar.type, Variant):
+        if not table.c.bar.type._variant_mapping:
             # this is not likely to occur to users but we need to just
             # exercise this as far as we can
             expr = type_coerce(table.c.bar, ARRAY(type_))[1:3]

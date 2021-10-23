@@ -33,7 +33,7 @@ from .type_api import NativeForEmulated  # noqa
 from .type_api import to_instance
 from .type_api import TypeDecorator
 from .type_api import TypeEngine
-from .type_api import Variant
+from .type_api import Variant  # noqa
 from .. import event
 from .. import exc
 from .. import inspection
@@ -844,12 +844,25 @@ class SchemaType(SchemaEventTarget):
             )
 
     def _set_parent(self, column, **kw):
+        # set parent hook is when this type is associated with a column.
+        # Column calls it for all SchemaEventTarget instances, either the
+        # base type and/or variants in _variant_mapping.
+
+        # we want to register a second hook to trigger when that column is
+        # associated with a table.  in that event, we and all of our variants
+        # may want to set up some state on the table such as a CheckConstraint
+        # that will conditionally render at DDL render time.
+
+        # the base SchemaType also sets up events for
+        # on_table/metadata_create/drop in this method, which is used by
+        # "native" types with a separate CREATE/DROP e.g. Postgresql.ENUM
+
         column._on_table_attach(util.portable_instancemethod(self._set_table))
 
     def _variant_mapping_for_set_table(self, column):
-        if isinstance(column.type, Variant):
-            variant_mapping = column.type.mapping.copy()
-            variant_mapping["_default"] = column.type.impl
+        if column.type._variant_mapping:
+            variant_mapping = dict(column.type._variant_mapping)
+            variant_mapping["_default"] = column.type
         else:
             variant_mapping = None
         return variant_mapping
@@ -880,8 +893,9 @@ class SchemaType(SchemaEventTarget):
             ),
         )
         if self.metadata is None:
-            # TODO: what's the difference between self.metadata
-            # and table.metadata here ?
+            # if SchemaType were created w/ a metadata argument, these
+            # events would already have been associated with that metadata
+            # and would preclude an association with table.metadata
             event.listen(
                 table.metadata,
                 "before_create",
@@ -963,8 +977,18 @@ class SchemaType(SchemaEventTarget):
 
     def _is_impl_for_variant(self, dialect, kw):
         variant_mapping = kw.pop("variant_mapping", None)
-        if variant_mapping is None:
+
+        if not variant_mapping:
             return True
+
+        # for types that have _variant_mapping, all the impls in the map
+        # that are SchemaEventTarget subclasses get set up as event holders.
+        # this is so that constructs that need
+        # to be associated with the Table at dialect-agnostic time etc. like
+        # CheckConstraints can be set up with that table.  they then add
+        # to these constraints a DDL check_rule that among other things
+        # will check this _is_impl_for_variant() method to determine when
+        # the dialect is known that we are part of the table's DDL sequence.
 
         # since PostgreSQL is the only DB that has ARRAY this can only
         # be integration tested by PG-specific tests

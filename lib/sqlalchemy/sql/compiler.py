@@ -512,6 +512,11 @@ class TypeCompiler(metaclass=util.EnsureKWArgType):
         self.dialect = dialect
 
     def process(self, type_, **kw):
+        if (
+            type_._variant_mapping
+            and self.dialect.name in type_._variant_mapping
+        ):
+            type_ = type_._variant_mapping[self.dialect.name]
         return type_._compiler_dispatch(self, **kw)
 
     def visit_unsupported_compilation(self, element, err, **kw):

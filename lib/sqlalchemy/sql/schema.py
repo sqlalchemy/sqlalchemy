@@ -1586,9 +1586,13 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
         # check if this Column is proxying another column
         if "_proxies" in kwargs:
             self._proxies = kwargs.pop("_proxies")
-        # otherwise, add DDL-related events
-        elif isinstance(self.type, SchemaEventTarget):
-            self.type._set_parent_with_dispatch(self)
+        else:
+            # otherwise, add DDL-related events
+            if isinstance(self.type, SchemaEventTarget):
+                self.type._set_parent_with_dispatch(self)
+            for impl in self.type._variant_mapping.values():
+                if isinstance(impl, SchemaEventTarget):
+                    impl._set_parent_with_dispatch(self)
 
         if self.default is not None:
             if isinstance(self.default, (ColumnDefault, Sequence)):

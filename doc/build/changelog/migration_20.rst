@@ -159,6 +159,42 @@ of the Cython requirement.
 
 .. _Cython: https://cython.org/
 
+.. _change_6980:
+
+"with_variant()" clones the original TypeEngine rather than changing the type
+-----------------------------------------------------------------------------
+
+The :meth:`_sqltypes.TypeEngine.with_variant` method, which is used to apply
+alternate per-database behaviors to a particular type, now returns a copy of
+the original :class:`_sqltypes.TypeEngine` object with the variant information
+stored internally, rather than wrapping it inside the ``Variant`` class.
+
+While the previous ``Variant`` approach was able to maintain all the in-Python
+behaviors of the original type using dynamic attribute getters, the improvement
+here is that when calling upon a variant, the returned type remains an instance
+of the original type, which works more smoothly with type checkers such as mypy
+and pylance.  Given a program as below::
+
+    import typing
+
+
+    from sqlalchemy import String
+    from sqlalchemy.dialects.mysql import VARCHAR
+
+
+    type_ = String(255).with_variant(VARCHAR(255, charset='utf8mb4'), "mysql")
+
+    if typing.TYPE_CHECKING:
+        reveal_type(type_)
+
+A type checker like pyright will now report the type as::
+
+    info: Type of "type_" is "String"
+
+
+:ticket:`6980`
+
+
 .. _change_4926:
 
 Python division operator performs true division for all backends; added floor division
