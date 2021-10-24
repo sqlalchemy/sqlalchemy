@@ -2022,7 +2022,7 @@ class SaveTest(_fixtures.FixtureTest):
         session.commit()
 
         eq_(
-            list(session.execute(orders.select(), mapper=Order)),
+            list(session.execute(orders.select())),
             [(42, None, None, "foo", None)],
         )
         session.expunge_all()
@@ -2037,7 +2037,11 @@ class SaveTest(_fixtures.FixtureTest):
         session.flush()
 
         eq_(
-            list(session.execute(orders.select(), mapper=Order)),
+            list(
+                session.execute(
+                    orders.select(),
+                )
+            ),
             [(42, None, None, "hoho", None)],
         )
 
@@ -2048,7 +2052,11 @@ class SaveTest(_fixtures.FixtureTest):
         o.description = None
         session.flush()
         eq_(
-            list(session.execute(orders.select(), mapper=Order)),
+            list(
+                session.execute(
+                    orders.select(),
+                )
+            ),
             [(42, None, None, None, None)],
         )
         session.close()
@@ -2216,7 +2224,7 @@ class SaveTest(_fixtures.FixtureTest):
         session.flush()
 
         # test insert ordering is maintained
-        assert names == ["user1", "user2", "user4", "user5", "user3"]
+        eq_(names, ["user1", "user2", "user4", "user5", "user3"])
         session.expunge_all()
 
         sa.orm.clear_mappers()
@@ -2744,7 +2752,7 @@ class ManyToManyTest(_fixtures.FixtureTest):
 
         session.expunge_all()
         item = session.query(Item).get(item.id)
-        assert item.keywords == [k1, k2]
+        eq_(item.keywords, [k1, k2])
 
     def test_association(self):
         """Basic test of an association object"""
@@ -3141,9 +3149,20 @@ class RowSwitchTest(fixtures.MappedTest):
         sess.add(o5)
         sess.flush()
 
-        eq_(list(sess.execute(t5.select(), mapper=T5)), [(1, "some t5")])
         eq_(
-            list(sess.execute(t6.select().order_by(t6.c.id), mapper=T5)),
+            list(
+                sess.execute(
+                    t5.select(),
+                )
+            ),
+            [(1, "some t5")],
+        )
+        eq_(
+            list(
+                sess.execute(
+                    t6.select().order_by(t6.c.id),
+                )
+            ),
             [(1, "some t6", 1), (2, "some other t6", 1)],
         )
 
@@ -3156,9 +3175,20 @@ class RowSwitchTest(fixtures.MappedTest):
         sess.add(o6)
         sess.flush()
 
-        eq_(list(sess.execute(t5.select(), mapper=T5)), [(1, "some other t5")])
         eq_(
-            list(sess.execute(t6.select().order_by(t6.c.id), mapper=T5)),
+            list(
+                sess.execute(
+                    t5.select(),
+                )
+            ),
+            [(1, "some other t5")],
+        )
+        eq_(
+            list(
+                sess.execute(
+                    t6.select().order_by(t6.c.id),
+                )
+            ),
             [(3, "third t6", 1), (4, "fourth t6", 1)],
         )
 
@@ -3189,14 +3219,33 @@ class RowSwitchTest(fixtures.MappedTest):
         sess.add(o5)
         sess.flush()
 
-        assert list(sess.execute(t5.select(), mapper=T5)) == [(1, "some t5")]
-        assert testing.rowset(sess.execute(t5t7.select(), mapper=T5)) == set(
-            [(1, 1), (1, 2)]
+        eq_(
+            list(
+                sess.execute(
+                    t5.select(),
+                )
+            ),
+            [(1, "some t5")],
         )
-        assert list(sess.execute(t7.select(), mapper=T5)) == [
-            (1, "some t7"),
-            (2, "some other t7"),
-        ]
+        eq_(
+            testing.rowset(
+                sess.execute(
+                    t5t7.select(),
+                )
+            ),
+            set([(1, 1), (1, 2)]),
+        )
+        eq_(
+            list(
+                sess.execute(
+                    t7.select(),
+                )
+            ),
+            [
+                (1, "some t7"),
+                (2, "some other t7"),
+            ],
+        )
 
         o6 = T5(
             data="some other t5",
@@ -3212,13 +3261,25 @@ class RowSwitchTest(fixtures.MappedTest):
         sess.add(o6)
         sess.flush()
 
-        assert list(sess.execute(t5.select(), mapper=T5)) == [
-            (1, "some other t5")
-        ]
-        assert list(sess.execute(t7.select(), mapper=T5)) == [
-            (3, "third t7"),
-            (4, "fourth t7"),
-        ]
+        eq_(
+            list(
+                sess.execute(
+                    t5.select(),
+                )
+            ),
+            [(1, "some other t5")],
+        )
+        eq_(
+            list(
+                sess.execute(
+                    t7.select(),
+                )
+            ),
+            [
+                (3, "third t7"),
+                (4, "fourth t7"),
+            ],
+        )
 
     def test_manytoone(self):
         t6, T6, t5, T5 = (
@@ -3241,10 +3302,22 @@ class RowSwitchTest(fixtures.MappedTest):
         sess.add(o5)
         sess.flush()
 
-        assert list(sess.execute(t5.select(), mapper=T5)) == [(1, "some t5")]
-        assert list(sess.execute(t6.select(), mapper=T5)) == [
-            (1, "some t6", 1)
-        ]
+        eq_(
+            list(
+                sess.execute(
+                    t5.select(),
+                )
+            ),
+            [(1, "some t5")],
+        )
+        eq_(
+            list(
+                sess.execute(
+                    t6.select(),
+                )
+            ),
+            [(1, "some t6", 1)],
+        )
 
         o6 = T6(data="some other t6", id=1, t5=T5(data="some other t5", id=2))
         sess.delete(o5)
@@ -3252,12 +3325,22 @@ class RowSwitchTest(fixtures.MappedTest):
         sess.add(o6)
         sess.flush()
 
-        assert list(sess.execute(t5.select(), mapper=T5)) == [
-            (2, "some other t5")
-        ]
-        assert list(sess.execute(t6.select(), mapper=T5)) == [
-            (1, "some other t6", 2)
-        ]
+        eq_(
+            list(
+                sess.execute(
+                    t5.select(),
+                )
+            ),
+            [(2, "some other t5")],
+        )
+        eq_(
+            list(
+                sess.execute(
+                    t6.select(),
+                )
+            ),
+            [(1, "some other t6", 2)],
+        )
 
 
 class InheritingRowSwitchTest(fixtures.MappedTest):

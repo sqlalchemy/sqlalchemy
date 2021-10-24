@@ -260,7 +260,8 @@ class ShardTest(object):
         sess = self._fixture_data()
         eq_(
             sess.execute(
-                weather_locations.select(), shard_id="asia"
+                weather_locations.select(),
+                bind_arguments=dict(shard_id="asia"),
             ).fetchall(),
             [(1, "Asia", "Tokyo")],
         )
