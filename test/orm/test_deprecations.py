@@ -10,6 +10,7 @@ from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import join
+from sqlalchemy import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy import lateral
 from sqlalchemy import literal_column
 from sqlalchemy import MetaData
@@ -79,6 +80,7 @@ from sqlalchemy.testing.mock import call
 from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.util import resolve_lambda
 from sqlalchemy.util import pickle
 from . import _fixtures
 from .inheritance import _poly_fixtures
@@ -1603,6 +1605,24 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
             r"Can't call Query.update\(\) or Query.delete\(\)",
             q.delete,
             {},
+        )
+
+    def test_basic_filter_by(self):
+        """test #7239"""
+
+        User = self.classes.User
+
+        s = fixture_session()
+
+        with self._from_self_deprecated():
+            q = s.query(User).from_self()
+
+        self.assert_compile(
+            q.filter_by(id=5),
+            "SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name "
+            "AS anon_1_users_name FROM (SELECT users.id AS users_id, "
+            "users.name AS users_name FROM users) AS anon_1 "
+            "WHERE anon_1.users_id = :id_1",
         )
 
     def test_columns_augmented_distinct_on(self):
@@ -7327,6 +7347,52 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
                 "users.name AS name FROM users WHERE users.id > :id_1) "
                 "AS anon_1",
             )
+
+    @testing.combinations(
+        (
+            lambda users: users.select().where(users.c.id.in_([7, 8])),
+            "SELECT anon_1.id AS anon_1_id, anon_1.name AS anon_1_name "
+            "FROM (SELECT users.id AS id, users.name AS name "
+            "FROM users WHERE users.id IN ([POSTCOMPILE_id_1])) AS anon_1 "
+            "WHERE anon_1.name = :name_1",
+        ),
+        (
+            lambda users: users.select()
+            .where(users.c.id.in_([7, 8]))
+            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL),
+            "SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name "
+            "AS anon_1_users_name FROM (SELECT users.id AS users_id, "
+            "users.name AS users_name FROM users "
+            "WHERE users.id IN ([POSTCOMPILE_id_1])) AS anon_1 "
+            "WHERE anon_1.users_name = :name_1",
+        ),
+        (
+            lambda User, sess: sess.query(User).where(User.id.in_([7, 8])),
+            "SELECT anon_1.id AS anon_1_id, anon_1.name AS anon_1_name "
+            "FROM (SELECT users.id AS id, users.name AS name "
+            "FROM users WHERE users.id IN ([POSTCOMPILE_id_1])) AS anon_1 "
+            "WHERE anon_1.name = :name_1",
+        ),
+    )
+    def test_filter_by(self, query_fn, expected):
+        """test #7239"""
+
+        User = self.classes.User
+        sess = fixture_session()
+
+        User, users = self.classes.User, self.tables.users
+
+        self.mapper_registry.map_imperatively(User, users)
+
+        sel = resolve_lambda(query_fn, User=User, users=users, sess=sess)
+
+        sess = fixture_session()
+
+        with assertions.expect_deprecated_20(sef_dep):
+            q = sess.query(User).select_entity_from(sel.subquery())
+
+        self.assert_compile(q.filter_by(name="ed"), expected)
+        eq_(q.filter_by(name="ed").all(), [User(name="ed")])
 
     def test_join_no_order_by(self):
         User, users = self.classes.User, self.tables.users

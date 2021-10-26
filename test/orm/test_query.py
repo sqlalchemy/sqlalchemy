@@ -3619,6 +3619,47 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
             "WHERE users.name = :name_1",
         )
 
+    def test_filter_by_against_union_legacy(self):
+        """test #7239"""
+
+        User = self.classes.User
+        sess = fixture_session()
+
+        q = (
+            sess.query(User)
+            .filter(User.id == 2)
+            .union(sess.query(User).filter(User.id == 5))
+        )
+
+        self.assert_compile(
+            q.filter_by(id=5),
+            "SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name "
+            "AS anon_1_users_name FROM (SELECT users.id AS users_id, "
+            "users.name AS users_name FROM users WHERE users.id = :id_1 "
+            "UNION SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users WHERE users.id = :id_2) AS anon_1 "
+            "WHERE anon_1.users_id = :id_3",
+        )
+
+    def test_filter_by_against_union_newstyle(self):
+        """test #7239"""
+
+        User = self.classes.User
+
+        u = union(
+            select(User).filter(User.id == 2),
+            select(User).filter(User.id == 5),
+        )
+        ua = aliased(User, u.subquery())
+        stmt = select(ua)
+        self.assert_compile(
+            stmt.filter_by(id=5),
+            "SELECT anon_1.id, anon_1.name FROM (SELECT users.id AS id, "
+            "users.name AS name FROM users WHERE users.id = :id_1 "
+            "UNION SELECT users.id AS id, users.name AS name FROM users "
+            "WHERE users.id = :id_2) AS anon_1 WHERE anon_1.id = :id_3",
+        )
+
     def test_filter_by_against_cast(self):
         """test #6414"""
         User = self.classes.User
