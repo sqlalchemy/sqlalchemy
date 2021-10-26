@@ -9,8 +9,8 @@
 # https://gist.github.com/kkirsche/4f31f2153ed7a3248be1ec44ca6ddbc9
 #
 # https://mariadb.com/kb/en/reserved-words/
-# includes: Reserved Words
-# excludes: Exceptions, Oracle Mode, Function Names
+# includes: Reserved Words, Oracle Mode (separate set unioned)
+# excludes: Exceptions, Function Names
 RESERVED_WORDS_MARIADB = {
     "accessible",
     "add",
@@ -261,7 +261,23 @@ RESERVED_WORDS_MARIADB = {
     "xor",
     "year_month",
     "zerofill",
-}
+}.union(
+    {
+        "body",
+        "elsif",
+        "goto",
+        "history",
+        "others",
+        "package",
+        "period",
+        "raise",
+        "rowtype",
+        "system",
+        "system_time",
+        "versioning",
+        "without",
+    }
+)
 
 # https://dev.mysql.com/doc/refman/8.0/en/keywords.html
 # https://dev.mysql.com/doc/refman/5.7/en/keywords.html
