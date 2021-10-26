@@ -21,7 +21,10 @@ class BoundMetadataDeclarativeTest(fixtures.MappedTest):
 
         s = Session()
 
-        is_(s.get_bind(User), testing.db)
+        with testing.expect_deprecated_20(
+            "This Session located a target engine via bound metadata"
+        ):
+            is_(s.get_bind(User), testing.db)
 
     def test_bound_cls_registry_base(self):
         reg = registry(_bind=testing.db)
@@ -33,8 +36,10 @@ class BoundMetadataDeclarativeTest(fixtures.MappedTest):
             id = Column(Integer, primary_key=True)
 
         s = Session()
-
-        is_(s.get_bind(User), testing.db)
+        with testing.expect_deprecated_20(
+            "This Session located a target engine via bound metadata"
+        ):
+            is_(s.get_bind(User), testing.db)
 
     def test_bound_cls_registry_decorated(self):
         reg = registry(_bind=testing.db)
@@ -46,4 +51,7 @@ class BoundMetadataDeclarativeTest(fixtures.MappedTest):
 
         s = Session()
 
-        is_(s.get_bind(User), testing.db)
+        with testing.expect_deprecated_20(
+            "This Session located a target engine via bound metadata"
+        ):
+            is_(s.get_bind(User), testing.db)

@@ -6213,13 +6213,19 @@ class GetBindTest(_GetBindTest):
 
     def test_fallback_table_metadata(self):
         session = self._fixture({})
-        is_(session.get_bind(self.classes.BaseClass), testing.db)
+        with testing.expect_deprecated_20(
+            "This Session located a target engine via bound metadata"
+        ):
+            is_(session.get_bind(self.classes.BaseClass), testing.db)
 
     def test_bind_base_table_concrete_sub_class(self):
         base_class_bind = Mock()
         session = self._fixture({self.tables.base_table: base_class_bind})
 
-        is_(session.get_bind(self.classes.ConcreteSubClass), testing.db)
+        with testing.expect_deprecated_20(
+            "This Session located a target engine via bound metadata"
+        ):
+            is_(session.get_bind(self.classes.ConcreteSubClass), testing.db)
 
 
 class DeprecationScopedSessionTest(fixtures.MappedTest):
