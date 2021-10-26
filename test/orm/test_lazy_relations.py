@@ -23,6 +23,7 @@ from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import with_parent
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -658,14 +659,14 @@ class LazyTest(_fixtures.FixtureTest):
             [Order(id=1), Order(id=5)],
             fixture_session()
             .query(closed_mapper)
-            .with_parent(user, property=User.closed_orders)
+            .filter(with_parent(user, User.closed_orders))
             .all(),
         )
         eq_(
             [Order(id=3)],
             fixture_session()
             .query(open_mapper)
-            .with_parent(user, property=User.open_orders)
+            .filter(with_parent(user, User.open_orders))
             .all(),
         )
 

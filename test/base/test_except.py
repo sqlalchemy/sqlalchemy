@@ -507,6 +507,8 @@ ALL_EXC = [
     (
         [
             sa_exceptions.SADeprecationWarning,
+            sa_exceptions.Base20DeprecationWarning,
+            sa_exceptions.LegacyAPIWarning,
             sa_exceptions.RemovedIn20Warning,
             sa_exceptions.MovedIn20Warning,
             sa_exceptions.SAWarning,

@@ -134,6 +134,10 @@ wparent_strings_dep = (
     r"in the ORM with_parent\(\) function"
 )
 
+query_wparent_dep = (
+    r"The Query.with_parent\(\) method is considered legacy as of the 1.x"
+)
+
 sef_dep = (
     r"The Query.select_entity_from\(\) method is considered "
     "legacy as of the 1.x"
@@ -4714,6 +4718,27 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         assert q.count() == 1
         assert [User(id=7)] == q.all()
 
+    def test_does_filter_aliasing_work(self):
+        User, Address = self.classes("User", "Address")
+
+        s = fixture_session()
+
+        # aliased=True is to be deprecated, other filter lambdas
+        # that go into effect include polymorphic filtering.
+        with testing.expect_deprecated(join_aliased_dep):
+            q = (
+                s.query(lambda: User)
+                .join(lambda: User.addresses, aliased=True)
+                .filter(lambda: Address.email_address == "foo")
+            )
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name "
+            "FROM users JOIN addresses AS addresses_1 "
+            "ON users.id = addresses_1.user_id "
+            "WHERE addresses_1.email_address = :email_address_1",
+        )
+
     def test_overlapping_paths_two(self):
         User = self.classes.User
 
@@ -8160,4 +8185,268 @@ class JoinLateralTest(fixtures.MappedTest, AssertsCompiledSQL):
             "JOIN LATERAL "
             "generate_series(:generate_series_1, anon_1.bookcase_shelves) "
             "AS anon_2 ON true",
+        )
+
+
+class ParentTest(QueryTest, AssertsCompiledSQL):
+    __dialect__ = "default"
+
+    def test_o2m(self):
+        User, orders, Order = (
+            self.classes.User,
+            self.tables.orders,
+            self.classes.Order,
+        )
+
+        sess = fixture_session()
+        q = sess.query(User)
+
+        u1 = q.filter_by(name="jack").one()
+
+        # test auto-lookup of property
+        with assertions.expect_deprecated_20(query_wparent_dep):
+            o = sess.query(Order).with_parent(u1).all()
+        assert [
+            Order(description="order 1"),
+            Order(description="order 3"),
+            Order(description="order 5"),
+        ] == o
+
+        # test with explicit property
+        with assertions.expect_deprecated_20(query_wparent_dep):
+            o = sess.query(Order).with_parent(u1, property=User.orders).all()
+        assert [
+            Order(description="order 1"),
+            Order(description="order 3"),
+            Order(description="order 5"),
+        ] == o
+
+        with assertions.expect_deprecated_20(query_wparent_dep):
+            # test generative criterion
+            o = sess.query(Order).with_parent(u1).filter(orders.c.id > 2).all()
+        assert [
+            Order(description="order 3"),
+            Order(description="order 5"),
+        ] == o
+
+    def test_select_from(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = fixture_session()
+        u1 = sess.query(User).get(7)
+        with assertions.expect_deprecated_20(query_wparent_dep):
+            q = sess.query(Address).select_from(Address).with_parent(u1)
+        self.assert_compile(
+            q,
+            "SELECT addresses.id AS addresses_id, "
+            "addresses.user_id AS addresses_user_id, "
+            "addresses.email_address AS addresses_email_address "
+            "FROM addresses WHERE :param_1 = addresses.user_id",
+            {"param_1": 7},
+        )
+
+    def test_from_entity_query_entity(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = fixture_session()
+        u1 = sess.query(User).get(7)
+        with assertions.expect_deprecated_20(query_wparent_dep):
+            q = sess.query(User, Address).with_parent(
+                u1, User.addresses, from_entity=Address
+            )
+        self.assert_compile(
+            q,
+            "SELECT users.id AS users_id, users.name AS users_name, "
+            "addresses.id AS addresses_id, addresses.user_id "
+            "AS addresses_user_id, "
+            "addresses.email_address AS addresses_email_address "
+            "FROM users, addresses "
+            "WHERE :param_1 = addresses.user_id",
+            {"param_1": 7},
+        )
+
+    def test_select_from_alias(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = fixture_session()
+        u1 = sess.query(User).get(7)
+        a1 = aliased(Address)
+        with assertions.expect_deprecated_20(query_wparent_dep):
+            q = sess.query(a1).with_parent(u1)
+        self.assert_compile(
+            q,
+            "SELECT addresses_1.id AS addresses_1_id, "
+            "addresses_1.user_id AS addresses_1_user_id, "
+            "addresses_1.email_address AS addresses_1_email_address "
+            "FROM addresses AS addresses_1 "
+            "WHERE :param_1 = addresses_1.user_id",
+            {"param_1": 7},
+        )
+
+    def test_select_from_alias_explicit_prop(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = fixture_session()
+        u1 = sess.query(User).get(7)
+        a1 = aliased(Address)
+        with assertions.expect_deprecated_20(query_wparent_dep):
+            q = sess.query(a1).with_parent(u1, User.addresses)
+        self.assert_compile(
+            q,
+            "SELECT addresses_1.id AS addresses_1_id, "
+            "addresses_1.user_id AS addresses_1_user_id, "
+            "addresses_1.email_address AS addresses_1_email_address "
+            "FROM addresses AS addresses_1 "
+            "WHERE :param_1 = addresses_1.user_id",
+            {"param_1": 7},
+        )
+
+    def test_select_from_alias_from_entity(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = fixture_session()
+        u1 = sess.query(User).get(7)
+        a1 = aliased(Address)
+        a2 = aliased(Address)
+        with assertions.expect_deprecated_20(query_wparent_dep):
+            q = sess.query(a1, a2).with_parent(
+                u1, User.addresses, from_entity=a2
+            )
+        self.assert_compile(
+            q,
+            "SELECT addresses_1.id AS addresses_1_id, "
+            "addresses_1.user_id AS addresses_1_user_id, "
+            "addresses_1.email_address AS addresses_1_email_address, "
+            "addresses_2.id AS addresses_2_id, "
+            "addresses_2.user_id AS addresses_2_user_id, "
+            "addresses_2.email_address AS addresses_2_email_address "
+            "FROM addresses AS addresses_1, "
+            "addresses AS addresses_2 WHERE :param_1 = addresses_2.user_id",
+            {"param_1": 7},
+        )
+
+    def test_select_from_alias_of_type(self):
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = fixture_session()
+        u1 = sess.query(User).get(7)
+        a1 = aliased(Address)
+        a2 = aliased(Address)
+        with assertions.expect_deprecated_20(query_wparent_dep):
+            q = sess.query(a1, a2).with_parent(u1, User.addresses.of_type(a2))
+        self.assert_compile(
+            q,
+            "SELECT addresses_1.id AS addresses_1_id, "
+            "addresses_1.user_id AS addresses_1_user_id, "
+            "addresses_1.email_address AS addresses_1_email_address, "
+            "addresses_2.id AS addresses_2_id, "
+            "addresses_2.user_id AS addresses_2_user_id, "
+            "addresses_2.email_address AS addresses_2_email_address "
+            "FROM addresses AS addresses_1, "
+            "addresses AS addresses_2 WHERE :param_1 = addresses_2.user_id",
+            {"param_1": 7},
+        )
+
+    def test_noparent(self):
+        Item, User = self.classes.Item, self.classes.User
+
+        sess = fixture_session()
+        q = sess.query(User)
+
+        u1 = q.filter_by(name="jack").one()
+
+        with assertions.expect_deprecated_20(query_wparent_dep):
+            with assertions.expect_raises_message(
+                sa_exc.InvalidRequestError,
+                "Could not locate a property which relates "
+                "instances of class 'Item' to instances of class 'User'",
+            ):
+                q = sess.query(Item).with_parent(u1)
+
+    def test_m2m(self):
+        Item, Keyword = self.classes.Item, self.classes.Keyword
+
+        sess = fixture_session()
+        i1 = sess.query(Item).filter_by(id=2).one()
+        with assertions.expect_deprecated_20(query_wparent_dep):
+            k = sess.query(Keyword).with_parent(i1).all()
+        assert [
+            Keyword(name="red"),
+            Keyword(name="small"),
+            Keyword(name="square"),
+        ] == k
+
+    def test_with_transient(self):
+        User, Order = self.classes.User, self.classes.Order
+
+        sess = fixture_session()
+
+        q = sess.query(User)
+        u1 = q.filter_by(name="jack").one()
+        utrans = User(id=u1.id)
+        with assertions.expect_deprecated_20(query_wparent_dep):
+            o = sess.query(Order).with_parent(utrans, User.orders)
+        eq_(
+            [
+                Order(description="order 1"),
+                Order(description="order 3"),
+                Order(description="order 5"),
+            ],
+            o.all(),
+        )
+
+    def test_with_pending_autoflush(self):
+        Order, User = self.classes.Order, self.classes.User
+
+        sess = fixture_session()
+
+        o1 = sess.query(Order).first()
+        opending = Order(id=20, user_id=o1.user_id)
+        sess.add(opending)
+        with assertions.expect_deprecated_20(query_wparent_dep):
+            eq_(
+                sess.query(User).with_parent(opending, Order.user).one(),
+                User(id=o1.user_id),
+            )
+
+    def test_with_pending_no_autoflush(self):
+        Order, User = self.classes.Order, self.classes.User
+
+        sess = fixture_session(autoflush=False)
+
+        o1 = sess.query(Order).first()
+        opending = Order(user_id=o1.user_id)
+        sess.add(opending)
+        with assertions.expect_deprecated_20(query_wparent_dep):
+            eq_(
+                sess.query(User).with_parent(opending, Order.user).one(),
+                User(id=o1.user_id),
+            )
+
+    def test_unique_binds_union(self):
+        """bindparams used in the 'parent' query are unique"""
+        User, Address = self.classes.User, self.classes.Address
+
+        sess = fixture_session()
+        u1, u2 = sess.query(User).order_by(User.id)[0:2]
+
+        with assertions.expect_deprecated_20(query_wparent_dep):
+            q1 = sess.query(Address).with_parent(u1, User.addresses)
+        with assertions.expect_deprecated_20(query_wparent_dep):
+            q2 = sess.query(Address).with_parent(u2, User.addresses)
+
+        self.assert_compile(
+            q1.union(q2),
+            "SELECT anon_1.addresses_id AS anon_1_addresses_id, "
+            "anon_1.addresses_user_id AS anon_1_addresses_user_id, "
+            "anon_1.addresses_email_address AS "
+            "anon_1_addresses_email_address FROM (SELECT addresses.id AS "
+            "addresses_id, addresses.user_id AS addresses_user_id, "
+            "addresses.email_address AS addresses_email_address FROM "
+            "addresses WHERE :param_1 = addresses.user_id UNION SELECT "
+            "addresses.id AS addresses_id, addresses.user_id AS "
+            "addresses_user_id, addresses.email_address "
+            "AS addresses_email_address "
+            "FROM addresses WHERE :param_2 = addresses.user_id) AS anon_1",
+            checkparams={"param_1": 7, "param_2": 8},
         )

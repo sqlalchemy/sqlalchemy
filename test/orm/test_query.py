@@ -6352,9 +6352,8 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = "default"
 
     def test_o2m(self):
-        User, orders, Order = (
+        User, Order = (
             self.classes.User,
-            self.tables.orders,
             self.classes.Order,
         )
 
@@ -6363,22 +6362,6 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
 
         u1 = q.filter_by(name="jack").one()
 
-        # test auto-lookup of property
-        o = sess.query(Order).with_parent(u1).all()
-        assert [
-            Order(description="order 1"),
-            Order(description="order 3"),
-            Order(description="order 5"),
-        ] == o
-
-        # test with explicit property
-        o = sess.query(Order).with_parent(u1, property=User.orders).all()
-        assert [
-            Order(description="order 1"),
-            Order(description="order 3"),
-            Order(description="order 5"),
-        ] == o
-
         o = sess.query(Order).filter(with_parent(u1, User.orders)).all()
         assert [
             Order(description="order 1"),
@@ -6386,25 +6369,16 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
             Order(description="order 5"),
         ] == o
 
-        # test generative criterion
-        o = sess.query(Order).with_parent(u1).filter(orders.c.id > 2).all()
-        assert [
-            Order(description="order 3"),
-            Order(description="order 5"),
-        ] == o
-
-        # test against None for parent? this can't be done with the current
-        # API since we don't know what mapper to use
-        # assert
-        #     sess.query(Order).with_parent(None, property='addresses').all()
-        #     == [Order(description="order 5")]
-
     def test_select_from(self):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
         u1 = sess.query(User).get(7)
-        q = sess.query(Address).select_from(Address).with_parent(u1)
+        q = (
+            sess.query(Address)
+            .select_from(Address)
+            .filter(with_parent(u1, User.addresses))
+        )
         self.assert_compile(
             q,
             "SELECT addresses.id AS addresses_id, "
@@ -6433,49 +6407,13 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
             {"param_1": 7},
         )
 
-    def test_from_entity_query_entity(self):
-        User, Address = self.classes.User, self.classes.Address
-
-        sess = fixture_session()
-        u1 = sess.query(User).get(7)
-        q = sess.query(User, Address).with_parent(
-            u1, User.addresses, from_entity=Address
-        )
-        self.assert_compile(
-            q,
-            "SELECT users.id AS users_id, users.name AS users_name, "
-            "addresses.id AS addresses_id, addresses.user_id "
-            "AS addresses_user_id, "
-            "addresses.email_address AS addresses_email_address "
-            "FROM users, addresses "
-            "WHERE :param_1 = addresses.user_id",
-            {"param_1": 7},
-        )
-
     def test_select_from_alias(self):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
         u1 = sess.query(User).get(7)
         a1 = aliased(Address)
-        q = sess.query(a1).with_parent(u1)
-        self.assert_compile(
-            q,
-            "SELECT addresses_1.id AS addresses_1_id, "
-            "addresses_1.user_id AS addresses_1_user_id, "
-            "addresses_1.email_address AS addresses_1_email_address "
-            "FROM addresses AS addresses_1 "
-            "WHERE :param_1 = addresses_1.user_id",
-            {"param_1": 7},
-        )
-
-    def test_select_from_alias_explicit_prop(self):
-        User, Address = self.classes.User, self.classes.Address
-
-        sess = fixture_session()
-        u1 = sess.query(User).get(7)
-        a1 = aliased(Address)
-        q = sess.query(a1).with_parent(u1, User.addresses)
+        q = sess.query(a1).filter(with_parent(u1, User.addresses.of_type(a1)))
         self.assert_compile(
             q,
             "SELECT addresses_1.id AS addresses_1_id, "
@@ -6493,7 +6431,9 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         u1 = sess.query(User).get(7)
         a1 = aliased(Address)
         a2 = aliased(Address)
-        q = sess.query(a1, a2).with_parent(u1, User.addresses, from_entity=a2)
+        q = sess.query(a1, a2).filter(
+            with_parent(u1, User.addresses, from_entity=a2)
+        )
         self.assert_compile(
             q,
             "SELECT addresses_1.id AS addresses_1_id, "
@@ -6514,7 +6454,9 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         u1 = sess.query(User).get(7)
         a1 = aliased(Address)
         a2 = aliased(Address)
-        q = sess.query(a1, a2).with_parent(u1, User.addresses.of_type(a2))
+        q = sess.query(a1, a2).filter(
+            with_parent(u1, User.addresses.of_type(a2))
+        )
         self.assert_compile(
             q,
             "SELECT addresses_1.id AS addresses_1_id, "
@@ -6536,26 +6478,30 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
 
         u1 = q.filter_by(name="jack").one()
 
-        try:
-            q = sess.query(Item).with_parent(u1)
-            assert False
-        except sa_exc.InvalidRequestError as e:
-            assert (
-                str(e) == "Could not locate a property which relates "
-                "instances of class 'Item' to instances of class 'User'"
-            )
+        # TODO: this can perhaps raise an error, then again it's doing what's
+        # asked...
+        q = sess.query(Item).filter(with_parent(u1, User.orders))
+        self.assert_compile(
+            q,
+            "SELECT items.id AS items_id, "
+            "items.description AS items_description "
+            "FROM items, orders WHERE :param_1 = orders.user_id",
+        )
 
     def test_m2m(self):
         Item, Keyword = self.classes.Item, self.classes.Keyword
 
         sess = fixture_session()
         i1 = sess.query(Item).filter_by(id=2).one()
-        k = sess.query(Keyword).with_parent(i1).all()
-        assert [
-            Keyword(name="red"),
-            Keyword(name="small"),
-            Keyword(name="square"),
-        ] == k
+        k = sess.query(Keyword).filter(with_parent(i1, Item.keywords)).all()
+        eq_(
+            k,
+            [
+                Keyword(name="red"),
+                Keyword(name="small"),
+                Keyword(name="square"),
+            ],
+        )
 
     def test_with_transient(self):
         User, Order = self.classes.User, self.classes.Order
@@ -6565,16 +6511,6 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         q = sess.query(User)
         u1 = q.filter_by(name="jack").one()
         utrans = User(id=u1.id)
-        o = sess.query(Order).with_parent(utrans, User.orders)
-        eq_(
-            [
-                Order(description="order 1"),
-                Order(description="order 3"),
-                Order(description="order 5"),
-            ],
-            o.all(),
-        )
-
         o = sess.query(Order).filter(with_parent(utrans, User.orders))
         eq_(
             [
@@ -6594,10 +6530,6 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         opending = Order(id=20, user_id=o1.user_id)
         sess.add(opending)
         eq_(
-            sess.query(User).with_parent(opending, Order.user).one(),
-            User(id=o1.user_id),
-        )
-        eq_(
             sess.query(User).filter(with_parent(opending, Order.user)).one(),
             User(id=o1.user_id),
         )
@@ -6611,7 +6543,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         opending = Order(user_id=o1.user_id)
         sess.add(opending)
         eq_(
-            sess.query(User).with_parent(opending, Order.user).one(),
+            sess.query(User).filter(with_parent(opending, Order.user)).one(),
             User(id=o1.user_id),
         )
 
@@ -6622,8 +6554,8 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         sess = fixture_session()
         u1, u2 = sess.query(User).order_by(User.id)[0:2]
 
-        q1 = sess.query(Address).with_parent(u1, User.addresses)
-        q2 = sess.query(Address).with_parent(u2, User.addresses)
+        q1 = sess.query(Address).filter(with_parent(u1, User.addresses))
+        q2 = sess.query(Address).filter(with_parent(u2, User.addresses))
 
         self.assert_compile(
             q1.union(q2),
@@ -6870,7 +6802,9 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         sess = fixture_session()
 
-        q = sess.query(User).with_parent(Address(user_id=None), Address.user)
+        q = sess.query(User).filter(
+            with_parent(Address(user_id=None), Address.user)
+        )
         with expect_warnings("Got None for value of column"):
             self.assert_compile(
                 q,
@@ -6884,8 +6818,10 @@ class WithTransientOnNone(_fixtures.FixtureTest, AssertsCompiledSQL):
         User, Address = self.classes.User, self.classes.Address
 
         s = fixture_session()
-        q = s.query(User).with_parent(
-            Address(user_id=None, email_address=None), Address.special_user
+        q = s.query(User).filter(
+            with_parent(
+                Address(user_id=None, email_address=None), Address.special_user
+            )
         )
         with expect_warnings("Got None for value of column"):
 
@@ -7105,7 +7041,7 @@ class SynonymTest(QueryTest, AssertsCompiledSQL):
 
                 u1 = q.filter_by(**{nameprop: "jack"}).one()
 
-                o = sess.query(Order).with_parent(u1, property=orderprop).all()
+                o = sess.query(Order).filter(with_parent(u1, orderprop)).all()
                 assert [
                     Order(description="order 1"),
                     Order(description="order 3"),
