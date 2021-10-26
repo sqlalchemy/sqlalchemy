@@ -75,6 +75,7 @@ The classes here are generated using the constructors listed at
    :members:
 
 .. autoclass:: CompoundSelect
+   :inherited-members:  ClauseElement
    :members:
 
 .. autoclass:: CTE
