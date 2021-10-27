@@ -3660,6 +3660,73 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
             "WHERE users.id = :id_2) AS anon_1 WHERE anon_1.id = :id_3",
         )
 
+    @testing.combinations((True,), (False,), argnames="use_legacy")
+    @testing.combinations(
+        ("of_type",), ("two_arg",), ("none",), argnames="join_style"
+    )
+    def test_filter_by_against_joined_entity(self, join_style, use_legacy):
+        """test #7244"""
+
+        User = self.classes.User
+        Address = self.classes.Address
+
+        sess = fixture_session()
+
+        if use_legacy:
+            q = sess.query(User)
+        else:
+            q = select(User)
+
+        if join_style == "of_type":
+            aa = aliased(Address)
+            is_aliased = True
+            q = q.join(User.addresses.of_type(aa))
+        elif join_style == "two_arg":
+            aa = aliased(Address)
+            is_aliased = True
+            q = q.join(aa, User.addresses)
+        elif join_style == "none":
+            aa = Address
+            is_aliased = False
+            q = q.join(User.addresses)
+        else:
+            assert False
+
+        q = q.filter_by(email_address="fred@fred.com")
+
+        if is_aliased:
+            assertsql = (
+                "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users JOIN addresses AS addresses_1 "
+                "ON users.id = addresses_1.user_id "
+                "WHERE addresses_1.email_address = :email_address_1"
+            )
+        else:
+            assertsql = (
+                "SELECT users.id AS users_id, users.name AS users_name "
+                "FROM users JOIN addresses ON users.id = addresses.user_id "
+                "WHERE addresses.email_address = :email_address_1"
+            )
+
+        if use_legacy:
+            self.assert_compile(q, assertsql)
+        else:
+            self.assert_compile(
+                q.set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL), assertsql
+            )
+
+        if use_legacy:
+            user = q.one()
+        else:
+            user = sess.execute(q).scalars().one()
+
+        eq_(
+            user,
+            User(
+                name="fred", addresses=[Address(email_address="fred@fred.com")]
+            ),
+        )
+
     def test_filter_by_against_cast(self):
         """test #6414"""
         User = self.classes.User
