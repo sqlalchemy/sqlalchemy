@@ -475,7 +475,8 @@ class PropComparator(operators.ColumnOperators):
 
     def of_type(self, class_):
         r"""Redefine this object in terms of a polymorphic subclass,
-        :func:`.with_polymorphic` construct, or :func:`.aliased` construct.
+        :func:`_orm.with_polymorphic` construct, or :func:`_orm.aliased`
+        construct.
 
         Returns a new PropComparator from which further criterion can be
         evaluated.
@@ -489,6 +490,8 @@ class PropComparator(operators.ColumnOperators):
             against this specific subclass.
 
         .. seealso::
+
+            :ref:`queryguide_join_onclause` - in the :ref:`queryguide_toplevel`
 
             :ref:`inheritance_of_type`
 

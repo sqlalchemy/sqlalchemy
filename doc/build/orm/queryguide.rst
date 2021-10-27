@@ -602,6 +602,8 @@ appropriate constraint to use is ambiguous.
     the entities at the level of the mapped :class:`_schema.Table` objects are consulted
     when an attempt is made to infer an ON clause for the JOIN.
 
+.. _queryguide_join_onclause:
+
 Joins to a Target with an ON Clause
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
