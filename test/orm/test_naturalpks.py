@@ -12,8 +12,9 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import TypeDecorator
+from sqlalchemy.orm import make_transient
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm.session import make_transient
+from sqlalchemy.orm import with_parent
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -621,7 +622,7 @@ class NaturalPKTest(fixtures.MappedTest):
         u2 = sess.query(User).get(u2.username)
         u2.username = "wendy"
         sess.flush()
-        r = sess.query(Item).with_parent(u2).all()
+        r = sess.query(Item).filter(with_parent(u2, User.items)).all()
         eq_(Item(itemname="item2"), r[0])
 
     def test_manytoone_deferred_relationship_expr(self):

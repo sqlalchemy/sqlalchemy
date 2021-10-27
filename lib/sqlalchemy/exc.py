@@ -685,8 +685,9 @@ class SADeprecationWarning(HasDescriptionCode, DeprecationWarning):
     "Indicates the version that started raising this deprecation warning"
 
 
-class RemovedIn20Warning(SADeprecationWarning):
-    """Issued for usage of APIs specifically deprecated in SQLAlchemy 2.0.
+class Base20DeprecationWarning(SADeprecationWarning):
+    """Issued for usage of APIs specifically deprecated or legacy in
+    SQLAlchemy 2.0.
 
     .. seealso::
 
@@ -701,9 +702,17 @@ class RemovedIn20Warning(SADeprecationWarning):
 
     def __str__(self):
         return (
-            super(RemovedIn20Warning, self).__str__()
+            super(Base20DeprecationWarning, self).__str__()
             + " (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)"
         )
+
+
+class LegacyAPIWarning(Base20DeprecationWarning):
+    """indicates an API that is in 'legacy' status, a long term deprecation."""
+
+
+class RemovedIn20Warning(Base20DeprecationWarning):
+    """indicates an API that will be fully removed in SQLAlchemy 2.0."""
 
 
 class MovedIn20Warning(RemovedIn20Warning):

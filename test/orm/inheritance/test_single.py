@@ -922,38 +922,6 @@ class RelationshipToSingleTest(
             [Company(name="c1")],
         )
 
-    def test_of_type_aliased_fromjoinpoint(self):
-        Company, Employee, Engineer = (
-            self.classes.Company,
-            self.classes.Employee,
-            self.classes.Engineer,
-        )
-        companies, employees = self.tables.companies, self.tables.employees
-
-        self.mapper_registry.map_imperatively(
-            Company, companies, properties={"employee": relationship(Employee)}
-        )
-        self.mapper_registry.map_imperatively(
-            Employee, employees, polymorphic_on=employees.c.type
-        )
-        self.mapper_registry.map_imperatively(
-            Engineer, inherits=Employee, polymorphic_identity="engineer"
-        )
-
-        sess = fixture_session()
-        self.assert_compile(
-            sess.query(Company).outerjoin(
-                Company.employee.of_type(Engineer),
-                aliased=True,
-                from_joinpoint=True,
-            ),
-            "SELECT companies.company_id AS companies_company_id, "
-            "companies.name AS companies_name FROM companies "
-            "LEFT OUTER JOIN employees AS employees_1 ON "
-            "companies.company_id = employees_1.company_id "
-            "AND employees_1.type IN ([POSTCOMPILE_type_1])",
-        )
-
     def test_join_explicit_onclause_no_discriminator(self):
         # test issue #3462
         Company, Employee, Engineer = (

@@ -98,13 +98,18 @@ def deprecated_20_cls(
     if alternative:
         message += " " + alternative
 
+    if becomes_legacy:
+        warning_cls = exc.LegacyAPIWarning
+    else:
+        warning_cls = exc.RemovedIn20Warning
+
     def decorate(cls):
         return _decorate_cls_with_warning(
             cls,
             constructor,
-            exc.RemovedIn20Warning,
+            warning_cls,
             message,
-            exc.RemovedIn20Warning.deprecated_since,
+            warning_cls.deprecated_since,
             message,
         )
 

@@ -18,6 +18,7 @@ from sqlalchemy.orm import object_mapper
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import util as orm_util
+from sqlalchemy.orm import with_parent
 from sqlalchemy.orm.attributes import instance_state
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.orm.decl_api import declarative_base
@@ -2002,7 +2003,7 @@ class M2OCascadeDeleteOrphanTestOne(fixtures.MappedTest):
         assert p1 not in sess
         sess.flush()
         eq_(
-            sess.query(Pref).with_parent(someuser).all(),
+            sess.query(Pref).filter(with_parent(someuser, User.pref)).all(),
             [Pref(data="someotherpref")],
         )
 

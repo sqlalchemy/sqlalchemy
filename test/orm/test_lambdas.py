@@ -305,26 +305,6 @@ class LambdaTest(QueryTest, AssertsCompiledSQL):
             ):
                 self.assert_sql_count(testing.db, fn, 2)
 
-    def test_does_filter_aliasing_work(self, plain_fixture):
-        User, Address = plain_fixture
-
-        s = Session(testing.db, future=True)
-
-        # aliased=True is to be deprecated, other filter lambdas
-        # that go into effect include polymorphic filtering.
-        q = (
-            s.query(lambda: User)
-            .join(lambda: User.addresses, aliased=True)
-            .filter(lambda: Address.email_address == "foo")
-        )
-        self.assert_compile(
-            q,
-            "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users JOIN addresses AS addresses_1 "
-            "ON users.id = addresses_1.user_id "
-            "WHERE addresses_1.email_address = :email_address_1",
-        )
-
     @testing.combinations(
         lambda s, User, Address: s.query(lambda: User).join(lambda: Address),
         lambda s, User, Address: s.query(lambda: User).join(

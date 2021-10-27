@@ -1720,6 +1720,7 @@ class Query(
         we will attempt to derive an expression from based on string name.
 
         """
+
         if self._legacy_setup_joins:
             _last_joined_entity = self._last_joined_entity
             if _last_joined_entity is not None:
