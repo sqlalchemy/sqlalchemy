@@ -1602,6 +1602,15 @@ class Query(
 
             SELECT users.id AS users_id FROM users FOR UPDATE OF users NOWAIT
 
+        .. warning::
+
+            Using ``with_for_update`` in the context of eager loading
+            relationships is not officially supported or recommended by
+            SQLAlchemy and may not work with certain queries on various
+            database backends.  When ``with_for_update`` is successfully used
+            with a query that involves :func:`_orm.joinedload`, SQLAlchemy will
+            attempt to emit SQL that locks all involved tables.
+
         .. note::  It is generally a good idea to combine the use of the
            :meth:`_orm.Query.populate_existing` method when using the
            :meth:`_orm.Query.with_for_update` method.   The purpose of
