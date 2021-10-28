@@ -797,7 +797,6 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         )
 
     def _load_for_state(self, state, passive, loadopt=None, extra_criteria=()):
-
         if not state.key and (
             (
                 not self.parent_property.load_on_pending

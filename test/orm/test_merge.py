@@ -1432,7 +1432,7 @@ class MergeTest(_fixtures.FixtureTest):
             self.tables.users,
         )
 
-        s = fixture_session(autoflush=True, autocommit=False)
+        s = fixture_session(autoflush=True, autocommit=False, future=True)
         self.mapper_registry.map_imperatively(
             User,
             users,
@@ -1445,8 +1445,10 @@ class MergeTest(_fixtures.FixtureTest):
         )
 
         a1 = Address(user=s.merge(User(id=1, name="ed")), email_address="x")
+        s.add(a1)
         before_id = id(a1.user)
         a2 = Address(user=s.merge(User(id=1, name="jack")), email_address="x")
+        s.add(a2)
         after_id = id(a1.user)
         other_id = id(a2.user)
         eq_(before_id, other_id)

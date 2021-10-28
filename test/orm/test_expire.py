@@ -1683,7 +1683,7 @@ class ExpiredPendingTest(_fixtures.FixtureTest):
         )
         self.mapper_registry.map_imperatively(Address, addresses)
 
-        sess = fixture_session(autoflush=False)
+        sess = fixture_session(autoflush=False, future=True)
         a1 = Address(email_address="a1")
         sess.add(a1)
         sess.flush()
@@ -1700,6 +1700,9 @@ class ExpiredPendingTest(_fixtures.FixtureTest):
         # in user.addresses
         a2 = Address(email_address="a2")
         a2.user = u1
+
+        # needed now that cascade backrefs is disabled
+        sess.add(a2)
 
         # expire u1.addresses again.  this expires
         # "pending" as well.

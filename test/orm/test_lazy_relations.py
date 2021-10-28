@@ -954,7 +954,7 @@ class LazyTest(_fixtures.FixtureTest):
             properties={"addresses": relationship(Address, backref="user")},
         )
         self.mapper_registry.map_imperatively(Address, addresses)
-        sess = fixture_session(autoflush=False)
+        sess = fixture_session(autoflush=False, future=True)
         ad = sess.query(Address).filter_by(id=1).one()
         assert ad.user.id == 7
 

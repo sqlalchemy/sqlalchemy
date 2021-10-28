@@ -146,7 +146,9 @@ class AutoFlushTest(fixtures.MappedTest):
             collection_class, is_dict=is_dict
         )
 
-        session = Session(testing.db, autoflush=True, expire_on_commit=True)
+        session = Session(
+            testing.db, autoflush=True, expire_on_commit=True, future=True
+        )
 
         p1 = Parent()
         c1 = Child("c1")

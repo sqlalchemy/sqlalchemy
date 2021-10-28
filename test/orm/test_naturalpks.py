@@ -926,7 +926,7 @@ class SelfReferentialTest(fixtures.MappedTest):
             },
         )
 
-        sess = fixture_session()
+        sess = fixture_session(future=True)
         n1 = Node(name="n1")
         sess.add(n1)
         n2 = Node(name="n11", parentnode=n1)

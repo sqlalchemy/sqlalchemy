@@ -2349,7 +2349,7 @@ class RequirementsTest(fixtures.MappedTest):
         self.mapper(H3, ht3)
         self.mapper(H6, ht6)
 
-        s = fixture_session()
+        s = fixture_session(future=True)
         s.add_all([H1("abc"), H1("def")])
         h1 = H1("ghi")
         s.add(h1)
@@ -2367,7 +2367,7 @@ class RequirementsTest(fixtures.MappedTest):
         h6 = H6()
         h6.h1a = h1
         h6.h1b = x = H1()
-        assert x in s
+        s.add(x)
 
         h6.h1b.h2s.append(H2("def"))
 

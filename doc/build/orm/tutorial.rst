@@ -347,6 +347,10 @@ connect it to the :class:`~sqlalchemy.orm.session.Session` using
 
     >>> Session.configure(bind=engine)  # once engine is available
 
+..  Setup code, not for display - ensure no cascade_backrefs warnings occur
+
+    >>> Session.configure(future=True)
+
 .. sidebar:: Session Lifecycle Patterns
 
     The question of when to make a :class:`.Session` depends a lot on what

@@ -4485,7 +4485,15 @@ class ViewonlyFlagWarningTest(fixtures.MappedTest):
         )
 
 
-class CollectionCascadesDespiteBackrefTest(fixtures.TestBase):
+class CollectionCascadesNoBackrefTest(fixtures.TestBase):
+    """test the removal of cascade_backrefs behavior
+
+
+    see test/orm/test_deprecations.py::CollectionCascadesDespiteBackrefTest
+    for the deprecated version
+
+    """
+
     @testing.fixture
     def cascade_fixture(self, registry):
         def go(collection_class):
@@ -4495,7 +4503,10 @@ class CollectionCascadesDespiteBackrefTest(fixtures.TestBase):
 
                 id = Column(Integer, primary_key=True)
                 bs = relationship(
-                    "B", backref="a", collection_class=collection_class
+                    "B",
+                    backref="a",
+                    collection_class=collection_class,
+                    cascade_backrefs=False,
                 )
 
             @registry.mapped
@@ -4536,12 +4547,8 @@ class CollectionCascadesDespiteBackrefTest(fixtures.TestBase):
         b1.a = a1
         b3.a = a1
 
-        if future:
-            assert b1 not in s
-            assert b3 not in s
-        else:
-            assert b1 in s
-            assert b3 in s
+        assert b1 not in s
+        assert b3 not in s
 
         if methname == "__setitem__":
             meth = getattr(a1.bs, methname)
@@ -4563,8 +4570,4 @@ class CollectionCascadesDespiteBackrefTest(fixtures.TestBase):
         assert b1 in s
         assert b2 in s
 
-        if future:
-            assert b3 not in s  # the event never triggers from reverse
-        else:
-            # old behavior
-            assert b3 in s
+        assert b3 not in s  # the event never triggers from reverse

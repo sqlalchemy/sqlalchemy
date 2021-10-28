@@ -828,7 +828,7 @@ class NoBumpOnRelationshipTest(fixtures.MappedTest):
 
     def _run_test(self, auto_version_counter=True):
         A, B = self.classes("A", "B")
-        s = fixture_session()
+        s = fixture_session(future=True)
         if auto_version_counter:
             a1 = A()
         else:

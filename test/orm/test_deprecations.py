@@ -59,6 +59,7 @@ from sqlalchemy.orm import undefer
 from sqlalchemy.orm import with_loader_criteria
 from sqlalchemy.orm import with_parent
 from sqlalchemy.orm import with_polymorphic
+from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.orm.collections import collection
 from sqlalchemy.orm.util import polymorphic_union
 from sqlalchemy.sql import elements
@@ -8456,3 +8457,249 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
             "FROM addresses WHERE :param_2 = addresses.user_id) AS anon_1",
             checkparams={"param_1": 7, "param_2": 8},
         )
+
+
+class CollectionCascadesDespiteBackrefTest(fixtures.TestBase):
+    """test old cascade_backrefs behavior
+
+    see test/orm/test_cascade.py::class CollectionCascadesNoBackrefTest
+    for the future version
+
+    """
+
+    @testing.fixture
+    def cascade_fixture(self, registry):
+        def go(collection_class):
+            @registry.mapped
+            class A(object):
+                __tablename__ = "a"
+
+                id = Column(Integer, primary_key=True)
+                bs = relationship(
+                    "B", backref="a", collection_class=collection_class
+                )
+
+            @registry.mapped
+            class B(object):
+                __tablename__ = "b_"
+                id = Column(Integer, primary_key=True)
+                a_id = Column(ForeignKey("a.id"))
+                key = Column(String)
+
+            return A, B
+
+        yield go
+
+    @testing.combinations(
+        (set, "add"),
+        (list, "append"),
+        (attribute_mapped_collection("key"), "__setitem__"),
+        (attribute_mapped_collection("key"), "setdefault"),
+        (attribute_mapped_collection("key"), "update_dict"),
+        (attribute_mapped_collection("key"), "update_kw"),
+        argnames="collection_class,methname",
+    )
+    @testing.combinations((True,), (False,), argnames="future")
+    def test_cascades_on_collection(
+        self, cascade_fixture, collection_class, methname, future
+    ):
+        A, B = cascade_fixture(collection_class)
+
+        s = Session(future=future)
+
+        a1 = A()
+        s.add(a1)
+
+        b1 = B(key="b1")
+        b2 = B(key="b2")
+        b3 = B(key="b3")
+
+        if future:
+            dep_ctx = util.nullcontext
+        else:
+
+            def dep_ctx():
+                return assertions.expect_deprecated_20(
+                    '"B" object is being merged into a Session along the '
+                    'backref cascade path for relationship "A.bs"'
+                )
+
+        with dep_ctx():
+            b1.a = a1
+        with dep_ctx():
+            b3.a = a1
+
+        if future:
+            assert b1 not in s
+            assert b3 not in s
+        else:
+            assert b1 in s
+            assert b3 in s
+
+        if methname == "__setitem__":
+            meth = getattr(a1.bs, methname)
+            meth(b1.key, b1)
+            meth(b2.key, b2)
+        elif methname == "setdefault":
+            meth = getattr(a1.bs, methname)
+            meth(b1.key, b1)
+            meth(b2.key, b2)
+        elif methname == "update_dict" and isinstance(a1.bs, dict):
+            a1.bs.update({b1.key: b1, b2.key: b2})
+        elif methname == "update_kw" and isinstance(a1.bs, dict):
+            a1.bs.update(b1=b1, b2=b2)
+        else:
+            meth = getattr(a1.bs, methname)
+            meth(b1)
+            meth(b2)
+
+        assert b1 in s
+        assert b2 in s
+
+        # future version:
+        if future:
+            assert b3 not in s  # the event never triggers from reverse
+        else:
+            # old behavior
+            assert b3 in s
+
+
+class LoadOnFKsTest(fixtures.DeclarativeMappedTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Parent(Base):
+            __tablename__ = "parent"
+            __table_args__ = {"mysql_engine": "InnoDB"}
+
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+
+        class Child(Base):
+            __tablename__ = "child"
+            __table_args__ = {"mysql_engine": "InnoDB"}
+
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            parent_id = Column(Integer, ForeignKey("parent.id"))
+
+            parent = relationship(Parent, backref=backref("children"))
+
+    @testing.fixture
+    def parent_fixture(self, connection):
+        Parent, Child = self.classes("Parent", "Child")
+
+        sess = fixture_session(bind=connection, autoflush=False)
+        p1 = Parent()
+        p2 = Parent()
+        c1, c2 = Child(), Child()
+        c1.parent = p1
+        sess.add_all([p1, p2])
+        assert c1 in sess
+
+        yield sess, p1, p2, c1, c2
+
+        sess.close()
+
+    def test_enable_rel_loading_on_persistent_allows_backref_event(
+        self, parent_fixture
+    ):
+        sess, p1, p2, c1, c2 = parent_fixture
+        Parent, Child = self.classes("Parent", "Child")
+
+        c3 = Child()
+        sess.enable_relationship_loading(c3)
+        c3.parent_id = p1.id
+        with assertions.expect_deprecated_20(
+            '"Child" object is being merged into a Session along the '
+            'backref cascade path for relationship "Parent.children"'
+        ):
+            c3.parent = p1
+
+        # backref fired off when c3.parent was set,
+        # because the "old" value was None
+        # change as of [ticket:3708]
+        assert c3 in p1.children
+
+    def test_enable_rel_loading_allows_backref_event(self, parent_fixture):
+        sess, p1, p2, c1, c2 = parent_fixture
+        Parent, Child = self.classes("Parent", "Child")
+
+        c3 = Child()
+        sess.enable_relationship_loading(c3)
+        c3.parent_id = p1.id
+
+        with assertions.expect_deprecated_20(
+            '"Child" object is being merged into a Session along the '
+            'backref cascade path for relationship "Parent.children"'
+        ):
+            c3.parent = p1
+
+        # backref fired off when c3.parent was set,
+        # because the "old" value was None
+        # change as of [ticket:3708]
+        assert c3 in p1.children
+
+
+class LazyTest(_fixtures.FixtureTest):
+    run_inserts = "once"
+    run_deletes = None
+
+    def test_backrefs_dont_lazyload(self):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={"addresses": relationship(Address, backref="user")},
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
+        sess = fixture_session(autoflush=False)
+        ad = sess.query(Address).filter_by(id=1).one()
+        assert ad.user.id == 7
+
+        def go():
+            ad.user = None
+            assert ad.user is None
+
+        self.assert_sql_count(testing.db, go, 0)
+
+        u1 = sess.query(User).filter_by(id=7).one()
+
+        def go():
+            assert ad not in u1.addresses
+
+        self.assert_sql_count(testing.db, go, 1)
+
+        sess.expire(u1, ["addresses"])
+
+        def go():
+            assert ad in u1.addresses
+
+        self.assert_sql_count(testing.db, go, 1)
+
+        sess.expire(u1, ["addresses"])
+        ad2 = Address()
+
+        def go():
+            with assertions.expect_deprecated_20(
+                ".* object is being merged into a Session along the "
+                "backref cascade path for relationship "
+            ):
+                ad2.user = u1
+            assert ad2.user is u1
+
+        self.assert_sql_count(testing.db, go, 0)
+
+        def go():
+            assert ad2 in u1.addresses
+
+        self.assert_sql_count(testing.db, go, 1)

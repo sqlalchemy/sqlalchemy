@@ -922,7 +922,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         )
         self.mapper_registry.map_imperatively(Address, addresses)
 
-        session = fixture_session()
+        session = fixture_session(future=True)
 
         @event.listens_for(session, "after_flush")
         def load_collections(session, flush_context):
@@ -942,6 +942,9 @@ class SessionStateTest(_fixtures.FixtureTest):
         a2 = Address(email_address="e2", user=u1)
         assert "addresses" not in inspect(u1).dict
         assert a2 in inspect(u1)._pending_mutations["addresses"].added_items
+
+        # this is needed now that cascade_backrefs is turned off
+        session.add(a2)
 
         with assertions.expect_warnings(
             r"Identity map already had an identity "
