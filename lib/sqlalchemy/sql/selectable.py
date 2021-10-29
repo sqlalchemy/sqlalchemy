@@ -2119,9 +2119,9 @@ class CTE(
             _suffixes=self._suffixes,
         )
 
-    def union(self, other):
+    def union(self, *other):
         return CTE._construct(
-            self.element.union(other),
+            self.element.union(*other),
             name=self.name,
             recursive=self.recursive,
             nesting=self.nesting,
@@ -2130,9 +2130,9 @@ class CTE(
             _suffixes=self._suffixes,
         )
 
-    def union_all(self, other):
+    def union_all(self, *other):
         return CTE._construct(
-            self.element.union_all(other),
+            self.element.union_all(*other),
             name=self.name,
             recursive=self.recursive,
             nesting=self.nesting,
@@ -2415,6 +2415,44 @@ class HasCTE(roles.HasCTERole):
                     SELECT value_a.n AS n FROM value_a)
             SELECT value_a.n AS a, value_b.n AS b
             FROM value_a, value_b
+
+        Example 5, Non-Linear CTE::
+
+            edge = Table(
+                "edge",
+                metadata,
+                Column("id", Integer, primary_key=True),
+                Column("left", Integer),
+                Column("right", Integer),
+            )
+
+            root_node = select(literal(1).label("node")).cte(
+                "nodes", recursive=True
+            )
+
+            left_edge = select(edge.c.left).join(
+                root_node, edge.c.right == root_node.c.node
+            )
+            right_edge = select(edge.c.right).join(
+                root_node, edge.c.left == root_node.c.node
+            )
+
+            subgraph_cte = root_node.union(left_edge, right_edge)
+
+            subgraph = select(subgraph_cte)
+
+        The above query will render 2 UNIONs inside the recursive CTE::
+
+            WITH RECURSIVE nodes(node) AS (
+                    SELECT 1 AS node
+                UNION
+                    SELECT edge."left" AS "left"
+                    FROM edge JOIN nodes ON edge."right" = nodes.node
+                UNION
+                    SELECT edge."right" AS "right"
+                    FROM edge JOIN nodes ON edge."left" = nodes.node
+            )
+            SELECT nodes.node FROM nodes
 
         .. seealso::
 
@@ -6251,19 +6289,19 @@ class Select(
         else:
             return SelectStatementGrouping(self)
 
-    def union(self, other, **kwargs):
+    def union(self, *other, **kwargs):
         """Return a SQL ``UNION`` of this select() construct against
         the given selectable.
 
         """
-        return CompoundSelect._create_union(self, other, **kwargs)
+        return CompoundSelect._create_union(self, *other, **kwargs)
 
-    def union_all(self, other, **kwargs):
+    def union_all(self, *other, **kwargs):
         """Return a SQL ``UNION ALL`` of this select() construct against
         the given selectable.
 
         """
-        return CompoundSelect._create_union_all(self, other, **kwargs)
+        return CompoundSelect._create_union_all(self, *other, **kwargs)
 
     def except_(self, other, **kwargs):
         """Return a SQL ``EXCEPT`` of this select() construct against
