@@ -18,7 +18,6 @@ from sqlalchemy.engine import result
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import configure_mappers
-from sqlalchemy.orm import create_session
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import join as orm_join
 from sqlalchemy.orm import joinedload
@@ -732,7 +731,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             )
             self.mapper_registry.map_imperatively(B, table2)
 
-            sess = create_session(self.engine)
+            sess = Session(self.engine, autoflush=False)
             a1 = A(col2="a1")
             a2 = A(col2="a2")
             a3 = A(col2="a3")
@@ -905,7 +904,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
                 B, table2, inherits=A, polymorphic_identity="b"
             )
 
-            sess = create_session(self.engine)
+            sess = Session(self.engine, autoflush=False)
             a1 = A()
             a2 = A()
             b1 = B(col3="b1")
@@ -986,7 +985,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             )
             self.mapper_registry.map_imperatively(B, table2)
 
-            sess = create_session(self.engine)
+            sess = Session(self.engine, autoflush=False)
             a1 = A(col2="a1")
             a2 = A(col2="a2")
             b1 = B(col2="b1")

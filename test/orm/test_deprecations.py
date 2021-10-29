@@ -4755,6 +4755,66 @@ class SessionTransactionTest(fixtures.RemovesEvents, _fixtures.FixtureTest):
 class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
     run_inserts = None
 
+    def _listener_fixture(self, **kw):
+        canary = []
+
+        def listener(name):
+            def go(*arg, **kw):
+                canary.append(name)
+
+            return go
+
+        sess = fixture_session(**kw)
+
+        for evt in [
+            "after_transaction_create",
+            "after_transaction_end",
+            "before_commit",
+            "after_commit",
+            "after_rollback",
+            "after_soft_rollback",
+            "before_flush",
+            "after_flush",
+            "after_flush_postexec",
+            "after_begin",
+            "before_attach",
+            "after_attach",
+            "after_bulk_update",
+            "after_bulk_delete",
+        ]:
+            event.listen(sess, evt, listener(evt))
+
+        return sess, canary
+
+    def test_flush_autocommit_hook(self):
+        User, users = self.classes.User, self.tables.users
+
+        self.mapper_registry.map_imperatively(User, users)
+
+        with assertions.expect_deprecated_20(autocommit_dep):
+            sess, canary = self._listener_fixture(
+                autoflush=False, autocommit=True, expire_on_commit=False
+            )
+
+        u = User(name="u1")
+        sess.add(u)
+        sess.flush()
+        eq_(
+            canary,
+            [
+                "before_attach",
+                "after_attach",
+                "before_flush",
+                "after_transaction_create",
+                "after_begin",
+                "after_flush",
+                "after_flush_postexec",
+                "before_commit",
+                "after_commit",
+                "after_transaction_end",
+            ],
+        )
+
     def test_on_bulk_update_hook(self):
         User, users = self.classes.User, self.tables.users
 
@@ -9393,3 +9453,27 @@ class LazyTest(_fixtures.FixtureTest):
             assert ad2 in u1.addresses
 
         self.assert_sql_count(testing.db, go, 1)
+
+
+class BindIntegrationTest(_fixtures.FixtureTest):
+    run_inserts = None
+
+    def test_bound_connection_transactional(self):
+        User, users = self.classes.User, self.tables.users
+
+        self.mapper_registry.map_imperatively(User, users)
+
+        with testing.db.connect() as c:
+            trans = c.begin()
+
+            with assertions.expect_deprecated_20(autocommit_dep):
+                sess = Session(bind=c, autocommit=True)
+            u = User(name="u3")
+            sess.add(u)
+            sess.flush()
+            assert c.in_transaction()
+            trans.commit()
+            assert not c.in_transaction()
+            assert (
+                c.exec_driver_sql("select count(1) from users").scalar() == 1
+            )

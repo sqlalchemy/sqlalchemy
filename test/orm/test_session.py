@@ -187,39 +187,6 @@ class TransScopingTest(_fixtures.FixtureTest):
         assert not s.in_transaction()
         eq_(s.connection().scalar(select(User.name)), "u1")
 
-    def test_no_autoflush_or_commit_in_expire_w_autocommit(self):
-        """test second part of :ticket:`6233`.
-
-        Here we test that the "autoflush on unexpire" feature added
-        in :ticket:`5226` is turned off for a legacy autocommit session.
-
-        """
-
-        s = Session(
-            testing.db, autocommit=True, expire_on_commit=True, autoflush=True
-        )
-
-        User, users = self.classes.User, self.tables.users
-
-        self.mapper_registry.map_imperatively(User, users)
-
-        u1 = User(name="u1")
-        s.add(u1)
-        s.flush()  # this commits
-
-        u1.name = "u2"  # this does not commit
-
-        assert "id" not in u1.__dict__
-        u1.id  # this unexpires
-
-        # never expired
-        eq_(u1.__dict__["name"], "u2")
-
-        eq_(u1.name, "u2")
-
-        # still in dirty collection
-        assert u1 in s.dirty
-
     def test_autobegin_begin_method(self):
         s = Session(testing.db)
 
@@ -231,7 +198,6 @@ class TransScopingTest(_fixtures.FixtureTest):
             s.begin,
         )
 
-    @testing.combinations((True,), (False,), argnames="autocommit")
     @testing.combinations((True,), (False,), argnames="begin")
     @testing.combinations((True,), (False,), argnames="expire_on_commit")
     @testing.combinations((True,), (False,), argnames="modify_unconditional")
@@ -239,7 +205,7 @@ class TransScopingTest(_fixtures.FixtureTest):
         ("nothing",), ("modify",), ("add",), ("delete",), argnames="case_"
     )
     def test_autobegin_attr_change(
-        self, case_, autocommit, begin, modify_unconditional, expire_on_commit
+        self, case_, begin, modify_unconditional, expire_on_commit
     ):
         """test :ticket:`6360`"""
 
@@ -249,7 +215,6 @@ class TransScopingTest(_fixtures.FixtureTest):
 
         s = Session(
             testing.db,
-            autocommit=autocommit,
             expire_on_commit=expire_on_commit,
         )
 
@@ -258,10 +223,7 @@ class TransScopingTest(_fixtures.FixtureTest):
         u3 = User(name="e")
         s.add_all([u, u2, u3])
 
-        if autocommit:
-            s.flush()
-        else:
-            s.commit()
+        s.commit()
 
         if begin:
             s.begin()
@@ -279,9 +241,6 @@ class TransScopingTest(_fixtures.FixtureTest):
         if case_ == "nothing" and not begin:
             assert not s._transaction
             expect_expire = expire_on_commit
-        elif autocommit and not begin:
-            assert not s._transaction
-            expect_expire = expire_on_commit
         else:
             assert s._transaction
             expect_expire = True
@@ -297,14 +256,11 @@ class TransScopingTest(_fixtures.FixtureTest):
         # test is that state is consistent after rollback()
         s.rollback()
 
-        if autocommit and not begin and modify_unconditional:
-            eq_(u.name, "y")
+        if not expect_expire:
+            assert "name" in u.__dict__
         else:
-            if not expect_expire:
-                assert "name" in u.__dict__
-            else:
-                assert "name" not in u.__dict__
-            eq_(u.name, "x")
+            assert "name" not in u.__dict__
+        eq_(u.name, "x")
 
     @testing.requires.independent_connections
     @engines.close_open_connections
@@ -739,26 +695,6 @@ class SessionStateTest(_fixtures.FixtureTest):
             == 1
         )
         sess.commit()
-
-    def test_autocommit_doesnt_raise_on_pending(self):
-        User, users = self.classes.User, self.tables.users
-
-        self.mapper_registry.map_imperatively(User, users)
-        session = Session(testing.db, autocommit=True)
-
-        session.add(User(name="ed"))
-
-        session.begin()
-        session.flush()
-        session.commit()
-
-    def test_active_flag_autocommit(self):
-        sess = Session(bind=config.db, autocommit=True)
-        assert not sess.is_active
-        sess.begin()
-        assert sess.is_active
-        sess.rollback()
-        assert not sess.is_active
 
     def test_active_flag_autobegin(self):
         sess = Session(bind=config.db, autocommit=False)

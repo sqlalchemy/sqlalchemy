@@ -114,22 +114,22 @@ class ScopedSessionTest(fixtures.MappedTest):
         Session = scoped_session(sa.orm.sessionmaker(), mock_scope_func)
 
         s0 = SessionMaker()
-        assert s0.autocommit == False
+        assert s0.autoflush == True
 
         mock_scope_func.return_value = 0
         s1 = Session()
-        assert s1.autocommit == False
+        assert s1.autoflush == True
 
         assert_raises_message(
             sa.exc.InvalidRequestError,
             "Scoped session is already present",
             Session,
-            autocommit=True,
+            autoflush=False,
         )
 
         mock_scope_func.return_value = 1
-        s2 = Session(autocommit=True)
-        assert s2.autocommit == True
+        s2 = Session(autoflush=False)
+        assert s2.autoflush == False
 
     def test_methods_etc(self):
         mock_session = Mock()

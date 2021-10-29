@@ -68,10 +68,8 @@ def setup_filters():
         #
         # ORM Session
         #
-        r"The Session.autocommit parameter is deprecated ",
         r"The merge_result\(\) method is superseded by the "
         r"merge_frozen_result\(\)",
-        r"The Session.begin.subtransactions flag is deprecated",
     ]:
         warnings.filterwarnings(
             "ignore",
