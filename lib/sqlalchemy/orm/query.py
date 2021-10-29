@@ -1799,11 +1799,19 @@ class Query(
     @_generative
     @_assertions(_no_statement_condition, _no_limit_offset)
     def order_by(self, *clauses):
-        """Apply one or more ORDER BY criterion to the query and return
+        """Apply one or more ORDER BY criteria to the query and return
         the newly resulting :class:`_query.Query`.
 
-        All existing ORDER BY settings can be suppressed by  passing
-        ``None``.
+        e.g.::
+
+            q = session.query(Entity).order_by(Entity.id, Entity.name)
+
+        All existing ORDER BY criteria may be cancelled by passing
+        ``None`` by itself.  New ORDER BY criteria may then be added by
+        invoking :meth:`_orm.Query.order_by` again, e.g.::
+
+            # will erase all ORDER BY and ORDER BY new_col alone
+            q = q.order_by(None).order_by(new_col)
 
         .. seealso::
 

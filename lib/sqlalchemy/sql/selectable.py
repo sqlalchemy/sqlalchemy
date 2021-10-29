@@ -3781,11 +3781,18 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
     @_generative
     def order_by(self, *clauses):
         r"""Return a new selectable with the given list of ORDER BY
-        criterion applied.
+        criteria applied.
 
         e.g.::
 
             stmt = select(table).order_by(table.c.id, table.c.name)
+
+        All existing ORDER BY criteria may be cancelled by passing
+        ``None`` by itself.  New ORDER BY criteria may then be added by
+        invoking :meth:`_sql.Select.order_by` again, e.g.::
+
+            # will erase all ORDER BY and ORDER BY new_col alone
+            stmt = stmt.order_by(None).order_by(new_col)
 
         :param \*clauses: a series of :class:`_expression.ColumnElement`
          constructs
