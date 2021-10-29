@@ -1,8 +1,6 @@
 from sqlalchemy import exc
 from sqlalchemy import select
 from sqlalchemy import testing
-from sqlalchemy.engine import result_tuple
-from sqlalchemy.orm import aliased
 from sqlalchemy.orm import loading
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import mock
@@ -117,15 +115,6 @@ class MergeResultTest(_fixtures.FixtureTest):
         s.close()
         return s, [u1, u2, u3, u4]
 
-    def test_single_entity(self):
-        s, (u1, u2, u3, u4) = self._fixture()
-        User = self.classes.User
-
-        q = s.query(User)
-        collection = [u1, u2, u3, u4]
-        it = loading.merge_result(q, collection)
-        eq_([x.id for x in it], [1, 2, 7, 8])
-
     def test_single_entity_frozen(self):
         s = fixture_session()
         User = self.classes.User
@@ -134,16 +123,6 @@ class MergeResultTest(_fixtures.FixtureTest):
         result = s.execute(stmt)
         it = loading.merge_frozen_result(s, stmt, result.freeze())
         eq_([x.id for x in it().scalars()], [7, 8, 9])
-
-    def test_single_column(self):
-        User = self.classes.User
-
-        s = fixture_session()
-
-        q = s.query(User.id)
-        collection = [(1,), (2,), (7,), (8,)]
-        it = loading.merge_result(q, collection)
-        eq_(list(it), [(1,), (2,), (7,), (8,)])
 
     def test_single_column_frozen(self):
         User = self.classes.User
@@ -154,17 +133,6 @@ class MergeResultTest(_fixtures.FixtureTest):
         result = s.execute(stmt)
         it = loading.merge_frozen_result(s, stmt, result.freeze())
         eq_([x.id for x in it()], [7, 8, 9])
-
-    def test_entity_col_mix_plain_tuple(self):
-        s, (u1, u2, u3, u4) = self._fixture()
-        User = self.classes.User
-
-        q = s.query(User, User.id)
-        collection = [(u1, 1), (u2, 2), (u3, 7), (u4, 8)]
-        it = loading.merge_result(q, collection)
-        it = list(it)
-        eq_([(x.id, y) for x, y in it], [(1, 1), (2, 2), (7, 7), (8, 8)])
-        eq_(list(it[0]._mapping.keys()), ["User", "id"])
 
     def test_entity_col_mix_plain_tuple_frozen(self):
         s = fixture_session()
@@ -181,39 +149,3 @@ class MergeResultTest(_fixtures.FixtureTest):
         it = list(it())
         eq_([(x.id, y) for x, y in it], [(7, 7), (8, 8), (9, 9)])
         eq_(list(it[0]._mapping.keys()), ["User", "id"])
-
-    def test_entity_col_mix_keyed_tuple(self):
-        s, (u1, u2, u3, u4) = self._fixture()
-        User = self.classes.User
-
-        q = s.query(User, User.id)
-
-        row = result_tuple(["User", "id"])
-
-        def kt(*x):
-            return row(x)
-
-        collection = [kt(u1, 1), kt(u2, 2), kt(u3, 7), kt(u4, 8)]
-        it = loading.merge_result(q, collection)
-        it = list(it)
-        eq_([(x.id, y) for x, y in it], [(1, 1), (2, 2), (7, 7), (8, 8)])
-        eq_(list(it[0]._mapping.keys()), ["User", "id"])
-
-    def test_none_entity(self):
-        s, (u1, u2, u3, u4) = self._fixture()
-        User = self.classes.User
-
-        ua = aliased(User)
-        q = s.query(User, ua)
-
-        row = result_tuple(["User", "useralias"])
-
-        def kt(*x):
-            return row(x)
-
-        collection = [kt(u1, u2), kt(u1, None), kt(u2, u3)]
-        it = loading.merge_result(q, collection)
-        eq_(
-            [(x and x.id or None, y and y.id or None) for x, y in it],
-            [(u1.id, u2.id), (u1.id, None), (u2.id, u3.id)],
-        )

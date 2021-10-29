@@ -27,7 +27,10 @@ if os.getenv("SQLALCHEMY_WARN_20", "false").lower() in ("true", "yes", "1"):
 
 
 def _warn_with_version(msg, version, type_, stacklevel, code=None):
-    if issubclass(type_, exc.RemovedIn20Warning) and not SQLALCHEMY_WARN_20:
+    if (
+        issubclass(type_, exc.Base20DeprecationWarning)
+        and not SQLALCHEMY_WARN_20
+    ):
         return
 
     warn = type_(msg, code=code)
@@ -216,9 +219,12 @@ def deprecated_20(api_name, alternative=None, becomes_legacy=False, **kw):
     if alternative:
         message += " " + alternative
 
-    return deprecated(
-        "2.0", message=message, warning=exc.RemovedIn20Warning, **kw
-    )
+    if becomes_legacy:
+        warning_cls = exc.LegacyAPIWarning
+    else:
+        warning_cls = exc.RemovedIn20Warning
+
+    return deprecated("2.0", message=message, warning=warning_cls, **kw)
 
 
 def deprecated_params(**specs):
@@ -339,7 +345,7 @@ def _decorate_cls_with_warning(
         if constructor is not None:
             docstring_header %= dict(func=constructor)
 
-        if issubclass(wtype, exc.RemovedIn20Warning):
+        if issubclass(wtype, exc.Base20DeprecationWarning):
             docstring_header += (
                 " (Background on SQLAlchemy 2.0 at: "
                 ":ref:`migration_20_toplevel`)"
@@ -377,7 +383,7 @@ def _decorate_with_warning(
 
     message = _sanitize_restructured_text(message)
 
-    if issubclass(wtype, exc.RemovedIn20Warning):
+    if issubclass(wtype, exc.Base20DeprecationWarning):
         doc_only = (
             " (Background on SQLAlchemy 2.0 at: "
             ":ref:`migration_20_toplevel`)"

@@ -3002,6 +3002,13 @@ class Query(
 
         return result
 
+    @util.deprecated_20(
+        ":meth:`_orm.Query.merge_result`",
+        alternative="The method is superseded by the "
+        ":func:`_orm.merge_frozen_result` function.",
+        becomes_legacy=True,
+        enable_warnings=False,  # warnings occur via loading.merge_result
+    )
     def merge_result(self, iterator, load=True):
         """Merge a result into this :class:`_query.Query` object's Session.
 

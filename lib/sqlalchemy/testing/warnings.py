@@ -61,22 +61,6 @@ def setup_filters():
         message=r"^The (Sybase|firebird) dialect is deprecated and will be",
     )
 
-    # 2.0 deprecation warnings, which we will want to have all of these
-    # be "error" however for  I98b8defdf7c37b818b3824d02f7668e3f5f31c94
-    # we are moving one at a time
-    for msg in [
-        #
-        # ORM Session
-        #
-        r"The merge_result\(\) method is superseded by the "
-        r"merge_frozen_result\(\)",
-    ]:
-        warnings.filterwarnings(
-            "ignore",
-            message=msg,
-            category=sa_exc.RemovedIn20Warning,
-        )
-
     try:
         import pytest
     except ImportError:
