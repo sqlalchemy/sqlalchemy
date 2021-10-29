@@ -2793,6 +2793,11 @@ class Session(_SessionClassMethods):
 
         mapper = inspect(entity)
 
+        if not mapper or not mapper.is_mapper:
+            raise sa_exc.ArgumentError(
+                "Expected mapped class or mapper, got: %r" % entity
+            )
+
         is_dict = isinstance(primary_key_identity, dict)
         if not is_dict:
             primary_key_identity = util.to_list(
@@ -2802,8 +2807,8 @@ class Session(_SessionClassMethods):
         if len(primary_key_identity) != len(mapper.primary_key):
             raise sa_exc.InvalidRequestError(
                 "Incorrect number of values in identifier to formulate "
-                "primary key for query.get(); primary key columns are %s"
-                % ",".join("'%s'" % c for c in mapper.primary_key)
+                "primary key for session.get(); primary key columns "
+                "are %s" % ",".join("'%s'" % c for c in mapper.primary_key)
             )
 
         if is_dict:
@@ -2817,7 +2822,7 @@ class Session(_SessionClassMethods):
                 util.raise_(
                     sa_exc.InvalidRequestError(
                         "Incorrect names of values in identifier to formulate "
-                        "primary key for query.get(); primary key attribute "
+                        "primary key for session.get(); primary key attribute "
                         "names are %s"
                         % ",".join(
                             "'%s'" % prop.key

@@ -3604,14 +3604,15 @@ class ExternalColumnsTest(QueryTest):
         self.mapper_registry.map_imperatively(
             Order, orders, properties={"address": relationship(Address)}
         )  # m2o
+        configure_mappers()
 
         sess = fixture_session()
 
         def go():
-            o1 = (
-                sess.query(Order)
-                .options(joinedload(Order.address).joinedload(Address.user))
-                .get(1)
+            o1 = sess.get(
+                Order,
+                1,
+                options=[joinedload(Order.address).joinedload(Address.user)],
             )
             eq_(o1.address.user.count, 1)
 

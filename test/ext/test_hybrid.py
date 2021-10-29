@@ -953,7 +953,7 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         Person = self.classes.Person
 
         s = fixture_session()
-        jill = s.query(Person).get(3)
+        jill = s.get(Person, 3)
 
         s.query(Person).update(
             {Person.first_name: "moonbeam"}, synchronize_session="evaluate"
@@ -977,7 +977,7 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         Person = self.classes.Person
 
         s = fixture_session()
-        jill = s.query(Person).get(3)
+        jill = s.get(Person, 3)
 
         s.query(Person).update(
             {Person.fname2: "moonbeam"}, synchronize_session="evaluate"
@@ -1001,7 +1001,7 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         Person = self.classes.Person
 
         s = fixture_session()
-        jill = s.query(Person).get(3)
+        jill = s.get(Person, 3)
 
         s.query(Person).update(
             {Person.fname: "moonbeam"}, synchronize_session="evaluate"
@@ -1025,7 +1025,7 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         Person = self.classes.Person
 
         s = fixture_session()
-        jill = s.query(Person).get(3)
+        jill = s.get(Person, 3)
 
         s.query(Person).update(
             {Person.fname2: "moonbeam"}, synchronize_session="fetch"
@@ -1049,7 +1049,7 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         Person = self.classes.Person
 
         s = fixture_session()
-        jill = s.query(Person).get(3)
+        jill = s.get(Person, 3)
 
         s.query(Person).update(
             {Person.fname: "moonbeam"}, synchronize_session="fetch"
@@ -1073,7 +1073,7 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         Person = self.classes.Person
 
         s = fixture_session()
-        jill = s.query(Person).get(3)
+        jill = s.get(Person, 3)
 
         s.query(Person).update(
             {Person.name: "moonbeam sunshine"}, synchronize_session="evaluate"
@@ -1094,7 +1094,7 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         Person = self.classes.Person
 
         s = fixture_session()
-        jill = s.query(Person).get(3)
+        jill = s.get(Person, 3)
 
         s.query(Person).update(
             {Person.name: "moonbeam sunshine"}, synchronize_session="fetch"
@@ -1115,7 +1115,7 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
         Person = self.classes.Person
 
         s = fixture_session()
-        jill = s.query(Person).get(3)
+        jill = s.get(Person, 3)
 
         s.query(Person).update(
             {Person.uname: "moonbeam sunshine"}, synchronize_session="evaluate"

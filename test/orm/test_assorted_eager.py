@@ -767,7 +767,7 @@ class EagerTest5(fixtures.MappedTest):
         # this eager load sets up an AliasedClauses for the "comment"
         # relationship, then stores it in clauses_by_lead_mapper[mapper for
         # Derived]
-        d = sess.query(Derived).get("uid1")
+        d = sess.get(Derived, "uid1")
         sess.expunge_all()
         assert len([c for c in d.comments]) == 1
 
@@ -775,7 +775,7 @@ class EagerTest5(fixtures.MappedTest):
         # relationship, and should store it in clauses_by_lead_mapper[mapper
         # for DerivedII].  the bug was that the previous AliasedClause create
         # prevented this population from occurring.
-        d2 = sess.query(DerivedII).get("uid2")
+        d2 = sess.get(DerivedII, "uid2")
         sess.expunge_all()
 
         # object is not in the session; therefore the lazy load cant trigger
@@ -918,7 +918,7 @@ class EagerTest6(fixtures.MappedTest):
         sess.add(d)
         sess.flush()
         sess.expunge_all()
-        x = sess.query(Design).get(1)
+        x = sess.get(Design, 1)
         x.inheritedParts
 
 
@@ -1036,10 +1036,10 @@ class EagerTest7(fixtures.MappedTest):
         invoice_id = i1.invoice_id
 
         session.expunge_all()
-        c = session.query(Company).get(company_id)
+        c = session.get(Company, company_id)
 
         session.expunge_all()
-        i = session.query(Invoice).get(invoice_id)
+        i = session.get(Invoice, invoice_id)
 
         def go():
             eq_(c, i.company)

@@ -846,7 +846,7 @@ class SessionStateTest(_fixtures.FixtureTest):
             s2.delete,
             user,
         )
-        u2 = s2.query(User).get(user.id)
+        u2 = s2.get(User, user.id)
         s2.expunge(u2)
         assert_raises_message(
             sa.exc.InvalidRequestError,
@@ -986,7 +986,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         assert u1 not in sess
         assert Session.object_session(u1) is None
 
-        u2 = sess.query(User).get(u1.id)
+        u2 = sess.get(User, u1.id)
         assert u2 is not None and u2 is not u1
         assert u2 in sess
 
@@ -1014,7 +1014,7 @@ class SessionStateTest(_fixtures.FixtureTest):
 
         sess.expunge_all()
 
-        u3 = sess.query(User).get(u1.id)
+        u3 = sess.get(User, u1.id)
         assert u3 is not u1 and u3 is not u2 and u3.name == u1.name
 
     def test_no_double_save(self):
@@ -1216,7 +1216,7 @@ class DeferredRelationshipExpressionTest(_fixtures.FixtureTest):
 
         sess.commit()
         sess.close()
-        u = sess.query(User).get(u.id)
+        u = sess.get(User, u.id)
         q = sess.query(Address).filter(Address.user == u)
         del u
         gc_collect()
@@ -1364,7 +1364,7 @@ class SessionStateWFixtureTest(_fixtures.FixtureTest):
         )
 
         sess = fixture_session(autocommit=False, autoflush=True)
-        u = sess.query(User).get(8)
+        u = sess.get(User, 8)
         newad = Address(email_address="a new address")
         u.addresses.append(newad)
         u.name = "some new name"

@@ -1940,7 +1940,7 @@ being deleted:
 .. sourcecode:: python+sql
 
     # load Jack by primary key
-    {sql}>>> jack = session.query(User).get(5)
+    {sql}>>> jack = session.get(User, 5)
     BEGIN (implicit)
     SELECT users.id AS users_id,
             users.name AS users_name,

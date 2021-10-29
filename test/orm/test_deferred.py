@@ -131,7 +131,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         )
 
         sess = fixture_session()
-        o1 = sess.query(Order).get(1)
+        o1 = sess.get(Order, 1)
         eq_(o1.description, "order 1")
 
     def test_unsaved_2(self):
@@ -207,7 +207,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         )
 
         sess = fixture_session()
-        o2 = sess.query(Order).get(2)
+        o2 = sess.get(Order, 2)
         o2.isopen = 1
         sess.flush()
 
@@ -290,7 +290,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
             },
         )
         sess = fixture_session(autoflush=False)
-        o = sess.query(Order).get(3)
+        o = sess.get(Order, 3)
         assert "userident" not in o.__dict__
         o.description = "somenewdescription"
         eq_(o.description, "somenewdescription")
@@ -322,7 +322,7 @@ class DeferredTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         )
 
         sess = fixture_session()
-        o2 = sess.query(Order).get(3)
+        o2 = sess.get(Order, 3)
 
         # this will load the group of attributes
         eq_(o2.description, "order 3")

@@ -536,7 +536,7 @@ class BulkUDTestAltColKeys(BulkTest, fixtures.MappedTest):
         s.add(Person(id=5, personname="thename"))
         s.commit()
 
-        p = s.query(Person).get(5)
+        p = s.get(Person, 5)
         with self.sql_execution_asserter(testing.db) as asserter:
             p.personname = "newname"
             s.bulk_save_objects([p])

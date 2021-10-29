@@ -262,7 +262,7 @@ class _CollectionOperations(fixtures.MappedTest):
         self.session.flush()
         id_, type_ = obj.id, type(obj)
         self.session.expunge_all()
-        return self.session.query(type_).get(id_)
+        return self.session.get(type_, id_)
 
     def _test_sequence_ops(self):
         Parent, Child = self.classes("Parent", "Child")
@@ -1011,7 +1011,7 @@ class ScalarTest(fixtures.MappedTest):
             session.flush()
             id_, type_ = obj.id, type(obj)
             session.expunge_all()
-            return session.query(type_).get(id_)
+            return session.get(type_, id_)
 
         p = Parent("p")
 
@@ -1201,7 +1201,7 @@ class LazyLoadTest(fixtures.MappedTest):
         self.session.flush()
         id_, type_ = obj.id, type(obj)
         self.session.expunge_all()
-        return self.session.query(type_).get(id_)
+        return self.session.get(type_, id_)
 
     def test_lazy_list(self):
         Parent, Child = self.classes("Parent", "Child")

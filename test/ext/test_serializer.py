@@ -179,7 +179,7 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
             .scalar(),
             1,
         )
-        u1 = Session.query(User).get(8)
+        u1 = Session.get(User, 8)
         q = (
             Session.query(Address)
             .filter(Address.user == u1)

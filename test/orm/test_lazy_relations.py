@@ -227,7 +227,7 @@ class LazyTest(_fixtures.FixtureTest):
         self.mapper_registry.map_imperatively(Address, addresses)
 
         sess = fixture_session()
-        user = sess.query(User).get(7)
+        user = sess.get(User, 7)
         assert getattr(User, "addresses").hasparent(
             attributes.instance_state(user.addresses[0]), optimistic=True
         )
@@ -651,7 +651,7 @@ class LazyTest(_fixtures.FixtureTest):
             self.assert_sql_count(testing.db, go, 15)
 
         sess = fixture_session()
-        user = sess.query(User).get(7)
+        user = sess.get(User, 7)
 
         closed_mapper = User.closed_orders.entity
         open_mapper = User.open_orders.entity
@@ -762,7 +762,7 @@ class LazyTest(_fixtures.FixtureTest):
                 )
 
                 # load user that is attached to the address
-                u1 = sess.query(User).get(8)
+                u1 = sess.get(User, 8)
 
                 def go():
                     # lazy load of a1.user should get it from the session
@@ -903,7 +903,7 @@ class LazyTest(_fixtures.FixtureTest):
                 )
 
                 # load user that is attached to the address
-                u1 = sess.query(User).get(8)
+                u1 = sess.get(User, 8)
 
                 def go():
                     # lazy load of a1.user should get it from the session
@@ -936,7 +936,7 @@ class LazyTest(_fixtures.FixtureTest):
 
         assert a.user is not None
 
-        u1 = sess.query(User).get(7)
+        u1 = sess.get(User, 7)
 
         assert a.user is u1
 
@@ -1259,8 +1259,8 @@ class M2OGetTest(_fixtures.FixtureTest):
         sess.flush()
         sess.expunge_all()
 
-        ad2 = sess.query(Address).get(1)
-        ad3 = sess.query(Address).get(ad1.id)
+        ad2 = sess.get(Address, 1)
+        ad3 = sess.get(Address, ad1.id)
 
         def go():
             # one lazy load

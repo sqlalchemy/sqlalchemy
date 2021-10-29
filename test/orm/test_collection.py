@@ -1874,7 +1874,7 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
         pid = p.id
         session.expunge_all()
 
-        p = session.query(Parent).get(pid)
+        p = session.get(Parent, pid)
 
         eq_(set(p.children.keys()), set(["foo", "bar"]))
         cid = p.children["foo"].id
@@ -1886,7 +1886,7 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
         session.flush()
         session.expunge_all()
 
-        p = session.query(Parent).get(pid)
+        p = session.get(Parent, pid)
 
         self.assert_(set(p.children.keys()) == set(["foo", "bar"]))
         self.assert_(p.children["foo"].id != cid)
@@ -1897,7 +1897,7 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
         session.flush()
         session.expunge_all()
 
-        p = session.query(Parent).get(pid)
+        p = session.get(Parent, pid)
         self.assert_(
             len(list(collections.collection_adapter(p.children))) == 2
         )
@@ -1912,7 +1912,7 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
         session.flush()
         session.expunge_all()
 
-        p = session.query(Parent).get(pid)
+        p = session.get(Parent, pid)
         self.assert_(
             len(list(collections.collection_adapter(p.children))) == 1
         )
@@ -1924,7 +1924,7 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
         session.flush()
         session.expunge_all()
 
-        p = session.query(Parent).get(pid)
+        p = session.get(Parent, pid)
         self.assert_(
             len(list(collections.collection_adapter(p.children))) == 0
         )
@@ -1960,7 +1960,7 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
         pid = p.id
         session.expunge_all()
 
-        p = session.query(Parent).get(pid)
+        p = session.get(Parent, pid)
 
         self.assert_(
             set(p.children.keys()) == set([("foo", "1"), ("foo", "2")])
@@ -1974,7 +1974,7 @@ class DictHelpersTest(OrderedDictFixture, fixtures.MappedTest):
         session.flush()
         session.expunge_all()
 
-        p = session.query(Parent).get(pid)
+        p = session.get(Parent, pid)
 
         self.assert_(
             set(p.children.keys()) == set([("foo", "1"), ("foo", "2")])
@@ -2223,7 +2223,7 @@ class CustomCollectionsTest(fixtures.MappedTest):
         sess.add(f)
         sess.flush()
         sess.expunge_all()
-        f = sess.query(Foo).get(f.col1)
+        f = sess.get(Foo, f.col1)
         assert len(list(f.bars)) == 2
         f.bars.clear()
 
@@ -2266,7 +2266,7 @@ class CustomCollectionsTest(fixtures.MappedTest):
         sess.add(f)
         sess.flush()
         sess.expunge_all()
-        f = sess.query(Foo).get(f.col1)
+        f = sess.get(Foo, f.col1)
         assert len(list(f.bars)) == 2
         f.bars.clear()
 
@@ -2308,7 +2308,7 @@ class CustomCollectionsTest(fixtures.MappedTest):
         sess.add(f)
         sess.flush()
         sess.expunge_all()
-        f = sess.query(Foo).get(f.col1)
+        f = sess.get(Foo, f.col1)
         assert len(list(f.bars)) == 2
 
         strongref = list(f.bars.values())
@@ -2319,7 +2319,7 @@ class CustomCollectionsTest(fixtures.MappedTest):
         f.bars["a"] = Bar("a")
         sess.flush()
         sess.expunge_all()
-        f = sess.query(Foo).get(f.col1)
+        f = sess.get(Foo, f.col1)
         assert len(list(f.bars)) == 2
 
         replaced = set([id(b) for b in list(f.bars.values())])
@@ -2564,7 +2564,7 @@ class CustomCollectionsTest(fixtures.MappedTest):
         sess.flush()
         sess.expunge_all()
 
-        p2 = sess.query(Parent).get(p1.col1)
+        p2 = sess.get(Parent, p1.col1)
         o = list(p2.children)
         assert len(o) == 3
 

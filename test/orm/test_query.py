@@ -1161,14 +1161,6 @@ class GetTest(QueryTest):
 
         s = fixture_session()
 
-        u1 = s.query(User).options(joinedload(User.addresses)).get(8)
-        eq_(len(u1.__dict__["addresses"]), 3)
-
-    def test_loader_options_future(self):
-        User = self.classes.User
-
-        s = fixture_session()
-
         u1 = s.get(User, 8, options=[joinedload(User.addresses)])
         eq_(len(u1.__dict__["addresses"]), 3)
 
@@ -1176,13 +1168,13 @@ class GetTest(QueryTest):
         CompositePk = self.classes.CompositePk
 
         s = fixture_session()
-        is_(s.query(CompositePk).get({"i": 100, "j": 100}), None)
+        is_(s.get(CompositePk, {"i": 100, "j": 100}), None)
 
     def test_get_composite_pk_keyword_based_result(self):
         CompositePk = self.classes.CompositePk
 
         s = fixture_session()
-        one_two = s.query(CompositePk).get({"i": 1, "j": 2})
+        one_two = s.get(CompositePk, {"i": 1, "j": 2})
         eq_(one_two.i, 1)
         eq_(one_two.j, 2)
         eq_(one_two.k, 3)
@@ -1191,38 +1183,28 @@ class GetTest(QueryTest):
         CompositePk = self.classes.CompositePk
 
         s = fixture_session()
-        q = s.query(CompositePk)
-        assert_raises(sa_exc.InvalidRequestError, q.get, {"i": 1, "k": 2})
+        assert_raises(
+            sa_exc.InvalidRequestError, s.get, CompositePk, {"i": 1, "k": 2}
+        )
 
     def test_get_composite_pk_keyword_based_too_few_keys(self):
         CompositePk = self.classes.CompositePk
 
         s = fixture_session()
-        q = s.query(CompositePk)
-        assert_raises(sa_exc.InvalidRequestError, q.get, {"i": 1})
+        assert_raises(sa_exc.InvalidRequestError, s.get, CompositePk, {"i": 1})
 
     def test_get_composite_pk_keyword_based_too_many_keys(self):
         CompositePk = self.classes.CompositePk
 
         s = fixture_session()
-        q = s.query(CompositePk)
         assert_raises(
-            sa_exc.InvalidRequestError, q.get, {"i": 1, "j": "2", "k": 3}
+            sa_exc.InvalidRequestError,
+            s.get,
+            CompositePk,
+            {"i": 1, "j": "2", "k": 3},
         )
 
     def test_get(self):
-        User = self.classes.User
-
-        s = fixture_session()
-        assert s.query(User).get(19) is None
-        u = s.query(User).get(7)
-        u2 = s.query(User).get(7)
-        assert u is u2
-        s.expunge_all()
-        u2 = s.query(User).get(7)
-        assert u is not u2
-
-    def test_get_future(self):
         User = self.classes.User
 
         s = fixture_session()
@@ -1238,13 +1220,13 @@ class GetTest(QueryTest):
         CompositePk = self.classes.CompositePk
 
         s = fixture_session()
-        assert s.query(CompositePk).get((100, 100)) is None
+        assert s.get(CompositePk, (100, 100)) is None
 
     def test_get_composite_pk_result(self):
         CompositePk = self.classes.CompositePk
 
         s = fixture_session()
-        one_two = s.query(CompositePk).get((1, 2))
+        one_two = s.get(CompositePk, (1, 2))
         assert one_two.i == 1
         assert one_two.j == 2
         assert one_two.k == 3
@@ -1253,29 +1235,52 @@ class GetTest(QueryTest):
         CompositePk = self.classes.CompositePk
 
         s = fixture_session()
-        q = s.query(CompositePk)
-        assert_raises(sa_exc.InvalidRequestError, q.get, 7)
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            r"Incorrect number of values in identifier to formulate "
+            r"primary key for session.get\(\); ",
+            s.get,
+            CompositePk,
+            7,
+        )
 
     def test_get_too_few_params_tuple(self):
         CompositePk = self.classes.CompositePk
 
         s = fixture_session()
-        q = s.query(CompositePk)
-        assert_raises(sa_exc.InvalidRequestError, q.get, (7,))
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            r"Incorrect number of values in identifier to formulate "
+            r"primary key for session.get\(\); ",
+            s.get,
+            CompositePk,
+            (7,),
+        )
 
     def test_get_too_many_params(self):
         CompositePk = self.classes.CompositePk
 
         s = fixture_session()
-        q = s.query(CompositePk)
-        assert_raises(sa_exc.InvalidRequestError, q.get, (7, 10, 100))
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            r"Incorrect number of values in identifier to formulate "
+            r"primary key for session.get\(\); ",
+            s.get,
+            CompositePk,
+            (7, 10, 100),
+        )
 
     def test_get_against_col(self):
         User = self.classes.User
 
         s = fixture_session()
-        q = s.query(User.id)
-        assert_raises(sa_exc.InvalidRequestError, q.get, (5,))
+        assert_raises_message(
+            sa_exc.ArgumentError,
+            r"Expected mapped class or mapper, got: .*Instrumented",
+            s.get,
+            User.id,
+            (5,),
+        )
 
     @testing.fixture
     def outerjoin_mapping(self, registry):
@@ -1302,19 +1307,19 @@ class GetTest(QueryTest):
 
         UserThing = outerjoin_mapping
         sess = fixture_session()
-        u10 = sess.query(UserThing).get((10, None))
+        u10 = sess.get(UserThing, (10, None))
         eq_(u10, UserThing(id=10))
 
     def test_get_fully_null_pk(self):
         User = self.classes.User
 
         s = fixture_session()
-        q = s.query(User)
         assert_raises_message(
             sa_exc.SAWarning,
             r"fully NULL primary key identity cannot load any object.  "
             "This condition may raise an error in a future release.",
-            q.get,
+            s.get,
+            User,
             None,
         )
 
@@ -1322,47 +1327,15 @@ class GetTest(QueryTest):
         UserThing = outerjoin_mapping
 
         s = fixture_session()
-        q = s.query(UserThing)
 
         assert_raises_message(
             sa_exc.SAWarning,
             r"fully NULL primary key identity cannot load any object.  "
             "This condition may raise an error in a future release.",
-            q.get,
+            s.get,
+            UserThing,
             (None, None),
         )
-
-    def test_no_criterion(self):
-        """test that get()/load() does not use preexisting filter/etc.
-        criterion"""
-
-        User, Address = self.classes.User, self.classes.Address
-
-        s = fixture_session()
-
-        q = s.query(User).join(User.addresses).filter(Address.user_id == 8)
-        assert_raises(sa_exc.InvalidRequestError, q.get, 7)
-        assert_raises(
-            sa_exc.InvalidRequestError,
-            s.query(User).filter(User.id == 7).get,
-            19,
-        )
-
-        # order_by()/get() doesn't raise
-        s.query(User).order_by(User.id).get(8)
-
-    def test_no_criterion_when_already_loaded(self):
-        """test that get()/load() does not use preexisting filter/etc.
-        criterion, even when we're only using the identity map."""
-
-        User, Address = self.classes.User, self.classes.Address
-
-        s = fixture_session()
-
-        s.query(User).get(7)
-
-        q = s.query(User).join(User.addresses).filter(Address.user_id == 8)
-        assert_raises(sa_exc.InvalidRequestError, q.get, 7)
 
     def test_unique_param_names(self):
         users = self.tables.users
@@ -1375,20 +1348,20 @@ class GetTest(QueryTest):
         assert s.primary_key == m.primary_key
 
         sess = fixture_session()
-        assert sess.query(SomeUser).get(7).name == "jack"
+        assert sess.get(SomeUser, 7).name == "jack"
 
     def test_load(self):
         User, Address = self.classes.User, self.classes.Address
 
         s = fixture_session(autoflush=False)
 
-        assert s.query(User).populate_existing().get(19) is None
+        assert s.get(User, 19, populate_existing=True) is None
 
-        u = s.query(User).populate_existing().get(7)
-        u2 = s.query(User).populate_existing().get(7)
+        u = s.get(User, 7, populate_existing=True)
+        u2 = s.get(User, 7, populate_existing=True)
         assert u is u2
         s.expunge_all()
-        u2 = s.query(User).populate_existing().get(7)
+        u2 = s.get(User, 7, populate_existing=True)
         assert u is not u2
 
         u2.name = "some name"
@@ -1397,7 +1370,7 @@ class GetTest(QueryTest):
         assert u2 in s.dirty
         assert a in u2.addresses
 
-        s.query(User).populate_existing().get(7)
+        s.get(User, 7, populate_existing=True)
 
         assert u2 not in s.dirty
         assert u2.name == "jack"
@@ -1425,114 +1398,6 @@ class GetTest(QueryTest):
                 sess.get(LocalFoo, ustring),
                 LocalFoo(id=ustring, data=ustring),
             )
-
-    def test_populate_existing(self):
-        User, Address = self.classes.User, self.classes.Address
-        Order = self.classes.Order
-
-        s = fixture_session(autoflush=False)
-
-        userlist = s.query(User).all()
-
-        u = userlist[0]
-        u.name = "foo"
-        a = Address(name="ed")
-        u.addresses.append(a)
-
-        self.assert_(a in u.addresses)
-
-        s.query(User).populate_existing().all()
-
-        self.assert_(u not in s.dirty)
-
-        self.assert_(u.name == "jack")
-
-        self.assert_(a not in u.addresses)
-
-        u.addresses[0].email_address = "lala"
-        u.orders[1].items[2].description = "item 12"
-        # test that lazy load doesn't change child items
-        s.query(User).populate_existing().all()
-        assert u.addresses[0].email_address == "lala"
-        assert u.orders[1].items[2].description == "item 12"
-
-        # eager load does
-        s.query(User).options(
-            joinedload(User.addresses),
-            joinedload(User.orders).joinedload(Order.items),
-        ).populate_existing().all()
-        assert u.addresses[0].email_address == "jack@bean.com"
-        assert u.orders[1].items[2].description == "item 5"
-
-    def test_populate_existing_future(self):
-        User, Address = self.classes.User, self.classes.Address
-        Order = self.classes.Order
-
-        s = fixture_session(autoflush=False)
-
-        userlist = s.query(User).all()
-
-        u = userlist[0]
-        u.name = "foo"
-        a = Address(name="ed")
-        u.addresses.append(a)
-
-        self.assert_(a in u.addresses)
-
-        stmt = select(User).execution_options(populate_existing=True)
-
-        s.execute(
-            stmt,
-        ).scalars().all()
-
-        self.assert_(u not in s.dirty)
-
-        self.assert_(u.name == "jack")
-
-        self.assert_(a not in u.addresses)
-
-        u.addresses[0].email_address = "lala"
-        u.orders[1].items[2].description = "item 12"
-        # test that lazy load doesn't change child items
-        s.query(User).populate_existing().all()
-        assert u.addresses[0].email_address == "lala"
-        assert u.orders[1].items[2].description == "item 12"
-
-        # eager load does
-
-        stmt = (
-            select(User)
-            .options(
-                joinedload(User.addresses),
-                joinedload(User.orders).joinedload(Order.items),
-            )
-            .execution_options(populate_existing=True)
-        )
-
-        s.execute(stmt).unique().scalars().all()
-
-        assert u.addresses[0].email_address == "jack@bean.com"
-        assert u.orders[1].items[2].description == "item 5"
-
-    def test_option_transfer_future(self):
-        User = self.classes.User
-        stmt = select(User).execution_options(
-            populate_existing=True, autoflush=False, yield_per=10
-        )
-        s = fixture_session()
-
-        m1 = mock.Mock()
-
-        event.listen(s, "do_orm_execute", m1)
-
-        s.execute(stmt)
-
-        eq_(
-            m1.mock_calls[0][1][0].load_options,
-            QueryContext.default_load_options(
-                _autoflush=False, _populate_existing=True, _yield_per=10
-            ),
-        )
 
 
 class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
@@ -1654,14 +1519,6 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
             text("select * from table"),
         )
         assert_raises(sa_exc.InvalidRequestError, q.with_polymorphic, User)
-
-    def test_only_full_mapper_zero(self):
-        User, Address = self.classes.User, self.classes.Address
-
-        s = fixture_session()
-
-        q = s.query(User, Address)
-        assert_raises(sa_exc.InvalidRequestError, q.get, 5)
 
     def test_entity_or_mapper_zero_from_context(self):
         User, Address = self.classes.User, self.classes.Address
@@ -3283,7 +3140,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
-        address = sess.query(Address).get(3)
+        address = sess.get(Address, 3)
         assert [User(id=8)] == sess.query(User).filter(
             User.addresses.contains(address)
         ).all()
@@ -3436,7 +3293,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
             Address.id
         ).all()
 
-        dingaling = sess.query(Dingaling).get(2)
+        dingaling = sess.get(Dingaling, 2)
         assert [User(id=9)] == sess.query(User).filter(
             User.addresses.any(Address.dingaling == dingaling)
         ).all()
@@ -3445,7 +3302,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         Item, Order = self.classes.Item, self.classes.Order
 
         sess = fixture_session()
-        item = sess.query(Item).get(3)
+        item = sess.get(Item, 3)
 
         eq_(
             sess.query(Order)
@@ -3462,7 +3319,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
             [Order(id=4), Order(id=5)],
         )
 
-        item2 = sess.query(Item).get(5)
+        item2 = sess.get(Item, 5)
         eq_(
             sess.query(Order)
             .filter(Order.items.contains(item))
@@ -3522,7 +3379,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         )
 
         sess = fixture_session()
-        user = sess.query(User).get(8)
+        user = sess.get(User, 8)
         assert [Address(id=2), Address(id=3), Address(id=4)] == sess.query(
             Address
         ).filter(Address.user == user).all()
@@ -3542,7 +3399,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         ).all()  # noqa
 
         # o2o
-        dingaling = sess.query(Dingaling).get(2)
+        dingaling = sess.get(Dingaling, 2)
         assert [Address(id=5)] == sess.query(Address).filter(
             Address.dingaling == dingaling
         ).all()
@@ -3567,7 +3424,7 @@ class FilterTest(QueryTest, AssertsCompiledSQL):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
-        user = sess.query(User).get(8)
+        user = sess.get(User, 8)
         assert [Address(id=2), Address(id=3), Address(id=4)] == sess.query(
             Address
         ).filter_by(user=user).all()
@@ -6440,7 +6297,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
-        u1 = sess.query(User).get(7)
+        u1 = sess.get(User, 7)
         q = (
             sess.query(Address)
             .select_from(Address)
@@ -6459,7 +6316,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
-        u1 = sess.query(User).get(7)
+        u1 = sess.get(User, 7)
         q = sess.query(User, Address).filter(
             with_parent(u1, User.addresses, from_entity=Address)
         )
@@ -6478,7 +6335,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
-        u1 = sess.query(User).get(7)
+        u1 = sess.get(User, 7)
         a1 = aliased(Address)
         q = sess.query(a1).filter(with_parent(u1, User.addresses.of_type(a1)))
         self.assert_compile(
@@ -6495,7 +6352,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
-        u1 = sess.query(User).get(7)
+        u1 = sess.get(User, 7)
         a1 = aliased(Address)
         a2 = aliased(Address)
         q = sess.query(a1, a2).filter(
@@ -6518,7 +6375,7 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
-        u1 = sess.query(User).get(7)
+        u1 = sess.get(User, 7)
         a1 = aliased(Address)
         a2 = aliased(Address)
         q = sess.query(a1, a2).filter(
@@ -7335,6 +7192,114 @@ class ImmediateTest(_fixtures.FixtureTest):
 
 
 class ExecutionOptionsTest(QueryTest):
+    def test_populate_existing(self):
+        User, Address = self.classes.User, self.classes.Address
+        Order = self.classes.Order
+
+        s = fixture_session(autoflush=False)
+
+        userlist = s.query(User).all()
+
+        u = userlist[0]
+        u.name = "foo"
+        a = Address(name="ed")
+        u.addresses.append(a)
+
+        self.assert_(a in u.addresses)
+
+        s.query(User).populate_existing().all()
+
+        self.assert_(u not in s.dirty)
+
+        self.assert_(u.name == "jack")
+
+        self.assert_(a not in u.addresses)
+
+        u.addresses[0].email_address = "lala"
+        u.orders[1].items[2].description = "item 12"
+        # test that lazy load doesn't change child items
+        s.query(User).populate_existing().all()
+        assert u.addresses[0].email_address == "lala"
+        assert u.orders[1].items[2].description == "item 12"
+
+        # eager load does
+        s.query(User).options(
+            joinedload(User.addresses),
+            joinedload(User.orders).joinedload(Order.items),
+        ).populate_existing().all()
+        assert u.addresses[0].email_address == "jack@bean.com"
+        assert u.orders[1].items[2].description == "item 5"
+
+    def test_populate_existing_future(self):
+        User, Address = self.classes.User, self.classes.Address
+        Order = self.classes.Order
+
+        s = fixture_session(autoflush=False)
+
+        userlist = s.query(User).all()
+
+        u = userlist[0]
+        u.name = "foo"
+        a = Address(name="ed")
+        u.addresses.append(a)
+
+        self.assert_(a in u.addresses)
+
+        stmt = select(User).execution_options(populate_existing=True)
+
+        s.execute(
+            stmt,
+        ).scalars().all()
+
+        self.assert_(u not in s.dirty)
+
+        self.assert_(u.name == "jack")
+
+        self.assert_(a not in u.addresses)
+
+        u.addresses[0].email_address = "lala"
+        u.orders[1].items[2].description = "item 12"
+        # test that lazy load doesn't change child items
+        s.query(User).populate_existing().all()
+        assert u.addresses[0].email_address == "lala"
+        assert u.orders[1].items[2].description == "item 12"
+
+        # eager load does
+
+        stmt = (
+            select(User)
+            .options(
+                joinedload(User.addresses),
+                joinedload(User.orders).joinedload(Order.items),
+            )
+            .execution_options(populate_existing=True)
+        )
+
+        s.execute(stmt).unique().scalars().all()
+
+        assert u.addresses[0].email_address == "jack@bean.com"
+        assert u.orders[1].items[2].description == "item 5"
+
+    def test_option_transfer_future(self):
+        User = self.classes.User
+        stmt = select(User).execution_options(
+            populate_existing=True, autoflush=False, yield_per=10
+        )
+        s = fixture_session()
+
+        m1 = mock.Mock()
+
+        event.listen(s, "do_orm_execute", m1)
+
+        s.execute(stmt)
+
+        eq_(
+            m1.mock_calls[0][1][0].load_options,
+            QueryContext.default_load_options(
+                _autoflush=False, _populate_existing=True, _yield_per=10
+            ),
+        )
+
     def test_option_building(self):
         User = self.classes.User
 
@@ -7682,9 +7647,9 @@ class QueryClsTest(QueryTest):
 
         s = fixture_session(query_cls=fixture())
 
-        assert s.query(User).get(19) is None
-        u = s.query(User).get(7)
-        u2 = s.query(User).get(7)
+        assert s.get(User, 19) is None
+        u = s.get(User, 7)
+        u2 = s.get(User, 7)
         assert u is u2
 
     def _test_o2m_lazyload(self, fixture):

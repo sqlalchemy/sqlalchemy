@@ -51,7 +51,7 @@ class InstanceProcessorTest(_fixtures.FixtureTest):
                         Order(id=5, address=None),
                     ],
                 ),
-                s.query(User).populate_existing().get(7),
+                s.get(User, 7, populate_existing=True),
             )
 
         self.assert_sql_count(testing.db, go, 1)
