@@ -23,6 +23,7 @@ from sqlalchemy import text
 from sqlalchemy import true
 from sqlalchemy import util
 from sqlalchemy.engine import default
+from sqlalchemy.engine.base import Engine
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import as_declarative
 from sqlalchemy.orm import attributes
@@ -125,6 +126,15 @@ join_tuple_form = (
     "arguments in SQLAlchemy 2.0."
 )
 
+autocommit_dep = (
+    "The Session.autocommit parameter is deprecated "
+    "and will be removed in SQLAlchemy version 2.0."
+)
+
+subtransactions_dep = (
+    "The Session.begin.subtransactions flag is deprecated "
+    "and will be removed in SQLAlchemy version 2.0."
+)
 opt_strings_dep = (
     "Using strings to indicate column or relationship "
     "paths in loader options"
@@ -144,6 +154,11 @@ query_get_dep = r"The Query.get\(\) method is considered legacy as of the 1.x"
 sef_dep = (
     r"The Query.select_entity_from\(\) method is considered "
     "legacy as of the 1.x"
+)
+
+with_polymorphic_dep = (
+    r"The Query.with_polymorphic\(\) method is considered legacy as of "
+    r"the 1.x series of SQLAlchemy and will be removed in 2.0"
 )
 
 
@@ -2772,19 +2787,13 @@ class SessionTest(fixtures.RemovesEvents, _LocalFixture):
         s1 = Session(testing.db)
         s1.begin()
 
-        with testing.expect_deprecated_20(
-            "The Session.begin.subtransactions flag is deprecated "
-            "and will be removed in SQLAlchemy version 2.0."
-        ):
+        with testing.expect_deprecated_20(subtransactions_dep):
             s1.begin(subtransactions=True)
 
         s1.close()
 
     def test_autocommit_deprecated(Self):
-        with testing.expect_deprecated_20(
-            "The Session.autocommit parameter is deprecated "
-            "and will be removed in SQLAlchemy version 2.0."
-        ):
+        with testing.expect_deprecated_20(autocommit_dep):
             Session(autocommit=True)
 
     @testing.combinations(
@@ -2922,6 +2931,124 @@ class SessionTest(fixtures.RemovesEvents, _LocalFixture):
         eq_(sess.query(User).count(), 1)
 
 
+class TransScopingTest(_fixtures.FixtureTest):
+    run_inserts = None
+    __prefer_requires__ = ("independent_connections",)
+
+    @testing.combinations((True,), (False,), argnames="begin")
+    @testing.combinations((True,), (False,), argnames="expire_on_commit")
+    @testing.combinations((True,), (False,), argnames="modify_unconditional")
+    @testing.combinations(
+        ("nothing",), ("modify",), ("add",), ("delete",), argnames="case_"
+    )
+    def test_autobegin_attr_change(
+        self, case_, begin, modify_unconditional, expire_on_commit
+    ):
+        """test :ticket:`6360`"""
+
+        autocommit = True
+        User, users = self.classes.User, self.tables.users
+
+        self.mapper_registry.map_imperatively(User, users)
+
+        with testing.expect_deprecated_20(autocommit_dep):
+            s = Session(
+                testing.db,
+                autocommit=autocommit,
+                expire_on_commit=expire_on_commit,
+            )
+
+        u = User(name="x")
+        u2 = User(name="d")
+        u3 = User(name="e")
+        s.add_all([u, u2, u3])
+
+        if autocommit:
+            s.flush()
+        else:
+            s.commit()
+
+        if begin:
+            s.begin()
+
+        if case_ == "add":
+            # this autobegins
+            s.add(User(name="q"))
+        elif case_ == "delete":
+            # this autobegins
+            s.delete(u2)
+        elif case_ == "modify":
+            # this autobegins
+            u3.name = "m"
+
+        if case_ == "nothing" and not begin:
+            assert not s._transaction
+            expect_expire = expire_on_commit
+        elif autocommit and not begin:
+            assert not s._transaction
+            expect_expire = expire_on_commit
+        else:
+            assert s._transaction
+            expect_expire = True
+
+        if modify_unconditional:
+            # this autobegins
+            u.name = "y"
+            expect_expire = True
+
+        if not expect_expire:
+            assert not s._transaction
+
+        # test is that state is consistent after rollback()
+        s.rollback()
+
+        if autocommit and not begin and modify_unconditional:
+            eq_(u.name, "y")
+        else:
+            if not expect_expire:
+                assert "name" in u.__dict__
+            else:
+                assert "name" not in u.__dict__
+            eq_(u.name, "x")
+
+    def test_no_autoflush_or_commit_in_expire_w_autocommit(self):
+        """test second part of :ticket:`6233`.
+
+        Here we test that the "autoflush on unexpire" feature added
+        in :ticket:`5226` is turned off for a legacy autocommit session.
+
+        """
+
+        with testing.expect_deprecated_20(autocommit_dep):
+            s = Session(
+                testing.db,
+                autocommit=True,
+                expire_on_commit=True,
+                autoflush=True,
+            )
+
+        User, users = self.classes.User, self.tables.users
+
+        self.mapper_registry.map_imperatively(User, users)
+
+        u1 = User(name="u1")
+        s.add(u1)
+        s.flush()  # this commits
+
+        u1.name = "u2"  # this does not commit
+
+        assert "id" not in u1.__dict__
+        u1.id  # this unexpires
+
+        # never expired
+        eq_(u1.__dict__["name"], "u2")
+
+        eq_(u1.name, "u2")
+
+        # still in dirty collection
+        assert u1 in s.dirty
+
+
 class AutocommitClosesOnFailTest(fixtures.MappedTest):
     __requires__ = ("deferrable_fks",)
 
@@ -2963,7 +3090,8 @@ class AutocommitClosesOnFailTest(fixtures.MappedTest):
     def test_close_transaction_on_commit_fail(self):
         T2 = self.classes.T2
 
-        session = Session(testing.db, autocommit=True)
+        with testing.expect_deprecated_20(autocommit_dep):
+            session = Session(testing.db, autocommit=True)
 
         # with a deferred constraint, this fails at COMMIT time instead
         # of at INSERT time.
@@ -4246,6 +4374,382 @@ class DistinctOrderByImplicitTest(QueryTest, AssertsCompiledSQL):
                 "addresses_email_address FROM users, addresses "
                 "ORDER BY users.id, users.name, addresses.email_address",
             )
+
+
+class AutoCommitTest(_LocalFixture):
+    __backend__ = True
+
+    def test_begin_nested_requires_trans(self):
+        with assertions.expect_deprecated_20(autocommit_dep):
+            sess = fixture_session(autocommit=True)
+        assert_raises(sa_exc.InvalidRequestError, sess.begin_nested)
+
+    def test_begin_preflush(self):
+        User = self.classes.User
+        with assertions.expect_deprecated_20(autocommit_dep):
+            sess = fixture_session(autocommit=True)
+
+        u1 = User(name="ed")
+        sess.add(u1)
+
+        sess.begin()
+        u2 = User(name="some other user")
+        sess.add(u2)
+        sess.rollback()
+        assert u2 not in sess
+        assert u1 in sess
+        assert sess.query(User).filter_by(name="ed").one() is u1
+
+    def test_accounting_commit_fails_add(self):
+        User = self.classes.User
+        with assertions.expect_deprecated_20(autocommit_dep):
+            sess = fixture_session(autocommit=True)
+
+        fail = False
+
+        def fail_fn(*arg, **kw):
+            if fail:
+                raise Exception("commit fails")
+
+        event.listen(sess, "after_flush_postexec", fail_fn)
+        u1 = User(name="ed")
+        sess.add(u1)
+
+        fail = True
+        assert_raises(Exception, sess.flush)
+        fail = False
+
+        assert u1 not in sess
+        u1new = User(id=2, name="fred")
+        sess.add(u1new)
+        sess.add(u1)
+        sess.flush()
+        assert u1 in sess
+        eq_(
+            sess.query(User.name).order_by(User.name).all(),
+            [("ed",), ("fred",)],
+        )
+
+    def test_accounting_commit_fails_delete(self):
+        User = self.classes.User
+        with assertions.expect_deprecated_20(autocommit_dep):
+            sess = fixture_session(autocommit=True)
+
+        fail = False
+
+        def fail_fn(*arg, **kw):
+            if fail:
+                raise Exception("commit fails")
+
+        event.listen(sess, "after_flush_postexec", fail_fn)
+        u1 = User(name="ed")
+        sess.add(u1)
+        sess.flush()
+
+        sess.delete(u1)
+        fail = True
+        assert_raises(Exception, sess.flush)
+        fail = False
+
+        assert u1 in sess
+        assert u1 not in sess.deleted
+        sess.delete(u1)
+        sess.flush()
+        assert u1 not in sess
+        eq_(sess.query(User.name).order_by(User.name).all(), [])
+
+    @testing.requires.updateable_autoincrement_pks
+    def test_accounting_no_select_needed(self):
+        """test that flush accounting works on non-expired instances
+        when autocommit=True/expire_on_commit=True."""
+
+        User = self.classes.User
+        with assertions.expect_deprecated_20(autocommit_dep):
+            sess = fixture_session(autocommit=True, expire_on_commit=True)
+
+        u1 = User(id=1, name="ed")
+        sess.add(u1)
+        sess.flush()
+
+        u1.id = 3
+        u1.name = "fred"
+        self.assert_sql_count(testing.db, sess.flush, 1)
+        assert "id" not in u1.__dict__
+        eq_(u1.id, 3)
+
+
+class SessionStateTest(_fixtures.FixtureTest):
+    run_inserts = None
+
+    __prefer_requires__ = ("independent_connections",)
+
+    def test_autocommit_doesnt_raise_on_pending(self):
+        User, users = self.classes.User, self.tables.users
+
+        self.mapper_registry.map_imperatively(User, users)
+        with assertions.expect_deprecated_20(autocommit_dep):
+            session = Session(testing.db, autocommit=True)
+
+        session.add(User(name="ed"))
+
+        session.begin()
+        session.flush()
+        session.commit()
+
+
+class SessionTransactionTest(fixtures.RemovesEvents, _fixtures.FixtureTest):
+    run_inserts = None
+    __backend__ = True
+
+    @testing.fixture
+    def conn(self):
+        with testing.db.connect() as conn:
+            yield conn
+
+    @testing.fixture
+    def future_conn(self):
+
+        engine = Engine._future_facade(testing.db)
+        with engine.connect() as conn:
+            yield conn
+
+    def test_deactive_status_check(self):
+        sess = fixture_session()
+        trans = sess.begin()
+
+        with assertions.expect_deprecated_20(subtransactions_dep):
+            trans2 = sess.begin(subtransactions=True)
+        trans2.rollback()
+        assert_raises_message(
+            sa_exc.InvalidRequestError,
+            "This session is in 'inactive' state, due to the SQL transaction "
+            "being rolled back; no further SQL can be emitted within this "
+            "transaction.",
+            trans.commit,
+        )
+
+    def test_deactive_status_check_w_exception(self):
+        sess = fixture_session()
+        trans = sess.begin()
+        with assertions.expect_deprecated_20(subtransactions_dep):
+            trans2 = sess.begin(subtransactions=True)
+        try:
+            raise Exception("test")
+        except Exception:
+            trans2.rollback(_capture_exception=True)
+        assert_raises_message(
+            sa_exc.PendingRollbackError,
+            r"This Session's transaction has been rolled back due to a "
+            r"previous exception during flush. To begin a new transaction "
+            r"with this Session, first issue Session.rollback\(\). "
+            r"Original exception was: test",
+            trans.commit,
+        )
+
+    def test_error_on_using_inactive_session_commands(self):
+        users, User = self.tables.users, self.classes.User
+
+        self.mapper_registry.map_imperatively(User, users)
+        with assertions.expect_deprecated_20(autocommit_dep):
+            sess = fixture_session(autocommit=True)
+        sess.begin()
+        with assertions.expect_deprecated_20(subtransactions_dep):
+            sess.begin(subtransactions=True)
+        sess.add(User(name="u1"))
+        sess.flush()
+        sess.rollback()
+        with assertions.expect_deprecated_20(subtransactions_dep):
+            assert_raises_message(
+                sa_exc.InvalidRequestError,
+                "This session is in 'inactive' state, due to the SQL "
+                "transaction "
+                "being rolled back; no further SQL can be emitted within this "
+                "transaction.",
+                sess.begin,
+                subtransactions=True,
+            )
+        sess.close()
+
+    def test_subtransaction_on_external_subtrans(self, conn):
+        users, User = self.tables.users, self.classes.User
+
+        self.mapper_registry.map_imperatively(User, users)
+
+        trans = conn.begin()
+        sess = Session(bind=conn, autocommit=False, autoflush=True)
+        with assertions.expect_deprecated_20(subtransactions_dep):
+            sess.begin(subtransactions=True)
+        u = User(name="ed")
+        sess.add(u)
+        sess.flush()
+        sess.commit()  # commit does nothing
+        trans.rollback()  # rolls back
+        assert len(sess.query(User).all()) == 0
+        sess.close()
+
+    def test_subtransaction_on_noautocommit(self):
+        User, users = self.classes.User, self.tables.users
+
+        self.mapper_registry.map_imperatively(User, users)
+        sess = fixture_session(autocommit=False, autoflush=True)
+        with assertions.expect_deprecated_20(subtransactions_dep):
+            sess.begin(subtransactions=True)
+        u = User(name="u1")
+        sess.add(u)
+        sess.flush()
+        sess.commit()  # commit does nothing
+        sess.rollback()  # rolls back
+        assert len(sess.query(User).all()) == 0
+        sess.close()
+
+    @testing.requires.savepoints
+    def test_heavy_nesting(self):
+        users = self.tables.users
+
+        session = fixture_session()
+        session.begin()
+        session.connection().execute(users.insert().values(name="user1"))
+        with assertions.expect_deprecated_20(subtransactions_dep):
+            session.begin(subtransactions=True)
+        session.begin_nested()
+        session.connection().execute(users.insert().values(name="user2"))
+        assert (
+            session.connection()
+            .exec_driver_sql("select count(1) from users")
+            .scalar()
+            == 2
+        )
+        session.rollback()
+        assert (
+            session.connection()
+            .exec_driver_sql("select count(1) from users")
+            .scalar()
+            == 1
+        )
+        session.connection().execute(users.insert().values(name="user3"))
+        session.commit()
+        assert (
+            session.connection()
+            .exec_driver_sql("select count(1) from users")
+            .scalar()
+            == 2
+        )
+
+    @testing.requires.savepoints
+    def test_heavy_nesting_future(self):
+        users = self.tables.users
+
+        from sqlalchemy.future import Engine
+
+        engine = Engine._future_facade(testing.db)
+        with Session(engine, autocommit=False) as session:
+            session.begin()
+            session.connection().execute(users.insert().values(name="user1"))
+            with assertions.expect_deprecated_20(subtransactions_dep):
+                session.begin(subtransactions=True)
+            session.begin_nested()
+            session.connection().execute(users.insert().values(name="user2"))
+            assert (
+                session.connection()
+                .exec_driver_sql("select count(1) from users")
+                .scalar()
+                == 2
+            )
+            session.rollback()
+            assert (
+                session.connection()
+                .exec_driver_sql("select count(1) from users")
+                .scalar()
+                == 1
+            )
+            session.connection().execute(users.insert().values(name="user3"))
+            session.commit()
+            assert (
+                session.connection()
+                .exec_driver_sql("select count(1) from users")
+                .scalar()
+                == 2
+            )
+
+    @testing.requires.savepoints
+    def test_mixed_transaction_control(self):
+        users, User = self.tables.users, self.classes.User
+
+        self.mapper_registry.map_imperatively(User, users)
+
+        with assertions.expect_deprecated_20(autocommit_dep):
+            sess = fixture_session(autocommit=True)
+
+        sess.begin()
+        sess.begin_nested()
+        with assertions.expect_deprecated_20(subtransactions_dep):
+            transaction = sess.begin(subtransactions=True)
+
+        sess.add(User(name="u1"))
+
+        transaction.commit()
+        sess.commit()
+        sess.commit()
+
+        sess.close()
+
+        eq_(len(sess.query(User).all()), 1)
+
+        t1 = sess.begin()
+        t2 = sess.begin_nested()
+
+        sess.add(User(name="u2"))
+
+        t2.commit()
+        assert sess._legacy_transaction() is t1
+
+        sess.close()
+
+    @testing.requires.savepoints
+    def test_nested_transaction_connection_add_autocommit(self):
+        users, User = self.tables.users, self.classes.User
+
+        self.mapper_registry.map_imperatively(User, users)
+
+        with assertions.expect_deprecated_20(autocommit_dep):
+            sess = fixture_session(autocommit=True)
+
+        sess.begin()
+        sess.begin_nested()
+
+        u1 = User(name="u1")
+        sess.add(u1)
+        sess.flush()
+
+        sess.rollback()
+
+        u2 = User(name="u2")
+        sess.add(u2)
+
+        sess.commit()
+
+        eq_(set(sess.query(User).all()), set([u2]))
+
+        sess.begin()
+        sess.begin_nested()
+
+        u3 = User(name="u3")
+        sess.add(u3)
+        sess.commit()  # commit the nested transaction
+        sess.rollback()
+
+        eq_(set(sess.query(User).all()), set([u2]))
+
+        sess.close()
+
+    def test_active_flag_autocommit(self):
+        with assertions.expect_deprecated_20(autocommit_dep):
+            sess = Session(bind=testing.db, autocommit=True)
+        assert not sess.is_active
+        sess.begin()
+        assert sess.is_active
+        sess.rollback()
+        assert not sess.is_active
 
 
 class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
@@ -7402,6 +7906,89 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                 joinedload(User.orders).options(
                     joinedload(Order.items).options(joinedload(Item.keywords))
                 ),
+            ),
+            compare_values=True,
+        )
+
+
+class PolyCacheKeyTest(CacheKeyFixture, _poly_fixtures._Polymorphic):
+    run_setup_mappers = "once"
+    run_inserts = None
+    run_deletes = None
+
+    def _stmt_20(self, *elements):
+        return tuple(
+            elem._statement_20() if isinstance(elem, sa.orm.Query) else elem
+            for elem in elements
+        )
+
+    def test_wp_queries(self):
+        Person, Manager, Engineer, Boss = self.classes(
+            "Person", "Manager", "Engineer", "Boss"
+        )
+
+        def one():
+            with assertions.expect_deprecated_20(w_polymorphic_dep):
+                return (
+                    fixture_session()
+                    .query(Person)
+                    .with_polymorphic([Manager, Engineer])
+                )
+
+        def two():
+            wp = with_polymorphic(Person, [Manager, Engineer])
+
+            return fixture_session().query(wp)
+
+        def three():
+            wp = with_polymorphic(Person, [Manager, Engineer])
+
+            return fixture_session().query(wp).filter(wp.name == "asdfo")
+
+        def three_a():
+            wp = with_polymorphic(Person, [Manager, Engineer], flat=True)
+
+            return fixture_session().query(wp).filter(wp.name == "asdfo")
+
+        def four():
+            with assertions.expect_deprecated_20(w_polymorphic_dep):
+                return (
+                    fixture_session()
+                    .query(Person)
+                    .with_polymorphic([Manager, Engineer])
+                    .filter(Person.name == "asdf")
+                )
+
+        def five():
+            subq = (
+                select(Person)
+                .outerjoin(Manager)
+                .outerjoin(Engineer)
+                .subquery()
+            )
+            wp = with_polymorphic(Person, [Manager, Engineer], subq)
+
+            return fixture_session().query(wp).filter(wp.name == "asdfo")
+
+        def six():
+            subq = (
+                select(Person)
+                .outerjoin(Manager)
+                .outerjoin(Engineer)
+                .subquery()
+            )
+
+            with assertions.expect_deprecated_20(w_polymorphic_dep):
+                return (
+                    fixture_session()
+                    .query(Person)
+                    .with_polymorphic([Manager, Engineer], subq)
+                    .filter(Person.name == "asdfo")
+                )
+
+        self._run_cache_key_fixture(
+            lambda: self._stmt_20(
+                one(), two(), three(), three_a(), four(), five(), six()
             ),
             compare_values=True,
         )

@@ -1666,11 +1666,9 @@ class SingleOnJoinedTest(fixtures.MappedTest):
         sess.expunge_all()
 
         def go():
+            wp = with_polymorphic(Person, "*")
             eq_(
-                sess.query(Person)
-                .with_polymorphic("*")
-                .order_by(Person.person_id)
-                .all(),
+                sess.query(wp).order_by(wp.person_id).all(),
                 [
                     Person(name="p1"),
                     Employee(name="e1", employee_data="ed1"),
@@ -1791,7 +1789,9 @@ class SingleFromPolySelectableTest(
         poly = self._with_poly_fixture()
 
         s = fixture_session()
-        q = s.query(Boss).with_polymorphic(Boss, poly)
+
+        wp = with_polymorphic(Boss, [], poly)
+        q = s.query(wp)
         self.assert_compile(
             q,
             "SELECT anon_1.employee_id AS anon_1_employee_id, "

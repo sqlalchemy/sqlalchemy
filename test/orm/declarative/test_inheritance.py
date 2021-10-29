@@ -9,6 +9,7 @@ from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.orm.decl_api import registry
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -967,10 +968,11 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         sess.add(c2)
         sess.flush()
         sess.expunge_all()
+
+        wp = with_polymorphic(Person, [Engineer])
         eq_(
-            sess.query(Person)
-            .with_polymorphic(Engineer)
-            .filter(Engineer.primary_language == "cobol")
+            sess.query(wp)
+            .filter(wp.Engineer.primary_language == "cobol")
             .first(),
             Engineer(name="vlad"),
         )

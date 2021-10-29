@@ -581,13 +581,6 @@ class PolyCacheKeyTest(CacheKeyFixture, _poly_fixtures._Polymorphic):
             "Person", "Manager", "Engineer", "Boss"
         )
 
-        def one():
-            return (
-                fixture_session()
-                .query(Person)
-                .with_polymorphic([Manager, Engineer])
-            )
-
         def two():
             wp = with_polymorphic(Person, [Manager, Engineer])
 
@@ -603,14 +596,6 @@ class PolyCacheKeyTest(CacheKeyFixture, _poly_fixtures._Polymorphic):
 
             return fixture_session().query(wp).filter(wp.name == "asdfo")
 
-        def four():
-            return (
-                fixture_session()
-                .query(Person)
-                .with_polymorphic([Manager, Engineer])
-                .filter(Person.name == "asdf")
-            )
-
         def five():
             subq = (
                 select(Person)
@@ -622,25 +607,8 @@ class PolyCacheKeyTest(CacheKeyFixture, _poly_fixtures._Polymorphic):
 
             return fixture_session().query(wp).filter(wp.name == "asdfo")
 
-        def six():
-            subq = (
-                select(Person)
-                .outerjoin(Manager)
-                .outerjoin(Engineer)
-                .subquery()
-            )
-
-            return (
-                fixture_session()
-                .query(Person)
-                .with_polymorphic([Manager, Engineer], subq)
-                .filter(Person.name == "asdfo")
-            )
-
         self._run_cache_key_fixture(
-            lambda: stmt_20(
-                one(), two(), three(), three_a(), four(), five(), six()
-            ),
+            lambda: stmt_20(two(), three(), three_a(), five()),
             compare_values=True,
         )
 

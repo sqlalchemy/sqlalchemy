@@ -11,7 +11,6 @@ from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload
@@ -1471,27 +1470,6 @@ class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
 
         self.assert_sql_count(testing.db, go, 3)
 
-    def test_fixed_w_poly_subquery(self):
-        A = self.classes.A
-        B = self.classes.B
-        C = self.classes.C
-        D = self.classes.D
-
-        session = fixture_session()
-        d = session.query(D).one()
-
-        def go():
-            # NOTE: subqueryload is broken for this case, first found
-            # when cartesian product detection was added.
-            for a in (
-                session.query(A)
-                .with_polymorphic([B, C])
-                .options(selectinload(B.related), selectinload(C.related))
-            ):
-                eq_(a.related, [d])
-
-        self.assert_sql_count(testing.db, go, 3)
-
     def test_free_w_poly_joined(self):
         A = self.classes.A
         B = self.classes.B
@@ -1505,25 +1483,6 @@ class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
         def go():
             for a in session.query(a_poly).options(
                 joinedload(a_poly.B.related), joinedload(a_poly.C.related)
-            ):
-                eq_(a.related, [d])
-
-        self.assert_sql_count(testing.db, go, 1)
-
-    def test_fixed_w_poly_joined(self):
-        A = self.classes.A
-        B = self.classes.B
-        C = self.classes.C
-        D = self.classes.D
-
-        session = fixture_session()
-        d = session.query(D).one()
-
-        def go():
-            for a in (
-                session.query(A)
-                .with_polymorphic([B, C])
-                .options(joinedload(B.related), joinedload(C.related))
             ):
                 eq_(a.related, [d])
 

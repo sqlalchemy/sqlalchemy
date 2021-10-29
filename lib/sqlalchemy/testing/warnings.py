@@ -66,11 +66,6 @@ def setup_filters():
     # we are moving one at a time
     for msg in [
         #
-        # ORM Query
-        #
-        r"The Query.with_polymorphic\(\) method is considered "
-        "legacy as of the 1.x series",
-        #
         # ORM Session
         #
         r"The Session.autocommit parameter is deprecated ",

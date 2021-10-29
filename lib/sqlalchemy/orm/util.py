@@ -1359,6 +1359,14 @@ def with_polymorphic(
         result in their table being appended directly to the FROM clause
         which will usually lead to incorrect results.
 
+        When left at its default value of ``False``, the polymorphic
+        selectable assigned to the base mapper is used for selecting rows.
+        However, it may also be passed as ``None``, which will bypass the
+        configured polymorphic selectable and instead construct an ad-hoc
+        selectable for the target classes given; for joined table inheritance
+        this will be a join that includes all target mappers and their
+        subclasses.
+
     :param polymorphic_on: a column to be used as the "discriminator"
         column for the given selectable. If not given, the polymorphic_on
         attribute of the base classes' mapper will be used, if any. This

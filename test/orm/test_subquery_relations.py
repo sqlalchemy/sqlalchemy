@@ -2757,12 +2757,13 @@ class InheritanceToRelatedTest(fixtures.MappedTest):
         )
         s = Session(testing.db)
 
+        fp = with_polymorphic(Foo, [Bar, Baz])
+
         def go():
             eq_(
-                s.query(Foo)
-                .with_polymorphic([Bar, Baz])
-                .order_by(Foo.id)
-                .options(subqueryload(Foo.related))
+                s.query(fp)
+                .order_by(fp.id)
+                .options(subqueryload(fp.related))
                 .all(),
                 [
                     Bar(id=1, related=Related(id=1)),
@@ -2784,12 +2785,13 @@ class InheritanceToRelatedTest(fixtures.MappedTest):
         )
         s = Session(testing.db)
 
+        fp = with_polymorphic(Foo, [Bar, Baz])
+
         def go():
             eq_(
-                s.query(Foo)
-                .with_polymorphic([Bar, Baz])
-                .order_by(Foo.id)
-                .options(joinedload(Foo.related))
+                s.query(fp)
+                .order_by(fp.id)
+                .options(joinedload(fp.related))
                 .all(),
                 [
                     Bar(id=1, related=Related(id=1)),
