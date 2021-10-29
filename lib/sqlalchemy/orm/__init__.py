@@ -110,6 +110,11 @@ def create_session(bind=None, **kwargs):
     False, ``autocommit`` is True.  In this sense the session acts
     more like the "classic" SQLAlchemy 0.3 session with these.
 
+    .. deprecated:: 1.4  The "autocommit" parameter will be removed in
+       SQLAlchemy 2.0.  :func:`_orm.create_session` will return a
+       :class:`_orm.Session` that does not include "autocommit' behavior
+       in release 2.0.
+
     Usage::
 
       >>> from sqlalchemy.orm import create_session

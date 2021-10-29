@@ -533,7 +533,7 @@ class ResultTest(BakedTest):
 
             bq += fn2
 
-            sess = fixture_session(autocommit=True, enable_baked_queries=False)
+            sess = fixture_session(enable_baked_queries=False)
             eq_(bq.add_criteria(fn3)(sess).params(id=7).all(), [(7, "jack")])
 
         eq_(

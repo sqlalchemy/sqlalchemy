@@ -458,9 +458,7 @@ class ShardTest(object):
             t = bq(sess).get(tokyo.id)
             return t
 
-        Sess = sessionmaker(
-            class_=Session, bind=db2, autoflush=True, autocommit=False
-        )
+        Sess = sessionmaker(class_=Session, bind=db2, autoflush=True)
         sess2 = Sess()
 
         t = get_tokyo(sess)
@@ -929,13 +927,6 @@ class RefreshDeferExpireTest(fixtures.DeclarativeMappedTest):
         a1 = session.query(A).set_shard("main").first()
 
         session.expire(a1)
-        eq_(a1.data, "d1")
-
-    def test_autocommit_session(self):
-        A = self.classes.A
-        session = self._session_fixture(autocommit=True)
-        a1 = session.query(A).set_shard("main").first()
-
         eq_(a1.data, "d1")
 
 

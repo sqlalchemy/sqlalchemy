@@ -2188,34 +2188,6 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         return sess, canary
 
-    def test_flush_autocommit_hook(self):
-        User, users = self.classes.User, self.tables.users
-
-        self.mapper_registry.map_imperatively(User, users)
-
-        sess, canary = self._listener_fixture(
-            autoflush=False, autocommit=True, expire_on_commit=False
-        )
-
-        u = User(name="u1")
-        sess.add(u)
-        sess.flush()
-        eq_(
-            canary,
-            [
-                "before_attach",
-                "after_attach",
-                "before_flush",
-                "after_transaction_create",
-                "after_begin",
-                "after_flush",
-                "after_flush_postexec",
-                "before_commit",
-                "after_commit",
-                "after_transaction_end",
-            ],
-        )
-
     def test_rollback_hook(self):
         User, users = self.classes.User, self.tables.users
         sess, canary = self._listener_fixture()
