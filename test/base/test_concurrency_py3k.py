@@ -1,7 +1,6 @@
 import threading
 
 from sqlalchemy import exc
-from sqlalchemy import testing
 from sqlalchemy.testing import async_test
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
@@ -141,7 +140,6 @@ class TestAsyncioCompat(fixtures.TestBase):
         await to_await
 
     @async_test
-    @testing.requires.python37
     async def test_contextvars(self):
         import asyncio
         import contextvars
@@ -186,9 +184,7 @@ class TestAsyncioCompat(fixtures.TestBase):
 
 
 class TestAsyncAdaptedQueue(fixtures.TestBase):
-    # uses asyncio.run() in alternate threads which is not available
-    # in Python 3.6
-    __requires__ = ("python37", "greenlet")
+    __requires__ = ("greenlet",)
 
     def test_lazy_init(self):
         run = [False]

@@ -304,7 +304,7 @@ def %(name)s(%(args)s):
             % (decorated.__module__,)
         )
 
-    if compat.py2k or hasattr(fn, "__func__"):
+    if hasattr(fn, "__func__"):
         fn.__func__.__doc__ = doc
         if not hasattr(fn.__func__, "_linked_to"):
             fn.__func__._linked_to = (decorated, location)
@@ -888,24 +888,12 @@ def class_hierarchy(cls):
     will not be descended.
 
     """
-    if compat.py2k:
-        if isinstance(cls, types.ClassType):
-            return list()
 
     hier = {cls}
     process = list(cls.__mro__)
     while process:
         c = process.pop()
-        if compat.py2k:
-            if isinstance(c, types.ClassType):
-                continue
-            bases = (
-                _
-                for _ in c.__bases__
-                if _ not in hier and not isinstance(_, types.ClassType)
-            )
-        else:
-            bases = (_ for _ in c.__bases__ if _ not in hier)
+        bases = (_ for _ in c.__bases__ if _ not in hier)
 
         for b in bases:
             process.append(b)

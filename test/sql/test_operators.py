@@ -2184,7 +2184,7 @@ class MathOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         ("add", operator.add, "+"),
         ("mul", operator.mul, "*"),
         ("sub", operator.sub, "-"),
-        ("div", operator.truediv if util.py3k else operator.div, "/"),
+        ("div", operator.truediv, "/"),
         ("mod", operator.mod, "%"),
         id_="iaa",
     )
@@ -3245,7 +3245,6 @@ class TupleTypingTest(fixtures.TestBase):
         self._assert_types(expr.right.type.types)
 
     # since we want to infer "binary"
-    @testing.requires.python3
     def test_tuple_type_expanding_inference(self):
         a, b, c = column("a"), column("b"), column("c")
 
@@ -3256,7 +3255,6 @@ class TupleTypingTest(fixtures.TestBase):
 
         self._assert_types(expr.right.type.types)
 
-    @testing.requires.python3
     def test_tuple_type_plain_inference(self):
         a, b, c = column("a"), column("b"), column("c")
 

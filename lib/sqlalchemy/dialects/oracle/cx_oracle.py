@@ -468,7 +468,6 @@ from ... import processors
 from ... import types as sqltypes
 from ... import util
 from ...engine import cursor as _cursor
-from ...util import compat
 
 
 class _OracleInteger(sqltypes.Integer):
@@ -745,42 +744,13 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
                                 " cx_oracle" % (bindparam.key, bindparam.type)
                             )
 
-                        if compat.py2k and dbtype in (
-                            cx_Oracle.CLOB,
-                            cx_Oracle.NCLOB,
-                        ):
-                            outconverter = (
-                                processors.to_unicode_processor_factory(
-                                    self.dialect.encoding,
-                                    errors=self.dialect.encoding_errors,
-                                )
-                            )
-                            self.out_parameters[name] = self.cursor.var(
-                                dbtype,
-                                outconverter=lambda value: outconverter(
-                                    value.read()
-                                ),
-                            )
-
-                        elif dbtype in (
+                        if dbtype in (
                             cx_Oracle.BLOB,
                             cx_Oracle.CLOB,
                             cx_Oracle.NCLOB,
                         ):
                             self.out_parameters[name] = self.cursor.var(
                                 dbtype, outconverter=lambda value: value.read()
-                            )
-                        elif compat.py2k and isinstance(
-                            type_impl, sqltypes.Unicode
-                        ):
-                            outconverter = (
-                                processors.to_unicode_processor_factory(
-                                    self.dialect.encoding,
-                                    errors=self.dialect.encoding_errors,
-                                )
-                            )
-                            self.out_parameters[name] = self.cursor.var(
-                                dbtype, outconverter=outconverter
                             )
                         else:
                             self.out_parameters[name] = self.cursor.var(dbtype)
@@ -1182,45 +1152,23 @@ class OracleDialect_cx_oracle(OracleDialect):
                 and default_type is not cx_Oracle.CLOB
                 and default_type is not cx_Oracle.NCLOB
             ):
-                if compat.py2k:
-                    outconverter = processors.to_unicode_processor_factory(
-                        dialect.encoding, errors=dialect.encoding_errors
-                    )
-                    return cursor.var(
-                        cx_Oracle.STRING,
-                        size,
-                        cursor.arraysize,
-                        outconverter=outconverter,
-                    )
-                else:
-                    return cursor.var(
-                        util.text_type,
-                        size,
-                        cursor.arraysize,
-                        **dialect._cursor_var_unicode_kwargs
-                    )
+                return cursor.var(
+                    util.text_type,
+                    size,
+                    cursor.arraysize,
+                    **dialect._cursor_var_unicode_kwargs
+                )
 
             elif dialect.auto_convert_lobs and default_type in (
                 cx_Oracle.CLOB,
                 cx_Oracle.NCLOB,
             ):
-                if compat.py2k:
-                    outconverter = processors.to_unicode_processor_factory(
-                        dialect.encoding, errors=dialect.encoding_errors
-                    )
-                    return cursor.var(
-                        cx_Oracle.LONG_STRING,
-                        size,
-                        cursor.arraysize,
-                        outconverter=outconverter,
-                    )
-                else:
-                    return cursor.var(
-                        cx_Oracle.LONG_STRING,
-                        size,
-                        cursor.arraysize,
-                        **dialect._cursor_var_unicode_kwargs
-                    )
+                return cursor.var(
+                    cx_Oracle.LONG_STRING,
+                    size,
+                    cursor.arraysize,
+                    **dialect._cursor_var_unicode_kwargs
+                )
 
             elif dialect.auto_convert_lobs and default_type in (
                 cx_Oracle.BLOB,

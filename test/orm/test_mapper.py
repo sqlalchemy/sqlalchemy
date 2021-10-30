@@ -415,11 +415,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         m = self.mapper(Foo, foo_t)
 
         class DontCompareMeToString(int):
-            if util.py2k:
-
-                def __lt__(self, other):
-                    assert not isinstance(other, basestring)  # noqa
-                    return int(self) < other
+            pass
 
         foos = [Foo(id_="f%d" % i) for i in range(5)]
         states = [attributes.instance_state(f) for f in foos]

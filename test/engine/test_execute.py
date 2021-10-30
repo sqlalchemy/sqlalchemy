@@ -391,15 +391,8 @@ class ExecuteTest(fixtures.TablesTest):
         with testing.db.connect() as conn:
             assert_raises_message(
                 tsa.exc.StatementError,
-                util.u(
-                    "A value is required for bind parameter 'uname'\n"
-                    r".*SELECT users.user_name AS .m\xe9il."
-                )
-                if util.py2k
-                else util.u(
-                    "A value is required for bind parameter 'uname'\n"
-                    ".*SELECT users.user_name AS .méil."
-                ),
+                "A value is required for bind parameter 'uname'\n"
+                ".*SELECT users.user_name AS .méil.",
                 conn.execute,
                 select(users.c.user_name.label(name)).where(
                     users.c.user_name == bindparam("uname")
@@ -413,14 +406,7 @@ class ExecuteTest(fixtures.TablesTest):
         message = util.u("some message méil").encode("utf-8")
 
         err = tsa.exc.SQLAlchemyError(message)
-        if util.py2k:
-            # string passes it through
-            eq_(str(err), message)
-
-            # unicode accessor decodes to utf-8
-            eq_(unicode(err), util.u("some message méil"))  # noqa F821
-        else:
-            eq_(str(err), util.u("some message méil"))
+        eq_(str(err), util.u("some message méil"))
 
     def test_stmt_exception_bytestring_latin1(self):
         # uncommon case for Py3K, bytestring object passed
@@ -428,14 +414,7 @@ class ExecuteTest(fixtures.TablesTest):
         message = util.u("some message méil").encode("latin-1")
 
         err = tsa.exc.SQLAlchemyError(message)
-        if util.py2k:
-            # string passes it through
-            eq_(str(err), message)
-
-            # unicode accessor decodes to utf-8
-            eq_(unicode(err), util.u("some message m\\xe9il"))  # noqa F821
-        else:
-            eq_(str(err), util.u("some message m\\xe9il"))
+        eq_(str(err), util.u("some message m\\xe9il"))
 
     def test_stmt_exception_unicode_hook_unicode(self):
         # uncommon case for Py2K, Unicode object passed
@@ -443,17 +422,11 @@ class ExecuteTest(fixtures.TablesTest):
         message = util.u("some message méil")
 
         err = tsa.exc.SQLAlchemyError(message)
-        if util.py2k:
-            eq_(unicode(err), util.u("some message méil"))  # noqa F821
-        else:
-            eq_(str(err), util.u("some message méil"))
+        eq_(str(err), util.u("some message méil"))
 
     def test_stmt_exception_object_arg(self):
         err = tsa.exc.SQLAlchemyError(Foo())
         eq_(str(err), "foo")
-
-        if util.py2k:
-            eq_(unicode(err), util.u("fóó"))  # noqa F821
 
     def test_stmt_exception_str_multi_args(self):
         err = tsa.exc.SQLAlchemyError("some message", 206)
@@ -731,8 +704,7 @@ class ExecuteTest(fixtures.TablesTest):
 
 
 class UnicodeReturnsTest(fixtures.TestBase):
-    @testing.requires.python3
-    def test_unicode_test_not_in_python3(self):
+    def test_unicode_test_not_in(self):
         eng = engines.testing_engine()
         eng.dialect.returns_unicode_strings = String.RETURNS_UNKNOWN
 
@@ -741,25 +713,6 @@ class UnicodeReturnsTest(fixtures.TestBase):
             "RETURNS_UNKNOWN is unsupported in Python 3",
             eng.connect,
         )
-
-    @testing.requires.python2
-    def test_unicode_test_fails_warning(self):
-        class MockCursor(engines.DBAPIProxyCursor):
-            def execute(self, stmt, params=None, **kw):
-                if "test unicode returns" in stmt:
-                    raise self.engine.dialect.dbapi.DatabaseError("boom")
-                else:
-                    return super(MockCursor, self).execute(stmt, params, **kw)
-
-        eng = engines.proxying_engine(cursor_cls=MockCursor)
-        with testing.expect_warnings(
-            "Exception attempting to detect unicode returns"
-        ):
-            eng.connect()
-
-        # because plain varchar passed, we don't know the correct answer
-        eq_(eng.dialect.returns_unicode_strings, String.RETURNS_CONDITIONAL)
-        eng.dispose()
 
 
 class ConvenienceExecuteTest(fixtures.TablesTest):

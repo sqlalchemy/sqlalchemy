@@ -1218,45 +1218,6 @@ class SuiteRequirements(Requirements):
         return exclusions.only_if(check)
 
     @property
-    def python2(self):
-        return exclusions.skip_if(
-            lambda: sys.version_info >= (3,),
-            "Python version 2.xx is required.",
-        )
-
-    @property
-    def python3(self):
-        return exclusions.skip_if(
-            lambda: sys.version_info < (3,), "Python version 3.xx is required."
-        )
-
-    @property
-    def pep520(self):
-        return self.python36
-
-    @property
-    def insert_order_dicts(self):
-        return self.python37
-
-    @property
-    def python36(self):
-        return exclusions.skip_if(
-            lambda: sys.version_info < (3, 6),
-            "Python version 3.6 or greater is required.",
-        )
-
-    @property
-    def python37(self):
-        return exclusions.skip_if(
-            lambda: sys.version_info < (3, 7),
-            "Python version 3.7 or greater is required.",
-        )
-
-    @property
-    def dataclasses(self):
-        return self.python37
-
-    @property
     def cpython(self):
         return exclusions.only_if(
             lambda: util.cpython, "cPython interpreter needed"

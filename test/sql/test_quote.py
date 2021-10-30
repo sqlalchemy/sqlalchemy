@@ -13,7 +13,6 @@ from sqlalchemy import select
 from sqlalchemy import sql
 from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy import util
 from sqlalchemy.engine import default
 from sqlalchemy.sql import compiler
 from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
@@ -251,10 +250,7 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_repr_unicode(self):
         name = quoted_name(u"姓名", None)
 
-        if util.py2k:
-            eq_(repr(name), "'\u59d3\u540d'")
-        else:
-            eq_(repr(name), repr(u"姓名"))
+        eq_(repr(name), repr(u"姓名"))
 
     def test_lower_case_names(self):
         # Create table with quote defaults

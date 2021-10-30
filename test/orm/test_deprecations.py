@@ -6310,53 +6310,6 @@ class RequirementsTest(fixtures.MappedTest):
             Column("value", String(10)),
         )
 
-    if util.py2k:
-
-        def test_baseclass_map_imperatively(self):
-            ht1 = self.tables.ht1
-
-            class OldStyle:
-                pass
-
-            assert_raises(
-                sa.exc.ArgumentError,
-                self.mapper_registry.map_imperatively,
-                OldStyle,
-                ht1,
-            )
-
-            assert_raises(
-                sa.exc.ArgumentError,
-                self.mapper_registry.map_imperatively,
-                123,
-            )
-
-        def test_baseclass_legacy_mapper(self):
-            ht1 = self.tables.ht1
-
-            class OldStyle:
-                pass
-
-            assert_raises(
-                sa.exc.ArgumentError,
-                mapper,
-                OldStyle,
-                ht1,
-            )
-
-            assert_raises(
-                sa.exc.ArgumentError,
-                mapper,
-                123,
-            )
-
-            class NoWeakrefSupport(str):
-                pass
-
-            # TODO: is weakref support detectable without an instance?
-            # self.assertRaises(
-            #  sa.exc.ArgumentError, mapper, NoWeakrefSupport, t2)
-
 
 class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
     __dialect__ = "default"

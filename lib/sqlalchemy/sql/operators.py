@@ -33,12 +33,6 @@ from operator import truediv
 from .. import util
 
 
-if util.py2k:
-    from operator import div
-else:
-    div = truediv
-
-
 class Operators(object):
     """Base of comparison and logical operators.
 
@@ -1130,14 +1124,6 @@ class ColumnOperators(Operators):
         """
         return self.reverse_operate(mul, other)
 
-    def __rdiv__(self, other):
-        """Implement the ``/`` operator in reverse.
-
-        See :meth:`.ColumnOperators.__div__`.
-
-        """
-        return self.reverse_operate(div, other)
-
     def __rmod__(self, other):
         """Implement the ``%`` operator in reverse.
 
@@ -1223,14 +1209,6 @@ class ColumnOperators(Operators):
         """
         return self.operate(mul, other)
 
-    def __div__(self, other):
-        """Implement the ``/`` operator.
-
-        In a column context, produces the clause ``a / b``.
-
-        """
-        return self.operate(div, other)
-
     def __mod__(self, other):
         """Implement the ``%`` operator.
 
@@ -1240,7 +1218,7 @@ class ColumnOperators(Operators):
         return self.operate(mod, other)
 
     def __truediv__(self, other):
-        """Implement the ``//`` operator.
+        """Implement the ``/`` operator.
 
         In a column context, produces the clause ``a / b``.
 
@@ -1248,7 +1226,7 @@ class ColumnOperators(Operators):
         return self.operate(truediv, other)
 
     def __rtruediv__(self, other):
-        """Implement the ``//`` operator in reverse.
+        """Implement the ``/`` operator in reverse.
 
         See :meth:`.ColumnOperators.__truediv__`.
 
@@ -1610,7 +1588,6 @@ _PRECEDENCE = {
     json_path_getitem_op: 15,
     mul: 8,
     truediv: 8,
-    div: 8,
     mod: 8,
     neg: 8,
     add: 7,

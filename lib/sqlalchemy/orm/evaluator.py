@@ -33,7 +33,6 @@ _straight_ops = set(
         "add",
         "mul",
         "sub",
-        "div",
         "mod",
         "truediv",
         "lt",

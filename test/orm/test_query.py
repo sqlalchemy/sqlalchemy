@@ -1675,7 +1675,6 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
         (operators.mul, "*"),
         (operators.sub, "-"),
         (operators.truediv, "/"),
-        (operators.div, "/"),
         argnames="py_op, sql_op",
         id_="ar",
     )

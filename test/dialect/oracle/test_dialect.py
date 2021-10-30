@@ -256,7 +256,6 @@ class EncodingErrorsTest(fixtures.TestBase):
             assert_raises(UnicodeDecodeError, outconverter, utf8_w_errors)
 
     @_oracle_char_combinations
-    @testing.requires.python3
     def test_older_cx_oracle_warning(self, cx_Oracle, cx_oracle_type):
         cx_Oracle.version = "6.3"
 
@@ -277,46 +276,7 @@ class EncodingErrorsTest(fixtures.TestBase):
             )
 
     @_oracle_char_combinations
-    @testing.requires.python2
-    def test_encoding_errors_sqla_py2k(
-        self,
-        cx_Oracle,
-        cx_oracle_type,
-    ):
-        ignore_dialect = cx_oracle.dialect(
-            dbapi=cx_Oracle, encoding_errors="ignore"
-        )
-
-        ignore_outputhandler = (
-            ignore_dialect._generate_connection_outputtype_handler()
-        )
-
-        cursor = mock.Mock()
-        ignore_outputhandler(cursor, "foo", cx_oracle_type, None, None, None)
-        outconverter = cursor.mock_calls[0][2]["outconverter"]
-        self._assert_errorhandler(outconverter, True)
-
-    @_oracle_char_combinations
-    @testing.requires.python2
-    def test_no_encoding_errors_sqla_py2k(
-        self,
-        cx_Oracle,
-        cx_oracle_type,
-    ):
-        plain_dialect = cx_oracle.dialect(dbapi=cx_Oracle)
-
-        plain_outputhandler = (
-            plain_dialect._generate_connection_outputtype_handler()
-        )
-
-        cursor = mock.Mock()
-        plain_outputhandler(cursor, "foo", cx_oracle_type, None, None, None)
-        outconverter = cursor.mock_calls[0][2]["outconverter"]
-        self._assert_errorhandler(outconverter, False)
-
-    @_oracle_char_combinations
-    @testing.requires.python3
-    def test_encoding_errors_cx_oracle_py3k(
+    def test_encoding_errors_cx_oracle(
         self,
         cx_Oracle,
         cx_oracle_type,
@@ -345,8 +305,7 @@ class EncodingErrorsTest(fixtures.TestBase):
         )
 
     @_oracle_char_combinations
-    @testing.requires.python3
-    def test_no_encoding_errors_cx_oracle_py3k(
+    def test_no_encoding_errors_cx_oracle(
         self,
         cx_Oracle,
         cx_oracle_type,

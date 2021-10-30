@@ -268,7 +268,6 @@ class EventsTest(TearDownLocalEventsFixture, fixtures.TestBase):
 
 
 class SlotsEventsTest(fixtures.TestBase):
-    @testing.requires.python3
     def test_no_slots_dispatch(self):
         class Target(object):
             __slots__ = ()

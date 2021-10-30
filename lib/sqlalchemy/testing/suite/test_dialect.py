@@ -19,7 +19,6 @@ from ... import Integer
 from ... import literal_column
 from ... import select
 from ... import String
-from ...util import compat
 
 
 class ExceptionTest(fixtures.TablesTest):
@@ -77,12 +76,7 @@ class ExceptionTest(fixtures.TablesTest):
 
                 assert str(err.orig) in str(err)
 
-            # test that we are actually getting string on Py2k, unicode
-            # on Py3k.
-            if compat.py2k:
-                assert isinstance(err_str, str)
-            else:
-                assert isinstance(err_str, str)
+            assert isinstance(err_str, str)
 
 
 class IsolationLevelTest(fixtures.TestBase):

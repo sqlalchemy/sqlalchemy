@@ -14,7 +14,6 @@ from sqlalchemy.sql.base import DedupeColumnCollection
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
-from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
@@ -133,12 +132,8 @@ class OrderedDictTest(fixtures.TestBase):
 
     def test_no_sort_legacy_dictionary(self):
         d1 = {"c": 1, "b": 2, "a": 3}
-
-        if testing.requires.python37.enabled:
-            util.sort_dictionary(d1)
-            eq_(list(d1), ["a", "b", "c"])
-        else:
-            assert_raises(AttributeError, util.sort_dictionary, d1)
+        util.sort_dictionary(d1)
+        eq_(list(d1), ["a", "b", "c"])
 
     def test_sort_dictionary(self):
         o = util.OrderedDict()
@@ -1882,25 +1877,8 @@ class DictlikeIteritemsTest(fixtures.TestBase):
         d = subdict(a=1, b=2, c=3)
         self._ok(d)
 
-    if util.py2k:
-
-        def test_UserDict(self):
-            import UserDict
-
-            d = UserDict.UserDict(a=1, b=2, c=3)
-            self._ok(d)
-
     def test_object(self):
         self._notok(object())
-
-    if util.py2k:
-
-        def test_duck_1(self):
-            class duck1(object):
-                def iteritems(duck):
-                    return iter(self.baseline)
-
-            self._ok(duck1())
 
     def test_duck_2(self):
         class duck2(object):
@@ -1908,18 +1886,6 @@ class DictlikeIteritemsTest(fixtures.TestBase):
                 return list(self.baseline)
 
         self._ok(duck2())
-
-    if util.py2k:
-
-        def test_duck_3(self):
-            class duck3(object):
-                def iterkeys(duck):
-                    return iter(["a", "b", "c"])
-
-                def __getitem__(duck, key):
-                    return dict(a=1, b=2, c=3).get(key)
-
-            self._ok(duck3())
 
     def test_duck_4(self):
         class duck4(object):
@@ -2570,7 +2536,6 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
                 "apply_kw_proxied": "a, b=b, c=c",
             },
             False,
-            testing.requires.python3,
         ),
         (
             py3k_fixtures._kw_plus_posn_fixture,
@@ -2583,7 +2548,6 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
                 "apply_kw_proxied": "a, b=b, c=c, *args",
             },
             False,
-            testing.requires.python3,
         ),
         (
             py3k_fixtures._kw_opt_fixture,
@@ -2596,7 +2560,6 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
                 "apply_kw_proxied": "a, b=b, c=c",
             },
             False,
-            testing.requires.python3,
         ),
         argnames="fn,wanted,grouped",
     )
@@ -2983,25 +2946,8 @@ class TestClassHierarchy(fixtures.TestBase):
         eq_(set(util.class_hierarchy(A)), set((A, B, C, object)))
         eq_(set(util.class_hierarchy(B)), set((A, B, C, object)))
 
-    if util.py2k:
-
-        def test_oldstyle_mixin(self):
-            class A(object):
-                pass
-
-            class Mixin:
-                pass
-
-            class B(A, Mixin):
-                pass
-
-            eq_(set(util.class_hierarchy(B)), set((A, B, object)))
-            eq_(set(util.class_hierarchy(Mixin)), set())
-            eq_(set(util.class_hierarchy(A)), set((A, B, object)))
-
 
 class ReraiseTest(fixtures.TestBase):
-    @testing.requires.python3
     def test_raise_from_cause_same_cause(self):
         class MyException(Exception):
             pass
@@ -3037,8 +2983,7 @@ class ReraiseTest(fixtures.TestBase):
             go()
             assert False
         except MyOtherException as moe:
-            if testing.requires.python3.enabled:
-                is_(moe.__cause__, me)
+            is_(moe.__cause__, me)
 
     def test_raise_from(self):
         class MyException(Exception):
@@ -3059,40 +3004,7 @@ class ReraiseTest(fixtures.TestBase):
             go()
             assert False
         except MyOtherException as moe:
-            if testing.requires.python3.enabled:
-                is_(moe.__cause__, me)
-
-    @testing.requires.python2
-    def test_safe_reraise_py2k_warning(self):
-        class MyException(Exception):
-            pass
-
-        class MyOtherException(Exception):
-            pass
-
-        m1 = MyException("exc one")
-        m2 = MyOtherException("exc two")
-
-        def go2():
-            raise m2
-
-        def go():
-            try:
-                raise m1
-            except Exception:
-                with util.safe_reraise():
-                    go2()
-
-        with expect_warnings(
-            "An exception has occurred during handling of a previous "
-            "exception.  The previous exception "
-            "is:.*MyException.*exc one"
-        ):
-            try:
-                go()
-                assert False
-            except MyOtherException:
-                pass
+            is_(moe.__cause__, me)
 
 
 class TestClassProperty(fixtures.TestBase):
@@ -3316,18 +3228,10 @@ class TimezoneTest(fixtures.TestBase):
             datetime.datetime(2017, 10, 5, 4, 55, 38, tzinfo=timezone(del_)),
         )
 
-    @testing.requires.python3
-    def test_repr_py3k(self):
+    def test_repr(self):
         eq_(
             repr(timezone(datetime.timedelta(hours=5))),
             "datetime.timezone(%r)" % (datetime.timedelta(hours=5)),
-        )
-
-    @testing.requires.python2
-    def test_repr_py2k(self):
-        eq_(
-            repr(timezone(datetime.timedelta(hours=5))),
-            "sqlalchemy.util.timezone(%r)" % (datetime.timedelta(hours=5)),
         )
 
 

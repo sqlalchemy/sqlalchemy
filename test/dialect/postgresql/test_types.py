@@ -2403,7 +2403,6 @@ class ArrayEnum(fixtures.TestBase):
         eq_(connection.execute(sel).fetchall(), [(["foo", "bar"],)])
 
     @_enum_combinations
-    @testing.requires.python3
     def test_array_of_enums_native_roundtrip(
         self, array_of_enum_fixture, connection, array_cls, enum_cls
     ):

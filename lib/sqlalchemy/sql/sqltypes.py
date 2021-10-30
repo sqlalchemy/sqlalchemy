@@ -555,7 +555,6 @@ class Integer(_LookupExpressionAdapter, TypeEngine):
                 Integer: self.__class__,
                 Numeric: Numeric,
             },
-            operators.div: {Integer: self.__class__, Numeric: Numeric},
             operators.truediv: {Integer: self.__class__, Numeric: Numeric},
             operators.sub: {Integer: self.__class__, Numeric: Numeric},
         }
@@ -753,7 +752,6 @@ class Numeric(_LookupExpressionAdapter, TypeEngine):
                 Numeric: self.__class__,
                 Integer: self.__class__,
             },
-            operators.div: {Numeric: self.__class__, Integer: self.__class__},
             operators.truediv: {
                 Numeric: self.__class__,
                 Integer: self.__class__,
@@ -985,20 +983,13 @@ class _Binary(TypeEngine):
     # Python 3 has native bytes() type
     # both sqlite3 and pg8000 seem to return it,
     # psycopg2 as of 2.5 returns 'memoryview'
-    if util.py2k:
+    def result_processor(self, dialect, coltype):
+        def process(value):
+            if value is not None:
+                value = bytes(value)
+            return value
 
-        def result_processor(self, dialect, coltype):
-            return processors.to_str
-
-    else:
-
-        def result_processor(self, dialect, coltype):
-            def process(value):
-                if value is not None:
-                    value = bytes(value)
-                return value
-
-            return process
+        return process
 
     def coerce_compared_value(self, op, value):
         """See :meth:`.TypeEngine.coerce_compared_value` for a description."""
@@ -1494,14 +1485,7 @@ class Enum(Emulated, String, SchemaType):
         self.validate_strings = kw.pop("validate_strings", False)
 
         if convert_unicode is None:
-            for e in self.enums:
-                # this is all py2k logic that can go away for py3k only,
-                # "expect unicode" will always be implicitly true
-                if isinstance(e, util.text_type):
-                    _expect_unicode = True
-                    break
-            else:
-                _expect_unicode = False
+            _expect_unicode = True
         else:
             _expect_unicode = convert_unicode
 
@@ -2011,7 +1995,6 @@ class _AbstractInterval(_LookupExpressionAdapter, TypeEngine):
             operators.sub: {Interval: self.__class__},
             operators.mul: {Numeric: self.__class__},
             operators.truediv: {Numeric: self.__class__},
-            operators.div: {Numeric: self.__class__},
         }
 
     @property

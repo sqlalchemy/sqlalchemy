@@ -35,7 +35,6 @@ from sqlalchemy.dialects.postgresql.psycopg2 import EXECUTEMANY_BATCH
 from sqlalchemy.dialects.postgresql.psycopg2 import EXECUTEMANY_PLAIN
 from sqlalchemy.dialects.postgresql.psycopg2 import EXECUTEMANY_VALUES
 from sqlalchemy.engine import cursor as _cursor
-from sqlalchemy.engine import engine_from_config
 from sqlalchemy.engine import url
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import config
@@ -163,43 +162,13 @@ $$ LANGUAGE plpgsql;"""
             future_connection.dialect.server_version_info,
         )
 
-    @testing.requires.python3
     @testing.requires.psycopg2_compatibility
-    def test_pg_dialect_no_native_unicode_in_python3(self, testing_engine):
+    def test_pg_dialect_no_native_unicode_in(self, testing_engine):
         with testing.expect_raises_message(
             exc.ArgumentError,
             "psycopg2 native_unicode mode is required under Python 3",
         ):
             testing_engine(options=dict(use_native_unicode=False))
-
-    @testing.requires.python2
-    @testing.requires.psycopg2_compatibility
-    def test_pg_dialect_no_native_unicode_in_python2(self, testing_engine):
-        e = testing_engine(options=dict(use_native_unicode=False))
-        with e.connect() as conn:
-            eq_(
-                conn.exec_driver_sql(u"SELECT '🐍 voix m’a réveillé'").scalar(),
-                u"🐍 voix m’a réveillé".encode("utf-8"),
-            )
-
-    @testing.requires.python2
-    @testing.requires.psycopg2_compatibility
-    def test_pg_dialect_use_native_unicode_from_config(self):
-        config = {
-            "sqlalchemy.url": testing.db.url,
-            "sqlalchemy.use_native_unicode": "false",
-        }
-
-        e = engine_from_config(config, _initialize=False)
-        eq_(e.dialect.use_native_unicode, False)
-
-        config = {
-            "sqlalchemy.url": testing.db.url,
-            "sqlalchemy.use_native_unicode": "true",
-        }
-
-        e = engine_from_config(config, _initialize=False)
-        eq_(e.dialect.use_native_unicode, True)
 
     def test_psycopg2_empty_connection_string(self):
         dialect = psycopg2_dialect.dialect()

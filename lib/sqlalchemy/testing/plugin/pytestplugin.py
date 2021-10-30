@@ -25,14 +25,6 @@ except ImportError:
     has_xdist = False
 
 
-py2k = sys.version_info < (3, 0)
-if py2k:
-    try:
-        import sqla_reinvent_fixtures as reinvent_fixtures_py2k
-    except ImportError:
-        from . import reinvent_fixtures_py2k
-
-
 def pytest_addoption(parser):
     group = parser.getgroup("sqlalchemy")
 
@@ -238,10 +230,6 @@ def pytest_collection_modifyitems(session, config, items):
         else:
             newitems.append(item)
 
-    if py2k:
-        for item in newitems:
-            reinvent_fixtures_py2k.scan_for_fixtures_to_use_for_class(item)
-
     # seems like the functions attached to a test class aren't sorted already?
     # is that true and why's that? (when using unittest, they're sorted)
     items[:] = sorted(
@@ -340,9 +328,7 @@ def _parametrize_cls(module, cls):
             for arg, val in zip(argname_split, param.values):
                 cls_variables[arg] = val
         parametrized_name = "_".join(
-            # token is a string, but in py2k pytest is giving us a unicode,
-            # so call str() on it.
-            str(re.sub(r"\W", "", token))
+            re.sub(r"\W", "", token)
             for param in full_param_set
             for token in param.id.split("-")
         )
@@ -457,13 +443,7 @@ def setup_class_methods(request):
     if hasattr(cls, "setup_test_class"):
         asyncio._maybe_async(cls.setup_test_class)
 
-    if py2k:
-        reinvent_fixtures_py2k.run_class_fixture_setup(request)
-
     yield
-
-    if py2k:
-        reinvent_fixtures_py2k.run_class_fixture_teardown(request)
 
     if hasattr(cls, "teardown_test_class"):
         asyncio._maybe_async(cls.teardown_test_class)
@@ -484,9 +464,7 @@ def setup_test_methods(request):
     # 1. function level "autouse" fixtures under py3k (examples: TablesTest
     #    define tables / data, MappedTest define tables / mappers / data)
 
-    # 2. run homegrown function level "autouse" fixtures under py2k
-    if py2k:
-        reinvent_fixtures_py2k.run_fn_fixture_setup(request)
+    # 2. was for p2k. no longer applies
 
     # 3. run outer xdist-style setup
     if hasattr(self, "setup_test"):
@@ -529,9 +507,7 @@ def setup_test_methods(request):
     if hasattr(self, "teardown_test"):
         asyncio._maybe_async(self.teardown_test)
 
-    # 11. run homegrown function-level "autouse" fixtures under py2k
-    if py2k:
-        reinvent_fixtures_py2k.run_fn_fixture_teardown(request)
+    # 11. was for p2k. no longer applies
 
     # 12. function level "autouse" fixtures under py3k (examples: TablesTest /
     #    MappedTest delete table data, possibly drop tables and clear mappers
@@ -778,17 +754,8 @@ class PytestFixtureFunctions(plugin_base.FixtureFunctions):
                 fn = asyncio._maybe_async_wrapper(fn)
             # other wrappers may be added here
 
-            if py2k and "autouse" in kw:
-                # py2k workaround for too-slow collection of autouse fixtures
-                # in pytest 4.6.11.  See notes in reinvent_fixtures_py2k for
-                # rationale.
-
-                # comment this condition out in order to disable the
-                # py2k workaround entirely.
-                reinvent_fixtures_py2k.add_fixture(fn, fixture)
-            else:
-                # now apply FixtureFunctionMarker
-                fn = fixture(fn)
+            # now apply FixtureFunctionMarker
+            fn = fixture(fn)
 
             return fn
 

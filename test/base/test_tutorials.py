@@ -11,8 +11,6 @@ from sqlalchemy.testing import fixtures
 
 
 class DocTest(fixtures.TestBase):
-    __requires__ = ("python3",)
-
     def _setup_logger(self):
         rootlogger = logging.getLogger("sqlalchemy.engine.Engine")
 

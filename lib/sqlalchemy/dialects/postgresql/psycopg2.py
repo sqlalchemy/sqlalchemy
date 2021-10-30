@@ -478,7 +478,6 @@ from .base import _ColonCast
 from .base import _DECIMAL_TYPES
 from .base import _FLOAT_TYPES
 from .base import _INT_TYPES
-from .base import ENUM
 from .base import PGCompiler
 from .base import PGDialect
 from .base import PGExecutionContext
@@ -525,22 +524,6 @@ class _PGNumeric(sqltypes.Numeric):
                 raise exc.InvalidRequestError(
                     "Unknown PG numeric type: %d" % coltype
                 )
-
-
-class _PGEnum(ENUM):
-    def result_processor(self, dialect, coltype):
-        if util.py2k and self._expect_unicode is True:
-            # for py2k, if the enum type needs unicode data (which is set up as
-            # part of the Enum() constructor based on values passed as py2k
-            # unicode objects) we have to use our own converters since
-            # psycopg2's don't work, a rare exception to the "modern DBAPIs
-            # support unicode everywhere" theme of deprecating
-            # convert_unicode=True. Use the special "force_nocheck" directive
-            # which forces unicode conversion to happen on the Python side
-            # without an isinstance() check.   in py3k psycopg2 does the right
-            # thing automatically.
-            self._expect_unicode = "force_nocheck"
-        return super(_PGEnum, self).result_processor(dialect, coltype)
 
 
 class _PGHStore(HSTORE):
@@ -664,16 +647,6 @@ class PGDialect_psycopg2(PGDialect):
     driver = "psycopg2"
 
     supports_statement_cache = True
-
-    if util.py2k:
-        # turn off supports_unicode_statements for Python 2. psycopg2 supports
-        # unicode statements in Py2K. But!  it does not support unicode *bound
-        # parameter names* because it uses the Python "%" operator to
-        # interpolate these into the string, and this fails.   So for Py2K, we
-        # have to use full-on encoding for statements and parameters before
-        # passing to cursor.execute().
-        supports_unicode_statements = False
-
     supports_server_side_cursors = True
 
     default_paramstyle = "pyformat"
@@ -694,8 +667,6 @@ class PGDialect_psycopg2(PGDialect):
         PGDialect.colspecs,
         {
             sqltypes.Numeric: _PGNumeric,
-            ENUM: _PGEnum,  # needs force_unicode
-            sqltypes.Enum: _PGEnum,  # needs force_unicode
             HSTORE: _PGHStore,
             JSON: _PGJSON,
             sqltypes.JSON: _PGJSON,
@@ -718,7 +689,7 @@ class PGDialect_psycopg2(PGDialect):
     ):
         PGDialect.__init__(self, **kwargs)
         self.use_native_unicode = use_native_unicode
-        if not use_native_unicode and not util.py2k:
+        if not use_native_unicode:
             raise exc.ArgumentError(
                 "psycopg2 native_unicode mode is required under Python 3"
             )
@@ -854,7 +825,6 @@ class PGDialect_psycopg2(PGDialect):
 
     def on_connect(self):
         extras = self._psycopg2_extras
-        extensions = self._psycopg2_extensions
 
         fns = []
         if self.client_encoding is not None:
@@ -878,14 +848,6 @@ class PGDialect_psycopg2(PGDialect):
 
             fns.append(on_connect)
 
-        if util.py2k and self.dbapi and self.use_native_unicode:
-
-            def on_connect(conn):
-                extensions.register_type(extensions.UNICODE, conn)
-                extensions.register_type(extensions.UNICODEARRAY, conn)
-
-            fns.append(on_connect)
-
         if self.dbapi and self.use_native_hstore:
 
             def on_connect(conn):
@@ -893,8 +855,6 @@ class PGDialect_psycopg2(PGDialect):
                 if hstore_oids is not None:
                     oid, array_oid = hstore_oids
                     kw = {"oid": oid}
-                    if util.py2k:
-                        kw["unicode"] = True
                     kw["array_oid"] = array_oid
                     extras.register_hstore(conn, **kw)
 

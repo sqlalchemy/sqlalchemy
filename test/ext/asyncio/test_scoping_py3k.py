@@ -1,7 +1,6 @@
 import sqlalchemy as sa
 from sqlalchemy import func
 from sqlalchemy import select
-from sqlalchemy import testing
 from sqlalchemy.ext.asyncio import async_scoped_session
 from sqlalchemy.ext.asyncio import AsyncSession as _AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -12,7 +11,6 @@ from .test_session_py3k import AsyncFixture
 
 
 class AsyncScopedSessionTest(AsyncFixture):
-    @testing.requires.python37
     @async_test
     async def test_basic(self, async_engine):
         from asyncio import current_task
@@ -46,7 +44,6 @@ class AsyncScopedSessionTest(AsyncFixture):
             await AsyncSession.flush()
             eq_(await conn.scalar(stmt), 0)
 
-    @testing.requires.python37
     def test_attributes(self, async_engine):
         from asyncio import current_task
 

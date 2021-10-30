@@ -27,7 +27,6 @@ from ..util import decorator
 from ..util import defaultdict
 from ..util import has_refcount_gc
 from ..util import inspect_getfullargspec
-from ..util import py2k
 
 
 if not has_refcount_gc:
@@ -47,14 +46,6 @@ else:
 
 def picklers():
     picklers = set()
-    if py2k:
-        try:
-            import cPickle
-
-            picklers.add(cPickle)
-        except ImportError:
-            pass
-
     import pickle
 
     picklers.add(pickle)
@@ -65,19 +56,8 @@ def picklers():
             yield pickle_.loads, lambda d: pickle_.dumps(d, protocol)
 
 
-if py2k:
-
-    def random_choices(population, k=1):
-        pop = list(population)
-        # lame but works :)
-        random.shuffle(pop)
-        return pop[0:k]
-
-
-else:
-
-    def random_choices(population, k=1):
-        return random.choices(population, k=k)
+def random_choices(population, k=1):
+    return random.choices(population, k=k)
 
 
 def round_decimal(value, prec):

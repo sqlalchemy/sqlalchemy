@@ -80,12 +80,7 @@ class Canary(object):
 class OrderedDictFixture(object):
     @testing.fixture
     def ordered_dict_mro(self):
-        if testing.requires.python37.enabled:
-            return type("ordered", (collections.MappedCollection,), {})
-        else:
-            return type(
-                "ordered", (util.OrderedDict, collections.MappedCollection), {}
-            )
+        return type("ordered", (collections.MappedCollection,), {})
 
 
 class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):

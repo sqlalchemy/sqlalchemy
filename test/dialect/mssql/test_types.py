@@ -909,7 +909,6 @@ class TypeRoundTripTest(
             ),
             None,
             True,
-            testing.requires.python37,
         ),
         (
             "dto_param_datetime_naive",

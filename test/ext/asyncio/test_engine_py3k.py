@@ -232,7 +232,6 @@ class AsyncEngineTest(EngineFixture):
         is_false(async_engine == None)
 
     @async_test
-    @testing.requires.python37
     async def test_no_attach_to_event_loop(self, testing_engine):
         """test #6409"""
 

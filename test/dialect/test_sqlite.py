@@ -597,7 +597,6 @@ class DialectTest(
                 )
             )
 
-    @testing.requires.insert_order_dicts
     @testing.only_on("sqlite+pysqlite")
     def test_isolation_level_message(self):
         # needs to test that all three words are present and we also
@@ -714,9 +713,6 @@ class DialectTest(
 
     @testing.provide_metadata
     def test_description_encoding(self, connection):
-        # amazingly, pysqlite seems to still deliver cursor.description
-        # as encoded bytes in py2k
-
         t = Table(
             "x",
             self.metadata,

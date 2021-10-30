@@ -228,42 +228,20 @@ class HSTORE(sqltypes.Indexable, sqltypes.Concatenable, sqltypes.TypeEngine):
     comparator_factory = Comparator
 
     def bind_processor(self, dialect):
-        if util.py2k:
-            encoding = dialect.encoding
-
-            def process(value):
-                if isinstance(value, dict):
-                    return _serialize_hstore(value).encode(encoding)
-                else:
-                    return value
-
-        else:
-
-            def process(value):
-                if isinstance(value, dict):
-                    return _serialize_hstore(value)
-                else:
-                    return value
+        def process(value):
+            if isinstance(value, dict):
+                return _serialize_hstore(value)
+            else:
+                return value
 
         return process
 
     def result_processor(self, dialect, coltype):
-        if util.py2k:
-            encoding = dialect.encoding
-
-            def process(value):
-                if value is not None:
-                    return _parse_hstore(value.decode(encoding))
-                else:
-                    return value
-
-        else:
-
-            def process(value):
-                if value is not None:
-                    return _parse_hstore(value)
-                else:
-                    return value
+        def process(value):
+            if value is not None:
+                return _parse_hstore(value)
+            else:
+                return value
 
         return process
 
