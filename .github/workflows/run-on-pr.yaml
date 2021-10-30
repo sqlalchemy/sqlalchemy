@@ -22,7 +22,6 @@ jobs:
         os:
           - "ubuntu-latest"
         python-version:
-          - "2.7"
           - "3.10"
         build-type:
           - "cext"

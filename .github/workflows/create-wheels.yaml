@@ -23,8 +23,6 @@ jobs:
           - "windows-latest"
           - "macos-latest"
         python-version:
-          - "2.7"
-          - "3.6"
           - "3.7"
           - "3.8"
           - "3.9"
@@ -32,10 +30,6 @@ jobs:
         architecture:
           - x64
           - x86
-
-        include:
-          - python-version: "2.7"
-            extra-requires: "mock"
 
         exclude:
           - os: "macos-latest"
@@ -103,12 +97,6 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           files: 'dist/*.whl'
 
-      - name: Set up Python for twine
-        # twine on py2 is very old and is no longer updated, so we change to python 3.8 before upload
-        uses: actions/setup-python@v2
-        with:
-          python-version: "3.8"
-
       - name: Publish wheel
         # the action https://github.com/marketplace/actions/pypi-publish runs only on linux and we cannot specify
         # additional options
@@ -130,21 +118,12 @@ jobs:
           - "ubuntu-latest"
         python-version:
           # the versions are <python tag>-<abi tag> as specified in PEP 425.
-          - cp27-cp27m
-          - cp27-cp27mu
-          - cp36-cp36m
           - cp37-cp37m
           - cp38-cp38
           - cp39-cp39
           - cp310-cp310
         architecture:
           - x64
-
-        include:
-          - python-version: "cp27-cp27m"
-            extra-requires: "mock"
-          - python-version: "cp27-cp27mu"
-            extra-requires: "mock"
 
       fail-fast: false
 
@@ -177,7 +156,6 @@ jobs:
           (cat setup.cfg) | %{$_ -replace "tag_build.?=.?dev",""} | set-content setup.cfg
 
       - name: Create wheel for manylinux1 and manylinux2010 for py3
-        if: ${{ matrix.python-version != 'cp27-cp27m' && matrix.python-version != 'cp27-cp27mu' }}
         # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
         # the action uses the image for manylinux2010 but can generate also a manylinux1 wheel
         # change the tag of this image to change the image used
@@ -193,28 +171,11 @@ jobs:
           pip-wheel-args: "-w ./dist --no-use-pep517 -v --no-deps"
 
       - name: Create wheel for manylinux2014 for py3
-        if: ${{ matrix.python-version != 'cp27-cp27m' && matrix.python-version != 'cp27-cp27mu' }}
         # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
         # the action uses the image for manylinux2010 but can generate also a manylinux1 wheel
         # change the tag of this image to change the image used
         uses: RalfG/python-wheels-manylinux-build@v0.3.4-manylinux2014_x86_64
         # this action generates 2 wheels in dist/. linux and manylinux2014
-        with:
-          # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp27-cp27mu
-          python-versions: ${{ matrix.python-version }}
-          build-requirements: "setuptools>=44 wheel>=0.34"
-          # Create the wheel using --no-use-pep517 since locally we have pyproject
-          # This flag should be removed once sqlalchemy supports pep517
-          # `--no-deps` is used to only generate the wheel for the current library. Redundant in sqlalchemy since it has no dependencies
-          pip-wheel-args: "-w ./dist --no-use-pep517 -v --no-deps"
-
-      - name: Create wheel for manylinux py2
-        if: ${{ matrix.python-version == 'cp27-cp27m' || matrix.python-version == 'cp27-cp27mu' }}
-        # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
-        # the action uses the image for manylinux2010 but can generate also a manylinux1 wheel
-        # change the tag of this image to change the image used
-        uses: RalfG/python-wheels-manylinux-build@v0.3.4-manylinux1_x86_64
-        # this action generates 2 wheels in dist/. linux and manylinux1
         with:
           # python-versions is the output of the previous step and is in the form <python tag>-<abi tag>. Eg cp27-cp27mu
           python-versions: ${{ matrix.python-version }}
@@ -256,12 +217,6 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           files: 'dist/*manylinux*'
 
-      - name: Set up Python for twine
-        # twine on py2 is very old and is no longer updated, so we change to python 3.8 before upload
-        uses: actions/setup-python@v2
-        with:
-          python-version: "3.8"
-
       - name: Publish wheel
         # the action https://github.com/marketplace/actions/pypi-publish runs only on linux and we cannot specify
         # additional options
@@ -286,7 +241,6 @@ jobs:
           - "ubuntu-latest"
         python-version:
           # the versions are <python tag>-<abi tag> as specified in PEP 425.
-          - cp36-cp36m
           - cp37-cp37m
           - cp38-cp38
           - cp39-cp39
@@ -357,7 +311,7 @@ jobs:
         # twine on py2 is very old and is no longer updated, so we change to python 3.8 before upload
         uses: actions/setup-python@v2
         with:
-          python-version: "3.8"
+          python-version: "3.9"
 
       - name: Publish wheel
         # the action https://github.com/marketplace/actions/pypi-publish runs only on linux and we cannot specify
