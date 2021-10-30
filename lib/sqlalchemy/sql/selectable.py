@@ -399,7 +399,7 @@ class HasHints(object):
 
             select(mytable).\
                 with_hint(mytable, "index(%(name)s ix_mytable)", 'oracle').\
-                with_hint(mytable, "WITH INDEX ix_mytable", 'sybase')
+                with_hint(mytable, "WITH INDEX ix_mytable", 'mssql')
 
         .. seealso::
 

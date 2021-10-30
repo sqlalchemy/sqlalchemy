@@ -47,7 +47,6 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import ComparesTables
-from sqlalchemy.testing import emits_warning_on
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -707,7 +706,6 @@ class TypeRoundTripTest(
             )
             eq_(value, returned)
 
-    @emits_warning_on("mssql+mxodbc", r".*does not have any indexes.*")
     def test_dates(self, metadata, connection):
         "Exercise type specification for date types."
 
@@ -982,7 +980,6 @@ class TypeRoundTripTest(
                 ),
             )
 
-    @emits_warning_on("mssql+mxodbc", r".*does not have any indexes.*")
     @testing.combinations(
         ("legacy_large_types", False),
         ("sql2012_large_types", True, lambda: testing.only_on("mssql >= 11")),
@@ -1128,23 +1125,10 @@ class TypeRoundTripTest(
                     eq_(col.autoincrement, "auto")
                     is_not(tbl._autoincrement_column, col)
 
-            # mxodbc can't handle scope_identity() with DEFAULT VALUES
-
-            if testing.db.driver == "mxodbc":
-                eng = [
-                    engines.testing_engine(
-                        options={"implicit_returning": True}
-                    )
-                ]
-            else:
-                eng = [
-                    engines.testing_engine(
-                        options={"implicit_returning": False}
-                    ),
-                    engines.testing_engine(
-                        options={"implicit_returning": True}
-                    ),
-                ]
+            eng = [
+                engines.testing_engine(options={"implicit_returning": False}),
+                engines.testing_engine(options={"implicit_returning": True}),
+            ]
 
             for counter, engine in enumerate(eng):
                 connection.execute(tbl.insert())

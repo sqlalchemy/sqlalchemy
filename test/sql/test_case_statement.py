@@ -56,7 +56,6 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
         with testing.db.begin() as conn:
             info_table.drop(conn)
 
-    @testing.fails_on("firebird", "FIXME: unknown")
     @testing.requires.subqueries
     def test_case(self, connection):
         inner = select(

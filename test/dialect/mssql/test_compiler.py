@@ -26,7 +26,6 @@ from sqlalchemy import UniqueConstraint
 from sqlalchemy import update
 from sqlalchemy.dialects import mssql
 from sqlalchemy.dialects.mssql import base as mssql_base
-from sqlalchemy.dialects.mssql import mxodbc
 from sqlalchemy.dialects.mssql.base import try_cast
 from sqlalchemy.sql import column
 from sqlalchemy.sql import quoted_name
@@ -357,13 +356,13 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         from sqlalchemy.dialects.mssql.base import MSSQLStrictCompiler
 
-        mxodbc_dialect = mxodbc.dialect()
-        mxodbc_dialect.statement_compiler = MSSQLStrictCompiler
+        mssql_dialect = mssql.dialect()
+        mssql_dialect.statement_compiler = MSSQLStrictCompiler
 
         t = table("sometable", column("foo"))
 
         expr = testing.resolve_lambda(expr, t=t)
-        self.assert_compile(expr, compiled, dialect=mxodbc_dialect, **kw)
+        self.assert_compile(expr, compiled, dialect=mssql_dialect, **kw)
 
     def test_in_with_subqueries(self):
         """Test removal of legacy behavior that converted "x==subquery"

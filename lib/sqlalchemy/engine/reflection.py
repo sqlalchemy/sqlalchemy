@@ -905,7 +905,7 @@ class Inspector(object):
 
     def _reflect_col_sequence(self, col_d, colargs):
         if "sequence" in col_d:
-            # TODO: mssql and sybase are using this.
+            # TODO: mssql is using this.
             seq = col_d["sequence"]
             sequence = sa_schema.Sequence(seq["name"], 1, 1)
             if "start" in seq:

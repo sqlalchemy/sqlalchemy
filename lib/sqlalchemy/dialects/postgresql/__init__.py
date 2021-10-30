@@ -8,8 +8,6 @@ from . import base
 from . import pg8000  # noqa
 from . import psycopg2  # noqa
 from . import psycopg2cffi  # noqa
-from . import pygresql  # noqa
-from . import pypostgresql  # noqa
 from .array import All
 from .array import Any
 from .array import ARRAY

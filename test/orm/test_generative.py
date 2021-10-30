@@ -101,7 +101,6 @@ class GenerativeQueryTest(fixtures.MappedTest):
         query = fixture_session().query(func.sum(foo.c.bar))
         assert query.filter(foo.c.bar < 30).one() == (435,)
 
-    @testing.fails_on("firebird", "FIXME: unknown")
     @testing.fails_on(
         "mssql",
         "AVG produces an average as the original column type on mssql.",

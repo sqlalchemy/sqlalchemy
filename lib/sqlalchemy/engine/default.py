@@ -1536,8 +1536,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         elif not result._metadata.returns_rows:
             # no results, get rowcount
-            # (which requires open cursor on some drivers
-            # such as kintersbasdb, mxodbc)
+            # (which requires open cursor on some drivers)
             result.rowcount
             result._soft_close()
         return result

@@ -6,7 +6,6 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 from . import base  # noqa
-from . import mxodbc  # noqa
 from . import pymssql  # noqa
 from . import pyodbc  # noqa
 from .base import BIGINT

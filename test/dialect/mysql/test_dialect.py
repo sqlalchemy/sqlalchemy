@@ -154,11 +154,7 @@ class DialectTest(fixtures.TestBase):
         eq_(dialect.is_disconnect(error, None, None), is_disconnect)
 
     @testing.combinations(
-        ("mysqldb"),
-        ("pymysql"),
-        ("oursql"),
-        id_="s",
-        argnames="driver_name",
+        ("mysqldb"), ("pymysql"), id_="s", argnames="driver_name"
     )
     def test_ssl_arguments(self, driver_name):
         url = (
@@ -186,7 +182,6 @@ class DialectTest(fixtures.TestBase):
             expected["ssl"]["check_hostname"] = False
 
         kwarg = dialect.create_connect_args(make_url(url))[1]
-        # args that differ between oursql and others
         for k in ("use_unicode", "found_rows", "client_flag"):
             kwarg.pop(k, None)
         eq_(kwarg, expected)

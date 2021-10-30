@@ -10,7 +10,6 @@ from . import cymysql  # noqa
 from . import mariadbconnector  # noqa
 from . import mysqlconnector  # noqa
 from . import mysqldb  # noqa
-from . import oursql  # noqa
 from . import pymysql  # noqa
 from . import pyodbc  # noqa
 from .base import BIGINT

@@ -5098,7 +5098,6 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         'ERROR:  column "users.name" must appear in the GROUP BY clause'
         " or be used in an aggregate function",
     )
-    @testing.fails_on("firebird", "unknown")
     def test_values_with_boolean_selects(self):
         """Tests a values clause that works with select boolean
         evaluations"""

@@ -1430,8 +1430,6 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         eq_(result, [self.static.user_result[0]])
 
-    # 'Raises a "expression evaluation not supported" error at prepare time
-    @testing.fails_on("firebird", "FIXME: unknown")
     def test_function(self):
         """Mapping to a SELECT statement that has functions in it."""
 

@@ -15,7 +15,6 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import util
-from sqlalchemy.dialects import firebird
 from sqlalchemy.dialects import mssql
 from sqlalchemy.dialects import mysql
 from sqlalchemy.dialects import oracle
@@ -3042,22 +3041,6 @@ class ComposedLikeOperatorsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             "x NOT LIKE concat(%s, '%%')",
             checkparams={"x_1": "y"},
             dialect=mysql.dialect(),
-        )
-
-    def test_startswith_firebird(self):
-        self.assert_compile(
-            column("x").startswith("y"),
-            "x STARTING WITH :x_1",
-            checkparams={"x_1": "y"},
-            dialect=firebird.dialect(),
-        )
-
-    def test_not_startswith_firebird(self):
-        self.assert_compile(
-            ~column("x").startswith("y"),
-            "x NOT STARTING WITH :x_1",
-            checkparams={"x_1": "y"},
-            dialect=firebird.dialect(),
         )
 
     def test_startswith_literal_mysql(self):

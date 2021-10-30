@@ -232,7 +232,7 @@ class SuiteRequirements(Requirements):
         without being in the context of a typed column.
 
         """
-        return exclusions.closed()
+        return exclusions.open()
 
     @property
     def standalone_null_binds_whereclause(self):
@@ -917,7 +917,7 @@ class SuiteRequirements(Requirements):
     def precision_numerics_enotation_large(self):
         """target backend supports Decimal() objects using E notation
         to represent very large values."""
-        return exclusions.closed()
+        return exclusions.open()
 
     @property
     def precision_numerics_many_significant_digits(self):

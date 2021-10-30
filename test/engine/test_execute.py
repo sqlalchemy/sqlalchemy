@@ -479,10 +479,6 @@ class ExecuteTest(fixtures.TablesTest):
         "Older versions don't support cursor pickling, newer ones do",
     )
     @testing.fails_on(
-        "mysql+oursql",
-        "Exception doesn't come back exactly the same from pickle",
-    )
-    @testing.fails_on(
         "mysql+mysqlconnector",
         "Exception doesn't come back exactly the same from pickle",
     )
@@ -866,7 +862,6 @@ class ConvenienceExecuteTest(fixtures.TablesTest):
             fn(conn, 5, value=8)
         self._assert_fn(5, value=8)
 
-    @testing.fails_on("mysql+oursql", "oursql bug ?  getting wrong rowcount")
     def test_connect_as_ctx_noautocommit(self):
         fn = self._trans_fn()
         self._assert_no_data()

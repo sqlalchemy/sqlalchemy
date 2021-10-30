@@ -51,24 +51,6 @@ Support Definitions
         Pull requests with associated issues may be accepted to continue supporting
         older versions, which are reviewed on a case-by-case basis.
 
-
-Deprecated, no longer supported dialects
-----------------------------------------
-
-The following dialects have implementations within SQLAlchemy, but they are not
-part of continuous integration testing nor are they actively developed.
-These dialects are deprecated and will be removed in future major releases.
-
-.. toctree::
-    :maxdepth: 1
-    :glob:
-
-    firebird
-    sybase
-
-Note that both of these dialects now have third-party implementations that
-are maintained separately. See the following list.
-
 .. _external_toplevel:
 
 External Dialects

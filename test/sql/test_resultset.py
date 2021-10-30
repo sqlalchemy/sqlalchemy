@@ -1268,7 +1268,6 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(list(r._mapping.values()), ["foo", 1])
 
     @testing.crashes("oracle", "FIXME: unknown, verify not fails_on()")
-    @testing.crashes("firebird", "An identifier must begin with a letter")
     @testing.provide_metadata
     def test_column_accessor_shadow(self, connection):
         shadowed = Table(

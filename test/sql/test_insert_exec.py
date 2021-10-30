@@ -132,7 +132,7 @@ class InsertExecTest(fixtures.TablesTest):
                         ret[c.key] = row._mapping[c]
             return ret, ipk
 
-        if testing.against("firebird", "postgresql", "oracle", "mssql"):
+        if testing.against("postgresql", "oracle", "mssql"):
             assert testing.db.dialect.implicit_returning
 
         if testing.db.dialect.implicit_returning:

@@ -55,11 +55,6 @@ def setup_filters():
         category=sa_exc.SADeprecationWarning,
         message=r".*\(deprecated since: 2.0\)$",
     )
-    warnings.filterwarnings(
-        "ignore",
-        category=sa_exc.SADeprecationWarning,
-        message=r"^The (Sybase|firebird) dialect is deprecated and will be",
-    )
 
     try:
         import pytest
