@@ -40,18 +40,11 @@ except ImportError:
 
 
 KEY_INTEGER_ONLY = 0
-"""__getitem__ only allows integer values, raises TypeError otherwise"""
+"""__getitem__ only allows integer values and slices, raises TypeError
+   otherwise"""
 
 KEY_OBJECTS_ONLY = 1
 """__getitem__ only allows string/object values, raises TypeError otherwise"""
-
-KEY_OBJECTS_BUT_WARN = 2
-"""__getitem__ allows integer or string/object values, but emits a 2.0
-deprecation warning if string/object is passed"""
-
-KEY_OBJECTS_NO_WARN = 3
-"""__getitem__ allows integer or string/object values with no warnings
-or errors."""
 
 try:
     from sqlalchemy.cresultproxy import BaseRow
@@ -116,31 +109,12 @@ except ImportError:
             if int in key.__class__.__mro__:
                 return self._data[key]
 
-            if self._key_style == KEY_INTEGER_ONLY:
-                self._parent._raise_for_nonint(key)
+            assert self._key_style == KEY_INTEGER_ONLY
 
-            # the following is all LegacyRow support.   none of this
-            # should be called if not LegacyRow
-            # assert isinstance(self, LegacyRow)
+            if isinstance(key, slice):
+                return tuple(self._data[key])
 
-            try:
-                rec = self._keymap[key]
-            except KeyError as ke:
-                rec = self._parent._key_fallback(key, ke)
-            except TypeError:
-                if isinstance(key, slice):
-                    return tuple(self._data[key])
-                else:
-                    raise
-
-            mdindex = rec[MD_INDEX]
-            if mdindex is None:
-                self._parent._raise_for_ambiguous_column_name(rec)
-
-            elif self._key_style == KEY_OBJECTS_BUT_WARN and mdindex != key:
-                self._parent._warn_for_nonint(key)
-
-            return self._data[mdindex]
+            self._parent._raise_for_nonint(key)
 
         # The original 1.4 plan was that Row would not allow row["str"]
         # access, however as the C extensions were inadvertently allowing
@@ -190,26 +164,19 @@ class Row(BaseRow, collections_abc.Sequence):
         :ref:`coretutorial_selecting` - includes examples of selecting
         rows from SELECT statements.
 
-        :class:`.LegacyRow` - Compatibility interface introduced in SQLAlchemy
-        1.4.
-
     .. versionchanged:: 1.4
 
-        Renamed ``RowProxy`` to :class:`.Row`.  :class:`.Row` is no longer a
+        Renamed ``RowProxy`` to :class:`.Row`. :class:`.Row` is no longer a
         "proxy" object in that it contains the final form of data within it,
-        and now acts mostly like a named tuple.  Mapping-like functionality is
-        moved to the :attr:`.Row._mapping` attribute, but will remain available
-        in SQLAlchemy 1.x series via the :class:`.LegacyRow` class that is used
-        by :class:`_engine.LegacyCursorResult`.
-        See :ref:`change_4710_core` for background
-        on this change.
+        and now acts mostly like a named tuple. Mapping-like functionality is
+        moved to the :attr:`.Row._mapping` attribute. See
+        :ref:`change_4710_core` for background on this change.
 
     """
 
     __slots__ = ()
 
-    # in 2.0, this should be KEY_INTEGER_ONLY
-    _default_key_style = KEY_OBJECTS_BUT_WARN
+    _default_key_style = KEY_INTEGER_ONLY
 
     @property
     def _mapping(self):
@@ -217,10 +184,7 @@ class Row(BaseRow, collections_abc.Sequence):
 
         This object provides a consistent Python mapping (i.e. dictionary)
         interface for the data contained within the row.   The :class:`.Row`
-        by itself behaves like a named tuple, however in the 1.4 series of
-        SQLAlchemy, the :class:`.LegacyRow` class is still used by Core which
-        continues to have mapping-like behaviors against the row object
-        itself.
+        by itself behaves like a named tuple.
 
         .. seealso::
 
@@ -304,32 +268,6 @@ class Row(BaseRow, collections_abc.Sequence):
     def __repr__(self):
         return repr(sql_util._repr_row(self))
 
-    @util.deprecated_20(
-        ":meth:`.Row.keys`",
-        alternative="Use the namedtuple standard accessor "
-        ":attr:`.Row._fields`, or for full mapping behavior use  "
-        "row._mapping.keys() ",
-    )
-    def keys(self):
-        """Return the list of keys as strings represented by this
-        :class:`.Row`.
-
-        The keys can represent the labels of the columns returned by a core
-        statement or the names of the orm classes returned by an orm
-        execution.
-
-        This method is analogous to the Python dictionary ``.keys()`` method,
-        except that it returns a list, not an iterator.
-
-        .. seealso::
-
-            :attr:`.Row._fields`
-
-            :attr:`.Row._mapping`
-
-        """
-        return self._parent.keys
-
     @property
     def _fields(self):
         """Return a tuple of string keys as represented by this
@@ -374,130 +312,6 @@ class Row(BaseRow, collections_abc.Sequence):
     @property
     def _field_defaults(self):
         raise NotImplementedError()
-
-
-class LegacyRow(Row):
-    """A subclass of :class:`.Row` that delivers 1.x SQLAlchemy behaviors
-    for Core.
-
-    The :class:`.LegacyRow` class is where most of the Python mapping
-    (i.e. dictionary-like)
-    behaviors are implemented for the row object.  The mapping behavior
-    of :class:`.Row` going forward is accessible via the :class:`.Row._mapping`
-    attribute.
-
-    .. versionadded:: 1.4 - added :class:`.LegacyRow` which encapsulates most
-       of the deprecated behaviors of :class:`.Row`.
-
-    """
-
-    __slots__ = ()
-
-    if util.SQLALCHEMY_WARN_20:
-        _default_key_style = KEY_OBJECTS_BUT_WARN
-    else:
-        _default_key_style = KEY_OBJECTS_NO_WARN
-
-    def __contains__(self, key):
-        return self._parent._contains(key, self)
-
-    # prior to #6218, LegacyRow would redirect the behavior of __getitem__
-    # for the non C version of BaseRow. This is now set up by Python BaseRow
-    # in all cases
-    # if not _baserow_usecext:
-    #    __getitem__ = BaseRow._get_by_key_impl
-
-    @util.deprecated(
-        "1.4",
-        "The :meth:`.LegacyRow.has_key` method is deprecated and will be "
-        "removed in a future release.  To test for key membership, use "
-        "the :attr:`Row._mapping` attribute, i.e. 'key in row._mapping`.",
-    )
-    def has_key(self, key):
-        """Return True if this :class:`.LegacyRow` contains the given key.
-
-        Through the SQLAlchemy 1.x series, the ``__contains__()`` method of
-        :class:`.Row` (or :class:`.LegacyRow` as of SQLAlchemy 1.4)  also links
-        to :meth:`.Row.has_key`, in that an expression such as ::
-
-            "some_col" in row
-
-        Will return True if the row contains a column named ``"some_col"``,
-        in the way that a Python mapping works.
-
-        However, it is planned that the 2.0 series of SQLAlchemy will reverse
-        this behavior so that ``__contains__()`` will refer to a value being
-        present in the row, in the way that a Python tuple works.
-
-        .. seealso::
-
-            :ref:`change_4710_core`
-
-        """
-
-        return self._parent._has_key(key)
-
-    @util.deprecated(
-        "1.4",
-        "The :meth:`.LegacyRow.items` method is deprecated and will be "
-        "removed in a future release.  Use the :attr:`Row._mapping` "
-        "attribute, i.e., 'row._mapping.items()'.",
-    )
-    def items(self):
-        """Return a list of tuples, each tuple containing a key/value pair.
-
-        This method is analogous to the Python dictionary ``.items()`` method,
-        except that it returns a list, not an iterator.
-
-        """
-
-        return [(key, self[key]) for key in self.keys()]
-
-    @util.deprecated(
-        "1.4",
-        "The :meth:`.LegacyRow.iterkeys` method is deprecated and will be "
-        "removed in a future release.  Use the :attr:`Row._mapping` "
-        "attribute, i.e., 'row._mapping.keys()'.",
-    )
-    def iterkeys(self):
-        """Return a an iterator against the :meth:`.Row.keys` method.
-
-        This method is analogous to the Python-2-only dictionary
-        ``.iterkeys()`` method.
-
-        """
-        return iter(self._parent.keys)
-
-    @util.deprecated(
-        "1.4",
-        "The :meth:`.LegacyRow.itervalues` method is deprecated and will be "
-        "removed in a future release.  Use the :attr:`Row._mapping` "
-        "attribute, i.e., 'row._mapping.values()'.",
-    )
-    def itervalues(self):
-        """Return a an iterator against the :meth:`.Row.values` method.
-
-        This method is analogous to the Python-2-only dictionary
-        ``.itervalues()`` method.
-
-        """
-        return iter(self)
-
-    @util.deprecated(
-        "1.4",
-        "The :meth:`.LegacyRow.values` method is deprecated and will be "
-        "removed in a future release.  Use the :attr:`Row._mapping` "
-        "attribute, i.e., 'row._mapping.values()'.",
-    )
-    def values(self):
-        """Return the values represented by this :class:`.Row` as a list.
-
-        This method is analogous to the Python dictionary ``.values()`` method,
-        except that it returns a list, not an iterator.
-
-        """
-
-        return self._values_impl()
 
 
 BaseRowProxy = BaseRow

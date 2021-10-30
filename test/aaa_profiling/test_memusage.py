@@ -1017,25 +1017,6 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             metadata.drop_all(self.engine)
         assert_no_mappers()
 
-    @testing.uses_deprecated()
-    def test_key_fallback_result(self):
-        m = MetaData()
-        e = self.engine
-        t = Table("t", m, Column("x", Integer), Column("y", Integer))
-        m.create_all(e)
-        e.execute(t.insert(), {"x": 1, "y": 1})
-
-        @profile_memory()
-        def go():
-            r = e.execute(t.alias().select())
-            for row in r:
-                row[t.c.x]
-
-        try:
-            go()
-        finally:
-            m.drop_all(e)
-
     def test_many_discarded_relationships(self):
         """a use case that really isn't supported, nonetheless we can
         guard against memleaks here so why not"""

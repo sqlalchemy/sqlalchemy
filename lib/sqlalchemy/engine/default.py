@@ -855,7 +855,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
     _is_implicit_returning = False
     _is_explicit_returning = False
-    _is_future_result = False
     _is_server_side = False
 
     _soft_closed = False
@@ -889,11 +888,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.isddl = True
 
         self.execution_options = execution_options
-
-        self._is_future_result = (
-            connection._is_future
-            or self.execution_options.get("future_result", False)
-        )
 
         self.unicode_statement = util.text_type(compiled)
         if compiled.schema_translate_map:
@@ -946,11 +940,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.cache_hit = cache_hit
 
         self.execution_options = execution_options
-
-        self._is_future_result = (
-            connection._is_future
-            or self.execution_options.get("future_result", False)
-        )
 
         self.result_column_struct = (
             compiled._result_columns,
@@ -1106,11 +1095,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         self.execution_options = execution_options
 
-        self._is_future_result = (
-            connection._is_future
-            or self.execution_options.get("future_result", False)
-        )
-
         if not parameters:
             if self.dialect.positional:
                 self.parameters = [dialect.execute_sequence_format()]
@@ -1156,11 +1140,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.dialect = connection.dialect
 
         self.execution_options = execution_options
-
-        self._is_future_result = (
-            connection._is_future
-            or self.execution_options.get("future_result", False)
-        )
 
         self.cursor = self.create_cursor()
         return self
@@ -1420,18 +1399,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             if cursor_description is None:
                 strategy = _cursor._NO_CURSOR_DQL
 
-            if self._is_future_result:
-                if self.root_connection.should_close_with_result:
-                    raise exc.InvalidRequestError(
-                        "can't use future_result=True with close_with_result"
-                    )
-                result = _cursor.CursorResult(
-                    self, strategy, cursor_description
-                )
-            else:
-                result = _cursor.LegacyCursorResult(
-                    self, strategy, cursor_description
-                )
+            result = _cursor.CursorResult(self, strategy, cursor_description)
 
         if (
             self.compiled
@@ -1493,12 +1461,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         if cursor_description is None:
             strategy = _cursor._NO_CURSOR_DML
 
-        if self._is_future_result:
-            result = _cursor.CursorResult(self, strategy, cursor_description)
-        else:
-            result = _cursor.LegacyCursorResult(
-                self, strategy, cursor_description
-            )
+        result = _cursor.CursorResult(self, strategy, cursor_description)
 
         if self.isinsert:
             if self._is_implicit_returning:

@@ -7,20 +7,21 @@
 
 
 from .base import Engine
-from .interfaces import Connectable
+from .interfaces import ConnectionEventsTarget
 from .interfaces import Dialect
 from .. import event
 from .. import exc
 
 
 class ConnectionEvents(event.Events):
-    """Available events for :class:`.Connectable`, which includes
+    """Available events for
     :class:`_engine.Connection` and :class:`_engine.Engine`.
 
     The methods here define the name of an event as well as the names of
     members that are passed to listener functions.
 
-    An event listener can be associated with any :class:`.Connectable`
+    An event listener can be associated with any
+    :class:`_engine.Connection` or :class:`_engine.Engine`
     class or instance, such as an :class:`_engine.Engine`, e.g.::
 
         from sqlalchemy import event, create_engine
@@ -90,7 +91,7 @@ class ConnectionEvents(event.Events):
     """
 
     _target_class_doc = "SomeEngine"
-    _dispatch_target = Connectable
+    _dispatch_target = ConnectionEventsTarget
 
     @classmethod
     def _listen(cls, event_key, retval=False):
