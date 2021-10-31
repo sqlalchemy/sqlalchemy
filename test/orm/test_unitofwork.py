@@ -69,7 +69,7 @@ class HistoryTest(_fixtures.FixtureTest):
             ),
         )
 
-        session = fixture_session(autocommit=False)
+        session = fixture_session()
 
         u = User(name="u1")
         a = Address(email_address="u1@e")
@@ -128,7 +128,7 @@ class UnicodeTest(fixtures.MappedTest):
         t1 = Test(id=1, txt=txt)
         self.assert_(t1.txt == txt)
 
-        session = fixture_session(autocommit=False)
+        session = fixture_session()
         session.add(t1)
         session.commit()
 
@@ -151,7 +151,7 @@ class UnicodeTest(fixtures.MappedTest):
         t1 = Test(txt=txt)
         t1.t2s.append(Test2())
         t1.t2s.append(Test2())
-        session = fixture_session(autocommit=False, expire_on_commit=False)
+        session = fixture_session(expire_on_commit=False)
         session.add(t1)
         session.commit()
         session.close()
@@ -1151,7 +1151,7 @@ class DefaultTest(fixtures.MappedTest):
         h4 = Hoho()
         h5 = Hoho(foober="im the new foober")
 
-        session = fixture_session(autocommit=False, expire_on_commit=False)
+        session = fixture_session(expire_on_commit=False)
         session.add_all((h1, h2, h3, h4, h5))
         session.commit()
 
@@ -2013,7 +2013,7 @@ class SaveTest(_fixtures.FixtureTest):
 
         # don't set deferred attribute, commit session
         o = Order(id=42)
-        session = fixture_session(autocommit=False)
+        session = fixture_session()
         session.add(o)
         session.commit()
 

@@ -556,7 +556,8 @@ class SessionTransaction(TransactionalContext):
         :class:`.SessionTransaction` is at the top of the stack, and
         corresponds to a real "COMMIT"/"ROLLBACK"
         block.  If non-``None``, then this is either a "subtransaction"
-        or a "nested" / SAVEPOINT transaction.  If the
+        (an internal marker object used by the flush process) or a
+        "nested" / SAVEPOINT transaction.  If the
         :attr:`.SessionTransaction.nested` attribute is ``True``, then
         this is a SAVEPOINT, and if ``False``, indicates this a subtransaction.
 
@@ -950,29 +951,18 @@ class Session(_SessionClassMethods):
 
     _is_asyncio = False
 
-    @util.deprecated_params(
-        autocommit=(
-            "2.0",
-            "The :paramref:`.Session.autocommit` parameter is deprecated "
-            "and will be removed in SQLAlchemy version 2.0.  The "
-            ':class:`_orm.Session` now features "autobegin" behavior '
-            "such that the :meth:`.Session.begin` method may be called "
-            "if a transaction has not yet been started yet.  See the section "
-            ":ref:`session_explicit_begin` for background.",
-        ),
-    )
     def __init__(
         self,
         bind=None,
         autoflush=True,
         future=False,
         expire_on_commit=True,
-        autocommit=False,
         twophase=False,
         binds=None,
         enable_baked_queries=True,
         info=None,
         query_cls=None,
+        autocommit=False,
     ):
         r"""Construct a new Session.
 
@@ -980,25 +970,11 @@ class Session(_SessionClassMethods):
         generate a :class:`.Session`-producing callable with a given
         set of arguments.
 
-        :param autocommit:
-          Defaults to ``False``. When ``True``, the
-          :class:`.Session` does not automatically begin transactions for
-          individual statement executions, will acquire connections from the
-          engine on an as-needed basis, releasing to the connection pool
-          after each statement. Flushes will begin and commit (or possibly
-          rollback) their own transaction if no transaction is present.
-          When using this mode, the
-          :meth:`.Session.begin` method may be used to explicitly start
-          transactions, but the usual "autobegin" behavior is not present.
-
         :param autoflush: When ``True``, all query operations will issue a
            :meth:`~.Session.flush` call to this ``Session`` before proceeding.
            This is a convenience feature so that :meth:`~.Session.flush` need
            not be called repeatedly in order for database queries to retrieve
-           results. It's typical that ``autoflush`` is used in conjunction
-           with ``autocommit=False``. In this scenario, explicit calls to
-           :meth:`~.Session.flush` are rarely needed; you usually only need to
-           call :meth:`~.Session.commit` (which flushes) to finalize changes.
+           results.
 
         :param bind: An optional :class:`_engine.Engine` or
            :class:`_engine.Connection` to
@@ -1077,10 +1053,6 @@ class Session(_SessionClassMethods):
             otherwise be configured against the :class:`_orm.sessionmaker`
             in use
 
-          * The "subtransactions" feature of :meth:`_orm.Session.begin` is
-            removed in version 2.0 and is disabled when the future flag is
-            set.
-
           * The behavior of the :paramref:`_orm.relationship.cascade_backrefs`
             flag on a :func:`_orm.relationship` will always assume
             "False" behavior.
@@ -1111,7 +1083,19 @@ class Session(_SessionClassMethods):
             called. This allows each database to roll back the entire
             transaction, before each transaction is committed.
 
+        :param autocommit: the "autocommit" keyword is present for backwards
+            compatibility but must remain at its default value of ``False``.
+
         """
+
+        # considering allowing the "autocommit" keyword to still be accepted
+        # as long as it's False, so that external test suites, oslo.db etc
+        # continue to function as the argument appears to be passed in lots
+        # of cases including in our own test suite
+        if autocommit:
+            raise sa_exc.ArgumentError(
+                "autocommit=True is no longer supported"
+            )
         self.identity_map = identity.WeakInstanceDict()
 
         self._new = {}  # InstanceState->object, strong refs object
@@ -1127,15 +1111,6 @@ class Session(_SessionClassMethods):
         self.autoflush = autoflush
         self.expire_on_commit = expire_on_commit
         self.enable_baked_queries = enable_baked_queries
-
-        if autocommit:
-            if future:
-                raise sa_exc.ArgumentError(
-                    "Cannot use autocommit mode with future=True."
-                )
-            self.autocommit = True
-        else:
-            self.autocommit = False
 
         self.twophase = twophase
         self._query_cls = query_cls if query_cls else query.Query
@@ -1248,7 +1223,7 @@ class Session(_SessionClassMethods):
         return {}
 
     def _autobegin(self):
-        if not self.autocommit and self._transaction is None:
+        if self._transaction is None:
 
             trans = SessionTransaction(self, autobegin=True)
             assert self._transaction is trans
@@ -1256,17 +1231,7 @@ class Session(_SessionClassMethods):
 
         return False
 
-    @util.deprecated_params(
-        subtransactions=(
-            "2.0",
-            "The :paramref:`_orm.Session.begin.subtransactions` flag is "
-            "deprecated and "
-            "will be removed in SQLAlchemy version 2.0.  See "
-            "the documentation at :ref:`session_subtransactions` for "
-            "background on a compatible alternative pattern.",
-        )
-    )
-    def begin(self, subtransactions=False, nested=False, _subtrans=False):
+    def begin(self, nested=False, _subtrans=False):
         """Begin a transaction, or nested transaction,
         on this :class:`.Session`, if one is not already begun.
 
@@ -1284,13 +1249,10 @@ class Session(_SessionClassMethods):
          documentation on SAVEPOINT transactions, please see
          :ref:`session_begin_nested`.
 
-        :param subtransactions: if True, indicates that this
-         :meth:`~.Session.begin` can create a "subtransaction".
-
         :return: the :class:`.SessionTransaction` object.  Note that
          :class:`.SessionTransaction`
          acts as a Python context manager, allowing :meth:`.Session.begin`
-         to be used in a "with" block.  See :ref:`session_autocommit` for
+         to be used in a "with" block.  See :ref:`session_explicit_begin` for
          an example.
 
         .. seealso::
@@ -1304,18 +1266,12 @@ class Session(_SessionClassMethods):
 
         """
 
-        if subtransactions and self.future:
-            raise NotImplementedError(
-                "subtransactions are not implemented in future "
-                "Session objects."
-            )
-
         if self._autobegin():
-            if not subtransactions and not nested and not _subtrans:
+            if not nested and not _subtrans:
                 return self._transaction
 
         if self._transaction is not None:
-            if subtransactions or _subtrans or nested:
+            if _subtrans or nested:
                 trans = self._transaction._begin(nested=nested)
                 assert self._transaction is trans
                 if nested:
@@ -1324,17 +1280,12 @@ class Session(_SessionClassMethods):
                 raise sa_exc.InvalidRequestError(
                     "A transaction is already begun on this Session."
                 )
-        elif not self.autocommit:
+        else:
             # outermost transaction.  must be a not nested and not
             # a subtransaction
 
-            assert not nested and not _subtrans and not subtransactions
+            assert not nested and not _subtrans
             trans = SessionTransaction(self)
-            assert self._transaction is trans
-        else:
-            # legacy autocommit mode
-            assert not self.future
-            trans = SessionTransaction(self, nested=nested)
             assert self._transaction is trans
 
         return self._transaction  # needed for __enter__/__exit__ hook
@@ -1407,13 +1358,6 @@ class Session(_SessionClassMethods):
         transaction is committed unconditionally, automatically releasing any
         SAVEPOINTs in effect.
 
-        When using legacy "autocommit" mode, this method is only
-        valid to call if a transaction is actually in progress, else
-        an error is raised.   Similarly, when using legacy "subtransactions",
-        the method will instead close out the current "subtransaction",
-        rather than the actual database transaction, if a transaction
-        is in progress.
-
         .. seealso::
 
             :ref:`session_committing`
@@ -1444,28 +1388,16 @@ class Session(_SessionClassMethods):
 
         self._transaction.prepare()
 
-    def connection(
-        self,
-        bind_arguments=None,
-        close_with_result=False,
-        execution_options=None,
-        **kw
-    ):
+    def connection(self, bind_arguments=None, execution_options=None, **kw):
         r"""Return a :class:`_engine.Connection` object corresponding to this
         :class:`.Session` object's transactional state.
 
-        If this :class:`.Session` is configured with ``autocommit=False``,
-        either the :class:`_engine.Connection` corresponding to the current
+        Either the :class:`_engine.Connection` corresponding to the current
         transaction is returned, or if no transaction is in progress, a new
         one is begun and the :class:`_engine.Connection`
         returned (note that no
         transactional state is established with the DBAPI until the first
         SQL statement is emitted).
-
-        Alternatively, if this :class:`.Session` is configured with
-        ``autocommit=True``, an ad-hoc :class:`_engine.Connection` is returned
-        using :meth:`_engine.Engine.connect` on the underlying
-        :class:`_engine.Engine`.
 
         Ambiguity in multi-bind or unbound :class:`.Session` objects can be
         resolved through any of the optional keyword arguments.   This
@@ -1483,16 +1415,6 @@ class Session(_SessionClassMethods):
 
         :param clause:
           deprecated; use bind_arguments
-
-        :param close_with_result: Passed to :meth:`_engine.Engine.connect`,
-          indicating the :class:`_engine.Connection` should be considered
-          "single use", automatically closing when the first result set is
-          closed.  This flag only has an effect if this :class:`.Session` is
-          configured with ``autocommit=True`` and does not already have a
-          transaction in progress.
-
-          .. deprecated:: 1.4  this parameter is deprecated and will be removed
-             in SQLAlchemy 2.0
 
         :param execution_options: a dictionary of execution options that will
          be passed to :meth:`_engine.Connection.execution_options`, **when the
@@ -1518,24 +1440,17 @@ class Session(_SessionClassMethods):
 
         return self._connection_for_bind(
             bind,
-            close_with_result=close_with_result,
             execution_options=execution_options,
         )
 
     def _connection_for_bind(self, engine, execution_options=None, **kw):
         TransactionalContext._trans_ctx_check(self)
 
-        if self._transaction is not None or self._autobegin():
-            return self._transaction._connection_for_bind(
-                engine, execution_options
-            )
-
-        assert self._transaction is None
-        assert self.autocommit
-        conn = engine.connect(**kw)
-        if execution_options:
-            conn = conn.execution_options(**execution_options)
-        return conn
+        if self._transaction is None:
+            assert self._autobegin()
+        return self._transaction._connection_for_bind(
+            engine, execution_options
+        )
 
     def execute(
         self,
@@ -1676,16 +1591,7 @@ class Session(_SessionClassMethods):
 
         bind = self.get_bind(**bind_arguments)
 
-        if self.autocommit:
-            # legacy stuff, we can't use future_result w/ autocommit because
-            # we rely upon close_with_result, also legacy.  it's all
-            # interrelated
-            conn = self._connection_for_bind(bind, close_with_result=True)
-            execution_options = execution_options.union(
-                dict(future_result=False)
-            )
-        else:
-            conn = self._connection_for_bind(bind)
+        conn = self._connection_for_bind(bind)
         result = conn._execute_20(statement, params or {}, execution_options)
 
         if compile_state_cls:
@@ -2344,8 +2250,8 @@ class Session(_SessionClassMethods):
         expire all state whenever the :meth:`Session.rollback`
         or :meth:`Session.commit` methods are called, so that new
         state can be loaded for the new transaction.   For this reason,
-        calling :meth:`Session.expire_all` should not be needed when
-        autocommit is ``False``, assuming the transaction is isolated.
+        calling :meth:`Session.expire_all` is not usually needed,
+        assuming the transaction is isolated.
 
         .. seealso::
 
@@ -3322,10 +3228,6 @@ class Session(_SessionClassMethods):
         You may flush() as often as you like within a transaction to move
         changes from Python to the database's transaction buffer.
 
-        For ``autocommit`` Sessions with no active manual transaction, flush()
-        will create a transaction on the fly that surrounds the entire set of
-        operations into the flush.
-
         :param objects: Optional; restricts the flush operation to operate
           only on elements that are in the given collection.
 
@@ -3914,12 +3816,7 @@ class Session(_SessionClassMethods):
             :meth:`_orm.Session.in_transaction`
 
         """
-        if self.autocommit:
-            return (
-                self._transaction is not None and self._transaction.is_active
-            )
-        else:
-            return self._transaction is None or self._transaction.is_active
+        return self._transaction is None or self._transaction.is_active
 
     identity_map = None
     """A mapping of object identities to objects themselves.
@@ -4090,7 +3987,6 @@ class sessionmaker(_SessionClassMethods):
         bind=None,
         class_=Session,
         autoflush=True,
-        autocommit=False,
         expire_on_commit=True,
         info=None,
         **kw
@@ -4108,8 +4004,6 @@ class sessionmaker(_SessionClassMethods):
          objects.  Defaults to :class:`.Session`.
         :param autoflush: The autoflush setting to use with newly created
          :class:`.Session` objects.
-        :param autocommit: The autocommit setting to use with newly created
-         :class:`.Session` objects.
         :param expire_on_commit=True: the
          :paramref:`_orm.Session.expire_on_commit` setting to use
          with newly created :class:`.Session` objects.
@@ -4125,7 +4019,6 @@ class sessionmaker(_SessionClassMethods):
         """
         kw["bind"] = bind
         kw["autoflush"] = autoflush
-        kw["autocommit"] = autocommit
         kw["expire_on_commit"] = expire_on_commit
         if info is not None:
             kw["info"] = info

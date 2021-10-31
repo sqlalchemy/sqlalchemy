@@ -1430,7 +1430,7 @@ class MergeTest(_fixtures.FixtureTest):
             self.tables.users,
         )
 
-        s = fixture_session(autoflush=True, autocommit=False, future=True)
+        s = fixture_session(autoflush=True, future=True)
         self.mapper_registry.map_imperatively(
             User,
             users,
@@ -1462,7 +1462,9 @@ class MergeTest(_fixtures.FixtureTest):
             self.tables.users,
         )
 
-        sess = fixture_session(autoflush=True, autocommit=False)
+        sess = fixture_session(
+            autoflush=True,
+        )
         self.mapper_registry.map_imperatively(
             User,
             users,
@@ -1503,7 +1505,9 @@ class MergeTest(_fixtures.FixtureTest):
         u = User(
             id=7, name="fred", addresses=[Address(id=1, email_address="fred1")]
         )
-        sess = fixture_session(autoflush=True, autocommit=False)
+        sess = fixture_session(
+            autoflush=True,
+        )
         sess.add(u)
         sess.commit()
 
@@ -1528,7 +1532,9 @@ class MergeTest(_fixtures.FixtureTest):
 
         self.mapper_registry.map_imperatively(User, users)
         u = User(id=7)
-        sess = fixture_session(autoflush=True, autocommit=False)
+        sess = fixture_session(
+            autoflush=True,
+        )
         u = sess.merge(u)
         assert not bool(attributes.instance_state(u).expired_attributes)
 

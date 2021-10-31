@@ -797,7 +797,9 @@ class UOWTest(
         User, Address = self._user_address_fixture(
             addresses_args={"order_by": addresses.c.email_address}
         )
-        sess = fixture_session(autoflush=True, autocommit=False)
+        sess = fixture_session(
+            autoflush=True,
+        )
         u1 = User(name="jack")
         a1 = Address(email_address="a1")
         a2 = Address(email_address="a2")
@@ -885,9 +887,7 @@ class UOWTest(
 
     def test_rollback(self):
         User, Address = self._user_address_fixture()
-        sess = fixture_session(
-            expire_on_commit=False, autocommit=False, autoflush=True
-        )
+        sess = fixture_session(expire_on_commit=False, autoflush=True)
         u1 = User(name="jack")
         u1.addresses.append(Address(email_address="lala@hoho.com"))
         sess.add(u1)
@@ -914,7 +914,9 @@ class UOWTest(
             }
         )
 
-        sess = fixture_session(autoflush=True, autocommit=False)
+        sess = fixture_session(
+            autoflush=True,
+        )
         u = User(name="ed")
         u.addresses.extend(
             [Address(email_address=letter) for letter in "abcdef"]
@@ -1008,7 +1010,9 @@ class UOWTest(
             }
         )
 
-        sess = fixture_session(autoflush=True, autocommit=False)
+        sess = fixture_session(
+            autoflush=True,
+        )
         u = User(name="ed")
         u.addresses.extend(
             [Address(email_address=letter) for letter in "abcdef"]
@@ -1029,7 +1033,9 @@ class UOWTest(
         User, Address = self._user_address_fixture(
             addresses_args={"backref": "user"}
         )
-        sess = fixture_session(autoflush=autoflush, autocommit=False)
+        sess = fixture_session(
+            autoflush=autoflush,
+        )
 
         u = User(name="buffy")
 

@@ -135,9 +135,7 @@ class ShardTest(object):
             else:
                 return ids
 
-        sharded_session = sessionmaker(
-            class_=ShardedSession, autoflush=True, autocommit=False
-        )
+        sharded_session = sessionmaker(class_=ShardedSession, autoflush=True)
         sharded_session.configure(
             shards={
                 "north_america": db1,

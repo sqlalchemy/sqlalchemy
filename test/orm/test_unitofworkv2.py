@@ -1596,7 +1596,7 @@ class RowswitchAccountingTest(fixtures.MappedTest):
     def test_switch_on_update(self):
         Parent, Child = self._fixture()
 
-        sess = fixture_session(autocommit=False)
+        sess = fixture_session()
 
         p1 = Parent(id=1, child=Child())
         sess.add(p1)

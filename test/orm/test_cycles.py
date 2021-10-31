@@ -1228,7 +1228,7 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
         )
         self.mapper_registry.map_imperatively(Person, person)
 
-        sess = fixture_session(autocommit=False, expire_on_commit=True)
+        sess = fixture_session(expire_on_commit=True)
         p1 = Person()
         sess.add(Ball(person=p1))
         sess.commit()

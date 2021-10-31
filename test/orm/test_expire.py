@@ -124,7 +124,7 @@ class ExpireTest(_fixtures.FixtureTest):
         users, User = self.tables.users, self.classes.User
 
         self.mapper_registry.map_imperatively(User, users)
-        s = fixture_session(autocommit=False)
+        s = fixture_session()
         u = s.get(User, 10)
         s.expire_all()
 
@@ -147,7 +147,7 @@ class ExpireTest(_fixtures.FixtureTest):
         users, User = self.tables.users, self.classes.User
 
         self.mapper_registry.map_imperatively(User, users)
-        s = fixture_session(autocommit=False)
+        s = fixture_session()
         u = s.get(User, 10)
 
         s.expire_all()
@@ -162,7 +162,7 @@ class ExpireTest(_fixtures.FixtureTest):
         users, User = self.tables.users, self.classes.User
 
         self.mapper_registry.map_imperatively(User, users)
-        s = fixture_session(autocommit=False)
+        s = fixture_session()
         u = s.get(User, 10)
         s.expire_all()
 
@@ -183,7 +183,7 @@ class ExpireTest(_fixtures.FixtureTest):
         users, User = self.tables.users, self.classes.User
 
         self.mapper_registry.map_imperatively(User, users)
-        s = fixture_session(autocommit=False)
+        s = fixture_session()
         u = s.get(User, 10)
         s.expire_all()
         s.execute(users.delete().where(User.id == 10))
@@ -240,7 +240,7 @@ class ExpireTest(_fixtures.FixtureTest):
         self.mapper_registry.map_imperatively(
             User, users, properties={"name": deferred(users.c.name)}
         )
-        s = fixture_session(autocommit=False)
+        s = fixture_session()
         u = s.get(User, 10)
 
         assert "name" not in u.__dict__
@@ -272,7 +272,9 @@ class ExpireTest(_fixtures.FixtureTest):
             },
         )
         self.mapper_registry.map_imperatively(Address, addresses)
-        s = fixture_session(autoflush=True, autocommit=False)
+        s = fixture_session(
+            autoflush=True,
+        )
         u = s.get(User, 8)
         adlist = u.addresses
         eq_(
@@ -316,7 +318,9 @@ class ExpireTest(_fixtures.FixtureTest):
             },
         )
         self.mapper_registry.map_imperatively(Address, addresses)
-        s = fixture_session(autoflush=True, autocommit=False)
+        s = fixture_session(
+            autoflush=True,
+        )
         u = s.get(User, 8)
         assert_raises_message(
             sa_exc.InvalidRequestError,

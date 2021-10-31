@@ -212,7 +212,7 @@ class VersioningTest(fixtures.MappedTest):
         ):
             s1.commit()
 
-        s2 = fixture_session(autocommit=False)
+        s2 = fixture_session()
         f1_s = s2.get(Foo, f1.id)
         f1_s.value = "f1rev3"
         with conditional_sane_rowcount_warnings(
@@ -372,7 +372,7 @@ class VersioningTest(fixtures.MappedTest):
         s1.add(f1s1)
         s1.commit()
 
-        s2 = fixture_session(autocommit=False)
+        s2 = fixture_session()
         f1s2 = s2.get(Foo, f1s1.id)
         f1s2.value = "f1 new value"
         with conditional_sane_rowcount_warnings(
@@ -428,7 +428,7 @@ class VersioningTest(fixtures.MappedTest):
         s1.add(f1s1)
         s1.commit()
 
-        s2 = fixture_session(autocommit=False)
+        s2 = fixture_session()
         f1s2 = s2.get(Foo, f1s1.id)
         # not sure if I like this API
         s2.refresh(f1s2, with_for_update=True)
@@ -505,13 +505,13 @@ class VersioningTest(fixtures.MappedTest):
 
         Foo, version_table = self.classes.Foo, self.tables.version_table
 
-        s1 = fixture_session(autocommit=False)
+        s1 = fixture_session()
         self.mapper_registry.map_imperatively(Foo, version_table)
         f1s1 = Foo(value="foo", version_id=0)
         s1.add(f1s1)
         s1.commit()
 
-        s2 = fixture_session(autocommit=False)
+        s2 = fixture_session()
         f1s2 = (
             s2.query(Foo)
             .with_for_update(read=True)

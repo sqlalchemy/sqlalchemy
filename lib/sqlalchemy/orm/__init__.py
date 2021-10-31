@@ -107,13 +107,7 @@ def create_session(bind=None, **kwargs):
 
     The defaults of create_session() are the opposite of that of
     :func:`sessionmaker`; ``autoflush`` and ``expire_on_commit`` are
-    False, ``autocommit`` is True.  In this sense the session acts
-    more like the "classic" SQLAlchemy 0.3 session with these.
-
-    .. deprecated:: 1.4  The "autocommit" parameter will be removed in
-       SQLAlchemy 2.0.  :func:`_orm.create_session` will return a
-       :class:`_orm.Session` that does not include "autocommit' behavior
-       in release 2.0.
+    False.
 
     Usage::
 
@@ -124,11 +118,6 @@ def create_session(bind=None, **kwargs):
     create_session().
 
     """
-
-    if kwargs.get("future", False):
-        kwargs.setdefault("autocommit", False)
-    else:
-        kwargs.setdefault("autocommit", True)
 
     kwargs.setdefault("autoflush", False)
     kwargs.setdefault("expire_on_commit", False)

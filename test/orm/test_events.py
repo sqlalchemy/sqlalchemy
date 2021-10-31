@@ -3239,7 +3239,7 @@ class QueryEventsTest(
         ):
             opts.update(context.execution_options)
 
-        sess = fixture_session(autocommit=False)
+        sess = fixture_session()
         sess.query(User).first()
         eq_(opts["my_option"], True)
 

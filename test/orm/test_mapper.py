@@ -723,7 +723,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         m.add_property("name", synonym("_name"))
         m.add_property("addresses", relationship(Address))
 
-        sess = fixture_session(autocommit=False)
+        sess = fixture_session()
         assert sess.get(User, 7)
 
         u = sess.query(User).filter_by(name="jack").one()

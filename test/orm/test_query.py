@@ -7303,7 +7303,7 @@ class ExecutionOptionsTest(QueryTest):
     def test_option_building(self):
         User = self.classes.User
 
-        sess = fixture_session(autocommit=False)
+        sess = fixture_session()
 
         q1 = sess.query(User)
         eq_(q1._execution_options, dict())
@@ -7321,7 +7321,7 @@ class ExecutionOptionsTest(QueryTest):
     def test_get_options(self):
         User = self.classes.User
 
-        sess = fixture_session(autocommit=False)
+        sess = fixture_session()
 
         q = sess.query(User).execution_options(foo="bar", stream_results=True)
         eq_(q.get_execution_options(), dict(foo="bar", stream_results=True))
@@ -7341,7 +7341,7 @@ class ExecutionOptionsTest(QueryTest):
                     result.close()
                 return iter([])
 
-        sess = fixture_session(autocommit=False, query_cls=TQuery)
+        sess = fixture_session(query_cls=TQuery)
         q1 = sess.query(User).execution_options(**execution_options)
         q1.all()
 

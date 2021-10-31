@@ -79,7 +79,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
 
         self.mapper_registry.map_imperatively(User, users)
         trans = conn.begin()
-        sess = Session(bind=conn, autocommit=False, autoflush=True)
+        sess = Session(bind=conn, autoflush=True)
         u = User(name="ed")
         sess.add(u)
         sess.flush()
@@ -94,7 +94,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
 
         self.mapper_registry.map_imperatively(User, users)
         trans = conn.begin()
-        sess = Session(bind=conn, autocommit=False, autoflush=True)
+        sess = Session(bind=conn, autoflush=True)
         u1 = User(name="u1")
         sess.add(u1)
         sess.flush()
@@ -116,7 +116,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         conn = future_conn
         conn.begin()
 
-        sess = Session(bind=conn, autocommit=False, autoflush=True)
+        sess = Session(bind=conn, autoflush=True)
         u = User(name="ed")
         sess.add(u)
         sess.flush()
@@ -133,7 +133,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         conn = future_conn
         conn.begin()
 
-        sess = Session(bind=conn, autocommit=False, autoflush=True)
+        sess = Session(bind=conn, autoflush=True)
         u = User(name="ed")
         sess.add(u)
         sess.flush()
@@ -150,7 +150,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
 
         conn = future_conn
         conn.begin()
-        sess = Session(bind=conn, autocommit=False, autoflush=True)
+        sess = Session(bind=conn, autoflush=True)
         u1 = User(name="u1")
         sess.add(u1)
         sess.flush()
@@ -264,8 +264,8 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
 
         self.mapper_registry.map_imperatively(User, users)
 
-        s1 = fixture_session(autocommit=False)
-        s2 = fixture_session(autocommit=False)
+        s1 = fixture_session()
+        s2 = fixture_session()
         u1 = User(name="u1")
         s1.add(u1)
         s1.flush()
@@ -359,7 +359,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         User, users = self.classes.User, self.tables.users
 
         self.mapper_registry.map_imperatively(User, users)
-        sess = fixture_session(autocommit=False)
+        sess = fixture_session()
         u = User(name="u1")
         sess.add(u)
         sess.flush()
@@ -381,7 +381,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         User, users = self.classes.User, self.tables.users
 
         self.mapper_registry.map_imperatively(User, users)
-        sess = fixture_session(autocommit=False, future=True)
+        sess = fixture_session(future=True)
         u = User(name="u1")
         sess.add(u)
         sess.flush()
@@ -441,7 +441,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
 
         self.mapper_registry.map_imperatively(User, users)
 
-        sess = fixture_session(autocommit=False)
+        sess = fixture_session()
 
         sess.begin_nested()
 
@@ -557,7 +557,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         )
 
     def test_no_sql_during_commit(self):
-        sess = fixture_session(autocommit=False)
+        sess = fixture_session()
 
         @event.listens_for(sess, "after_commit")
         def go(session):
@@ -571,7 +571,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         )
 
     def test_no_sql_during_prepare(self):
-        sess = fixture_session(autocommit=False, twophase=True)
+        sess = fixture_session(twophase=True)
 
         sess.prepare()
 
@@ -584,7 +584,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         )
 
     def test_no_sql_during_rollback(self):
-        sess = fixture_session(autocommit=False)
+        sess = fixture_session()
 
         sess.connection()
 
@@ -666,7 +666,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         eq_(session.is_active, True)
 
     def test_no_prepare_wo_twophase(self):
-        sess = fixture_session(autocommit=False)
+        sess = fixture_session()
 
         assert_raises_message(
             sa_exc.InvalidRequestError,
@@ -843,7 +843,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         User, users = self.classes.User, self.tables.users
 
         self.mapper_registry.map_imperatively(User, users)
-        session = fixture_session(autocommit=False)
+        session = fixture_session()
         session.add(User(name="ed"))
         session._legacy_transaction().commit()
 
@@ -853,7 +853,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         User, users = self.classes.User, self.tables.users
 
         self.mapper_registry.map_imperatively(User, users)
-        session = fixture_session(autocommit=False, future=True)
+        session = fixture_session(future=True)
         session.add(User(name="ed"))
         session._legacy_transaction().commit()
 
