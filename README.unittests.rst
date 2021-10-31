@@ -84,7 +84,6 @@ a pre-set URL.  These can be seen using --dbs::
     $ pytest --dbs
     Available --db options (use --dburi to override)
                  default    sqlite:///:memory:
-                firebird    firebird://sysdba:masterkey@localhost//Users/classic/foo.fdb
                  mariadb    mariadb://scott:tiger@192.168.0.199:3307/test
                    mssql    mssql+pyodbc://scott:tiger^5HHH@mssql2017:1433/test?driver=ODBC+Driver+13+for+SQL+Server
            mssql_pymssql    mssql+pymssql://scott:tiger@ms_2008

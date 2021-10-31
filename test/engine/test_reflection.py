@@ -1741,7 +1741,6 @@ class SchemaTest(fixtures.TestBase):
         eq_(t.c.keys(), ["q"])
 
     @testing.requires.schemas
-    @testing.fails_on("sybase", "FIXME: unknown")
     def test_explicit_default_schema_metadata(self, connection, metadata):
         schema = connection.dialect.default_schema_name
 

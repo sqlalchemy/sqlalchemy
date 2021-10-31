@@ -150,7 +150,6 @@ class ReturningTest(fixtures.TablesTest, AssertsExecutionResults):
         eq_(row[table.c.goofy], row["goofy"])
         eq_(row["goofy"], "FOOsomegoofyBAR")
 
-    @testing.fails_on("firebird", "fb can't handle returning x AS y")
     def test_labeling(self, connection):
         table = self.tables.tables
         result = connection.execute(
@@ -161,9 +160,6 @@ class ReturningTest(fixtures.TablesTest, AssertsExecutionResults):
         row = result.first()._mapping
         assert row["lala"] == 6
 
-    @testing.fails_on(
-        "firebird", "fb/kintersbasdb can't handle the bind params"
-    )
     def test_anon_expressions(self, connection):
         table = self.tables.tables
         GoofyType = self.GoofyType
@@ -350,7 +346,7 @@ class ReturningTest(fixtures.TablesTest, AssertsExecutionResults):
             "inserted_primary_key",
         )
 
-    @testing.fails_on_everything_except("postgresql", "firebird")
+    @testing.fails_on_everything_except("postgresql")
     def test_literal_returning(self, connection):
         if testing.against("postgresql"):
             literal_true = "true"
@@ -465,7 +461,6 @@ class KeyReturningTest(fixtures.TablesTest, AssertsExecutionResults):
             Column("data", String(20)),
         )
 
-    @testing.exclude("firebird", "<", (2, 0), "2.0+ feature")
     @testing.exclude("postgresql", "<", (8, 2), "8.2+ feature")
     def test_insert(self, connection):
         table = self.tables.tables

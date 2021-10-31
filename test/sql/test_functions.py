@@ -69,20 +69,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         functions._registry = self._registry
 
     def test_compile(self):
-        for dialect in all_dialects(exclude=("sybase",)):
+        for dialect in all_dialects():
             bindtemplate = BIND_TEMPLATES[dialect.paramstyle]
             self.assert_compile(
                 func.current_timestamp(), "CURRENT_TIMESTAMP", dialect=dialect
             )
             self.assert_compile(func.localtime(), "LOCALTIME", dialect=dialect)
-            if dialect.name in ("firebird",):
-                self.assert_compile(
-                    func.nosuchfunction(), "nosuchfunction", dialect=dialect
-                )
-            else:
-                self.assert_compile(
-                    func.nosuchfunction(), "nosuchfunction()", dialect=dialect
-                )
+            self.assert_compile(
+                func.nosuchfunction(), "nosuchfunction()", dialect=dialect
+            )
 
             # test generic function compile
             class fake_func(GenericFunction):

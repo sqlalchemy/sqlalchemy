@@ -37,7 +37,6 @@ class DefaultRequirements(SuiteRequirements):
 
         return skip_if(
             [
-                no_support("firebird", "not supported by database"),
                 no_support("mysql", "not supported by database"),
                 no_support("mariadb", "not supported by database"),
                 no_support("mssql", "not supported by database"),
@@ -161,7 +160,7 @@ class DefaultRequirements(SuiteRequirements):
         """Target database must support VARCHAR with no length"""
 
         return skip_if(
-            ["firebird", "oracle", "mysql", "mariadb"],
+            ["oracle", "mysql", "mariadb"],
             "not supported by database",
         )
 
@@ -170,10 +169,8 @@ class DefaultRequirements(SuiteRequirements):
         """Target database must support boolean expressions as columns"""
         return skip_if(
             [
-                no_support("firebird", "not supported by database"),
                 no_support("oracle", "not supported by database"),
                 no_support("mssql", "not supported by database"),
-                no_support("sybase", "not supported by database"),
             ]
         )
 
@@ -197,25 +194,8 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
-    def standalone_binds(self):
-        """target database/driver supports bound parameters as column expressions
-        without being in the context of a typed column.
-
-        """
-        return skip_if(["firebird", "mssql+mxodbc"], "not supported by driver")
-
-    @property
     def qmark_paramstyle(self):
-        return only_on(
-            [
-                "firebird",
-                "sqlite",
-                "+pyodbc",
-                "+mxodbc",
-                "mysql+oursql",
-                "mariadb+oursql",
-            ]
-        )
+        return only_on(["sqlite", "+pyodbc"])
 
     @property
     def named_paramstyle(self):
@@ -243,8 +223,6 @@ class DefaultRequirements(SuiteRequirements):
             [
                 "postgresql+psycopg2",
                 "postgresql+psycopg2cffi",
-                "postgresql+pypostgresql",
-                "postgresql+pygresql",
                 "mysql+mysqlconnector",
                 "mysql+pymysql",
                 "mysql+cymysql",
@@ -265,7 +243,7 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def temporary_tables(self):
         """target database supports temporary tables"""
-        return skip_if(["firebird", self._sqlite_file_db], "not supported (?)")
+        return skip_if([self._sqlite_file_db], "not supported (?)")
 
     @property
     def temp_table_reflection(self):
@@ -273,9 +251,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def temp_table_reflect_indexes(self):
-        return skip_if(
-            ["mssql", "firebird", self._sqlite_file_db], "not supported (?)"
-        )
+        return skip_if(["mssql", self._sqlite_file_db], "not supported (?)")
 
     @property
     def reflectable_autoincrement(self):
@@ -283,20 +259,10 @@ class DefaultRequirements(SuiteRequirements):
         PKs assuming they were reflected.
 
         this is essentially all the DBs in "identity" plus PostgreSQL, which
-        has SERIAL support.  FB and Oracle (and sybase?) require the Sequence
+        has SERIAL support.  Oracle requires the Sequence
         to be explicitly added, including if the table was reflected.
         """
-        return skip_if(
-            ["firebird", "oracle", "sybase"], "not supported by database"
-        )
-
-    @property
-    def insert_from_select(self):
-        return skip_if(["firebird"], "crashes for unknown reason")
-
-    @property
-    def fetch_rows_post_commit(self):
-        return skip_if(["firebird"], "not supported")
+        return skip_if(["oracle"], "not supported by database")
 
     @property
     def non_broken_binary(self):
@@ -407,18 +373,13 @@ class DefaultRequirements(SuiteRequirements):
     def updateable_autoincrement_pks(self):
         """Target must support UPDATE on autoincrement/integer primary key."""
 
-        return skip_if(
-            ["mssql", "sybase"], "IDENTITY columns can't be updated"
-        )
+        return skip_if(["mssql"], "IDENTITY columns can't be updated")
 
     @property
     def isolation_level(self):
         return only_on(
             ("postgresql", "sqlite", "mysql", "mariadb", "mssql", "oracle"),
             "DBAPI has no isolation level support",
-        ) + fails_on(
-            "postgresql+pypostgresql",
-            "pypostgresql bombs on multiple isolation level calls",
         )
 
     @property
@@ -427,9 +388,6 @@ class DefaultRequirements(SuiteRequirements):
         return only_on(
             ("postgresql", "sqlite", "mysql", "mariadb", "mssql"),
             "DBAPI has no isolation level support",
-        ) + fails_on(
-            "postgresql+pypostgresql",
-            "pypostgresql bombs on multiple isolation level calls",
         )
 
     def get_isolation_levels(self, config):
@@ -525,7 +483,7 @@ class DefaultRequirements(SuiteRequirements):
     def delete_from(self):
         """Target must support DELETE FROM..FROM or DELETE..USING syntax"""
         return only_on(
-            ["postgresql", "mssql", "mysql", "mariadb", "sybase"],
+            ["postgresql", "mssql", "mysql", "mariadb"],
             "Backend does not support DELETE..FROM",
         )
 
@@ -554,7 +512,7 @@ class DefaultRequirements(SuiteRequirements):
         """Target database must support savepoints."""
 
         return skip_if(
-            ["sqlite", "sybase", ("mysql", "<", (5, 0, 3))],
+            ["sqlite", ("mysql", "<", (5, 0, 3))],
             "savepoints not supported",
         )
 
@@ -641,7 +599,7 @@ class DefaultRequirements(SuiteRequirements):
     def update_nowait(self):
         """Target database must support SELECT...FOR UPDATE NOWAIT"""
         return skip_if(
-            ["firebird", "mssql", "mysql", "mariadb<10.3", "sqlite", "sybase"],
+            ["mssql", "mysql", "mariadb<10.3", "sqlite"],
             "no FOR UPDATE NOWAIT support",
         )
 
@@ -711,17 +669,14 @@ class DefaultRequirements(SuiteRequirements):
         """Target database must support INTERSECT or equivalent."""
 
         return fails_if(
-            ["firebird", self._mysql_not_mariadb_103, "sybase"],
+            [self._mysql_not_mariadb_103],
             "no support for INTERSECT",
         )
 
     @property
     def except_(self):
         """Target database must support EXCEPT or equivalent (i.e. MINUS)."""
-        return fails_if(
-            ["firebird", self._mysql_not_mariadb_103, "sybase"],
-            "no support for EXCEPT",
-        )
+        return fails_if([self._mysql_not_mariadb_103], "no support for EXCEPT")
 
     @property
     def dupe_order_by_ok(self):
@@ -771,12 +726,6 @@ class DefaultRequirements(SuiteRequirements):
         return fails_if(["sqlite", "oracle"])
 
     @property
-    def offset(self):
-        """Target database must support some method of adding OFFSET or
-        equivalent to a result set."""
-        return fails_if(["sybase"], "no support for OFFSET or equivalent")
-
-    @property
     def sql_expression_limit_offset(self):
         return (
             fails_if(
@@ -824,13 +773,9 @@ class DefaultRequirements(SuiteRequirements):
 
         return skip_if(
             [
-                no_support("firebird", "no SA implementation"),
                 no_support("mssql", "two-phase xact not supported by drivers"),
                 no_support(
                     "sqlite", "two-phase xact not supported by database"
-                ),
-                no_support(
-                    "sybase", "two-phase xact not supported by drivers/SQLA"
                 ),
                 # in Ia3cbbf56d4882fcc7980f90519412f1711fae74d
                 # we are evaluating which modern MySQL / MariaDB versions
@@ -900,11 +845,6 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
-    def unicode_data(self):
-        """target drive must support unicode data stored in columns."""
-        return skip_if([no_support("sybase", "no unicode driver support")])
-
-    @property
     def unicode_connections(self):
         """
         Target driver must support some encoding of Unicode across the wire.
@@ -918,7 +858,6 @@ class DefaultRequirements(SuiteRequirements):
 
         return skip_if(
             [
-                no_support("sybase", "FIXME: guessing, needs confirmation"),
                 no_support("mssql+pymssql", "no FreeTDS support"),
             ]
         )
@@ -942,7 +881,6 @@ class DefaultRequirements(SuiteRequirements):
             "sqlite+aiosqlite",
             "sqlite+pysqlite",
             "sqlite+pysqlcipher",
-            "sybase",
             "mssql",
         )
 
@@ -957,12 +895,7 @@ class DefaultRequirements(SuiteRequirements):
             "mariadb",
             "sqlite+pysqlite",
             "sqlite+pysqlcipher",
-            "sybase",
         )
-
-    @property
-    def implements_get_lastrowid(self):
-        return skip_if([no_support("sybase", "not supported by database")])
 
     @property
     def dbapi_lastrowid(self):
@@ -985,7 +918,7 @@ class DefaultRequirements(SuiteRequirements):
     def nullsordering(self):
         """Target backends that support nulls ordering."""
         return fails_on_everything_except(
-            "postgresql", "oracle", "firebird", "sqlite >= 3.30.0"
+            "postgresql", "oracle", "sqlite >= 3.30.0"
         )
 
     @property
@@ -993,7 +926,7 @@ class DefaultRequirements(SuiteRequirements):
         """Target driver reflects the name of primary key constraints."""
 
         return fails_on_everything_except(
-            "postgresql", "oracle", "mssql", "sybase", "sqlite"
+            "postgresql", "oracle", "mssql", "sqlite"
         )
 
     @property
@@ -1131,9 +1064,7 @@ class DefaultRequirements(SuiteRequirements):
         """target dialect supports representation of Python
         datetime.datetime() with microsecond objects."""
 
-        return skip_if(
-            ["mssql", "mysql", "mariadb", "firebird", "oracle", "sybase"]
-        )
+        return skip_if(["mssql", "mysql", "mariadb", "oracle"])
 
     @property
     def timestamp_microseconds(self):
@@ -1148,7 +1079,7 @@ class DefaultRequirements(SuiteRequirements):
         """target dialect supports representation of Python
         datetime.datetime() objects with historic (pre 1900) values."""
 
-        return succeeds_if(["sqlite", "postgresql", "firebird"])
+        return succeeds_if(["sqlite", "postgresql"])
 
     @property
     def date(self):
@@ -1170,7 +1101,7 @@ class DefaultRequirements(SuiteRequirements):
         """target dialect supports representation of Python
         datetime.datetime() objects with historic (pre 1900) values."""
 
-        return succeeds_if(["sqlite", "postgresql", "firebird"])
+        return succeeds_if(["sqlite", "postgresql"])
 
     @property
     def time(self):
@@ -1184,9 +1115,7 @@ class DefaultRequirements(SuiteRequirements):
         """target dialect supports representation of Python
         datetime.time() with microsecond objects."""
 
-        return skip_if(
-            ["mssql", "mysql", "mariadb", "firebird", "oracle", "sybase"]
-        )
+        return skip_if(["mssql", "mysql", "mariadb", "oracle"])
 
     @property
     def precision_numerics_general(self):
@@ -1200,24 +1129,6 @@ class DefaultRequirements(SuiteRequirements):
         to represent very small values."""
         # NOTE: this exclusion isn't used in current tests.
         return exclusions.open()
-
-    @property
-    def precision_numerics_enotation_large(self):
-        """target backend supports Decimal() objects using E notation
-        to represent very large values."""
-
-        return fails_if(
-            [
-                (
-                    "sybase+pyodbc",
-                    None,
-                    None,
-                    "Don't know how do get these values through "
-                    "FreeTDS + Sybase",
-                ),
-                ("firebird", None, None, "Precision must be from 1 to 18"),
-            ]
-        )
 
     @property
     def precision_numerics_many_significant_digits(self):
@@ -1236,8 +1147,6 @@ class DefaultRequirements(SuiteRequirements):
         return fails_if(
             [
                 ("sqlite", None, None, "TODO"),
-                ("firebird", None, None, "Precision must be from 1 to 18"),
-                ("sybase+pysybase", None, None, "TODO"),
             ]
         )
 
@@ -1260,12 +1169,6 @@ class DefaultRequirements(SuiteRequirements):
         return fails_if(
             [
                 ("oracle", None, None, "driver doesn't do this automatically"),
-                (
-                    "firebird",
-                    None,
-                    None,
-                    "database and/or driver truncates decimal places.",
-                ),
             ]
         )
 
@@ -1287,28 +1190,6 @@ class DefaultRequirements(SuiteRequirements):
                     None,
                     None,
                     "mysql FLOAT type only returns 4 decimals",
-                ),
-                (
-                    "firebird",
-                    None,
-                    None,
-                    "firebird FLOAT type isn't high precision",
-                ),
-            ]
-        )
-
-    @property
-    def floats_to_four_decimals(self):
-        return fails_if(
-            [
-                ("mysql+oursql", None, None, "Floating point error"),
-                ("mariadb+oursql", None, None, "Floating point error"),
-                (
-                    "firebird",
-                    None,
-                    None,
-                    "Firebird still has FP inaccuracy even "
-                    "with only four decimal places",
                 ),
             ]
         )
@@ -1448,14 +1329,7 @@ class DefaultRequirements(SuiteRequirements):
     def order_by_label_with_expression(self):
         return fails_if(
             [
-                (
-                    "firebird",
-                    None,
-                    None,
-                    "kinterbasdb doesn't send full type information",
-                ),
                 ("postgresql", None, None, "only simple labels allowed"),
-                ("sybase", None, None, "only simple labels allowed"),
                 ("mssql", None, None, "only simple labels allowed"),
             ]
         )
@@ -1550,9 +1424,7 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def selectone(self):
         """target driver must support the literal statement 'select 1'"""
-        return skip_if(
-            ["oracle", "firebird"], "non-standard SELECT scalar syntax"
-        )
+        return skip_if(["oracle"], "non-standard SELECT scalar syntax")
 
     @property
     def mysql_for_update(self):
@@ -1725,11 +1597,11 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def computed_columns_stored(self):
-        return self.computed_columns + skip_if(["oracle", "firebird"])
+        return self.computed_columns + skip_if(["oracle"])
 
     @property
     def computed_columns_virtual(self):
-        return self.computed_columns + skip_if(["postgresql", "firebird"])
+        return self.computed_columns + skip_if(["postgresql"])
 
     @property
     def computed_columns_default_persisted(self):

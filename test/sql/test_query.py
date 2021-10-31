@@ -73,9 +73,6 @@ class QueryTest(fixtures.TablesTest):
             test_needs_acid=True,
         )
 
-    @testing.fails_on(
-        "firebird", "kinterbasdb doesn't send full type information"
-    )
     def test_order_by_label(self, connection):
         """test that a label within an ORDER BY works on each backend.
 
@@ -825,8 +822,6 @@ class QueryTest(fixtures.TablesTest):
 
         eq_(len(compiled._bind_processors), 1)
 
-    @testing.fails_on("firebird", "uses sql-92 rules")
-    @testing.fails_on("sybase", "uses sql-92 rules")
     @testing.skip_if(["mssql"])
     def test_bind_in(self, connection):
         """test calling IN against a bind parameter.
@@ -1190,7 +1185,6 @@ class CompoundTest(fixtures.TablesTest):
         )
         eq_(found2, wanted)
 
-    @testing.fails_on("firebird", "doesn't like ORDER BY with UNIONs")
     def test_union_ordered(self, connection):
         t1, t2, t3 = self.tables("t1", "t2", "t3")
 
@@ -1212,7 +1206,6 @@ class CompoundTest(fixtures.TablesTest):
         ]
         eq_(connection.execute(u).fetchall(), wanted)
 
-    @testing.fails_on("firebird", "doesn't like ORDER BY with UNIONs")
     @testing.requires.subqueries
     def test_union_ordered_alias(self, connection):
         t1, t2, t3 = self.tables("t1", "t2", "t3")
@@ -1236,10 +1229,6 @@ class CompoundTest(fixtures.TablesTest):
         eq_(connection.execute(u.alias("bar").select()).fetchall(), wanted)
 
     @testing.crashes("oracle", "FIXME: unknown, verify not fails_on")
-    @testing.fails_on(
-        "firebird",
-        "has trouble extracting anonymous column from union subquery",
-    )
     @testing.fails_on(
         testing.requires._mysql_not_mariadb_104, "FIXME: unknown"
     )

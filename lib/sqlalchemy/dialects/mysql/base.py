@@ -1559,12 +1559,11 @@ class MySQLCompiler(compiler.SQLCompiler):
             # artificial limit if one wasn't provided
             # https://dev.mysql.com/doc/refman/5.0/en/select.html
             if limit_clause is None:
+                # TODO: remove ??
                 # hardwire the upper limit.  Currently
-                # needed by OurSQL with Python 3
-                # (https://bugs.launchpad.net/oursql/+bug/686232),
-                # but also is consistent with the usage of the upper
+                # needed consistent with the usage of the upper
                 # bound as part of MySQL's "syntax" for OFFSET with
-                # no LIMIT
+                # no LIMIT.
                 return " \n LIMIT %s, %s" % (
                     self.process(offset_clause, **kw),
                     "18446744073709551615",

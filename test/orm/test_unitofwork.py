@@ -1134,7 +1134,6 @@ class DefaultTest(fixtures.MappedTest):
         class Secondary(cls.Comparable):
             pass
 
-    @testing.fails_on("firebird", "Data type unknown on the parameter")
     def test_insert(self):
         althohoval, hohoval, default_t, Hoho = (
             self.other.althohoval,
@@ -1188,7 +1187,6 @@ class DefaultTest(fixtures.MappedTest):
         self.assert_(h2.foober == h3.foober == h4.foober == "im foober")
         eq_(h5.foober, "im the new foober")
 
-    @testing.fails_on("firebird", "Data type unknown on the parameter")
     @testing.fails_on("oracle+cx_oracle", "seems like a cx_oracle bug")
     def test_eager_defaults(self):
         hohoval, default_t, Hoho = (
@@ -1249,7 +1247,6 @@ class DefaultTest(fixtures.MappedTest):
 
         self.sql_count_(0, go)
 
-    @testing.fails_on("firebird", "Data type unknown on the parameter")
     def test_update(self):
         default_t, Hoho = self.tables.default_t, self.classes.Hoho
 
@@ -1265,7 +1262,6 @@ class DefaultTest(fixtures.MappedTest):
         session.flush()
         eq_(h1.foober, "im the update")
 
-    @testing.fails_on("firebird", "Data type unknown on the parameter")
     def test_used_in_relationship(self):
         """A server-side default can be used as the target of a foreign key"""
 

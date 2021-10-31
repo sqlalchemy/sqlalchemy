@@ -923,7 +923,6 @@ class NumericInterpretationTest(fixtures.TestBase):
     def test_numeric_codes(self):
         from sqlalchemy.dialects.postgresql import (
             pg8000,
-            pygresql,
             psycopg2,
             psycopg2cffi,
             base,
@@ -931,7 +930,6 @@ class NumericInterpretationTest(fixtures.TestBase):
 
         dialects = (
             pg8000.dialect(),
-            pygresql.dialect(),
             psycopg2.dialect(),
             psycopg2cffi.dialect(),
         )
