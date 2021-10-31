@@ -3810,42 +3810,6 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
         self.assert_sql_count(testing.db, go, 1)
 
-    def test_contains_eager_string_alias(self):
-        addresses, users, User = (
-            self.tables.addresses,
-            self.tables.users,
-            self.classes.User,
-        )
-
-        sess = fixture_session()
-        q = sess.query(User)
-
-        adalias = addresses.alias("adalias")
-        selectquery = (
-            users.outerjoin(adalias)
-            .select()
-            .order_by(users.c.id, adalias.c.id)
-        )
-
-        # note this has multiple problems because we aren't giving Query
-        # the statement where it would be able to create an adapter
-        def go():
-            with testing.expect_deprecated(
-                r"Using the Query.instances\(\) method without a context",
-                r"Passing a string name for the 'alias' argument to "
-                r"'contains_eager\(\)` is deprecated",
-                "Retrieving row values using Column objects with only "
-                "matching names",
-            ):
-                result = list(
-                    q.options(
-                        contains_eager("addresses", alias="adalias")
-                    ).instances(sess.connection().execute(selectquery))
-                )
-            assert self.static.user_address_result == result
-
-        self.assert_sql_count(testing.db, go, 1)
-
     def test_contains_eager_aliased_instances(self):
         addresses, users, User = (
             self.tables.addresses,
@@ -3875,47 +3839,6 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
                     ).instances(sess.connection().execute(selectquery))
                 )
             assert self.static.user_address_result == result
-
-        self.assert_sql_count(testing.db, go, 1)
-
-    def test_contains_eager_multi_string_alias(self):
-        orders, items, users, order_items, User = (
-            self.tables.orders,
-            self.tables.items,
-            self.tables.users,
-            self.tables.order_items,
-            self.classes.User,
-        )
-
-        sess = fixture_session()
-        q = sess.query(User)
-
-        oalias = orders.alias("o1")
-        ialias = items.alias("i1")
-        query = (
-            users.outerjoin(oalias)
-            .outerjoin(order_items)
-            .outerjoin(ialias)
-            .select()
-            .order_by(users.c.id, oalias.c.id, ialias.c.id)
-        )
-
-        # test using string alias with more than one level deep
-        def go():
-            with testing.expect_deprecated(
-                r"Using the Query.instances\(\) method without a context",
-                r"Passing a string name for the 'alias' argument to "
-                r"'contains_eager\(\)` is deprecated",
-                "Retrieving row values using Column objects with only "
-                "matching names",
-            ):
-                result = list(
-                    q.options(
-                        contains_eager("orders", alias="o1"),
-                        contains_eager("orders.items", alias="i1"),
-                    ).instances(sess.connection().execute(query))
-                )
-            assert self.static.user_order_result == result
 
         self.assert_sql_count(testing.db, go, 1)
 

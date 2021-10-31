@@ -55,8 +55,6 @@ static PyObject *sqlalchemy_engine_result = NULL;
 
 static int KEY_INTEGER_ONLY = 0;
 static int KEY_OBJECTS_ONLY = 1;
-static int KEY_OBJECTS_BUT_WARN = 2;
-//static int KEY_OBJECTS_NO_WARN = 3;
 
 /****************
  * BaseRow *
@@ -409,16 +407,6 @@ BaseRow_getitem_by_object(BaseRow *self, PyObject *key, int asmapping)
         /* -1 can be either the actual value, or an error flag. */
         return NULL;
 
-    if (!asmapping && self->key_style == KEY_OBJECTS_BUT_WARN) {
-        PyObject *tmp;
-
-        tmp = PyObject_CallMethod(self->parent, "_warn_for_nonint", "O", key);
-        if (tmp == NULL) {
-            return NULL;
-        }
-        Py_DECREF(tmp);
-    }
-
     return BaseRow_getitem(self, index);
 
 }
@@ -503,7 +491,7 @@ BaseRow_subscript(BaseRow *self, PyObject *key)
 static PyObject *
 BaseRow_subscript_mapping(BaseRow *self, PyObject *key)
 {
-    if (self->key_style == KEY_OBJECTS_BUT_WARN || self->key_style == KEY_INTEGER_ONLY) {
+    if (self->key_style == KEY_INTEGER_ONLY) {
         return BaseRow_subscript_impl(self, key, 0);
     }
     else {

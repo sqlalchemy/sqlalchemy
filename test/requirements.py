@@ -1227,14 +1227,11 @@ class DefaultRequirements(SuiteRequirements):
         def check(config):
             if not against(config, "postgresql"):
                 return False
-            count = (
-                config.db.connect(close_with_result=True)
-                .exec_driver_sql(
+            with config.db.connect() as conn:
+                count = conn.exec_driver_sql(
                     "SELECT count(*) FROM pg_extension "
                     "WHERE extname='%s'" % name
-                )
-                .scalar()
-            )
+                ).scalar()
             return bool(count)
 
         return only_if(check, "needs %s extension" % name)
@@ -1255,9 +1252,8 @@ class DefaultRequirements(SuiteRequirements):
             ):
                 return False
             try:
-                config.db.connect(close_with_result=True).exec_driver_sql(
-                    "select '[1,2)'::int4range;"
-                ).scalar()
+                with config.db.connect() as conn:
+                    conn.exec_driver_sql("select '[1,2)'::int4range;").scalar()
                 return True
             except Exception:
                 return False
@@ -1447,11 +1443,10 @@ class DefaultRequirements(SuiteRequirements):
             if not against(config, "mysql"):
                 return False
 
-            row = (
-                config.db.connect(close_with_result=True)
-                .exec_driver_sql("show variables like 'sql_mode'")
-                .first()
-            )
+            with config.db.connect() as conn:
+                row = conn.exec_driver_sql(
+                    "show variables like 'sql_mode'"
+                ).first()
             return not row or "NO_ZERO_DATE" not in row[1]
 
         return only_if(check)
@@ -1462,11 +1457,10 @@ class DefaultRequirements(SuiteRequirements):
             if not against(config, "mysql"):
                 return False
 
-            row = (
-                config.db.connect(close_with_result=True)
-                .exec_driver_sql("show variables like 'sql_mode'")
-                .first()
-            )
+            with config.db.connect() as conn:
+                row = conn.exec_driver_sql(
+                    "show variables like 'sql_mode'"
+                ).first()
             return not row or "STRICT_TRANS_TABLES" not in row[1]
 
         return only_if(check)

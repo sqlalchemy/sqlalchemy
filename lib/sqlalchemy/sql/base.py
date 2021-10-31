@@ -937,46 +937,6 @@ class Executable(roles.StatementRole, Generative):
         """
         return self._execution_options
 
-    @util.deprecated_20(
-        ":meth:`.Executable.execute`",
-        alternative="All statement execution in SQLAlchemy 2.0 is performed "
-        "by the :meth:`_engine.Connection.execute` method of "
-        ":class:`_engine.Connection`, "
-        "or in the ORM by the :meth:`.Session.execute` method of "
-        ":class:`.Session`.",
-    )
-    def execute(self, *multiparams, **params):
-        """Compile and execute this :class:`.Executable`."""
-        e = self.bind
-        if e is None:
-            label = (
-                getattr(self, "description", None) or self.__class__.__name__
-            )
-            msg = (
-                "This %s is not directly bound to a Connection or Engine. "
-                "Use the .execute() method of a Connection or Engine "
-                "to execute this construct." % label
-            )
-            raise exc.UnboundExecutionError(msg)
-        return e._execute_clauseelement(
-            self, multiparams, params, util.immutabledict()
-        )
-
-    @util.deprecated_20(
-        ":meth:`.Executable.scalar`",
-        alternative="Scalar execution in SQLAlchemy 2.0 is performed "
-        "by the :meth:`_engine.Connection.scalar` method of "
-        ":class:`_engine.Connection`, "
-        "or in the ORM by the :meth:`.Session.scalar` method of "
-        ":class:`.Session`.",
-    )
-    def scalar(self, *multiparams, **params):
-        """Compile and execute this :class:`.Executable`, returning the
-        result's scalar representation.
-
-        """
-        return self.execute(*multiparams, **params).scalar()
-
     @property
     @util.deprecated_20(
         ":attr:`.Executable.bind`",

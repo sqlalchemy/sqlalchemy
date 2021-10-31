@@ -2517,19 +2517,6 @@ class DefaultGenerator(Executable, SchemaItem):
         else:
             self.column.default = self
 
-    @util.deprecated_20(
-        ":meth:`.DefaultGenerator.execute`",
-        alternative="All statement execution in SQLAlchemy 2.0 is performed "
-        "by the :meth:`_engine.Connection.execute` method of "
-        ":class:`_engine.Connection`, "
-        "or in the ORM by the :meth:`.Session.execute` method of "
-        ":class:`.Session`.",
-    )
-    def execute(self, bind=None):
-        if bind is None:
-            bind = _bind_or_error(self)
-        return bind._execute_default(self, (), util.EMPTY_DICT)
-
     def _execute_on_connection(
         self, connection, multiparams, params, execution_options
     ):

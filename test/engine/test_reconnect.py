@@ -18,7 +18,6 @@ from sqlalchemy.testing import assert_raises_message_context_ok
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
-from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
@@ -641,8 +640,8 @@ class MockReconnectTest(fixtures.TestBase):
             select(1),
         )
 
-    def test_noreconnect_execute_plus_closewresult(self):
-        conn = self.db.connect(close_with_result=True)
+    def test_noreconnect_execute(self):
+        conn = self.db.connect()
 
         self.dbapi.shutdown("execute_no_disconnect")
 
@@ -654,30 +653,28 @@ class MockReconnectTest(fixtures.TestBase):
             select(1),
         )
 
-        assert conn.closed
+        assert not conn.closed
         assert not conn.invalidated
 
-    def test_noreconnect_rollback_plus_closewresult(self):
-        conn = self.db.connect(close_with_result=True)
+        conn.close()
+
+    def test_noreconnect_rollback(self):
+        conn = self.db.connect()
 
         self.dbapi.shutdown("rollback_no_disconnect")
 
         # raises error
-        with expect_warnings(
-            "An exception has occurred during handling .*"
-            "something broke on execute but we didn't lose the connection",
-            py2konly=True,
-        ):
-            assert_raises_message(
-                tsa.exc.DBAPIError,
-                "something broke on rollback but we didn't "
-                "lose the connection",
-                conn.execute,
-                select(1),
-            )
+        assert_raises_message(
+            tsa.exc.DBAPIError,
+            "something broke on rollback but we didn't " "lose the connection",
+            conn.execute,
+            select(1),
+        )
 
-        assert conn.closed
+        assert not conn.closed
         assert not conn.invalidated
+
+        conn.close()
 
         assert_raises_message(
             tsa.exc.ResourceClosedError,
@@ -695,49 +692,15 @@ class MockReconnectTest(fixtures.TestBase):
 
         self.dbapi.shutdown("rollback")
 
-        # raises error
-        with expect_warnings(
-            "An exception has occurred during handling .*"
-            "something broke on execute but we didn't lose the connection",
-            py2konly=True,
-        ):
-            assert_raises_message(
-                tsa.exc.DBAPIError,
-                "Lost the DB connection on rollback",
-                conn.execute,
-                select(1),
-            )
-
-        assert not conn.closed
-        assert conn.invalidated
-
-    def test_reconnect_on_reentrant_plus_closewresult(self):
-        conn = self.db.connect(close_with_result=True)
-
-        self.dbapi.shutdown("rollback")
-
-        # raises error
-        with expect_warnings(
-            "An exception has occurred during handling .*"
-            "something broke on execute but we didn't lose the connection",
-            py2konly=True,
-        ):
-            assert_raises_message(
-                tsa.exc.DBAPIError,
-                "Lost the DB connection on rollback",
-                conn.execute,
-                select(1),
-            )
-
-        assert conn.closed
-        assert not conn.invalidated
-
         assert_raises_message(
-            tsa.exc.ResourceClosedError,
-            "This Connection is closed",
+            tsa.exc.DBAPIError,
+            "Lost the DB connection on rollback",
             conn.execute,
             select(1),
         )
+
+        assert not conn.closed
+        assert conn.invalidated
 
     def test_check_disconnect_no_cursor(self):
         conn = self.db.connect()
@@ -1120,10 +1083,7 @@ class RealReconnectTest(fixtures.TestBase):
 
         with self.engine.connect() as conn:
             self.engine.test_shutdown()
-            with expect_warnings(
-                "An exception has occurred during handling .*", py2konly=True
-            ):
-                assert_raises(tsa.exc.DBAPIError, conn.execute, select(1))
+            assert_raises(tsa.exc.DBAPIError, conn.execute, select(1))
 
     def test_rollback_on_invalid_plain(self):
         with self.engine.connect() as conn:
