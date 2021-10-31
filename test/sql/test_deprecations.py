@@ -15,7 +15,6 @@ from sqlalchemy import exists
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import inspect
-from sqlalchemy import INT
 from sqlalchemy import Integer
 from sqlalchemy import join
 from sqlalchemy import literal_column
@@ -31,7 +30,6 @@ from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import util
-from sqlalchemy import VARCHAR
 from sqlalchemy.engine import default
 from sqlalchemy.sql import coercions
 from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
@@ -46,10 +44,8 @@ from sqlalchemy.sql.selectable import SelectStatementGrouping
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assertions
 from sqlalchemy.testing import AssertsCompiledSQL
-from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
@@ -1274,135 +1270,6 @@ class PKIncrementTest(fixtures.TablesTest):
                 "implicit autocommit, "
             ):
                 self._test_autoincrement(conn)
-
-
-class CursorResultTest(fixtures.TablesTest):
-    __backend__ = True
-
-    @classmethod
-    def define_tables(cls, metadata):
-        Table(
-            "users",
-            metadata,
-            Column(
-                "user_id", INT, primary_key=True, test_needs_autoincrement=True
-            ),
-            Column("user_name", VARCHAR(20)),
-            test_needs_acid=True,
-        )
-        Table(
-            "addresses",
-            metadata,
-            Column(
-                "address_id",
-                Integer,
-                primary_key=True,
-                test_needs_autoincrement=True,
-            ),
-            Column("user_id", Integer, ForeignKey("users.user_id")),
-            Column("address", String(30)),
-            test_needs_acid=True,
-        )
-
-        Table(
-            "users2",
-            metadata,
-            Column("user_id", INT, primary_key=True),
-            Column("user_name", VARCHAR(20)),
-            test_needs_acid=True,
-        )
-
-    @classmethod
-    def insert_data(cls, connection):
-        users = cls.tables.users
-
-        connection.execute(
-            users.insert(),
-            [
-                dict(user_id=1, user_name="john"),
-                dict(user_id=2, user_name="jack"),
-            ],
-        )
-
-    @testing.requires.duplicate_names_in_cursor_description
-    def test_ambiguous_column_case_sensitive(self):
-        with testing.expect_deprecated(
-            "The create_engine.case_sensitive parameter is deprecated"
-        ):
-            eng = engines.testing_engine(options=dict(case_sensitive=False))
-
-        with eng.connect() as conn:
-            row = conn.execute(
-                select(
-                    literal_column("1").label("SOMECOL"),
-                    literal_column("1").label("SOMECOL"),
-                )
-            ).first()
-
-            assert_raises_message(
-                exc.InvalidRequestError,
-                "Ambiguous column name",
-                lambda: row._mapping["somecol"],
-            )
-
-    def test_row_case_insensitive(self):
-        with testing.expect_deprecated(
-            "The create_engine.case_sensitive parameter is deprecated"
-        ):
-            with engines.testing_engine(
-                options={"case_sensitive": False}
-            ).connect() as ins_conn:
-                row = ins_conn.execute(
-                    select(
-                        literal_column("1").label("case_insensitive"),
-                        literal_column("2").label("CaseSensitive"),
-                    )
-                ).first()
-
-                eq_(
-                    list(row._mapping.keys()),
-                    ["case_insensitive", "CaseSensitive"],
-                )
-
-                in_("case_insensitive", row._keymap)
-                in_("CaseSensitive", row._keymap)
-                in_("casesensitive", row._keymap)
-
-                eq_(row._mapping["case_insensitive"], 1)
-                eq_(row._mapping["CaseSensitive"], 2)
-                eq_(row._mapping["Case_insensitive"], 1)
-                eq_(row._mapping["casesensitive"], 2)
-
-    def test_row_case_insensitive_unoptimized(self):
-        with testing.expect_deprecated(
-            "The create_engine.case_sensitive parameter is deprecated"
-        ):
-            with engines.testing_engine(
-                options={"case_sensitive": False}
-            ).connect() as ins_conn:
-                row = ins_conn.execute(
-                    select(
-                        literal_column("1").label("case_insensitive"),
-                        literal_column("2").label("CaseSensitive"),
-                        text("3 AS screw_up_the_cols"),
-                    )
-                ).first()
-
-                eq_(
-                    list(row._mapping.keys()),
-                    ["case_insensitive", "CaseSensitive", "screw_up_the_cols"],
-                )
-
-                in_("case_insensitive", row._keymap)
-                in_("CaseSensitive", row._keymap)
-                in_("casesensitive", row._keymap)
-
-                eq_(row._mapping["case_insensitive"], 1)
-                eq_(row._mapping["CaseSensitive"], 2)
-                eq_(row._mapping["screw_up_the_cols"], 3)
-                eq_(row._mapping["Case_insensitive"], 1)
-                eq_(row._mapping["casesensitive"], 2)
-                eq_(row._mapping["screw_UP_the_cols"], 3)
 
 
 class DefaultTest(fixtures.TestBase):

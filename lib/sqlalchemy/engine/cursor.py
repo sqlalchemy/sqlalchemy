@@ -47,7 +47,6 @@ class CursorResultMetaData(ResultMetaData):
 
     __slots__ = (
         "_keymap",
-        "case_sensitive",
         "_processors",
         "_keys",
         "_keymap_by_result_column_idx",
@@ -82,7 +81,6 @@ class CursorResultMetaData(ResultMetaData):
         tup = tuplegetter(*indexes)
 
         new_metadata = self.__class__.__new__(self.__class__)
-        new_metadata.case_sensitive = self.case_sensitive
         new_metadata._unpickled = self._unpickled
         new_metadata._processors = self._processors
         new_metadata._keys = new_keys
@@ -144,7 +142,6 @@ class CursorResultMetaData(ResultMetaData):
             else:
                 md._keymap[new] = rec
 
-        md.case_sensitive = self.case_sensitive
         md._unpickled = self._unpickled
         md._processors = self._processors
         assert not self._tuplefilter
@@ -157,10 +154,8 @@ class CursorResultMetaData(ResultMetaData):
 
     def __init__(self, parent, cursor_description):
         context = parent.context
-        dialect = context.dialect
         self._tuplefilter = None
         self._translated_indexes = None
-        self.case_sensitive = dialect.case_sensitive
         self._safe_for_cache = self._unpickled = False
 
         if context.result_column_struct:
@@ -231,10 +226,6 @@ class CursorResultMetaData(ResultMetaData):
                     for key in (metadata_entry[MD_RENDERED_NAME],) + (
                         metadata_entry[MD_OBJECTS] or ()
                     ):
-                        if not self.case_sensitive and isinstance(
-                            key, util.string_types
-                        ):
-                            key = key.lower()
                         idx = metadata_entry[MD_INDEX]
                         # if this key has been associated with more than one
                         # positional index, it's a dupe
@@ -351,8 +342,6 @@ class CursorResultMetaData(ResultMetaData):
 
         """
 
-        case_sensitive = context.dialect.case_sensitive
-
         if (
             num_ctx_cols
             and cols_are_ordered
@@ -371,9 +360,7 @@ class CursorResultMetaData(ResultMetaData):
                     idx,
                     idx,
                     rmap_entry[RM_OBJECTS],
-                    rmap_entry[RM_NAME].lower()
-                    if not case_sensitive
-                    else rmap_entry[RM_NAME],
+                    rmap_entry[RM_NAME],
                     rmap_entry[RM_RENDERED_NAME],
                     context.get_result_processor(
                         rmap_entry[RM_TYPE],
@@ -447,7 +434,6 @@ class CursorResultMetaData(ResultMetaData):
         """
 
         dialect = context.dialect
-        case_sensitive = dialect.case_sensitive
         translate_colname = context._translate_colname
         description_decoder = (
             dialect._description_decoder
@@ -475,8 +461,6 @@ class CursorResultMetaData(ResultMetaData):
                 colname = normalize_name(colname)
 
             self._keys.append(colname)
-            if not case_sensitive:
-                colname = colname.lower()
 
             yield idx, colname, untranslated, coltype
 
@@ -522,10 +506,8 @@ class CursorResultMetaData(ResultMetaData):
         result_columns,
         loose_column_name_matching,
     ):
-        dialect = context.dialect
-        case_sensitive = dialect.case_sensitive
         match_map = self._create_description_match_map(
-            result_columns, case_sensitive, loose_column_name_matching
+            result_columns, loose_column_name_matching
         )
         for (
             idx,
@@ -557,7 +539,6 @@ class CursorResultMetaData(ResultMetaData):
     def _create_description_match_map(
         cls,
         result_columns,
-        case_sensitive=True,
         loose_column_name_matching=False,
     ):
         """when matching cursor.description to a set of names that are present
@@ -569,8 +550,6 @@ class CursorResultMetaData(ResultMetaData):
         for ridx, elem in enumerate(result_columns):
             key = elem[RM_RENDERED_NAME]
 
-            if not case_sensitive:
-                key = key.lower()
             if key in d:
                 # conflicting keyname - just add the column-linked objects
                 # to the existing record.  if there is a duplicate column
@@ -613,16 +592,6 @@ class CursorResultMetaData(ResultMetaData):
             )
 
     def _key_fallback(self, key, err, raiseerr=True):
-
-        # we apparently have not marked .case_sensitive as
-        # RemovedIn20.  I still think we should remove it as I can't
-        # imagine anyone is using it, however lets make that a separate
-        # commit.
-        if not self.case_sensitive and isinstance(key, util.string_types):
-            map_ = self._keymap
-            result = map_.get(key.lower())
-            if result is not None:
-                return result
 
         if raiseerr:
             if self._unpickled and isinstance(key, elements.ColumnElement):
@@ -703,7 +672,6 @@ class CursorResultMetaData(ResultMetaData):
                 if isinstance(key, util.string_types + util.int_types)
             },
             "_keys": self._keys,
-            "case_sensitive": self.case_sensitive,
             "_translated_indexes": self._translated_indexes,
             "_tuplefilter": self._tuplefilter,
         }
@@ -716,7 +684,6 @@ class CursorResultMetaData(ResultMetaData):
             rec[MD_RESULT_MAP_INDEX]: rec for rec in self._keymap.values()
         }
         self._keys = state["_keys"]
-        self.case_sensitive = state["case_sensitive"]
         self._unpickled = True
         if state["_translated_indexes"]:
             self._translated_indexes = state["_translated_indexes"]
