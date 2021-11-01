@@ -260,12 +260,12 @@ the SQLAlchemy project itself, the approach taken is as follows:
 
         import warnings
         from sqlalchemy import exc
-        
+
         # for warnings not included in regex-based filter below, just log
         warnings.filterwarnings(
           "always", category=exc.RemovedIn20Warning
         )
-        
+
         # for warnings related to execute() / scalar(), raise
         for msg in [
             r"The (?:Executable|Engine)\.(?:execute|scalar)\(\) function",
@@ -852,7 +852,7 @@ selecting rows from the :class:`_query.Query` object has been replaced by the
 back with Core statement results when using the
 :paramref:`_sa.create_engine.future` flag with :class:`_engine.Engine` (when
 the :paramref:`_sa.create_engine.future` flag is not set, Core result sets use
-the :class:`.LegacyRow` subclass, which maintains backwards-compatible
+the ``LegacyRow`` subclass, which maintains backwards-compatible
 behaviors for the ``__contains__()`` method; ORM exclusively uses the
 :class:`.Row` class directly).
 

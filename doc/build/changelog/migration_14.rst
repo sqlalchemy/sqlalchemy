@@ -1348,17 +1348,17 @@ patterns in place in order to support this process.   The note in
 :ref:`change_4710_orm` describes the ORM's use of the :class:`.Row` class.
 
 For release 1.4, the :class:`.Row` class provides an additional subclass
-:class:`.LegacyRow`, which is used by Core and provides a backwards-compatible
+``LegacyRow``, which is used by Core and provides a backwards-compatible
 version of :class:`.RowProxy` while emitting deprecation warnings for those API
 features and behaviors that will be moved.  ORM :class:`_query.Query` now makes use
 of :class:`.Row` directly as a replacement for :class:`.KeyedTuple`.
 
-The :class:`.LegacyRow` class is a transitional class where the
+The ``LegacyRow`` class is a transitional class where the
 ``__contains__`` method is still testing against the keys, not the values,
 while emitting a deprecation warning when the operation succeeds.
 Additionally, all the other mapping-like methods on the previous
-:class:`.RowProxy` are deprecated, including :meth:`.LegacyRow.keys`,
-:meth:`.LegacyRow.items`, etc.  For mapping-like behaviors from a :class:`.Row`
+:class:`.RowProxy` are deprecated, including ``LegacyRow.keys()``,
+``LegacyRow.items()``, etc.  For mapping-like behaviors from a :class:`.Row`
 object, including support for these methods as well as a key-oriented
 ``__contains__`` operator, the API going forward will be to first access a
 special attribute :attr:`.Row._mapping`, which will then provide a complete
@@ -1377,7 +1377,7 @@ The biggest cross-incompatible difference is the behavior of ``__contains__``::
     "id" in row          # True for a mapping, False for a named tuple
     "some name" in row   # False for a mapping, True for a named tuple
 
-In 1.4, when a :class:`.LegacyRow` is returned by a Core result set, the above
+In 1.4, when a ``LegacyRow`` is returned by a Core result set, the above
 ``"id" in row`` comparison will continue to succeed, however a deprecation
 warning will be emitted.   To use the "in" operator as a mapping, use the
 :attr:`.Row._mapping` attribute::
@@ -1982,7 +1982,7 @@ The rationale is so that by SQLAlchemy 2.0, both Core and ORM SELECT statements
 will return result rows using the same :class:`.Row` object which behaves  like
 a named tuple.  Dictionary-like functionality is available from :class:`.Row`
 via the :attr:`.Row._mapping` attribute.   In the interim, Core result sets
-will make use of a :class:`.Row` subclass :class:`.LegacyRow` which maintains
+will make use of a :class:`.Row` subclass ``LegacyRow`` which maintains
 the previous dict/tuple hybrid behavior for backwards compatibility while the
 :class:`.Row` class will be used directly for ORM tuple results returned
 by the :class:`_query.Query` object.

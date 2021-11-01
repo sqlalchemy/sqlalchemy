@@ -1752,7 +1752,7 @@ This document details individual issue-level changes made throughout
         as well as any other non-migrated applications. Previously, this would
         raise :class:`.ResourceClosedException` unconditionally in the same way as
         it does when attempting to fetch rows. While this is the correct behavior
-        going forward, the :class:`_cursor.LegacyCursorResult` object will now in
+        going forward, the ``LegacyCursorResult`` object will now in
         this case return an empty list for ``.keys()`` as it did in 1.3, while also
         emitting a 2.0 deprecation warning. The :class:`_cursor.CursorResult`, used
         when using a 2.0-style "future" engine, will continue to raise as it does
@@ -2463,7 +2463,7 @@ This document details individual issue-level changes made throughout
         works as it would with a dictionary, rather than raising ``TypeError`` as
         would be the case with a tuple, whether or not the C extensions are in
         place. This was originally supposed to emit a 2.0 deprecation warning for
-        the "non-future" case using :class:`_result.LegacyRow`, and was to raise
+        the "non-future" case using ``LegacyRow``, and was to raise
         ``TypeError`` for the "future" :class:`_result.Row` class. However, the C
         version of :class:`_result.Row` was failing to raise this ``TypeError``,
         and to complicate matters, the :meth:`_orm.Session.execute` method now
@@ -2474,12 +2474,12 @@ This document details individual issue-level changes made throughout
 
         Therefore, in order to soften the overall upgrade scheme as most users have
         not been exposed to the more strict behavior of :class:`_result.Row` up
-        through 1.4.6, :class:`_result.LegacyRow` and :class:`_result.Row` both
+        through 1.4.6, ``LegacyRow`` and :class:`_result.Row` both
         provide for string-key access as well as support for ``dict(row)``, in all
         cases emitting the 2.0 deprecation warning when ``SQLALCHEMY_WARN_20`` is
         enabled. The :class:`_result.Row` object still uses tuple-like behavior for
         ``__contains__``, which is probably the only noticeable behavioral change
-        compared to :class:`_result.LegacyRow`, other than the removal of
+        compared to ``LegacyRow``, other than the removal of
         dictionary-style methods ``values()`` and ``items()``.
 
     .. change::
@@ -2962,7 +2962,7 @@ This document details individual issue-level changes made throughout
 
         Restored the :class:`_engine.ResultProxy` name back to the
         ``sqlalchemy.engine`` namespace. This name refers to the
-        :class:`_engine.LegacyCursorResult` object.
+        ``LegacyCursorResult`` object.
 
     .. change::
         :tags: bug, orm
@@ -3170,7 +3170,7 @@ This document details individual issue-level changes made throughout
         and ``index`` will be served as tuple values if the named tuple includes
         those names; if they are absent, then their behavior as methods of
         ``collections.abc.Sequence`` is maintained. Therefore the
-        :class:`_result.Row` and :class:`_result.LegacyRow` classes have been fixed
+        :class:`_result.Row` and ``LegacyRow`` classes have been fixed
         so that they work in this same way, maintaining the expected behavior for
         database rows that have columns named "index" or "count".
 
@@ -6150,7 +6150,7 @@ This document details individual issue-level changes made throughout
         Python-level value processors have been simplified, particularly as it impacts the
         format of the C code, so that a DBAPI row is processed into a result tuple
         up front.   The object returned by the :class:`_engine.ResultProxy` is now the
-        :class:`.LegacyRow` subclass, which maintains mapping/tuple hybrid behavior,
+        ``LegacyRow`` subclass, which maintains mapping/tuple hybrid behavior,
         however the base :class:`.Row` class now behaves more fully like a named
         tuple.
 
@@ -6167,7 +6167,7 @@ This document details individual issue-level changes made throughout
         Core :class:`.Row` class, which behaves in the same way as KeyedTuple.
         In SQLAlchemy 2.0, both Core and ORM will return result rows using the same
         :class:`.Row` object.   In the interim, Core uses a backwards-compatibility
-        class :class:`.LegacyRow` that maintains the former mapping/tuple hybrid
+        class ``LegacyRow`` that maintains the former mapping/tuple hybrid
         behavior used by "RowProxy".
 
         .. seealso::
