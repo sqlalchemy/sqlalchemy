@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 7272
+    :versions: 2.0.0b1
+
+    Fixed issue in future :class:`_future.Engine` where calling upon
+    :meth:`_future.Engine.begin` and entering the context manager would not
+    close the connection if the actual BEGIN operation failed for some reason,
+    such as an event handler raising an exception; this use case failed to be
+    tested for the future version of the engine. Note that the "future" context
+    managers which handle ``begin()`` blocks in Core and ORM don't actually run
+    the "BEGIN" operation until the context managers are actually entered. This
+    is different from the legacy version which runs the "BEGIN" operation up
+    front.

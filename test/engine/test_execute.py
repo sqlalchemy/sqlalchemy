@@ -813,16 +813,42 @@ class ConvenienceExecuteTest(fixtures.TablesTest):
         testing.run_as_contextmanager(ctx, fn, 5, value=8)
         self._assert_fn(5, value=8)
 
-    def test_transaction_engine_ctx_begin_fails(self):
+    def test_transaction_engine_ctx_begin_fails_dont_enter_enter(self):
+        """test #7272"""
         engine = engines.testing_engine()
 
         mock_connection = Mock(
             return_value=Mock(begin=Mock(side_effect=Exception("boom")))
         )
-        engine._connection_cls = mock_connection
-        assert_raises(Exception, engine.begin)
+        with mock.patch.object(engine, "_connection_cls", mock_connection):
+            if testing.requires.legacy_engine.enabled:
+                with expect_raises_message(Exception, "boom"):
+                    engine.begin()
+            else:
+                # context manager isn't entered, doesn't actually call
+                # connect() or connection.begin()
+                engine.begin()
 
-        eq_(mock_connection.return_value.close.mock_calls, [call()])
+        if testing.requires.legacy_engine.enabled:
+            eq_(mock_connection.return_value.close.mock_calls, [call()])
+        else:
+            eq_(mock_connection.return_value.close.mock_calls, [])
+
+    def test_transaction_engine_ctx_begin_fails_include_enter(self):
+        """test #7272"""
+        engine = engines.testing_engine()
+
+        close_mock = Mock()
+        with mock.patch.object(
+            engine._connection_cls,
+            "begin",
+            Mock(side_effect=Exception("boom")),
+        ), mock.patch.object(engine._connection_cls, "close", close_mock):
+            with expect_raises_message(Exception, "boom"):
+                with engine.begin():
+                    pass
+
+        eq_(close_mock.mock_calls, [call()])
 
     def test_transaction_engine_ctx_rollback(self):
         fn = self._trans_rollback_fn()
@@ -867,6 +893,7 @@ class ConvenienceExecuteTest(fixtures.TablesTest):
         self._assert_fn(5, value=8)
 
     @testing.fails_on("mysql+oursql", "oursql bug ?  getting wrong rowcount")
+    @testing.requires.legacy_engine
     def test_connect_as_ctx_noautocommit(self):
         fn = self._trans_fn()
         self._assert_no_data()
@@ -876,6 +903,12 @@ class ConvenienceExecuteTest(fixtures.TablesTest):
             testing.run_as_contextmanager(ctx, fn, 5, value=8)
             # autocommit is off
             self._assert_no_data()
+
+
+class FutureConvenienceExecuteTest(
+    fixtures.FutureEngineMixin, ConvenienceExecuteTest
+):
+    __backend__ = True
 
 
 class CompiledCacheTest(fixtures.TestBase):
