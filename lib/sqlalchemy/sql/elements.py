@@ -29,7 +29,6 @@ from .base import Executable
 from .base import HasMemoized
 from .base import Immutable
 from .base import NO_ARG
-from .base import PARSE_AUTOCOMMIT
 from .base import SingletonConstant
 from .coercions import _document_text_coercion
 from .traversals import HasCopyInternals
@@ -319,11 +318,11 @@ class ClauseElement(
         return d
 
     def _execute_on_connection(
-        self, connection, multiparams, params, execution_options, _force=False
+        self, connection, distilled_params, execution_options, _force=False
     ):
         if _force or self.supports_execution:
             return connection._execute_clauseelement(
-                self, multiparams, params, execution_options
+                self, distilled_params, execution_options
             )
         else:
             raise exc.ObjectNotExecutableError(self)
@@ -1755,9 +1754,6 @@ class TextClause(
     _is_textual = True
 
     _bind_params_regex = re.compile(r"(?<![:\w\x5c]):(\w+)(?!:)", re.UNICODE)
-    _execution_options = Executable._execution_options.union(
-        {"autocommit": PARSE_AUTOCOMMIT}
-    )
     _is_implicitly_boolean = False
 
     _render_label_in_columns_clause = False
@@ -1860,19 +1856,8 @@ class TextClause(
         :func:`_expression.text` is also used for the construction
         of a full, standalone statement using plain text.
         As such, SQLAlchemy refers
-        to it as an :class:`.Executable` object, and it supports
-        the :meth:`Executable.execution_options` method.  For example,
-        a :func:`_expression.text`
-        construct that should be subject to "autocommit"
-        can be set explicitly so using the
-        :paramref:`.Connection.execution_options.autocommit` option::
-
-            t = text("EXEC my_procedural_thing()").\
-                    execution_options(autocommit=True)
-
-        .. deprecated:: 1.4  The "autocommit" execution option is deprecated
-           and will be removed in SQLAlchemy 2.0.  See
-           :ref:`migration_20_autocommit` for discussion.
+        to it as an :class:`.Executable` object and may be used
+        like any other statement passed to an ``.execute()`` method.
 
         :param text:
           the text of the SQL statement to be created.  Use ``:<param>``
@@ -5044,9 +5029,6 @@ class CollationClause(ColumnElement):
 class _IdentifiedClause(Executable, ClauseElement):
 
     __visit_name__ = "identified"
-    _execution_options = Executable._execution_options.union(
-        {"autocommit": False}
-    )
 
     def __init__(self, ident):
         self.ident = ident

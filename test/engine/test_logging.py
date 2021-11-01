@@ -105,7 +105,7 @@ class LogParamsTest(fixtures.TestBase):
         )
 
     def test_log_positional_array(self):
-        with self.eng.connect() as conn:
+        with self.eng.begin() as conn:
             exc_info = assert_raises(
                 tsa.exc.DBAPIError,
                 conn.execute,
@@ -119,7 +119,7 @@ class LogParamsTest(fixtures.TestBase):
             )
 
             eq_regex(
-                self.buf.buffer[1].message,
+                self.buf.buffer[2].message,
                 r"\[generated .*\] \(\[1, 2, 3\], 'hi'\)",
             )
 
@@ -799,25 +799,26 @@ class EchoTest(fixtures.TestBase):
 
         e1.echo = True
 
-        with e1.connect() as conn:
+        with e1.begin() as conn:
             conn.execute(select(1)).close()
 
-        with e2.connect() as conn:
+        with e2.begin() as conn:
             conn.execute(select(2)).close()
 
         e1.echo = False
 
-        with e1.connect() as conn:
+        with e1.begin() as conn:
             conn.execute(select(3)).close()
-        with e2.connect() as conn:
+        with e2.begin() as conn:
             conn.execute(select(4)).close()
 
         e2.echo = True
-        with e1.connect() as conn:
+        with e1.begin() as conn:
             conn.execute(select(5)).close()
-        with e2.connect() as conn:
+        with e2.begin() as conn:
             conn.execute(select(6)).close()
 
-        assert self.buf.buffer[0].getMessage().startswith("SELECT 1")
-        assert self.buf.buffer[2].getMessage().startswith("SELECT 6")
-        assert len(self.buf.buffer) == 4
+        assert self.buf.buffer[1].getMessage().startswith("SELECT 1")
+
+        assert self.buf.buffer[5].getMessage().startswith("SELECT 6")
+        assert len(self.buf.buffer) == 8

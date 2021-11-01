@@ -126,189 +126,6 @@ The underlying object used to represent the transaction is the
 manager calling form, which invokes these methods automatically, is recommended
 as a best practice.
 
-.. _connections_nested_transactions:
-
-Nesting of Transaction Blocks
------------------------------
-
-.. deprecated:: 1.4 The "transaction nesting" feature of SQLAlchemy is a legacy feature
-   that is deprecated in the 1.4 release and will be removed in SQLAlchemy 2.0.
-   The pattern has proven to be a little too awkward and complicated, unless an
-   application makes more of a first-class framework around the behavior.  See
-   the following subsection :ref:`connections_avoid_nesting`.
-
-The :class:`.Transaction` object also handles "nested" behavior by keeping
-track of the outermost begin/commit pair. In this example, two functions both
-issue a transaction on a :class:`_engine.Connection`, but only the outermost
-:class:`.Transaction` object actually takes effect when it is committed.
-
-.. sourcecode:: python+sql
-
-    # method_a starts a transaction and calls method_b
-    def method_a(connection):
-        with connection.begin():  # open a transaction
-            method_b(connection)
-
-    # method_b also starts a transaction
-    def method_b(connection):
-        with connection.begin(): # open a transaction - this runs in the
-                                 # context of method_a's transaction
-            connection.execute(text("insert into mytable values ('bat', 'lala')"))
-            connection.execute(mytable.insert(), {"col1": "bat", "col2": "lala"})
-
-    # open a Connection and call method_a
-    with engine.connect() as conn:
-        method_a(conn)
-
-Above, ``method_a`` is called first, which calls ``connection.begin()``. Then
-it calls ``method_b``. When ``method_b`` calls ``connection.begin()``, it just
-increments a counter that is decremented when it calls ``commit()``. If either
-``method_a`` or ``method_b`` calls ``rollback()``, the whole transaction is
-rolled back. The transaction is not committed until ``method_a`` calls the
-``commit()`` method. This "nesting" behavior allows the creation of functions
-which "guarantee" that a transaction will be used if one was not already
-available, but will automatically participate in an enclosing transaction if
-one exists.
-
-.. _connections_avoid_nesting:
-
-Arbitrary Transaction Nesting as an Antipattern
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-With many years of experience, the above "nesting" pattern has not proven to
-be very popular, and where it has been observed in large projects such
-as Openstack, it tends to be complicated.
-
-The most ideal way to organize an application would have a single, or at
-least very few, points at which the "beginning" and "commit" of all
-database transactions is demarcated.   This is also the general
-idea discussed in terms of the ORM at :ref:`session_faq_whentocreate`.  To
-adapt the example from the previous section to this practice looks like::
-
-
-    # method_a calls method_b
-    def method_a(connection):
-        method_b(connection)
-
-    # method_b uses the connection and assumes the transaction
-    # is external
-    def method_b(connection):
-        connection.execute(text("insert into mytable values ('bat', 'lala')"))
-        connection.execute(mytable.insert(), {"col1": "bat", "col2": "lala"})
-
-    # open a Connection inside of a transaction and call method_a
-    with engine.begin() as conn:
-        method_a(conn)
-
-That is, ``method_a()`` and ``method_b()`` do not deal with the details
-of the transaction at all; the transactional scope of the connection is
-defined **externally** to the functions that have a SQL dialogue with the
-connection.
-
-It may be observed that the above code has fewer lines, and less indentation
-which tends to correlate with lower :term:`cyclomatic complexity`.   The
-above code is organized such that ``method_a()`` and ``method_b()`` are always
-invoked from a point at which a transaction is begun.  The previous
-version of the example features a ``method_a()`` and a ``method_b()`` that are
-trying to be agnostic of this fact, which suggests they are prepared for
-at least twice as many potential codepaths through them.
-
-.. _connections_subtransactions:
-
-Migrating from the "nesting" pattern
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-As SQLAlchemy's intrinsic-nested pattern is considered legacy, an application
-that for either legacy or novel reasons still seeks to have a context that
-automatically frames transactions should seek to maintain this functionality
-through the use of a custom Python context manager.  A similar example is also
-provided in terms of the ORM in the "seealso" section below.
-
-To provide backwards compatibility for applications that make use of this
-pattern, the following context manager or a similar implementation based on
-a decorator may be used::
-
-    import contextlib
-
-    @contextlib.contextmanager
-    def transaction(connection):
-        if not connection.in_transaction():
-            with connection.begin():
-                yield connection
-        else:
-            yield connection
-
-The above contextmanager would be used as::
-
-    # method_a starts a transaction and calls method_b
-    def method_a(connection):
-        with transaction(connection):  # open a transaction
-            method_b(connection)
-
-    # method_b either starts a transaction, or uses the one already
-    # present
-    def method_b(connection):
-        with transaction(connection):  # open a transaction
-            connection.execute(text("insert into mytable values ('bat', 'lala')"))
-            connection.execute(mytable.insert(), {"col1": "bat", "col2": "lala"})
-
-    # open a Connection and call method_a
-    with engine.connect() as conn:
-        method_a(conn)
-
-A similar approach may be taken such that connectivity is established
-on demand as well; the below approach features a single-use context manager
-that accesses an enclosing state in order to test if connectivity is already
-present::
-
-    import contextlib
-
-    def connectivity(engine):
-        connection = None
-
-        @contextlib.contextmanager
-        def connect():
-            nonlocal connection
-
-            if connection is None:
-                connection = engine.connect()
-                with connection:
-                    with connection.begin():
-                        yield connection
-            else:
-                yield connection
-
-        return connect
-
-Using the above would look like::
-
-    # method_a passes along connectivity context, at the same time
-    # it chooses to establish a connection by calling "with"
-    def method_a(connectivity):
-        with connectivity():
-            method_b(connectivity)
-
-    # method_b also wants to use a connection from the context, so it
-    # also calls "with:", but also it actually uses the connection.
-    def method_b(connectivity):
-        with connectivity() as connection:
-            connection.execute(text("insert into mytable values ('bat', 'lala')"))
-            connection.execute(mytable.insert(), {"col1": "bat", "col2": "lala"})
-
-    # create a new connection/transaction context object and call
-    # method_a
-    method_a(connectivity(engine))
-
-The above context manager acts not only as a "transaction" context but also
-as a context that manages having an open connection against a particular
-:class:`_engine.Engine`.   When using the ORM :class:`_orm.Session`, this
-connectivty management is provided by the :class:`_orm.Session` itself.
-An overview of ORM connectivity patterns is at :ref:`unitofwork_transaction`.
-
-.. seealso::
-
-  :ref:`session_subtransactions` - ORM version
-
 .. _autocommit:
 
 Library Level (e.g. emulated) Autocommit
@@ -418,18 +235,16 @@ begin a transaction::
       with connection.begin():
           connection.execute(<statement>)
 
-.. note::  The return value of
-   the :meth:`_engine.Connection.execution_options` method is a so-called
-   "branched" connection under the SQLAlchemy 1.x series when not using
-   :paramref:`_sa.create_engine.future` mode, which is a shallow
-   copy of the original :class:`_engine.Connection` object.  Despite this,
-   the ``isolation_level`` execution option applies to the
-   original :class:`_engine.Connection` object and all "branches" overall.
-
-   When using :paramref:`_sa.create_engine.future` mode (i.e. :term:`2.0 style`
-   usage), the concept of these so-called "branched" connections is removed,
-   and :meth:`_engine.Connection.execution_options` returns the **same**
-   :class:`_engine.Connection` object without creating any copies.
+.. tip::  The return value of
+   the :meth:`_engine.Connection.execution_options` method is the same
+   :class:`_engine.Connection` object upon which the method was called,
+   meaning, it modifies the state of the :class:`_engine.Connection`
+   object in place.  This is a new behavior as of SQLAlchemy 2.0.
+   This behavior does not apply to the :meth:`_engine.Engine.execution_options`
+   method; that method still returns a copy of the :class:`.Engine` and
+   as described below may be used to construct multiple :class:`.Engine`
+   objects with different execution options, which nonetheless share the same
+   dialect and connection pool.
 
 The :paramref:`_engine.Connection.execution_options.isolation_level` option may
 also be set engine wide, as is often preferable.  This is achieved by

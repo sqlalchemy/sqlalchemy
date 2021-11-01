@@ -336,10 +336,7 @@ class ConnectionEvents(event.Events):
         The hook is called while the cursor from the failed operation
         (if any) is still open and accessible.   Special cleanup operations
         can be called on this cursor; SQLAlchemy will attempt to close
-        this cursor subsequent to this hook being invoked.  If the connection
-        is in "autocommit" mode, the transaction also remains open within
-        the scope of this hook; the rollback of the per-statement transaction
-        also occurs after the hook is called.
+        this cursor subsequent to this hook being invoked.
 
         .. note::
 
@@ -437,7 +434,10 @@ class ConnectionEvents(event.Events):
 
         """
 
-    def engine_connect(self, conn, branch):
+    @event._legacy_signature(
+        "2.0", ["conn", "branch"], converter=lambda conn: (conn, False)
+    )
+    def engine_connect(self, conn):
         """Intercept the creation of a new :class:`_engine.Connection`.
 
         This event is called typically as the direct result of calling
@@ -461,19 +461,9 @@ class ConnectionEvents(event.Events):
         events within the lifespan
         of a single :class:`_engine.Connection` object, if that
         :class:`_engine.Connection`
-        is invalidated and re-established.  There can also be multiple
-        :class:`_engine.Connection`
-        objects generated for the same already-checked-out
-        DBAPI connection, in the case that a "branch" of a
-        :class:`_engine.Connection`
-        is produced.
+        is invalidated and re-established.
 
         :param conn: :class:`_engine.Connection` object.
-        :param branch: if True, this is a "branch" of an existing
-         :class:`_engine.Connection`.  A branch is generated within the course
-         of a statement execution to invoke supplemental statements, most
-         typically to pre-execute a SELECT of a default value for the purposes
-         of an INSERT statement.
 
         .. seealso::
 

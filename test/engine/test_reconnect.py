@@ -18,6 +18,7 @@ from sqlalchemy.testing import assert_raises_message_context_ok
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
@@ -27,7 +28,6 @@ from sqlalchemy.testing import ne_
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.mock import call
 from sqlalchemy.testing.mock import Mock
-from sqlalchemy.testing.mock import patch
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
@@ -563,7 +563,8 @@ class MockReconnectTest(fixtures.TestBase):
         # error stays consistent
         assert_raises_message(
             tsa.exc.PendingRollbackError,
-            "This connection is on an inactive transaction.  Please rollback",
+            r"Can't reconnect until invalid transaction is rolled back.  "
+            r"Please rollback\(\) fully before proceeding",
             conn.execute,
             select(1),
         )
@@ -571,7 +572,8 @@ class MockReconnectTest(fixtures.TestBase):
 
         assert_raises_message(
             tsa.exc.PendingRollbackError,
-            "This connection is on an inactive transaction.  Please rollback",
+            r"Can't reconnect until invalid transaction is rolled back.  "
+            r"Please rollback\(\) fully before proceeding",
             trans.commit,
         )
 
@@ -579,7 +581,8 @@ class MockReconnectTest(fixtures.TestBase):
 
         assert_raises_message(
             tsa.exc.PendingRollbackError,
-            "This connection is on an inactive transaction.  Please rollback",
+            r"Can't reconnect until invalid transaction is rolled back.  "
+            r"Please rollback\(\) fully before proceeding",
             conn.execute,
             select(1),
         )
@@ -607,13 +610,22 @@ class MockReconnectTest(fixtures.TestBase):
 
         self.dbapi.shutdown()
 
-        assert_raises(tsa.exc.DBAPIError, conn.execute, select(1))
+        with expect_raises(tsa.exc.DBAPIError):
+            conn.execute(select(1))
 
         assert not conn.closed
         assert conn.invalidated
 
         eq_([c.close.mock_calls for c in self.dbapi.connections], [[call()]])
 
+        # trans was autobegin.  they have to call rollback
+        with expect_raises(tsa.exc.PendingRollbackError):
+            conn.execute(select(1))
+
+        # ok
+        conn.rollback()
+
+        # now we are good
         # test reconnects
         conn.execute(select(1))
         assert not conn.invalidated
@@ -659,17 +671,22 @@ class MockReconnectTest(fixtures.TestBase):
         conn.close()
 
     def test_noreconnect_rollback(self):
+        # this test changes in 2.x due to autobegin.
+
         conn = self.db.connect()
+
+        conn.execute(select(1))
 
         self.dbapi.shutdown("rollback_no_disconnect")
 
-        # raises error
-        assert_raises_message(
+        # previously, running a select() here which would fail would then
+        # trigger autorollback which would also fail, this is not the
+        # case now as autorollback does not normally occur
+        with expect_raises_message(
             tsa.exc.DBAPIError,
-            "something broke on rollback but we didn't " "lose the connection",
-            conn.execute,
-            select(1),
-        )
+            r"something broke on rollback but we didn't lose the connection",
+        ):
+            conn.rollback()
 
         assert not conn.closed
         assert not conn.invalidated
@@ -695,8 +712,7 @@ class MockReconnectTest(fixtures.TestBase):
         assert_raises_message(
             tsa.exc.DBAPIError,
             "Lost the DB connection on rollback",
-            conn.execute,
-            select(1),
+            conn.rollback,
         )
 
         assert not conn.closed
@@ -987,6 +1003,12 @@ class RealReconnectTest(fixtures.TestBase):
             assert conn.invalidated
 
             assert conn.invalidated
+
+            with expect_raises(tsa.exc.PendingRollbackError):
+                conn.execute(select(1))
+
+            conn.rollback()
+
             eq_(conn.execute(select(1)).scalar(), 1)
             assert not conn.invalidated
 
@@ -995,6 +1017,8 @@ class RealReconnectTest(fixtures.TestBase):
             _assert_invalidated(conn.execute, select(1))
 
             assert conn.invalidated
+            conn.rollback()
+
             eq_(conn.execute(select(1)).scalar(), 1)
             assert not conn.invalidated
 
@@ -1016,61 +1040,6 @@ class RealReconnectTest(fixtures.TestBase):
         # pool isn't replaced
         assert self.engine.pool is p2
 
-    def test_branched_invalidate_branch_to_parent(self):
-        with self.engine.connect() as c1:
-
-            with patch.object(self.engine.pool, "logger") as logger:
-                with testing.expect_deprecated_20(
-                    r"The Connection.connect\(\) method is considered legacy"
-                ):
-                    c1_branch = c1.connect()
-                eq_(c1_branch.execute(select(1)).scalar(), 1)
-
-                self.engine.test_shutdown()
-
-                _assert_invalidated(c1_branch.execute, select(1))
-                assert c1.invalidated
-                assert c1_branch.invalidated
-
-                c1_branch._revalidate_connection()
-                assert not c1.invalidated
-                assert not c1_branch.invalidated
-
-            assert "Invalidate connection" in logger.mock_calls[0][1][0]
-
-    def test_branched_invalidate_parent_to_branch(self):
-        with self.engine.connect() as c1:
-            with testing.expect_deprecated_20(
-                r"The Connection.connect\(\) method is considered legacy"
-            ):
-                c1_branch = c1.connect()
-            eq_(c1_branch.execute(select(1)).scalar(), 1)
-
-            self.engine.test_shutdown()
-
-            _assert_invalidated(c1.execute, select(1))
-            assert c1.invalidated
-            assert c1_branch.invalidated
-
-            c1._revalidate_connection()
-            assert not c1.invalidated
-            assert not c1_branch.invalidated
-
-    def test_branch_invalidate_state(self):
-        with self.engine.connect() as c1:
-            with testing.expect_deprecated_20(
-                r"The Connection.connect\(\) method is considered legacy"
-            ):
-                c1_branch = c1.connect()
-
-            eq_(c1_branch.execute(select(1)).scalar(), 1)
-
-            self.engine.test_shutdown()
-
-            _assert_invalidated(c1_branch.execute, select(1))
-            assert not c1_branch.closed
-            assert not c1_branch._still_open_and_dbapi_connection_is_valid
-
     def test_ensure_is_disconnect_gets_connection(self):
         def is_disconnect(e, conn, cursor):
             # connection is still present
@@ -1084,6 +1053,10 @@ class RealReconnectTest(fixtures.TestBase):
         with self.engine.connect() as conn:
             self.engine.test_shutdown()
             assert_raises(tsa.exc.DBAPIError, conn.execute, select(1))
+
+            # aiosqlite is not able to run close() here without an
+            # error.
+            conn.invalidate()
 
     def test_rollback_on_invalid_plain(self):
         with self.engine.connect() as conn:
@@ -1149,6 +1122,7 @@ class RealReconnectTest(fixtures.TestBase):
             _assert_invalidated(conn.execute, select(1))
             assert not conn.closed
             assert conn.invalidated
+            conn.rollback()
             eq_(conn.execute(select(1)).scalar(), 1)
             assert not conn.invalidated
 
@@ -1379,9 +1353,7 @@ class ReconnectRecipeTest(fixtures.TestBase):
     # to get a real "cut the server off" kind of fixture we'd need to do
     # something in provisioning that seeks out the TCP connection at the
     # OS level and kills it.
-    __only_on__ = ("mysql+mysqldb", "mysql+pymysql")
-
-    future = False
+    __only_on__ = ("+mysqldb", "+pymysql")
 
     def make_engine(self, engine):
         num_retries = 3
@@ -1404,12 +1376,7 @@ class ReconnectRecipeTest(fixtures.TestBase):
                         )
                         connection.invalidate()
 
-                        if self.future:
-                            connection.rollback()
-                        else:
-                            trans = connection.get_transaction()
-                            if trans:
-                                trans.rollback()
+                        connection.rollback()
 
                         time.sleep(retry_interval)
                         context.cursor = (
@@ -1446,9 +1413,7 @@ class ReconnectRecipeTest(fixtures.TestBase):
     __backend__ = True
 
     def setup_test(self):
-        self.engine = engines.reconnecting_engine(
-            options=dict(future=self.future)
-        )
+        self.engine = engines.reconnecting_engine()
         self.meta = MetaData()
         self.table = Table(
             "sometable",
@@ -1533,12 +1498,4 @@ class ReconnectRecipeTest(fixtures.TestBase):
                     {"id": 6, "name": "some name 6"},
                 ],
             )
-            if self.future:
-                conn.rollback()
-            else:
-                trans = conn.get_transaction()
-                trans.rollback()
-
-
-class FutureReconnectRecipeTest(ReconnectRecipeTest):
-    future = True
+            conn.rollback()

@@ -170,6 +170,7 @@ class AutocommitIsolationTest(fixtures.TablesTest):
             conn.scalar(select(self.tables.some_table.c.id)),
             1 if autocommit else None,
         )
+        conn.rollback()
 
         with conn.begin():
             conn.execute(self.tables.some_table.delete())

@@ -550,15 +550,6 @@ class Dialect(object):
         that transactions are implicit.  This hook is provided for those
         DBAPIs that might need additional help in this area.
 
-        Note that :meth:`.Dialect.do_begin` is not called unless a
-        :class:`.Transaction` object is in use.  The
-        :meth:`.Dialect.do_autocommit`
-        hook is provided for DBAPIs that need some extra commands emitted
-        after a commit in order to enter the next transaction, when the
-        SQLAlchemy :class:`_engine.Connection`
-        is used in its default "autocommit"
-        mode.
-
         :param dbapi_connection: a DBAPI connection, typically
          proxied within a :class:`.ConnectionFairy`.
 
@@ -1356,9 +1347,6 @@ class ExecutionContext(object):
     isupdate
       True if the statement is an UPDATE.
 
-    should_autocommit
-      True if the statement is a "committable" statement.
-
     prefetch_cols
       a list of Column objects for which a client-side default
       was fired off.  Applies to inserts and updates.
@@ -1504,12 +1492,6 @@ class ExecutionContext(object):
     def handle_dbapi_exception(self, e):
         """Receive a DBAPI exception which occurred upon execute, result
         fetch, etc."""
-
-        raise NotImplementedError()
-
-    def should_autocommit_text(self, statement):
-        """Parse the given textual statement and return True if it refers to
-        a "committable" statement"""
 
         raise NotImplementedError()
 

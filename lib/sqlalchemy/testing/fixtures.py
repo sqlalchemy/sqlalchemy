@@ -5,7 +5,6 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-import contextlib
 import re
 import sys
 
@@ -93,9 +92,7 @@ class TestBase(object):
 
     @config.fixture()
     def future_engine(self):
-        eng = getattr(self, "bind", None) or config.db
-        with _push_future_engine(eng):
-            yield
+        yield
 
     @config.fixture()
     def testing_engine(self):
@@ -114,7 +111,6 @@ class TestBase(object):
             return engines.testing_engine(
                 url=url,
                 options=options,
-                future=future,
                 asyncio=asyncio,
                 transfer_staticpool=transfer_staticpool,
             )
@@ -303,26 +299,8 @@ class TestBase(object):
 _connection_fixture_connection = None
 
 
-@contextlib.contextmanager
-def _push_future_engine(engine):
-
-    from ..future.engine import Engine
-    from sqlalchemy import testing
-
-    facade = Engine._future_facade(engine)
-    config._current.push_engine(facade, testing)
-
-    yield facade
-
-    config._current.pop(testing)
-
-
 class FutureEngineMixin(object):
-    @config.fixture(autouse=True, scope="class")
-    def _push_future_engine(self):
-        eng = getattr(self, "bind", None) or config.db
-        with _push_future_engine(eng):
-            yield
+    """alembic's suite still using this"""
 
 
 class TablesTest(TestBase):

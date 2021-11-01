@@ -24,7 +24,6 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import AssertsCompiledSQL
 from .test_compiler import ReservedWordFixture
-from ...engine import test_deprecations
 
 
 class BackendDialectTest(
@@ -105,6 +104,7 @@ class BackendDialectTest(
             isolation_level="AUTOCOMMIT"
         )
         assert c.exec_driver_sql("SELECT @@autocommit;").scalar()
+        c.rollback()
 
         c = c.execution_options(isolation_level="READ COMMITTED")
         assert not c.exec_driver_sql("SELECT @@autocommit;").scalar()
@@ -543,15 +543,3 @@ class ExecutionTest(fixtures.TestBase):
     def test_sysdate(self, connection):
         d = connection.execute(func.sysdate()).scalar()
         assert isinstance(d, datetime.datetime)
-
-
-class AutocommitTextTest(
-    test_deprecations.AutocommitKeywordFixture, fixtures.TestBase
-):
-    __only_on__ = "mysql", "mariadb"
-
-    def test_load_data(self):
-        self._test_keyword("LOAD DATA STUFF")
-
-    def test_replace(self):
-        self._test_keyword("REPLACE THING")

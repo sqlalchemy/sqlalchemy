@@ -449,11 +449,23 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         with testing.db.connect() as c:
 
             sess = Session(bind=c)
+
             u = User(name="u1")
             sess.add(u)
             sess.flush()
+
+            # new in 2.0:
+            # autobegin occurred, so c is in a transaction.
+
+            assert c.in_transaction()
             sess.close()
+
+            # .close() does a rollback, so that will end the
+            # transaction on the connection.  This is how it was
+            # working before also even if transaction was started.
+            # is this what we really want?
             assert not c.in_transaction()
+
             assert (
                 c.exec_driver_sql("select count(1) from users").scalar() == 0
             )
@@ -463,13 +475,21 @@ class BindIntegrationTest(_fixtures.FixtureTest):
             sess.add(u)
             sess.flush()
             sess.commit()
-            assert not c.in_transaction()
-            assert (
-                c.exec_driver_sql("select count(1) from users").scalar() == 1
-            )
 
-            with c.begin():
-                c.exec_driver_sql("delete from users")
+            # new in 2.0:
+            # commit OTOH doesn't actually do a commit.
+            # so still in transaction due to autobegin
+            assert c.in_transaction()
+
+            sess = Session(bind=c)
+            u = User(name="u3")
+            sess.add(u)
+            sess.flush()
+            sess.rollback()
+
+            # like .close(), rollback() also ends the transaction
+            assert not c.in_transaction()
+
             assert (
                 c.exec_driver_sql("select count(1) from users").scalar() == 0
             )

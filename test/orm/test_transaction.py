@@ -12,7 +12,6 @@ from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import text
-from sqlalchemy.future import Engine
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import exc as orm_exc
@@ -50,7 +49,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
     @testing.fixture
     def future_conn(self):
 
-        engine = Engine._future_facade(testing.db)
+        engine = testing.db
         with engine.connect() as conn:
             yield conn
 
@@ -2502,7 +2501,7 @@ class JoinIntoAnExternalTransactionFixture(object):
 
 
 class NewStyleJoinIntoAnExternalTransactionTest(
-    JoinIntoAnExternalTransactionFixture
+    JoinIntoAnExternalTransactionFixture, fixtures.MappedTest
 ):
     """A new recipe for "join into an external transaction" that works
     for both legacy and future engines/sessions
@@ -2572,21 +2571,6 @@ class NewStyleJoinIntoAnExternalTransactionTest(
         self._assert_count(1)
 
 
-class FutureJoinIntoAnExternalTransactionTest(
-    NewStyleJoinIntoAnExternalTransactionTest,
-    fixtures.FutureEngineMixin,
-    fixtures.MappedTest,
-):
-    pass
-
-
-class NonFutureJoinIntoAnExternalTransactionTest(
-    NewStyleJoinIntoAnExternalTransactionTest,
-    fixtures.MappedTest,
-):
-    pass
-
-
 class LegacyJoinIntoAnExternalTransactionTest(
     JoinIntoAnExternalTransactionFixture,
     fixtures.MappedTest,
@@ -2629,40 +2613,3 @@ class LegacyJoinIntoAnExternalTransactionTest(
         # Session above (including calls to commit())
         # is rolled back.
         self.trans.rollback()
-
-
-class LegacyBranchedJoinIntoAnExternalTransactionTest(
-    LegacyJoinIntoAnExternalTransactionTest
-):
-    def setup_session(self):
-        # begin a non-ORM transaction
-        self.trans = self.connection.begin()
-
-        class A(object):
-            pass
-
-        self.mapper_registry.map_imperatively(A, self.table)
-        self.A = A
-
-        # neutron is doing this inside of a migration
-        # 1df244e556f5_add_unique_ha_router_agent_port_bindings.py
-        with testing.expect_deprecated_20(
-            r"The Connection.connect\(\) method is considered legacy"
-        ):
-            self.session = Session(bind=self.connection.connect())
-
-        if testing.requires.savepoints.enabled:
-            # start the session in a SAVEPOINT...
-            self.session.begin_nested()
-
-            # then each time that SAVEPOINT ends, reopen it
-            @event.listens_for(self.session, "after_transaction_end")
-            def restart_savepoint(session, transaction):
-                if transaction.nested and not transaction._parent.nested:
-
-                    # ensure that state is expired the way
-                    # session.commit() at the top level normally does
-                    # (optional step)
-                    session.expire_all()
-
-                    session.begin_nested()

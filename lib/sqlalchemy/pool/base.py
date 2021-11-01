@@ -131,7 +131,7 @@ class Pool(log.Identified):
             any data changes present on the transaction
             are committed unconditionally.
           * ``None`` - don't do anything on the connection.
-            This setting is only appropriate if the database / DBAPI
+            This setting may be appropriate if the database / DBAPI
             works in pure "autocommit" mode at all times, or if the
             application uses the :class:`_engine.Engine` with consistent
             connectivity patterns.   See the section

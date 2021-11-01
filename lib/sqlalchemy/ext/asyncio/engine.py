@@ -379,7 +379,7 @@ class AsyncConnection(ProxyComparable, StartableContext, AsyncConnectable):
         conn = self._sync_connection()
 
         result = await greenlet_spawn(
-            conn._execute_20,
+            conn.execute,
             statement,
             parameters,
             util.EMPTY_DICT.merge_with(
@@ -432,7 +432,7 @@ class AsyncConnection(ProxyComparable, StartableContext, AsyncConnectable):
         conn = self._sync_connection()
 
         result = await greenlet_spawn(
-            conn._execute_20,
+            conn.execute,
             statement,
             parameters,
             execution_options,

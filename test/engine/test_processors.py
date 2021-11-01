@@ -1,7 +1,6 @@
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import mock
 
 
 class _BooleanProcessorTest(fixtures.TestBase):
@@ -104,88 +103,3 @@ class CDateProcessorTest(_DateProcessorTest):
         from sqlalchemy import cprocessors
 
         cls.module = cprocessors
-
-
-class _DistillArgsTest(fixtures.TestBase):
-    def test_distill_none(self):
-        eq_(self.module._distill_params(mock.Mock(), None, None), [])
-
-    def test_distill_no_multi_no_param(self):
-        eq_(self.module._distill_params(mock.Mock(), (), {}), [])
-
-    def test_distill_dict_multi_none_param(self):
-        eq_(
-            self.module._distill_params(mock.Mock(), None, {"foo": "bar"}),
-            [{"foo": "bar"}],
-        )
-
-    def test_distill_dict_multi_empty_param(self):
-        eq_(
-            self.module._distill_params(mock.Mock(), (), {"foo": "bar"}),
-            [{"foo": "bar"}],
-        )
-
-    def test_distill_single_dict(self):
-        eq_(
-            self.module._distill_params(mock.Mock(), ({"foo": "bar"},), {}),
-            [{"foo": "bar"}],
-        )
-
-    def test_distill_single_list_strings(self):
-        eq_(
-            self.module._distill_params(mock.Mock(), (["foo", "bar"],), {}),
-            [["foo", "bar"]],
-        )
-
-    def test_distill_single_list_tuples(self):
-        eq_(
-            self.module._distill_params(
-                mock.Mock(), ([("foo", "bar"), ("bat", "hoho")],), {}
-            ),
-            [("foo", "bar"), ("bat", "hoho")],
-        )
-
-    def test_distill_single_list_tuple(self):
-        eq_(
-            self.module._distill_params(mock.Mock(), ([("foo", "bar")],), {}),
-            [("foo", "bar")],
-        )
-
-    def test_distill_multi_list_tuple(self):
-        eq_(
-            self.module._distill_params(
-                mock.Mock(), ([("foo", "bar")], [("bar", "bat")]), {}
-            ),
-            ([("foo", "bar")], [("bar", "bat")]),
-        )
-
-    def test_distill_multi_strings(self):
-        eq_(
-            self.module._distill_params(mock.Mock(), ("foo", "bar"), {}),
-            [("foo", "bar")],
-        )
-
-    def test_distill_single_list_dicts(self):
-        eq_(
-            self.module._distill_params(
-                mock.Mock(), ([{"foo": "bar"}, {"foo": "hoho"}],), {}
-            ),
-            [{"foo": "bar"}, {"foo": "hoho"}],
-        )
-
-    def test_distill_single_string(self):
-        eq_(self.module._distill_params(mock.Mock(), ("arg",), {}), [["arg"]])
-
-    def test_distill_multi_string_tuple(self):
-        eq_(
-            self.module._distill_params(mock.Mock(), (("arg", "arg"),), {}),
-            [("arg", "arg")],
-        )
-
-
-class PyDistillArgsTest(_DistillArgsTest):
-    @classmethod
-    def setup_test_class(cls):
-        from sqlalchemy.engine import util
-
-        cls.module = util

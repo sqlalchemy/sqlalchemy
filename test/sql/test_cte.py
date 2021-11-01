@@ -1351,8 +1351,6 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             .cte("t")
         )
         stmt = t.select()
-        assert "autocommit" not in stmt._execution_options
-        eq_(stmt.compile().execution_options["autocommit"], True)
 
         self.assert_compile(
             stmt,
@@ -1413,9 +1411,6 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
 
         stmt = select(cte)
 
-        assert "autocommit" not in stmt._execution_options
-        eq_(stmt.compile().execution_options["autocommit"], True)
-
         self.assert_compile(
             stmt,
             "WITH pd AS "
@@ -1431,10 +1426,8 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         products = table("products", column("id"), column("price"))
 
         cte = products.select().cte("pd")
-        assert "autocommit" not in cte.select()._execution_options
 
         stmt = products.update().where(products.c.price == cte.c.price)
-        eq_(stmt.compile().execution_options["autocommit"], True)
 
         self.assert_compile(
             stmt,
@@ -1455,10 +1448,8 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         products = table("products", column("id"), column("price"))
 
         cte = products.select().cte("pd")
-        assert "autocommit" not in cte.select()._execution_options
 
         stmt = update(cte)
-        eq_(stmt.compile().execution_options["autocommit"], True)
 
         self.assert_compile(
             stmt,
@@ -1477,10 +1468,8 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         products = table("products", column("id"), column("price"))
 
         cte = products.select().cte("pd")
-        assert "autocommit" not in cte.select()._execution_options
 
         stmt = delete(cte)
-        eq_(stmt.compile().execution_options["autocommit"], True)
 
         self.assert_compile(
             stmt,
@@ -1506,7 +1495,6 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
         cte = q.cte("deldup")
         stmt = delete(cte).where(text("RN > 1"))
-        eq_(stmt.compile().execution_options["autocommit"], True)
 
         self.assert_compile(
             stmt,
@@ -2131,10 +2119,6 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
         stmt = select(cte)
-
-        assert "autocommit" not in stmt._execution_options
-
-        eq_(stmt.compile().execution_options["autocommit"], True)
 
         self.assert_compile(
             stmt,

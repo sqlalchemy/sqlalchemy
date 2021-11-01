@@ -230,10 +230,20 @@ def create_engine(url, **kwargs):
         be applied to all connections.  See
         :meth:`~sqlalchemy.engine.Connection.execution_options`
 
-    :param future: Use the 2.0 style :class:`_future.Engine` and
-        :class:`_future.Connection` API.
+    :param future: Use the 2.0 style :class:`_engine.Engine` and
+        :class:`_engine.Connection` API.
+
+        As of SQLAlchemy 2.0, this parameter is present for backwards
+        compatibility only and must remain at its default value of ``True``.
+
+        The :paramref:`_sa.create_engine.future` parameter will be
+        deprecated in a subsequent 2.x release and eventually removed.
 
         .. versionadded:: 1.4
+
+        .. versionchanged:: 2.0 All :class:`_engine.Engine` objects are
+           "future" style engines and there is no longer a ``future=False``
+           mode of operation.
 
         .. seealso::
 
@@ -613,14 +623,13 @@ def create_engine(url, **kwargs):
         pool._dialect = dialect
 
     # create engine.
-    if pop_kwarg("future", False):
-        from sqlalchemy import future
+    if not pop_kwarg("future", True):
+        raise exc.ArgumentError(
+            "The 'future' parameter passed to "
+            "create_engine() may only be set to True."
+        )
 
-        default_engine_class = future.Engine
-    else:
-        default_engine_class = base.Engine
-
-    engineclass = kwargs.pop("_future_engine_class", default_engine_class)
+    engineclass = base.Engine
 
     engine_args = {}
     for k in util.get_cls_kwargs(engineclass):
@@ -630,7 +639,6 @@ def create_engine(url, **kwargs):
     # internal flags used by the test suite for instrumenting / proxying
     # engines with mocks etc.
     _initialize = kwargs.pop("_initialize", True)
-    _wrap_do_on_connect = kwargs.pop("_wrap_do_on_connect", None)
 
     # all kwargs should be consumed
     if kwargs:
@@ -652,8 +660,6 @@ def create_engine(url, **kwargs):
     if _initialize:
         do_on_connect = dialect.on_connect_url(u)
         if do_on_connect:
-            if _wrap_do_on_connect:
-                do_on_connect = _wrap_do_on_connect(do_on_connect)
 
             def on_connect(dbapi_connection, connection_record):
                 do_on_connect(dbapi_connection)
@@ -668,6 +674,9 @@ def create_engine(url, **kwargs):
                 # reconnecting will be a reentrant condition, so if the
                 # connection goes away, Connection is then closed
                 _allow_revalidate=False,
+                # dont trigger the autobegin sequence
+                # within the up front dialect checks
+                _allow_autobegin=False,
             )
             c._execution_options = util.EMPTY_DICT
 

@@ -348,6 +348,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                 assert c2.dialect.has_table(
                     c2, "#myveryveryuniquetemptablename"
                 )
+                c2.rollback()
             finally:
                 with c1.begin():
                     c1.exec_driver_sql(

@@ -522,16 +522,14 @@ Glossary
         of classes; "joined", "single", and "concrete".   The section
         :ref:`inheritance_toplevel` describes inheritance mapping fully.
 
-    generative
-        A term that SQLAlchemy uses to refer what's normally known
-        as :term:`method chaining`; see that term for details.
-
     method chaining
-        An object-oriented technique whereby the state of an object
-        is constructed by calling methods on the object.   The
-        object features any number of methods, each of which return
-        a new object (or in some cases the same object) with
-        additional state added to the object.
+    generative
+        "Method chaining", referred to within SQLAlchemy documentation as
+        "generative", is an object-oriented technique whereby the state of an
+        object is constructed by calling methods on the object. The object
+        features any number of methods, each of which return a new object (or
+        in some cases the same object) with additional state added to the
+        object.
 
         The two SQLAlchemy objects that make the most use of
         method chaining are the :class:`_expression.Select`
@@ -549,10 +547,6 @@ Glossary
         Each method call above returns a copy of the original
         :class:`_expression.Select` object with additional qualifiers
         added.
-
-        .. seealso::
-
-            :term:`generative`
 
     release
     releases

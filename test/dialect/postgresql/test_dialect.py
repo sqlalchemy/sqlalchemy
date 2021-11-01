@@ -53,7 +53,6 @@ from sqlalchemy.testing.assertions import eq_regex
 from sqlalchemy.testing.assertions import ne_
 from sqlalchemy.util import u
 from sqlalchemy.util import ue
-from ...engine import test_deprecations
 
 if True:
     from sqlalchemy.dialects.postgresql.psycopg2 import (
@@ -1359,22 +1358,3 @@ $$ LANGUAGE plpgsql;
         engine = engines.testing_engine()
         with engine.connect() as conn:
             ne_(conn.connection.status, STATUS_IN_TRANSACTION)
-
-
-class AutocommitTextTest(test_deprecations.AutocommitTextTest):
-    __only_on__ = "postgresql"
-
-    def test_grant(self):
-        self._test_keyword("GRANT USAGE ON SCHEMA fooschema TO foorole")
-
-    def test_import_foreign_schema(self):
-        self._test_keyword("IMPORT FOREIGN SCHEMA foob")
-
-    def test_refresh_view(self):
-        self._test_keyword("REFRESH MATERIALIZED VIEW fooview")
-
-    def test_revoke(self):
-        self._test_keyword("REVOKE USAGE ON SCHEMA fooschema FROM foorole")
-
-    def test_truncate(self):
-        self._test_keyword("TRUNCATE footable")

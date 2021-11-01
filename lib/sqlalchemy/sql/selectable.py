@@ -2495,8 +2495,7 @@ class Subquery(AliasedReturnsRows):
     def _execute_on_connection(
         self,
         connection,
-        multiparams,
-        params,
+        distilled_params,
         execution_options,
     ):
         util.warn_deprecated(
@@ -2506,7 +2505,7 @@ class Subquery(AliasedReturnsRows):
             "1.4",
         )
         return self.element._execute_on_connection(
-            connection, multiparams, params, execution_options, _force=True
+            connection, distilled_params, execution_options, _force=True
         )
 
 

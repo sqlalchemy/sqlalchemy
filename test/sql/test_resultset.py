@@ -2196,14 +2196,14 @@ class KeyTargetingTest(fixtures.TablesTest):
         stmt2 = stmt_fn(self)
 
         cache = {}
-        result = connection._execute_20(
+        result = connection.execute(
             stmt1,
             execution_options={"compiled_cache": cache},
         )
         result.close()
         assert cache
 
-        result = connection._execute_20(
+        result = connection.execute(
             stmt2,
             execution_options={"compiled_cache": cache},
         )

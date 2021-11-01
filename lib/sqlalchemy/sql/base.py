@@ -32,7 +32,6 @@ coercions = None
 elements = None
 type_api = None
 
-PARSE_AUTOCOMMIT = util.symbol("PARSE_AUTOCOMMIT")
 NO_ARG = util.symbol("NO_ARG")
 
 
@@ -884,34 +883,104 @@ class Executable(roles.StatementRole, Generative):
         """Set non-SQL options for the statement which take effect during
         execution.
 
-        Execution options can be set on a per-statement or
-        per :class:`_engine.Connection` basis.   Additionally, the
-        :class:`_engine.Engine` and ORM :class:`~.orm.query.Query`
-        objects provide
-        access to execution options which they in turn configure upon
-        connections.
+        Execution options can be set at many scopes, including per-statement,
+        per-connection, or per execution, using methods such as
+        :meth:`_engine.Connection.execution_options` and parameters which
+        accept a dictionary of options such as
+        :paramref:`_engine.Connection.execute.execution_options` and
+        :paramref:`_orm.Session.execute.execution_options`.
 
-        The :meth:`execution_options` method is generative.  A new
-        instance of this statement is returned that contains the options::
+        The primary characteristic of an execution option, as opposed to
+        other kinds of options such as ORM loader options, is that
+        **execution options never affect the compiled SQL of a query, only
+        things that affect how the SQL statement itself is invoked or how
+        results are fetched**.  That is, execution options are not part of
+        what's accommodated by SQL compilation nor are they considered part of
+        the cached state of a statement.
+
+        The :meth:`_sql.Executable.execution_options` method is
+        :term:`generative`, as
+        is the case for the method as applied to the :class:`_engine.Engine`
+        and :class:`_orm.Query` objects, which means when the method is called,
+        a copy of the object is returned, which applies the given parameters to
+        that new copy, but leaves the original unchanged::
 
             statement = select(table.c.x, table.c.y)
-            statement = statement.execution_options(autocommit=True)
+            new_statement = statement.execution_options(my_option=True)
 
-        Note that only a subset of possible execution options can be applied
-        to a statement - these include "autocommit" and "stream_results",
-        but not "isolation_level" or "compiled_cache".
-        See :meth:`_engine.Connection.execution_options` for a full list of
-        possible options.
+        An exception to this behavior is the :class:`_engine.Connection`
+        object, where the :meth:`_engine.Connection.execution_options` method
+        is explicitly **not** generative.
+
+        The kinds of options that may be passed to
+        :meth:`_sql.Executable.execution_options` and other related methods and
+        parameter dictionaries include parameters that are explicitly consumed
+        by SQLAlchemy Core or ORM, as well as arbitrary keyword arguments not
+        defined by SQLAlchemy, which means the methods and/or parameter
+        dictionaries may be used for user-defined parameters that interact with
+        custom code, which may access the parameters using methods such as
+        :meth:`_sql.Executable.get_execution_options` and
+        :meth:`_engine.Connection.get_execution_options`, or within selected
+        event hooks using a dedicated ``execution_options`` event parameter
+        such as
+        :paramref:`_events.ConnectionEvents.before_execute.execution_options`
+        or :attr:`_orm.ORMExecuteState.execution_options`, e.g.::
+
+             from sqlalchemy import event
+
+             @event.listens_for(some_engine, "before_execute")
+             def _process_opt(conn, statement, multiparams, params, execution_options):
+                 "run a SQL function before invoking a statement"
+
+                 if execution_options.get("do_special_thing", False):
+                     conn.exec_driver_sql("run_special_function()")
+
+        Within the scope of options that are explicitly recognized by
+        SQLAlchemy, most apply to specific classes of objects and not others.
+        The most common execution options include:
+
+        * :paramref:`_engine.Connection.execution_options.isolation_level` -
+          sets the isolation level for a connection or a class of connections
+          via an :class:`_engine.Engine`.  This option is accepted only
+          by :class:`_engine.Connection` or :class:`_engine.Engine`.
+
+        * :paramref:`_engine.Connection.execution_options.stream_results` -
+          indicates results should be fetched using a server side cursor;
+          this option is accepted by :class:`_engine.Connection`, by the
+          :paramref:`_engine.Connection.execute.execution_options` parameter
+          on :meth:`_engine.Connection.execute`, and additionally by
+          :meth:`_sql.Executable.execution_options` on a SQL statement object,
+          as well as by ORM constructs like :meth:`_orm.Session.execute`.
+
+        * :paramref:`_engine.Connection.execution_options.compiled_cache` -
+          indicates a dictionary that will serve as the
+          :ref:`SQL compilation cache <sql_caching>`
+          for a :class:`_engine.Connection` or :class:`_engine.Engine`, as
+          well as for ORM methods like :meth:`_orm.Session.execute`.
+          Can be passed as ``None`` to disable caching for statements.
+          This option is not accepted by
+          :meth:`_sql.Executable.execution_options` as it is inadvisable to
+          carry along a compilation cache within a statement object.
+
+        * :paramref:`_engine.Connection.execution_options.schema_translate_map`
+          - a mapping of schema names used by the
+          :ref:`Schema Translate Map <schema_translating>` feature, accepted
+          by :class:`_engine.Connection`, :class:`_engine.Engine`,
+          :class:`_sql.Executable`, as well as by ORM constructs
+          like :meth:`_orm.Session.execute`.
 
         .. seealso::
 
             :meth:`_engine.Connection.execution_options`
 
-            :meth:`_query.Query.execution_options`
+            :paramref:`_engine.Connection.execute.execution_options`
 
-            :meth:`.Executable.get_execution_options`
+            :paramref:`_orm.Session.execute.execution_options`
 
-        """
+            :ref:`orm_queryguide_execution_options` - documentation on all
+            ORM-specific execution options
+
+        """  # noqa E501
         if "isolation_level" in kw:
             raise exc.ArgumentError(
                 "'isolation_level' execution option may only be specified "

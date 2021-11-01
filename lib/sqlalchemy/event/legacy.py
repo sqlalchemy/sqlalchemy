@@ -14,6 +14,17 @@ from .. import util
 
 
 def _legacy_signature(since, argnames, converter=None):
+    """legacy sig decorator
+
+
+    :param since: string version for deprecation warning
+    :param argnames: list of strings, which is *all* arguments that the legacy
+     version accepted, including arguments that are still there
+    :param converter: lambda that will accept tuple of this full arg signature
+     and return tuple of new arg signature.
+
+    """
+
     def leg(fn):
         if not hasattr(fn, "_legacy_signatures"):
             fn._legacy_signatures = []

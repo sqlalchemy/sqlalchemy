@@ -11,7 +11,6 @@ to invoke them for a create/drop call.
 """
 
 from . import roles
-from .base import _bind_or_error
 from .base import _generative
 from .base import Executable
 from .base import SchemaVisitor
@@ -62,61 +61,17 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
 
     """
 
-    _execution_options = Executable._execution_options.union(
-        {"autocommit": True}
-    )
-
     target = None
     on = None
     dialect = None
     callable_ = None
 
     def _execute_on_connection(
-        self, connection, multiparams, params, execution_options
+        self, connection, distilled_params, execution_options
     ):
         return connection._execute_ddl(
-            self, multiparams, params, execution_options
+            self, distilled_params, execution_options
         )
-
-    @util.deprecated_20(
-        ":meth:`.DDLElement.execute`",
-        alternative="All statement execution in SQLAlchemy 2.0 is performed "
-        "by the :meth:`_engine.Connection.execute` method of "
-        ":class:`_engine.Connection`, "
-        "or in the ORM by the :meth:`.Session.execute` method of "
-        ":class:`.Session`.",
-    )
-    def execute(self, bind=None, target=None):
-        """Execute this DDL immediately.
-
-        Executes the DDL statement in isolation using the supplied
-        :class:`.Connectable` or
-        :class:`.Connectable` assigned to the ``.bind``
-        property, if not supplied. If the DDL has a conditional ``on``
-        criteria, it will be invoked with None as the event.
-
-        :param bind:
-          Optional, an ``Engine`` or ``Connection``. If not supplied, a valid
-          :class:`.Connectable` must be present in the
-          ``.bind`` property.
-
-        :param target:
-          Optional, defaults to None.  The target :class:`_schema.SchemaItem`
-          for the execute call.   This is equivalent to passing the
-          :class:`_schema.SchemaItem` to the :meth:`.DDLElement.against`
-          method and then invoking :meth:`_schema.DDLElement.execute`
-          upon the resulting :class:`_schema.DDLElement` object.  See
-          :meth:`.DDLElement.against` for further detail.
-
-        """
-
-        if bind is None:
-            bind = _bind_or_error(self)
-
-        if self._should_execute(target, bind):
-            return bind.execute(self.against(target))
-        else:
-            bind.engine.logger.info("DDL execution skipped, criteria not met.")
 
     @_generative
     def against(self, target):
