@@ -670,6 +670,21 @@ class SQLCompiler(Compiled):
 
     """
 
+    positiontup = None
+    """for a compiled construct that uses a positional paramstyle, will be
+    a sequence of strings, indicating the names of bound parameters in order.
+
+    This is used in order to render bound parameters in their correct order,
+    and is combined with the :attr:`_sql.Compiled.params` dictionary to
+    render parameters.
+
+    .. seealso::
+
+        :ref:`faq_sql_expression_string` - includes a usage example for
+        debugging use cases.
+
+    """
+
     inline = False
 
     def __init__(
@@ -1091,7 +1106,14 @@ class SQLCompiler(Compiled):
     @property
     def params(self):
         """Return the bind param dictionary embedded into this
-        compiled object, for those values that are present."""
+        compiled object, for those values that are present.
+
+        .. seealso::
+
+            :ref:`faq_sql_expression_string` - includes a usage example for
+            debugging use cases.
+
+        """
         return self.construct_params(_check=False)
 
     def _process_parameters_for_postcompile(
