@@ -249,13 +249,6 @@ class DefaultDialect(interfaces.Dialect):
             'expressions, or an "empty set" SELECT, at statement execution'
             "time.",
         ),
-        case_sensitive=(
-            "1.4",
-            "The :paramref:`_sa.create_engine.case_sensitive` parameter "
-            "is deprecated and will be removed in a future release. "
-            "Applications should work with result column names in a case "
-            "sensitive fashion.",
-        ),
         server_side_cursors=(
             "1.4",
             "The :paramref:`_sa.create_engine.server_side_cursors` parameter "
@@ -272,7 +265,6 @@ class DefaultDialect(interfaces.Dialect):
         paramstyle=None,
         dbapi=None,
         implicit_returning=None,
-        case_sensitive=True,
         supports_native_boolean=None,
         max_identifier_length=None,
         label_length=None,
@@ -315,7 +307,6 @@ class DefaultDialect(interfaces.Dialect):
         self.type_compiler = self.type_compiler(self)
         if supports_native_boolean is not None:
             self.supports_native_boolean = supports_native_boolean
-        self.case_sensitive = case_sensitive
 
         self._user_defined_max_identifier_length = max_identifier_length
         if self._user_defined_max_identifier_length:

@@ -34,13 +34,6 @@ from ..sql import compiler
         'expressions, or an "empty set" SELECT, at statement execution'
         "time.",
     ),
-    case_sensitive=(
-        "1.4",
-        "The :paramref:`_sa.create_engine.case_sensitive` parameter "
-        "is deprecated and will be removed in a future release. "
-        "Applications should work with result column names in a case "
-        "sensitive fashion.",
-    ),
 )
 def create_engine(url, **kwargs):
     """Create a new :class:`_engine.Engine` instance.
@@ -96,10 +89,6 @@ def create_engine(url, **kwargs):
         :doc:`/dialects/index`
 
         :ref:`connections_toplevel`
-
-    :param case_sensitive: if False, result column names
-       will match in a case-insensitive fashion, that is,
-       ``row['SomeColumn']``.
 
     :param connect_args: a dictionary of options which will be
         passed directly to the DBAPI's ``connect()`` method as
