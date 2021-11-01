@@ -696,7 +696,11 @@ class StrategizedProperty(MapperProperty):
     @classmethod
     def _strategy_lookup(cls, requesting_property, *key):
         requesting_property.parent._with_polymorphic_mappers
-
+    
+        key = tuple(
+            (tuple((val(requesting_property) if callable(val) else val for val in key_set)) for key_set in key)
+        )
+    
         for prop_cls in cls.__mro__:
             if prop_cls in cls._all_strategies:
                 strategies = cls._all_strategies[prop_cls]
@@ -704,7 +708,7 @@ class StrategizedProperty(MapperProperty):
                     return strategies[key]
                 except KeyError:
                     pass
-
+    
         for property_type, strats in cls._all_strategies.items():
             if key in strats:
                 intended_property_type = property_type
@@ -713,15 +717,14 @@ class StrategizedProperty(MapperProperty):
         else:
             intended_property_type = None
             actual_strategy = None
-
-        raise orm_exc.LoaderStrategyException(
+    
+        raise sa.orm.exc.LoaderStrategyException(
             cls,
             requesting_property,
             intended_property_type,
             actual_strategy,
             key,
         )
-
 
 class ORMOption(ExecutableOption):
     """Base class for option objects that are passed to ORM queries.
