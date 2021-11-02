@@ -6291,45 +6291,63 @@ class Select(
 
     def union(self, *other, **kwargs):
         """Return a SQL ``UNION`` of this select() construct against
-        the given selectable.
+        the given selectables provided as positional arguments.
+
+        The keyword arguments are forwarded to the method
+        :meth:`_expression.CompoundSelect._create_union`.
 
         """
         return CompoundSelect._create_union(self, *other, **kwargs)
 
     def union_all(self, *other, **kwargs):
         """Return a SQL ``UNION ALL`` of this select() construct against
-        the given selectable.
+        the given selectables provided as positional arguments.
+
+        The keyword arguments are forwarded to the method
+        :meth:`_expression.CompoundSelect._create_union_all`.
 
         """
         return CompoundSelect._create_union_all(self, *other, **kwargs)
 
-    def except_(self, other, **kwargs):
+    def except_(self, *other, **kwargs):
         """Return a SQL ``EXCEPT`` of this select() construct against
-        the given selectable.
+        the given selectable provided as positional arguments.
+
+        The keyword arguments are forwarded to the method
+        :meth:`_expression.CompoundSelect._create_except`.
 
         """
-        return CompoundSelect._create_except(self, other, **kwargs)
+        return CompoundSelect._create_except(self, *other, **kwargs)
 
-    def except_all(self, other, **kwargs):
+    def except_all(self, *other, **kwargs):
         """Return a SQL ``EXCEPT ALL`` of this select() construct against
-        the given selectable.
+        the given selectables provided as positional arguments.
+
+        The keyword arguments are forwarded to the method
+        :meth:`_expression.CompoundSelect._create_except_all`.
 
         """
-        return CompoundSelect._create_except_all(self, other, **kwargs)
+        return CompoundSelect._create_except_all(self, *other, **kwargs)
 
-    def intersect(self, other, **kwargs):
+    def intersect(self, *other, **kwargs):
         """Return a SQL ``INTERSECT`` of this select() construct against
-        the given selectable.
+        the given selectables provided as positional arguments.
+
+        The keyword arguments are forwarded to the method
+        :meth:`_expression.CompoundSelect._create_intersect`.
 
         """
-        return CompoundSelect._create_intersect(self, other, **kwargs)
+        return CompoundSelect._create_intersect(self, *other, **kwargs)
 
-    def intersect_all(self, other, **kwargs):
+    def intersect_all(self, *other, **kwargs):
         """Return a SQL ``INTERSECT ALL`` of this select() construct
-        against the given selectable.
+        against the given selectables provided as positional arguments.
+
+        The keyword arguments are forwarded to the method
+        :meth:`_expression.CompoundSelect._create_intersect_all`.
 
         """
-        return CompoundSelect._create_intersect_all(self, other, **kwargs)
+        return CompoundSelect._create_intersect_all(self, *other, **kwargs)
 
     @property
     @util.deprecated_20(

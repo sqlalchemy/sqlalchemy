@@ -11,6 +11,7 @@ from sqlalchemy import Table
 from sqlalchemy import tuple_
 from sqlalchemy import union
 from sqlalchemy.sql import column
+from sqlalchemy.sql import literal
 from sqlalchemy.sql import table
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -411,4 +412,76 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
             stmt,
             "SELECT anon_1.name FROM (SELECT mytable.name AS name, "
             "(mytable.myid, mytable.name) AS anon_2 FROM mytable) AS anon_1",
+        )
+
+    def test_select_multiple_union_all(self):
+        stmt_union = select(literal(1)).union_all(
+            select(literal(2)), select(literal(3))
+        )
+
+        self.assert_compile(
+            stmt_union,
+            "SELECT :param_1 AS anon_1"
+            " UNION ALL SELECT :param_2 AS anon_2"
+            " UNION ALL SELECT :param_3 AS anon_3",
+        )
+
+    def test_select_multiple_union(self):
+        stmt_union = select(literal(1)).union(
+            select(literal(2)), select(literal(3))
+        )
+
+        self.assert_compile(
+            stmt_union,
+            "SELECT :param_1 AS anon_1"
+            " UNION SELECT :param_2 AS anon_2"
+            " UNION SELECT :param_3 AS anon_3",
+        )
+
+    def test_select_multiple_except(self):
+        stmt_union = select(literal(1)).except_(
+            select(literal(2)), select(literal(3))
+        )
+
+        self.assert_compile(
+            stmt_union,
+            "SELECT :param_1 AS anon_1"
+            " EXCEPT SELECT :param_2 AS anon_2"
+            " EXCEPT SELECT :param_3 AS anon_3",
+        )
+
+    def test_select_multiple_except_all(self):
+        stmt_union = select(literal(1)).except_all(
+            select(literal(2)), select(literal(3))
+        )
+
+        self.assert_compile(
+            stmt_union,
+            "SELECT :param_1 AS anon_1"
+            " EXCEPT ALL SELECT :param_2 AS anon_2"
+            " EXCEPT ALL SELECT :param_3 AS anon_3",
+        )
+
+    def test_select_multiple_intersect(self):
+        stmt_union = select(literal(1)).intersect(
+            select(literal(2)), select(literal(3))
+        )
+
+        self.assert_compile(
+            stmt_union,
+            "SELECT :param_1 AS anon_1"
+            " INTERSECT SELECT :param_2 AS anon_2"
+            " INTERSECT SELECT :param_3 AS anon_3",
+        )
+
+    def test_select_multiple_intersect_all(self):
+        stmt_union = select(literal(1)).intersect_all(
+            select(literal(2)), select(literal(3))
+        )
+
+        self.assert_compile(
+            stmt_union,
+            "SELECT :param_1 AS anon_1"
+            " INTERSECT ALL SELECT :param_2 AS anon_2"
+            " INTERSECT ALL SELECT :param_3 AS anon_3",
         )

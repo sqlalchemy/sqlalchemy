@@ -3,6 +3,9 @@
     :tickets: 7259
 
     Render Non-linear CTE with :meth:`_sql.CTE.union` and :meth:`_sql.CTE.union_all`
-    that accept multiple clauses to render multiple UNIONs. To make it possible,
+    that accept multiple selectables to render multiple UNIONs. To make it possible,
     :meth:`_sql.Select.union` and :meth:`_sql.Select.union_all` accept also multiple
-    clauses.
+    selectables. It has also been extended to other similar methods like
+    :meth:`_sql.Select.except_`, :meth:`_sql.Select.except_all`,
+    :meth:`_sql.Select.intersect` and :meth:`_sql.Select.intersect_all` that accept
+    multiple selectables.
