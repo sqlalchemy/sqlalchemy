@@ -105,15 +105,14 @@ class OnDuplicateTest(fixtures.TablesTest):
         )
         result = conn.execute(stmt)
         eq_(result.inserted_primary_key, (None,))
-        # first entry triggers ON DUPLICATE
         eq_(
-            conn.execute(foos.select().where(foos.c.id == 1)).fetchall(),
-            [(1, "ab_foo", "ab_bz", False)],
-        )
-        # second entry should be an insert
-        eq_(
-            conn.execute(foos.select().where(foos.c.id == 2)).fetchall(),
-            [(2, "b", None, False)],
+            conn.execute(foos.select()).fetchall(),
+            [
+                # first entry triggers ON DUPLICATE
+                (1, "ab_foo", "ab_bz", False),
+                # second entry must be an insert
+                (2, "b", None, False),
+            ],
         )
 
     def test_on_duplicate_key_update_preserve_order(self, connection):
