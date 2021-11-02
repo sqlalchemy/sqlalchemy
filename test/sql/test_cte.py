@@ -1769,6 +1769,53 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             "foo",
         )
 
+    def test_recursive_cte_with_multiple_union(self):
+        root_query = select(literal(1).label("val")).cte(
+            "increasing", recursive=True
+        )
+        rec_part_1 = select((root_query.c.val + 3).label("val")).where(
+            root_query.c.val < 15
+        )
+        rec_part_2 = select((root_query.c.val + 5).label("val")).where(
+            root_query.c.val < 15
+        )
+        union_rec_query = root_query.union(rec_part_1, rec_part_2)
+        union_stmt = select(union_rec_query)
+        self.assert_compile(
+            union_stmt,
+            "WITH RECURSIVE increasing(val) AS "
+            "(SELECT :param_1 AS val "
+            "UNION SELECT increasing.val + :val_1 AS val FROM increasing "
+            "WHERE increasing.val < :val_2 "
+            "UNION SELECT increasing.val + :val_3 AS val FROM increasing "
+            "WHERE increasing.val < :val_4) "
+            "SELECT increasing.val FROM increasing",
+        )
+
+    def test_recursive_cte_with_multiple_union_all(self):
+        root_query = select(literal(1).label("val")).cte(
+            "increasing", recursive=True
+        )
+        rec_part_1 = select((root_query.c.val + 3).label("val")).where(
+            root_query.c.val < 15
+        )
+        rec_part_2 = select((root_query.c.val + 5).label("val")).where(
+            root_query.c.val < 15
+        )
+
+        union_all_rec_query = root_query.union_all(rec_part_1, rec_part_2)
+        union_all_stmt = select(union_all_rec_query)
+        self.assert_compile(
+            union_all_stmt,
+            "WITH RECURSIVE increasing(val) AS "
+            "(SELECT :param_1 AS val "
+            "UNION ALL SELECT increasing.val + :val_1 AS val FROM increasing "
+            "WHERE increasing.val < :val_2 "
+            "UNION ALL SELECT increasing.val + :val_3 AS val FROM increasing "
+            "WHERE increasing.val < :val_4) "
+            "SELECT increasing.val FROM increasing",
+        )
+
 
 class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
 
