@@ -1173,6 +1173,14 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def infinity_floats(self):
+        return fails_on_everything_except(
+            "sqlite", "postgresql+psycopg2", "postgresql+asyncpg"
+        ) + skip_if(
+            "postgresql+pg8000", "seems to work on pg14 only, not earlier?"
+        )
+
+    @property
     def precision_generic_float_type(self):
         """target backend will return native floating point numbers with at
         least seven decimal places when using the generic Float type."""
