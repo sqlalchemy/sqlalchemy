@@ -1,0 +1,37 @@
+.. change::
+    :tags: bug, core, regression
+    :tickets: 7274
+    :versions: 2.0.0b1
+
+    Fixed regression where the :meth:`_engine.CursorResult.fetchmany` method
+    would fail to autoclose a server-side cursor (i.e. when ``stream_results``
+    or ``yield_per`` is in use, either Core or ORM oriented results) when the
+    results were fully exhausted.
+
+.. change::
+    :tags: bug, orm
+    :tickets: 7274
+    :versions: 2.0.0b1
+
+    All :class:`_result.Result` objects will now consistently raise
+    :class:`_exc.ResourceClosedError` if they are used after a hard close,
+    which includes the "hard close" that occurs after calling "single row or
+    value" methods like :meth:`_result.Result.first` and
+    :meth:`_result.Result.scalar`. This was already the behavior of the most
+    common class of result objects returned for Core statement executions, i.e.
+    those based on :class:`_engine.CursorResult`, so this behavior is not new.
+    However, the change has been extended to properly accommodate for the ORM
+    "filtering" result objects returned when using 2.0 style ORM queries,
+    which would previously behave in "soft closed" style of returning empty
+    results, or wouldn't actually "soft close" at all and would continue
+    yielding from the underlying cursor.
+
+    As part of this change, also added :meth:`_result.Result.close` to the base
+    :class:`_result.Result` class and implemented it for the filtered result
+    implementations that are used by the ORM, so that it is possible to call
+    the :meth:`_engine.CursorResult.close` method on the underlying
+    :class:`_engine.CursorResult` when the the ``yield_per`` execution option
+    is in use to close a server side cursor before remaining ORM results have
+    been fetched. This was again already available for Core result sets but the
+    change makes it available for 2.0 style ORM results as well.
+
