@@ -6288,7 +6288,7 @@ This document details individual issue-level changes made throughout
         * ``nullsfirst`` is now ``nulls_first``
         * ``nullslast`` is now ``nulls_last``
         * ``isnot`` is now ``is_not``
-        * ``not_in_`` is now ``not_in``
+        * ``notin_`` is now ``not_in``
 
         Because these are core operators, the internal migration strategy for this
         change is to support legacy terms for an extended period of time -- if not
