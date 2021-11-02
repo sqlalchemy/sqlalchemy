@@ -2120,6 +2120,15 @@ class CTE(
         )
 
     def union(self, *other):
+        """Return a new :class:`_expression.CTE` with a SQL ``UNION``
+        of the original CTE against the given selectables provided
+        as positional arguments.
+
+        .. seealso::
+
+            :meth:`_sql.HasCTE.cte` - examples of calling styles
+
+        """
         return CTE._construct(
             self.element.union(*other),
             name=self.name,
@@ -2131,6 +2140,15 @@ class CTE(
         )
 
     def union_all(self, *other):
+        """Return a new :class:`_expression.CTE` with a SQL ``UNION ALL``
+        of the original CTE against the given selectables provided
+        as positional arguments.
+
+        .. seealso::
+
+            :meth:`_sql.HasCTE.cte` - examples of calling styles
+
+        """
         return CTE._construct(
             self.element.union_all(*other),
             name=self.name,
