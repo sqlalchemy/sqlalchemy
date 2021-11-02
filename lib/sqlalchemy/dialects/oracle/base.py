@@ -2468,8 +2468,6 @@ class OracleDialect(default.DefaultDialect):
 
         rp = connection.execute(sql.text(text), params).scalar()
         if rp:
-            if util.py2k:
-                rp = rp.decode(self.encoding)
             return rp
         else:
             return None

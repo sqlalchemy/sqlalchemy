@@ -744,7 +744,7 @@ class PoolEventsTest(PoolTestBase):
         assert canary.call_args_list[0][0][0] is dbapi_con
         assert canary.call_args_list[0][0][2] is exc
 
-    @testing.combinations((True, testing.requires.python3), (False,))
+    @testing.combinations((True,), (False,))
     def test_checkin_event_gc(self, detach_gced):
         p, canary = self._checkin_event_fixture(_is_asyncio=detach_gced)
 
@@ -1634,7 +1634,7 @@ class QueuePoolTest(PoolTestBase):
 
         self._assert_cleanup_on_pooled_reconnect(dbapi, p)
 
-    @testing.combinations((True, testing.requires.python3), (False,))
+    @testing.combinations((True,), (False,))
     def test_userspace_disconnectionerror_weakref_finalizer(self, detach_gced):
         dbapi, pool = self._queuepool_dbapi_fixture(
             pool_size=1, max_overflow=2, _is_asyncio=detach_gced

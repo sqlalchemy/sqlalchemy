@@ -175,7 +175,6 @@ OPERATORS = {
     operators.add: " + ",
     operators.mul: " * ",
     operators.sub: " - ",
-    operators.div: " / ",
     operators.mod: " % ",
     operators.truediv: " / ",
     operators.neg: "-",

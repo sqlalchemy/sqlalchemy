@@ -1139,7 +1139,6 @@ class CursorResultTest(fixtures.TablesTest):
             eq_(row._mapping[s.c.user_id], 7)
             eq_(row._mapping[s.c.user_name], "ed")
 
-    @testing.requires.python3
     def test_ro_mapping_py3k(self, connection):
         users = self.tables.users
 
@@ -1161,27 +1160,6 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(odict_row.keys(), mapping_row.keys())
         eq_(odict_row.values(), mapping_row.values())
         eq_(odict_row.items(), mapping_row.items())
-
-    @testing.requires.python2
-    def test_ro_mapping_py2k(self, connection):
-        users = self.tables.users
-
-        connection.execute(users.insert(), dict(user_id=1, user_name="foo"))
-        result = connection.execute(users.select())
-
-        row = result.first()
-        dict_row = row._asdict()
-
-        odict_row = collections.OrderedDict(
-            [("user_id", 1), ("user_name", "foo")]
-        )
-        eq_(dict_row, odict_row)
-        mapping_row = row._mapping
-
-        eq_(list(mapping_row), list(mapping_row.keys()))
-        eq_(odict_row.keys(), list(mapping_row.keys()))
-        eq_(odict_row.values(), list(mapping_row.values()))
-        eq_(odict_row.items(), list(mapping_row.items()))
 
     @testing.combinations(
         (lambda result: result),

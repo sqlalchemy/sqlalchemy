@@ -515,7 +515,6 @@ class %s(SuperCls):
         exec(code, glbls)
         return names, glbls[clsname]
 
-    @testing.requires.pep520
     def test_all_orm_descriptors_pep520_noinh(self):
         from sqlalchemy.orm import declarative_base
 
@@ -528,7 +527,6 @@ class %s(SuperCls):
 
         eq_(MyClass.__mapper__.all_orm_descriptors.keys(), names)
 
-    @testing.requires.pep520
     def test_all_orm_descriptors_pep520_onelevel_inh(self):
         from sqlalchemy.orm import declarative_base
 
@@ -549,7 +547,6 @@ class %s(SuperCls):
             sub_names + base_names,
         )
 
-    @testing.requires.pep520
     def test_all_orm_descriptors_pep520_classical(self):
         class MyClass(object):
             pass

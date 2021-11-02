@@ -9,7 +9,6 @@ import weakref
 
 from . import util as orm_util
 from .. import exc as sa_exc
-from .. import util
 
 
 class IdentityMap(object):
@@ -201,19 +200,8 @@ class WeakInstanceDict(IdentityMap):
     def __iter__(self):
         return iter(self.keys())
 
-    if util.py2k:
-
-        def iteritems(self):
-            return iter(self.items())
-
-        def itervalues(self):
-            return iter(self.values())
-
     def all_states(self):
-        if util.py2k:
-            return self._dict.values()
-        else:
-            return list(self._dict.values())
+        return list(self._dict.values())
 
     def _fast_discard(self, state):
         # used by InstanceState for state being

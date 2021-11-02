@@ -168,8 +168,8 @@ class ScopedSessionTest(fixtures.MappedTest):
         eq_(mock_object_session.mock_calls, [mock.call("foo")])
 
     @testing.combinations(
-        ("style1", testing.requires.python3),
-        ("style2", testing.requires.python3),
+        "style1",
+        "style2",
         "style3",
         "style4",
     )

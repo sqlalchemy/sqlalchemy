@@ -628,12 +628,8 @@ def __init__(%(apply_pos)s):
     func_vars = util.format_argspec_init(original_init, grouped=False)
     func_text = func_body % func_vars
 
-    if util.py2k:
-        func = getattr(original_init, "im_func", original_init)
-        func_defaults = getattr(func, "func_defaults", None)
-    else:
-        func_defaults = getattr(original_init, "__defaults__", None)
-        func_kw_defaults = getattr(original_init, "__kwdefaults__", None)
+    func_defaults = getattr(original_init, "__defaults__", None)
+    func_kw_defaults = getattr(original_init, "__kwdefaults__", None)
 
     env = locals().copy()
     env["__name__"] = __name__
@@ -644,7 +640,7 @@ def __init__(%(apply_pos)s):
 
     if func_defaults:
         __init__.__defaults__ = func_defaults
-    if not util.py2k and func_kw_defaults:
+    if func_kw_defaults:
         __init__.__kwdefaults__ = func_kw_defaults
 
     return __init__

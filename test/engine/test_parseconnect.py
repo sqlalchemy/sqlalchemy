@@ -389,7 +389,6 @@ class URLTest(fixtures.TestBase):
             ),
         )
 
-    @testing.requires.python3
     def test_arg_validation_all_seven_posn(self):
         """test #7130"""
         with testing.expect_deprecated(

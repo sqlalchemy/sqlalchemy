@@ -745,8 +745,6 @@ def _parse_rfc1738_args(name):
             query = {}
 
             for key, value in util.parse_qsl(components["query"]):
-                if util.py2k:
-                    key = key.encode("ascii")
                 if key in query:
                     query[key] = util.to_list(query[key])
                     query[key].append(value)

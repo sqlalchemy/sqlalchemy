@@ -873,8 +873,11 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             ("numeric", 1234567.89),
             # this one "works" because the float value you see here is
             # lost immediately to floating point stuff
-            ("numeric", 99998969694839.983485848, requirements.python3),
-            ("numeric", 99939.983485848, requirements.python3),
+            (
+                "numeric",
+                99998969694839.983485848,
+            ),
+            ("numeric", 99939.983485848),
             ("_decimal", decimal.Decimal("1234567.89")),
             (
                 "_decimal",
@@ -991,8 +994,7 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
 
             roundtrip = conn.scalar(select(expr))
             eq_(roundtrip, compare_value)
-            if util.py3k:  # skip py2k to avoid comparing unicode to str etc.
-                is_(type(roundtrip), type(compare_value))
+            is_(type(roundtrip), type(compare_value))
 
     @_index_fixtures(True)
     @testing.emits_warning(r".*does \*not\* support Decimal objects natively")

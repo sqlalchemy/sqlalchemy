@@ -860,33 +860,6 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         # new in 1.4
         is_(session._legacy_transaction(), None)
 
-    @testing.requires.python2
-    @testing.requires.savepoints_w_release
-    def test_report_primary_error_when_rollback_fails(self):
-        User, users = self.classes.User, self.tables.users
-
-        self.mapper_registry.map_imperatively(User, users)
-
-        with fixture_session() as session:
-
-            with expect_warnings(
-                ".*during handling of a previous exception.*"
-            ):
-                session.begin_nested()
-                savepoint = session.connection()._nested_transaction._savepoint
-
-                # force the savepoint to disappear
-                session.connection().dialect.do_release_savepoint(
-                    session.connection(), savepoint
-                )
-
-                # now do a broken flush
-                session.add_all([User(id=1), User(id=1)])
-
-                assert_raises_message(
-                    sa_exc.DBAPIError, "ROLLBACK TO SAVEPOINT ", session.flush
-                )
-
 
 class _LocalFixture(FixtureTest):
     run_setup_mappers = "once"

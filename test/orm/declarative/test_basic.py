@@ -469,22 +469,21 @@ class DeclarativeTest(DeclarativeTestBase):
         ][0]
         is_(ck.columns.cprop, Bar.__table__.c.cprop)
 
-        if testing.requires.python3.enabled:
-            # test the existing failure case in case something changes
-            def go():
-                class Bat(Base):
-                    __tablename__ = "bat"
+        # test the existing failure case in case something changes
+        def go():
+            class Bat(Base):
+                __tablename__ = "bat"
 
-                    id = Column(Integer, primary_key=True)
-                    cprop = deferred(Column(Integer))
+                id = Column(Integer, primary_key=True)
+                cprop = deferred(Column(Integer))
 
-                    # we still can't do an expression like
-                    # "cprop > 5" because the column property isn't
-                    # a full blown column
+                # we still can't do an expression like
+                # "cprop > 5" because the column property isn't
+                # a full blown column
 
-                    __table_args__ = (CheckConstraint(cprop > 5),)
+                __table_args__ = (CheckConstraint(cprop > 5),)
 
-            assert_raises(TypeError, go)
+        assert_raises(TypeError, go)
 
     def test_relationship_level_msg_for_invalid_callable(self):
         class A(Base):
@@ -2326,7 +2325,6 @@ class DeclarativeTest(DeclarativeTestBase):
         mt = MyTable(id=5)
         eq_(mt.id, 5)
 
-    @testing.requires.python36
     def test_kw_support_in_declarative_meta_init(self):
         # This will not fail if DeclarativeMeta __init__ supports **kw
 

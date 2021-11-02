@@ -766,12 +766,6 @@ class Inspector(object):
             # returned them
             table._validate_dialect_kwargs(tbl_opts)
 
-        if util.py2k:
-            if isinstance(schema, str):
-                schema = schema.decode(dialect.encoding)
-            if isinstance(table_name, str):
-                table_name = table_name.decode(dialect.encoding)
-
         found_table = False
         cols_by_orig_name = {}
 

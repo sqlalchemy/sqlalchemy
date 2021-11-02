@@ -1592,7 +1592,7 @@ class CompareClausesTest(fixtures.TestBase):
         )
 
         l2 = ClauseList(
-            table_c.c.x, table_c.c.y, table_d.c.y, operator=operators.div
+            table_c.c.x, table_c.c.y, table_d.c.y, operator=operators.truediv
         )
 
         is_false(l1.compare(l2))

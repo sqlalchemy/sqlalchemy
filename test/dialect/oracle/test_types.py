@@ -48,7 +48,6 @@ from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.util import b
-from sqlalchemy.util import py2k
 from sqlalchemy.util import u
 
 
@@ -202,11 +201,7 @@ class TypesTest(fixtures.TestBase):
             Column("id", Integer, primary_key=True),
             Column("data", char_type(30), nullable=False),
         )
-
-        if py2k and char_type is NCHAR:
-            v1, v2, v3 = u"value 1", u"value 2", u"value 3"
-        else:
-            v1, v2, v3 = "value 1", "value 2", "value 3"
+        v1, v2, v3 = "value 1", "value 2", "value 3"
 
         t.create(connection)
         connection.execute(
@@ -719,17 +714,14 @@ class TypesTest(fixtures.TestBase):
 
             eq_(sqla_result, cx_oracle_result)
 
-    @testing.only_on("oracle+cx_oracle", "cx_oracle-specific feature")
-    @testing.fails_if(
-        testing.requires.python3, "cx_oracle always returns unicode on py3k"
-    )
     def test_coerce_to_unicode(self, connection):
         engine = testing_engine(options=dict(coerce_to_unicode=False))
         with engine.connect() as conn_no_coerce:
             value = exec_sql(
                 conn_no_coerce, "SELECT 'hello' FROM DUAL"
             ).scalar()
-            assert isinstance(value, util.binary_type)
+            assert not isinstance(value, util.binary_type)
+            assert isinstance(value, util.text_type)
 
         value = exec_sql(connection, "SELECT 'hello' FROM DUAL").scalar()
         assert isinstance(value, util.text_type)

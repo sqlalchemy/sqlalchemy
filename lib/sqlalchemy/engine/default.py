@@ -464,12 +464,7 @@ class DefaultDialect(interfaces.Dialect):
         return self.get_isolation_level(dbapi_conn)
 
     def _check_unicode_returns(self, connection, additional_tests=None):
-        # this now runs in py2k only and will be removed in 2.0; disabled for
-        # Python 3 in all cases under #5315
-        if util.py2k and not self.supports_unicode_statements:
-            cast_to = util.binary_type
-        else:
-            cast_to = util.text_type
+        cast_to = util.text_type
 
         if self.positional:
             parameters = self.execute_sequence_format()
@@ -523,12 +518,7 @@ class DefaultDialect(interfaces.Dialect):
             )
 
     def _check_unicode_description(self, connection):
-        # all DBAPIs on Py2K return cursor.description as encoded
-
-        if util.py2k and not self.supports_unicode_statements:
-            cast_to = util.binary_type
-        else:
-            cast_to = util.text_type
+        cast_to = util.text_type
 
         cursor = connection.connection.cursor()
         try:
@@ -722,9 +712,6 @@ class DefaultDialect(interfaces.Dialect):
     def normalize_name(self, name):
         if name is None:
             return None
-        if util.py2k:
-            if isinstance(name, str):
-                name = name.decode(self.encoding)
 
         name_lower = name.lower()
         name_upper = name.upper()
@@ -763,11 +750,6 @@ class DefaultDialect(interfaces.Dialect):
             self.identifier_preparer._requires_quotes
         )(name_lower):
             name = name_upper
-        if util.py2k:
-            if not self.supports_unicode_binds:
-                name = name.encode(self.encoding)
-            else:
-                name = unicode(name)  # noqa
         return name
 
     def get_driver_connection(self, connection):
@@ -968,12 +950,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
             self.executemany = len(parameters) > 1
 
-        # this must occur before create_cursor() since the statement
-        # has to be regexed in some cases for server side cursor
-        if util.py2k:
-            self.unicode_statement = util.text_type(compiled.string)
-        else:
-            self.unicode_statement = compiled.string
+        self.unicode_statement = compiled.string
 
         self.cursor = self.create_cursor()
 

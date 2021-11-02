@@ -800,12 +800,7 @@ class TypeEngine(Traversible):
         return default.StrCompileDialect()
 
     def __str__(self):
-        if util.py2k:
-            return unicode(self.compile()).encode(  # noqa
-                "ascii", "backslashreplace"
-            )  # noqa
-        else:
-            return str(self.compile())
+        return str(self.compile())
 
     def __repr__(self):
         return util.generic_repr(self)

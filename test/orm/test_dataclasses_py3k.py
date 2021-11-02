@@ -26,8 +26,6 @@ except ImportError:
 
 
 class DataclassesTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
-    __requires__ = ("dataclasses",)
-
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -232,8 +230,6 @@ class DataclassesTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
 
 
 class PlainDeclarativeDataclassesTest(DataclassesTest):
-    __requires__ = ("dataclasses",)
-
     run_setup_classes = "each"
     run_setup_mappers = "each"
 
@@ -296,8 +292,6 @@ class PlainDeclarativeDataclassesTest(DataclassesTest):
 class FieldEmbeddedDeclarativeDataclassesTest(
     fixtures.DeclarativeMappedTest, DataclassesTest
 ):
-    __requires__ = ("dataclasses",)
-
     @classmethod
     def setup_classes(cls):
         declarative = cls.DeclarativeBasic.registry.mapped
@@ -391,8 +385,6 @@ class FieldEmbeddedDeclarativeDataclassesTest(
 
 
 class FieldEmbeddedWMixinTest(FieldEmbeddedDeclarativeDataclassesTest):
-    __requires__ = ("dataclasses",)
-
     @classmethod
     def setup_classes(cls):
         declarative = cls.DeclarativeBasic.registry.mapped
@@ -521,8 +513,6 @@ class FieldEmbeddedWMixinTest(FieldEmbeddedDeclarativeDataclassesTest):
 
 
 class FieldEmbeddedMixinWLambdaTest(fixtures.DeclarativeMappedTest):
-    __requires__ = ("dataclasses",)
-
     @classmethod
     def setup_classes(cls):
         declarative = cls.DeclarativeBasic.registry.mapped
@@ -699,8 +689,6 @@ class FieldEmbeddedMixinWLambdaTest(fixtures.DeclarativeMappedTest):
 
 
 class FieldEmbeddedMixinWDeclaredAttrTest(FieldEmbeddedMixinWLambdaTest):
-    __requires__ = ("dataclasses",)
-
     @classmethod
     def setup_classes(cls):
         declarative = cls.DeclarativeBasic.registry.mapped
@@ -840,8 +828,6 @@ class FieldEmbeddedMixinWDeclaredAttrTest(FieldEmbeddedMixinWLambdaTest):
 
 
 class PropagationFromMixinTest(fixtures.TestBase):
-    __requires__ = ("dataclasses",)
-
     def test_propagate_w_plain_mixin_col(self, run_test):
         @dataclasses.dataclass
         class CommonMixin:
@@ -940,8 +926,6 @@ class PropagationFromMixinTest(fixtures.TestBase):
 
 
 class PropagationFromAbstractTest(fixtures.TestBase):
-    __requires__ = ("dataclasses",)
-
     def test_propagate_w_plain_mixin_col(self, run_test):
         @dataclasses.dataclass
         class BaseType:

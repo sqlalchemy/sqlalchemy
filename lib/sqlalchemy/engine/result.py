@@ -20,7 +20,6 @@ from ..sql.base import _generative
 from ..sql.base import HasMemoized
 from ..sql.base import InPlaceGenerative
 from ..util import collections_abc
-from ..util import py2k
 
 
 if _baserow_usecext:
@@ -658,7 +657,6 @@ class ResultInternal(InPlaceGenerative):
 
 class _WithKeys(object):
     # used mainly to share documentation on the keys method.
-    # py2k does not allow overriding the __doc__ attribute.
     def keys(self):
         """Return an iterable view which yields the string keys that would
         be represented by each :class:`.Row`.
@@ -923,11 +921,6 @@ class Result(_WithKeys, ResultInternal):
 
     def __next__(self):
         return self._next_impl()
-
-    if py2k:
-
-        def next(self):  # noqa
-            return self._next_impl()
 
     def partitions(self, size=None):
         """Iterate through sub-lists of rows of the size given.
@@ -1325,11 +1318,6 @@ class ScalarResult(FilterResult):
     def __next__(self):
         return self._next_impl()
 
-    if py2k:
-
-        def next(self):  # noqa
-            return self._next_impl()
-
     def first(self):
         """Fetch the first object or None if no object is present.
 
@@ -1467,11 +1455,6 @@ class MappingResult(_WithKeys, FilterResult):
 
     def __next__(self):
         return self._next_impl()
-
-    if py2k:
-
-        def next(self):  # noqa
-            return self._next_impl()
 
     def first(self):
         """Fetch the first object or None if no object is present.

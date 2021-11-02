@@ -15,7 +15,6 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy import util
 from sqlalchemy.dialects.mssql import base as mssql
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import config
@@ -24,7 +23,6 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertsql import CursorSQL
 from sqlalchemy.testing.assertsql import DialectSQL
-from sqlalchemy.util import ue
 
 
 class IdentityInsertTest(fixtures.TablesTest, AssertsCompiledSQL):
@@ -138,39 +136,6 @@ class IdentityInsertTest(fixtures.TablesTest, AssertsCompiledSQL):
         conn.execute(t.insert().values({"id": 1, "description": "descrip"}))
 
         eq_(conn.execute(select(t)).first(), (1, "descrip"))
-
-
-class QueryUnicodeTest(fixtures.TestBase):
-
-    __only_on__ = "mssql"
-    __backend__ = True
-
-    @testing.requires.mssql_freetds
-    @testing.requires.python2
-    @testing.provide_metadata
-    def test_convert_unicode(self, connection):
-        meta = self.metadata
-        t1 = Table(
-            "unitest_table",
-            meta,
-            Column("id", Integer, primary_key=True),
-            Column("descr", mssql.MSText()),
-        )
-        meta.create_all(connection)
-        connection.execute(
-            ue("insert into unitest_table values ('abc \xc3\xa9 def')").encode(
-                "UTF-8"
-            )
-        )
-        r = connection.execute(t1.select()).first()
-        assert isinstance(
-            r[1], util.text_type
-        ), "%s is %s instead of unicode, working on %s" % (
-            r[1],
-            type(r[1]),
-            meta.bind,
-        )
-        eq_(r[1], util.ue("abc \xc3\xa9 def"))
 
 
 class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):

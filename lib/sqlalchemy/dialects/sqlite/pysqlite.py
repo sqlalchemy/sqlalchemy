@@ -454,23 +454,14 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
         },
     )
 
-    if not util.py2k:
-        description_encoding = None
+    description_encoding = None
 
     driver = "pysqlite"
 
     @classmethod
     def dbapi(cls):
-        if util.py2k:
-            try:
-                from pysqlite2 import dbapi2 as sqlite
-            except ImportError:
-                try:
-                    from sqlite3 import dbapi2 as sqlite
-                except ImportError as e:
-                    raise e
-        else:
-            from sqlite3 import dbapi2 as sqlite
+        from sqlite3 import dbapi2 as sqlite
+
         return sqlite
 
     @classmethod

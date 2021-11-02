@@ -16,7 +16,6 @@ import weakref
 from .compat import binary_types
 from .compat import collections_abc
 from .compat import itertools_filterfalse
-from .compat import py2k
 from .compat import py37
 from .compat import string_types
 from .compat import threading
@@ -321,17 +320,6 @@ else:
 
         def items(self):
             return [(key, self[key]) for key in self._list]
-
-        if py2k:
-
-            def itervalues(self):
-                return iter(self.values())
-
-            def iterkeys(self):
-                return iter(self)
-
-            def iteritems(self):
-                return iter(self.items())
 
         def __setitem__(self, key, obj):
             if key not in self:

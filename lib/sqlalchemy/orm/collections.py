@@ -1250,27 +1250,6 @@ def _list_decorators():
         _tidy(__delitem__)
         return __delitem__
 
-    if util.py2k:
-
-        def __setslice__(fn):
-            def __setslice__(self, start, end, values):
-                for value in self[start:end]:
-                    __del(self, value)
-                values = [__set(self, value) for value in values]
-                fn(self, start, end, values)
-
-            _tidy(__setslice__)
-            return __setslice__
-
-        def __delslice__(fn):
-            def __delslice__(self, start, end):
-                for value in self[start:end]:
-                    __del(self, value)
-                fn(self, start, end)
-
-            _tidy(__delslice__)
-            return __delslice__
-
     def extend(fn):
         def extend(self, iterable):
             for value in iterable:
@@ -1300,16 +1279,14 @@ def _list_decorators():
         _tidy(pop)
         return pop
 
-    if not util.py2k:
+    def clear(fn):
+        def clear(self, index=-1):
+            for item in self:
+                __del(self, item)
+            fn(self)
 
-        def clear(fn):
-            def clear(self, index=-1):
-                for item in self:
-                    __del(self, item)
-                fn(self)
-
-            _tidy(clear)
-            return clear
+        _tidy(clear)
+        return clear
 
     # __imul__ : not wrapping this.  all members of the collection are already
     # present, so no need to fire appends... wrapping it with an explicit

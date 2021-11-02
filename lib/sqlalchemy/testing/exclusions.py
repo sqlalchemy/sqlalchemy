@@ -139,16 +139,10 @@ class compound(object):
     def _expect_failure(self, config, ex, name="block"):
         for fail in self.fails:
             if fail(config):
-                if util.py2k:
-                    str_ex = unicode(ex).encode(  # noqa: F821
-                        "utf-8", errors="ignore"
-                    )
-                else:
-                    str_ex = str(ex)
                 print(
                     (
                         "%s failed as expected (%s): %s "
-                        % (name, fail._as_string(config), str_ex)
+                        % (name, fail._as_string(config), ex)
                     )
                 )
                 break

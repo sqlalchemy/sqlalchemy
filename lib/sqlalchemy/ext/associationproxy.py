@@ -1295,30 +1295,11 @@ class _AssociationDict(_AssociationCollection):
     def keys(self):
         return self.col.keys()
 
-    if util.py2k:
+    def items(self):
+        return ((key, self._get(self.col[key])) for key in self.col)
 
-        def iteritems(self):
-            return ((key, self._get(self.col[key])) for key in self.col)
-
-        def itervalues(self):
-            return (self._get(self.col[key]) for key in self.col)
-
-        def iterkeys(self):
-            return self.col.iterkeys()
-
-        def values(self):
-            return [self._get(member) for member in self.col.values()]
-
-        def items(self):
-            return [(k, self._get(self.col[k])) for k in self]
-
-    else:
-
-        def items(self):
-            return ((key, self._get(self.col[key])) for key in self.col)
-
-        def values(self):
-            return (self._get(self.col[key]) for key in self.col)
+    def values(self):
+        return (self._get(self.col[key]) for key in self.col)
 
     def pop(self, key, default=_NotProvided):
         if default is _NotProvided:

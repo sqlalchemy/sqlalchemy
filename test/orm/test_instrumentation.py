@@ -613,8 +613,6 @@ class NativeInstrumentationTest(fixtures.MappedTest):
 
 
 class Py3KFunctionInstTest(fixtures.ORMTest):
-    __requires__ = ("python3",)
-
     def _instrument(self, cls):
         manager = instrumentation.register_class(cls)
         canary = []

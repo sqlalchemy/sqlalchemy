@@ -9,7 +9,6 @@ from ... import cast
 from ... import Column
 from ... import MetaData
 from ... import Table
-from ... import util
 from ...ext.compiler import compiles
 from ...sql import expression
 from ...types import Boolean
@@ -26,11 +25,6 @@ ischema = MetaData()
 class CoerceUnicode(TypeDecorator):
     impl = Unicode
     cache_ok = True
-
-    def process_bind_param(self, value, dialect):
-        if util.py2k and isinstance(value, util.binary_type):
-            value = value.decode(dialect.encoding)
-        return value
 
     def bind_expression(self, bindvalue):
         return _cast_on_2005(bindvalue)
