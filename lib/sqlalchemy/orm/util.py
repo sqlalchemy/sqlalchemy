@@ -1012,6 +1012,55 @@ class LoaderCriteriaOption(CriteriaOption):
         argument.  The given class will expand to include all mapped subclass
         and need not itself be a mapped class.
 
+        .. tip::
+
+           When using :func:`_orm.with_loader_criteria` option in
+           conjunction with the :func:`_orm.contains_eager` loader option,
+           it's important to note that :func:`_orm.with_loader_criteria` only
+           affects the part of the query that determines what SQL is rendered
+           in terms of the WHERE and FROM clauses. The
+           :func:`_orm.contains_eager` option does not affect the rendering of
+           the SELECT statement outside of the columns clause, so does not have
+           any interaction with the :func:`_orm.with_loader_criteria` option.
+           However, the way things "work" is that :func:`_orm.contains_eager`
+           is meant to be used with a query that is already selecting from the
+           additional entities in some way, where
+           :func:`_orm.with_loader_criteria` can apply it's additional
+           criteria.
+
+           In the example below, assuming a mapping relationship as
+           ``A -> A.bs -> B``, the given :func:`_orm.with_loader_criteria`
+           option will affect the way in which the JOIN is rendered::
+
+                stmt = select(A).join(A.bs).options(
+                    contains_eager(A.bs),
+                    with_loader_criteria(B, B.flag == 1)
+                )
+
+           Above, the given :func:`_orm.with_loader_criteria` option will
+           affect the ON clause of the JOIN that is specified by
+           ``.join(A.bs)``, so is applied as expected. The
+           :func:`_orm.contains_eager` option has the effect that columns from
+           ``B`` are added to the columns clause::
+
+                SELECT
+                    b.id, b.a_id, b.data, b.flag,
+                    a.id AS id_1,
+                    a.data AS data_1
+                FROM a JOIN b ON a.id = b.a_id AND b.flag = :flag_1
+
+
+           The use of the :func:`_orm.contains_eager` option within the above
+           statement has no effect on the behavior of the
+           :func:`_orm.with_loader_criteria` option. If the
+           :func:`_orm.contains_eager` option were omitted, the SQL would be
+           the same as regards the FROM and WHERE clauses, where
+           :func:`_orm.with_loader_criteria` continues to add its criteria to
+           the ON clause of the JOIN. The addition of
+           :func:`_orm.contains_eager` only affects the columns clause, in that
+           additional columns against ``b`` are added which are then consumed
+           by the ORM to produce ``B`` instances.
+
         .. warning:: The use of a lambda inside of the call to
           :func:`_orm.with_loader_criteria` is only invoked **once per unique
           class**. Custom functions should not be invoked within this lambda.
@@ -1309,6 +1358,14 @@ def with_polymorphic(
         mapped class. Otherwise, the unaccounted mapped columns will
         result in their table being appended directly to the FROM clause
         which will usually lead to incorrect results.
+
+        When left at its default value of ``False``, the polymorphic
+        selectable assigned to the base mapper is used for selecting rows.
+        However, it may also be passed as ``None``, which will bypass the
+        configured polymorphic selectable and instead construct an ad-hoc
+        selectable for the target classes given; for joined table inheritance
+        this will be a join that includes all target mappers and their
+        subclasses.
 
     :param polymorphic_on: a column to be used as the "discriminator"
         column for the given selectable. If not given, the polymorphic_on
@@ -1640,7 +1697,11 @@ class _ORMJoin(expression.Join):
 
             self._target_adapter = target_adapter
 
+        augment_onclause = onclause is None and _extra_criteria
         expression.Join.__init__(self, left, right, onclause, isouter, full)
+
+        if augment_onclause:
+            self.onclause &= sql.and_(*_extra_criteria)
 
         if (
             not prop

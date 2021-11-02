@@ -268,14 +268,18 @@ class Inspector(object):
             )
 
     def has_table(self, table_name, schema=None):
-        """Return True if the backend has a table of the given name.
-
+        """Return True if the backend has a table or view of the given name.
 
         :param table_name: name of the table to check
         :param schema: schema name to query, if not the default schema.
 
         .. versionadded:: 1.4 - the :meth:`.Inspector.has_table` method
            replaces the :meth:`_engine.Engine.has_table` method.
+
+        .. versionchanged:: 2.0:: The method checks also for views.
+           In previous version this behaviour was dialect specific. New
+           dialect suite tests were added to ensure all dialect conform with
+           this behaviour.
 
         """
         # TODO: info_cache?
@@ -784,8 +788,9 @@ class Inspector(object):
                 cols_by_orig_name,
             )
 
-        if not found_table:
-            raise exc.NoSuchTableError(table.name)
+        # NOTE: support tables/views with no columns
+        if not found_table and not self.has_table(table_name, schema):
+            raise exc.NoSuchTableError(table_name)
 
         self._reflect_pk(
             table_name, schema, table, cols_by_orig_name, exclude_columns
@@ -904,7 +909,7 @@ class Inspector(object):
 
     def _reflect_col_sequence(self, col_d, colargs):
         if "sequence" in col_d:
-            # TODO: mssql and sybase are using this.
+            # TODO: mssql is using this.
             seq = col_d["sequence"]
             sequence = sa_schema.Sequence(seq["name"], 1, 1)
             if "start" in seq:

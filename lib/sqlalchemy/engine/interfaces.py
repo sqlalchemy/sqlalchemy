@@ -7,7 +7,6 @@
 
 """Define core interfaces used by the engine system."""
 
-from .. import util
 from ..sql.compiler import Compiled  # noqa
 from ..sql.compiler import TypeCompiler  # noqa
 
@@ -463,7 +462,7 @@ class Dialect(object):
 
     def has_table(self, connection, table_name, schema=None, **kw):
         """For internal dialect use, check the existence of a particular table
-        in the database.
+        or view in the database.
 
         Given a :class:`_engine.Connection` object, a string table_name and
         optional schema name, return True if the given table exists in the
@@ -480,6 +479,13 @@ class Dialect(object):
            presence. Please use the :meth:`.Inspector.has_table` method.
            Alternatively, for legacy cross-compatibility, the
            :meth:`_engine.Engine.has_table` method may be used.
+
+        .. versionchanged:: 2.0
+
+            The :meth:`_engine.Dialect.has_table` method should also check
+            for the presence of views.  In previous versions this
+            behavior was dialect specific. New dialect suite tests were added
+            to ensure that dialects conform with this behavior consistently.
 
         """
 
@@ -1320,9 +1326,7 @@ class ExecutionContext(object):
       root_connection.
 
     root_connection
-      Connection object which is the source of this ExecutionContext.  This
-      Connection may have close_with_result=True set, in which case it can
-      only be used once.
+      Connection object which is the source of this ExecutionContext.
 
     dialect
       dialect which created this ExecutionContext.
@@ -1527,48 +1531,43 @@ class ExecutionContext(object):
         raise NotImplementedError()
 
 
-@util.deprecated_20_cls(
-    ":class:`.Connectable`",
-    alternative=(
-        "The :class:`_engine.Engine` will be the only Core "
-        "object that features a .connect() method, and the "
-        ":class:`_engine.Connection` will be the only object that features "
-        "an .execute() method."
-    ),
-    constructor=None,
-)
-class Connectable(object):
-    """Interface for an object which supports execution of SQL constructs.
+class ConnectionEventsTarget:
+    """An object which can accept events from :class:`.ConnectionEvents`.
 
-    The two implementations of :class:`.Connectable` are
-    :class:`_engine.Connection` and :class:`_engine.Engine`.
+    Includes :class:`_engine.Connection` and :class:`_engine.Engine`.
 
-    Connectable must also implement the 'dialect' member which references a
-    :class:`.Dialect` instance.
+    .. versionadded:: 2.0
 
     """
 
-    def connect(self, **kwargs):
-        """Return a :class:`_engine.Connection` object.
 
-        Depending on context, this may be ``self`` if this object
-        is already an instance of :class:`_engine.Connection`, or a newly
-        procured :class:`_engine.Connection` if this object is an instance
-        of :class:`_engine.Engine`.
+class Connectable(ConnectionEventsTarget):
+    """Interface for an object which supports execution of SQL constructs.
 
-        """
+    This is the base for :class:`_engine.Connection` and similar objects.
+
+    .. versionchanged:: 2.0  :class:`_engine.Connectable` is no longer the
+       base class for :class:`_engine.Engine`, replaced with
+       :class:`_engine.ConnectionEventsTarget`.
+
+    """
 
     engine = None
     """The :class:`_engine.Engine` instance referred to by this
     :class:`.Connectable`.
 
-    May be ``self`` if this is already an :class:`_engine.Engine`.
+    """
+
+    dialect = None
+    """The :class:`_engine.Dialect` instance referred to by this
+    :class:`.Connectable`.
 
     """
 
     def execute(self, object_, *multiparams, **params):
         """Executes the given construct and returns a
-        :class:`_engine.CursorResult`.
+        :class:`_result.Result`.
+
         """
         raise NotImplementedError()
 
@@ -1576,13 +1575,8 @@ class Connectable(object):
         """Executes and returns the first column of the first row.
 
         The underlying cursor is closed after execution.
+
         """
-        raise NotImplementedError()
-
-    def _run_visitor(self, visitorcallable, element, **kwargs):
-        raise NotImplementedError()
-
-    def _execute_clauseelement(self, elem, multiparams=None, params=None):
         raise NotImplementedError()
 
 

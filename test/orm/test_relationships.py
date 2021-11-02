@@ -358,7 +358,7 @@ class M2ODontOverwriteFKTest(fixtures.MappedTest):
         sess.commit()
 
         # test that was broken by #3060
-        a1 = sess.query(A).options(joinedload("b")).first()
+        a1 = sess.query(A).options(joinedload(A.b)).first()
         a1.bid = b1.id
         sess.flush()
 
@@ -628,8 +628,10 @@ class DirectSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
         self._descendants_fixture(data=False)
         Entity = self.classes.Entity
         sess = fixture_session()
+
+        da = aliased(Entity)
         self.assert_compile(
-            sess.query(Entity).join(Entity.descendants, aliased=True),
+            sess.query(Entity).join(Entity.descendants.of_type(da)),
             "SELECT entity.path AS entity_path FROM entity JOIN entity AS "
             "entity_1 ON entity_1.path LIKE entity.path || :path_1",
         )
@@ -1451,13 +1453,15 @@ class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
 
     def _test_join_aliasing(self, sess):
         Employee = self.classes.Employee
+        ea = aliased(Employee)
         eq_(
             [
                 n
                 for n, in sess.query(Employee.name)
-                .join(Employee.reports_to, aliased=True)
-                .filter_by(name="emp5")
-                .reset_joinpoint()
+                .join(Employee.reports_to.of_type(ea))
+                .filter(ea.name == "emp5")
+                # broken until #7244 is fixed due to of_type() usage
+                # .filter_by(name="emp5")
                 .order_by(Employee.name)
             ],
             ["emp6", "emp7"],
@@ -3218,7 +3222,7 @@ class ViewOnlyOverlappingNames(fixtures.MappedTest):
         sess.flush()
         sess.expunge_all()
 
-        c1 = sess.query(C1).get(c1.id)
+        c1 = sess.get(C1, c1.id)
         assert set([x.id for x in c1.t2s]) == set([c2a.id, c2b.id])
         assert set([x.id for x in c1.t2_view]) == set([c2b.id])
 
@@ -3482,7 +3486,7 @@ class ViewOnlyUniqueNames(fixtures.MappedTest):
         sess.flush()
         sess.expunge_all()
 
-        c1 = sess.query(C1).get(c1.t1id)
+        c1 = sess.get(C1, c1.t1id)
         assert set([x.t2id for x in c1.t2s]) == set([c2a.t2id, c2b.t2id])
         assert set([x.t2id for x in c1.t2_view]) == set([c2b.t2id])
 
@@ -6081,7 +6085,11 @@ class RaiseLoadTest(_fixtures.FixtureTest):
             users,
             properties=dict(addresses=relationship(Address, lazy="raise")),
         )
-        q = fixture_session().query(User).options(sa.orm.lazyload("addresses"))
+        q = (
+            fixture_session()
+            .query(User)
+            .options(sa.orm.lazyload(User.addresses))
+        )
         result = [None]
 
         def go():
@@ -6110,7 +6118,7 @@ class RaiseLoadTest(_fixtures.FixtureTest):
         a1 = (
             s.query(Address)
             .filter_by(id=1)
-            .options(sa.orm.raiseload("user"))
+            .options(sa.orm.raiseload(Address.user))
             .first()
         )
 
@@ -6138,7 +6146,7 @@ class RaiseLoadTest(_fixtures.FixtureTest):
         a1 = (
             s.query(Address)
             .filter_by(id=1)
-            .options(sa.orm.raiseload("user", sql_only=True))
+            .options(sa.orm.raiseload(Address.user, sql_only=True))
             .first()
         )
 
@@ -6157,7 +6165,7 @@ class RaiseLoadTest(_fixtures.FixtureTest):
         a1 = (
             s.query(Address)
             .filter_by(id=1)
-            .options(sa.orm.raiseload("user", sql_only=True))
+            .options(sa.orm.raiseload(Address.user, sql_only=True))
             .first()
         )
         assert "user" not in a1.__dict__
@@ -6189,7 +6197,7 @@ class RaiseLoadTest(_fixtures.FixtureTest):
         a1 = (
             s.query(Address)
             .filter_by(id=1)
-            .options(sa.orm.raiseload("user", sql_only=True))
+            .options(sa.orm.raiseload(Address.user, sql_only=True))
             .first()
         )
 

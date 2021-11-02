@@ -236,7 +236,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
 
         User, Address = self._user_address_fixture()
         sess = fixture_session()
-        u = sess.query(User).get(8)
+        u = sess.get(User, 8)
         sess.expunge(u)
         assert_raises(
             orm_exc.DetachedInstanceError,
@@ -253,7 +253,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
 
         User, Address = self._user_address_fixture()
         sess = fixture_session()
-        u = sess.query(User).get(8)
+        u = sess.get(User, 8)
         sess.expunge(u)
 
         with testing.expect_warnings(
@@ -332,7 +332,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
     def test_order_by(self):
         User, Address = self._user_address_fixture()
         sess = fixture_session()
-        u = sess.query(User).get(8)
+        u = sess.get(User, 8)
         eq_(
             list(u.addresses.order_by(desc(Address.email_address))),
             [
@@ -350,7 +350,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
         sess = fixture_session()
-        u = sess.query(User).get(8)
+        u = sess.get(User, 8)
 
         with self.sql_execution_asserter() as asserter:
             for i in range(3):
@@ -384,7 +384,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
         sess = fixture_session()
-        u = sess.query(User).get(8)
+        u = sess.get(User, 8)
         eq_(
             list(u.addresses),
             [
@@ -442,14 +442,14 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
         self.mapper_registry.map_imperatively(User, users)
 
         sess = fixture_session()
-        ad = sess.query(Address).get(1)
+        ad = sess.get(Address, 1)
 
         def go():
             ad.user = None
 
         self.assert_sql_count(testing.db, go, 0)
         sess.flush()
-        u = sess.query(User).get(7)
+        u = sess.get(User, 7)
         assert ad not in u.addresses
 
     def test_no_count(self):
@@ -708,7 +708,7 @@ class UOWTest(
             ),  # noqa
             0,
         )
-        u1 = sess.query(User).get(u1.id)
+        u1 = sess.get(User, u1.id)
         u1.addresses.append(a1)
         sess.flush()
 
@@ -797,7 +797,9 @@ class UOWTest(
         User, Address = self._user_address_fixture(
             addresses_args={"order_by": addresses.c.email_address}
         )
-        sess = fixture_session(autoflush=True, autocommit=False)
+        sess = fixture_session(
+            autoflush=True,
+        )
         u1 = User(name="jack")
         a1 = Address(email_address="a1")
         a2 = Address(email_address="a2")
@@ -885,9 +887,7 @@ class UOWTest(
 
     def test_rollback(self):
         User, Address = self._user_address_fixture()
-        sess = fixture_session(
-            expire_on_commit=False, autocommit=False, autoflush=True
-        )
+        sess = fixture_session(expire_on_commit=False, autoflush=True)
         u1 = User(name="jack")
         u1.addresses.append(Address(email_address="lala@hoho.com"))
         sess.add(u1)
@@ -914,7 +914,9 @@ class UOWTest(
             }
         )
 
-        sess = fixture_session(autoflush=True, autocommit=False)
+        sess = fixture_session(
+            autoflush=True,
+        )
         u = User(name="ed")
         u.addresses.extend(
             [Address(email_address=letter) for letter in "abcdef"]
@@ -1008,7 +1010,9 @@ class UOWTest(
             }
         )
 
-        sess = fixture_session(autoflush=True, autocommit=False)
+        sess = fixture_session(
+            autoflush=True,
+        )
         u = User(name="ed")
         u.addresses.extend(
             [Address(email_address=letter) for letter in "abcdef"]
@@ -1029,7 +1033,9 @@ class UOWTest(
         User, Address = self._user_address_fixture(
             addresses_args={"backref": "user"}
         )
-        sess = fixture_session(autoflush=autoflush, autocommit=False)
+        sess = fixture_session(
+            autoflush=autoflush,
+        )
 
         u = User(name="buffy")
 

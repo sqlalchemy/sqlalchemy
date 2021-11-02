@@ -448,7 +448,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         self.mapper_registry.map_imperatively(User, users)
         with testing.db.connect() as c:
 
-            sess = Session(bind=c, autocommit=False)
+            sess = Session(bind=c)
             u = User(name="u1")
             sess.add(u)
             sess.flush()
@@ -458,7 +458,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
                 c.exec_driver_sql("select count(1) from users").scalar() == 0
             )
 
-            sess = Session(bind=c, autocommit=False)
+            sess = Session(bind=c)
             u = User(name="u2")
             sess.add(u)
             sess.flush()
@@ -472,19 +472,6 @@ class BindIntegrationTest(_fixtures.FixtureTest):
                 c.exec_driver_sql("delete from users")
             assert (
                 c.exec_driver_sql("select count(1) from users").scalar() == 0
-            )
-
-        with testing.db.connect() as c:
-            trans = c.begin()
-            sess = Session(bind=c, autocommit=True)
-            u = User(name="u3")
-            sess.add(u)
-            sess.flush()
-            assert c.in_transaction()
-            trans.commit()
-            assert not c.in_transaction()
-            assert (
-                c.exec_driver_sql("select count(1) from users").scalar() == 1
             )
 
 
@@ -527,7 +514,7 @@ class SessionBindTest(fixtures.MappedTest):
                 f = Foo()
                 sess.add(f)
                 sess.flush()
-                assert sess.query(Foo).get(f.id) is f
+                assert sess.get(Foo, f.id) is f
             finally:
                 if hasattr(bind, "close"):
                     bind.close()

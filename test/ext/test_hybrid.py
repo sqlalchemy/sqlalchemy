@@ -945,82 +945,192 @@ class BulkUpdateTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
             params={"first_name": "Dr.", "last_name": "No"},
         )
 
+    # these tests all run two UPDATES to assert that caching is not
+    # interfering.  this is #7209
+
+    def test_evaluate_non_hybrid_attr(self):
+        # this is a control case
+        Person = self.classes.Person
+
+        s = fixture_session()
+        jill = s.get(Person, 3)
+
+        s.query(Person).update(
+            {Person.first_name: "moonbeam"}, synchronize_session="evaluate"
+        )
+        eq_(jill.first_name, "moonbeam")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "moonbeam",
+        )
+
+        s.query(Person).update(
+            {Person.first_name: "sunshine"}, synchronize_session="evaluate"
+        )
+        eq_(jill.first_name, "sunshine")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "sunshine",
+        )
+
     def test_evaluate_hybrid_attr_indirect(self):
         Person = self.classes.Person
 
         s = fixture_session()
-        jill = s.query(Person).get(3)
+        jill = s.get(Person, 3)
 
         s.query(Person).update(
             {Person.fname2: "moonbeam"}, synchronize_session="evaluate"
         )
         eq_(jill.fname2, "moonbeam")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "moonbeam",
+        )
+
+        s.query(Person).update(
+            {Person.fname2: "sunshine"}, synchronize_session="evaluate"
+        )
+        eq_(jill.fname2, "sunshine")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "sunshine",
+        )
 
     def test_evaluate_hybrid_attr_plain(self):
         Person = self.classes.Person
 
         s = fixture_session()
-        jill = s.query(Person).get(3)
+        jill = s.get(Person, 3)
 
         s.query(Person).update(
             {Person.fname: "moonbeam"}, synchronize_session="evaluate"
         )
         eq_(jill.fname, "moonbeam")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "moonbeam",
+        )
+
+        s.query(Person).update(
+            {Person.fname: "sunshine"}, synchronize_session="evaluate"
+        )
+        eq_(jill.fname, "sunshine")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "sunshine",
+        )
 
     def test_fetch_hybrid_attr_indirect(self):
         Person = self.classes.Person
 
         s = fixture_session()
-        jill = s.query(Person).get(3)
+        jill = s.get(Person, 3)
 
         s.query(Person).update(
             {Person.fname2: "moonbeam"}, synchronize_session="fetch"
         )
         eq_(jill.fname2, "moonbeam")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "moonbeam",
+        )
+
+        s.query(Person).update(
+            {Person.fname2: "sunshine"}, synchronize_session="fetch"
+        )
+        eq_(jill.fname2, "sunshine")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "sunshine",
+        )
 
     def test_fetch_hybrid_attr_plain(self):
         Person = self.classes.Person
 
         s = fixture_session()
-        jill = s.query(Person).get(3)
+        jill = s.get(Person, 3)
 
         s.query(Person).update(
             {Person.fname: "moonbeam"}, synchronize_session="fetch"
         )
         eq_(jill.fname, "moonbeam")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "moonbeam",
+        )
+
+        s.query(Person).update(
+            {Person.fname: "sunshine"}, synchronize_session="fetch"
+        )
+        eq_(jill.fname, "sunshine")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "sunshine",
+        )
 
     def test_evaluate_hybrid_attr_w_update_expr(self):
         Person = self.classes.Person
 
         s = fixture_session()
-        jill = s.query(Person).get(3)
+        jill = s.get(Person, 3)
 
         s.query(Person).update(
             {Person.name: "moonbeam sunshine"}, synchronize_session="evaluate"
         )
         eq_(jill.name, "moonbeam sunshine")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "moonbeam",
+        )
+
+        s.query(Person).update(
+            {Person.name: "first last"}, synchronize_session="evaluate"
+        )
+        eq_(jill.name, "first last")
+        eq_(s.scalar(select(Person.first_name).where(Person.id == 3)), "first")
 
     def test_fetch_hybrid_attr_w_update_expr(self):
         Person = self.classes.Person
 
         s = fixture_session()
-        jill = s.query(Person).get(3)
+        jill = s.get(Person, 3)
 
         s.query(Person).update(
             {Person.name: "moonbeam sunshine"}, synchronize_session="fetch"
         )
         eq_(jill.name, "moonbeam sunshine")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "moonbeam",
+        )
+
+        s.query(Person).update(
+            {Person.name: "first last"}, synchronize_session="fetch"
+        )
+        eq_(jill.name, "first last")
+        eq_(s.scalar(select(Person.first_name).where(Person.id == 3)), "first")
 
     def test_evaluate_hybrid_attr_indirect_w_update_expr(self):
         Person = self.classes.Person
 
         s = fixture_session()
-        jill = s.query(Person).get(3)
+        jill = s.get(Person, 3)
 
         s.query(Person).update(
             {Person.uname: "moonbeam sunshine"}, synchronize_session="evaluate"
         )
         eq_(jill.uname, "moonbeam sunshine")
+        eq_(
+            s.scalar(select(Person.first_name).where(Person.id == 3)),
+            "moonbeam",
+        )
+
+        s.query(Person).update(
+            {Person.uname: "first last"}, synchronize_session="evaluate"
+        )
+        eq_(jill.uname, "first last")
+        eq_(s.scalar(select(Person.first_name).where(Person.id == 3)), "first")
 
 
 class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):

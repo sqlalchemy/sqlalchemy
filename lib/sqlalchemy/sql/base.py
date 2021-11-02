@@ -515,12 +515,20 @@ class CompileState(object):
     @classmethod
     def get_plugin_class(cls, statement):
         plugin_name = statement._propagate_attrs.get(
-            "compile_state_plugin", "default"
+            "compile_state_plugin", None
         )
+
+        if plugin_name:
+            key = (plugin_name, statement._effective_plugin_target)
+            if key in cls.plugins:
+                return cls.plugins[key]
+
+        # there's no case where we call upon get_plugin_class() and want
+        # to get None back, there should always be a default.  return that
+        # if there was no plugin-specific class  (e.g. Insert with "orm"
+        # plugin)
         try:
-            return cls.plugins[
-                (plugin_name, statement._effective_plugin_target)
-            ]
+            return cls.plugins[("default", statement._effective_plugin_target)]
         except KeyError:
             return None
 
@@ -928,46 +936,6 @@ class Executable(roles.StatementRole, Generative):
             :meth:`.Executable.execution_options`
         """
         return self._execution_options
-
-    @util.deprecated_20(
-        ":meth:`.Executable.execute`",
-        alternative="All statement execution in SQLAlchemy 2.0 is performed "
-        "by the :meth:`_engine.Connection.execute` method of "
-        ":class:`_engine.Connection`, "
-        "or in the ORM by the :meth:`.Session.execute` method of "
-        ":class:`.Session`.",
-    )
-    def execute(self, *multiparams, **params):
-        """Compile and execute this :class:`.Executable`."""
-        e = self.bind
-        if e is None:
-            label = (
-                getattr(self, "description", None) or self.__class__.__name__
-            )
-            msg = (
-                "This %s is not directly bound to a Connection or Engine. "
-                "Use the .execute() method of a Connection or Engine "
-                "to execute this construct." % label
-            )
-            raise exc.UnboundExecutionError(msg)
-        return e._execute_clauseelement(
-            self, multiparams, params, util.immutabledict()
-        )
-
-    @util.deprecated_20(
-        ":meth:`.Executable.scalar`",
-        alternative="Scalar execution in SQLAlchemy 2.0 is performed "
-        "by the :meth:`_engine.Connection.scalar` method of "
-        ":class:`_engine.Connection`, "
-        "or in the ORM by the :meth:`.Session.scalar` method of "
-        ":class:`.Session`.",
-    )
-    def scalar(self, *multiparams, **params):
-        """Compile and execute this :class:`.Executable`, returning the
-        result's scalar representation.
-
-        """
-        return self.execute(*multiparams, **params).scalar()
 
     @property
     @util.deprecated_20(
@@ -1665,7 +1633,7 @@ def _entity_namespace(entity):
             raise
 
 
-def _entity_namespace_key(entity, key):
+def _entity_namespace_key(entity, key, default=NO_ARG):
     """Return an entry from an entity_namespace.
 
 
@@ -1676,7 +1644,10 @@ def _entity_namespace_key(entity, key):
 
     try:
         ns = _entity_namespace(entity)
-        return getattr(ns, key)
+        if default is not NO_ARG:
+            return getattr(ns, key, default)
+        else:
+            return getattr(ns, key)
     except AttributeError as err:
         util.raise_(
             exc.InvalidRequestError(

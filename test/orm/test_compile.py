@@ -232,7 +232,7 @@ class CompileTest(fixtures.MappedTest):
             },
         )
         sess = Session(connection)
-        assert sess.query(Node).get(1).names == []
+        assert sess.get(Node, 1).names == []
 
     def test_conflicting_backref_two(self):
         meta = MetaData()

@@ -1,6 +1,0 @@
-.. change::
-    :tags: bug, postgresql
-    :tickets: 5387
-
-    Added a "disconnect" condition for the "SSL SYSCALL error: Bad address"
-    error message as reported by psycopg2. Pull request courtesy Zeke Brechtel.

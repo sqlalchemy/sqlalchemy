@@ -7,6 +7,7 @@ from sqlalchemy import DDL
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import Identity
 from sqlalchemy import Index
 from sqlalchemy import inspect
@@ -217,6 +218,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                     "referred_schema": "test_schema",
                     "referred_table": "subject",
                     "referred_columns": ["id"],
+                    "options": {},
                 }
             ],
         )
@@ -309,6 +311,53 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
         found_it = testing.db.dialect.has_table(connection, table_name)
         eq_(found_it, exists)
 
+    def test_has_table_temp_not_present_but_another_session(self):
+        """test #6910"""
+
+        with testing.db.connect() as c1, testing.db.connect() as c2:
+
+            try:
+                with c1.begin():
+                    c1.exec_driver_sql(
+                        "create table #myveryveryuniquetemptablename (a int)"
+                    )
+                assert not c2.dialect.has_table(
+                    c2, "#myveryveryuniquetemptablename"
+                )
+            finally:
+                with c1.begin():
+                    c1.exec_driver_sql(
+                        "drop table #myveryveryuniquetemptablename"
+                    )
+
+    def test_has_table_temp_temp_present_both_sessions(self):
+        """test #7168, continues from #6910"""
+
+        with testing.db.connect() as c1, testing.db.connect() as c2:
+            try:
+                with c1.begin():
+                    c1.exec_driver_sql(
+                        "create table #myveryveryuniquetemptablename (a int)"
+                    )
+
+                with c2.begin():
+                    c2.exec_driver_sql(
+                        "create table #myveryveryuniquetemptablename (a int)"
+                    )
+
+                assert c2.dialect.has_table(
+                    c2, "#myveryveryuniquetemptablename"
+                )
+            finally:
+                with c1.begin():
+                    c1.exec_driver_sql(
+                        "drop table #myveryveryuniquetemptablename"
+                    )
+                with c2.begin():
+                    c2.exec_driver_sql(
+                        "drop table #myveryveryuniquetemptablename"
+                    )
+
     def test_db_qualified_items(self, metadata, connection):
         Table("foo", metadata, Column("id", Integer, primary_key=True))
         Table(
@@ -337,6 +386,7 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                     "referred_schema": referred_schema,
                     "name": "fkfoo",
                     "constrained_columns": ["foo_id"],
+                    "options": {},
                 }
             ],
         )
@@ -351,6 +401,56 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
             autoload_with=connection,
         )
         eq_(m2.tables["%s.foo" % referred_schema].schema, referred_schema)
+
+    def test_fk_on_unique_index(self, metadata, connection):
+        # test for issue #7160
+        Table(
+            "uidx_parent",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("uidx_col1", Integer, nullable=False),
+            Column("uidx_col2", Integer, nullable=False),
+            Index(
+                "UIDX_composite",
+                "uidx_col1",
+                "uidx_col2",
+                unique=True,
+            ),
+        )
+
+        Table(
+            "uidx_child",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("parent_uidx_col1", Integer, nullable=False),
+            Column("parent_uidx_col2", Integer, nullable=False),
+            ForeignKeyConstraint(
+                ["parent_uidx_col1", "parent_uidx_col2"],
+                ["uidx_parent.uidx_col1", "uidx_parent.uidx_col2"],
+                name="FK_uidx_parent",
+            ),
+        )
+
+        metadata.create_all(connection)
+
+        inspector = inspect(connection)
+        fk_info = inspector.get_foreign_keys("uidx_child")
+        eq_(
+            fk_info,
+            [
+                {
+                    "referred_table": "uidx_parent",
+                    "referred_columns": ["uidx_col1", "uidx_col2"],
+                    "referred_schema": None,
+                    "name": "FK_uidx_parent",
+                    "constrained_columns": [
+                        "parent_uidx_col1",
+                        "parent_uidx_col2",
+                    ],
+                    "options": {},
+                }
+            ],
+        )
 
     def test_indexes_cols(self, metadata, connection):
 

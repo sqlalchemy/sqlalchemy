@@ -86,7 +86,7 @@ def expect_deprecated(*messages, **kw):
 
 
 def expect_deprecated_20(*messages, **kw):
-    return _expect_warnings(sa_exc.RemovedIn20Warning, messages, **kw)
+    return _expect_warnings(sa_exc.Base20DeprecationWarning, messages, **kw)
 
 
 def emits_warning_on(db, *messages):
@@ -204,11 +204,7 @@ def _expect_warnings(
 
         with mock.patch("warnings.warn", our_warn), mock.patch(
             "sqlalchemy.util.SQLALCHEMY_WARN_20", True
-        ), mock.patch(
-            "sqlalchemy.util.deprecations.SQLALCHEMY_WARN_20", True
-        ), mock.patch(
-            "sqlalchemy.engine.row.LegacyRow._default_key_style", 2
-        ):
+        ), mock.patch("sqlalchemy.util.deprecations.SQLALCHEMY_WARN_20", True):
             try:
                 yield
             finally:

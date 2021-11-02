@@ -2517,19 +2517,6 @@ class DefaultGenerator(Executable, SchemaItem):
         else:
             self.column.default = self
 
-    @util.deprecated_20(
-        ":meth:`.DefaultGenerator.execute`",
-        alternative="All statement execution in SQLAlchemy 2.0 is performed "
-        "by the :meth:`_engine.Connection.execute` method of "
-        ":class:`_engine.Connection`, "
-        "or in the ORM by the :meth:`.Session.execute` method of "
-        ":class:`.Session`.",
-    )
-    def execute(self, bind=None):
-        if bind is None:
-            bind = _bind_or_error(self)
-        return bind._execute_default(self, (), util.EMPTY_DICT)
-
     def _execute_on_connection(
         self, connection, multiparams, params, execution_options
     ):
@@ -4195,6 +4182,9 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         :class:`.Index`, using the given :class:`.Connectable`
         for connectivity.
 
+        .. note:: the "bind" argument will be required in
+           SQLAlchemy 2.0.
+
         .. seealso::
 
             :meth:`_schema.MetaData.create_all`.
@@ -4209,6 +4199,9 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         """Issue a ``DROP`` statement for this
         :class:`.Index`, using the given :class:`.Connectable`
         for connectivity.
+
+        .. note:: the "bind" argument will be required in
+           SQLAlchemy 2.0.
 
         .. seealso::
 
@@ -4497,6 +4490,12 @@ class MetaData(SchemaItem):
 
             engine = create_engine("someurl://")
             metadata.bind = engine
+
+        .. deprecated :: 1.4
+
+            The metadata.bind attribute, as part of the deprecated system
+            of "implicit execution", is itself deprecated and will be
+            removed in SQLAlchemy 2.0.
 
         .. seealso::
 

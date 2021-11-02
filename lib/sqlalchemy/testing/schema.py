@@ -48,37 +48,6 @@ def Table(*args, **kw):
             else:
                 kw["mariadb_engine"] = "MyISAM"
 
-    # Apply some default cascading rules for self-referential foreign keys.
-    # MySQL InnoDB has some issues around selecting self-refs too.
-    if exclusions.against(config._current, "firebird"):
-        table_name = args[0]
-        unpack = config.db.dialect.identifier_preparer.unformat_identifiers
-
-        # Only going after ForeignKeys in Columns.  May need to
-        # expand to ForeignKeyConstraint too.
-        fks = [
-            fk
-            for col in args
-            if isinstance(col, schema.Column)
-            for fk in col.foreign_keys
-        ]
-
-        for fk in fks:
-            # root around in raw spec
-            ref = fk._colspec
-            if isinstance(ref, schema.Column):
-                name = ref.table.name
-            else:
-                # take just the table name: on FB there cannot be
-                # a schema, so the first element is always the
-                # table name, possibly followed by the field name
-                name = unpack(ref)[0]
-            if name == table_name:
-                if fk.ondelete is None:
-                    fk.ondelete = "CASCADE"
-                if fk.onupdate is None:
-                    fk.onupdate = "CASCADE"
-
     return schema.Table(*args, **kw)
 
 
@@ -101,9 +70,9 @@ def Column(*args, **kw):
         # allow any test suite to pick up on this
         col.info["test_needs_autoincrement"] = True
 
-        # hardcoded rule for firebird, oracle; this should
+        # hardcoded rule for oracle; this should
         # be moved out
-        if exclusions.against(config._current, "firebird", "oracle"):
+        if exclusions.against(config._current, "oracle"):
 
             def add_seq(c, tbl):
                 c._init_items(

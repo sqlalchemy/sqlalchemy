@@ -10,7 +10,6 @@ from operator import attrgetter
 from . import base
 from . import url as _url
 from .. import util
-from ..sql import ddl
 
 
 class MockConnection(base.Connectable):
@@ -22,31 +21,14 @@ class MockConnection(base.Connectable):
     dialect = property(attrgetter("_dialect"))
     name = property(lambda s: s._dialect.name)
 
-    def schema_for_object(self, obj):
-        return obj.schema
-
     def connect(self, **kwargs):
         return self
 
+    def schema_for_object(self, obj):
+        return obj.schema
+
     def execution_options(self, **kw):
         return self
-
-    def compiler(self, statement, parameters, **kwargs):
-        return self._dialect.compiler(
-            statement, parameters, engine=self, **kwargs
-        )
-
-    def create(self, entity, **kwargs):
-        kwargs["checkfirst"] = False
-
-        ddl.SchemaGenerator(self.dialect, self, **kwargs).traverse_single(
-            entity
-        )
-
-    def drop(self, entity, **kwargs):
-        kwargs["checkfirst"] = False
-
-        ddl.SchemaDropper(self.dialect, self, **kwargs).traverse_single(entity)
 
     def _run_ddl_visitor(
         self, visitorcallable, element, connection=None, **kwargs

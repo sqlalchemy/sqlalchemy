@@ -1,10 +1,10 @@
 name: Run tests
 
 on:
-  # run on push in master or rel_* branches excluding changes are only on doc or example folders
+  # run on push in main or rel_* branches excluding changes are only on doc or example folders
   push:
     branches:
-      - master
+      - main
       - "rel_*"
       # branches used to test the workflow
       - "workflow_test_*"
@@ -28,13 +28,11 @@ jobs:
           - "windows-latest"
           - "macos-latest"
         python-version:
-          - "2.7"
-          - "3.6"
           - "3.7"
           - "3.8"
           - "3.9"
-          - "3.10.0-beta - 3.10"
-          - "pypy3"
+          - "3.10"
+          - "pypy-3.7"
         build-type:
           - "cext"
           - "nocext"
@@ -44,28 +42,24 @@ jobs:
 
         include:
           # autocommit tests fail on the ci for some reason
-          - python-version: "pypy3"
+          - python-version: "pypy-3.7"
             pytest-args: "-k 'not test_autocommit_on and not test_turn_autocommit_off_via_default_iso_level and not test_autocommit_isolation_level'"
           # add aiosqlite on linux
           - os: "ubuntu-latest"
             pytest-args: "--dbdriver pysqlite --dbdriver aiosqlite"
 
         exclude:
-          # c-extensions fail to build on windows for python 2.7
-          - os: "windows-latest"
-            python-version: "2.7"
-            build-type: "cext"
           # linux and osx do not have x86 python
           - os: "ubuntu-latest"
             architecture: x86
           - os: "macos-latest"
             architecture: x86
           # pypy does not have cext
-          - python-version: "pypy3"
+          - python-version: "pypy-3.7"
             build-type: "cext"
-          # pypy on windows has an ancient sqlite version (3.6)
           - os: "windows-latest"
-            python-version: "pypy3"
+            python-version: "pypy-3.7"
+            architecture: x86
 
       fail-fast: false
 
@@ -95,10 +89,10 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - cp36-cp36m
           - cp37-cp37m
           - cp38-cp38
           - cp39-cp39
+          - cp310-cp310
         build-type:
           - "cext"
           - "nocext"
@@ -135,11 +129,10 @@ jobs:
         os:
           - "ubuntu-latest"
         python-version:
-          - "3.6"
           - "3.7"
           - "3.8"
           - "3.9"
-          - "3.10.0-beta - 3.10"
+          - "3.10"
 
       fail-fast: false
 
@@ -172,7 +165,7 @@ jobs:
         os:
           - "ubuntu-latest"
         python-version:
-          - "3.9"
+          - "3.10"
 
       fail-fast: false
 

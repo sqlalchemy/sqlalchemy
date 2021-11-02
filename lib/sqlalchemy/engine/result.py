@@ -25,8 +25,6 @@ from ..util import py2k
 
 if _baserow_usecext:
     from sqlalchemy.cresultproxy import tuplegetter
-
-    _row_as_tuple = tuplegetter
 else:
 
     def tuplegetter(*indexes):
@@ -36,16 +34,6 @@ else:
             return it
         else:
             return lambda row: (it(row),)
-
-    def _row_as_tuple(*indexes):
-        # circumvent LegacyRow.__getitem__ pointing to
-        # _get_by_key_impl_mapping for now.  otherwise we could
-        # use itemgetter
-        getters = [
-            operator.methodcaller("_get_by_int_impl", index)
-            for index in indexes
-        ]
-        return lambda rec: tuple([getter(rec) for getter in getters])
 
 
 class ResultMetaData(object):
@@ -70,13 +58,6 @@ class ResultMetaData(object):
     def _key_fallback(self, key, err, raiseerr=True):
         assert raiseerr
         util.raise_(KeyError(key), replace_context=err)
-
-    def _warn_for_nonint(self, key):
-        util.warn_deprecated_20(
-            "Retrieving row members using strings or other non-integers is "
-            "deprecated; use row._mapping for a dictionary interface "
-            "to the row"
-        )
 
     def _raise_for_nonint(self, key):
         raise TypeError(
@@ -104,7 +85,7 @@ class ResultMetaData(object):
 
     def _row_as_tuple_getter(self, keys):
         indexes = self._indexes_for_keys(keys)
-        return _row_as_tuple(*indexes)
+        return tuplegetter(*indexes)
 
 
 class RMKeyView(collections_abc.KeysView):

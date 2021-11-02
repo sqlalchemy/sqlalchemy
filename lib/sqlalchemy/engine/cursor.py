@@ -16,10 +16,10 @@ from .result import Result
 from .result import ResultMetaData
 from .result import SimpleResultMetaData
 from .result import tuplegetter
-from .row import LegacyRow
+from .row import Row
 from .. import exc
 from .. import util
-from ..sql import expression
+from ..sql import elements
 from ..sql import sqltypes
 from ..sql import util as sql_util
 from ..sql.base import _generative
@@ -47,13 +47,13 @@ class CursorResultMetaData(ResultMetaData):
 
     __slots__ = (
         "_keymap",
-        "case_sensitive",
         "_processors",
         "_keys",
         "_keymap_by_result_column_idx",
         "_tuplefilter",
         "_translated_indexes",
-        "_safe_for_cache"
+        "_safe_for_cache",
+        "_unpickled"
         # don't need _unique_filters support here for now.  Can be added
         # if a need arises.
     )
@@ -81,7 +81,7 @@ class CursorResultMetaData(ResultMetaData):
         tup = tuplegetter(*indexes)
 
         new_metadata = self.__class__.__new__(self.__class__)
-        new_metadata.case_sensitive = self.case_sensitive
+        new_metadata._unpickled = self._unpickled
         new_metadata._processors = self._processors
         new_metadata._keys = new_keys
         new_metadata._tuplefilter = tup
@@ -142,7 +142,7 @@ class CursorResultMetaData(ResultMetaData):
             else:
                 md._keymap[new] = rec
 
-        md.case_sensitive = self.case_sensitive
+        md._unpickled = self._unpickled
         md._processors = self._processors
         assert not self._tuplefilter
         md._tuplefilter = None
@@ -154,11 +154,9 @@ class CursorResultMetaData(ResultMetaData):
 
     def __init__(self, parent, cursor_description):
         context = parent.context
-        dialect = context.dialect
         self._tuplefilter = None
         self._translated_indexes = None
-        self.case_sensitive = dialect.case_sensitive
-        self._safe_for_cache = False
+        self._safe_for_cache = self._unpickled = False
 
         if context.result_column_struct:
             (
@@ -228,10 +226,6 @@ class CursorResultMetaData(ResultMetaData):
                     for key in (metadata_entry[MD_RENDERED_NAME],) + (
                         metadata_entry[MD_OBJECTS] or ()
                     ):
-                        if not self.case_sensitive and isinstance(
-                            key, util.string_types
-                        ):
-                            key = key.lower()
                         idx = metadata_entry[MD_INDEX]
                         # if this key has been associated with more than one
                         # positional index, it's a dupe
@@ -348,8 +342,6 @@ class CursorResultMetaData(ResultMetaData):
 
         """
 
-        case_sensitive = context.dialect.case_sensitive
-
         if (
             num_ctx_cols
             and cols_are_ordered
@@ -368,9 +360,7 @@ class CursorResultMetaData(ResultMetaData):
                     idx,
                     idx,
                     rmap_entry[RM_OBJECTS],
-                    rmap_entry[RM_NAME].lower()
-                    if not case_sensitive
-                    else rmap_entry[RM_NAME],
+                    rmap_entry[RM_NAME],
                     rmap_entry[RM_RENDERED_NAME],
                     context.get_result_processor(
                         rmap_entry[RM_TYPE],
@@ -444,7 +434,6 @@ class CursorResultMetaData(ResultMetaData):
         """
 
         dialect = context.dialect
-        case_sensitive = dialect.case_sensitive
         translate_colname = context._translate_colname
         description_decoder = (
             dialect._description_decoder
@@ -472,8 +461,6 @@ class CursorResultMetaData(ResultMetaData):
                 colname = normalize_name(colname)
 
             self._keys.append(colname)
-            if not case_sensitive:
-                colname = colname.lower()
 
             yield idx, colname, untranslated, coltype
 
@@ -519,10 +506,8 @@ class CursorResultMetaData(ResultMetaData):
         result_columns,
         loose_column_name_matching,
     ):
-        dialect = context.dialect
-        case_sensitive = dialect.case_sensitive
         match_map = self._create_description_match_map(
-            result_columns, case_sensitive, loose_column_name_matching
+            result_columns, loose_column_name_matching
         )
         for (
             idx,
@@ -554,7 +539,6 @@ class CursorResultMetaData(ResultMetaData):
     def _create_description_match_map(
         cls,
         result_columns,
-        case_sensitive=True,
         loose_column_name_matching=False,
     ):
         """when matching cursor.description to a set of names that are present
@@ -566,8 +550,6 @@ class CursorResultMetaData(ResultMetaData):
         for ridx, elem in enumerate(result_columns):
             key = elem[RM_RENDERED_NAME]
 
-            if not case_sensitive:
-                key = key.lower()
             if key in d:
                 # conflicting keyname - just add the column-linked objects
                 # to the existing record.  if there is a duplicate column
@@ -610,14 +592,24 @@ class CursorResultMetaData(ResultMetaData):
             )
 
     def _key_fallback(self, key, err, raiseerr=True):
+
         if raiseerr:
-            util.raise_(
-                exc.NoSuchColumnError(
-                    "Could not locate column in row for column '%s'"
-                    % util.string_or_unprintable(key)
-                ),
-                replace_context=err,
-            )
+            if self._unpickled and isinstance(key, elements.ColumnElement):
+                util.raise_(
+                    exc.NoSuchColumnError(
+                        "Row was unpickled; lookup by ColumnElement "
+                        "is unsupported"
+                    ),
+                    replace_context=err,
+                )
+            else:
+                util.raise_(
+                    exc.NoSuchColumnError(
+                        "Could not locate column in row for column '%s'"
+                        % util.string_or_unprintable(key)
+                    ),
+                    replace_context=err,
+                )
         else:
             return None
 
@@ -680,7 +672,6 @@ class CursorResultMetaData(ResultMetaData):
                 if isinstance(key, util.string_types + util.int_types)
             },
             "_keys": self._keys,
-            "case_sensitive": self.case_sensitive,
             "_translated_indexes": self._translated_indexes,
             "_tuplefilter": self._tuplefilter,
         }
@@ -693,123 +684,12 @@ class CursorResultMetaData(ResultMetaData):
             rec[MD_RESULT_MAP_INDEX]: rec for rec in self._keymap.values()
         }
         self._keys = state["_keys"]
-        self.case_sensitive = state["case_sensitive"]
-
+        self._unpickled = True
         if state["_translated_indexes"]:
             self._translated_indexes = state["_translated_indexes"]
             self._tuplefilter = tuplegetter(*self._translated_indexes)
         else:
             self._translated_indexes = self._tuplefilter = None
-
-
-class LegacyCursorResultMetaData(CursorResultMetaData):
-    __slots__ = ()
-
-    def _contains(self, value, row):
-        key = value
-        if key in self._keymap:
-            util.warn_deprecated_20(
-                "Using the 'in' operator to test for string or column "
-                "keys, or integer indexes, in a :class:`.Row` object is "
-                "deprecated and will "
-                "be removed in a future release. "
-                "Use the `Row._fields` or `Row._mapping` attribute, i.e. "
-                "'key in row._fields'",
-            )
-            return True
-        else:
-            return self._key_fallback(key, None, False) is not None
-
-    def _key_fallback(self, key, err, raiseerr=True):
-        map_ = self._keymap
-        result = None
-
-        if isinstance(key, util.string_types):
-            result = map_.get(key if self.case_sensitive else key.lower())
-        elif isinstance(key, expression.ColumnElement):
-            if (
-                key._tq_label
-                and (
-                    key._tq_label
-                    if self.case_sensitive
-                    else key._tq_label.lower()
-                )
-                in map_
-            ):
-                result = map_[
-                    key._tq_label
-                    if self.case_sensitive
-                    else key._tq_label.lower()
-                ]
-            elif (
-                hasattr(key, "name")
-                and (key.name if self.case_sensitive else key.name.lower())
-                in map_
-            ):
-                # match is only on name.
-                result = map_[
-                    key.name if self.case_sensitive else key.name.lower()
-                ]
-
-            # search extra hard to make sure this
-            # isn't a column/label name overlap.
-            # this check isn't currently available if the row
-            # was unpickled.
-            if result is not None and result[MD_OBJECTS] not in (
-                None,
-                _UNPICKLED,
-            ):
-                for obj in result[MD_OBJECTS]:
-                    if key._compare_name_for_result(obj):
-                        break
-                else:
-                    result = None
-            if result is not None:
-                if result[MD_OBJECTS] is _UNPICKLED:
-                    util.warn_deprecated(
-                        "Retrieving row values using Column objects from a "
-                        "row that was unpickled is deprecated; adequate "
-                        "state cannot be pickled for this to be efficient.   "
-                        "This usage will raise KeyError in a future release.",
-                        version="1.4",
-                    )
-                else:
-                    util.warn_deprecated(
-                        "Retrieving row values using Column objects with only "
-                        "matching names as keys is deprecated, and will raise "
-                        "KeyError in a future release; only Column "
-                        "objects that are explicitly part of the statement "
-                        "object should be used.",
-                        version="1.4",
-                    )
-        if result is None:
-            if raiseerr:
-                util.raise_(
-                    exc.NoSuchColumnError(
-                        "Could not locate column in row for column '%s'"
-                        % util.string_or_unprintable(key)
-                    ),
-                    replace_context=err,
-                )
-            else:
-                return None
-        else:
-            map_[key] = result
-        return result
-
-    def _warn_for_nonint(self, key):
-        util.warn_deprecated_20(
-            "Using non-integer/slice indices on Row is deprecated and will "
-            "be removed in version 2.0; please use row._mapping[<key>], or "
-            "the mappings() accessor on the Result object.",
-            stacklevel=4,
-        )
-
-    def _has_key(self, key):
-        if key in self._keymap:
-            return True
-        else:
-            return self._key_fallback(key, None, False) is not None
 
 
 class ResultFetchStrategy(object):
@@ -1205,19 +1085,7 @@ class _NoResultMetaData(ResultMetaData):
         self._we_dont_return_rows()
 
 
-class _LegacyNoResultMetaData(_NoResultMetaData):
-    @property
-    def keys(self):
-        util.warn_deprecated_20(
-            "Calling the .keys() method on a result set that does not return "
-            "rows is deprecated and will raise ResourceClosedError in "
-            "SQLAlchemy 2.0.",
-        )
-        return []
-
-
 _NO_RESULT_METADATA = _NoResultMetaData()
-_LEGACY_NO_RESULT_METADATA = _LegacyNoResultMetaData()
 
 
 class BaseCursorResult(object):
@@ -1750,10 +1618,9 @@ class BaseCursorResult(object):
 class CursorResult(BaseCursorResult, Result):
     """A Result that is representing state from a DBAPI cursor.
 
-    .. versionchanged:: 1.4  The :class:`.CursorResult` and
-       :class:`.LegacyCursorResult`
-       classes replace the previous :class:`.ResultProxy` interface.
-       These classes are based on the :class:`.Result` calling API
+    .. versionchanged:: 1.4  The :class:`.CursorResult``
+       class replaces the previous :class:`.ResultProxy` interface.
+       This classes are based on the :class:`.Result` calling API
        which provides an updated usage model and calling facade for
        SQLAlchemy Core and SQLAlchemy ORM.
 
@@ -1761,14 +1628,6 @@ class CursorResult(BaseCursorResult, Result):
     additional API features and behaviors on top of the raw data returned by
     the DBAPI.   Through the use of filters such as the :meth:`.Result.scalars`
     method, other kinds of objects may also be returned.
-
-    Within the scope of the 1.x series of SQLAlchemy, Core SQL results in
-    version 1.4 return an instance of :class:`._engine.LegacyCursorResult`
-    which takes the place of the ``CursorResult`` class used for the 1.3 series
-    and previously.  This object returns rows as :class:`.LegacyRow` objects,
-    which maintains Python mapping (i.e. dictionary) like behaviors upon the
-    object itself.  Going forward, the :attr:`.Row._mapping` attribute should
-    be used for dictionary behaviors.
 
     .. seealso::
 
@@ -1839,62 +1698,7 @@ class CursorResult(BaseCursorResult, Result):
         self.cursor_strategy.yield_per(self, self.cursor, num)
 
 
-class LegacyCursorResult(CursorResult):
-    """Legacy version of :class:`.CursorResult`.
-
-    This class includes connection "connection autoclose" behavior for use with
-    "connectionless" execution, as well as delivers rows using the
-    :class:`.LegacyRow` row implementation.
-
-    .. versionadded:: 1.4
-
-    """
-
-    _autoclose_connection = False
-    _process_row = LegacyRow
-    _cursor_metadata = LegacyCursorResultMetaData
-    _cursor_strategy_cls = CursorFetchStrategy
-
-    _no_result_metadata = _LEGACY_NO_RESULT_METADATA
-
-    def close(self):
-        """Close this :class:`_engine.LegacyCursorResult`.
-
-        This method has the same behavior as that of
-        :meth:`._engine.CursorResult`, but it also may close
-        the underlying :class:`.Connection` for the case of "connectionless"
-        execution.
-
-        .. deprecated:: 2.0 "connectionless" execution is deprecated and will
-           be removed in version 2.0.   Version 2.0 will feature the
-           :class:`_future.Result`
-           object that will no longer affect the status
-           of the originating connection in any case.
-
-        After this method is called, it is no longer valid to call upon
-        the fetch methods, which will raise a :class:`.ResourceClosedError`
-        on subsequent use.
-
-        .. seealso::
-
-            :ref:`connections_toplevel`
-
-            :ref:`dbengine_implicit`
-        """
-        self._soft_close(hard=True)
-
-    def _soft_close(self, hard=False):
-        soft_closed = self._soft_closed
-        super(LegacyCursorResult, self)._soft_close(hard=hard)
-        if (
-            not soft_closed
-            and self._soft_closed
-            and self._autoclose_connection
-        ):
-            self.connection.close()
-
-
-ResultProxy = LegacyCursorResult
+ResultProxy = CursorResult
 
 
 class BufferedRowResultProxy(ResultProxy):
@@ -1919,7 +1723,7 @@ class FullyBufferedResultProxy(ResultProxy):
     _cursor_strategy_cls = FullyBufferedCursorFetchStrategy
 
 
-class BufferedColumnRow(LegacyRow):
+class BufferedColumnRow(Row):
     """Row is now BufferedColumn in all cases"""
 
 

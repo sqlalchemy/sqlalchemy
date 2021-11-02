@@ -31,7 +31,6 @@ from .cursor import BufferedColumnRow
 from .cursor import BufferedRowResultProxy
 from .cursor import CursorResult
 from .cursor import FullyBufferedResultProxy
-from .cursor import LegacyCursorResult
 from .cursor import ResultProxy
 from .interfaces import AdaptedConnection
 from .interfaces import Compiled
@@ -52,7 +51,6 @@ from .result import Result
 from .result import result_tuple
 from .result import ScalarResult
 from .row import BaseRow
-from .row import LegacyRow
 from .row import Row
 from .row import RowMapping
 from .url import make_url

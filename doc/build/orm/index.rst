@@ -11,7 +11,6 @@ tutorial.
 .. toctree::
     :maxdepth: 2
 
-    tutorial
     mapper_config
     relationships
     loading_objects

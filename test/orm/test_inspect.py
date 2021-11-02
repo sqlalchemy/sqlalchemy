@@ -584,7 +584,7 @@ class %s(SuperCls):
         s.flush()
         insp = inspect(u1)
         eq_(insp.identity, (u1.id,))
-        is_(s.query(User).get(insp.identity), u1)
+        is_(s.get(User, insp.identity), u1)
 
     def test_is_instance(self):
         User = self.classes.User

@@ -43,7 +43,7 @@ class O2MCollectionTest(_fixtures.FixtureTest):
     def test_collection_move_hitslazy(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = fixture_session()
+        sess = fixture_session(future=True)
         a1 = Address(email_address="address1")
         a2 = Address(email_address="address2")
         a3 = Address(email_address="address3")
@@ -667,7 +667,7 @@ class O2OScalarOrphanTest(_fixtures.FixtureTest):
     def test_m2o_event(self):
         User, Address = self.classes.User, self.classes.Address
 
-        sess = fixture_session()
+        sess = fixture_session(future=True)
         a1 = Address(email_address="address1")
         u1 = User(name="jack", address=a1)
 
@@ -678,6 +678,7 @@ class O2OScalarOrphanTest(_fixtures.FixtureTest):
         u2 = User(name="ed")
         # the _SingleParent extension sets the backref get to "active" !
         # u1 gets loaded and deleted
+        sess.add(u2)
         u2.address = a1
         sess.commit()
         assert sess.query(User).count() == 1
@@ -712,7 +713,7 @@ class M2MCollectionMoveTest(_fixtures.FixtureTest):
 
         Item, Keyword = (self.classes.Item, self.classes.Keyword)
 
-        session = fixture_session(autoflush=False)
+        session = fixture_session(autoflush=False, future=True)
 
         i1 = Item(description="i1")
         session.add(i1)

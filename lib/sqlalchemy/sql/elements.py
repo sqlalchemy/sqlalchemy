@@ -790,22 +790,13 @@ class ColumnElement(
 
     """
 
-    _resolve_label = None
-    """The name that should be used to identify this ColumnElement in a
-    select() object when "label resolution" logic is used; this refers
-    to using a string name in an expression like order_by() or group_by()
-    that wishes to target a labeled expression in the columns clause.
-
-    The name is distinct from that of .name or ._label to account for the case
-    where anonymizing logic may be used to change the name that's actually
-    rendered at compile time; this attribute should hold onto the original
-    name that was user-assigned when producing a .label() construct.
-
-    """
-
     _allow_label_resolve = True
     """A flag that can be flipped to prevent a column from being resolvable
-    by string label name."""
+    by string label name.
+
+    The joined eager loader strategy in the ORM uses this, for example.
+
+    """
 
     _is_implicitly_boolean = False
 
@@ -1493,7 +1484,6 @@ class BindParameter(roles.InElementRole, ColumnElement):
                 :ref:`change_4808`.
 
         """
-
         if required is NO_ARG:
             required = value is NO_ARG and callable_ is None
         if value is NO_ARG:
@@ -1784,7 +1774,7 @@ class TextClause(
 
     # help in those cases where text() is
     # interpreted in a column expression situation
-    key = _label = _resolve_label = None
+    key = _label = None
 
     _allow_label_resolve = False
 
@@ -4319,6 +4309,9 @@ class WithinGroup(ColumnElement):
                 *util.to_list(order_by), _literal_as_text_role=roles.ByOfRole
             )
 
+    def __reduce__(self):
+        return self.__class__, (self.element,) + tuple(self.order_by)
+
     def over(self, partition_by=None, order_by=None, range_=None, rows=None):
         """Produce an OVER clause against this :class:`.WithinGroup`
         construct.
@@ -4518,19 +4511,27 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
 
         """
 
-        if isinstance(element, Label):
-            self._resolve_label = element._label
-
+        orig_element = element
+        element = coercions.expect(
+            roles.ExpressionElementRole,
+            element,
+            apply_propagate_attrs=self,
+        )
         while isinstance(element, Label):
+            # TODO: this is only covered in test_text.py, but nothing
+            # fails if it's removed.  determine rationale
             element = element.element
 
         if name:
             self.name = name
-            self._resolve_label = self.name
         else:
             self.name = _anonymous_label.safe_construct(
                 id(self), getattr(element, "name", "anon")
             )
+            if isinstance(orig_element, Label):
+                # TODO: no coverage for this block, again would be in
+                # test_text.py where the resolve_label concept is important
+                self._resolve_label = orig_element._label
 
         self.key = self._tq_label = self._tq_key_label = self.name
         self._element = element
@@ -4587,7 +4588,7 @@ class Label(roles.LabeledColumnExprRole, ColumnElement):
         self._reset_memoizations()
         self._element = clone(self._element, **kw)
         if anonymize_labels:
-            self.name = self._resolve_label = _anonymous_label.safe_construct(
+            self.name = _anonymous_label.safe_construct(
                 id(self), getattr(self.element, "name", "anon")
             )
             self.key = self._tq_label = self._tq_key_label = self.name

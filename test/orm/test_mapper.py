@@ -280,7 +280,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
         s = fixture_session()
-        u = s.query(User).get(7)
+        u = s.get(User, 7)
         eq_(u._name, "jack")
         eq_(u._id, 7)
         u2 = s.query(User).filter_by(user_name="jack").one()
@@ -723,8 +723,8 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         m.add_property("name", synonym("_name"))
         m.add_property("addresses", relationship(Address))
 
-        sess = fixture_session(autocommit=False)
-        assert sess.query(User).get(7)
+        sess = fixture_session()
+        assert sess.get(User, 7)
 
         u = sess.query(User).filter_by(name="jack").one()
 
@@ -926,8 +926,8 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
         sess = fixture_session()
-        u1 = sess.query(User).get(7)
-        u2 = sess.query(User).get(8)
+        u1 = sess.get(User, 7)
+        u2 = sess.get(User, 8)
         # comparaison ops need to work
         a1 = sess.query(Address).filter(Address.user == u1).one()
         eq_(a1.id, 1)
@@ -1193,7 +1193,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         s = Session(testing.db)
         s.add(u1)
         s.commit()
-        assert s.query(NoBoolAllowed).get(u1.id) is u1
+        assert s.get(NoBoolAllowed, u1.id) is u1
 
     def test_we_dont_call_eq(self):
         class NoEqAllowed(object):
@@ -1430,8 +1430,6 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         eq_(result, [self.static.user_result[0]])
 
-    # 'Raises a "expression evaluation not supported" error at prepare time
-    @testing.fails_on("firebird", "FIXME: unknown")
     def test_function(self):
         """Mapping to a SELECT statement that has functions in it."""
 
@@ -1498,7 +1496,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         session = fixture_session()
         q = (
             session.query(Item)
-            .join("keywords")
+            .join(Item.keywords)
             .distinct()
             .filter(Keyword.name == "red")
         )
@@ -2349,7 +2347,7 @@ class RequirementsTest(fixtures.MappedTest):
         self.mapper(H3, ht3)
         self.mapper(H6, ht6)
 
-        s = fixture_session()
+        s = fixture_session(future=True)
         s.add_all([H1("abc"), H1("def")])
         h1 = H1("ghi")
         s.add(h1)
@@ -2367,7 +2365,7 @@ class RequirementsTest(fixtures.MappedTest):
         h6 = H6()
         h6.h1a = h1
         h6.h1b = x = H1()
-        assert x in s
+        s.add(x)
 
         h6.h1b.h2s.append(H2("def"))
 
@@ -2376,7 +2374,7 @@ class RequirementsTest(fixtures.MappedTest):
         h1.h2s.extend([H2("abc"), H2("def")])
         s.flush()
 
-        h1s = s.query(H1).options(sa.orm.joinedload("h2s")).all()
+        h1s = s.query(H1).options(sa.orm.joinedload(H1.h2s)).all()
         eq_(len(h1s), 5)
 
         self.assert_unordered_result(
@@ -2394,15 +2392,15 @@ class RequirementsTest(fixtures.MappedTest):
             {"h2s": (H2, [{"value": "def"}])},
         )
 
-        h1s = s.query(H1).options(sa.orm.joinedload("h3s")).all()
+        h1s = s.query(H1).options(sa.orm.joinedload(H1.h3s)).all()
 
         eq_(len(h1s), 5)
         h1s = (
             s.query(H1)
             .options(
-                sa.orm.joinedload("t6a").joinedload("h1b"),
-                sa.orm.joinedload("h2s"),
-                sa.orm.joinedload("h3s").joinedload("h1s"),
+                sa.orm.joinedload(H1.t6a).joinedload(H6.h1b),
+                sa.orm.joinedload(H1.h2s),
+                sa.orm.joinedload(H1.h3s).joinedload(H3.h1s),
             )
             .all()
         )
@@ -3151,13 +3149,13 @@ class ConfigureOrNotConfigureTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         if use_bound:
             stmt = select(User).options(
-                Load(User).load_only("name"),
+                Load(User).load_only(User.name),
             )
 
             is_true(um.configured)
         else:
             stmt = select(User).options(
-                load_only("name"),
+                load_only(User.name),
             )
             is_false(um.configured)
 

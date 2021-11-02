@@ -206,8 +206,8 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
             eq_(connection.execute(select, params).fetchall(), result)
 
     def _assert_result_str(self, select, result, params=()):
-        conn = config.db.connect(close_with_result=True)
-        eq_(conn.exec_driver_sql(select, params).fetchall(), result)
+        with config.db.connect() as conn:
+            eq_(conn.exec_driver_sql(select, params).fetchall(), result)
 
     def test_simple_limit(self, connection):
         table = self.tables.some_table

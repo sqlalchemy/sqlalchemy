@@ -69,20 +69,15 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         functions._registry = self._registry
 
     def test_compile(self):
-        for dialect in all_dialects(exclude=("sybase",)):
+        for dialect in all_dialects():
             bindtemplate = BIND_TEMPLATES[dialect.paramstyle]
             self.assert_compile(
                 func.current_timestamp(), "CURRENT_TIMESTAMP", dialect=dialect
             )
             self.assert_compile(func.localtime(), "LOCALTIME", dialect=dialect)
-            if dialect.name in ("firebird",):
-                self.assert_compile(
-                    func.nosuchfunction(), "nosuchfunction", dialect=dialect
-                )
-            else:
-                self.assert_compile(
-                    func.nosuchfunction(), "nosuchfunction()", dialect=dialect
-                )
+            self.assert_compile(
+                func.nosuchfunction(), "nosuchfunction()", dialect=dialect
+            )
 
             # test generic function compile
             class fake_func(GenericFunction):
@@ -540,6 +535,31 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             util.pickle.loads(util.pickle.dumps(f1)),
             "row_number() OVER ()",
+        )
+
+    def test_pickle_within_group(self):
+        """test #6520"""
+
+        # TODO: the test/sql package lacks a comprehensive pickling
+        # test suite even though there are __reduce__ methods in several
+        # places in sql/elements.py.   likely as part of
+        # test/sql/test_compare.py might be a place this can happen but
+        # this still relies upon a strategy for table metadata as we have
+        # in serializer.
+
+        f1 = func.percentile_cont(literal(1)).within_group()
+
+        self.assert_compile(
+            util.pickle.loads(util.pickle.dumps(f1)),
+            "percentile_cont(:param_1) WITHIN GROUP (ORDER BY )",
+        )
+
+        f1 = func.percentile_cont(literal(1)).within_group(
+            column("q"), column("p").desc()
+        )
+        self.assert_compile(
+            util.pickle.loads(util.pickle.dumps(f1)),
+            "percentile_cont(:param_1) WITHIN GROUP (ORDER BY q, p DESC)",
         )
 
     def test_functions_with_cols(self):

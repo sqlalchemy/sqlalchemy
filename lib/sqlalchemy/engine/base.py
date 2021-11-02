@@ -10,6 +10,7 @@ import contextlib
 import sys
 
 from .interfaces import Connectable
+from .interfaces import ConnectionEventsTarget
 from .interfaces import ExceptionContext
 from .util import _distill_params
 from .util import _distill_params_20
@@ -64,11 +65,15 @@ class Connection(Connectable):
     # used by sqlalchemy.engine.util.TransactionalContext
     _trans_context_manager = None
 
+    # legacy as of 2.0, should be eventually deprecated and
+    # removed.  was used in the "pre_ping" recipe that's been in the docs
+    # a long time
+    should_close_with_result = False
+
     def __init__(
         self,
         engine,
         connection=None,
-        close_with_result=False,
         _branch_from=None,
         _execution_options=None,
         _dispatch=None,
@@ -86,7 +91,6 @@ class Connection(Connectable):
             self._dbapi_connection = connection
             self._execution_options = _execution_options
             self._echo = _branch_from._echo
-            self.should_close_with_result = False
             self.dispatch = _dispatch
             self._has_events = _branch_from._has_events
         else:
@@ -99,7 +103,6 @@ class Connection(Connectable):
             self._transaction = self._nested_transaction = None
             self.__savepoint_seq = 0
             self.__in_begin = False
-            self.should_close_with_result = close_with_result
 
             self.__can_reconnect = _allow_revalidate
             self._echo = self.engine._should_log_info()
@@ -169,8 +172,7 @@ class Connection(Connectable):
 
     def _branch(self):
         """Return a new Connection which references this Connection's
-        engine and connection; but does not have close_with_result enabled,
-        and also whose close() method does nothing.
+        engine and connection; whose close() method does nothing.
 
         .. deprecated:: 1.4 the "branching" concept will be removed in
            SQLAlchemy 2.0 as well as the "Connection.connect()" method which
@@ -590,7 +592,9 @@ class Connection(Connectable):
         return self.connection.info
 
     @util.deprecated_20(":meth:`.Connection.connect`")
-    def connect(self, close_with_result=False):
+    def connect(
+        self,
+    ):
         """Returns a branched version of this :class:`_engine.Connection`.
 
         The :meth:`_engine.Connection.close` method on the returned
@@ -1333,8 +1337,6 @@ class Connection(Connectable):
             self._handle_dbapi_exception(e, None, None, None, None)
 
         ret = ctx._exec_default(None, default, None)
-        if self.should_close_with_result:
-            self.close()
 
         if self._has_events or self.engine._has_events:
             self.dispatch.after_execute(
@@ -1684,7 +1686,6 @@ class Connection(Connectable):
         """Create an :class:`.ExecutionContext` and execute, returning
         a :class:`_engine.CursorResult`."""
 
-        branched = self
         if self.__branch_from:
             # if this is a "branched" connection, do everything in terms
             # of the "root" connection, *except* for .close(), which is
@@ -1705,6 +1706,7 @@ class Connection(Connectable):
             self._handle_dbapi_exception(
                 e, util.text_type(statement), parameters, None, None
             )
+            return  # not reached
 
         if (
             self._transaction
@@ -1815,10 +1817,6 @@ class Connection(Connectable):
             result = context._setup_result_proxy()
 
             if not self._is_future:
-                should_close_with_result = branched.should_close_with_result
-
-                if not result._soft_closed and should_close_with_result:
-                    result._autoclose_connection = True
 
                 if (
                     # usually we're in a transaction so avoid relatively
@@ -1827,16 +1825,6 @@ class Connection(Connectable):
                     and context.should_autocommit
                 ):
                     self._commit_impl(autocommit=True)
-
-                # for "connectionless" execution, we have to close this
-                # Connection after the statement is complete.
-                # legacy stuff.
-                if should_close_with_result and context._soft_closed:
-                    assert not self._is_future
-
-                    # CursorResult already exhausted rows / has no rows.
-                    # close us now
-                    branched.close()
 
         except BaseException as e:
             self._handle_dbapi_exception(
@@ -2035,9 +2023,6 @@ class Connection(Connectable):
                     if invalidate_pool_on_disconnect:
                         self.engine.pool._invalidate(dbapi_conn_wrapper, e)
                     self.invalidate(e)
-            if self.should_close_with_result:
-                assert not self._is_future
-                self.close()
 
     @classmethod
     def _handle_dbapi_exception_noconnection(cls, e, dialect, engine):
@@ -2710,7 +2695,7 @@ class TwoPhaseTransaction(RootTransaction):
         self.connection._commit_twophase_impl(self.xid, self._is_prepared)
 
 
-class Engine(Connectable, log.Identified):
+class Engine(ConnectionEventsTarget, log.Identified):
     """
     Connects a :class:`~sqlalchemy.pool.Pool` and
     :class:`~sqlalchemy.engine.interfaces.Dialect` together to provide a
@@ -2965,10 +2950,9 @@ class Engine(Connectable, log.Identified):
             yield connection
 
     class _trans_ctx(object):
-        def __init__(self, conn, transaction, close_with_result):
+        def __init__(self, conn, transaction):
             self.conn = conn
             self.transaction = transaction
-            self.close_with_result = close_with_result
 
         def __enter__(self):
             self.transaction.__enter__()
@@ -2978,10 +2962,9 @@ class Engine(Connectable, log.Identified):
             try:
                 self.transaction.__exit__(type_, value, traceback)
             finally:
-                if not self.close_with_result:
-                    self.conn.close()
+                self.conn.close()
 
-    def begin(self, close_with_result=False):
+    def begin(self):
         """Return a context manager delivering a :class:`_engine.Connection`
         with a :class:`.Transaction` established.
 
@@ -2997,15 +2980,6 @@ class Engine(Connectable, log.Identified):
         is committed.  If an error is raised, the :class:`.Transaction`
         is rolled back.
 
-        Legacy use only: the ``close_with_result`` flag is normally ``False``,
-        and indicates that the :class:`_engine.Connection` will be closed when
-        the operation is complete. When set to ``True``, it indicates the
-        :class:`_engine.Connection` is in "single use" mode, where the
-        :class:`_engine.CursorResult` returned by the first call to
-        :meth:`_engine.Connection.execute` will close the
-        :class:`_engine.Connection` when that :class:`_engine.CursorResult` has
-        exhausted all result rows.
-
         .. seealso::
 
             :meth:`_engine.Engine.connect` - procure a
@@ -3016,16 +2990,13 @@ class Engine(Connectable, log.Identified):
             for a particular :class:`_engine.Connection`.
 
         """
-        if self._connection_cls._is_future:
-            conn = self.connect()
-        else:
-            conn = self.connect(close_with_result=close_with_result)
+        conn = self.connect()
         try:
             trans = conn.begin()
         except:
             with util.safe_reraise():
                 conn.close()
-        return Engine._trans_ctx(conn, trans, close_with_result)
+        return Engine._trans_ctx(conn, trans)
 
     @util.deprecated(
         "1.4",
@@ -3106,77 +3077,7 @@ class Engine(Connectable, log.Identified):
         with self.begin() as conn:
             conn._run_ddl_visitor(visitorcallable, element, **kwargs)
 
-    @util.deprecated_20(
-        ":meth:`_engine.Engine.execute`",
-        alternative="All statement execution in SQLAlchemy 2.0 is performed "
-        "by the :meth:`_engine.Connection.execute` method of "
-        ":class:`_engine.Connection`, "
-        "or in the ORM by the :meth:`.Session.execute` method of "
-        ":class:`.Session`.",
-    )
-    def execute(self, statement, *multiparams, **params):
-        """Executes the given construct and returns a
-        :class:`_engine.CursorResult`.
-
-        The arguments are the same as those used by
-        :meth:`_engine.Connection.execute`.
-
-        Here, a :class:`_engine.Connection` is acquired using the
-        :meth:`_engine.Engine.connect` method, and the statement executed
-        with that connection. The returned :class:`_engine.CursorResult`
-        is flagged
-        such that when the :class:`_engine.CursorResult` is exhausted and its
-        underlying cursor is closed, the :class:`_engine.Connection`
-        created here
-        will also be closed, which allows its associated DBAPI connection
-        resource to be returned to the connection pool.
-
-        """
-        connection = self.connect(close_with_result=True)
-        return connection.execute(statement, *multiparams, **params)
-
-    @util.deprecated_20(
-        ":meth:`_engine.Engine.scalar`",
-        alternative="All statement execution in SQLAlchemy 2.0 is performed "
-        "by the :meth:`_engine.Connection.execute` method of "
-        ":class:`_engine.Connection`, "
-        "or in the ORM by the :meth:`.Session.execute` method of "
-        ":class:`.Session`; the :meth:`_future.Result.scalar` "
-        "method can then be "
-        "used to return a scalar result.",
-    )
-    def scalar(self, statement, *multiparams, **params):
-        """Executes and returns the first column of the first row.
-
-        The underlying result/cursor is closed after execution.
-        """
-        return self.execute(statement, *multiparams, **params).scalar()
-
-    def _execute_clauseelement(
-        self,
-        elem,
-        multiparams=None,
-        params=None,
-        execution_options=_EMPTY_EXECUTION_OPTS,
-    ):
-        connection = self.connect(close_with_result=True)
-        return connection._execute_clauseelement(
-            elem, multiparams, params, execution_options
-        )
-
-    def _execute_compiled(
-        self,
-        compiled,
-        multiparams,
-        params,
-        execution_options=_EMPTY_EXECUTION_OPTS,
-    ):
-        connection = self.connect(close_with_result=True)
-        return connection._execute_compiled(
-            compiled, multiparams, params, execution_options
-        )
-
-    def connect(self, close_with_result=False):
+    def connect(self):
         """Return a new :class:`_engine.Connection` object.
 
         The :class:`_engine.Connection` object is a facade that uses a DBAPI
@@ -3191,7 +3092,7 @@ class Engine(Connectable, log.Identified):
 
         """
 
-        return self._connection_cls(self, close_with_result=close_with_result)
+        return self._connection_cls(self)
 
     @util.deprecated(
         "1.4",

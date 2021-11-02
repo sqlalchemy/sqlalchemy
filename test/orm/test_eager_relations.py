@@ -183,7 +183,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         self.mapper_registry.map_imperatively(Address, addresses)
 
         sess = fixture_session()
-        user = sess.query(User).get(7)
+        user = sess.get(User, 7)
         assert getattr(User, "addresses").hasparent(
             sa.orm.attributes.instance_state(user.addresses[0]),
             optimistic=True,
@@ -353,6 +353,10 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         """part of #2992; make sure string label references can't
         access an eager loader, else an eager load can corrupt the query.
 
+        This behavior relies upon the allow_label_resolve flag to disable
+        a column expression from being resolvable in an "order by label"
+        context.
+
         """
         Address, addresses, users, User = (
             self.classes.Address,
@@ -484,7 +488,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             eq_(q.all(), [User(id=7, addresses=[Address(id=1)])])
 
         sess.expunge_all()
-        u = sess.query(User).get(7)
+        u = sess.get(User, 7)
 
         def go():
             eq_(u.addresses[0].user_id, 7)
@@ -520,7 +524,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         sess.expunge_all()
 
         def go():
-            u = sess.query(User).get(8)
+            u = sess.get(User, 8)
             eq_(
                 User(
                     id=8,
@@ -750,7 +754,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         def go():
             eq_(
                 self.static.item_keyword_result[0:2],
-                q.join("keywords").filter(Keyword.name == "red").all(),
+                q.join(Item.keywords).filter(Keyword.name == "red").all(),
             )
 
         self.assert_sql_count(testing.db, go, 1)
@@ -759,7 +763,9 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             ka = aliased(Keyword)
             eq_(
                 self.static.item_keyword_result[0:2],
-                (q.join(ka, "keywords").filter(ka.name == "red")).all(),
+                (
+                    q.join(Item.keywords.of_type(ka)).filter(ka.name == "red")
+                ).all(),
             )
 
         self.assert_sql_count(testing.db, go, 1)
@@ -1397,7 +1403,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
 
         if not testing.against("mssql"):
             result = (
-                q.join("orders")
+                q.join(User.orders)
                 .order_by(Order.user_id.desc())
                 .limit(2)
                 .offset(1)
@@ -1419,7 +1425,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             )
 
         result = (
-            q.join("addresses")
+            q.join(User.addresses)
             .order_by(Address.email_address.desc())
             .limit(1)
             .offset(0)
@@ -1865,7 +1871,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         def go():
             a = q.filter(addresses.c.id == 1).one()
             is_not(a.user, None)
-            u1 = sess.query(User).get(7)
+            u1 = sess.get(User, 7)
             is_(a.user, u1)
 
         self.assert_sql_count(testing.db, go, 1)
@@ -3804,7 +3810,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
     def test_runs_query_on_refresh(self):
         User, Address, sess = self._eager_config_fixture()
 
-        u1 = sess.query(User).get(8)
+        u1 = sess.get(User, 8)
         assert "addresses" in u1.__dict__
         sess.expire(u1)
 
@@ -3842,7 +3848,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         )
         sess = fixture_session(autoflush=False)
 
-        u1 = sess.query(User).get(8)
+        u1 = sess.get(User, 8)
         assert "addresses" in u1.__dict__
         sess.expire(u1)
 
@@ -3864,7 +3870,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         # out an existing collection to function correctly with
         # populate_existing.
         User, Address, sess = self._eager_config_fixture()
-        u1 = sess.query(User).get(8)
+        u1 = sess.get(User, 8)
         u1.addresses[2].email_address = "foofoo"
         del u1.addresses[1]
         u1 = sess.query(User).populate_existing().filter_by(id=8).one()
@@ -3887,7 +3893,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
     def test_loads_second_level_collection_to_scalar(self):
         User, Address, Dingaling, sess = self._collection_to_scalar_fixture()
 
-        u1 = sess.query(User).get(8)
+        u1 = sess.get(User, 8)
         a1 = Address()
         u1.addresses.append(a1)
         a2 = u1.addresses[0]
@@ -3907,7 +3913,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
     def test_loads_second_level_collection_to_collection(self):
         User, Order, Item, sess = self._collection_to_collection_fixture()
 
-        u1 = sess.query(User).get(7)
+        u1 = sess.get(User, 7)
         u1.orders
         o1 = Order()
         u1.orders.append(o1)
@@ -4036,7 +4042,7 @@ class AddEntityTest(_fixtures.FixtureTest):
         def go():
             ret = (
                 sess.query(User, oalias)
-                .join(oalias, "orders")
+                .join(User.orders.of_type(oalias))
                 .order_by(User.id, oalias.id)
                 .all()
             )
@@ -4095,7 +4101,7 @@ class AddEntityTest(_fixtures.FixtureTest):
             ret = (
                 sess.query(User, oalias)
                 .options(joinedload(User.addresses))
-                .join(oalias, "orders")
+                .join(User.orders.of_type(oalias))
                 .order_by(User.id, oalias.id)
                 .all()
             )
@@ -4109,7 +4115,7 @@ class AddEntityTest(_fixtures.FixtureTest):
             ret = (
                 sess.query(User, oalias)
                 .options(joinedload(User.addresses), joinedload(oalias.items))
-                .join(oalias, "orders")
+                .join(User.orders.of_type(oalias))
                 .order_by(User.id, oalias.id)
                 .all()
             )
@@ -5968,7 +5974,9 @@ class EntityViaMultiplePathTestTwo(fixtures.DeclarativeMappedTest):
             s.query(LDA)
             .join(LDA.ld)
             .options(contains_eager(LDA.ld))
-            .join("a", (l_ac, "ld"), (u_ac, "user"))
+            .join(LDA.a)
+            .join(A.ld.of_type(l_ac))
+            .join(l_ac.user.of_type(u_ac))
             .options(
                 contains_eager(LDA.a)
                 .contains_eager(A.ld, alias=l_ac)

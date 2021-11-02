@@ -777,9 +777,9 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         sess.add(u)
         sess.flush()
         sess.expire(u)
-        u = sess.query(User).get(u.id)
+        u = sess.get(User, u.id)
         sess.expunge_all()
-        u = sess.query(User).get(u.id)
+        u = sess.get(User, u.id)
         u.name = "u1 changed"
         sess.flush()
         sess.delete(u)
@@ -903,9 +903,9 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         am = AdminUser(name="au1", email_address="au1@e1")
         sess.add(am)
         sess.flush()
-        am = sess.query(AdminUser).populate_existing().get(am.id)
+        am = sess.get(AdminUser, am.id, populate_existing=True)
         sess.expunge_all()
-        am = sess.query(AdminUser).get(am.id)
+        am = sess.get(AdminUser, am.id)
         am.name = "au1 changed"
         sess.flush()
         sess.delete(am)
@@ -971,9 +971,9 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         am = AdminUser(name="au1", email_address="au1@e1")
         sess.add(am)
         sess.flush()
-        am = sess.query(AdminUser).populate_existing().get(am.id)
+        am = sess.get(AdminUser, am.id, populate_existing=True)
         sess.expunge_all()
-        am = sess.query(AdminUser).get(am.id)
+        am = sess.get(AdminUser, am.id)
         am.name = "au1 changed"
         sess.flush()
         sess.delete(am)
@@ -2188,34 +2188,6 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         return sess, canary
 
-    def test_flush_autocommit_hook(self):
-        User, users = self.classes.User, self.tables.users
-
-        self.mapper_registry.map_imperatively(User, users)
-
-        sess, canary = self._listener_fixture(
-            autoflush=False, autocommit=True, expire_on_commit=False
-        )
-
-        u = User(name="u1")
-        sess.add(u)
-        sess.flush()
-        eq_(
-            canary,
-            [
-                "before_attach",
-                "after_attach",
-                "before_flush",
-                "after_transaction_create",
-                "after_begin",
-                "after_flush",
-                "after_flush_postexec",
-                "before_commit",
-                "after_commit",
-                "after_transaction_end",
-            ],
-        )
-
     def test_rollback_hook(self):
         User, users = self.classes.User, self.tables.users
         sess, canary = self._listener_fixture()
@@ -3267,7 +3239,7 @@ class QueryEventsTest(
         ):
             opts.update(context.execution_options)
 
-        sess = fixture_session(autocommit=False)
+        sess = fixture_session()
         sess.query(User).first()
         eq_(opts["my_option"], True)
 

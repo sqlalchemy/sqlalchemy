@@ -120,7 +120,7 @@ class SelfReferentialTest(fixtures.MappedTest):
         sess.add(c1)
         sess.flush()
         sess.expunge_all()
-        c1 = sess.query(C1).get(c1.c1)
+        c1 = sess.get(C1, c1.c1)
         c2 = C1()
         c2.parent = c1
         sess.add(c2)
@@ -1228,7 +1228,7 @@ class OneToManyManyToOneTest(fixtures.MappedTest):
         )
         self.mapper_registry.map_imperatively(Person, person)
 
-        sess = fixture_session(autocommit=False, expire_on_commit=True)
+        sess = fixture_session(expire_on_commit=True)
         p1 = Person()
         sess.add(Ball(person=p1))
         sess.commit()
@@ -1488,8 +1488,8 @@ class SelfReferentialPostUpdateTest2(fixtures.MappedTest):
         session.flush()
         session.expunge_all()
 
-        f1 = session.query(A).get(f1.id)
-        f2 = session.query(A).get(f2.id)
+        f1 = session.get(A, f1.id)
+        f2 = session.get(A, f2.id)
         assert f2.foo is f1
 
 

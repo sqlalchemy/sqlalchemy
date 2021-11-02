@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, mysql
-    :tickets: 7144
-
-    Fixed issue in MySQL :func:`_mysql.match` construct where passing a clause
-    expression such as :func:`_sql.bindparam` or other SQL expression for the
-    "against" parameter would fail. Pull request courtesy Anton Kovalevich.
-

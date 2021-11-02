@@ -292,7 +292,8 @@ passed as well::
     spongebob
 
 The :class:`_orm.aliased` construct is also central to making use of subqueries
-with the ORM; the section :ref:`orm_queryguide_subqueries` discusses this further.
+with the ORM; the sections :ref:`orm_queryguide_subqueries` and
+:ref:`orm_queryguide_join_subqueries` discusses this further.
 
 .. _orm_queryguide_selecting_text:
 
@@ -372,6 +373,109 @@ perspective.
 
   :ref:`orm_dml_returning_objects` - The :meth:`_sql.Select.from_statement`
   method also works with :term:`DML` statements that support RETURNING.
+
+
+.. _orm_queryguide_subqueries:
+
+Selecting Entities from Subqueries
+-----------------------------------
+
+The :func:`_orm.aliased` construct discussed in the previous section
+can be used with any :class:`_sql.Subuqery` construct that comes from a
+method such as :meth:`_sql.Select.subquery` to link ORM entities to the
+columns returned by that subquery; there must be a **column correspondence**
+relationship between the columns delivered by the subquery and the columns
+to which the entity is mapped, meaning, the subquery needs to be ultimately
+derived from those entities, such as in the example below::
+
+    >>> inner_stmt = select(User).where(User.id < 7).order_by(User.id)
+    >>> subq = inner_stmt.subquery()
+    >>> aliased_user = aliased(User, subq)
+    >>> stmt = select(aliased_user)
+    >>> for user_obj in session.execute(stmt).scalars():
+    ...     print(user_obj)
+    {opensql} SELECT anon_1.id, anon_1.name, anon_1.fullname
+    FROM (SELECT user_account.id AS id, user_account.name AS name, user_account.fullname AS fullname
+    FROM user_account
+    WHERE user_account.id < ? ORDER BY user_account.id) AS anon_1
+    [generated in ...] (7,)
+    {stop}User(id=1, name='spongebob', fullname='Spongebob Squarepants')
+    User(id=2, name='sandy', fullname='Sandy Cheeks')
+    User(id=3, name='patrick', fullname='Patrick Star')
+    User(id=4, name='squidward', fullname='Squidward Tentacles')
+    User(id=5, name='ehkrabs', fullname='Eugene H. Krabs')
+
+.. seealso::
+
+    :ref:`tutorial_subqueries_orm_aliased` - in the :ref:`unified_tutorial`
+
+    :ref:`orm_queryguide_join_subqueries`
+
+.. _orm_queryguide_unions:
+
+Selecting Entities from UNIONs and other set operations
+--------------------------------------------------------
+
+The :func:`_sql.union` and :func:`_sql.union_all` functions are the most
+common set operations, which along with other set operations such as
+:func:`_sql.except_`, :func:`_sql.intersect` and others deliver an object known as
+a :class:`_sql.CompoundSelect`, which is composed of multiple
+:class:`_sql.Select` constructs joined by a set-operation keyword.   ORM entities may
+be selected from simple compound selects using the :meth:`_sql.Select.from_statement`
+method illustrated previously at :ref:`orm_queryguide_selecting_text`.  In
+this method, the UNION statement is the complete statement that will be
+rendered, no additional criteria can be added after :meth:`_sql.Select.from_statement`
+is used::
+
+    >>> from sqlalchemy import union_all
+    >>> u = union_all(
+    ...     select(User).where(User.id < 2),
+    ...     select(User).where(User.id == 3)
+    ... ).order_by(User.id)
+    >>> stmt = select(User).from_statement(u)
+    >>> for user_obj in session.execute(stmt).scalars():
+    ...     print(user_obj)
+    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    FROM user_account
+    WHERE user_account.id < ? UNION ALL SELECT user_account.id, user_account.name, user_account.fullname
+    FROM user_account
+    WHERE user_account.id = ? ORDER BY id
+    [generated in ...] (2, 3)
+    {stop}User(id=1, name='spongebob', fullname='Spongebob Squarepants')
+    User(id=3, name='patrick', fullname='Patrick Star')
+
+A :class:`_sql.CompoundSelect` construct can be more flexibly used within
+a query that can be further modified by organizing it into a subquery
+and linking it to an ORM entity using :func:`_orm.aliased`,
+as illustrated previously at :ref:`orm_queryguide_subqueries`.  In the
+example below, we first use :meth:`_sql.CompoundSelect.subquery` to create
+a subquery of the UNION ALL statement, we then package that into the
+:func:`_orm.aliased` construct where it can be used like any other mapped
+entity in a :func:`_sql.select` construct, including that we can add filtering
+and order by criteria based on its exported columns::
+
+    >>> subq = union_all(
+    ...     select(User).where(User.id < 2),
+    ...     select(User).where(User.id == 3)
+    ... ).subquery()
+    >>> user_alias = aliased(User, subq)
+    >>> stmt = select(user_alias).order_by(user_alias.id)
+    >>> for user_obj in session.execute(stmt).scalars():
+    ...     print(user_obj)
+    {opensql}SELECT anon_1.id, anon_1.name, anon_1.fullname
+    FROM (SELECT user_account.id AS id, user_account.name AS name, user_account.fullname AS fullname
+    FROM user_account
+    WHERE user_account.id < ? UNION ALL SELECT user_account.id AS id, user_account.name AS name, user_account.fullname AS fullname
+    FROM user_account
+    WHERE user_account.id = ?) AS anon_1 ORDER BY anon_1.id
+    [generated in ...] (2, 3)
+    {stop}User(id=1, name='spongebob', fullname='Spongebob Squarepants')
+    User(id=3, name='patrick', fullname='Patrick Star')
+
+
+.. seealso::
+
+    :ref:`tutorial_orm_union` - in the :ref:`unified_tutorial`
 
 
 .. _orm_queryguide_joins:
@@ -498,6 +602,8 @@ appropriate constraint to use is ambiguous.
     the entities at the level of the mapped :class:`_schema.Table` objects are consulted
     when an attempt is made to infer an ON clause for the JOIN.
 
+.. _queryguide_join_onclause:
+
 Joins to a Target with an ON Clause
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -591,7 +697,7 @@ and the second being a custom limiting criteria::
     The :meth:`_orm.PropComparator.and_` method also works with loader
     strategies. See the section :ref:`loader_option_criteria` for an example.
 
-.. _orm_queryguide_subqueries:
+.. _orm_queryguide_join_subqueries:
 
 Joining to Subqueries
 ^^^^^^^^^^^^^^^^^^^^^^^

@@ -399,7 +399,7 @@ class HasHints(object):
 
             select(mytable).\
                 with_hint(mytable, "index(%(name)s ix_mytable)", 'oracle').\
-                with_hint(mytable, "WITH INDEX ix_mytable", 'sybase')
+                with_hint(mytable, "WITH INDEX ix_mytable", 'mssql')
 
         .. seealso::
 
@@ -2049,8 +2049,9 @@ class CTE(
         AliasedReturnsRows._traverse_internals
         + [
             ("_cte_alias", InternalTraversal.dp_clauseelement),
-            ("_restates", InternalTraversal.dp_clauseelement_list),
+            ("_restates", InternalTraversal.dp_clauseelement),
             ("recursive", InternalTraversal.dp_boolean),
+            ("nesting", InternalTraversal.dp_boolean),
         ]
         + HasPrefixes._has_prefixes_traverse_internals
         + HasSuffixes._has_suffixes_traverse_internals
@@ -2075,13 +2076,14 @@ class CTE(
         recursive=False,
         nesting=False,
         _cte_alias=None,
-        _restates=(),
+        _restates=None,
         _prefixes=None,
         _suffixes=None,
     ):
         self.recursive = recursive
         self.nesting = nesting
         self._cte_alias = _cte_alias
+        # Keep recursivity reference with union/union_all
         self._restates = _restates
         if _prefixes:
             self._prefixes = _prefixes
@@ -2134,7 +2136,7 @@ class CTE(
             name=self.name,
             recursive=self.recursive,
             nesting=self.nesting,
-            _restates=self._restates + (self,),
+            _restates=self,
             _prefixes=self._prefixes,
             _suffixes=self._suffixes,
         )
@@ -2154,10 +2156,18 @@ class CTE(
             name=self.name,
             recursive=self.recursive,
             nesting=self.nesting,
-            _restates=self._restates + (self,),
+            _restates=self,
             _prefixes=self._prefixes,
             _suffixes=self._suffixes,
         )
+
+    def _get_reference_cte(self):
+        """
+        A recursive CTE is updated to attach the recursive part.
+        Updated CTEs should still refer to the original CTE.
+        This function returns this reference identifier.
+        """
+        return self._restates if self._restates is not None else self
 
 
 class HasCTE(roles.HasCTERole):
@@ -3827,11 +3837,18 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
     @_generative
     def order_by(self, *clauses):
         r"""Return a new selectable with the given list of ORDER BY
-        criterion applied.
+        criteria applied.
 
         e.g.::
 
             stmt = select(table).order_by(table.c.id, table.c.name)
+
+        All existing ORDER BY criteria may be cancelled by passing
+        ``None`` by itself.  New ORDER BY criteria may then be added by
+        invoking :meth:`_sql.Select.order_by` again, e.g.::
+
+            # will erase all ORDER BY and ORDER BY new_col alone
+            stmt = stmt.order_by(None).order_by(new_col)
 
         :param \*clauses: a series of :class:`_expression.ColumnElement`
          constructs
@@ -4532,7 +4549,7 @@ class SelectState(util.MemoizedSlots, CompileState):
 
     def _memoized_attr__label_resolve_dict(self):
         with_cols = dict(
-            (c._resolve_label or c._tq_label or c.key, c)
+            (c._tq_label or c.key, c)
             for c in self.statement._all_selected_columns
             if c._allow_label_resolve
         )

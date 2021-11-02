@@ -105,6 +105,8 @@ class RelationshipProperty(StrategizedProperty):
     strategy_wildcard_key = "relationship"
     inherit_cache = True
 
+    _links_to_entity = True
+
     _persistence_only = dict(
         passive_deletes=False,
         passive_updates=True,
@@ -1159,7 +1161,13 @@ class RelationshipProperty(StrategizedProperty):
             :func:`_orm.relationship`.
 
             """
-            return self.property.entity
+            # this is a relatively recent change made for
+            # 1.4.27 as part of #7244.
+            # TODO: shouldn't _of_type be inspected up front when received?
+            if self._of_type is not None:
+                return inspect(self._of_type)
+            else:
+                return self.property.entity
 
         @util.memoized_property
         def mapper(self):

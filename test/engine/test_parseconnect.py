@@ -427,7 +427,6 @@ class DialectImportTest(fixtures.TestBase):
 
         for name in (
             "mysql",
-            "firebird",
             "postgresql",
             "sqlite",
             "oracle",

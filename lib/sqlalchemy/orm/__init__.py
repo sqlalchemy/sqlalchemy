@@ -107,8 +107,7 @@ def create_session(bind=None, **kwargs):
 
     The defaults of create_session() are the opposite of that of
     :func:`sessionmaker`; ``autoflush`` and ``expire_on_commit`` are
-    False, ``autocommit`` is True.  In this sense the session acts
-    more like the "classic" SQLAlchemy 0.3 session with these.
+    False.
 
     Usage::
 
@@ -119,11 +118,6 @@ def create_session(bind=None, **kwargs):
     create_session().
 
     """
-
-    if kwargs.get("future", False):
-        kwargs.setdefault("autocommit", False)
-    else:
-        kwargs.setdefault("autocommit", True)
 
     kwargs.setdefault("autoflush", False)
     kwargs.setdefault("expire_on_commit", False)

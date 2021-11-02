@@ -2060,9 +2060,6 @@ Result Set  API
 .. autoclass:: IteratorResult
     :members:
 
-.. autoclass:: LegacyRow
-    :members:
-
 .. autoclass:: MergedResult
     :members:
 
@@ -2085,9 +2082,6 @@ Result Set  API
     :members:
     :inherited-members:
     :exclude-members: memoized_attribute, memoized_instancemethod
-
-.. autoclass:: LegacyCursorResult
-    :members:
 
 .. autoclass:: Row
     :members:

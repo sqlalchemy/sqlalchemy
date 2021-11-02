@@ -362,7 +362,6 @@ class AsyncAdapt_asyncpg_cursor:
         if not self._inputsizes:
             return tuple("$%d" % idx for idx, _ in enumerate(params, 1))
         else:
-
             return tuple(
                 "$%d::%s" % (idx, typ) if typ else "$%d" % idx
                 for idx, typ in enumerate(

@@ -12,8 +12,9 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import TypeDecorator
+from sqlalchemy.orm import make_transient
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm.session import make_transient
+from sqlalchemy.orm import with_parent
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -114,20 +115,20 @@ class NaturalPKTest(fixtures.MappedTest):
 
         sess.add(u1)
         sess.flush()
-        assert sess.query(User).get("jack") is u1
+        assert sess.get(User, "jack") is u1
 
         u1.username = "ed"
         sess.flush()
 
         def go():
-            assert sess.query(User).get("ed") is u1
+            assert sess.get(User, "ed") is u1
 
         self.assert_sql_count(testing.db, go, 0)
 
-        assert sess.query(User).get("jack") is None
+        assert sess.get(User, "jack") is None
 
         sess.expunge_all()
-        u1 = sess.query(User).get("ed")
+        u1 = sess.get(User, "ed")
         eq_(User(username="ed", fullname="jack"), u1)
 
     def test_load_after_expire(self):
@@ -140,7 +141,7 @@ class NaturalPKTest(fixtures.MappedTest):
 
         sess.add(u1)
         sess.flush()
-        assert sess.query(User).get("jack") is u1
+        assert sess.get(User, "jack") is u1
 
         sess.execute(
             users.update().values({User.username: "jack"}), dict(username="ed")
@@ -153,8 +154,8 @@ class NaturalPKTest(fixtures.MappedTest):
         assert_raises(sa.orm.exc.ObjectDeletedError, getattr, u1, "username")
 
         sess.expunge_all()
-        assert sess.query(User).get("jack") is None
-        assert sess.query(User).get("ed").fullname == "jack"
+        assert sess.get(User, "jack") is None
+        assert sess.get(User, "ed").fullname == "jack"
 
     @testing.requires.returning
     def test_update_to_sql_expr(self):
@@ -202,13 +203,13 @@ class NaturalPKTest(fixtures.MappedTest):
 
         sess.add(u1)
         sess.flush()
-        assert sess.query(User).get("jack") is u1
+        assert sess.get(User, "jack") is u1
 
         sess.expire(u1)
         u1.username = "ed"
         sess.flush()
         sess.expunge_all()
-        assert sess.query(User).get("ed").fullname == "jack"
+        assert sess.get(User, "ed").fullname == "jack"
 
     @testing.requires.on_update_cascade
     def test_onetomany_passive(self):
@@ -243,7 +244,7 @@ class NaturalPKTest(fixtures.MappedTest):
         sess.add(u1)
         sess.flush()
 
-        assert sess.query(Address).get("jack1") is u1.addresses[0]
+        assert sess.get(Address, "jack1") is u1.addresses[0]
 
         u1.username = "ed"
         sess.flush()
@@ -255,7 +256,7 @@ class NaturalPKTest(fixtures.MappedTest):
             sess.query(Address).all(),
         )
 
-        u1 = sess.query(User).get("ed")
+        u1 = sess.get(User, "ed")
         u1.username = "jack"
 
         def go():
@@ -274,16 +275,16 @@ class NaturalPKTest(fixtures.MappedTest):
                 username="jack",
                 addresses=[Address(username="jack"), Address(username="jack")],
             )
-            == sess.query(User).get("jack")
+            == sess.get(User, "jack")
         )
 
-        u1 = sess.query(User).get("jack")
+        u1 = sess.get(User, "jack")
         u1.addresses = []
         u1.username = "fred"
         sess.flush()
         sess.expunge_all()
-        assert sess.query(Address).get("jack1").username is None
-        u1 = sess.query(User).get("fred")
+        assert sess.get(Address, "jack1").username is None
+        u1 = sess.get(User, "fred")
         eq_(User(username="fred", fullname="jack"), u1)
 
     @testing.requires.on_update_cascade
@@ -524,7 +525,7 @@ class NaturalPKTest(fixtures.MappedTest):
             sess.query(Address).all(),
         )
 
-        u1 = sess.query(User).get("ed")
+        u1 = sess.get(User, "ed")
         assert len(u1.addresses) == 2  # load addresses
         u1.username = "fred"
 
@@ -618,10 +619,10 @@ class NaturalPKTest(fixtures.MappedTest):
         eq_(["ed", "jack"], sorted([u.username for u in r[1].users]))
 
         sess.expunge_all()
-        u2 = sess.query(User).get(u2.username)
+        u2 = sess.get(User, u2.username)
         u2.username = "wendy"
         sess.flush()
-        r = sess.query(Item).with_parent(u2).all()
+        r = sess.query(Item).filter(with_parent(u2, User.items)).all()
         eq_(Item(itemname="item2"), r[0])
 
     def test_manytoone_deferred_relationship_expr(self):
@@ -839,16 +840,16 @@ class ReversePKsTest(fixtures.MappedTest):
         a_editable.status = PUBLISHED
 
         session.commit()
-        assert session.query(User).get([1, PUBLISHED]) is a_editable
-        assert session.query(User).get([1, ARCHIVED]) is a_published
+        assert session.get(User, [1, PUBLISHED]) is a_editable
+        assert session.get(User, [1, ARCHIVED]) is a_published
 
         a_published.status = PUBLISHED
         a_editable.status = EDITABLE
 
         session.commit()
 
-        assert session.query(User).get([1, PUBLISHED]) is a_published
-        assert session.query(User).get([1, EDITABLE]) is a_editable
+        assert session.get(User, [1, PUBLISHED]) is a_published
+        assert session.get(User, [1, EDITABLE]) is a_editable
 
     @testing.requires.savepoints
     def test_reverse_savepoint(self):
@@ -925,7 +926,7 @@ class SelfReferentialTest(fixtures.MappedTest):
             },
         )
 
-        sess = fixture_session()
+        sess = fixture_session(future=True)
         n1 = Node(name="n1")
         sess.add(n1)
         n2 = Node(name="n11", parentnode=n1)
@@ -1104,7 +1105,7 @@ class NonPKCascadeTest(fixtures.MappedTest):
             [("jack",), ("jack",)],
         )
 
-        assert sess.query(Address).get(a1.id) is u1.addresses[0]
+        assert sess.get(Address, a1.id) is u1.addresses[0]
 
         u1.username = "ed"
         sess.flush()
@@ -1120,7 +1121,7 @@ class NonPKCascadeTest(fixtures.MappedTest):
             sess.query(Address).all(),
         )
 
-        u1 = sess.query(User).get(u1.id)
+        u1 = sess.get(User, u1.id)
         u1.username = "jack"
 
         def go():
@@ -1139,16 +1140,16 @@ class NonPKCascadeTest(fixtures.MappedTest):
                 username="jack",
                 addresses=[Address(username="jack"), Address(username="jack")],
             )
-            == sess.query(User).get(u1.id)
+            == sess.get(User, u1.id)
         )
         sess.expunge_all()
 
-        u1 = sess.query(User).get(u1.id)
+        u1 = sess.get(User, u1.id)
         u1.addresses = []
         u1.username = "fred"
         sess.flush()
         sess.expunge_all()
-        a1 = sess.query(Address).get(a1.id)
+        a1 = sess.get(Address, a1.id)
         eq_(a1.username, None)
 
         eq_(
@@ -1156,7 +1157,7 @@ class NonPKCascadeTest(fixtures.MappedTest):
             [(None,), (None,)],
         )
 
-        u1 = sess.query(User).get(u1.id)
+        u1 = sess.get(User, u1.id)
         eq_(User(username="fred", fullname="jack"), u1)
 
 

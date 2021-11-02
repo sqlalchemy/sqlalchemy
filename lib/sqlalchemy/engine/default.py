@@ -249,13 +249,6 @@ class DefaultDialect(interfaces.Dialect):
             'expressions, or an "empty set" SELECT, at statement execution'
             "time.",
         ),
-        case_sensitive=(
-            "1.4",
-            "The :paramref:`_sa.create_engine.case_sensitive` parameter "
-            "is deprecated and will be removed in a future release. "
-            "Applications should work with result column names in a case "
-            "sensitive fashion.",
-        ),
         server_side_cursors=(
             "1.4",
             "The :paramref:`_sa.create_engine.server_side_cursors` parameter "
@@ -272,7 +265,6 @@ class DefaultDialect(interfaces.Dialect):
         paramstyle=None,
         dbapi=None,
         implicit_returning=None,
-        case_sensitive=True,
         supports_native_boolean=None,
         max_identifier_length=None,
         label_length=None,
@@ -315,7 +307,6 @@ class DefaultDialect(interfaces.Dialect):
         self.type_compiler = self.type_compiler(self)
         if supports_native_boolean is not None:
             self.supports_native_boolean = supports_native_boolean
-        self.case_sensitive = case_sensitive
 
         self._user_defined_max_identifier_length = max_identifier_length
         if self._user_defined_max_identifier_length:
@@ -855,7 +846,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
     _is_implicit_returning = False
     _is_explicit_returning = False
-    _is_future_result = False
     _is_server_side = False
 
     _soft_closed = False
@@ -889,11 +879,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.isddl = True
 
         self.execution_options = execution_options
-
-        self._is_future_result = (
-            connection._is_future
-            or self.execution_options.get("future_result", False)
-        )
 
         self.unicode_statement = util.text_type(compiled)
         if compiled.schema_translate_map:
@@ -946,11 +931,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.cache_hit = cache_hit
 
         self.execution_options = execution_options
-
-        self._is_future_result = (
-            connection._is_future
-            or self.execution_options.get("future_result", False)
-        )
 
         self.result_column_struct = (
             compiled._result_columns,
@@ -1106,11 +1086,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         self.execution_options = execution_options
 
-        self._is_future_result = (
-            connection._is_future
-            or self.execution_options.get("future_result", False)
-        )
-
         if not parameters:
             if self.dialect.positional:
                 self.parameters = [dialect.execute_sequence_format()]
@@ -1156,11 +1131,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.dialect = connection.dialect
 
         self.execution_options = execution_options
-
-        self._is_future_result = (
-            connection._is_future
-            or self.execution_options.get("future_result", False)
-        )
 
         self.cursor = self.create_cursor()
         return self
@@ -1420,18 +1390,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             if cursor_description is None:
                 strategy = _cursor._NO_CURSOR_DQL
 
-            if self._is_future_result:
-                if self.root_connection.should_close_with_result:
-                    raise exc.InvalidRequestError(
-                        "can't use future_result=True with close_with_result"
-                    )
-                result = _cursor.CursorResult(
-                    self, strategy, cursor_description
-                )
-            else:
-                result = _cursor.LegacyCursorResult(
-                    self, strategy, cursor_description
-                )
+            result = _cursor.CursorResult(self, strategy, cursor_description)
 
         if (
             self.compiled
@@ -1493,12 +1452,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         if cursor_description is None:
             strategy = _cursor._NO_CURSOR_DML
 
-        if self._is_future_result:
-            result = _cursor.CursorResult(self, strategy, cursor_description)
-        else:
-            result = _cursor.LegacyCursorResult(
-                self, strategy, cursor_description
-            )
+        result = _cursor.CursorResult(self, strategy, cursor_description)
 
         if self.isinsert:
             if self._is_implicit_returning:
@@ -1536,8 +1490,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         elif not result._metadata.returns_rows:
             # no results, get rowcount
-            # (which requires open cursor on some drivers
-            # such as kintersbasdb, mxodbc)
+            # (which requires open cursor on some drivers)
             result.rowcount
             result._soft_close()
         return result
@@ -1584,7 +1537,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         from the bind parameter's ``TypeEngine`` objects.
 
         This method only called by those dialects which require it,
-        currently cx_oracle.
+        currently cx_oracle, asyncpg and pg8000.
 
         """
         if self.isddl or self.is_text:

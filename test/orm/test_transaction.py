@@ -74,28 +74,12 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         assert s._legacy_transaction() is tran
         tran.close()
 
-    def test_subtransaction_on_external_subtrans(self, conn):
-        users, User = self.tables.users, self.classes.User
-
-        self.mapper_registry.map_imperatively(User, users)
-
-        trans = conn.begin()
-        sess = Session(bind=conn, autocommit=False, autoflush=True)
-        sess.begin(subtransactions=True)
-        u = User(name="ed")
-        sess.add(u)
-        sess.flush()
-        sess.commit()  # commit does nothing
-        trans.rollback()  # rolls back
-        assert len(sess.query(User).all()) == 0
-        sess.close()
-
     def test_subtransaction_on_external_no_begin(self, conn):
         users, User = self.tables.users, self.classes.User
 
         self.mapper_registry.map_imperatively(User, users)
         trans = conn.begin()
-        sess = Session(bind=conn, autocommit=False, autoflush=True)
+        sess = Session(bind=conn, autoflush=True)
         u = User(name="ed")
         sess.add(u)
         sess.flush()
@@ -110,7 +94,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
 
         self.mapper_registry.map_imperatively(User, users)
         trans = conn.begin()
-        sess = Session(bind=conn, autocommit=False, autoflush=True)
+        sess = Session(bind=conn, autoflush=True)
         u1 = User(name="u1")
         sess.add(u1)
         sess.flush()
@@ -132,7 +116,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         conn = future_conn
         conn.begin()
 
-        sess = Session(bind=conn, autocommit=False, autoflush=True)
+        sess = Session(bind=conn, autoflush=True)
         u = User(name="ed")
         sess.add(u)
         sess.flush()
@@ -149,7 +133,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         conn = future_conn
         conn.begin()
 
-        sess = Session(bind=conn, autocommit=False, autoflush=True)
+        sess = Session(bind=conn, autoflush=True)
         u = User(name="ed")
         sess.add(u)
         sess.flush()
@@ -166,7 +150,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
 
         conn = future_conn
         conn.begin()
-        sess = Session(bind=conn, autocommit=False, autoflush=True)
+        sess = Session(bind=conn, autoflush=True)
         u1 = User(name="u1")
         sess.add(u1)
         sess.flush()
@@ -217,71 +201,6 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         assert u1 not in session
         session.rollback()
         assert u1 in session
-
-    @testing.requires.savepoints
-    def test_heavy_nesting(self):
-        users = self.tables.users
-
-        session = fixture_session()
-        session.begin()
-        session.connection().execute(users.insert().values(name="user1"))
-        session.begin(subtransactions=True)
-        session.begin_nested()
-        session.connection().execute(users.insert().values(name="user2"))
-        assert (
-            session.connection()
-            .exec_driver_sql("select count(1) from users")
-            .scalar()
-            == 2
-        )
-        session.rollback()
-        assert (
-            session.connection()
-            .exec_driver_sql("select count(1) from users")
-            .scalar()
-            == 1
-        )
-        session.connection().execute(users.insert().values(name="user3"))
-        session.commit()
-        assert (
-            session.connection()
-            .exec_driver_sql("select count(1) from users")
-            .scalar()
-            == 2
-        )
-
-    @testing.requires.savepoints
-    def test_heavy_nesting_future(self):
-        users = self.tables.users
-
-        engine = Engine._future_facade(testing.db)
-        with Session(engine, autocommit=False) as session:
-            session.begin()
-            session.connection().execute(users.insert().values(name="user1"))
-            session.begin(subtransactions=True)
-            session.begin_nested()
-            session.connection().execute(users.insert().values(name="user2"))
-            assert (
-                session.connection()
-                .exec_driver_sql("select count(1) from users")
-                .scalar()
-                == 2
-            )
-            session.rollback()
-            assert (
-                session.connection()
-                .exec_driver_sql("select count(1) from users")
-                .scalar()
-                == 1
-            )
-            session.connection().execute(users.insert().values(name="user3"))
-            session.commit()
-            assert (
-                session.connection()
-                .exec_driver_sql("select count(1) from users")
-                .scalar()
-                == 2
-            )
 
     @testing.requires.savepoints
     def test_dirty_state_transferred_deep_nesting(self):
@@ -345,8 +264,8 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
 
         self.mapper_registry.map_imperatively(User, users)
 
-        s1 = fixture_session(autocommit=False)
-        s2 = fixture_session(autocommit=False)
+        s1 = fixture_session()
+        s2 = fixture_session()
         u1 = User(name="u1")
         s1.add(u1)
         s1.flush()
@@ -368,7 +287,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         self.mapper_registry.map_imperatively(Address, addresses)
 
         engine2 = engines.testing_engine()
-        sess = fixture_session(autocommit=True, autoflush=False, twophase=True)
+        sess = fixture_session(autoflush=False, twophase=True)
         sess.bind_mapper(User, testing.db)
         sess.bind_mapper(Address, engine2)
         sess.begin()
@@ -411,20 +330,6 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         assert not c2.invalidated
         assert c2.connection.is_valid
 
-    def test_subtransaction_on_noautocommit(self):
-        User, users = self.classes.User, self.tables.users
-
-        self.mapper_registry.map_imperatively(User, users)
-        sess = fixture_session(autocommit=False, autoflush=True)
-        sess.begin(subtransactions=True)
-        u = User(name="u1")
-        sess.add(u)
-        sess.flush()
-        sess.commit()  # commit does nothing
-        sess.rollback()  # rolls back
-        assert len(sess.query(User).all()) == 0
-        sess.close()
-
     @testing.requires.savepoints
     def test_nested_transaction(self):
         User, users = self.classes.User, self.tables.users
@@ -454,7 +359,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         User, users = self.classes.User, self.tables.users
 
         self.mapper_registry.map_imperatively(User, users)
-        sess = fixture_session(autocommit=False)
+        sess = fixture_session()
         u = User(name="u1")
         sess.add(u)
         sess.flush()
@@ -476,7 +381,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         User, users = self.classes.User, self.tables.users
 
         self.mapper_registry.map_imperatively(User, users)
-        sess = fixture_session(autocommit=False, future=True)
+        sess = fixture_session(future=True)
         u = User(name="u1")
         sess.add(u)
         sess.flush()
@@ -499,7 +404,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
 
         self.mapper_registry.map_imperatively(User, users)
 
-        sess = fixture_session(autocommit=True)
+        sess = fixture_session()
 
         sess.begin()
         sess.begin_nested()
@@ -516,6 +421,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         sess.commit()
 
         eq_(set(sess.query(User).all()), set([u2]))
+        sess.rollback()
 
         sess.begin()
         sess.begin_nested()
@@ -530,44 +436,12 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         sess.close()
 
     @testing.requires.savepoints
-    def test_mixed_transaction_control(self):
-        users, User = self.tables.users, self.classes.User
-
-        self.mapper_registry.map_imperatively(User, users)
-
-        sess = fixture_session(autocommit=True)
-
-        sess.begin()
-        sess.begin_nested()
-        transaction = sess.begin(subtransactions=True)
-
-        sess.add(User(name="u1"))
-
-        transaction.commit()
-        sess.commit()
-        sess.commit()
-
-        sess.close()
-
-        eq_(len(sess.query(User).all()), 1)
-
-        t1 = sess.begin()
-        t2 = sess.begin_nested()
-
-        sess.add(User(name="u2"))
-
-        t2.commit()
-        assert sess._legacy_transaction() is t1
-
-        sess.close()
-
-    @testing.requires.savepoints
     def test_mixed_transaction_close(self):
         users, User = self.tables.users, self.classes.User
 
         self.mapper_registry.map_imperatively(User, users)
 
-        sess = fixture_session(autocommit=False)
+        sess = fixture_session()
 
         sess.begin_nested()
 
@@ -682,28 +556,8 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
             sess.commit,
         )
 
-    def test_error_on_using_inactive_session_commands(self):
-        users, User = self.tables.users, self.classes.User
-
-        self.mapper_registry.map_imperatively(User, users)
-        sess = fixture_session(autocommit=True)
-        sess.begin()
-        sess.begin(subtransactions=True)
-        sess.add(User(name="u1"))
-        sess.flush()
-        sess.rollback()
-        assert_raises_message(
-            sa_exc.InvalidRequestError,
-            "This session is in 'inactive' state, due to the SQL transaction "
-            "being rolled back; no further SQL can be emitted within this "
-            "transaction.",
-            sess.begin,
-            subtransactions=True,
-        )
-        sess.close()
-
     def test_no_sql_during_commit(self):
-        sess = fixture_session(autocommit=False)
+        sess = fixture_session()
 
         @event.listens_for(sess, "after_commit")
         def go(session):
@@ -717,7 +571,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         )
 
     def test_no_sql_during_prepare(self):
-        sess = fixture_session(autocommit=False, twophase=True)
+        sess = fixture_session(twophase=True)
 
         sess.prepare()
 
@@ -730,7 +584,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         )
 
     def test_no_sql_during_rollback(self):
-        sess = fixture_session(autocommit=False)
+        sess = fixture_session()
 
         sess.connection()
 
@@ -812,7 +666,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         eq_(session.is_active, True)
 
     def test_no_prepare_wo_twophase(self):
-        sess = fixture_session(autocommit=False)
+        sess = fixture_session()
 
         assert_raises_message(
             sa_exc.InvalidRequestError,
@@ -833,36 +687,6 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         assert_raises_message(
             sa_exc.ResourceClosedError,
             "This transaction is closed",
-            trans.commit,
-        )
-
-    def test_deactive_status_check(self):
-        sess = fixture_session()
-        trans = sess.begin()
-        trans2 = sess.begin(subtransactions=True)
-        trans2.rollback()
-        assert_raises_message(
-            sa_exc.InvalidRequestError,
-            "This session is in 'inactive' state, due to the SQL transaction "
-            "being rolled back; no further SQL can be emitted within this "
-            "transaction.",
-            trans.commit,
-        )
-
-    def test_deactive_status_check_w_exception(self):
-        sess = fixture_session()
-        trans = sess.begin()
-        trans2 = sess.begin(subtransactions=True)
-        try:
-            raise Exception("test")
-        except Exception:
-            trans2.rollback(_capture_exception=True)
-        assert_raises_message(
-            sa_exc.PendingRollbackError,
-            r"This Session's transaction has been rolled back due to a "
-            r"previous exception during flush. To begin a new transaction "
-            r"with this Session, first issue Session.rollback\(\). "
-            r"Original exception was: test",
             trans.commit,
         )
 
@@ -1019,7 +843,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         User, users = self.classes.User, self.tables.users
 
         self.mapper_registry.map_imperatively(User, users)
-        session = fixture_session(autocommit=False)
+        session = fixture_session()
         session.add(User(name="ed"))
         session._legacy_transaction().commit()
 
@@ -1029,7 +853,7 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         User, users = self.classes.User, self.tables.users
 
         self.mapper_registry.map_imperatively(User, users)
-        session = fixture_session(autocommit=False, future=True)
+        session = fixture_session(future=True)
         session.add(User(name="ed"))
         session._legacy_transaction().commit()
 
@@ -1341,7 +1165,7 @@ class FixtureDataTest(_LocalFixture):
     def test_attrs_on_rollback(self):
         User = self.classes.User
         sess = fixture_session()
-        u1 = sess.query(User).get(7)
+        u1 = sess.get(User, 7)
         u1.name = "ed"
         sess.rollback()
         eq_(u1.name, "jack")
@@ -1349,7 +1173,7 @@ class FixtureDataTest(_LocalFixture):
     def test_commit_persistent(self):
         User = self.classes.User
         sess = fixture_session()
-        u1 = sess.query(User).get(7)
+        u1 = sess.get(User, 7)
         u1.name = "ed"
         sess.flush()
         sess.commit()
@@ -1358,12 +1182,12 @@ class FixtureDataTest(_LocalFixture):
     def test_concurrent_commit_persistent(self):
         User = self.classes.User
         s1 = fixture_session()
-        u1 = s1.query(User).get(7)
+        u1 = s1.get(User, 7)
         u1.name = "ed"
         s1.commit()
 
         s2 = fixture_session()
-        u2 = s2.query(User).get(7)
+        u2 = s2.get(User, 7)
         assert u2.name == "ed"
         u2.name = "will"
         s2.commit()
@@ -1952,103 +1776,6 @@ class AccountingFlagsTest(_LocalFixture):
         assert u1.name == "ed"
         sess.expire_all()
         assert u1.name == "edward"
-
-
-class AutoCommitTest(_LocalFixture):
-    __backend__ = True
-
-    def test_begin_nested_requires_trans(self):
-        sess = fixture_session(autocommit=True)
-        assert_raises(sa_exc.InvalidRequestError, sess.begin_nested)
-
-    def test_begin_preflush(self):
-        User = self.classes.User
-        sess = fixture_session(autocommit=True)
-
-        u1 = User(name="ed")
-        sess.add(u1)
-
-        sess.begin()
-        u2 = User(name="some other user")
-        sess.add(u2)
-        sess.rollback()
-        assert u2 not in sess
-        assert u1 in sess
-        assert sess.query(User).filter_by(name="ed").one() is u1
-
-    def test_accounting_commit_fails_add(self):
-        User = self.classes.User
-        sess = fixture_session(autocommit=True)
-
-        fail = False
-
-        def fail_fn(*arg, **kw):
-            if fail:
-                raise Exception("commit fails")
-
-        event.listen(sess, "after_flush_postexec", fail_fn)
-        u1 = User(name="ed")
-        sess.add(u1)
-
-        fail = True
-        assert_raises(Exception, sess.flush)
-        fail = False
-
-        assert u1 not in sess
-        u1new = User(id=2, name="fred")
-        sess.add(u1new)
-        sess.add(u1)
-        sess.flush()
-        assert u1 in sess
-        eq_(
-            sess.query(User.name).order_by(User.name).all(),
-            [("ed",), ("fred",)],
-        )
-
-    def test_accounting_commit_fails_delete(self):
-        User = self.classes.User
-        sess = fixture_session(autocommit=True)
-
-        fail = False
-
-        def fail_fn(*arg, **kw):
-            if fail:
-                raise Exception("commit fails")
-
-        event.listen(sess, "after_flush_postexec", fail_fn)
-        u1 = User(name="ed")
-        sess.add(u1)
-        sess.flush()
-
-        sess.delete(u1)
-        fail = True
-        assert_raises(Exception, sess.flush)
-        fail = False
-
-        assert u1 in sess
-        assert u1 not in sess.deleted
-        sess.delete(u1)
-        sess.flush()
-        assert u1 not in sess
-        eq_(sess.query(User.name).order_by(User.name).all(), [])
-
-    @testing.requires.updateable_autoincrement_pks
-    def test_accounting_no_select_needed(self):
-        """test that flush accounting works on non-expired instances
-        when autocommit=True/expire_on_commit=True."""
-
-        User = self.classes.User
-        sess = fixture_session(autocommit=True, expire_on_commit=True)
-
-        u1 = User(id=1, name="ed")
-        sess.add(u1)
-        sess.flush()
-
-        u1.id = 3
-        u1.name = "fred"
-        self.assert_sql_count(testing.db, sess.flush, 1)
-        assert "id" not in u1.__dict__
-        eq_(u1.id, 3)
 
 
 class ContextManagerPlusFutureTest(FixtureTest):
@@ -2745,7 +2472,7 @@ class NaturalPKRollbackTest(fixtures.MappedTest):
         s.flush()
 
         s.execute(users.insert().values(name="u1"))
-        u2 = s.query(User).get("u1")
+        u2 = s.get(User, "u1")
 
         assert u1 not in s
         s.rollback()

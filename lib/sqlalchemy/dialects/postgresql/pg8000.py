@@ -93,6 +93,8 @@ import decimal
 import re
 from uuid import UUID as _python_UUID
 
+from .array import ARRAY as PGARRAY
+from .base import _ColonCast
 from .base import _DECIMAL_TYPES
 from .base import _FLOAT_TYPES
 from .base import _INT_TYPES
@@ -256,6 +258,11 @@ class _PGBoolean(sqltypes.Boolean):
         return dbapi.BOOLEAN
 
 
+class _PGARRAY(PGARRAY):
+    def bind_expression(self, bindvalue):
+        return _ColonCast(bindvalue, self)
+
+
 _server_side_id = util.counter()
 
 
@@ -384,6 +391,7 @@ class PGDialect_pg8000(PGDialect):
             sqltypes.SmallInteger: _PGSmallInteger,
             sqltypes.BigInteger: _PGBigInteger,
             sqltypes.Enum: _PGEnum,
+            sqltypes.ARRAY: _PGARRAY,
         },
     )
 

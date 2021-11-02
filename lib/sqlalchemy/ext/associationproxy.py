@@ -472,10 +472,23 @@ class AssociationProxyInstance(object):
     def attr(self):
         """Return a tuple of ``(local_attr, remote_attr)``.
 
-        This attribute is convenient when specifying a join
-        using :meth:`_query.Query.join` across two relationships::
+        This attribute was originally intended to facilitate using the
+        :meth:`_query.Query.join` method to join across the two relationships
+        at once, however this makes use of a deprecated calling style.
 
-            sess.query(Parent).join(*Parent.proxied.attr)
+        To use :meth:`_sql.select.join` or :meth:`_orm.Query.join` with
+        an association proxy, the current method is to make use of the
+        :attr:`.AssociationProxyInstance.local_attr` and
+        :attr:`.AssociationProxyInstance.remote_attr` attributes separately::
+
+            stmt = (
+                select(Parent).
+                join(Parent.proxied.local_attr).
+                join(Parent.proxied.remote_attr)
+            )
+
+        A future release may seek to provide a more succinct join pattern
+        for association proxy attributes.
 
         .. seealso::
 

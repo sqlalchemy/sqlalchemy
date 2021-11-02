@@ -1611,9 +1611,14 @@ class OracleDialect(default.DefaultDialect):
 
         cursor = connection.execute(
             sql.text(
-                "SELECT table_name FROM all_tables "
-                "WHERE table_name = CAST(:name AS VARCHAR2(128)) "
-                "AND owner = CAST(:schema_name AS VARCHAR2(128))"
+                """SELECT table_name FROM all_tables
+                WHERE table_name = CAST(:name AS VARCHAR2(128))
+                AND owner = CAST(:schema_name AS VARCHAR2(128))
+                UNION ALL
+                SELECT view_name FROM all_views
+                WHERE view_name = CAST(:name AS VARCHAR2(128))
+                AND owner = CAST(:schema_name AS VARCHAR2(128))
+                """
             ),
             dict(
                 name=self.denormalize_name(table_name),

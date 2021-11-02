@@ -1,7 +1,11 @@
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import literal
+from sqlalchemy import null
+from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import union_all
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import class_mapper
@@ -10,6 +14,7 @@ from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm.util import with_polymorphic
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -20,68 +25,10 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
 
-class Employee(object):
-    def __init__(self, name):
-        self.name = name
-
-    def __repr__(self):
-        return self.__class__.__name__ + " " + self.name
-
-
-class Manager(Employee):
-    def __init__(self, name, manager_data):
-        self.name = name
-        self.manager_data = manager_data
-
-    def __repr__(self):
-        return (
-            self.__class__.__name__ + " " + self.name + " " + self.manager_data
-        )
-
-
-class Engineer(Employee):
-    def __init__(self, name, engineer_info):
-        self.name = name
-        self.engineer_info = engineer_info
-
-    def __repr__(self):
-        return (
-            self.__class__.__name__
-            + " "
-            + self.name
-            + " "
-            + self.engineer_info
-        )
-
-
-class Hacker(Engineer):
-    def __init__(self, name, nickname, engineer_info):
-        self.name = name
-        self.nickname = nickname
-        self.engineer_info = engineer_info
-
-    def __repr__(self):
-        return (
-            self.__class__.__name__
-            + " "
-            + self.name
-            + " '"
-            + self.nickname
-            + "' "
-            + self.engineer_info
-        )
-
-
-class Company(object):
-    pass
-
-
 class ConcreteTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
-        global managers_table, engineers_table, hackers_table
-        global companies, employees_table
-        companies = Table(
+        Table(
             "companies",
             metadata,
             Column(
@@ -89,7 +36,7 @@ class ConcreteTest(fixtures.MappedTest):
             ),
             Column("name", String(50)),
         )
-        employees_table = Table(
+        Table(
             "employees",
             metadata,
             Column(
@@ -101,7 +48,7 @@ class ConcreteTest(fixtures.MappedTest):
             Column("name", String(50)),
             Column("company_id", Integer, ForeignKey("companies.id")),
         )
-        managers_table = Table(
+        Table(
             "managers",
             metadata,
             Column(
@@ -114,7 +61,7 @@ class ConcreteTest(fixtures.MappedTest):
             Column("manager_data", String(50)),
             Column("company_id", Integer, ForeignKey("companies.id")),
         )
-        engineers_table = Table(
+        Table(
             "engineers",
             metadata,
             Column(
@@ -127,7 +74,7 @@ class ConcreteTest(fixtures.MappedTest):
             Column("engineer_info", String(50)),
             Column("company_id", Integer, ForeignKey("companies.id")),
         )
-        hackers_table = Table(
+        Table(
             "hackers",
             metadata,
             Column(
@@ -142,7 +89,69 @@ class ConcreteTest(fixtures.MappedTest):
             Column("nickname", String(50)),
         )
 
+    @classmethod
+    def setup_classes(cls):
+        class Employee(cls.Basic):
+            def __init__(self, name):
+                self.name = name
+
+            def __repr__(self):
+                return self.__class__.__name__ + " " + self.name
+
+        class Manager(Employee):
+            def __init__(self, name, manager_data):
+                self.name = name
+                self.manager_data = manager_data
+
+            def __repr__(self):
+                return (
+                    self.__class__.__name__
+                    + " "
+                    + self.name
+                    + " "
+                    + self.manager_data
+                )
+
+        class Engineer(Employee):
+            def __init__(self, name, engineer_info):
+                self.name = name
+                self.engineer_info = engineer_info
+
+            def __repr__(self):
+                return (
+                    self.__class__.__name__
+                    + " "
+                    + self.name
+                    + " "
+                    + self.engineer_info
+                )
+
+        class Hacker(Engineer):
+            def __init__(self, name, nickname, engineer_info):
+                self.name = name
+                self.nickname = nickname
+                self.engineer_info = engineer_info
+
+            def __repr__(self):
+                return (
+                    self.__class__.__name__
+                    + " "
+                    + self.name
+                    + " '"
+                    + self.nickname
+                    + "' "
+                    + self.engineer_info
+                )
+
+        class Company(cls.Basic):
+            pass
+
     def test_basic(self):
+        Employee, Engineer, Manager = self.classes(
+            "Employee", "Engineer", "Manager"
+        )
+        engineers_table, managers_table = self.tables("engineers", "managers")
+
         pjoin = polymorphic_union(
             {"manager": managers_table, "engineer": engineers_table},
             "type",
@@ -166,27 +175,34 @@ class ConcreteTest(fixtures.MappedTest):
             polymorphic_identity="engineer",
         )
         session = fixture_session()
-        session.add(Manager("Tom", "knows how to manage things"))
-        session.add(Engineer("Kurt", "knows how to hack"))
+        session.add(Manager("Sally", "knows how to manage things"))
+        session.add(Engineer("Karina", "knows how to hack"))
         session.flush()
         session.expunge_all()
         assert set([repr(x) for x in session.query(Employee)]) == set(
             [
-                "Engineer Kurt knows how to hack",
-                "Manager Tom knows how to manage things",
+                "Engineer Karina knows how to hack",
+                "Manager Sally knows how to manage things",
             ]
         )
         assert set([repr(x) for x in session.query(Manager)]) == set(
-            ["Manager Tom knows how to manage things"]
+            ["Manager Sally knows how to manage things"]
         )
         assert set([repr(x) for x in session.query(Engineer)]) == set(
-            ["Engineer Kurt knows how to hack"]
+            ["Engineer Karina knows how to hack"]
         )
         manager = session.query(Manager).one()
         session.expire(manager, ["manager_data"])
         eq_(manager.manager_data, "knows how to manage things")
 
     def test_multi_level_no_base(self):
+        Employee, Engineer, Manager = self.classes(
+            "Employee", "Engineer", "Manager"
+        )
+        (Hacker,) = self.classes("Hacker")
+        engineers_table, managers_table = self.tables("engineers", "managers")
+        (hackers_table,) = self.tables("hackers")
+
         pjoin = polymorphic_union(
             {
                 "manager": managers_table,
@@ -228,19 +244,19 @@ class ConcreteTest(fixtures.MappedTest):
             polymorphic_identity="hacker",
         )
         session = fixture_session()
-        tom = Manager("Tom", "knows how to manage things")
+        sally = Manager("Sally", "knows how to manage things")
 
         assert_raises_message(
             AttributeError,
             "does not implement attribute .?'type' at the instance level.",
             setattr,
-            tom,
+            sally,
             "type",
             "sometype",
         )
 
-        jerry = Engineer("Jerry", "knows how to program")
-        hacker = Hacker("Kurt", "Badass", "knows how to hack")
+        jenn = Engineer("Jenn", "knows how to program")
+        hacker = Hacker("Karina", "Badass", "knows how to hack")
 
         assert_raises_message(
             AttributeError,
@@ -251,7 +267,7 @@ class ConcreteTest(fixtures.MappedTest):
             "sometype",
         )
 
-        session.add_all((tom, jerry, hacker))
+        session.add_all((sally, jenn, hacker))
         session.flush()
 
         # ensure "readonly" on save logic didn't pollute the
@@ -259,11 +275,9 @@ class ConcreteTest(fixtures.MappedTest):
 
         assert (
             "nickname"
-            not in attributes.instance_state(jerry).expired_attributes
+            not in attributes.instance_state(jenn).expired_attributes
         )
-        assert (
-            "name" not in attributes.instance_state(jerry).expired_attributes
-        )
+        assert "name" not in attributes.instance_state(jenn).expired_attributes
         assert (
             "name" not in attributes.instance_state(hacker).expired_attributes
         )
@@ -273,40 +287,49 @@ class ConcreteTest(fixtures.MappedTest):
         )
 
         def go():
-            eq_(jerry.name, "Jerry")
+            eq_(jenn.name, "Jenn")
             eq_(hacker.nickname, "Badass")
 
         self.assert_sql_count(testing.db, go, 0)
         session.expunge_all()
         assert (
-            repr(session.query(Employee).filter(Employee.name == "Tom").one())
-            == "Manager Tom knows how to manage things"
+            repr(
+                session.query(Employee).filter(Employee.name == "Sally").one()
+            )
+            == "Manager Sally knows how to manage things"
         )
         assert (
-            repr(session.query(Manager).filter(Manager.name == "Tom").one())
-            == "Manager Tom knows how to manage things"
+            repr(session.query(Manager).filter(Manager.name == "Sally").one())
+            == "Manager Sally knows how to manage things"
         )
         assert set([repr(x) for x in session.query(Employee).all()]) == set(
             [
-                "Engineer Jerry knows how to program",
-                "Manager Tom knows how to manage things",
-                "Hacker Kurt 'Badass' knows how to hack",
+                "Engineer Jenn knows how to program",
+                "Manager Sally knows how to manage things",
+                "Hacker Karina 'Badass' knows how to hack",
             ]
         )
         assert set([repr(x) for x in session.query(Manager).all()]) == set(
-            ["Manager Tom knows how to manage things"]
+            ["Manager Sally knows how to manage things"]
         )
         assert set([repr(x) for x in session.query(Engineer).all()]) == set(
             [
-                "Engineer Jerry knows how to program",
-                "Hacker Kurt 'Badass' knows how to hack",
+                "Engineer Jenn knows how to program",
+                "Hacker Karina 'Badass' knows how to hack",
             ]
         )
         assert set([repr(x) for x in session.query(Hacker).all()]) == set(
-            ["Hacker Kurt 'Badass' knows how to hack"]
+            ["Hacker Karina 'Badass' knows how to hack"]
         )
 
     def test_multi_level_no_base_w_hybrid(self):
+        Employee, Engineer, Manager = self.classes(
+            "Employee", "Engineer", "Manager"
+        )
+        (Hacker,) = self.classes("Hacker")
+        engineers_table, managers_table = self.tables("engineers", "managers")
+        (hackers_table,) = self.tables("hackers")
+
         pjoin = polymorphic_union(
             {
                 "manager": managers_table,
@@ -353,21 +376,21 @@ class ConcreteTest(fixtures.MappedTest):
         )
 
         session = fixture_session()
-        tom = ManagerWHybrid("Tom", "mgrdata")
+        sally = ManagerWHybrid("Sally", "mgrdata")
 
         # mapping did not impact the engineer_info
         # hybrid in any way
         eq_(test_calls.mock_calls, [])
 
-        eq_(tom.engineer_info, "mgrdata")
+        eq_(sally.engineer_info, "mgrdata")
         eq_(test_calls.mock_calls, [mock.call.engineer_info_instance()])
 
-        session.add(tom)
+        session.add(sally)
         session.commit()
 
         session.close()
 
-        tom = (
+        Sally = (
             session.query(ManagerWHybrid)
             .filter(ManagerWHybrid.engineer_info == "mgrdata")
             .one()
@@ -379,9 +402,18 @@ class ConcreteTest(fixtures.MappedTest):
                 mock.call.engineer_info_class(),
             ],
         )
-        eq_(tom.engineer_info, "mgrdata")
+        eq_(Sally.engineer_info, "mgrdata")
 
     def test_multi_level_with_base(self):
+        Employee, Engineer, Manager = self.classes(
+            "Employee", "Engineer", "Manager"
+        )
+        employees_table, engineers_table, managers_table = self.tables(
+            "employees", "engineers", "managers"
+        )
+        (hackers_table,) = self.tables("hackers")
+        (Hacker,) = self.classes("Hacker")
+
         pjoin = polymorphic_union(
             {
                 "employee": employees_table,
@@ -427,14 +459,14 @@ class ConcreteTest(fixtures.MappedTest):
             polymorphic_identity="hacker",
         )
         session = fixture_session()
-        tom = Manager("Tom", "knows how to manage things")
-        jerry = Engineer("Jerry", "knows how to program")
-        hacker = Hacker("Kurt", "Badass", "knows how to hack")
-        session.add_all((tom, jerry, hacker))
+        sally = Manager("Sally", "knows how to manage things")
+        jenn = Engineer("Jenn", "knows how to program")
+        hacker = Hacker("Karina", "Badass", "knows how to hack")
+        session.add_all((sally, jenn, hacker))
         session.flush()
 
         def go():
-            eq_(jerry.name, "Jerry")
+            eq_(jenn.name, "Jenn")
             eq_(hacker.nickname, "Badass")
 
         self.assert_sql_count(testing.db, go, 0)
@@ -455,25 +487,34 @@ class ConcreteTest(fixtures.MappedTest):
         )
         assert set([repr(x) for x in session.query(Employee)]) == set(
             [
-                "Engineer Jerry knows how to program",
-                "Manager Tom knows how to manage things",
-                "Hacker Kurt 'Badass' knows how to hack",
+                "Engineer Jenn knows how to program",
+                "Manager Sally knows how to manage things",
+                "Hacker Karina 'Badass' knows how to hack",
             ]
         )
         assert set([repr(x) for x in session.query(Manager)]) == set(
-            ["Manager Tom knows how to manage things"]
+            ["Manager Sally knows how to manage things"]
         )
         assert set([repr(x) for x in session.query(Engineer)]) == set(
             [
-                "Engineer Jerry knows how to program",
-                "Hacker Kurt 'Badass' knows how to hack",
+                "Engineer Jenn knows how to program",
+                "Hacker Karina 'Badass' knows how to hack",
             ]
         )
         assert set([repr(x) for x in session.query(Hacker)]) == set(
-            ["Hacker Kurt 'Badass' knows how to hack"]
+            ["Hacker Karina 'Badass' knows how to hack"]
         )
 
-    def test_without_default_polymorphic(self):
+    @testing.fixture
+    def two_pjoin_fixture(self):
+        Employee, Engineer, Manager = self.classes(
+            "Employee", "Engineer", "Manager"
+        )
+        (Hacker,) = self.classes("Hacker")
+        (employees_table,) = self.tables("employees")
+        engineers_table, managers_table = self.tables("engineers", "managers")
+        (hackers_table,) = self.tables("hackers")
+
         pjoin = polymorphic_union(
             {
                 "employee": employees_table,
@@ -513,106 +554,248 @@ class ConcreteTest(fixtures.MappedTest):
             concrete=True,
             polymorphic_identity="hacker",
         )
-        session = fixture_session()
+
+        session = fixture_session(expire_on_commit=False)
         jdoe = Employee("Jdoe")
-        tom = Manager("Tom", "knows how to manage things")
-        jerry = Engineer("Jerry", "knows how to program")
-        hacker = Hacker("Kurt", "Badass", "knows how to hack")
-        session.add_all((jdoe, tom, jerry, hacker))
-        session.flush()
+        sally = Manager("Sally", "knows how to manage things")
+        jenn = Engineer("Jenn", "knows how to program")
+        hacker = Hacker("Karina", "Badass", "knows how to hack")
+        session.add_all((jdoe, sally, jenn, hacker))
+        session.commit()
+
+        return (
+            session,
+            Employee,
+            Engineer,
+            Manager,
+            Hacker,
+            pjoin,
+            pjoin2,
+            jdoe,
+            sally,
+            jenn,
+            hacker,
+        )
+
+    def test_without_default_polymorphic_one(self, two_pjoin_fixture):
+        (
+            session,
+            Employee,
+            Engineer,
+            Manager,
+            Hacker,
+            pjoin,
+            pjoin2,
+            jdoe,
+            sally,
+            jenn,
+            hacker,
+        ) = two_pjoin_fixture
+
+        wp = with_polymorphic(
+            Employee, "*", pjoin, polymorphic_on=pjoin.c.type
+        )
+
         eq_(
-            len(
-                session.connection()
-                .execute(
-                    session.query(Employee)
-                    .with_polymorphic("*", pjoin, pjoin.c.type)
-                    .statement
-                )
-                .fetchall()
-            ),
-            4,
+            sorted([repr(x) for x in session.query(wp)]),
+            [
+                "Employee Jdoe",
+                "Engineer Jenn knows how to program",
+                "Hacker Karina 'Badass' knows how to hack",
+                "Manager Sally knows how to manage things",
+            ],
         )
         eq_(session.get(Employee, jdoe.employee_id), jdoe)
-        eq_(session.get(Engineer, jerry.employee_id), jerry)
-        eq_(
-            set(
-                [
-                    repr(x)
-                    for x in session.query(Employee).with_polymorphic(
-                        "*", pjoin, pjoin.c.type
-                    )
-                ]
-            ),
-            set(
-                [
-                    "Employee Jdoe",
-                    "Engineer Jerry knows how to program",
-                    "Manager Tom knows how to manage things",
-                    "Hacker Kurt 'Badass' knows how to hack",
-                ]
-            ),
-        )
-        eq_(
-            set([repr(x) for x in session.query(Manager)]),
-            set(["Manager Tom knows how to manage things"]),
-        )
-        eq_(
-            set(
-                [
-                    repr(x)
-                    for x in session.query(Engineer).with_polymorphic(
-                        "*", pjoin2, pjoin2.c.type
-                    )
-                ]
-            ),
-            set(
-                [
-                    "Engineer Jerry knows how to program",
-                    "Hacker Kurt 'Badass' knows how to hack",
-                ]
-            ),
-        )
-        eq_(
-            set([repr(x) for x in session.query(Hacker)]),
-            set(["Hacker Kurt 'Badass' knows how to hack"]),
+        eq_(session.get(Engineer, jenn.employee_id), jenn)
+
+    def test_without_default_polymorphic_two(self, two_pjoin_fixture):
+        (
+            session,
+            Employee,
+            Engineer,
+            Manager,
+            Hacker,
+            pjoin,
+            pjoin2,
+            jdoe,
+            sally,
+            jenn,
+            hacker,
+        ) = two_pjoin_fixture
+        wp = with_polymorphic(
+            Employee, "*", pjoin, polymorphic_on=pjoin.c.type
         )
 
-        # test adaption of the column by wrapping the query in a
-        # subquery
+        eq_(
+            sorted([repr(x) for x in session.query(wp)]),
+            [
+                "Employee Jdoe",
+                "Engineer Jenn knows how to program",
+                "Hacker Karina 'Badass' knows how to hack",
+                "Manager Sally knows how to manage things",
+            ],
+        )
 
-        with testing.expect_deprecated(r"The Query.from_self\(\) method"):
-            eq_(
-                len(
-                    session.connection()
-                    .execute(
-                        session.query(Engineer)
-                        .with_polymorphic("*", pjoin2, pjoin2.c.type)
-                        .from_self()
-                        .statement
-                    )
-                    .fetchall()
-                ),
-                2,
+    def test_without_default_polymorphic_three(self, two_pjoin_fixture):
+        (
+            session,
+            Employee,
+            Engineer,
+            Manager,
+            Hacker,
+            pjoin,
+            pjoin2,
+            jdoe,
+            sally,
+            jenn,
+            hacker,
+        ) = two_pjoin_fixture
+        eq_(
+            sorted([repr(x) for x in session.query(Manager)]),
+            ["Manager Sally knows how to manage things"],
+        )
+
+    def test_without_default_polymorphic_four(self, two_pjoin_fixture):
+        (
+            session,
+            Employee,
+            Engineer,
+            Manager,
+            Hacker,
+            pjoin,
+            pjoin2,
+            jdoe,
+            sally,
+            jenn,
+            hacker,
+        ) = two_pjoin_fixture
+        wp2 = with_polymorphic(
+            Engineer, "*", pjoin2, polymorphic_on=pjoin2.c.type
+        )
+        eq_(
+            sorted([repr(x) for x in session.query(wp2)]),
+            [
+                "Engineer Jenn knows how to program",
+                "Hacker Karina 'Badass' knows how to hack",
+            ],
+        )
+
+    def test_without_default_polymorphic_five(self, two_pjoin_fixture):
+        (
+            session,
+            Employee,
+            Engineer,
+            Manager,
+            Hacker,
+            pjoin,
+            pjoin2,
+            jdoe,
+            sally,
+            jenn,
+            hacker,
+        ) = two_pjoin_fixture
+        eq_(
+            [repr(x) for x in session.query(Hacker)],
+            ["Hacker Karina 'Badass' knows how to hack"],
+        )
+
+    def test_without_default_polymorphic_six(self, two_pjoin_fixture):
+        (
+            session,
+            Employee,
+            Engineer,
+            Manager,
+            Hacker,
+            pjoin,
+            pjoin2,
+            jdoe,
+            sally,
+            jenn,
+            hacker,
+        ) = two_pjoin_fixture
+
+        # this test is adapting what used to use from_self().
+        # it's a weird test but how we would do this would be we would only
+        # apply with_polymorprhic once, after we've created whatever
+        # subquery we want.
+
+        subq = pjoin2.select().subquery()
+
+        wp2 = with_polymorphic(Engineer, "*", subq, polymorphic_on=subq.c.type)
+
+        eq_(
+            sorted([repr(x) for x in session.query(wp2)]),
+            [
+                "Engineer Jenn knows how to program",
+                "Hacker Karina 'Badass' knows how to hack",
+            ],
+        )
+
+    @testing.combinations(True, False, argnames="use_star")
+    def test_without_default_polymorphic_buildit_newstyle(
+        self, two_pjoin_fixture, use_star
+    ):
+        """how would we do these concrete polymorphic queries using 2.0 style,
+        and not any old and esoteric features like "polymorphic_union" ?
+
+        """
+        (
+            session,
+            Employee,
+            Engineer,
+            Manager,
+            Hacker,
+            pjoin,
+            pjoin2,
+            jdoe,
+            sally,
+            jenn,
+            hacker,
+        ) = two_pjoin_fixture
+
+        # make a union using the entities as given and wpoly from it.
+        # a UNION is a UNION.  there is no way around having to write
+        # out filler columns.  concrete inh is really not a good choice
+        # when you need to select heterogeneously
+        stmt = union_all(
+            select(
+                literal("engineer").label("type"),
+                Engineer,
+                null().label("nickname"),
+            ),
+            select(literal("hacker").label("type"), Hacker),
+        ).subquery()
+
+        # issue: if we make this with_polymorphic(Engineer, [Hacker], ...),
+        # it blows up and tries to add the "engineer" table for unknown reasons
+
+        if use_star:
+            wp = with_polymorphic(
+                Engineer, "*", stmt, polymorphic_on=stmt.c.type
             )
-        with testing.expect_deprecated(r"The Query.from_self\(\) method"):
-            eq_(
-                set(
-                    [
-                        repr(x)
-                        for x in session.query(Engineer)
-                        .with_polymorphic("*", pjoin2, pjoin2.c.type)
-                        .from_self()
-                    ]
-                ),
-                set(
-                    [
-                        "Engineer Jerry knows how to program",
-                        "Hacker Kurt 'Badass' knows how to hack",
-                    ]
-                ),
+        else:
+            wp = with_polymorphic(
+                Engineer, [Engineer, Hacker], stmt, polymorphic_on=stmt.c.type
             )
+
+        result = session.execute(select(wp)).scalars()
+
+        eq_(
+            sorted(repr(obj) for obj in result),
+            [
+                "Engineer Jenn knows how to program",
+                "Hacker Karina 'Badass' knows how to hack",
+            ],
+        )
 
     def test_relationship(self):
+        Employee, Engineer, Manager = self.classes(
+            "Employee", "Engineer", "Manager"
+        )
+        (Company,) = self.classes("Company")
+        (companies,) = self.tables("companies")
+        engineers_table, managers_table = self.tables("engineers", "managers")
+
         pjoin = polymorphic_union(
             {"manager": managers_table, "engineer": engineers_table},
             "type",
@@ -642,8 +825,8 @@ class ConcreteTest(fixtures.MappedTest):
         )
         session = fixture_session()
         c = Company()
-        c.employees.append(Manager("Tom", "knows how to manage things"))
-        c.employees.append(Engineer("Kurt", "knows how to hack"))
+        c.employees.append(Manager("Sally", "knows how to manage things"))
+        c.employees.append(Engineer("Karina", "knows how to hack"))
         session.add(c)
         session.flush()
         session.expunge_all()
@@ -652,8 +835,8 @@ class ConcreteTest(fixtures.MappedTest):
             c2 = session.get(Company, c.id)
             assert set([repr(x) for x in c2.employees]) == set(
                 [
-                    "Engineer Kurt knows how to hack",
-                    "Manager Tom knows how to manage things",
+                    "Engineer Karina knows how to hack",
+                    "Manager Sally knows how to manage things",
                 ]
             )
 
@@ -666,8 +849,8 @@ class ConcreteTest(fixtures.MappedTest):
             )
             assert set([repr(x) for x in c2.employees]) == set(
                 [
-                    "Engineer Kurt knows how to hack",
-                    "Manager Tom knows how to manage things",
+                    "Engineer Karina knows how to hack",
+                    "Manager Sally knows how to manage things",
                 ]
             )
 
@@ -1055,7 +1238,7 @@ class PropertyInheritanceTest(fixtures.MappedTest):
         eq_(merged_c1.some_dest_id, c1.some_dest_id)
 
 
-class ManyToManyTest(fixtures.MappedTest):
+class ManySallyanyTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -1073,7 +1256,7 @@ class ManyToManyTest(fixtures.MappedTest):
             ),
         )
         Table(
-            "base_mtom",
+            "base_mSally",
             metadata,
             Column(
                 "base_id", Integer, ForeignKey("base.id"), primary_key=True
@@ -1086,7 +1269,7 @@ class ManyToManyTest(fixtures.MappedTest):
             ),
         )
         Table(
-            "sub_mtom",
+            "sub_mSally",
             metadata,
             Column("base_id", Integer, ForeignKey("sub.id"), primary_key=True),
             Column(
@@ -1116,13 +1299,13 @@ class ManyToManyTest(fixtures.MappedTest):
             pass
 
     def test_selective_relationships(self):
-        sub, base_mtom, Related, Base, related, sub_mtom, base, Sub = (
+        sub, base_mSally, Related, Base, related, sub_mSally, base, Sub = (
             self.tables.sub,
-            self.tables.base_mtom,
+            self.tables.base_mSally,
             self.classes.Related,
             self.classes.Base,
             self.tables.related,
-            self.tables.sub_mtom,
+            self.tables.sub_mSally,
             self.tables.base,
             self.classes.Sub,
         )
@@ -1133,7 +1316,7 @@ class ManyToManyTest(fixtures.MappedTest):
             properties={
                 "related": relationship(
                     Related,
-                    secondary=base_mtom,
+                    secondary=base_mSally,
                     backref="bases",
                     order_by=related.c.id,
                 )
@@ -1147,7 +1330,7 @@ class ManyToManyTest(fixtures.MappedTest):
             properties={
                 "related": relationship(
                     Related,
-                    secondary=sub_mtom,
+                    secondary=sub_mSally,
                     backref="subs",
                     order_by=related.c.id,
                 )

@@ -301,6 +301,7 @@ class Load(Generative, LoaderOption):
                 )
 
         if isinstance(attr, util.string_types):
+
             default_token = attr.endswith(_DEFAULT_TOKEN)
             attr_str_name = attr
             if attr.endswith(_WILDCARD_TOKEN) or default_token:
@@ -328,7 +329,7 @@ class Load(Generative, LoaderOption):
                 "Using strings to indicate column or "
                 "relationship paths in loader options is deprecated "
                 "and will be removed in SQLAlchemy 2.0.  Please use "
-                "the class-bound attribute directly."
+                "the class-bound attribute directly.",
             )
             try:
                 # use getattr on the class to work around

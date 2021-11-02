@@ -983,6 +983,8 @@ from .enumerated import SET
 from .json import JSON
 from .json import JSONIndexType
 from .json import JSONPathType
+from .reserved_words import RESERVED_WORDS_MARIADB
+from .reserved_words import RESERVED_WORDS_MYSQL
 from .types import _FloatType
 from .types import _IntegerType
 from .types import _MatchType
@@ -1036,301 +1038,6 @@ from ...types import BOOLEAN
 from ...types import DATE
 from ...types import VARBINARY
 from ...util import topological
-
-
-RESERVED_WORDS = set(
-    [
-        "accessible",
-        "action",
-        "add",
-        "admin",
-        "all",
-        "alter",
-        "analyze",
-        "and",
-        "array",  # 8.0
-        "as",
-        "asc",
-        "asensitive",
-        "before",
-        "between",
-        "bigint",
-        "binary",
-        "blob",
-        "both",
-        "by",
-        "call",
-        "cascade",
-        "case",
-        "change",
-        "char",
-        "character",
-        "check",
-        "collate",
-        "column",
-        "columns",
-        "condition",
-        "constraint",
-        "continue",
-        "convert",
-        "create",
-        "cross",
-        "cube",
-        "cume_dist",
-        "current_date",
-        "current_time",
-        "current_timestamp",
-        "current_user",
-        "cursor",
-        "database",
-        "databases",
-        "day_hour",
-        "day_microsecond",
-        "day_minute",
-        "day_second",
-        "dec",
-        "decimal",
-        "declare",
-        "default",
-        "delayed",
-        "delete",
-        "desc",
-        "describe",
-        "deterministic",
-        "distinct",
-        "distinctrow",
-        "div",
-        "double",
-        "drop",
-        "dual",
-        "each",
-        "else",
-        "elseif",
-        "empty",
-        "enclosed",
-        "escaped",
-        "except",
-        "exists",
-        "exit",
-        "explain",
-        "false",
-        "fetch",
-        "fields",
-        "first_value",
-        "float",
-        "float4",
-        "float8",
-        "for",
-        "force",
-        "foreign",
-        "from",
-        "fulltext",
-        "function",
-        "general",
-        "generated",
-        "get",
-        "grant",
-        "group",
-        "grouping",
-        "groups",
-        "having",
-        "high_priority",
-        "hour_microsecond",
-        "hour_minute",
-        "hour_second",
-        "if",
-        "ignore",
-        "ignore_server_ids",
-        "in",
-        "index",
-        "infile",
-        "inner",
-        "inout",
-        "insensitive",
-        "insert",
-        "int",
-        "int1",
-        "int2",
-        "int3",
-        "int4",
-        "int8",
-        "integer",
-        "interval",
-        "into",
-        "io_after_gtids",
-        "io_before_gtids",
-        "is",
-        "iterate",
-        "join",
-        "json_table",
-        "key",
-        "keys",
-        "kill",
-        "last_value",
-        "lateral",
-        "leading",
-        "leave",
-        "left",
-        "level",
-        "like",
-        "limit",
-        "linear",
-        "linear",
-        "lines",
-        "load",
-        "localtime",
-        "localtimestamp",
-        "lock",
-        "long",
-        "longblob",
-        "longtext",
-        "loop",
-        "low_priority",
-        "master_bind",
-        "master_heartbeat_period",
-        "master_ssl_verify_server_cert",
-        "master_ssl_verify_server_cert",
-        "match",
-        "maxvalue",
-        "mediumblob",
-        "mediumint",
-        "mediumtext",
-        "member",  # 8.0
-        "middleint",
-        "minute_microsecond",
-        "minute_second",
-        "mod",
-        "mode",
-        "modifies",
-        "natural",
-        "no_write_to_binlog",
-        "not",
-        "nth_value",
-        "ntile",
-        "null",
-        "numeric",
-        "of",
-        "on",
-        "one_shot",
-        "optimize",
-        "optimizer_costs",
-        "option",
-        "optionally",
-        "or",
-        "order",
-        "out",
-        "outer",
-        "outfile",
-        "over",
-        "partition",
-        "percent_rank",
-        "persist",
-        "persist_only",
-        "precision",
-        "primary",
-        "privileges",
-        "procedure",
-        "purge",
-        "range",
-        "range",
-        "rank",
-        "read",
-        "read_only",
-        "read_only",
-        "read_write",
-        "read_write",  # 5.1
-        "reads",
-        "real",
-        "recursive",
-        "references",
-        "regexp",
-        "release",
-        "rename",
-        "repeat",
-        "replace",
-        "require",
-        "resignal",
-        "restrict",
-        "return",
-        "revoke",
-        "right",
-        "rlike",
-        "role",
-        "row",
-        "row_number",
-        "rows",
-        "schema",
-        "schemas",
-        "second_microsecond",
-        "select",
-        "sensitive",
-        "separator",
-        "set",
-        "show",
-        "signal",
-        "slow",  # 5.5
-        "smallint",
-        "soname",
-        "spatial",
-        "specific",
-        "sql",
-        "sql_after_gtids",
-        "sql_before_gtids",  # 5.6
-        "sql_big_result",
-        "sql_calc_found_rows",
-        "sql_small_result",
-        "sqlexception",
-        "sqlstate",
-        "sqlwarning",
-        "ssl",
-        "starting",
-        "status",
-        "stored",
-        "straight_join",
-        "system",
-        "table",
-        "tables",  # 4.1
-        "terminated",
-        "text",
-        "then",
-        "time",
-        "tinyblob",
-        "tinyint",
-        "tinytext",
-        "to",
-        "trailing",
-        "trigger",
-        "true",
-        "undo",
-        "union",
-        "unique",
-        "unlock",
-        "unsigned",
-        "update",
-        "usage",
-        "use",
-        "using",
-        "utc_date",
-        "utc_time",
-        "utc_timestamp",
-        "values",
-        "varbinary",
-        "varchar",
-        "varcharacter",
-        "varying",
-        "virtual",  # 5.7
-        "when",
-        "where",
-        "while",
-        "window",  # 8.0
-        "with",
-        "write",
-        "x509",
-        "xor",
-        "year_month",
-        "zerofill",  # 5.0
-    ]
-)
 
 AUTOCOMMIT_RE = re.compile(
     r"\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER|LOAD +DATA|REPLACE)",
@@ -1852,12 +1559,11 @@ class MySQLCompiler(compiler.SQLCompiler):
             # artificial limit if one wasn't provided
             # https://dev.mysql.com/doc/refman/5.0/en/select.html
             if limit_clause is None:
+                # TODO: remove ??
                 # hardwire the upper limit.  Currently
-                # needed by OurSQL with Python 3
-                # (https://bugs.launchpad.net/oursql/+bug/686232),
-                # but also is consistent with the usage of the upper
+                # needed consistent with the usage of the upper
                 # bound as part of MySQL's "syntax" for OFFSET with
-                # no LIMIT
+                # no LIMIT.
                 return " \n LIMIT %s, %s" % (
                     self.process(offset_clause, **kw),
                     "18446744073709551615",
@@ -2586,8 +2292,7 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
 
 
 class MySQLIdentifierPreparer(compiler.IdentifierPreparer):
-
-    reserved_words = RESERVED_WORDS
+    reserved_words = RESERVED_WORDS_MYSQL
 
     def __init__(self, dialect, server_ansiquotes=False, **kw):
         if not server_ansiquotes:
@@ -2603,6 +2308,10 @@ class MySQLIdentifierPreparer(compiler.IdentifierPreparer):
         """Unilaterally identifier-quote any number of strings."""
 
         return tuple([self.quote_identifier(i) for i in ids if i is not None])
+
+
+class MariaDBIdentifierPreparer(MySQLIdentifierPreparer):
+    reserved_words = RESERVED_WORDS_MARIADB
 
 
 @log.class_logger
@@ -2834,6 +2543,11 @@ class MySQLDialect(default.DefaultDialect):
                 "MySQL version %s is not a MariaDB variant."
                 % (server_version_info,)
             )
+        if is_mariadb:
+            self.preparer = MariaDBIdentifierPreparer
+            # this would have been set by the default dialect already,
+            # so set it again
+            self.identifier_preparer = self.preparer(self)
         self.is_mariadb = is_mariadb
 
     def do_begin_twophase(self, connection, xid):

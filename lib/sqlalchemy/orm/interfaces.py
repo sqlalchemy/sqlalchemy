@@ -120,6 +120,15 @@ class MapperProperty(
 
     """
 
+    @property
+    def _links_to_entity(self):
+        """True if this MapperProperty refers to a mapped entity.
+
+        Should only be True for RelationshipProperty, False for all others.
+
+        """
+        raise NotImplementedError()
+
     def _memoized_attr_info(self):
         """Info dictionary associated with the object, allowing user-defined
         data to be associated with this :class:`.InspectionAttr`.
@@ -466,7 +475,8 @@ class PropComparator(operators.ColumnOperators):
 
     def of_type(self, class_):
         r"""Redefine this object in terms of a polymorphic subclass,
-        :func:`.with_polymorphic` construct, or :func:`.aliased` construct.
+        :func:`_orm.with_polymorphic` construct, or :func:`_orm.aliased`
+        construct.
 
         Returns a new PropComparator from which further criterion can be
         evaluated.
@@ -480,6 +490,8 @@ class PropComparator(operators.ColumnOperators):
             against this specific subclass.
 
         .. seealso::
+
+            :ref:`queryguide_join_onclause` - in the :ref:`queryguide_toplevel`
 
             :ref:`inheritance_of_type`
 

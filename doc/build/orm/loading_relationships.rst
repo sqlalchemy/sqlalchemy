@@ -444,6 +444,16 @@ On older versions of SQLite, the above nested right JOIN may be re-rendered
 as a nested subquery.  Older versions of SQLAlchemy would convert right-nested
 joins into subqueries in all cases.
 
+    .. warning::
+
+        Using ``with_for_update`` in the context of eager loading
+        relationships is not officially supported or recommended by
+        SQLAlchemy and may not work with certain queries on various
+        database backends.  When ``with_for_update`` is successfully used
+        with a query that involves :func:`_orm.joinedload`, SQLAlchemy will
+        attempt to emit SQL that locks all involved tables.
+
+
 Joined eager loading and result set batching
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

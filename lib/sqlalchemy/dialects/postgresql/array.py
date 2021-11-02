@@ -375,7 +375,7 @@ class ARRAY(sqltypes.ARRAY):
                 if value is None:
                     return value
                 # isinstance(value, util.string_types) is required to handle
-                # the # case where a TypeDecorator for and Array of Enum is
+                # the case where a TypeDecorator for and Array of Enum is
                 # used like was required in sa < 1.3.17
                 return super_rp(
                     handle_raw_string(value)

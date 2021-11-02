@@ -221,15 +221,13 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         )
         sess = fixture_session()
 
-        q = sess.query(User).options(selectinload(User.addresses))
-
         def go():
             eq_(
                 User(
                     id=7,
                     addresses=[Address(id=1, email_address="jack@bean.com")],
                 ),
-                q.get(7),
+                sess.get(User, 7, options=[selectinload(User.addresses)]),
             )
 
         self.assert_sql_count(testing.db, go, 2)
@@ -352,7 +350,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         def go():
             eq_(
                 self.static.item_keyword_result[0:2],
-                q.join("keywords").filter(Keyword.name == "red").all(),
+                q.join(Item.keywords).filter(Keyword.name == "red").all(),
             )
 
         self.assert_sql_count(testing.db, go, 2)
@@ -386,7 +384,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             ka = aliased(Keyword)
             eq_(
                 self.static.item_keyword_result[0:2],
-                (q.join(ka, "keywords").filter(ka.name == "red")).all(),
+                (q.join(ka, Item.keywords).filter(ka.name == "red")).all(),
             )
 
         self.assert_sql_count(testing.db, go, 2)
@@ -1253,7 +1251,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         def go():
             a = q.filter(addresses.c.id == 1).one()
             is_not(a.user, None)
-            u1 = sess.query(User).get(7)
+            u1 = sess.get(User, 7)
             is_(a.user, u1)
 
         self.assert_sql_count(testing.db, go, 2)
@@ -1502,7 +1500,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
     def test_runs_query_on_refresh(self):
         User, Address, sess = self._eager_config_fixture()
 
-        u1 = sess.query(User).get(8)
+        u1 = sess.get(User, 8)
         assert "addresses" in u1.__dict__
         sess.expire(u1)
 
@@ -1540,7 +1538,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
 
     def test_no_query_on_deferred(self):
         User, Address, sess = self._deferred_config_fixture()
-        u1 = sess.query(User).get(8)
+        u1 = sess.get(User, 8)
         assert "addresses" in u1.__dict__
         sess.expire(u1, ["addresses"])
 
@@ -1552,7 +1550,7 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
 
     def test_populate_existing_propagate(self):
         User, Address, sess = self._eager_config_fixture()
-        u1 = sess.query(User).get(8)
+        u1 = sess.get(User, 8)
         u1.addresses[2].email_address = "foofoo"
         del u1.addresses[1]
         u1 = sess.query(User).populate_existing().filter_by(id=8).one()
@@ -1565,13 +1563,13 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
     def test_loads_second_level_collection_to_scalar(self):
         User, Address, Dingaling, sess = self._collection_to_scalar_fixture()
 
-        u1 = sess.query(User).get(8)
+        u1 = sess.get(User, 8)
         a1 = Address()
         u1.addresses.append(a1)
         a2 = u1.addresses[0]
         a2.email_address = "foo"
         sess.query(User).options(
-            selectinload("addresses").selectinload("dingaling")
+            selectinload(User.addresses).selectinload(Address.dingaling)
         ).filter_by(id=8).all()
         assert u1.addresses[-1] is a1
         for a in u1.addresses:
@@ -1585,12 +1583,12 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
     def test_loads_second_level_collection_to_collection(self):
         User, Order, Item, sess = self._collection_to_collection_fixture()
 
-        u1 = sess.query(User).get(7)
+        u1 = sess.get(User, 7)
         u1.orders
         o1 = Order()
         u1.orders.append(o1)
         sess.query(User).options(
-            selectinload("orders").selectinload("items")
+            selectinload(User.orders).selectinload(Order.items)
         ).filter_by(id=7).all()
         for o in u1.orders:
             if o is not o1:
@@ -1604,11 +1602,11 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         u1 = (
             sess.query(User)
             .filter_by(id=8)
-            .options(selectinload("addresses"))
+            .options(selectinload(User.addresses))
             .one()
         )
         sess.query(User).filter_by(id=8).options(
-            selectinload("addresses").selectinload("dingaling")
+            selectinload(User.addresses).selectinload(Address.dingaling)
         ).first()
         assert "dingaling" in u1.addresses[0].__dict__
 
@@ -1618,11 +1616,11 @@ class LoadOnExistingTest(_fixtures.FixtureTest):
         u1 = (
             sess.query(User)
             .filter_by(id=7)
-            .options(selectinload("orders"))
+            .options(selectinload(User.orders))
             .one()
         )
         sess.query(User).filter_by(id=7).options(
-            selectinload("orders").selectinload("items")
+            selectinload(User.orders).selectinload(Order.items)
         ).first()
         assert "items" in u1.orders[0].__dict__
 
@@ -2784,7 +2782,7 @@ class SelfReferentialTest(fixtures.MappedTest):
             eq_(
                 Node(data="n1", children=[Node(data="n11"), Node(data="n12")]),
                 sess.query(Node)
-                .options(undefer("data"))
+                .options(undefer(Node.data))
                 .order_by(Node.id)
                 .first(),
             )
@@ -2797,7 +2795,10 @@ class SelfReferentialTest(fixtures.MappedTest):
             eq_(
                 Node(data="n1", children=[Node(data="n11"), Node(data="n12")]),
                 sess.query(Node)
-                .options(undefer("data"), undefer("children.data"))
+                .options(
+                    undefer(Node.data),
+                    defaultload(Node.children).undefer(Node.data),
+                )
                 .first(),
             )
 
@@ -2832,7 +2833,9 @@ class SelfReferentialTest(fixtures.MappedTest):
                 sess.query(Node)
                 .filter_by(data="n1")
                 .order_by(Node.id)
-                .options(selectinload("children").selectinload("children"))
+                .options(
+                    selectinload(Node.children).selectinload(Node.children)
+                )
                 .first()
             )
             eq_(

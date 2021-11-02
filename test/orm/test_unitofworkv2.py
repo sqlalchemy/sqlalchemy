@@ -1596,7 +1596,7 @@ class RowswitchAccountingTest(fixtures.MappedTest):
     def test_switch_on_update(self):
         Parent, Child = self._fixture()
 
-        sess = fixture_session(autocommit=False)
+        sess = fixture_session()
 
         p1 = Parent(id=1, child=Child())
         sess.add(p1)
@@ -2201,7 +2201,7 @@ class LoadersUsingCommittedTest(UOWTest):
 
         sess.expunge_all()
         # lookup an address and move it to the other user
-        a1 = sess.query(Address).get(a1.id)
+        a1 = sess.get(Address, a1.id)
 
         # move address to another user's fk
         assert a1.user_id == u1.id
@@ -2270,7 +2270,7 @@ class LoadersUsingCommittedTest(UOWTest):
         sess.commit()
 
         sess.expunge_all()
-        u1 = sess.query(User).get(u1.id)
+        u1 = sess.get(User, u1.id)
         u1.id = 2
         try:
             sess.flush()

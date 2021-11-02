@@ -11,7 +11,6 @@ from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload
@@ -164,7 +163,7 @@ class SelfReferentialTestJoinedToBase(fixtures.MappedTest):
         pa = aliased(Person)
         eq_(
             sess.query(Engineer)
-            .join(pa, "reports_to")
+            .join(pa, Engineer.reports_to)
             .filter(pa.name == "dogbert")
             .first(),
             Engineer(name="dilbert"),
@@ -276,7 +275,7 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
 
         eq_(
             sess.query(Engineer)
-            .join(ma, "reports_to")
+            .join(ma, Engineer.reports_to)
             .filter(ma.name == "dogbert")
             .first(),
             Engineer(name="dilbert"),
@@ -507,7 +506,7 @@ class SelfReferentialJ2JSelfTest(fixtures.MappedTest):
         ea = aliased(Engineer)
         eq_(
             sess.query(Engineer)
-            .join(ea, "reports_to")
+            .join(ea, Engineer.reports_to)
             .filter(ea.name == "wally")
             .first(),
             Engineer(name="dilbert"),
@@ -937,7 +936,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         # test that the splicing of the join works here, doesn't break in
         # the middle of "parent join child1"
-        q = sess.query(Child1).options(joinedload("left_child2"))
+        q = sess.query(Child1).options(joinedload(Child1.left_child2))
         self.assert_compile(
             q.limit(1).statement,
             "SELECT child1.id, parent.id AS id_1, parent.cls, "
@@ -969,7 +968,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
         sess.flush()
         sess.expunge_all()
 
-        query_ = sess.query(Child1).options(subqueryload("left_child2"))
+        query_ = sess.query(Child1).options(subqueryload(Child1.left_child2))
         for row in query_.all():
             assert row.left_child2
 
@@ -1283,7 +1282,9 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
 
         def go():
             eq_(
-                sess.query(Subparent).options(joinedload("children")).all(),
+                sess.query(Subparent)
+                .options(joinedload(Subparent.children))
+                .all(),
                 [p1, p2],
             )
 
@@ -1311,7 +1312,7 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
             eq_(
                 sess.query(Subparent)
                 .join(Subparent.children)
-                .options(contains_eager("children"))
+                .options(contains_eager(Subparent.children))
                 .all(),
                 [p1, p2],
             )
@@ -1337,7 +1338,9 @@ class SubClassEagerToSubClassTest(fixtures.MappedTest):
 
         def go():
             eq_(
-                sess.query(Subparent).options(subqueryload("children")).all(),
+                sess.query(Subparent)
+                .options(subqueryload(Subparent.children))
+                .all(),
                 [p1, p2],
             )
 
@@ -1467,27 +1470,6 @@ class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
 
         self.assert_sql_count(testing.db, go, 3)
 
-    def test_fixed_w_poly_subquery(self):
-        A = self.classes.A
-        B = self.classes.B
-        C = self.classes.C
-        D = self.classes.D
-
-        session = fixture_session()
-        d = session.query(D).one()
-
-        def go():
-            # NOTE: subqueryload is broken for this case, first found
-            # when cartesian product detection was added.
-            for a in (
-                session.query(A)
-                .with_polymorphic([B, C])
-                .options(selectinload(B.related), selectinload(C.related))
-            ):
-                eq_(a.related, [d])
-
-        self.assert_sql_count(testing.db, go, 3)
-
     def test_free_w_poly_joined(self):
         A = self.classes.A
         B = self.classes.B
@@ -1501,25 +1483,6 @@ class SameNamedPropTwoPolymorphicSubClassesTest(fixtures.MappedTest):
         def go():
             for a in session.query(a_poly).options(
                 joinedload(a_poly.B.related), joinedload(a_poly.C.related)
-            ):
-                eq_(a.related, [d])
-
-        self.assert_sql_count(testing.db, go, 1)
-
-    def test_fixed_w_poly_joined(self):
-        A = self.classes.A
-        B = self.classes.B
-        C = self.classes.C
-        D = self.classes.D
-
-        session = fixture_session()
-        d = session.query(D).one()
-
-        def go():
-            for a in (
-                session.query(A)
-                .with_polymorphic([B, C])
-                .options(joinedload(B.related), joinedload(C.related))
             ):
                 eq_(a.related, [d])
 
@@ -1770,7 +1733,8 @@ class SubClassToSubClassMultiTest(AssertsCompiledSQL, fixtures.MappedTest):
         s = fixture_session()
         self.assert_compile(
             s.query(Parent)
-            .join(Parent.sub1, Sub1.sub2)
+            .join(Parent.sub1)
+            .join(Sub1.sub2)
             .join(Sub2.ep1)
             .join(Sub2.ep2),
             "SELECT parent.id AS parent_id, parent.data AS parent_data "

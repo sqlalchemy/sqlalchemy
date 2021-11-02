@@ -165,11 +165,8 @@ BIND_TEMPLATES = {
     "named": ":%(name)s",
 }
 
-BIND_TRANSLATE = {
-    "pyformat": re.compile(r"[%\(\)]"),
-    "named": re.compile(r"[\:]"),
-}
-_BIND_TRANSLATE_CHARS = {"%": "P", "(": "A", ")": "Z", ":": "C"}
+_BIND_TRANSLATE_RE = re.compile(r"[%\(\):\[\]]")
+_BIND_TRANSLATE_CHARS = dict(zip("%():[]", "PAZC__"))
 
 OPERATORS = {
     # binary
@@ -673,6 +670,21 @@ class SQLCompiler(Compiled):
 
     """
 
+    positiontup = None
+    """for a compiled construct that uses a positional paramstyle, will be
+    a sequence of strings, indicating the names of bound parameters in order.
+
+    This is used in order to render bound parameters in their correct order,
+    and is combined with the :attr:`_sql.Compiled.params` dictionary to
+    render parameters.
+
+    .. seealso::
+
+        :ref:`faq_sql_expression_string` - includes a usage example for
+        debugging use cases.
+
+    """
+
     inline = False
 
     def __init__(
@@ -746,7 +758,6 @@ class SQLCompiler(Compiled):
             self.positiontup = []
             self._numeric_binds = dialect.paramstyle == "numeric"
         self.bindtemplate = BIND_TEMPLATES[dialect.paramstyle]
-        self._bind_translate = BIND_TRANSLATE.get(dialect.paramstyle, None)
 
         self.ctes = None
 
@@ -840,10 +851,17 @@ class SQLCompiler(Compiled):
 
         """
         # collect CTEs to tack on top of a SELECT
+        # To store the query to print - Dict[cte, text_query]
         self.ctes = util.OrderedDict()
-        # Detect same CTE references
-        self.ctes_by_name = {}
-        self.level_by_ctes = {}
+
+        # Detect same CTE references - Dict[(level, name), cte]
+        # Level is required for supporting nesting
+        self.ctes_by_level_name = {}
+
+        # To retrieve key/level in ctes_by_level_name -
+        # Dict[cte_reference, (level, cte_name)]
+        self.level_name_by_cte = {}
+
         self.ctes_recursive = False
         if self.positional:
             self.cte_positional = {}
@@ -1088,7 +1106,14 @@ class SQLCompiler(Compiled):
     @property
     def params(self):
         """Return the bind param dictionary embedded into this
-        compiled object, for those values that are present."""
+        compiled object, for those values that are present.
+
+        .. seealso::
+
+            :ref:`faq_sql_expression_string` - includes a usage example for
+            debugging use cases.
+
+        """
         return self.construct_params(_check=False)
 
     def _process_parameters_for_postcompile(
@@ -1106,7 +1131,6 @@ class SQLCompiler(Compiled):
           N as a bound parameter.
 
         """
-
         if parameters is None:
             parameters = self.construct_params()
 
@@ -1134,22 +1158,36 @@ class SQLCompiler(Compiled):
         replacement_expressions = {}
         to_update_sets = {}
 
+        # notes:
+        # *unescaped* parameter names in:
+        # self.bind_names, self.binds, self._bind_processors
+        #
+        # *escaped* parameter names in:
+        # construct_params(), replacement_expressions
+
         for name in (
             self.positiontup if self.positional else self.bind_names.values()
         ):
+            escaped_name = (
+                self.escaped_bind_names.get(name, name)
+                if self.escaped_bind_names
+                else name
+            )
             parameter = self.binds[name]
             if parameter in self.literal_execute_params:
-                if name not in replacement_expressions:
-                    value = parameters.pop(name)
+                if escaped_name not in replacement_expressions:
+                    value = parameters.pop(escaped_name)
 
-                replacement_expressions[name] = self.render_literal_bindparam(
+                replacement_expressions[
+                    escaped_name
+                ] = self.render_literal_bindparam(
                     parameter, render_literal_value=value
                 )
                 continue
 
             if parameter in self.post_compile_params:
-                if name in replacement_expressions:
-                    to_update = to_update_sets[name]
+                if escaped_name in replacement_expressions:
+                    to_update = to_update_sets[escaped_name]
                 else:
                     # we are removing the parameter from parameters
                     # because it is a list value, which is not expected by
@@ -1157,13 +1195,15 @@ class SQLCompiler(Compiled):
                     # process it. the single name is being replaced with
                     # individual numbered parameters for each value in the
                     # param.
-                    values = parameters.pop(name)
+                    values = parameters.pop(escaped_name)
 
                     leep = self._literal_execute_expanding_parameter
-                    to_update, replacement_expr = leep(name, parameter, values)
+                    to_update, replacement_expr = leep(
+                        escaped_name, parameter, values
+                    )
 
-                    to_update_sets[name] = to_update
-                    replacement_expressions[name] = replacement_expr
+                    to_update_sets[escaped_name] = to_update
+                    replacement_expressions[escaped_name] = replacement_expr
 
                 if not parameter.literal_execute:
                     parameters.update(to_update)
@@ -1193,10 +1233,24 @@ class SQLCompiler(Compiled):
                 positiontup.append(name)
 
         def process_expanding(m):
-            return replacement_expressions[m.group(1)]
+            key = m.group(1)
+            expr = replacement_expressions[key]
+
+            # if POSTCOMPILE included a bind_expression, render that
+            # around each element
+            if m.group(2):
+                tok = m.group(2).split("~~")
+                be_left, be_right = tok[1], tok[3]
+                expr = ", ".join(
+                    "%s%s%s" % (be_left, exp, be_right)
+                    for exp in expr.split(", ")
+                )
+            return expr
 
         statement = re.sub(
-            r"\[POSTCOMPILE_(\S+)\]", process_expanding, self.string
+            r"\[POSTCOMPILE_(\S+?)(~~.+?~~)?\]",
+            process_expanding,
+            self.string,
         )
 
         expanded_state = ExpandedState(
@@ -1956,8 +2010,10 @@ class SQLCompiler(Compiled):
         self, parameter, values
     ):
 
+        typ_dialect_impl = parameter.type._unwrapped_dialect_impl(self.dialect)
+
         if not values:
-            if parameter.type._is_tuple_type:
+            if typ_dialect_impl._is_tuple_type:
                 replacement_expression = (
                     "VALUES " if self.dialect.tuple_in_values else ""
                 ) + self.visit_empty_set_op_expr(
@@ -1970,7 +2026,7 @@ class SQLCompiler(Compiled):
                 )
 
         elif isinstance(values[0], (tuple, list)):
-            assert parameter.type._is_tuple_type
+            assert typ_dialect_impl._is_tuple_type
             replacement_expression = (
                 "VALUES " if self.dialect.tuple_in_values else ""
             ) + ", ".join(
@@ -1986,7 +2042,7 @@ class SQLCompiler(Compiled):
                 for i, tuple_element in enumerate(values)
             )
         else:
-            assert not parameter.type._is_tuple_type
+            assert not typ_dialect_impl._is_tuple_type
             replacement_expression = ", ".join(
                 self.render_literal_value(value, parameter.type)
                 for value in values
@@ -2001,9 +2057,11 @@ class SQLCompiler(Compiled):
                 parameter, values
             )
 
+        typ_dialect_impl = parameter.type._unwrapped_dialect_impl(self.dialect)
+
         if not values:
             to_update = []
-            if parameter.type._is_tuple_type:
+            if typ_dialect_impl._is_tuple_type:
 
                 replacement_expression = self.visit_empty_set_op_expr(
                     parameter.type.types, parameter.expand_op
@@ -2013,7 +2071,10 @@ class SQLCompiler(Compiled):
                     [parameter.type], parameter.expand_op
                 )
 
-        elif isinstance(values[0], (tuple, list)):
+        elif (
+            isinstance(values[0], (tuple, list))
+            and not typ_dialect_impl._is_array
+        ):
             to_update = [
                 ("%s_%s_%s" % (name, i, j), value)
                 for i, tuple_element in enumerate(values, 1)
@@ -2292,14 +2353,27 @@ class SQLCompiler(Compiled):
             impl = bindparam.type.dialect_impl(self.dialect)
             if impl._has_bind_expression:
                 bind_expression = impl.bind_expression(bindparam)
-                return self.process(
+                wrapped = self.process(
                     bind_expression,
                     skip_bind_expression=True,
                     within_columns_clause=within_columns_clause,
                     literal_binds=literal_binds,
                     literal_execute=literal_execute,
+                    render_postcompile=render_postcompile,
                     **kwargs
                 )
+                if bindparam.expanding:
+                    # for postcompile w/ expanding, move the "wrapped" part
+                    # of this into the inside
+                    m = re.match(
+                        r"^(.*)\(\[POSTCOMPILE_(\S+?)\]\)(.*)$", wrapped
+                    )
+                    wrapped = "([POSTCOMPILE_%s~~%s~~REPL~~%s~~])" % (
+                        m.group(2),
+                        m.group(1),
+                        m.group(3),
+                    )
+                return wrapped
 
         if not literal_binds:
             literal_execute = (
@@ -2482,12 +2556,13 @@ class SQLCompiler(Compiled):
                 positional_names.append(name)
             else:
                 self.positiontup.append(name)
-        elif not post_compile and not escaped_from:
-            tr_reg = self._bind_translate
-            if tr_reg.search(name):
-                # i'd rather use translate() here but I can't get it to work
-                # in all cases under Python 2, not worth it right now
-                new_name = tr_reg.sub(
+        elif not escaped_from:
+
+            if _BIND_TRANSLATE_RE.search(name):
+                # not quite the translate use case as we want to
+                # also get a quick boolean if we even found
+                # unusual characters in the name
+                new_name = _BIND_TRANSLATE_RE.sub(
                     lambda m: _BIND_TRANSLATE_CHARS[m.group(0)],
                     name,
                 )
@@ -2515,8 +2590,6 @@ class SQLCompiler(Compiled):
     ):
         self._init_cte_state()
 
-        cte_level = len(self.stack) if cte.nesting else 1
-
         kwargs["visiting_cte"] = cte
 
         cte_name = cte.name
@@ -2527,44 +2600,60 @@ class SQLCompiler(Compiled):
         is_new_cte = True
         embedded_in_current_named_cte = False
 
-        if cte in self.level_by_ctes:
-            cte_level = self.level_by_ctes[cte]
+        _reference_cte = cte._get_reference_cte()
+
+        if _reference_cte in self.level_name_by_cte:
+            cte_level, _ = self.level_name_by_cte[_reference_cte]
+            assert _ == cte_name
+        else:
+            cte_level = len(self.stack) if cte.nesting else 1
 
         cte_level_name = (cte_level, cte_name)
-        if cte_level_name in self.ctes_by_name:
-            existing_cte = self.ctes_by_name[cte_level_name]
+        if cte_level_name in self.ctes_by_level_name:
+            existing_cte = self.ctes_by_level_name[cte_level_name]
             embedded_in_current_named_cte = visiting_cte is existing_cte
 
             # we've generated a same-named CTE that we are enclosed in,
             # or this is the same CTE.  just return the name.
-            if cte in existing_cte._restates or cte is existing_cte:
+            if cte is existing_cte._restates or cte is existing_cte:
                 is_new_cte = False
-            elif existing_cte in cte._restates:
+            elif existing_cte is cte._restates:
                 # we've generated a same-named CTE that is
                 # enclosed in us - we take precedence, so
                 # discard the text for the "inner".
                 del self.ctes[existing_cte]
-                del self.level_by_ctes[existing_cte]
+
+                existing_cte_reference_cte = existing_cte._get_reference_cte()
+
+                # TODO: determine if these assertions are correct.  they
+                # pass for current test cases
+                # assert existing_cte_reference_cte is _reference_cte
+                # assert existing_cte_reference_cte is existing_cte
+
+                del self.level_name_by_cte[existing_cte_reference_cte]
             else:
                 raise exc.CompileError(
                     "Multiple, unrelated CTEs found with "
                     "the same name: %r" % cte_name
                 )
 
-        if asfrom or is_new_cte:
-            if cte._cte_alias is not None:
-                pre_alias_cte = cte._cte_alias
-                cte_pre_alias_name = cte._cte_alias.name
-                if isinstance(cte_pre_alias_name, elements._truncated_label):
-                    cte_pre_alias_name = self._truncated_identifier(
-                        "alias", cte_pre_alias_name
-                    )
-            else:
-                pre_alias_cte = cte
-                cte_pre_alias_name = None
+        if not asfrom and not is_new_cte:
+            return None
+
+        if cte._cte_alias is not None:
+            pre_alias_cte = cte._cte_alias
+            cte_pre_alias_name = cte._cte_alias.name
+            if isinstance(cte_pre_alias_name, elements._truncated_label):
+                cte_pre_alias_name = self._truncated_identifier(
+                    "alias", cte_pre_alias_name
+                )
+        else:
+            pre_alias_cte = cte
+            cte_pre_alias_name = None
 
         if is_new_cte:
-            self.ctes_by_name[cte_level_name] = cte
+            self.ctes_by_level_name[cte_level_name] = cte
+            self.level_name_by_cte[_reference_cte] = cte_level_name
 
             if (
                 "autocommit" in cte.element._execution_options
@@ -2649,7 +2738,6 @@ class SQLCompiler(Compiled):
                     )
 
                 self.ctes[cte] = text
-                self.level_by_ctes[cte] = cte_level
 
         if asfrom:
             if from_linter:
@@ -3120,6 +3208,8 @@ class SQLCompiler(Compiled):
         # passed in.  for ORM use this will convert from an ORM-state
         # SELECT to a regular "Core" SELECT.  other composed operations
         # such as computation of joins will be performed.
+        kwargs["within_columns_clause"] = False
+
         compile_state = select_stmt._compile_state_factory(
             select_stmt, self, **kwargs
         )
@@ -3475,7 +3565,9 @@ class SQLCompiler(Compiled):
         if nesting_level and nesting_level > 1:
             ctes = util.OrderedDict()
             for cte in list(self.ctes.keys()):
-                cte_level = self.level_by_ctes[cte]
+                cte_level, cte_name = self.level_name_by_cte[
+                    cte._get_reference_cte()
+                ]
                 is_rendered_level = cte_level == nesting_level or (
                     include_following_stack and cte_level == nesting_level + 1
                 )
@@ -3484,14 +3576,6 @@ class SQLCompiler(Compiled):
 
                 ctes[cte] = self.ctes[cte]
 
-                del self.ctes[cte]
-                del self.level_by_ctes[cte]
-
-                cte_name = cte.name
-                if isinstance(cte_name, elements._truncated_label):
-                    cte_name = self._truncated_identifier("alias", cte_name)
-
-                del self.ctes_by_name[(cte_level, cte_name)]
         else:
             ctes = self.ctes
 
@@ -3508,6 +3592,16 @@ class SQLCompiler(Compiled):
         cte_text = self.get_cte_preamble(ctes_recursive) + " "
         cte_text += ", \n".join([txt for txt in ctes.values()])
         cte_text += "\n "
+
+        if nesting_level and nesting_level > 1:
+            for cte in list(ctes.keys()):
+                cte_level, cte_name = self.level_name_by_cte[
+                    cte._get_reference_cte()
+                ]
+                del self.ctes[cte]
+                del self.ctes_by_level_name[(cte_level, cte_name)]
+                del self.level_name_by_cte[cte._get_reference_cte()]
+
         return cte_text
 
     def get_cte_preamble(self, recursive):

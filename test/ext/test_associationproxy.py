@@ -146,7 +146,9 @@ class AutoFlushTest(fixtures.MappedTest):
             collection_class, is_dict=is_dict
         )
 
-        session = Session(testing.db, autoflush=True, expire_on_commit=True)
+        session = Session(
+            testing.db, autoflush=True, expire_on_commit=True, future=True
+        )
 
         p1 = Parent()
         c1 = Child("c1")
@@ -260,7 +262,7 @@ class _CollectionOperations(fixtures.MappedTest):
         self.session.flush()
         id_, type_ = obj.id, type(obj)
         self.session.expunge_all()
-        return self.session.query(type_).get(id_)
+        return self.session.get(type_, id_)
 
     def _test_sequence_ops(self):
         Parent, Child = self.classes("Parent", "Child")
@@ -1009,7 +1011,7 @@ class ScalarTest(fixtures.MappedTest):
             session.flush()
             id_, type_ = obj.id, type(obj)
             session.expunge_all()
-            return session.query(type_).get(id_)
+            return session.get(type_, id_)
 
         p = Parent("p")
 
@@ -1199,7 +1201,7 @@ class LazyLoadTest(fixtures.MappedTest):
         self.session.flush()
         id_, type_ = obj.id, type(obj)
         self.session.expunge_all()
-        return self.session.query(type_).get(id_)
+        return self.session.get(type_, id_)
 
     def test_lazy_list(self):
         Parent, Child = self.classes("Parent", "Child")
@@ -2277,9 +2279,9 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_join_separate_attr(self):
         User = self.classes.User
         self.assert_compile(
-            self.session.query(User).join(
-                User.keywords.local_attr, User.keywords.remote_attr
-            ),
+            self.session.query(User)
+            .join(User.keywords.local_attr)
+            .join(User.keywords.remote_attr),
             "SELECT users.id AS users_id, users.name AS users_name, "
             "users.singular_id AS users_singular_id "
             "FROM users JOIN userkeywords ON users.id = "
@@ -2290,7 +2292,9 @@ class ComparatorTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_join_single_attr(self):
         User = self.classes.User
         self.assert_compile(
-            self.session.query(User).join(*User.keywords.attr),
+            self.session.query(User)
+            .join(User.keywords.attr[0])
+            .join(User.keywords.attr[1]),
             "SELECT users.id AS users_id, users.name AS users_name, "
             "users.singular_id AS users_singular_id "
             "FROM users JOIN userkeywords ON users.id = "

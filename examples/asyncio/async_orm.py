@@ -13,8 +13,8 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.future import select
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import sessionmaker
@@ -53,6 +53,7 @@ async def async_main():
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+    async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
     # expire_on_commit=False will prevent attributes from being expired

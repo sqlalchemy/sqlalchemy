@@ -1,7 +1,10 @@
 import sqlalchemy as sa
 from sqlalchemy import testing
 from sqlalchemy import util
+from sqlalchemy.orm import defaultload
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import relationship
+from sqlalchemy.orm import subqueryload
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing.fixtures import fixture_session
@@ -239,8 +242,8 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         def go():
             users[:] = (
                 sess.query(self.classes.User)
-                .options(sa.orm.subqueryload("*"))
-                .options(sa.orm.joinedload(self.classes.User.addresses))
+                .options(subqueryload("*"))
+                .options(joinedload(self.classes.User.addresses))
                 .options(sa.orm.lazyload("*"))
                 .order_by(self.classes.User.id)
                 .all()
@@ -254,7 +257,7 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
     def test_star_must_be_alone(self):
         sess = self._downgrade_fixture()
         User = self.classes.User
-        opt = sa.orm.subqueryload("*", User.addresses)
+        opt = subqueryload("*", User.addresses)
         assert_raises_message(
             sa.exc.ArgumentError,
             "Wildcard token cannot be followed by another entity",
@@ -287,7 +290,7 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
             users[:] = (
                 sess.query(self.classes.User)
                 .options(sa.orm.lazyload("*"))
-                .options(sa.orm.joinedload(self.classes.User.addresses))
+                .options(joinedload(self.classes.User.addresses))
                 .order_by(self.classes.User.id)
                 .all()
             )
@@ -317,7 +320,7 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
             users[:] = (
                 sess.query(self.classes.User)
                 .options(sa.orm.lazyload("*"))
-                .options(sa.orm.subqueryload(self.classes.User.orders))
+                .options(subqueryload(self.classes.User.orders))
                 .order_by(self.classes.User.id)
                 .all()
             )
@@ -355,7 +358,7 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
             users[:] = (
                 sess.query(self.classes.User)
                 .options(sa.orm.noload("*"))
-                .options(sa.orm.joinedload(self.classes.User.addresses))
+                .options(joinedload(self.classes.User.addresses))
                 .order_by(self.classes.User.id)
                 .all()
             )
@@ -385,7 +388,7 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
             users[:] = (
                 sess.query(self.classes.User)
                 .options(sa.orm.noload("*"))
-                .options(sa.orm.subqueryload(self.classes.User.orders))
+                .options(subqueryload(self.classes.User.orders))
                 .order_by(self.classes.User.id)
                 .all()
             )
@@ -414,7 +417,7 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         def go():
             users[:] = (
                 sess.query(self.classes.User)
-                .options(sa.orm.joinedload("*"))
+                .options(joinedload("*"))
                 .order_by(self.classes.User.id)
                 .all()
             )
@@ -428,14 +431,20 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         sess = self._upgrade_fixture()
         users = []
 
+        User, Order, Item = self.classes("User", "Order", "Item")
+
         # test upgrade all to joined: 1 sql
         def go():
             users[:] = (
-                sess.query(self.classes.User)
-                .options(sa.orm.joinedload(".*"))
-                .options(sa.orm.joinedload("addresses.*"))
-                .options(sa.orm.joinedload("orders.*"))
-                .options(sa.orm.joinedload("orders.items.*"))
+                sess.query(User)
+                .options(joinedload(".*"))
+                .options(defaultload(User.addresses).joinedload("*"))
+                .options(defaultload(User.orders).joinedload("*"))
+                .options(
+                    defaultload(User.orders)
+                    .defaultload(Order.items)
+                    .joinedload("*")
+                )
                 .order_by(self.classes.User.id)
                 .all()
             )
@@ -450,13 +459,19 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         sess = self._upgrade_fixture()
         users = []
 
+        User, Order, Item = self.classes("User", "Order", "Item")
+
         # test joined all but 'keywords': upgraded to 1 sql
         def go():
             users[:] = (
-                sess.query(self.classes.User)
-                .options(sa.orm.lazyload("orders.items.keywords"))
-                .options(sa.orm.joinedload("*"))
-                .order_by(self.classes.User.id)
+                sess.query(User)
+                .options(
+                    defaultload(User.orders)
+                    .defaultload(Order.items)
+                    .lazyload(Item.keywords)
+                )
+                .options(joinedload("*"))
+                .order_by(User.id)
                 .all()
             )
 
@@ -492,8 +507,8 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         def go():
             users[:] = (
                 sess.query(self.classes.User)
-                .options(sa.orm.subqueryload(self.classes.User.addresses))
-                .options(sa.orm.joinedload("*"))
+                .options(subqueryload(self.classes.User.addresses))
+                .options(joinedload("*"))
                 .order_by(self.classes.User.id)
                 .all()
             )
@@ -513,7 +528,7 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         def go():
             users[:] = (
                 sess.query(self.classes.User)
-                .options(sa.orm.subqueryload("*"))
+                .options(subqueryload("*"))
                 .order_by(self.classes.User.id)
                 .all()
             )
@@ -527,15 +542,21 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         sess = self._upgrade_fixture()
         users = []
 
+        User, Order = self.classes("User", "Order")
+
         # test upgrade all to subquery: 1 sql + 4 relationships = 5
         def go():
             users[:] = (
-                sess.query(self.classes.User)
-                .options(sa.orm.subqueryload(".*"))
-                .options(sa.orm.subqueryload("addresses.*"))
-                .options(sa.orm.subqueryload("orders.*"))
-                .options(sa.orm.subqueryload("orders.items.*"))
-                .order_by(self.classes.User.id)
+                sess.query(User)
+                .options(subqueryload(".*"))
+                .options(defaultload(User.addresses).subqueryload("*"))
+                .options(defaultload(User.orders).subqueryload("*"))
+                .options(
+                    defaultload(User.orders)
+                    .defaultload(Order.items)
+                    .subqueryload("*")
+                )
+                .order_by(User.id)
                 .all()
             )
 
@@ -550,14 +571,19 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         is still honored"""
         sess = self._upgrade_fixture()
         users = []
+        User, Order, Item = self.classes("User", "Order", "Item")
 
         # test subquery all but 'keywords' (1 sql + 3 relationships = 4)
         def go():
             users[:] = (
-                sess.query(self.classes.User)
-                .options(sa.orm.lazyload("orders.items.keywords"))
-                .options(sa.orm.subqueryload("*"))
-                .order_by(self.classes.User.id)
+                sess.query(User)
+                .options(
+                    defaultload(User.orders)
+                    .defaultload(Order.items)
+                    .lazyload(Item.keywords)
+                )
+                .options(subqueryload("*"))
+                .order_by(User.id)
                 .all()
             )
 
@@ -593,9 +619,9 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         def go():
             users[:] = (
                 sess.query(self.classes.User)
-                .options(sa.orm.joinedload(self.classes.User.addresses))
-                .options(sa.orm.joinedload(self.classes.User.orders))
-                .options(sa.orm.subqueryload("*"))
+                .options(joinedload(self.classes.User.addresses))
+                .options(joinedload(self.classes.User.orders))
+                .options(subqueryload("*"))
                 .order_by(self.classes.User.id)
                 .all()
             )
@@ -661,7 +687,7 @@ class NoLoadTest(_fixtures.FixtureTest):
                 )
             ),
         )
-        q = fixture_session().query(m).options(sa.orm.lazyload("addresses"))
+        q = fixture_session().query(m).options(sa.orm.lazyload(User.addresses))
         result = [None]
 
         def go():
@@ -690,7 +716,7 @@ class NoLoadTest(_fixtures.FixtureTest):
         a1 = (
             s.query(Address)
             .filter_by(id=1)
-            .options(sa.orm.noload("user"))
+            .options(sa.orm.noload(Address.user))
             .first()
         )
 

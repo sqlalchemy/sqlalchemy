@@ -31,11 +31,9 @@ SQL Server provides so-called "auto incrementing" behavior using the
 table. SQLAlchemy considers ``IDENTITY`` within its default "autoincrement"
 behavior for an integer primary key column, described at
 :paramref:`_schema.Column.autoincrement`.  This means that by default,
-the first
-integer primary key column in a :class:`_schema.Table`
-will be considered to be the
-identity column - unless it is associated with a :class:`.Sequence` - and will
-generate DDL as such::
+the first integer primary key column in a :class:`_schema.Table` will be
+considered to be the identity column - unless it is associated with a
+:class:`.Sequence` - and will generate DDL as such::
 
     from sqlalchemy import Table, MetaData, Column, Integer
 
@@ -169,6 +167,70 @@ The CREATE TABLE for the above :class:`_schema.Table` object would be:
    supports real sequences as a separate construct, :class:`.Sequence` will be
    functional in the normal way starting from SQLAlchemy version 1.4.
 
+
+Using IDENTITY with Non-Integer numeric types
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+SQL Server also allows ``IDENTITY`` to be used with ``NUMERIC`` columns.  To
+implement this pattern smoothly in SQLAlchemy, the primary datatype of the
+column should remain as ``Integer``, however the underlying implementation
+type deployed to the SQL Server database can be specified as ``Numeric`` using
+:meth:`.TypeEngine.with_variant`::
+
+    from sqlalchemy import Column
+    from sqlalchemy import Integer
+    from sqlalchemy import Numeric
+    from sqlalchemy import String
+    from sqlalchemy.ext.declarative import declarative_base
+
+    Base = declarative_base()
+
+    class TestTable(Base):
+        __tablename__ = "test"
+        id = Column(
+            Integer().with_variant(Numeric(10, 0), "mssql"),
+            primary_key=True,
+            autoincrement=True,
+        )
+        name = Column(String)
+
+In the above example, ``Integer().with_variant()`` provides clear usage
+information that accurately describes the intent of the code. The general
+restriction that ``autoincrement`` only applies to ``Integer`` is established
+at the metadata level and not at the per-dialect level.
+
+When using the above pattern, the primary key identifier that comes back from
+the insertion of a row, which is also the value that would be assigned to an
+ORM object such as ``TestTable`` above, will be an instance of ``Decimal()``
+and not ``int`` when using SQL Server. The numeric return type of the
+:class:`_types.Numeric` type can be changed to return floats by passing False
+to :paramref:`_types.Numeric.asdecimal`. To normalize the return type of the
+above ``Numeric(10, 0)`` to return Python ints (which also support "long"
+integer values in Python 3), use :class:`_types.TypeDecorator` as follows::
+
+    from sqlalchemy import TypeDecorator
+
+    class NumericAsInteger(TypeDecorator):
+        '''normalize floating point return values into ints'''
+
+        impl = Numeric(10, 0, asdecimal=False)
+        cache_ok = True
+
+        def process_result_value(self, value, dialect):
+            if value is not None:
+                value = int(value)
+            return value
+
+    class TestTable(Base):
+        __tablename__ = "test"
+        id = Column(
+            Integer().with_variant(NumericAsInteger, "mssql"),
+            primary_key=True,
+            autoincrement=True,
+        )
+        name = Column(String)
+
+
 INSERT behavior
 ^^^^^^^^^^^^^^^^
 
@@ -249,8 +311,7 @@ how SQLAlchemy handles this:
 
 
 
-This
-is an auxiliary use case suitable for testing and bulk insert scenarios.
+This is an auxiliary use case suitable for testing and bulk insert scenarios.
 
 SEQUENCE support
 ----------------
@@ -2827,6 +2888,8 @@ class MSDialect(default.DefaultDialect):
     def has_table(self, connection, tablename, dbname, owner, schema):
         self._ensure_has_table_connection(connection)
         if tablename.startswith("#"):  # temporary table
+            # mssql does not support temporary views
+            # SQL Error [4103] [S0001]: "#v": Temporary views are not allowed
             tables = ischema.mssql_temp_table_columns
 
             s = sql.select(tables.c.table_name).where(
@@ -2835,14 +2898,18 @@ class MSDialect(default.DefaultDialect):
                 )
             )
 
-            table_name = connection.execute(s.limit(1)).scalar()
-            if table_name:
-                # #6910: verify it's not a temp table from another session
-                obj_id = connection.execute(
-                    text("SELECT object_id(:table_name)"),
-                    {"table_name": "tempdb.dbo.[{}]".format(table_name)},
-                ).scalar()
-                return bool(obj_id)
+            # #7168: fetch all (not just first match) in case some other #temp
+            #        table with the same name happens to appear first
+            table_names = connection.execute(s).scalars().fetchall()
+            # #6910: verify it's not a temp table from another session
+            for table_name in table_names:
+                if bool(
+                    connection.scalar(
+                        text("SELECT object_id(:table_name)"),
+                        {"table_name": "tempdb.dbo.[{}]".format(table_name)},
+                    )
+                ):
+                    return True
             else:
                 return False
         else:
@@ -2850,7 +2917,10 @@ class MSDialect(default.DefaultDialect):
 
             s = sql.select(tables.c.table_name).where(
                 sql.and_(
-                    tables.c.table_type == "BASE TABLE",
+                    sql.or_(
+                        tables.c.table_type == "BASE TABLE",
+                        tables.c.table_type == "VIEW",
+                    ),
                     tables.c.table_name == tablename,
                 )
             )
@@ -3260,33 +3330,122 @@ class MSDialect(default.DefaultDialect):
     def get_foreign_keys(
         self, connection, tablename, dbname, owner, schema, **kw
     ):
-        RR = ischema.ref_constraints
-        C = ischema.key_constraints.alias("C")
-        R = ischema.key_constraints.alias("R")
         # Foreign key constraints
         s = (
-            sql.select(
-                C.c.column_name,
-                R.c.table_schema,
-                R.c.table_name,
-                R.c.column_name,
-                RR.c.constraint_name,
-                RR.c.match_option,
-                RR.c.update_rule,
-                RR.c.delete_rule,
+            text(
+                """\
+WITH fk_info AS (
+    SELECT
+        ischema_ref_con.constraint_schema,
+        ischema_ref_con.constraint_name,
+        ischema_key_col.ordinal_position,
+        ischema_key_col.table_schema,
+        ischema_key_col.table_name,
+        ischema_ref_con.unique_constraint_schema,
+        ischema_ref_con.unique_constraint_name,
+        ischema_ref_con.match_option,
+        ischema_ref_con.update_rule,
+        ischema_ref_con.delete_rule,
+        ischema_key_col.column_name AS constrained_column
+    FROM
+        INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS ischema_ref_con
+        INNER JOIN
+        INFORMATION_SCHEMA.KEY_COLUMN_USAGE ischema_key_col ON
+            ischema_key_col.table_schema = ischema_ref_con.constraint_schema
+            AND ischema_key_col.constraint_name =
+            ischema_ref_con.constraint_name
+    WHERE ischema_key_col.table_name = :tablename
+        AND ischema_key_col.table_schema = :owner
+),
+constraint_info AS (
+    SELECT
+        ischema_key_col.constraint_schema,
+        ischema_key_col.constraint_name,
+        ischema_key_col.ordinal_position,
+        ischema_key_col.table_schema,
+        ischema_key_col.table_name,
+        ischema_key_col.column_name
+    FROM
+        INFORMATION_SCHEMA.KEY_COLUMN_USAGE ischema_key_col
+),
+index_info AS (
+    SELECT
+        sys.schemas.name AS index_schema,
+        sys.indexes.name AS index_name,
+        sys.index_columns.key_ordinal AS ordinal_position,
+        sys.schemas.name AS table_schema,
+        sys.objects.name AS table_name,
+        sys.columns.name AS column_name
+    FROM
+        sys.indexes
+        INNER JOIN
+        sys.objects ON
+            sys.objects.object_id = sys.indexes.object_id
+        INNER JOIN
+        sys.schemas ON
+            sys.schemas.schema_id = sys.objects.schema_id
+        INNER JOIN
+        sys.index_columns ON
+            sys.index_columns.object_id = sys.objects.object_id
+            AND sys.index_columns.index_id = sys.indexes.index_id
+        INNER JOIN
+        sys.columns ON
+            sys.columns.object_id = sys.indexes.object_id
+            AND sys.columns.column_id = sys.index_columns.column_id
+)
+    SELECT
+        fk_info.constraint_schema,
+        fk_info.constraint_name,
+        fk_info.ordinal_position,
+        fk_info.constrained_column,
+        constraint_info.table_schema AS referred_table_schema,
+        constraint_info.table_name AS referred_table_name,
+        constraint_info.column_name AS referred_column,
+        fk_info.match_option,
+        fk_info.update_rule,
+        fk_info.delete_rule
+    FROM
+        fk_info INNER JOIN constraint_info ON
+            constraint_info.constraint_schema =
+                fk_info.unique_constraint_schema
+            AND constraint_info.constraint_name =
+                fk_info.unique_constraint_name
+            AND constraint_info.ordinal_position = fk_info.ordinal_position
+    UNION
+    SELECT
+        fk_info.constraint_schema,
+        fk_info.constraint_name,
+        fk_info.ordinal_position,
+        fk_info.constrained_column,
+        index_info.table_schema AS referred_table_schema,
+        index_info.table_name AS referred_table_name,
+        index_info.column_name AS referred_column,
+        fk_info.match_option,
+        fk_info.update_rule,
+        fk_info.delete_rule
+    FROM
+        fk_info INNER JOIN index_info ON
+            index_info.index_schema = fk_info.unique_constraint_schema
+            AND index_info.index_name = fk_info.unique_constraint_name
+            AND index_info.ordinal_position = fk_info.ordinal_position
+
+    ORDER BY constraint_schema, constraint_name, ordinal_position
+"""
             )
-            .where(
-                sql.and_(
-                    C.c.table_name == tablename,
-                    C.c.table_schema == owner,
-                    RR.c.constraint_schema == C.c.table_schema,
-                    C.c.constraint_name == RR.c.constraint_name,
-                    R.c.constraint_name == RR.c.unique_constraint_name,
-                    R.c.constraint_schema == RR.c.unique_constraint_schema,
-                    C.c.ordinal_position == R.c.ordinal_position,
-                )
+            .bindparams(
+                sql.bindparam("tablename", tablename, ischema.CoerceUnicode()),
+                sql.bindparam("owner", owner, ischema.CoerceUnicode()),
             )
-            .order_by(RR.c.constraint_name, R.c.ordinal_position)
+            .columns(
+                constraint_schema=sqltypes.Unicode(),
+                constraint_name=sqltypes.Unicode(),
+                table_schema=sqltypes.Unicode(),
+                table_name=sqltypes.Unicode(),
+                constrained_column=sqltypes.Unicode(),
+                referred_table_schema=sqltypes.Unicode(),
+                referred_table_name=sqltypes.Unicode(),
+                referred_column=sqltypes.Unicode(),
+            )
         )
 
         # group rows by constraint ID, to handle multi-column FKs
@@ -3299,15 +3458,37 @@ class MSDialect(default.DefaultDialect):
                 "referred_schema": None,
                 "referred_table": None,
                 "referred_columns": [],
+                "options": {},
             }
 
         fkeys = util.defaultdict(fkey_rec)
 
         for r in connection.execute(s).fetchall():
-            scol, rschema, rtbl, rcol, rfknm, fkmatch, fkuprule, fkdelrule = r
+            (
+                _,  # constraint schema
+                rfknm,
+                _,  # ordinal position
+                scol,
+                rschema,
+                rtbl,
+                rcol,
+                # TODO: we support match=<keyword> for foreign keys so
+                # we can support this also, PG has match=FULL for example
+                # but this seems to not be a valid value for SQL Server
+                _,  # match rule
+                fkuprule,
+                fkdelrule,
+            ) = r
 
             rec = fkeys[rfknm]
             rec["name"] = rfknm
+
+            if fkuprule != "NO ACTION":
+                rec["options"]["onupdate"] = fkuprule
+
+            if fkdelrule != "NO ACTION":
+                rec["options"]["ondelete"] = fkdelrule
+
             if not rec["referred_table"]:
                 rec["referred_table"] = rtbl
                 if schema is not None or owner != rschema:

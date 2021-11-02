@@ -542,17 +542,16 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
         sess.add_all([m1, m2, e1, e2])
         sess.flush()
 
-        # note test_basic -> UnexpectedPolymorphicIdentityTest as well
+        ma = aliased(
+            Manager,
+            employees.select()
+            .where(employees.c.type == "manager")
+            .order_by(employees.c.employee_id)
+            .limit(10)
+            .subquery(),
+        )
         eq_(
-            sess.query(Manager)
-            .select_entity_from(
-                employees.select()
-                .where(employees.c.type == "manager")
-                .order_by(employees.c.employee_id)
-                .limit(10)
-                .subquery()
-            )
-            .all(),
+            sess.query(ma).all(),
             [m1, m2],
         )
 
@@ -582,24 +581,38 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
         sess.add_all([m1, m2, e1, e2])
         sess.flush()
 
-        stmt = (
-            select(reports, employees)
-            .select_from(
-                reports.outerjoin(
-                    employees,
-                    and_(
-                        employees.c.employee_id == reports.c.employee_id,
-                        employees.c.type == "manager",
-                    ),
-                )
+        stmt = select(reports, employees).select_from(
+            reports.outerjoin(
+                employees,
+                and_(
+                    employees.c.employee_id == reports.c.employee_id,
+                    employees.c.type == "manager",
+                ),
             )
-            .set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
-            .subquery()
         )
+
+        subq = stmt.subquery()
+
+        ra = aliased(Report, subq)
+
+        # this test previously used select_entity_from().  the standard
+        # conversion to use aliased() neds to be adjusted to be against
+        # Employee, not Manger, otherwise the ORM will add the manager single
+        # inh criteria to the outside which will break the outer join
+        ma = aliased(Employee, subq)
+
+        eq_(
+            sess.query(ra, ma).order_by(ra.name).all(),
+            [(r1, m1), (r2, m2), (r3, None), (r4, None)],
+        )
+
+        # however if someone really wants to run that SELECT statement and
+        # get back these two entities, they can use from_statement() more
+        # directly.  in 1.4 we don't even need tablename label style for the
+        # select(), automatic disambiguation works great
         eq_(
             sess.query(Report, Manager)
-            .select_entity_from(stmt)
-            .order_by(Report.name)
+            .from_statement(stmt.order_by(reports.c.name))
             .all(),
             [(r1, m1), (r2, m2), (r3, None), (r4, None)],
         )
@@ -764,7 +777,7 @@ class RelationshipFromSingleTest(
         sess = fixture_session()
 
         with self.sql_execution_asserter(testing.db) as asserter:
-            sess.query(Manager).options(subqueryload("stuff")).all()
+            sess.query(Manager).options(subqueryload(Manager.stuff)).all()
 
         asserter.assert_(
             CompiledSQL(
@@ -909,38 +922,6 @@ class RelationshipToSingleTest(
             [Company(name="c1")],
         )
 
-    def test_of_type_aliased_fromjoinpoint(self):
-        Company, Employee, Engineer = (
-            self.classes.Company,
-            self.classes.Employee,
-            self.classes.Engineer,
-        )
-        companies, employees = self.tables.companies, self.tables.employees
-
-        self.mapper_registry.map_imperatively(
-            Company, companies, properties={"employee": relationship(Employee)}
-        )
-        self.mapper_registry.map_imperatively(
-            Employee, employees, polymorphic_on=employees.c.type
-        )
-        self.mapper_registry.map_imperatively(
-            Engineer, inherits=Employee, polymorphic_identity="engineer"
-        )
-
-        sess = fixture_session()
-        self.assert_compile(
-            sess.query(Company).outerjoin(
-                Company.employee.of_type(Engineer),
-                aliased=True,
-                from_joinpoint=True,
-            ),
-            "SELECT companies.company_id AS companies_company_id, "
-            "companies.name AS companies_name FROM companies "
-            "LEFT OUTER JOIN employees AS employees_1 ON "
-            "companies.company_id = employees_1.company_id "
-            "AND employees_1.type IN ([POSTCOMPILE_type_1])",
-        )
-
     def test_join_explicit_onclause_no_discriminator(self):
         # test issue #3462
         Company, Employee, Engineer = (
@@ -992,7 +973,7 @@ class RelationshipToSingleTest(
 
         sess = fixture_session()
         self.assert_compile(
-            sess.query(Company, Engineer.name).outerjoin("engineers"),
+            sess.query(Company, Engineer.name).outerjoin(Company.engineers),
             "SELECT companies.company_id AS companies_company_id, "
             "companies.name AS companies_name, "
             "employees.name AS employees_name "
@@ -1378,7 +1359,7 @@ class RelationshipToSingleTest(
         sess.expunge_all()
         eq_(
             sess.query(Company)
-            .options(joinedload("engineers"))
+            .options(joinedload(Company.engineers))
             .order_by(Company.name)
             .all(),
             [
@@ -1685,11 +1666,9 @@ class SingleOnJoinedTest(fixtures.MappedTest):
         sess.expunge_all()
 
         def go():
+            wp = with_polymorphic(Person, "*")
             eq_(
-                sess.query(Person)
-                .with_polymorphic("*")
-                .order_by(Person.person_id)
-                .all(),
+                sess.query(wp).order_by(wp.person_id).all(),
                 [
                     Person(name="p1"),
                     Employee(name="e1", employee_data="ed1"),
@@ -1810,7 +1789,9 @@ class SingleFromPolySelectableTest(
         poly = self._with_poly_fixture()
 
         s = fixture_session()
-        q = s.query(Boss).with_polymorphic(Boss, poly)
+
+        wp = with_polymorphic(Boss, [], poly)
+        q = s.query(wp)
         self.assert_compile(
             q,
             "SELECT anon_1.employee_id AS anon_1_employee_id, "

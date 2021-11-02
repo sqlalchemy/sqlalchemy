@@ -6,7 +6,6 @@ import os
 import re
 import sys
 
-from sqlalchemy import testing
 from sqlalchemy.testing import config
 from sqlalchemy.testing import fixtures
 
@@ -101,13 +100,6 @@ class DocTest(fixtures.TestBase):
             "tutorial/orm_data_manipulation.rst",
             "tutorial/orm_related_objects.rst",
         )
-
-    def test_orm(self):
-        self._run_doctest("orm/tutorial.rst")
-
-    @testing.emits_warning()
-    def test_core(self):
-        self._run_doctest("core/tutorial.rst")
 
     def test_core_operators(self):
         self._run_doctest("core/operators.rst")

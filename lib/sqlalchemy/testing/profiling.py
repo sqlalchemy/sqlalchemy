@@ -243,17 +243,12 @@ def function_call_count(variance=0.05, times=1, warmup=0):
 
     from sqlalchemy.util import decorator
     from sqlalchemy.util import deprecations
-    from sqlalchemy.engine import row
     from sqlalchemy.testing import mock
 
     @decorator
     def wrap(fn, *args, **kw):
 
-        with mock.patch.object(
-            deprecations, "SQLALCHEMY_WARN_20", False
-        ), mock.patch.object(
-            row.LegacyRow, "_default_key_style", row.KEY_OBJECTS_NO_WARN
-        ):
+        with mock.patch.object(deprecations, "SQLALCHEMY_WARN_20", False):
             for warm in range(warmup):
                 fn(*args, **kw)
 

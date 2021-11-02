@@ -444,6 +444,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
         cte = s1.cte(name="cte", recursive=True)
 
         bar = select(cte).cte("bar").alias("cs1")
+
         cte = cte.union_all(select(cte.c.x + 1).where(cte.c.x < 10)).alias(
             "cs2"
         )
@@ -1787,6 +1788,24 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT cte.outer_cte FROM cte",
         )
 
+    def test_select_with_aliased_nesting_cte_in_cte(self):
+        nesting_cte = (
+            select(literal(1).label("inner_cte"))
+            .cte("nesting", nesting=True)
+            .alias("aliased_nested")
+        )
+        stmt = select(
+            select(nesting_cte.c.inner_cte.label("outer_cte")).cte("cte")
+        )
+
+        self.assert_compile(
+            stmt,
+            "WITH cte AS (WITH nesting AS (SELECT :param_1 AS inner_cte) "
+            "SELECT aliased_nested.inner_cte AS outer_cte "
+            "FROM nesting AS aliased_nested) "
+            "SELECT cte.outer_cte FROM cte",
+        )
+
     def test_nesting_cte_in_cte_with_same_name(self):
         nesting_cte = select(literal(1).label("inner_cte")).cte(
             "some_cte", nesting=True
@@ -1948,24 +1967,36 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
         nesting_cte = select(literal(1).label("inner_cte")).cte(
             "nesting", nesting=True
         )
-        stmt = select(
-            select(nesting_cte.c.inner_cte.label("outer_cte")).cte(
-                "cte", recursive=True
-            )
+
+        rec_cte = select(nesting_cte.c.inner_cte.label("outer_cte")).cte(
+            "rec_cte", recursive=True
         )
+        rec_part = select(rec_cte.c.outer_cte).where(
+            rec_cte.c.outer_cte == literal(1)
+        )
+        rec_cte = rec_cte.union(rec_part)
+
+        stmt = select(rec_cte)
 
         self.assert_compile(
             stmt,
-            "WITH RECURSIVE cte(outer_cte) AS (WITH nesting AS "
+            "WITH RECURSIVE rec_cte(outer_cte) AS (WITH nesting AS "
             "(SELECT :param_1 AS inner_cte) "
-            "SELECT nesting.inner_cte AS outer_cte FROM nesting) "
-            "SELECT cte.outer_cte FROM cte",
+            "SELECT nesting.inner_cte AS outer_cte FROM nesting UNION "
+            "SELECT rec_cte.outer_cte AS outer_cte FROM rec_cte "
+            "WHERE rec_cte.outer_cte = :param_2) "
+            "SELECT rec_cte.outer_cte FROM rec_cte",
         )
 
     def test_recursive_nesting_cte_in_cte(self):
-        nesting_cte = select(literal(1).label("inner_cte")).cte(
-            "nesting", nesting=True, recursive=True
+        rec_root = select(literal(1).label("inner_cte")).cte(
+            "nesting", recursive=True, nesting=True
         )
+        rec_part = select(rec_root.c.inner_cte).where(
+            rec_root.c.inner_cte == literal(1)
+        )
+        nesting_cte = rec_root.union(rec_part)
+
         stmt = select(
             select(nesting_cte.c.inner_cte.label("outer_cte")).cte("cte")
         )
@@ -1973,8 +2004,86 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             stmt,
             "WITH cte AS (WITH RECURSIVE nesting(inner_cte) AS "
-            "(SELECT :param_1 AS inner_cte) "
+            "(SELECT :param_1 AS inner_cte UNION "
+            "SELECT nesting.inner_cte AS inner_cte FROM nesting "
+            "WHERE nesting.inner_cte = :param_2) "
             "SELECT nesting.inner_cte AS outer_cte FROM nesting) "
+            "SELECT cte.outer_cte FROM cte",
+        )
+
+    def test_anon_recursive_nesting_cte_in_cte(self):
+        rec_root = (
+            select(literal(1).label("inner_cte"))
+            .cte("nesting", recursive=True, nesting=True)
+            .alias()
+        )
+        rec_part = select(rec_root.c.inner_cte).where(
+            rec_root.c.inner_cte == literal(1)
+        )
+        nesting_cte = rec_root.union(rec_part)
+
+        stmt = select(
+            select(nesting_cte.c.inner_cte.label("outer_cte")).cte("cte")
+        )
+
+        self.assert_compile(
+            stmt,
+            "WITH cte AS (WITH RECURSIVE anon_1(inner_cte) AS "
+            "(SELECT :param_1 AS inner_cte UNION "
+            "SELECT anon_1.inner_cte AS inner_cte FROM anon_1 "
+            "WHERE anon_1.inner_cte = :param_2) "
+            "SELECT anon_1.inner_cte AS outer_cte FROM anon_1) "
+            "SELECT cte.outer_cte FROM cte",
+        )
+
+    def test_fully_aliased_recursive_nesting_cte_in_cte(self):
+        rec_root = (
+            select(literal(1).label("inner_cte"))
+            .cte("nesting", recursive=True, nesting=True)
+            .alias("aliased_nesting")
+        )
+        rec_part = select(rec_root.c.inner_cte).where(
+            rec_root.c.inner_cte == literal(1)
+        )
+        nesting_cte = rec_root.union(rec_part)
+
+        stmt = select(
+            select(nesting_cte.c.inner_cte.label("outer_cte")).cte("cte")
+        )
+
+        self.assert_compile(
+            stmt,
+            "WITH cte AS (WITH RECURSIVE aliased_nesting(inner_cte) AS "
+            "(SELECT :param_1 AS inner_cte UNION "
+            "SELECT aliased_nesting.inner_cte AS inner_cte "
+            "FROM aliased_nesting "
+            "WHERE aliased_nesting.inner_cte = :param_2) "
+            "SELECT aliased_nesting.inner_cte AS outer_cte "
+            "FROM aliased_nesting) "
+            "SELECT cte.outer_cte FROM cte",
+        )
+
+    def test_aliased_recursive_nesting_cte_in_cte(self):
+        rec_root = select(literal(1).label("inner_cte")).cte(
+            "nesting", recursive=True, nesting=True
+        )
+        rec_part = select(rec_root.c.inner_cte).where(
+            rec_root.c.inner_cte == literal(1)
+        )
+        nesting_cte = rec_root.union(rec_part).alias("aliased_nesting")
+
+        stmt = select(
+            select(nesting_cte.c.inner_cte.label("outer_cte")).cte("cte")
+        )
+
+        self.assert_compile(
+            stmt,
+            "WITH cte AS (WITH RECURSIVE nesting(inner_cte) AS "
+            "(SELECT :param_1 AS inner_cte UNION "
+            "SELECT nesting.inner_cte AS inner_cte FROM nesting "
+            "WHERE nesting.inner_cte = :param_2) "
+            "SELECT aliased_nesting.inner_cte AS outer_cte "
+            "FROM nesting AS aliased_nesting) "
             "SELECT cte.outer_cte FROM cte",
         )
 
@@ -2023,19 +2132,32 @@ class NestingCTETest(fixtures.TestBase, AssertsCompiledSQL):
         nesting_cte = select(literal(1).label("inner_cte")).cte(
             "nesting", nesting=True, recursive=True
         )
-        stmt = select(
-            select(nesting_cte.c.inner_cte.label("outer_cte")).cte(
-                "cte", recursive=True
-            )
+        nesting_rec_part = select(nesting_cte.c.inner_cte).where(
+            nesting_cte.c.inner_cte == literal(1)
         )
+        nesting_cte = nesting_cte.union(nesting_rec_part)
+
+        rec_cte = select(nesting_cte.c.inner_cte.label("outer_cte")).cte(
+            "rec_cte", recursive=True
+        )
+        rec_part = select(rec_cte.c.outer_cte).where(
+            rec_cte.c.outer_cte == literal(1)
+        )
+        rec_cte = rec_cte.union(rec_part)
+
+        stmt = select(rec_cte)
 
         self.assert_compile(
             stmt,
-            "WITH RECURSIVE cte(outer_cte) AS "
-            "(WITH RECURSIVE nesting(inner_cte) "
-            "AS (SELECT :param_1 AS inner_cte) "
-            "SELECT nesting.inner_cte AS outer_cte FROM nesting) "
-            "SELECT cte.outer_cte FROM cte",
+            "WITH RECURSIVE rec_cte(outer_cte) AS ("
+            "WITH RECURSIVE nesting(inner_cte) AS "
+            "(SELECT :param_1 AS inner_cte UNION "
+            "SELECT nesting.inner_cte AS inner_cte FROM nesting "
+            "WHERE nesting.inner_cte = :param_2) "
+            "SELECT nesting.inner_cte AS outer_cte FROM nesting UNION "
+            "SELECT rec_cte.outer_cte AS outer_cte FROM rec_cte "
+            "WHERE rec_cte.outer_cte = :param_3) "
+            "SELECT rec_cte.outer_cte FROM rec_cte",
         )
 
     def test_select_from_insert_cte_with_nesting(self):

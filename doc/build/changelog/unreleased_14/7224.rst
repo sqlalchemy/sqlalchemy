@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 7224
+
+    Fixed bug in "relationship to aliased class" feature introduced at
+    :ref:`relationship_aliased_class` where it was not possible to create a
+    loader strategy option targeting an attribute on the target using the
+    :func:`_orm.aliased` construct directly in a second loader option, such as
+    ``selectinload(A.aliased_bs).joinedload(aliased_b.cs)``, without explicitly
+    qualifying using :meth:`_orm.PropComparator.of_type` on the preceding
+    element of the path. Additionally, targeting the non-aliased class directly
+    would be accepted (inappropriately), but would silently fail, such as
+    ``selectinload(A.aliased_bs).joinedload(B.cs)``; this now raises an error
+    referring to the typing mismatch.
+

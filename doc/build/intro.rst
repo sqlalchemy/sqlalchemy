@@ -96,18 +96,13 @@ Installation Guide
 Supported Platforms
 -------------------
 
-SQLAlchemy has been tested against the following platforms:
+SQLAlchemy supports the following platforms:
 
-* cPython 2.7
-* cPython 3.6 and higher
-* `PyPy <https://pypy.org/>`_ 2.1 or greater
+* cPython 3.7 and higher
+* Python-3 compatible versions of `PyPy <http://pypy.org/>`_
 
-.. versionchanged:: 1.4
-   Within the Python 3 series, 3.6 is now the minimum Python 3 version supported.
-
-   .. seealso::
-
-      :ref:`change_5634`
+.. versionchanged:: 2.0
+   SQLAlchemy now targets Python 3.7 and above.
 
 AsyncIO Support
 ----------------
@@ -128,9 +123,6 @@ by referring to ``setup.py`` directly or by using
 `pip <https://pypi.org/project/pip/>`_ or other setuptools-compatible
 approaches.
 
-.. versionchanged:: 1.1 setuptools is now required by the setup.py file;
-   plain distutils installs are no longer supported.
-
 Install via pip
 ---------------
 
@@ -142,7 +134,7 @@ downloaded from PyPI and installed in one step::
 This command will download the latest **released** version of SQLAlchemy from the `Python
 Cheese Shop <https://pypi.org/project/SQLAlchemy>`_ and install it to your system.
 
-In order to install the latest **prerelease** version, such as ``1.4.0b1``,
+In order to install the latest **prerelease** version, such as ``2.0.0b1``,
 pip requires that the ``--pre`` flag be used::
 
     pip install --pre SQLAlchemy
@@ -196,7 +188,7 @@ the available DBAPIs for each database, including external links.
 Checking the Installed SQLAlchemy Version
 ------------------------------------------
 
-This documentation covers SQLAlchemy version 1.4. If you're working on a
+This documentation covers SQLAlchemy version 2.0. If you're working on a
 system that already has SQLAlchemy installed, check the version from your
 Python prompt like this:
 
@@ -204,11 +196,11 @@ Python prompt like this:
 
      >>> import sqlalchemy
      >>> sqlalchemy.__version__ # doctest: +SKIP
-     1.4.0
+     2.0.0
 
 .. _migration:
 
-1.3 to 1.4 Migration
+1.x to 2.0 Migration
 =====================
 
-Notes on what's changed from 1.3 to 1.4 is available here at :doc:`changelog/migration_14`.
+Notes on the new API released in SQLAlchemy 2.0 is available here at :doc:`changelog/migration_20`.

@@ -70,7 +70,6 @@ changelog_sections = [
     "sqlite",
     "mssql",
     "oracle",
-    "firebird",
 ]
 # tags to sort on inside of sections
 changelog_inner_tag_sort = [
@@ -160,6 +159,7 @@ zzzeeksphinx_module_prefixes = {
     # ORM is sqlalchemy.orm.<cls>.
     "_ormevent": "sqlalchemy.orm",
     "_ormevents": "sqlalchemy.orm",
+    "_scoping": "sqlalchemy.orm.scoping",
     "_exc": "sqlalchemy.exc",
     "_reflection": "sqlalchemy.engine.reflection",
     "_orm": "sqlalchemy.orm",
@@ -200,11 +200,11 @@ copyright = u"2007-2021, the SQLAlchemy authors and contributors"  # noqa
 # built documents.
 #
 # The short X.Y version.
-version = "1.4"
+version = "2.0"
 # The full version, including alpha/beta/rc tags.
-release = "1.4.25"
+release = "2.0.0b1"
 
-release_date = "September 22, 2021"
+release_date = None
 
 site_base = os.environ.get("RTD_SITE_BASE", "https://www.sqlalchemy.org")
 site_adapter_template = "docs_adapter.mako"

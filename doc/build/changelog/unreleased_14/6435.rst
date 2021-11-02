@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, mypy
-    :tickets: 6435
-
-    Fixed issue in mypy plugin to improve upon some issues detecting ``Enum()``
-    SQL types containing custom Python enumeration classes. Pull request
-    courtesy Hiroshi Ogawa.

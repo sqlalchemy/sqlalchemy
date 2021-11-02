@@ -139,7 +139,7 @@ class PickleTest(fixtures.MappedTest):
 
         sess.expunge_all()
 
-        eq_(u1, sess.query(User).get(u2.id))
+        eq_(u1, sess.get(User, u2.id))
 
     def test_no_mappers(self):
         users = self.tables.users
@@ -199,7 +199,7 @@ class PickleTest(fixtures.MappedTest):
             sess.commit()
 
         with fixture_session() as sess:
-            u1 = sess.query(User).get(u1.id)
+            u1 = sess.get(User, u1.id)
             assert "name" not in u1.__dict__
             assert "addresses" not in u1.__dict__
 
@@ -342,13 +342,15 @@ class PickleTest(fixtures.MappedTest):
             sess.commit()
 
         with fixture_session(expire_on_commit=False) as sess:
-            u1 = (
-                sess.query(User)
-                .options(
-                    sa.orm.defer("name"),
-                    sa.orm.defer("addresses.email_address"),
-                )
-                .get(u1.id)
+            u1 = sess.get(
+                User,
+                u1.id,
+                options=[
+                    sa.orm.defer(User.name),
+                    sa.orm.defaultload(User.addresses).defer(
+                        Address.email_address
+                    ),
+                ],
             )
             assert "name" not in u1.__dict__
             assert "addresses" not in u1.__dict__
@@ -494,42 +496,48 @@ class PickleTest(fixtures.MappedTest):
         eq_(sa.inspect(u2).info["some_key"], "value")
 
     @testing.requires.non_broken_pickle
-    def test_unbound_options(self):
+    @testing.combinations(
+        lambda User: sa.orm.joinedload(User.addresses),
+        lambda User: sa.orm.defer(User.name),
+        lambda Address: sa.orm.joinedload(User.addresses).joinedload(
+            Address.dingaling
+        ),
+        lambda: sa.orm.joinedload(User.addresses).raiseload("*"),
+        lambda: sa.orm.raiseload("*"),
+    )
+    def test_unbound_options(self, test_case):
         sess, User, Address, Dingaling = self._option_test_fixture()
 
-        for opt in [
-            sa.orm.joinedload(User.addresses),
-            sa.orm.joinedload("addresses"),
-            sa.orm.defer("name"),
-            sa.orm.defer(User.name),
-            sa.orm.joinedload("addresses").joinedload(Address.dingaling),
-        ]:
-            opt2 = pickle.loads(pickle.dumps(opt))
-            eq_(opt.path, opt2.path)
+        opt = testing.resolve_lambda(test_case, User=User, Address=Address)
+        opt2 = pickle.loads(pickle.dumps(opt))
+        eq_(opt.path, opt2.path)
 
         u1 = sess.query(User).options(opt).first()
         pickle.loads(pickle.dumps(u1))
 
     @testing.requires.non_broken_pickle
-    def test_bound_options(self):
+    @testing.combinations(
+        lambda User: sa.orm.Load(User).joinedload(User.addresses),
+        lambda User: sa.orm.Load(User)
+        .joinedload(User.addresses)
+        .raiseload("*"),
+        lambda User: sa.orm.Load(User).defer(User.name),
+        lambda User, Address: sa.orm.Load(User)
+        .joinedload(User.addresses)
+        .joinedload(Address.dingaling),
+        lambda User, Address: sa.orm.Load(User)
+        .joinedload(User.addresses, innerjoin=True)
+        .joinedload(Address.dingaling),
+    )
+    def test_bound_options(self, test_case):
         sess, User, Address, Dingaling = self._option_test_fixture()
 
-        for opt in [
-            sa.orm.Load(User).joinedload(User.addresses),
-            sa.orm.Load(User).joinedload("addresses"),
-            sa.orm.Load(User).defer("name"),
-            sa.orm.Load(User).defer(User.name),
-            sa.orm.Load(User)
-            .joinedload("addresses")
-            .joinedload(Address.dingaling),
-            sa.orm.Load(User)
-            .joinedload("addresses", innerjoin=True)
-            .joinedload(Address.dingaling),
-        ]:
-            opt2 = pickle.loads(pickle.dumps(opt))
-            eq_(opt.path, opt2.path)
-            eq_(opt.context.keys(), opt2.context.keys())
-            eq_(opt.local_opts, opt2.local_opts)
+        opt = testing.resolve_lambda(test_case, User=User, Address=Address)
+
+        opt2 = pickle.loads(pickle.dumps(opt))
+        eq_(opt.path, opt2.path)
+        eq_(opt.context.keys(), opt2.context.keys())
+        eq_(opt.local_opts, opt2.local_opts)
 
         u1 = sess.query(User).options(opt).first()
         pickle.loads(pickle.dumps(u1))
@@ -540,10 +548,8 @@ class PickleTest(fixtures.MappedTest):
 
         for opt in [
             sa.orm.joinedload(User.addresses),
-            sa.orm.joinedload("addresses"),
-            sa.orm.defer("name"),
             sa.orm.defer(User.name),
-            sa.orm.joinedload("addresses").joinedload(Address.dingaling),
+            sa.orm.joinedload(User.addresses).joinedload(Address.dingaling),
         ]:
             context = sess.query(User).options(opt)._compile_context()
             opt = [

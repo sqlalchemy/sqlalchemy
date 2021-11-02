@@ -32,6 +32,7 @@ class DescriptorProperty(MapperProperty):
     doc = None
 
     uses_objects = False
+    _links_to_entity = False
 
     def instrument_class(self, mapper):
         prop = self

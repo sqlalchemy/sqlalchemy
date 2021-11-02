@@ -14,8 +14,340 @@ This document details individual issue-level changes made throughout
 
 
 .. changelog::
-    :version: 1.4.26
+    :version: 1.4.27
     :include_notes_from: unreleased_14
+
+.. changelog::
+    :version: 1.4.26
+    :released: October 19, 2021
+
+    .. change::
+        :tags: orm
+        :tickets: 6284
+
+        Passing a :class:`.Query` object to :meth:`_orm.Session.execute` is not
+        the intended use of this object, and will now raise a deprecation warning.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 5387
+
+        Added a "disconnect" condition for the "SSL SYSCALL error: Bad address"
+        error message as reported by psycopg2. Pull request courtesy Zeke Brechtel.
+
+    .. change::
+        :tags: bug, orm
+
+        Improved the exception message generated when configuring a mapping with
+        joined table inheritance where the two tables either have no foreign key
+        relationships set up, or where they have multiple foreign key relationships
+        set up. The message is now ORM specific and includes context that the
+        :paramref:`_orm.Mapper.inherit_condition` parameter may be needed
+        particularly for the ambiguous foreign keys case.
+
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 6520
+
+        Fixed issue where SQL queries using the
+        :meth:`_functions.FunctionElement.within_group` construct could not be
+        pickled, typically when using the ``sqlalchemy.ext.serializer`` extension
+        but also for general generic pickling.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7189
+
+        Fixed issue with :func:`_orm.with_loader_criteria` feature where ON
+        criteria would not be added to a JOIN for a query of the form
+        ``select(A).join(B)``, stating a target while making use of an implicit
+        ON clause.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7205
+
+        Fixed bug where the ORM "plugin", necessary for features such as
+        :func:`_orm.with_loader_criteria` to work correctly, would not be applied
+        to a :func:`_sql.select` which queried from an ORM column expression if it
+        made use of the :meth:`_sql.ColumnElement.label` modifier.
+
+
+
+    .. change::
+        :tags: bug, mypy
+        :tickets: 6435
+
+        Fixed issue in mypy plugin to improve upon some issues detecting ``Enum()``
+        SQL types containing custom Python enumeration classes. Pull request
+        courtesy Hiroshi Ogawa.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 7144
+
+        Fixed issue in MySQL :func:`_mysql.match` construct where passing a clause
+        expression such as :func:`_sql.bindparam` or other SQL expression for the
+        "against" parameter would fail. Pull request courtesy Anton Kovalevich.
+
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 7160
+
+        Fixed issue with :meth:`.Inspector.get_foreign_keys` where foreign
+        keys were omitted if they were established against a unique
+        index instead of a unique constraint.
+
+
+    .. change::
+        :tags: usecase, mssql
+
+        Added reflection support for SQL Server foreign key options, including
+        "ON UPDATE" and "ON DELETE" values of "CASCADE" and "SET NULL".
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 4123
+
+        Repaired issue in new :paramref:`_sql.HasCTE.cte.nesting` parameter
+        introduced with :ticket:`4123` where a recursive :class:`_sql.CTE` using
+        :paramref:`_sql.HasCTE.cte.recursive` in typical conjunction with UNION
+        would not compile correctly.  Additionally makes some adjustments so that
+        the :class:`_sql.CTE` construct creates a correct cache key.
+        Pull request courtesy Eric Masseran.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 7130
+
+        Fixed issue where the deprecation warning for the :class:`.URL` constructor
+        which indicates that the :meth:`.URL.create` method should be used would
+        not emit if a full positional argument list of seven arguments were passed;
+        additionally, validation of URL arguments will now occur if the constructor
+        is called in this way, which was being skipped previously.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7103
+
+        Add missing methods added in :ticket:`6991` to
+        :class:`_scoping.scoped_session` and :func:`_asyncio.async_scoped_session`.
+
+    .. change::
+        :tags: bug, examples
+        :tickets: 7169
+
+        Repaired the examples in examples/versioned_rows to use SQLAlchemy 1.4 APIs
+        correctly; these examples had been missed when API changes like removing
+        "passive" from :meth:`_orm.Session.is_modified` were made as well as the
+        :meth:`_ormevents.SessionEvents.do_orm_execute()` event hook were added.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 6974, 6972
+
+        An extra layer of warning messages has been added to the functionality
+        of :meth:`_orm.Query.join` and the ORM version of
+        :meth:`_sql.Select.join`, where a few places where "automatic aliasing"
+        continues to occur will now be called out as a pattern to avoid, mostly
+        specific to the area of joined table inheritance where classes that share
+        common base tables are being joined together without using explicit aliases.
+        One case emits a legacy warning for a pattern that's not recommended,
+        the other case is fully deprecated.
+
+        The automatic aliasing within ORM join() which occurs for overlapping
+        mapped tables does not work consistently with all APIs such as
+        :func:`_orm.contains_eager()`, and rather than continue to try to make
+        these use cases work everywhere, replacing with a more user-explicit
+        pattern is clearer, less prone to bugs and simplifies SQLAlchemy's
+        internals further.
+
+        The warnings include links to the errors.rst page where each pattern is
+        demonstrated along with the recommended pattern to fix.
+
+        .. seealso::
+
+            :ref:`error_xaj1`
+
+            :ref:`error_xaj2`
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 7061
+
+        Account for the :paramref:`_sql.table.schema` parameter passed to
+        the :func:`_sql.table` construct, such that it is taken into account
+        when accessing the :attr:`_sql.TableClause.fullname` attribute.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 7140
+
+        Fixed an inconsistency in the :meth:`_sql.ColumnOperators.any_` /
+        :meth:`_sql.ColumnOperators.all_` functions / methods where the special
+        behavior these functions have of "flipping" the expression such that the
+        "ANY" / "ALL" expression is always on the right side would not function if
+        the comparison were against the None value, that is, "column.any_() ==
+        None" should produce the same SQL expression as "null() == column.any_()".
+        Added more docs to clarify this as well, plus mentions that any_() / all_()
+        generally supersede the ARRAY version "any()" / "all()".
+
+    .. change::
+        :tags: engine, bug, postgresql
+        :tickets: 3247
+
+        The :meth:`_reflection.Inspector.reflect_table` method now supports
+        reflecting tables that do not have user defined columns. This allows
+        :meth:`_schema.MetaData.reflect` to properly complete reflection on
+        databases that contain such tables. Currently, only PostgreSQL is known to
+        support such a construct among the common database backends.
+
+    .. change::
+        :tags: sql, bug, regression
+        :tickets: 7177
+
+        Fixed issue where "expanding IN" would fail to function correctly with
+        datatypes that use the :meth:`_types.TypeEngine.bind_expression` method,
+        where the method would need to be applied to each element of the
+        IN expression rather than the overall IN expression itself.
+
+    .. change::
+        :tags: postgresql, bug, regression
+        :tickets: 7177
+
+        Fixed issue where IN expressions against a series of array elements, as can
+        be done with PostgreSQL, would fail to function correctly due to multiple
+        issues within the "expanding IN" feature of SQLAlchemy Core that was
+        standardized in version 1.4.  The psycopg2 dialect now makes use of the
+        :meth:`_types.TypeEngine.bind_expression` method with :class:`_types.ARRAY`
+        to portably apply the correct casts to elements.  The asyncpg dialect was
+        not affected by this issue as it applies bind-level casts at the driver
+        level rather than at the compiler level.
+
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 7204
+
+        Fixed installation issue where the ``sqlalchemy.dialects.mysql`` module
+        would not be importable if "greenlet" were not installed.
+
+    .. change::
+        :tags: bug, mssql
+        :tickets: 7168
+
+        Fixed issue with :meth:`.Inspector.has_table` where it would return False
+        if a local temp table with the same name from a different session happened
+        to be returned first when querying tempdb.  This is a continuation of
+        :ticket:`6910` which accounted for the temp table existing only in the
+        alternate session and not the current one.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7128
+
+        Fixed bug where iterating a :class:`.Result` from a :class:`_orm.Session`
+        after that :class:`_orm.Session` were closed would partially attach objects
+        to that session in an essentially invalid state. It now raises an exception
+        with a link to new documentation if an **un-buffered** result is iterated
+        from a :class:`_orm.Session` that was closed or otherwise had the
+        :meth:`_orm.Session.expunge_all` method called after that :class:`.Result`
+        was generated. The ``prebuffer_rows`` execution option, as is used
+        automatically by the asyncio extension for client-side result sets, may be
+        used to produce a :class:`.Result` where the ORM objects are prebuffered,
+        and in this case iterating the result will produce a series of detached
+        objects.
+
+        .. seealso::
+
+            :ref:`error_lkrp`
+
+    .. change::
+        :tags: bug, mssql, regression
+        :tickets: 7129
+
+        Fixed bug in SQL Server :class:`_mssql.DATETIMEOFFSET` datatype where the
+        ODBC implementation would not generate the correct DDL, for cases where the
+        type were converted using the ``dialect.type_descriptor()`` method, the
+        usage of which is illustrated in some documented examples for
+        :class:`.TypeDecorator`, though not necessary for most datatypes.
+        Regression was introduced by :ticket:`6366`. As part of this change, the
+        full list of SQL Server date types have been amended to return a "dialect
+        impl" that generates the same DDL name as the supertype.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 7153
+
+        Adjusted the "column disambiguation" logic that's new in 1.4, where the
+        same expression repeated gets an "extra anonymous" label, so that the logic
+        more aggressively deduplicates those labels when the repeated element
+        is the same Python expression object each time, as occurs in cases like
+        when using "singleton" values like :func:`_sql.null`.  This is based on
+        the observation that at least some databases (e.g. MySQL, but not SQLite)
+        will raise an error if the same label is repeated inside of a subquery.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7154
+
+        Related to :ticket:`7153`, fixed an issue where result column lookups would
+        fail for "adapted" SELECT statements that selected for "constant" value
+        expressions most typically the NULL expression, as would occur in such
+        places as joined eager loading in conjunction with limit/offset. This was
+        overall a regression due to issue :ticket:`6259` which removed all
+        "adaption" for constants like NULL, "true", and "false" when rewriting
+        expressions in a SQL statement, but this broke the case where the same
+        adaption logic were used to resolve the constant to a labeled expression
+        for the purposes of result set targeting.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 7134
+
+        Fixed regression where ORM loaded objects could not be pickled in cases
+        where loader options making use of ``"*"`` were used in certain
+        combinations, such as combining the :func:`_orm.joinedload` loader strategy
+        with ``raiseload('*')`` of sub-elements.
+
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 7077
+
+        Implemented proper ``__reduce__()`` methods for all SQLAlchemy exception
+        objects to ensure they all support clean round trips when pickling, as
+        exception objects are often serialized for the purposes of various
+        debugging tools.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 7209
+
+        Fixed regression where the use of a :class:`_hybrid.hybrid_property`
+        attribute or a mapped :func:`_orm.composite` attribute as a key passed to
+        the :meth:`_dml.Update.values` method for an ORM-enabled
+        :class:`_dml.Update` statement, as well as when using it via the legacy
+        :meth:`_orm.Query.update` method, would be processed for incoming
+        ORM/hybrid/composite values within the compilation stage of the UPDATE
+        statement, which meant that in those cases where caching occurred,
+        subsequent invocations of the same statement would no longer receive the
+        correct values. This would include not only hybrids that use the
+        :meth:`_hybrid.hybrid_property.update_expression` method, but any use of a
+        plain hybrid attribute as well. For composites, the issue instead caused a
+        non-repeatable cache key to be generated, which would break caching and
+        could fill up the statement cache with repeated statements.
+
+        The :class:`_dml.Update` construct now handles the processing of key/value
+        pairs passed to :meth:`_dml.Update.values` and
+        :meth:`_dml.Update.ordered_values` up front when the construct is first
+        generated, before the cache key has been generated so that the key/value
+        pairs are processed each time, and so that the cache key is generated
+        against the individual column/value pairs that will ultimately be
+        used in the statement.
+
 
 .. changelog::
     :version: 1.4.25
@@ -1420,7 +1752,7 @@ This document details individual issue-level changes made throughout
         as well as any other non-migrated applications. Previously, this would
         raise :class:`.ResourceClosedException` unconditionally in the same way as
         it does when attempting to fetch rows. While this is the correct behavior
-        going forward, the :class:`_cursor.LegacyCursorResult` object will now in
+        going forward, the ``LegacyCursorResult`` object will now in
         this case return an empty list for ``.keys()`` as it did in 1.3, while also
         emitting a 2.0 deprecation warning. The :class:`_cursor.CursorResult`, used
         when using a 2.0-style "future" engine, will continue to raise as it does
@@ -2131,7 +2463,7 @@ This document details individual issue-level changes made throughout
         works as it would with a dictionary, rather than raising ``TypeError`` as
         would be the case with a tuple, whether or not the C extensions are in
         place. This was originally supposed to emit a 2.0 deprecation warning for
-        the "non-future" case using :class:`_result.LegacyRow`, and was to raise
+        the "non-future" case using ``LegacyRow``, and was to raise
         ``TypeError`` for the "future" :class:`_result.Row` class. However, the C
         version of :class:`_result.Row` was failing to raise this ``TypeError``,
         and to complicate matters, the :meth:`_orm.Session.execute` method now
@@ -2142,12 +2474,12 @@ This document details individual issue-level changes made throughout
 
         Therefore, in order to soften the overall upgrade scheme as most users have
         not been exposed to the more strict behavior of :class:`_result.Row` up
-        through 1.4.6, :class:`_result.LegacyRow` and :class:`_result.Row` both
+        through 1.4.6, ``LegacyRow`` and :class:`_result.Row` both
         provide for string-key access as well as support for ``dict(row)``, in all
         cases emitting the 2.0 deprecation warning when ``SQLALCHEMY_WARN_20`` is
         enabled. The :class:`_result.Row` object still uses tuple-like behavior for
         ``__contains__``, which is probably the only noticeable behavioral change
-        compared to :class:`_result.LegacyRow`, other than the removal of
+        compared to ``LegacyRow``, other than the removal of
         dictionary-style methods ``values()`` and ``items()``.
 
     .. change::
@@ -2630,7 +2962,7 @@ This document details individual issue-level changes made throughout
 
         Restored the :class:`_engine.ResultProxy` name back to the
         ``sqlalchemy.engine`` namespace. This name refers to the
-        :class:`_engine.LegacyCursorResult` object.
+        ``LegacyCursorResult`` object.
 
     .. change::
         :tags: bug, orm
@@ -2838,7 +3170,7 @@ This document details individual issue-level changes made throughout
         and ``index`` will be served as tuple values if the named tuple includes
         those names; if they are absent, then their behavior as methods of
         ``collections.abc.Sequence`` is maintained. Therefore the
-        :class:`_result.Row` and :class:`_result.LegacyRow` classes have been fixed
+        :class:`_result.Row` and ``LegacyRow`` classes have been fixed
         so that they work in this same way, maintaining the expected behavior for
         database rows that have columns named "index" or "count".
 
@@ -5818,7 +6150,7 @@ This document details individual issue-level changes made throughout
         Python-level value processors have been simplified, particularly as it impacts the
         format of the C code, so that a DBAPI row is processed into a result tuple
         up front.   The object returned by the :class:`_engine.ResultProxy` is now the
-        :class:`.LegacyRow` subclass, which maintains mapping/tuple hybrid behavior,
+        ``LegacyRow`` subclass, which maintains mapping/tuple hybrid behavior,
         however the base :class:`.Row` class now behaves more fully like a named
         tuple.
 
@@ -5835,7 +6167,7 @@ This document details individual issue-level changes made throughout
         Core :class:`.Row` class, which behaves in the same way as KeyedTuple.
         In SQLAlchemy 2.0, both Core and ORM will return result rows using the same
         :class:`.Row` object.   In the interim, Core uses a backwards-compatibility
-        class :class:`.LegacyRow` that maintains the former mapping/tuple hybrid
+        class ``LegacyRow`` that maintains the former mapping/tuple hybrid
         behavior used by "RowProxy".
 
         .. seealso::
@@ -5956,7 +6288,7 @@ This document details individual issue-level changes made throughout
         * ``nullsfirst`` is now ``nulls_first``
         * ``nullslast`` is now ``nulls_last``
         * ``isnot`` is now ``is_not``
-        * ``not_in_`` is now ``not_in``
+        * ``notin_`` is now ``not_in``
 
         Because these are core operators, the internal migration strategy for this
         change is to support legacy terms for an extended period of time -- if not

@@ -21,7 +21,7 @@ SQLAlchemy Documentation
     :doc:`Overview <intro>` |
     :ref:`Installation Guide <installation>` |
     :doc:`Frequently Asked Questions <faq/index>` |
-    :doc:`Migration from 1.3 <changelog/migration_14>` |
+    :doc:`Migration from 1.4 <changelog/migration_20>` |
     :doc:`Glossary <glossary>` |
     :doc:`Error Messages <errors>` |
     :doc:`Changelog catalog <changelog/index>`
@@ -35,30 +35,25 @@ SQLAlchemy Documentation
 
         Tutorials
 
+  ..  the paragraph below for "sqlalchemy 2.0" seems to be too wide to be
+      easily readable.  suggest some kind of layout change that can keep the
+      paragraph width more narrow even if there is just one row on the page.
+
   .. container::
 
-    **SQLAlchemy 1.4 / 2.0 Transitional**
+    **SQLAlchemy 2.0**
 
-    SQLAlchemy 2.0 is functionally available as part of SQLAlchemy 1.4, and integrates
-    Core and ORM working styles more closely than ever.   The new tutorial introduces
-    both concepts in parallel.  New users and those starting new projects should start here!
+    The SQLAlchemy 2.0 series represents a major rework of the classic 1.x
+    SQLAlchemy APIs that have evolved over more than 15 years.   The
+    SQLAlchemy tutorial provides a holistic view of the library, integrating
+    Core and ORM features in a narrative style that is optimized towards
+    establihsing a solid understanding of the foundations upon which
+    SQLAlchemy is built on.  The tutorials are recommended for all new users
+    as well as veterans of older SQLAlchemy versions alike.
 
     * :doc:`/tutorial/index` - SQLAlchemy 2.0's main tutorial
 
     * :doc:`Migrating to SQLAlchemy 2.0 <changelog/migration_20>` - Complete background on migrating from 1.3 or 1.4 to 2.0
-
-
-  .. container::
-
-    **SQLAlchemy 1.x Releases**
-
-    The 1.x Object Relational Tutorial and Core Tutorial are the legacy tutorials
-    that should be consulted for existing SQLAlchemy codebases.
-
-    * :doc:`orm/tutorial`
-
-    * :doc:`core/tutorial`
-
 
 .. container:: left_right_container
 

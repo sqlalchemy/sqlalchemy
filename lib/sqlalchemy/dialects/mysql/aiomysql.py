@@ -11,9 +11,12 @@ r"""
     :connectstring: mysql+aiomysql://user:password@host:port/dbname[?key=value&key=value...]
     :url: https://github.com/aio-libs/aiomysql
 
-.. warning:: The aiomysql dialect as of September, 2021 appears to be unmaintained
-   and no longer functions for Python version 3.10.   Please refer to the
-   :ref:`asyncmy` dialect for current MySQL/MariaDD asyncio functionality.
+.. warning:: The aiomysql dialect is not currently tested as part of
+   SQLAlchemy’s continuous integration. As of September, 2021 the driver
+   appears to be unmaintained and no longer functions for Python version 3.10,
+   and additionally depends on a significantly outdated version of PyMySQL.
+   Please refer to the :ref:`asyncmy` dialect for current MySQL/MariaDB asyncio
+   functionality.
 
 The aiomysql dialect is SQLAlchemy's second Python asyncio dialect.
 

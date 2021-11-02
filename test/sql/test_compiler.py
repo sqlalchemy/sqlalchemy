@@ -61,11 +61,11 @@ from sqlalchemy import types
 from sqlalchemy import union
 from sqlalchemy import union_all
 from sqlalchemy import util
+from sqlalchemy.dialects import mssql
 from sqlalchemy.dialects import mysql
 from sqlalchemy.dialects import oracle
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects import sqlite
-from sqlalchemy.dialects import sybase
 from sqlalchemy.dialects.postgresql.base import PGCompiler
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine import default
@@ -3259,7 +3259,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
         s2 = (
             select(table1.c.myid)
             .with_hint(table1, "index(%(name)s idx)", "oracle")
-            .with_hint(table1, "WITH HINT INDEX idx", "sybase")
+            .with_hint(table1, "WITH HINT INDEX idx", "mssql")
         )
 
         a1 = table1.alias()
@@ -3294,10 +3294,10 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             .with_hint(a2, "%(name)s idx1")
         )
 
-        mysql_d, oracle_d, sybase_d = (
+        mysql_d, oracle_d, mssql_d = (
             mysql.dialect(),
             oracle.dialect(),
-            sybase.dialect(),
+            mssql.dialect(),
         )
 
         for stmt, dialect, expected in [
@@ -3309,7 +3309,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
             (
                 s,
-                sybase_d,
+                mssql_d,
                 "SELECT mytable.myid FROM mytable test hint mytable",
             ),
             (s2, mysql_d, "SELECT mytable.myid FROM mytable"),
@@ -3320,7 +3320,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
             (
                 s2,
-                sybase_d,
+                mssql_d,
                 "SELECT mytable.myid FROM mytable WITH HINT INDEX idx",
             ),
             (
@@ -3337,7 +3337,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
             (
                 s3,
-                sybase_d,
+                mssql_d,
                 "SELECT mytable_1.myid FROM mytable AS mytable_1 "
                 "index(mytable_1 hint)",
             ),
@@ -3357,7 +3357,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
             (
                 s4,
-                sybase_d,
+                mssql_d,
                 "SELECT thirdtable.userid, thirdtable.otherstuff "
                 "FROM thirdtable "
                 "hint3 JOIN (SELECT mytable.myid AS myid, "

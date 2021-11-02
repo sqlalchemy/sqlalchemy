@@ -1251,8 +1251,12 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         adapters = []
 
-        # vvvvvvvvvvvvvvv legacy vvvvvvvvvvvvvvvvvv
         if self._from_obj_alias:
+            # used for legacy going forward for query set_ops, e.g.
+            # union(), union_all(), etc.
+            # 1.4 and previously, also used for from_self(),
+            # select_entity_from()
+            #
             # for the "from obj" alias, apply extra rule to the
             # 'ORM only' check, if this query were generated from a
             # subquery of itself, i.e. _from_selectable(), apply adaption
@@ -1266,11 +1270,15 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                 )
             )
 
+        # vvvvvvvvvvvvvvv legacy vvvvvvvvvvvvvvvvvv
+        # this can totally go away when we remove join(..., aliased=True)
         if self._aliased_generations:
             adapters.append((False, self._adapt_aliased_generation))
         # ^^^^^^^^^^^^^ legacy ^^^^^^^^^^^^^^^^^^^^^
 
-        # this is the only adapter we would need going forward...
+        # this was *hopefully* the only adapter we were going to need
+        # going forward...however, we unfortunately need _from_obj_alias
+        # for query.union(), which we can't drop
         if self._polymorphic_adapters:
             adapters.append((False, self._adapt_polymorphic_element))
 

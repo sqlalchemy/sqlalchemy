@@ -473,6 +473,8 @@ import logging
 import re
 from uuid import UUID as _python_UUID
 
+from .array import ARRAY as PGARRAY
+from .base import _ColonCast
 from .base import _DECIMAL_TYPES
 from .base import _FLOAT_TYPES
 from .base import _INT_TYPES
@@ -490,7 +492,6 @@ from ... import processors
 from ... import types as sqltypes
 from ... import util
 from ...engine import cursor as _cursor
-from ...sql import elements
 from ...util import collections_abc
 
 
@@ -554,6 +555,11 @@ class _PGHStore(HSTORE):
             return None
         else:
             return super(_PGHStore, self).result_processor(dialect, coltype)
+
+
+class _PGARRAY(PGARRAY):
+    def bind_expression(self, bindvalue):
+        return _ColonCast(bindvalue, self)
 
 
 class _PGJSON(JSON):
@@ -638,25 +644,7 @@ class PGExecutionContext_psycopg2(PGExecutionContext):
 
 
 class PGCompiler_psycopg2(PGCompiler):
-    def visit_bindparam(self, bindparam, skip_bind_expression=False, **kw):
-
-        text = super(PGCompiler_psycopg2, self).visit_bindparam(
-            bindparam, skip_bind_expression=skip_bind_expression, **kw
-        )
-        # note that if the type has a bind_expression(), we will get a
-        # double compile here
-        if not skip_bind_expression and (
-            bindparam.type._is_array or bindparam.type._is_type_decorator
-        ):
-            typ = bindparam.type._unwrapped_dialect_impl(self.dialect)
-
-            if typ._is_array:
-                text += "::%s" % (
-                    elements.TypeClause(typ)._compiler_dispatch(
-                        self, skip_bind_expression=skip_bind_expression, **kw
-                    ),
-                )
-        return text
+    pass
 
 
 class PGIdentifierPreparer_psycopg2(PGIdentifierPreparer):
@@ -713,6 +701,7 @@ class PGDialect_psycopg2(PGDialect):
             sqltypes.JSON: _PGJSON,
             JSONB: _PGJSONB,
             UUID: _PGUUID,
+            sqltypes.ARRAY: _PGARRAY,
         },
     )
 
@@ -794,13 +783,13 @@ class PGDialect_psycopg2(PGDialect):
 
         return psycopg2
 
-    @classmethod
+    @util.memoized_property
     def _psycopg2_extensions(cls):
         from psycopg2 import extensions
 
         return extensions
 
-    @classmethod
+    @util.memoized_property
     def _psycopg2_extras(cls):
         from psycopg2 import extras
 
@@ -808,7 +797,7 @@ class PGDialect_psycopg2(PGDialect):
 
     @util.memoized_property
     def _isolation_lookup(self):
-        extensions = self._psycopg2_extensions()
+        extensions = self._psycopg2_extensions
         return {
             "AUTOCOMMIT": extensions.ISOLATION_LEVEL_AUTOCOMMIT,
             "READ COMMITTED": extensions.ISOLATION_LEVEL_READ_COMMITTED,
@@ -864,8 +853,8 @@ class PGDialect_psycopg2(PGDialect):
             return True
 
     def on_connect(self):
-        extras = self._psycopg2_extras()
-        extensions = self._psycopg2_extensions()
+        extras = self._psycopg2_extras
+        extensions = self._psycopg2_extensions
 
         fns = []
         if self.client_encoding is not None:
@@ -958,7 +947,7 @@ class PGDialect_psycopg2(PGDialect):
                 kwargs = {"page_size": self.executemany_values_page_size}
             else:
                 kwargs = {}
-            xtras = self._psycopg2_extras()
+            xtras = self._psycopg2_extras
             context._psycopg2_fetched_rows = xtras.execute_values(
                 cursor,
                 statement,
@@ -973,15 +962,45 @@ class PGDialect_psycopg2(PGDialect):
                 kwargs = {"page_size": self.executemany_batch_page_size}
             else:
                 kwargs = {}
-            self._psycopg2_extras().execute_batch(
+            self._psycopg2_extras.execute_batch(
                 cursor, statement, parameters, **kwargs
             )
         else:
             cursor.executemany(statement, parameters)
 
+    def do_begin_twophase(self, connection, xid):
+        connection.connection.tpc_begin(xid)
+
+    def do_prepare_twophase(self, connection, xid):
+        connection.connection.tpc_prepare()
+
+    def _do_twophase(self, dbapi_conn, operation, xid, recover=False):
+        if recover:
+            if dbapi_conn.status != self._psycopg2_extensions.STATUS_READY:
+                dbapi_conn.rollback()
+            operation(xid)
+        else:
+            operation()
+
+    def do_rollback_twophase(
+        self, connection, xid, is_prepared=True, recover=False
+    ):
+        dbapi_conn = connection.connection.dbapi_connection
+        self._do_twophase(
+            dbapi_conn, dbapi_conn.tpc_rollback, xid, recover=recover
+        )
+
+    def do_commit_twophase(
+        self, connection, xid, is_prepared=True, recover=False
+    ):
+        dbapi_conn = connection.connection.dbapi_connection
+        self._do_twophase(
+            dbapi_conn, dbapi_conn.tpc_commit, xid, recover=recover
+        )
+
     @util.memoized_instancemethod
     def _hstore_oids(self, conn):
-        extras = self._psycopg2_extras()
+        extras = self._psycopg2_extras
         if hasattr(conn, "dbapi_connection"):
             conn = conn.dbapi_connection
         oids = extras.HstoreAdapter.get_oids(conn)

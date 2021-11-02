@@ -445,17 +445,24 @@ More conveniently, it can be turned off within a context managed block using :at
         mysession.add(some_object)
         mysession.flush()
 
-The flush process *always* occurs within a transaction, even if the
-:class:`~sqlalchemy.orm.session.Session` has been configured with
-``autocommit=True``, a setting that disables the session's persistent
-transactional state. If no transaction is present,
-:meth:`~.Session.flush` creates its own transaction and
-commits it. Any failures during flush will always result in a rollback of
-whatever transaction is present. If the Session is not in ``autocommit=True``
-mode, an explicit call to :meth:`~.Session.rollback` is
+The flush process *always* occurs within a transaction (subject
+to the :ref:`isolation level <session_transaction_isolation>`_ of the
+database transaction), which is
+*never* committed automatically; the :meth:`_orm.Session.commit` method
+must be called, or an appropriate context manager which does the same
+thing must be used, in order for the database changes to be committed.
+
+Any failures during flush will always result in a rollback of
+whatever transaction is present.   In order to continue using that
+same :class:`_orm.Session`, an explicit call to :meth:`~.Session.rollback` is
 required after a flush fails, even though the underlying transaction will have
 been rolled back already - this is so that the overall nesting pattern of
 so-called "subtransactions" is consistently maintained.
+
+.. seealso::
+
+    :ref:`faq_session_rollback` - further background on why
+    :meth:`_orm.Session.rollback` must be called when a flush fails.
 
 
 Expiring / Refreshing

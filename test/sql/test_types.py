@@ -3603,7 +3603,7 @@ class NumericRawSQLTest(fixtures.TestBase):
         assert isinstance(val, float)
 
         # some DBAPIs have unusual float handling
-        if testing.against("oracle+cx_oracle", "mysql+oursql", "firebird"):
+        if testing.against("oracle+cx_oracle"):
             eq_(round_decimal(val, 3), 46.583)
         else:
             eq_(val, 46.583)

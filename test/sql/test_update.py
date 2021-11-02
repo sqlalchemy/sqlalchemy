@@ -1328,7 +1328,7 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
         ]
         self._assert_addresses(connection, addresses, expected)
 
-    @testing.only_on("mysql", "Multi table update")
+    @testing.requires.multi_table_update
     def test_exec_multitable(self, connection):
         users, addresses = self.tables.users, self.tables.addresses
 
@@ -1353,7 +1353,7 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
         expected = [(7, "jack"), (8, "ed2"), (9, "fred"), (10, "chuck")]
         self._assert_users(connection, users, expected)
 
-    @testing.only_on("mysql", "Multi table update")
+    @testing.requires.multi_table_update
     def test_exec_join_multitable(self, connection):
         users, addresses = self.tables.users, self.tables.addresses
 
@@ -1377,7 +1377,7 @@ class UpdateFromRoundTripTest(_UpdateFromTestBase, fixtures.TablesTest):
         expected = [(7, "jack"), (8, "ed2"), (9, "fred"), (10, "chuck")]
         self._assert_users(connection, users, expected)
 
-    @testing.only_on("mysql", "Multi table update")
+    @testing.requires.multi_table_update
     def test_exec_multitable_same_name(self, connection):
         users, addresses = self.tables.users, self.tables.addresses
 
@@ -1471,7 +1471,7 @@ class UpdateFromMultiTableUpdateDefaultsTest(
             ),
         )
 
-    @testing.only_on("mysql", "Multi table update")
+    @testing.requires.multi_table_update
     def test_defaults_second_table(self, connection):
         users, addresses = self.tables.users, self.tables.addresses
 
@@ -1496,7 +1496,7 @@ class UpdateFromMultiTableUpdateDefaultsTest(
         expected = [(8, "ed2", "im the update"), (9, "fred", "value")]
         self._assert_users(connection, users, expected)
 
-    @testing.only_on("mysql", "Multi table update")
+    @testing.requires.multi_table_update
     def test_defaults_second_table_same_name(self, connection):
         users, foobar = self.tables.users, self.tables.foobar
 
@@ -1524,7 +1524,7 @@ class UpdateFromMultiTableUpdateDefaultsTest(
         expected = [(8, "ed2", "im the update"), (9, "fred", "value")]
         self._assert_users(connection, users, expected)
 
-    @testing.only_on("mysql", "Multi table update")
+    @testing.requires.multi_table_update
     def test_no_defaults_second_table(self, connection):
         users, addresses = self.tables.users, self.tables.addresses
 

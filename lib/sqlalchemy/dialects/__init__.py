@@ -5,15 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-__all__ = (
-    "firebird",
-    "mssql",
-    "mysql",
-    "oracle",
-    "postgresql",
-    "sqlite",
-    "sybase",
-)
+__all__ = ("mssql", "mysql", "oracle", "postgresql", "sqlite")
 
 
 from .. import util
@@ -33,19 +25,7 @@ def _auto_fn(name):
         driver = "base"
 
     try:
-        if dialect == "firebird":
-            try:
-                module = __import__("sqlalchemy_firebird")
-            except ImportError:
-                module = __import__("sqlalchemy.dialects.firebird").dialects
-                module = getattr(module, dialect)
-        elif dialect == "sybase":
-            try:
-                module = __import__("sqlalchemy_sybase")
-            except ImportError:
-                module = __import__("sqlalchemy.dialects.sybase").dialects
-                module = getattr(module, dialect)
-        elif dialect == "mariadb":
+        if dialect == "mariadb":
             # it's "OK" for us to hardcode here since _auto_fn is already
             # hardcoded.   if mysql / mariadb etc were third party dialects
             # they would just publish all the entrypoints, which would actually

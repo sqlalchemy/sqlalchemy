@@ -3111,14 +3111,20 @@ class Mapper(
                 # "enable" options, to turn on the properties that we want to
                 # load by default (subject to options from the query)
                 enable_opt.set_generic_strategy(
-                    (prop.key,), dict(prop.strategy_key)
+                    # convert string name to an attribute before passing
+                    # to loader strategy
+                    (getattr(entity.entity_namespace, prop.key),),
+                    dict(prop.strategy_key),
                 )
             else:
                 # "disable" options, to turn off the properties from the
                 # superclass that we *don't* want to load, applied after
                 # the options from the query to override them
                 disable_opt.set_generic_strategy(
-                    (prop.key,), {"do_nothing": True}
+                    # convert string name to an attribute before passing
+                    # to loader strategy
+                    (getattr(entity.entity_namespace, prop.key),),
+                    {"do_nothing": True},
                 )
 
         primary_key = [

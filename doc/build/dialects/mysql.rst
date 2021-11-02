@@ -209,11 +209,6 @@ cymysql
 
 .. automodule:: sqlalchemy.dialects.mysql.cymysql
 
-OurSQL
-------
-
-.. automodule:: sqlalchemy.dialects.mysql.oursql
-
 pyodbc
 ------
 

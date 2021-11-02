@@ -323,24 +323,10 @@ Session::
 
 
 
-.. _session_autocommit:
-
 .. _session_explicit_begin:
 
 Explicit Begin
 ---------------
-
-.. versionchanged:: 1.4
-    SQLAlchemy 1.4 deprecates "autocommit mode", which is historically enabled
-    by using the :paramref:`_orm.Session.autocommit` flag.    Going forward,
-    a new approach to allowing usage of the :meth:`_orm.Session.begin` method
-    is new "autobegin" behavior so that the method may now be called when
-    a :class:`_orm.Session` is first constructed, or after the previous
-    transaction has ended and before it begins a new one.
-
-    For background on migrating away from the "subtransaction" pattern for
-    frameworks that rely upon nesting of begin()/commit() pairs, see the
-    next section :ref:`session_subtransactions`.
 
 The :class:`_orm.Session` features "autobegin" behavior, meaning that as soon
 as operations begin to take place, it ensures a :class:`_orm.SessionTransaction`
@@ -383,87 +369,6 @@ when it occurs; this hook is used by frameworks in order to integrate their
 own transactional processes with that of the ORM :class:`_orm.Session`.
 
 
-.. _session_subtransactions:
-
-Migrating from the "subtransaction" pattern
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. deprecated:: 1.4  The :paramref:`_orm.Session.begin.subtransactions`
-   flag is deprecated.  While the :class:`_orm.Session` still uses the
-   "subtransactions" pattern internally, it is not suitable for end-user
-   use as it leads to confusion, and additionally it may be removed from
-   the :class:`_orm.Session` itself in version 2.0 once "autocommit"
-   mode is removed.
-
-The "subtransaction" pattern that was often used with autocommit mode is
-also deprecated in 1.4.  This pattern allowed the use of the
-:meth:`_orm.Session.begin` method when a transaction were already begun,
-resulting in a construct called a "subtransaction", which was essentially
-a block that would prevent the :meth:`_orm.Session.commit` method from actually
-committing.
-
-This pattern has been shown to be confusing in real world applications, and
-it is preferable for an application to ensure that the top-most level of database
-operations are performed with a single begin/commit pair.
-
-To provide backwards compatibility for applications that make use of this
-pattern, the following context manager or a similar implementation based on
-a decorator may be used::
-
-
-    import contextlib
-
-    @contextlib.contextmanager
-    def transaction(session):
-        if not session.in_transaction():
-            with session.begin():
-                yield
-        else:
-            yield
-
-
-The above context manager may be used in the same way the
-"subtransaction" flag works, such as in the following example::
-
-
-    # method_a starts a transaction and calls method_b
-    def method_a(session):
-        with transaction(session):
-            method_b(session)
-
-    # method_b also starts a transaction, but when
-    # called from method_a participates in the ongoing
-    # transaction.
-    def method_b(session):
-        with transaction(session):
-            session.add(SomeObject('bat', 'lala'))
-
-    Session = sessionmaker(engine)
-
-    # create a Session and call method_a
-    with Session() as session:
-        method_a(session)
-
-To compare towards the preferred idiomatic pattern, the begin block should
-be at the outermost level.  This removes the need for individual functions
-or methods to be concerned with the details of transaction demarcation::
-
-    def method_a(session):
-        method_b(session)
-
-    def method_b(session):
-        session.add(SomeObject('bat', 'lala'))
-
-    Session = sessionmaker(engine)
-
-    # create a Session and call method_a
-    with Session() as session:
-        with session.begin():
-            method_a(session)
-
-.. seealso::
-
-    :ref:`connections_subtransactions` - similar pattern based on Core only
 
 .. _session_twophase:
 
