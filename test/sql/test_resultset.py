@@ -2682,6 +2682,68 @@ class AlternateCursorResultTest(fixtures.TablesTest):
         # buffer of 98, plus buffer of 99 - 89, 10 rows
         eq_(len(result.cursor_strategy._rowbuffer), 10)
 
+    @testing.combinations(True, False, argnames="close_on_init")
+    @testing.combinations(
+        "fetchone", "fetchmany", "fetchall", argnames="fetch_style"
+    )
+    def test_buffered_fetch_auto_soft_close(
+        self, connection, close_on_init, fetch_style
+    ):
+        """test #7274"""
+
+        table = self.tables.test
+
+        connection.execute(
+            table.insert(),
+            [{"x": i, "y": "t_%d" % i} for i in range(15, 30)],
+        )
+
+        result = connection.execute(table.select().limit(15))
+        assert isinstance(result.cursor_strategy, _cursor.CursorFetchStrategy)
+
+        if close_on_init:
+            # close_on_init - the initial buffering will exhaust the cursor,
+            # should soft close immediately
+            result = result.yield_per(30)
+        else:
+            # not close_on_init - soft close will occur after fetching an
+            # empty buffer
+            result = result.yield_per(5)
+        assert isinstance(
+            result.cursor_strategy, _cursor.BufferedRowCursorFetchStrategy
+        )
+
+        with mock.patch.object(result, "_soft_close") as soft_close:
+            if fetch_style == "fetchone":
+                while True:
+                    row = result.fetchone()
+
+                    if row:
+                        eq_(soft_close.mock_calls, [])
+                    else:
+                        # fetchone() is also used by first(), scalar()
+                        # and one() which want to embed a hard close in one
+                        # step
+                        eq_(soft_close.mock_calls, [mock.call(hard=False)])
+                        break
+            elif fetch_style == "fetchmany":
+                while True:
+                    rows = result.fetchmany(5)
+
+                    if rows:
+                        eq_(soft_close.mock_calls, [])
+                    else:
+                        eq_(soft_close.mock_calls, [mock.call()])
+                        break
+            elif fetch_style == "fetchall":
+                rows = result.fetchall()
+
+                eq_(soft_close.mock_calls, [mock.call()])
+            else:
+                assert False
+
+        result.close()
+
     def test_buffered_fetchmany_yield_per_all(self, connection):
         table = self.tables.test
 

@@ -484,7 +484,12 @@ class ResultTest(fixtures.TestBase):
         row = result.first()
         eq_(row, (1, 1, 1))
 
-        eq_(result.all(), [])
+        # note this is a behavior change in 1.4.27 due to
+        # adding a real result.close() to Result, previously this would
+        # return an empty list.  this is already the
+        # behavior with CursorResult, but was mis-implemented for
+        # other non-cursor result sets.
+        assert_raises(exc.ResourceClosedError, result.all)
 
     def test_one_unique(self):
         # assert that one() counts rows after uniqueness has been applied.
@@ -597,7 +602,12 @@ class ResultTest(fixtures.TestBase):
 
         eq_(result.scalar(), 1)
 
-        eq_(result.all(), [])
+        # note this is a behavior change in 1.4.27 due to
+        # adding a real result.close() to Result, previously this would
+        # return an empty list.  this is already the
+        # behavior with CursorResult, but was mis-implemented for
+        # other non-cursor result sets.
+        assert_raises(exc.ResourceClosedError, result.all)
 
     def test_partition(self):
         result = self._fixture()

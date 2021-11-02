@@ -73,6 +73,7 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.testing.assertions import expect_raises
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertions import is_not_none
 from sqlalchemy.testing.assertsql import CompiledSQL
@@ -5271,6 +5272,8 @@ class YieldTest(_fixtures.FixtureTest):
     run_setup_mappers = "each"
     run_inserts = "each"
 
+    __backend__ = True
+
     def _eagerload_mappings(self, addresses_lazy=True, user_lazy=True):
         User, Address = self.classes("User", "Address")
         users, addresses = self.tables("users", "addresses")
@@ -5312,6 +5315,83 @@ class YieldTest(_fixtures.FixtureTest):
             assert False
         except StopIteration:
             pass
+
+    def test_we_can_close_cursor(self):
+        """test new usecase close() added along with #7274"""
+        self._eagerload_mappings()
+
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        stmt = select(User).execution_options(yield_per=15)
+        result = sess.execute(stmt)
+
+        with mock.patch.object(result.raw, "_soft_close") as mock_close:
+            two_results = result.fetchmany(2)
+            eq_(len(two_results), 2)
+
+            eq_(mock_close.mock_calls, [])
+
+            result.close()
+
+            eq_(mock_close.mock_calls, [mock.call(hard=True)])
+
+            with expect_raises(sa.exc.ResourceClosedError):
+                result.fetchmany(10)
+
+            with expect_raises(sa.exc.ResourceClosedError):
+                result.fetchone()
+
+            with expect_raises(sa.exc.ResourceClosedError):
+                result.all()
+
+        result.close()
+
+    @testing.combinations("fetchmany", "fetchone", "fetchall")
+    def test_cursor_is_closed_on_exhausted(self, fetch_method):
+        """test #7274"""
+        self._eagerload_mappings()
+
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        stmt = select(User).execution_options(yield_per=15)
+        result = sess.execute(stmt)
+
+        with mock.patch.object(result.raw, "_soft_close") as mock_close:
+            # call assertions are implementation specific.
+            # test needs that _soft_close called at least once and without
+            # the hard=True flag
+            if fetch_method == "fetchmany":
+                while True:
+                    buf = result.fetchmany(2)
+                    if not buf:
+                        break
+                eq_(mock_close.mock_calls, [mock.call()])
+            elif fetch_method == "fetchall":
+                eq_(len(result.all()), 4)
+                eq_(
+                    mock_close.mock_calls, [mock.call(), mock.call(hard=False)]
+                )
+            elif fetch_method == "fetchone":
+                while True:
+                    row = result.fetchone()
+                    if row is None:
+                        break
+                eq_(
+                    mock_close.mock_calls, [mock.call(), mock.call(hard=False)]
+                )
+            else:
+                assert False
+
+        # soft closed, we can still get an empty result
+        eq_(result.all(), [])
+
+        # real closed
+        result.close()
+        assert_raises(sa.exc.ResourceClosedError, result.all)
 
     def test_yield_per_and_execution_options_legacy(self):
         self._eagerload_mappings()

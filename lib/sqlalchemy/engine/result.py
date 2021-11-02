@@ -739,6 +739,28 @@ class Result(_WithKeys, ResultInternal):
     def _soft_close(self, hard=False):
         raise NotImplementedError()
 
+    def close(self):
+        """close this :class:`_result.Result`.
+
+        The behavior of this method is implementation specific, and is
+        not implemented by default.    The method should generally end
+        the resources in use by the result object and also cause any
+        subsequent iteration or row fetching to raise
+        :class:`.ResourceClosedError`.
+
+        .. versionadded:: 1.4.27 - ``.close()`` was previously not generally
+           available for all :class:`_result.Result` classes, instead only
+           being available on the :class:`_engine.CursorResult` returned for
+           Core statement executions. As most other result objects, namely the
+           ones used by the ORM, are proxying a :class:`_engine.CursorResult`
+           in any case, this allows the underlying cursor result to be closed
+           from the outside facade for the case when the ORM query is using
+           the ``yield_per`` execution option where it does not immediately
+           exhaust and autoclose the database cursor.
+
+        """
+        self._soft_close(hard=True)
+
     @_generative
     def yield_per(self, num):
         """Configure the row-fetching strategy to fetch num rows at a time.
@@ -1612,6 +1634,8 @@ class IteratorResult(Result):
 
     """
 
+    _hard_closed = False
+
     def __init__(
         self,
         cursor_metadata,
@@ -1624,16 +1648,29 @@ class IteratorResult(Result):
         self.raw = raw
         self._source_supports_scalars = _source_supports_scalars
 
-    def _soft_close(self, **kw):
+    def _soft_close(self, hard=False, **kw):
+        if hard:
+            self._hard_closed = True
+        if self.raw is not None:
+            self.raw._soft_close(hard=hard, **kw)
         self.iterator = iter([])
+        self._reset_memoizations()
+
+    def _raise_hard_closed(self):
+        raise exc.ResourceClosedError("This result object is closed.")
 
     def _raw_row_iterator(self):
         return self.iterator
 
     def _fetchiter_impl(self):
+        if self._hard_closed:
+            self._raise_hard_closed()
         return self.iterator
 
     def _fetchone_impl(self, hard_close=False):
+        if self._hard_closed:
+            self._raise_hard_closed()
+
         row = next(self.iterator, _NO_ROW)
         if row is _NO_ROW:
             self._soft_close(hard=hard_close)
@@ -1642,12 +1679,18 @@ class IteratorResult(Result):
             return row
 
     def _fetchall_impl(self):
+        if self._hard_closed:
+            self._raise_hard_closed()
+
         try:
             return list(self.iterator)
         finally:
             self._soft_close()
 
     def _fetchmany_impl(self, size=None):
+        if self._hard_closed:
+            self._raise_hard_closed()
+
         return list(itertools.islice(self.iterator, 0, size))
 
 
@@ -1696,6 +1739,10 @@ class ChunkedIteratorResult(IteratorResult):
         self._yield_per = num
         self.iterator = itertools.chain.from_iterable(self.chunks(num))
 
+    def _soft_close(self, **kw):
+        super(ChunkedIteratorResult, self)._soft_close(**kw)
+        self.chunks = lambda size: []
+
     def _fetchmany_impl(self, size=None):
         if self.dynamic_yield_per:
             self.iterator = itertools.chain.from_iterable(self.chunks(size))
@@ -1733,11 +1780,8 @@ class MergedResult(IteratorResult):
             *[r._attributes for r in results]
         )
 
-    def close(self):
-        self._soft_close(hard=True)
-
-    def _soft_close(self, hard=False):
+    def _soft_close(self, hard=False, **kw):
         for r in self._results:
-            r._soft_close(hard=hard)
+            r._soft_close(hard=hard, **kw)
         if hard:
             self.closed = True
