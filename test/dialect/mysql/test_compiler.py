@@ -1115,7 +1115,7 @@ class InsertOnDuplicateTest(fixtures.TestBase, AssertsCompiledSQL):
         expected_sql = (
             "INSERT INTO foos (id, bar) VALUES (%s, %s), (%s, %s) ON "
             "DUPLICATE KEY UPDATE bar = coalesce(VALUES(bar)), "
-            "baz = (concat(VALUES(bar), %s, VALUES(baz)))"
+            "baz = (concat(VALUES(baz), %s, VALUES(bar)))"
         )
         self.assert_compile(
             stmt,

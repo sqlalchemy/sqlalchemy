@@ -101,17 +101,19 @@ class OnDuplicateTest(fixtures.TablesTest):
         stmt = insert(foos).values([dict(id=1, bar="ab"), dict(id=2, bar="b")])
         stmt = stmt.on_duplicate_key_update(
             bar=func.concat(stmt.inserted.bar, "_foo"),
-            baz=func.concat(stmt.inserted.bar, foos.baz),
+            baz=func.concat(stmt.inserted.bar, "_", foos.c.baz),
         )
         result = conn.execute(stmt)
         eq_(result.inserted_primary_key, (None,))
+        # first entry triggers ON DUPLICATE
         eq_(
             conn.execute(foos.select().where(foos.c.id == 1)).fetchall(),
             [(1, "ab_foo", "ab_bz", False)],
         )
+        # second entry should be an insert
         eq_(
-            conn.execute(foos.select().where(foos.c.id == 1)).fetchall(),
-            [(2, "b_foo", "b_bz", False)],
+            conn.execute(foos.select().where(foos.c.id == 2)).fetchall(),
+            [(2, "b", None, False)],
         )
 
     def test_on_duplicate_key_update_preserve_order(self, connection):
