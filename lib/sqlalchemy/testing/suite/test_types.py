@@ -590,6 +590,16 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
             [15.7563],
         )
 
+    @testing.requires.infinity_floats
+    def test_infinity_floats(self, do_numeric_test):
+        """test for #977, #7283"""
+
+        do_numeric_test(
+            Float(None),
+            [float("inf")],
+            [float("inf")],
+        )
+
     @testing.requires.fetch_null_from_numeric
     def test_numeric_null_as_decimal(self, do_numeric_test):
         do_numeric_test(Numeric(precision=8, scale=4), [None], [None])

@@ -981,6 +981,12 @@ class SuiteRequirements(Requirements):
         return exclusions.closed()
 
     @property
+    def infinity_floats(self):
+        """The Float type can persist and load float('inf'), float('-inf')."""
+
+        return exclusions.closed()
+
+    @property
     def precision_generic_float_type(self):
         """target backend will return native floating point numbers with at
         least seven decimal places when using the generic Float type.

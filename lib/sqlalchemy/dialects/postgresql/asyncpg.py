@@ -249,6 +249,9 @@ class AsyncpgUUID(UUID):
 
 
 class AsyncpgNumeric(sqltypes.Numeric):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.NUMBER
+
     def bind_processor(self, dialect):
         return None
 
@@ -275,6 +278,11 @@ class AsyncpgNumeric(sqltypes.Numeric):
                 raise exc.InvalidRequestError(
                     "Unknown PG numeric type: %d" % coltype
                 )
+
+
+class AsyncpgFloat(AsyncpgNumeric):
+    def get_dbapi_type(self, dbapi):
+        return dbapi.FLOAT
 
 
 class AsyncpgREGCLASS(REGCLASS):
@@ -883,6 +891,7 @@ class PGDialect_asyncpg(PGDialect):
             sqltypes.Integer: AsyncpgInteger,
             sqltypes.BigInteger: AsyncpgBigInteger,
             sqltypes.Numeric: AsyncpgNumeric,
+            sqltypes.Float: AsyncpgFloat,
             sqltypes.JSON: AsyncpgJSON,
             json.JSONB: AsyncpgJSONB,
             sqltypes.JSON.JSONPathType: AsyncpgJSONPathType,
