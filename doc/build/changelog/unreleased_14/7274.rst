@@ -1,5 +1,5 @@
 .. change::
-    :tags: bug, core, regression
+    :tags: bug, engine, regression
     :tickets: 7274
     :versions: 2.0.0b1
 
