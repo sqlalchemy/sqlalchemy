@@ -1302,7 +1302,7 @@ class MySQLCompiler(compiler.SQLCompiler):
                         and obj.table is on_duplicate.inserted_alias
                     ):
                         obj = literal_column(
-                            "VALUES(" + self.preparer.quote(column.name) + ")"
+                            "VALUES(" + self.preparer.quote(obj.name) + ")"
                         )
                         return obj
                     else:
