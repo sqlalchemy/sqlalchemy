@@ -1,5 +1,5 @@
 .. change::
-    :tags: asyncpg, usecase
+    :tags: postgresql, usecase, asyncpg
     :tickets: 7284
     :versions: 2.0.0b1
 

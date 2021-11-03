@@ -1,5 +1,5 @@
 .. change::
-    :tags: bug, postgresql
+    :tags: bug, postgresql, asyncpg
     :tickets: 7283
 
     Changed the asyncpg dialect to bind the :class:`.Float` type to the "float"

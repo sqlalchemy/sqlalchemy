@@ -1034,8 +1034,9 @@ class PGDialect_asyncpg(PGDialect):
             See https://github.com/MagicStack/asyncpg/issues/623 for reference
             on why it's set up this way.
 
-            Also, see https://github.com/sqlalchemy/sqlalchemy/issues/7284 for
-            the rationale behind adding self._exclude_type_codecs
+            See #7284 for the rationale behind adding
+            self._exclude_type_codecs
+
             """
 
             if "json" not in self._exclude_type_codecs:
