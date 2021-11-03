@@ -3819,6 +3819,8 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
         r"""Return a new selectable with the given list of GROUP BY
         criterion applied.
 
+        All existing GROUP BY settings can be suppressed by passing ``None``.
+
         e.g.::
 
             stmt = select(table.c.name, func.max(table.c.stat)).\
