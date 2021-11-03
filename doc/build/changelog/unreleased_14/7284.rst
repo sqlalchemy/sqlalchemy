@@ -1,0 +1,11 @@
+.. change::
+    :tags: asyncpg, usecase
+    :tickets: 7284
+    :versions: 2.0.0b1
+
+    Modified the asyncpg dialect to gracefully degrade types that are
+    not supported by PostgreSQL work-alike databases. For example,
+    CockroachDB supports JSONB but not JSON. Third-party dialects that
+    are derived from ``PGDialect_asyncpg`` will no longer have to
+    work around ValueError being raised by trying to register a codec
+    for an unsupported type.

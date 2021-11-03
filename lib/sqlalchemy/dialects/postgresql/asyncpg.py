@@ -878,6 +878,8 @@ class PGDialect_asyncpg(PGDialect):
 
     use_native_uuid = True
 
+    _exclude_type_codecs = util.EMPTY_SET
+
     colspecs = util.update_copy(
         PGDialect.colspecs,
         {
@@ -1031,21 +1033,34 @@ class PGDialect_asyncpg(PGDialect):
 
             See https://github.com/MagicStack/asyncpg/issues/623 for reference
             on why it's set up this way.
+
+            Also, see https://github.com/sqlalchemy/sqlalchemy/issues/7284 for
+            the rationale behind adding self._exclude_type_codecs
             """
-            await conn._connection.set_type_codec(
-                "json",
-                encoder=str.encode,
-                decoder=_json_decoder,
-                schema="pg_catalog",
-                format="binary",
-            )
-            await conn._connection.set_type_codec(
-                "jsonb",
-                encoder=_jsonb_encoder,
-                decoder=_jsonb_decoder,
-                schema="pg_catalog",
-                format="binary",
-            )
+
+            if "json" not in self._exclude_type_codecs:
+                try:
+                    await conn._connection.set_type_codec(
+                        "json",
+                        encoder=str.encode,
+                        decoder=_json_decoder,
+                        schema="pg_catalog",
+                        format="binary",
+                    )
+                except ValueError:
+                    self._exclude_type_codecs |= {"json"}
+
+            if "jsonb" not in self._exclude_type_codecs:
+                try:
+                    await conn._connection.set_type_codec(
+                        "jsonb",
+                        encoder=_jsonb_encoder,
+                        decoder=_jsonb_decoder,
+                        schema="pg_catalog",
+                        format="binary",
+                    )
+                except ValueError:
+                    self._exclude_type_codecs |= {"jsonb"}
 
         def connect(conn):
             conn.await_(_setup_type_codecs(conn))
