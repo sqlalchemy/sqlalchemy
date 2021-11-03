@@ -1003,8 +1003,42 @@ class PGDialect_asyncpg(PGDialect):
                 }
             )
 
-    def on_connect(self):
-        super_connect = super(PGDialect_asyncpg, self).on_connect()
+    async def setup_asyncpg_json_codec(self, conn):
+        """set up JSON codec for asyncpg.
+
+        This occurs for all new connections and
+        can be overridden by third party dialects.
+
+        .. versionadded:: 1.4.27
+
+        """
+
+        asyncpg_connection = conn._connection
+        deserializer = self._json_deserializer or _py_json.loads
+
+        def _json_decoder(bin_value):
+            return deserializer(bin_value.decode())
+
+        await asyncpg_connection.set_type_codec(
+            "json",
+            encoder=str.encode,
+            decoder=_json_decoder,
+            schema="pg_catalog",
+            format="binary",
+        )
+
+    async def setup_asyncpg_jsonb_codec(self, conn):
+        """set up JSONB codec for asyncpg.
+
+        This occurs for all new connections and
+        can be overridden by third party dialects.
+
+        .. versionadded:: 1.4.27
+
+        """
+
+        asyncpg_connection = conn._connection
+        deserializer = self._json_deserializer or _py_json.loads
 
         def _jsonb_encoder(str_value):
             # \x01 is the prefix for jsonb used by PostgreSQL.
@@ -1013,43 +1047,35 @@ class PGDialect_asyncpg(PGDialect):
 
         deserializer = self._json_deserializer or _py_json.loads
 
-        def _json_decoder(bin_value):
-            return deserializer(bin_value.decode())
-
         def _jsonb_decoder(bin_value):
             # the byte is the \x01 prefix for jsonb used by PostgreSQL.
             # asyncpg returns it when format='binary'
             return deserializer(bin_value[1:].decode())
 
-        async def _setup_type_codecs(conn):
-            """set up type decoders at the asyncpg level.
+        await asyncpg_connection.set_type_codec(
+            "jsonb",
+            encoder=_jsonb_encoder,
+            decoder=_jsonb_decoder,
+            schema="pg_catalog",
+            format="binary",
+        )
 
-            these are set_type_codec() calls to normalize
-            There was a tentative decoder for the "char" datatype here
-            to have it return strings however this type is actually a binary
-            type that other drivers are likely mis-interpreting.
+    def on_connect(self):
+        """on_connect for asyncpg
 
-            See https://github.com/MagicStack/asyncpg/issues/623 for reference
-            on why it's set up this way.
+        A major component of this for asyncpg is to set up type decoders at the
+        asyncpg level.
 
-            """
-            await conn._connection.set_type_codec(
-                "json",
-                encoder=str.encode,
-                decoder=_json_decoder,
-                schema="pg_catalog",
-                format="binary",
-            )
-            await conn._connection.set_type_codec(
-                "jsonb",
-                encoder=_jsonb_encoder,
-                decoder=_jsonb_decoder,
-                schema="pg_catalog",
-                format="binary",
-            )
+        See https://github.com/MagicStack/asyncpg/issues/623 for
+        notes on JSON/JSONB implementation.
+
+        """
+
+        super_connect = super(PGDialect_asyncpg, self).on_connect()
 
         def connect(conn):
-            conn.await_(_setup_type_codecs(conn))
+            conn.await_(self.setup_asyncpg_json_codec(conn))
+            conn.await_(self.setup_asyncpg_jsonb_codec(conn))
             if super_connect is not None:
                 super_connect(conn)
 

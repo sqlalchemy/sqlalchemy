@@ -13,6 +13,7 @@ from sqlalchemy.dialects.postgresql import ENUM
 from sqlalchemy.testing import async_test
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import mock
 
 
 class AsyncPgTest(fixtures.TestBase):
@@ -251,3 +252,22 @@ class AsyncPgTest(fixtures.TestBase):
 
             await conn.begin()
             await conn.rollback()
+
+    @testing.combinations(
+        "setup_asyncpg_json_codec",
+        "setup_asyncpg_jsonb_codec",
+        argnames="methname",
+    )
+    @async_test
+    async def test_codec_registration(
+        self, metadata, async_testing_engine, methname
+    ):
+        """test new hooks added for #7284"""
+
+        engine = async_testing_engine()
+        with mock.patch.object(engine.dialect, methname) as codec_meth:
+            conn = await engine.connect()
+            adapted_conn = (await conn.get_raw_connection()).connection
+            await conn.close()
+
+        eq_(codec_meth.mock_calls, [mock.call(adapted_conn)])
