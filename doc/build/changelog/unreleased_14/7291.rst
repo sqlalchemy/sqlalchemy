@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 7291
+
+    Fixed issue in future :class:`_future.Connection` object where the
+    :meth:`_future.Connection.execute` method would not accept a non-dict
+    mapping object, such as SQLAlchemy's own :class:`.RowMapping` or other
+    ``abc.collections.Mapping`` object as a parameter dictionary.

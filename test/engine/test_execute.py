@@ -264,6 +264,58 @@ class ExecuteTest(fixtures.TablesTest):
             (4, "sally"),
         ]
 
+    def test_non_dict_mapping(self, connection):
+        """ensure arbitrary Mapping works for execute()"""
+
+        class NotADict(collections_abc.Mapping):
+            def __init__(self, _data):
+                self._data = _data
+
+            def __iter__(self):
+                return iter(self._data)
+
+            def __len__(self):
+                return len(self._data)
+
+            def __getitem__(self, key):
+                return self._data[key]
+
+            def keys(self):
+                return self._data.keys()
+
+        nd = NotADict({"a": 10, "b": 15})
+        eq_(dict(nd), {"a": 10, "b": 15})
+
+        result = connection.execute(
+            select(
+                bindparam("a", type_=Integer), bindparam("b", type_=Integer)
+            ),
+            nd,
+        )
+        eq_(result.first(), (10, 15))
+
+    def test_row_works_as_mapping(self, connection):
+        """ensure the RowMapping object works as a parameter dictionary for
+        execute."""
+
+        result = connection.execute(
+            select(literal(10).label("a"), literal(15).label("b"))
+        )
+        row = result.first()
+        eq_(row, (10, 15))
+        eq_(row._mapping, {"a": 10, "b": 15})
+
+        result = connection.execute(
+            select(
+                bindparam("a", type_=Integer).label("a"),
+                bindparam("b", type_=Integer).label("b"),
+            ),
+            row._mapping,
+        )
+        row = result.first()
+        eq_(row, (10, 15))
+        eq_(row._mapping, {"a": 10, "b": 15})
+
     def test_dialect_has_table_assertion(self):
         with expect_raises_message(
             tsa.exc.ArgumentError,
@@ -3514,6 +3566,58 @@ class FutureExecuteTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
             Column("user_name", VARCHAR(20)),
             test_needs_acid=True,
         )
+
+    def test_non_dict_mapping(self, connection):
+        """ensure arbitrary Mapping works for execute()"""
+
+        class NotADict(collections_abc.Mapping):
+            def __init__(self, _data):
+                self._data = _data
+
+            def __iter__(self):
+                return iter(self._data)
+
+            def __len__(self):
+                return len(self._data)
+
+            def __getitem__(self, key):
+                return self._data[key]
+
+            def keys(self):
+                return self._data.keys()
+
+        nd = NotADict({"a": 10, "b": 15})
+        eq_(dict(nd), {"a": 10, "b": 15})
+
+        result = connection.execute(
+            select(
+                bindparam("a", type_=Integer), bindparam("b", type_=Integer)
+            ),
+            nd,
+        )
+        eq_(result.first(), (10, 15))
+
+    def test_row_works_as_mapping(self, connection):
+        """ensure the RowMapping object works as a parameter dictionary for
+        execute."""
+
+        result = connection.execute(
+            select(literal(10).label("a"), literal(15).label("b"))
+        )
+        row = result.first()
+        eq_(row, (10, 15))
+        eq_(row._mapping, {"a": 10, "b": 15})
+
+        result = connection.execute(
+            select(
+                bindparam("a", type_=Integer).label("a"),
+                bindparam("b", type_=Integer).label("b"),
+            ),
+            row._mapping,
+        )
+        row = result.first()
+        eq_(row, (10, 15))
+        eq_(row._mapping, {"a": 10, "b": 15})
 
     @testing.combinations(
         ({}, {}, {}),

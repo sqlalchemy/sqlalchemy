@@ -147,9 +147,9 @@ def _distill_params_20(params):
     elif isinstance(
         params,
         (tuple, dict, immutabledict),
-        # avoid abc.__instancecheck__
-        # (collections_abc.Sequence, collections_abc.Mapping),
-    ):
+        # only do abc.__instancecheck__ for Mapping after we've checked
+        # for plain dictionaries and would otherwise raise
+    ) or isinstance(params, collections_abc.Mapping):
         return (params,), _no_kw
     else:
         raise exc.ArgumentError("mapping or sequence expected for parameters")
