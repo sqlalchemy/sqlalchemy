@@ -631,8 +631,10 @@ class DefaultDialect(interfaces.Dialect):
             if trans_objs:
                 if connection._is_future:
                     raise exc.InvalidRequestError(
-                        "This connection has already begun a transaction; "
-                        "%s may not be altered until transaction end"
+                        "This connection has already initialized a SQLAlchemy "
+                        "Transaction() object via begin() or autobegin; "
+                        "%s may not be altered unless rollback() or commit() "
+                        "is called first."
                         % (", ".join(name for name, obj in trans_objs))
                     )
                 else:

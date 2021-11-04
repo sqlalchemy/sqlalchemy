@@ -764,7 +764,10 @@ class Connection(Connectable):
         else:
             if self._is_future:
                 raise exc.InvalidRequestError(
-                    "a transaction is already begun for this connection"
+                    "This connection has already initialized a SQLAlchemy "
+                    "Transaction() object via begin() or autobegin; can't "
+                    "call begin() here unless rollback() or commit() "
+                    "is called first."
                 )
             else:
                 return MarkerTransaction(self)
