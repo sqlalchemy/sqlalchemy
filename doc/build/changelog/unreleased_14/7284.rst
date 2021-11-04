@@ -1,0 +1,13 @@
+.. change::
+    :tags: postgresql, usecase, asyncpg
+    :tickets: 7284
+    :versions: 2.0.0b1
+
+    Added overridable methods ``PGDialect_asyncpg.setup_asyncpg_json_codec``
+    and ``PGDialect_asyncpg.setup_asyncpg_jsonb_codec`` codec, which handle the
+    required task of registering JSON/JSONB codecs for these datatypes when
+    using asyncpg. The change is that methods are broken out as individual,
+    overridable methods to support third party dialects that need to alter or
+    disable how these particular codecs are set up.
+
+
