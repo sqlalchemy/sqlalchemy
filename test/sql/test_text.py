@@ -6,6 +6,7 @@ from sqlalchemy import bindparam
 from sqlalchemy import Column
 from sqlalchemy import desc
 from sqlalchemy import exc
+from sqlalchemy import extract
 from sqlalchemy import Float
 from sqlalchemy import func
 from sqlalchemy import Integer
@@ -180,6 +181,14 @@ class SelectCompositionTest(fixtures.TestBase, AssertsCompiledSQL):
             .select_from(text("(select f from bar where lala=heyhey) foo")),
             "SELECT t.myid, t.name, t.description, foo.f FROM mytable AS t, "
             "(select f from bar where lala=heyhey) foo WHERE foo.f = t.id",
+        )
+
+    def test_expression_element_role(self):
+        """test #7287"""
+
+        self.assert_compile(
+            extract("year", text("some_date + :param")),
+            "EXTRACT(year FROM some_date + :param)",
         )
 
     @testing.combinations(

@@ -2943,28 +2943,18 @@ class Case(ColumnElement):
             pass
 
         value = kw.pop("value", None)
-        if value is not None:
-            whenlist = [
-                (
-                    coercions.expect(
-                        roles.ExpressionElementRole,
-                        c,
-                        apply_propagate_attrs=self,
-                    ).self_group(),
-                    coercions.expect(roles.ExpressionElementRole, r),
-                )
-                for (c, r) in whens
-            ]
-        else:
-            whenlist = [
-                (
-                    coercions.expect(
-                        roles.ColumnArgumentRole, c, apply_propagate_attrs=self
-                    ).self_group(),
-                    coercions.expect(roles.ExpressionElementRole, r),
-                )
-                for (c, r) in whens
-            ]
+
+        whenlist = [
+            (
+                coercions.expect(
+                    roles.ExpressionElementRole,
+                    c,
+                    apply_propagate_attrs=self,
+                ).self_group(),
+                coercions.expect(roles.ExpressionElementRole, r),
+            )
+            for (c, r) in whens
+        ]
 
         if whenlist:
             type_ = list(whenlist[-1])[-1].type
