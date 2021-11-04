@@ -1,0 +1,12 @@
+.. change::
+    :tags: bug, sql, regression
+    :tickets: 7287
+
+    Fixed regression where the :func:`_sql.text` construct would no longer be
+    accepted as a target case in the "whens" list within a :func:`_sql.case`
+    construct. The regression appears related to an attempt to guard against
+    some forms of literal values that were considered to be ambiguous when
+    passed here; however, there's no reason the target cases shouldn't be
+    interpreted as open-ended SQL expressions just like anywhere else, and a
+    literal string or tuple will be converted to a bound parameter as would be
+    the case elsewhere.
