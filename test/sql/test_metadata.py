@@ -1923,6 +1923,31 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
         ):
             Table("foo", MetaData(), must_exist=True)
 
+    @testing.combinations(
+        ("comment", ("A", "B", "A")),
+        ("implicit_returning", (True, False, True)),
+        ("info", ({"A": 1}, {"A": 2}, {"A": 1})),
+    )
+    def test_extend_attributes(self, attrib, attrib_values):
+        """
+        ensure `extend_existing` is compatible with simple attributes
+        """
+        metadata = MetaData()
+        for counter, _attrib_value in enumerate(attrib_values):
+            _extend_existing = True if (counter > 0) else False
+            _kwargs = {
+                "extend_existing": _extend_existing,
+                attrib: _attrib_value,
+            }
+            table_a = Table(
+                "a",
+                metadata,
+                Column("foo", String, primary_key=True),
+                **_kwargs
+            )
+            eq_(getattr(table_a, attrib), _attrib_value)
+            eq_(getattr(metadata.tables["a"], attrib), _attrib_value)
+
 
 class PKAutoIncrementTest(fixtures.TestBase):
     def test_multi_integer_no_autoinc(self):
