@@ -30,11 +30,13 @@ from ... import testing
 from ... import text
 from ... import true
 from ... import tuple_
+from ... import TupleType
 from ... import union
 from ... import util
 from ... import values
 from ...exc import DatabaseError
 from ...exc import ProgrammingError
+from ...util import collections_abc
 
 
 class CollateTest(fixtures.TablesTest):
@@ -1131,6 +1133,41 @@ class ExpandingBoundInTest(fixtures.TablesTest):
         )
         self._assert_result(stmt, [])
 
+    def test_typed_str_in(self):
+        """test related to #7292.
+
+        as a type is given to the bound param, there is no ambiguity
+        to the type of element.
+
+        """
+
+        stmt = text(
+            "select id FROM some_table WHERE z IN :q ORDER BY id"
+        ).bindparams(bindparam("q", type_=String, expanding=True))
+        self._assert_result(
+            stmt,
+            [(2,), (3,), (4,)],
+            params={"q": ["z2", "z3", "z4"]},
+        )
+
+    def test_untyped_str_in(self):
+        """test related to #7292.
+
+        for untyped expression, we look at the types of elements.
+        Test for Sequence to detect tuple in.  but not strings or bytes!
+        as always....
+
+        """
+
+        stmt = text(
+            "select id FROM some_table WHERE z IN :q ORDER BY id"
+        ).bindparams(bindparam("q", expanding=True))
+        self._assert_result(
+            stmt,
+            [(2,), (3,), (4,)],
+            params={"q": ["z2", "z3", "z4"]},
+        )
+
     @testing.requires.tuple_in
     def test_bound_in_two_tuple_bindparam(self):
         table = self.tables.some_table
@@ -1195,6 +1232,73 @@ class ExpandingBoundInTest(fixtures.TablesTest):
             stmt,
             [(2,), (3,), (4,)],
             params={"q": [(2, "z2"), (3, "z3"), (4, "z4")]},
+        )
+
+    @testing.requires.tuple_in
+    def test_bound_in_heterogeneous_two_tuple_typed_bindparam_non_tuple(self):
+        class LikeATuple(collections_abc.Sequence):
+            def __init__(self, *data):
+                self._data = data
+
+            def __iter__(self):
+                return iter(self._data)
+
+            def __getitem__(self, idx):
+                return self._data[idx]
+
+            def __len__(self):
+                return len(self._data)
+
+        stmt = text(
+            "select id FROM some_table WHERE (x, z) IN :q ORDER BY id"
+        ).bindparams(
+            bindparam(
+                "q", type_=TupleType(Integer(), String()), expanding=True
+            )
+        )
+        self._assert_result(
+            stmt,
+            [(2,), (3,), (4,)],
+            params={
+                "q": [
+                    LikeATuple(2, "z2"),
+                    LikeATuple(3, "z3"),
+                    LikeATuple(4, "z4"),
+                ]
+            },
+        )
+
+    @testing.requires.tuple_in
+    def test_bound_in_heterogeneous_two_tuple_text_bindparam_non_tuple(self):
+        # note this becomes ARRAY if we dont use expanding
+        # explicitly right now
+
+        class LikeATuple(collections_abc.Sequence):
+            def __init__(self, *data):
+                self._data = data
+
+            def __iter__(self):
+                return iter(self._data)
+
+            def __getitem__(self, idx):
+                return self._data[idx]
+
+            def __len__(self):
+                return len(self._data)
+
+        stmt = text(
+            "select id FROM some_table WHERE (x, z) IN :q ORDER BY id"
+        ).bindparams(bindparam("q", expanding=True))
+        self._assert_result(
+            stmt,
+            [(2,), (3,), (4,)],
+            params={
+                "q": [
+                    LikeATuple(2, "z2"),
+                    LikeATuple(3, "z3"),
+                    LikeATuple(4, "z4"),
+                ]
+            },
         )
 
     def test_empty_set_against_integer_bindparam(self):

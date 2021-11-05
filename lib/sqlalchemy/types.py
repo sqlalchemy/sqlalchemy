@@ -36,6 +36,7 @@ __all__ = [
     "INTEGER",
     "DATE",
     "TIME",
+    "TupleType",
     "String",
     "Integer",
     "SmallInteger",
@@ -103,6 +104,7 @@ from .sql.sqltypes import Text
 from .sql.sqltypes import TIME
 from .sql.sqltypes import Time
 from .sql.sqltypes import TIMESTAMP
+from .sql.sqltypes import TupleType
 from .sql.sqltypes import Unicode
 from .sql.sqltypes import UnicodeText
 from .sql.sqltypes import VARBINARY

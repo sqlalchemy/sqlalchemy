@@ -2025,8 +2025,14 @@ class SQLCompiler(Compiled):
                     [parameter.type], parameter.expand_op
                 )
 
-        elif isinstance(values[0], (tuple, list)):
-            assert typ_dialect_impl._is_tuple_type
+        elif typ_dialect_impl._is_tuple_type or (
+            typ_dialect_impl._isnull
+            and isinstance(values[0], util.collections_abc.Sequence)
+            and not isinstance(
+                values[0], util.string_types + util.binary_types
+            )
+        ):
+
             replacement_expression = (
                 "VALUES " if self.dialect.tuple_in_values else ""
             ) + ", ".join(
@@ -2042,7 +2048,6 @@ class SQLCompiler(Compiled):
                 for i, tuple_element in enumerate(values)
             )
         else:
-            assert not typ_dialect_impl._is_tuple_type
             replacement_expression = ", ".join(
                 self.render_literal_value(value, parameter.type)
                 for value in values
@@ -2071,10 +2076,14 @@ class SQLCompiler(Compiled):
                     [parameter.type], parameter.expand_op
                 )
 
-        elif (
-            isinstance(values[0], (tuple, list))
-            and not typ_dialect_impl._is_array
+        elif typ_dialect_impl._is_tuple_type or (
+            typ_dialect_impl._isnull
+            and isinstance(values[0], util.collections_abc.Sequence)
+            and not isinstance(
+                values[0], util.string_types + util.binary_types
+            )
         ):
+            assert not typ_dialect_impl._is_array
             to_update = [
                 ("%s_%s_%s" % (name, i, j), value)
                 for i, tuple_element in enumerate(values, 1)

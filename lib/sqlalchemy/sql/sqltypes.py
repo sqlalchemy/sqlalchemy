@@ -2966,7 +2966,10 @@ class TupleType(TypeEngine):
 
     def __init__(self, *types):
         self._fully_typed = NULLTYPE not in types
-        self.types = types
+        self.types = [
+            item_type() if isinstance(item_type, type) else item_type
+            for item_type in types
+        ]
 
     def _resolve_values_to_types(self, value):
         if self._fully_typed:
