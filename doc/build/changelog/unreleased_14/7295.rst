@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, schema
+    :tickets: 7295
+
+    Fixed issue in :class:`.Table` where the 
+    :paramref:`.Table.implicit_returning` parameter would not be 
+    accommodated correctly when passed along with 
+    :paramref:`.Table.extend_existing` to augment an existing 
+    :class:`.Table`.
