@@ -21,6 +21,7 @@ from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import true
+from sqlalchemy import tuple_
 from sqlalchemy import type_coerce
 from sqlalchemy import TypeDecorator
 from sqlalchemy import util
@@ -868,6 +869,37 @@ class CursorResultTest(fixtures.TablesTest):
         connection.execute(users.delete())
         connection.execute(users.insert(), r._mapping)
         eq_(connection.execute(users.select()).fetchall(), [(1, "john")])
+
+    @testing.requires.tuple_in
+    def test_row_tuple_interpretation(self, connection):
+        """test #7292"""
+        users = self.tables.users
+
+        connection.execute(
+            users.insert(),
+            [
+                dict(user_id=1, user_name="u1"),
+                dict(user_id=2, user_name="u2"),
+                dict(user_id=3, user_name="u3"),
+            ],
+        )
+        rows = connection.execute(
+            select(users.c.user_id, users.c.user_name)
+        ).all()
+
+        # was previously needed
+        # rows = [(x, y) for x, y in rows]
+
+        new_stmt = (
+            select(users)
+            .where(tuple_(users.c.user_id, users.c.user_name).in_(rows))
+            .order_by(users.c.user_id)
+        )
+
+        eq_(
+            connection.execute(new_stmt).all(),
+            [(1, "u1"), (2, "u2"), (3, "u3")],
+        )
 
     def test_result_as_args(self, connection):
         users = self.tables.users

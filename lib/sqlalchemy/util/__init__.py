@@ -53,6 +53,7 @@ from .compat import b
 from .compat import b64decode
 from .compat import b64encode
 from .compat import binary_type
+from .compat import binary_types
 from .compat import byte_buffer
 from .compat import callable
 from .compat import cmp

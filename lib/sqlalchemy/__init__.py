@@ -123,6 +123,7 @@ from .types import Text
 from .types import TIME
 from .types import Time
 from .types import TIMESTAMP
+from .types import TupleType
 from .types import TypeDecorator
 from .types import Unicode
 from .types import UnicodeText

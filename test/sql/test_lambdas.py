@@ -26,6 +26,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.types import ARRAY
 from sqlalchemy.types import Boolean
 from sqlalchemy.types import Integer
 from sqlalchemy.types import String
@@ -1180,9 +1181,9 @@ class LambdaElementTest(
     def test_in_parameters_five(self):
         def go(n1, n2):
             stmt = lambdas.lambda_stmt(
-                lambda: select(1).where(column("q").in_(n1))
+                lambda: select(1).where(column("q", ARRAY(String)).in_(n1))
             )
-            stmt += lambda s: s.where(column("y").in_(n2))
+            stmt += lambda s: s.where(column("y", ARRAY(String)).in_(n2))
             return stmt
 
         expr = go(["a", "b", "c"], ["d", "e", "f"])
