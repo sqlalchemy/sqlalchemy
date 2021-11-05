@@ -4,6 +4,6 @@
 
     Changed the asyncpg dialect to bind the :class:`.Float` type to the "float"
     PostgreSQL type instead of "numeric" so that the value ``float(inf)`` can
-    be accommodated. Added test suite support for persisence of the "inf"
+    be accommodated. Added test suite support for persistence of the "inf"
     value.
 
