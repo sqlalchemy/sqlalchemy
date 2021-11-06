@@ -2392,9 +2392,6 @@ class Engine(ConnectionEventsTarget, log.Identified):
         * The logging configuration and logging_name is copied from the parent
           :class:`_engine.Engine`.
 
-        .. TODO: the below autocommit link will have a more specific ref
-           for the example in an upcoming commit
-
         The intent of the :meth:`_engine.Engine.execution_options` method is
         to implement schemes where multiple :class:`_engine.Engine`
         objects refer to the same connection pool, but are differentiated
@@ -2404,7 +2401,7 @@ class Engine(ConnectionEventsTarget, log.Identified):
         :class:`_engine.Engine`
         has a lower :term:`isolation level` setting configured or is even
         transaction-disabled using "autocommit".  An example of this
-        configuration is at :ref:`dbapi_autocommit`.
+        configuration is at :ref:`dbapi_autocommit_multiple`.
 
         Another example is one that
         uses a custom option ``shard_id`` which is consumed by an event

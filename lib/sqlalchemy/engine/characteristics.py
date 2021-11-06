@@ -50,7 +50,7 @@ class IsolationLevelCharacteristic(ConnectionCharacteristic):
         dialect.reset_isolation_level(dbapi_conn)
 
     def set_characteristic(self, dialect, dbapi_conn, value):
-        dialect.set_isolation_level(dbapi_conn, value)
+        dialect._assert_and_set_isolation_level(dbapi_conn, value)
 
     def get_characteristic(self, dialect, dbapi_conn):
         return dialect.get_isolation_level(dbapi_conn)

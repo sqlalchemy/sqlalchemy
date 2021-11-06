@@ -1815,7 +1815,6 @@ class SQLiteDialect(default.DefaultDialect):
     preparer = SQLiteIdentifierPreparer
     ischema_names = ischema_names
     colspecs = colspecs
-    isolation_level = None
 
     construct_arguments = [
         (
@@ -1856,7 +1855,6 @@ class SQLiteDialect(default.DefaultDialect):
     )
     def __init__(
         self,
-        isolation_level=None,
         native_datetime=False,
         json_serializer=None,
         json_deserializer=None,
@@ -1865,7 +1863,6 @@ class SQLiteDialect(default.DefaultDialect):
         **kwargs
     ):
         default.DefaultDialect.__init__(self, **kwargs)
-        self.isolation_level = isolation_level
 
         if _json_serializer:
             json_serializer = _json_serializer
@@ -1918,22 +1915,12 @@ class SQLiteDialect(default.DefaultDialect):
         {"READ UNCOMMITTED": 1, "SERIALIZABLE": 0}
     )
 
+    def get_isolation_level_values(self, dbapi_conn):
+        return list(self._isolation_lookup)
+
     def set_isolation_level(self, connection, level):
-        try:
-            isolation_level = self._isolation_lookup[level.replace("_", " ")]
-        except KeyError as err:
-            util.raise_(
-                exc.ArgumentError(
-                    "Invalid value '%s' for isolation_level. "
-                    "Valid isolation levels for %s are %s"
-                    % (
-                        level,
-                        self.name,
-                        ", ".join(self._isolation_lookup),
-                    )
-                ),
-                replace_context=err,
-            )
+        isolation_level = self._isolation_lookup[level]
+
         cursor = connection.cursor()
         cursor.execute("PRAGMA read_uncommitted = %d" % isolation_level)
         cursor.close()
@@ -1959,16 +1946,6 @@ class SQLiteDialect(default.DefaultDialect):
             return "READ UNCOMMITTED"
         else:
             assert False, "Unknown isolation level %s" % value
-
-    def on_connect(self):
-        if self.isolation_level is not None:
-
-            def connect(conn):
-                self.set_isolation_level(conn, self.isolation_level)
-
-            return connect
-        else:
-            return None
 
     @reflection.cache
     def get_schema_names(self, connection, **kw):

@@ -383,41 +383,6 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
-    def legacy_isolation_level(self):
-        # refers dialects where "isolation_level" can be passed to
-        # create_engine
-        return only_on(
-            ("postgresql", "sqlite", "mysql", "mariadb", "mssql"),
-            "DBAPI has no isolation level support",
-        )
-
-    def get_isolation_levels(self, config):
-        levels = set(config.db.dialect._isolation_lookup)
-
-        if against(config, "sqlite"):
-            default = "SERIALIZABLE"
-            levels.add("AUTOCOMMIT")
-        elif against(config, "postgresql"):
-            default = "READ COMMITTED"
-            levels.add("AUTOCOMMIT")
-        elif against(config, "mysql"):
-            default = "REPEATABLE READ"
-            levels.add("AUTOCOMMIT")
-        elif against(config, "mariadb"):
-            default = "REPEATABLE READ"
-            levels.add("AUTOCOMMIT")
-        elif against(config, "mssql"):
-            default = "READ COMMITTED"
-            levels.add("AUTOCOMMIT")
-        elif against(config, "oracle"):
-            default = "READ COMMITTED"
-            levels.add("AUTOCOMMIT")
-        else:
-            raise NotImplementedError()
-
-        return {"default": default, "supported": levels}
-
-    @property
     def autocommit(self):
         """target dialect supports 'AUTOCOMMIT' as an isolation_level"""
 

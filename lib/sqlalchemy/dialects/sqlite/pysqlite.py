@@ -504,8 +504,6 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
             )
 
     def on_connect(self):
-        connect = super(SQLiteDialect_pysqlite, self).on_connect()
-
         def regexp(a, b):
             if b is None:
                 return None
@@ -523,13 +521,6 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
             )
 
         fns = [set_regexp]
-
-        if self.isolation_level is not None:
-
-            def iso_level(conn):
-                self.set_isolation_level(conn, self.isolation_level)
-
-            fns.append(iso_level)
 
         def connect(conn):
             for fn in fns:

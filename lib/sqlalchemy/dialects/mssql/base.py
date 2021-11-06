@@ -2725,7 +2725,6 @@ class MSDialect(default.DefaultDialect):
         query_timeout=None,
         use_scope_identity=True,
         schema_name="dbo",
-        isolation_level=None,
         deprecate_large_types=None,
         json_serializer=None,
         json_deserializer=None,
@@ -2748,7 +2747,6 @@ class MSDialect(default.DefaultDialect):
 
         super(MSDialect, self).__init__(**opts)
 
-        self.isolation_level = isolation_level
         self._json_serializer = json_serializer
         self._json_deserializer = json_deserializer
 
@@ -2771,14 +2769,10 @@ class MSDialect(default.DefaultDialect):
         ]
     )
 
+    def get_isolation_level_values(self, dbapi_conn):
+        return list(self._isolation_lookup)
+
     def set_isolation_level(self, connection, level):
-        level = level.replace("_", " ")
-        if level not in self._isolation_lookup:
-            raise exc.ArgumentError(
-                "Invalid value '%s' for isolation_level. "
-                "Valid isolation levels for %s are %s"
-                % (level, self.name, ", ".join(self._isolation_lookup))
-            )
         cursor = connection.cursor()
         cursor.execute("SET TRANSACTION ISOLATION LEVEL %s" % level)
         cursor.close()
@@ -2832,16 +2826,6 @@ class MSDialect(default.DefaultDialect):
         super(MSDialect, self).initialize(connection)
         self._setup_version_attributes()
         self._setup_supports_nvarchar_max(connection)
-
-    def on_connect(self):
-        if self.isolation_level is not None:
-
-            def connect(conn):
-                self.set_isolation_level(conn, self.isolation_level)
-
-            return connect
-        else:
-            return None
 
     def _setup_version_attributes(self):
         if self.server_version_info[0] not in list(range(8, 17)):

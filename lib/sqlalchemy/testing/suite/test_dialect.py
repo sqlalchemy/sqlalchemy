@@ -8,6 +8,7 @@ from .. import eq_
 from .. import fixtures
 from .. import ne_
 from .. import provide_metadata
+from ..assertions import expect_raises_message
 from ..config import requirements
 from ..provision import set_default_schema_on_connection
 from ..schema import Column
@@ -139,6 +140,48 @@ class IsolationLevelTest(fixtures.TestBase):
                     conn.get_isolation_level(),
                     levels["default"],
                 )
+
+    @testing.requires.get_isolation_level_values
+    def test_invalid_level_execution_option(self, connection_no_trans):
+        """test for the new get_isolation_level_values() method"""
+
+        connection = connection_no_trans
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Invalid value '%s' for isolation_level. "
+            "Valid isolation levels for '%s' are %s"
+            % (
+                "FOO",
+                connection.dialect.name,
+                ", ".join(
+                    requirements.get_isolation_levels(config)["supported"]
+                ),
+            ),
+        ):
+            connection.execution_options(isolation_level="FOO")
+
+    @testing.requires.get_isolation_level_values
+    @testing.requires.dialect_level_isolation_level_param
+    def test_invalid_level_engine_param(self, testing_engine):
+        """test for the new get_isolation_level_values() method
+        and support for the dialect-level 'isolation_level' parameter.
+
+        """
+
+        eng = testing_engine(options=dict(isolation_level="FOO"))
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Invalid value '%s' for isolation_level. "
+            "Valid isolation levels for '%s' are %s"
+            % (
+                "FOO",
+                eng.dialect.name,
+                ", ".join(
+                    requirements.get_isolation_levels(config)["supported"]
+                ),
+            ),
+        ):
+            eng.connect()
 
 
 class AutocommitIsolationTest(fixtures.TablesTest):
