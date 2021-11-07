@@ -96,7 +96,6 @@ from .base import _from_objects
 from .base import _select_iterables
 from .base import ColumnCollection
 from .base import Executable
-from .base import PARSE_AUTOCOMMIT
 from .dml import Delete
 from .dml import Insert
 from .dml import Update

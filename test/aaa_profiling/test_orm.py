@@ -886,7 +886,6 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
                 r = sess.connection().execute(
                     compile_state.statement,
                     execution_options=exec_opts,
-                    bind_arguments=bind_arguments,
                 )
 
                 r.context.compiled.compile_state = compile_state

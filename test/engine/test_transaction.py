@@ -1,5 +1,3 @@
-import sys
-
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import func
@@ -20,7 +18,6 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
-from sqlalchemy.testing.assertions import expect_deprecated_20
 from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.schema import Column
@@ -44,30 +41,6 @@ class TransactionTest(fixtures.TablesTest):
     def local_connection(self):
         with testing.db.connect() as conn:
             yield conn
-
-    def test_interrupt_ctxmanager_engine(self, trans_ctx_manager_fixture):
-        fn = trans_ctx_manager_fixture
-
-        # add commit/rollback to the legacy Connection object so that
-        # we can test this less-likely case in use with the legacy
-        # Engine.begin() context manager
-        class ConnWCommitRollback(testing.db._connection_cls):
-            def commit(self):
-                self.get_transaction().commit()
-
-            def rollback(self):
-                self.get_transaction().rollback()
-
-        with mock.patch.object(
-            testing.db, "_connection_cls", ConnWCommitRollback
-        ):
-            fn(testing.db, trans_on_subject=False, execute_on_subject=False)
-
-    def test_interrupt_ctxmanager_connection(self, trans_ctx_manager_fixture):
-        fn = trans_ctx_manager_fixture
-
-        with testing.db.connect() as conn:
-            fn(conn, trans_on_subject=False, execute_on_subject=True)
 
     def test_commits(self, local_connection):
         users = self.tables.users
@@ -148,56 +121,6 @@ class TransactionTest(fixtures.TablesTest):
             assert not local_connection.in_transaction()
 
     @testing.combinations((True,), (False,), argnames="roll_back_in_block")
-    def test_ctxmanager_rolls_back(self, local_connection, roll_back_in_block):
-        m1 = mock.Mock()
-
-        event.listen(local_connection, "rollback", m1.rollback)
-        event.listen(local_connection, "commit", m1.commit)
-
-        with expect_raises_message(Exception, "test"):
-            with local_connection.begin() as trans:
-                if roll_back_in_block:
-                    trans.rollback()
-
-                if 1 == 1:
-                    raise Exception("test")
-
-        assert not trans.is_active
-        assert not local_connection.in_transaction()
-        assert trans._deactivated_from_connection
-
-        eq_(m1.mock_calls, [mock.call.rollback(local_connection)])
-
-    @testing.combinations((True,), (False,), argnames="roll_back_in_block")
-    def test_ctxmanager_rolls_back_legacy_marker(
-        self, local_connection, roll_back_in_block
-    ):
-        m1 = mock.Mock()
-
-        event.listen(local_connection, "rollback", m1.rollback)
-        event.listen(local_connection, "commit", m1.commit)
-
-        with expect_deprecated_20(
-            r"Calling .begin\(\) when a transaction is already begun"
-        ):
-            with local_connection.begin() as trans:
-                with expect_raises_message(Exception, "test"):
-                    with local_connection.begin() as marker_trans:
-                        if roll_back_in_block:
-                            marker_trans.rollback()
-                        if 1 == 1:
-                            raise Exception("test")
-
-                    assert not marker_trans.is_active
-                    assert marker_trans._deactivated_from_connection
-
-                assert not trans._deactivated_from_connection
-                assert not trans.is_active
-                assert not local_connection.in_transaction()
-
-        eq_(m1.mock_calls, [mock.call.rollback(local_connection)])
-
-    @testing.combinations((True,), (False,), argnames="roll_back_in_block")
     @testing.requires.savepoints
     def test_ctxmanager_rolls_back_savepoint(
         self, local_connection, roll_back_in_block
@@ -231,37 +154,6 @@ class TransactionTest(fixtures.TablesTest):
                 mock.call.rollback_savepoint(
                     local_connection, mock.ANY, mock.ANY
                 ),
-                mock.call.commit(local_connection),
-            ],
-        )
-
-    def test_ctxmanager_commits_real_trans_from_nested(self, local_connection):
-        m1 = mock.Mock()
-
-        event.listen(
-            local_connection, "rollback_savepoint", m1.rollback_savepoint
-        )
-        event.listen(
-            local_connection, "release_savepoint", m1.release_savepoint
-        )
-        event.listen(local_connection, "rollback", m1.rollback)
-        event.listen(local_connection, "commit", m1.commit)
-        event.listen(local_connection, "begin", m1.begin)
-        event.listen(local_connection, "savepoint", m1.savepoint)
-
-        with testing.expect_deprecated_20(
-            r"Calling Connection.begin_nested\(\) in 2.0 style use will return"
-        ):
-            with local_connection.begin_nested() as nested_trans:
-                pass
-
-        assert not nested_trans.is_active
-        assert nested_trans._deactivated_from_connection
-        # legacy mode, no savepoint at all
-        eq_(
-            m1.mock_calls,
-            [
-                mock.call.begin(local_connection),
                 mock.call.commit(local_connection),
             ],
         )
@@ -427,39 +319,34 @@ class TransactionTest(fixtures.TablesTest):
             0,
         )
 
-    def test_with_interface(self, local_connection):
+    def test_ctxmanager_interface(self, local_connection):
+        # a legacy test, adapted for 2.x style, was called
+        # "test_with_interface".  this is likely an early test for when
+        # the "with" construct was first added.
+
         connection = local_connection
         users = self.tables.users
         trans = connection.begin()
-        trans.__enter__()
-        connection.execute(users.insert(), dict(user_id=1, user_name="user1"))
-        connection.execute(users.insert(), dict(user_id=2, user_name="user2"))
-        try:
+
+        with trans:
             connection.execute(
-                users.insert(), dict(user_id=2, user_name="user2.5")
+                users.insert(), dict(user_id=1, user_name="user1")
             )
-        except Exception:
-            trans.__exit__(*sys.exc_info())
+            connection.execute(
+                users.insert(), dict(user_id=2, user_name="user2")
+            )
+
+            assert trans.is_active
 
         assert not trans.is_active
-        self.assert_(
-            connection.exec_driver_sql(
-                "select count(*) from " "users"
-            ).scalar()
-            == 0
-        )
 
-        trans = connection.begin()
-        trans.__enter__()
-        connection.execute(users.insert(), dict(user_id=1, user_name="user1"))
-        trans.__exit__(None, None, None)
-        assert not trans.is_active
-        self.assert_(
+        eq_(
             connection.exec_driver_sql(
                 "select count(*) from " "users"
-            ).scalar()
-            == 1
+            ).scalar(),
+            2,
         )
+        connection.rollback()
 
     def test_close(self, local_connection):
         connection = local_connection
@@ -647,878 +534,6 @@ class TransactionTest(fixtures.TablesTest):
                 select(users.c.user_name).order_by(users.c.user_id)
             )
             eq_(result.fetchall(), [])
-
-
-class AutoRollbackTest(fixtures.TestBase):
-    __backend__ = True
-
-    @classmethod
-    def setup_test_class(cls):
-        global metadata
-        metadata = MetaData()
-
-    @classmethod
-    def teardown_test_class(cls):
-        metadata.drop_all(testing.db)
-
-    def test_rollback_deadlock(self):
-        """test that returning connections to the pool clears any object
-        locks."""
-
-        conn1 = testing.db.connect()
-        conn2 = testing.db.connect()
-        users = Table(
-            "deadlock_users",
-            metadata,
-            Column("user_id", INT, primary_key=True),
-            Column("user_name", VARCHAR(20)),
-            test_needs_acid=True,
-        )
-        with conn1.begin():
-            users.create(conn1)
-        conn1.exec_driver_sql("select * from deadlock_users")
-        conn1.close()
-
-        # without auto-rollback in the connection pool's return() logic,
-        # this deadlocks in PostgreSQL, because conn1 is returned to the
-        # pool but still has a lock on "deadlock_users". comment out the
-        # rollback in pool/ConnectionFairy._close() to see !
-
-        with conn2.begin():
-            users.drop(conn2)
-        conn2.close()
-
-
-class IsolationLevelTest(fixtures.TestBase):
-    __requires__ = (
-        "isolation_level",
-        "ad_hoc_engines",
-        "legacy_isolation_level",
-    )
-    __backend__ = True
-
-    def _default_isolation_level(self):
-        return testing.requires.get_isolation_levels(testing.config)["default"]
-
-    def _non_default_isolation_level(self):
-        levels = testing.requires.get_isolation_levels(testing.config)
-
-        default = levels["default"]
-        supported = levels["supported"]
-
-        s = set(supported).difference(["AUTOCOMMIT", default])
-        if s:
-            return s.pop()
-        else:
-            assert False, "no non-default isolation level available"
-
-    def test_engine_param_stays(self):
-
-        eng = testing_engine()
-        isolation_level = eng.dialect.get_isolation_level(
-            eng.connect().connection
-        )
-        level = self._non_default_isolation_level()
-
-        ne_(isolation_level, level)
-
-        eng = testing_engine(options=dict(isolation_level=level))
-        eq_(eng.dialect.get_isolation_level(eng.connect().connection), level)
-
-        # check that it stays
-        conn = eng.connect()
-        eq_(eng.dialect.get_isolation_level(conn.connection), level)
-        conn.close()
-
-        conn = eng.connect()
-        eq_(eng.dialect.get_isolation_level(conn.connection), level)
-        conn.close()
-
-    def test_default_level(self):
-        eng = testing_engine(options=dict())
-        isolation_level = eng.dialect.get_isolation_level(
-            eng.connect().connection
-        )
-        eq_(isolation_level, self._default_isolation_level())
-
-    def test_reset_level(self):
-        eng = testing_engine(options=dict())
-        conn = eng.connect()
-        eq_(
-            eng.dialect.get_isolation_level(conn.connection),
-            self._default_isolation_level(),
-        )
-
-        eng.dialect.set_isolation_level(
-            conn.connection, self._non_default_isolation_level()
-        )
-        eq_(
-            eng.dialect.get_isolation_level(conn.connection),
-            self._non_default_isolation_level(),
-        )
-
-        eng.dialect.reset_isolation_level(conn.connection)
-        eq_(
-            eng.dialect.get_isolation_level(conn.connection),
-            self._default_isolation_level(),
-        )
-
-        conn.close()
-
-    def test_reset_level_with_setting(self):
-        eng = testing_engine(
-            options=dict(isolation_level=self._non_default_isolation_level())
-        )
-        conn = eng.connect()
-        eq_(
-            eng.dialect.get_isolation_level(conn.connection),
-            self._non_default_isolation_level(),
-        )
-        eng.dialect.set_isolation_level(
-            conn.connection, self._default_isolation_level()
-        )
-        eq_(
-            eng.dialect.get_isolation_level(conn.connection),
-            self._default_isolation_level(),
-        )
-        eng.dialect.reset_isolation_level(conn.connection)
-        eq_(
-            eng.dialect.get_isolation_level(conn.connection),
-            self._non_default_isolation_level(),
-        )
-        conn.close()
-
-    def test_invalid_level(self):
-        eng = testing_engine(options=dict(isolation_level="FOO"))
-        assert_raises_message(
-            exc.ArgumentError,
-            "Invalid value '%s' for isolation_level. "
-            "Valid isolation levels for %s are %s"
-            % (
-                "FOO",
-                eng.dialect.name,
-                ", ".join(eng.dialect._isolation_lookup),
-            ),
-            eng.connect,
-        )
-
-    def test_connection_invalidated(self):
-        eng = testing_engine()
-        conn = eng.connect()
-        c2 = conn.execution_options(
-            isolation_level=self._non_default_isolation_level()
-        )
-        c2.invalidate()
-        c2.connection
-
-        # TODO: do we want to rebuild the previous isolation?
-        # for now, this is current behavior so we will leave it.
-        eq_(c2.get_isolation_level(), self._default_isolation_level())
-
-    def test_per_connection(self):
-        from sqlalchemy.pool import QueuePool
-
-        eng = testing_engine(
-            options=dict(poolclass=QueuePool, pool_size=2, max_overflow=0)
-        )
-
-        c1 = eng.connect()
-        c1 = c1.execution_options(
-            isolation_level=self._non_default_isolation_level()
-        )
-        c2 = eng.connect()
-        eq_(
-            eng.dialect.get_isolation_level(c1.connection),
-            self._non_default_isolation_level(),
-        )
-        eq_(
-            eng.dialect.get_isolation_level(c2.connection),
-            self._default_isolation_level(),
-        )
-        c1.close()
-        c2.close()
-        c3 = eng.connect()
-        eq_(
-            eng.dialect.get_isolation_level(c3.connection),
-            self._default_isolation_level(),
-        )
-        c4 = eng.connect()
-        eq_(
-            eng.dialect.get_isolation_level(c4.connection),
-            self._default_isolation_level(),
-        )
-
-        c3.close()
-        c4.close()
-
-    def test_warning_in_transaction(self):
-        eng = testing_engine()
-        c1 = eng.connect()
-        with expect_warnings(
-            "Connection is already established with a Transaction; "
-            "setting isolation_level may implicitly rollback or commit "
-            "the existing transaction, or have no effect until next "
-            "transaction"
-        ):
-            with c1.begin():
-                c1 = c1.execution_options(
-                    isolation_level=self._non_default_isolation_level()
-                )
-
-                eq_(
-                    eng.dialect.get_isolation_level(c1.connection),
-                    self._non_default_isolation_level(),
-                )
-        # stays outside of transaction
-        eq_(
-            eng.dialect.get_isolation_level(c1.connection),
-            self._non_default_isolation_level(),
-        )
-
-    def test_per_statement_bzzt(self):
-        assert_raises_message(
-            exc.ArgumentError,
-            r"'isolation_level' execution option may only be specified "
-            r"on Connection.execution_options\(\), or "
-            r"per-engine using the isolation_level "
-            r"argument to create_engine\(\).",
-            select(1).execution_options,
-            isolation_level=self._non_default_isolation_level(),
-        )
-
-    def test_per_engine(self):
-        # new in 0.9
-        eng = testing_engine(
-            testing.db.url,
-            options=dict(
-                execution_options={
-                    "isolation_level": self._non_default_isolation_level()
-                }
-            ),
-        )
-        conn = eng.connect()
-        eq_(
-            eng.dialect.get_isolation_level(conn.connection),
-            self._non_default_isolation_level(),
-        )
-
-    def test_per_option_engine(self):
-        eng = testing_engine(testing.db.url).execution_options(
-            isolation_level=self._non_default_isolation_level()
-        )
-
-        conn = eng.connect()
-        eq_(
-            eng.dialect.get_isolation_level(conn.connection),
-            self._non_default_isolation_level(),
-        )
-
-    def test_isolation_level_accessors_connection_default(self):
-        eng = testing_engine(testing.db.url)
-        with eng.connect() as conn:
-            eq_(conn.default_isolation_level, self._default_isolation_level())
-        with eng.connect() as conn:
-            eq_(conn.get_isolation_level(), self._default_isolation_level())
-
-    def test_isolation_level_accessors_connection_option_modified(self):
-        eng = testing_engine(testing.db.url)
-        with eng.connect() as conn:
-            c2 = conn.execution_options(
-                isolation_level=self._non_default_isolation_level()
-            )
-            eq_(conn.default_isolation_level, self._default_isolation_level())
-            eq_(
-                conn.get_isolation_level(), self._non_default_isolation_level()
-            )
-            eq_(c2.get_isolation_level(), self._non_default_isolation_level())
-
-
-class ConnectionCharacteristicTest(fixtures.TestBase):
-    @testing.fixture
-    def characteristic_fixture(self):
-        class FooCharacteristic(characteristics.ConnectionCharacteristic):
-            transactional = True
-
-            def reset_characteristic(self, dialect, dbapi_conn):
-
-                dialect.reset_foo(dbapi_conn)
-
-            def set_characteristic(self, dialect, dbapi_conn, value):
-
-                dialect.set_foo(dbapi_conn, value)
-
-            def get_characteristic(self, dialect, dbapi_conn):
-                return dialect.get_foo(dbapi_conn)
-
-        class FooDialect(default.DefaultDialect):
-            connection_characteristics = util.immutabledict(
-                {"foo": FooCharacteristic()}
-            )
-
-            def reset_foo(self, dbapi_conn):
-                dbapi_conn.foo = "original_value"
-
-            def set_foo(self, dbapi_conn, value):
-                dbapi_conn.foo = value
-
-            def get_foo(self, dbapi_conn):
-                return dbapi_conn.foo
-
-        connection = mock.Mock()
-
-        def creator():
-            connection.foo = "original_value"
-            return connection
-
-        pool = _pool.SingletonThreadPool(creator=creator)
-        u = url.make_url("foo://")
-        return base.Engine(pool, FooDialect(), u), connection
-
-    def test_engine_param_stays(self, characteristic_fixture):
-
-        engine, connection = characteristic_fixture
-
-        foo_level = engine.dialect.get_foo(engine.connect().connection)
-
-        new_level = "new_level"
-
-        ne_(foo_level, new_level)
-
-        eng = engine.execution_options(foo=new_level)
-        eq_(eng.dialect.get_foo(eng.connect().connection), new_level)
-
-        # check that it stays
-        conn = eng.connect()
-        eq_(eng.dialect.get_foo(conn.connection), new_level)
-        conn.close()
-
-        conn = eng.connect()
-        eq_(eng.dialect.get_foo(conn.connection), new_level)
-        conn.close()
-
-    def test_default_level(self, characteristic_fixture):
-        engine, connection = characteristic_fixture
-
-        eq_(
-            engine.dialect.get_foo(engine.connect().connection),
-            "original_value",
-        )
-
-    def test_connection_invalidated(self, characteristic_fixture):
-        engine, connection = characteristic_fixture
-
-        conn = engine.connect()
-        c2 = conn.execution_options(foo="new_value")
-        eq_(connection.foo, "new_value")
-        c2.invalidate()
-        c2.connection
-
-        eq_(connection.foo, "original_value")
-
-    def test_warning_in_transaction(self, characteristic_fixture):
-        engine, connection = characteristic_fixture
-
-        c1 = engine.connect()
-        with expect_warnings(
-            "Connection is already established with a Transaction; "
-            "setting foo may implicitly rollback or commit "
-            "the existing transaction, or have no effect until next "
-            "transaction"
-        ):
-            with c1.begin():
-                c1 = c1.execution_options(foo="new_foo")
-
-                eq_(
-                    engine.dialect.get_foo(c1.connection),
-                    "new_foo",
-                )
-        # stays outside of transaction
-        eq_(engine.dialect.get_foo(c1.connection), "new_foo")
-
-    @testing.fails("no error is raised yet here.")
-    def test_per_statement_bzzt(self, characteristic_fixture):
-        engine, connection = characteristic_fixture
-
-        # this would need some on-execute mechanism to look inside of
-        # the characteristics list.   unfortunately this would
-        # add some latency.
-
-        assert_raises_message(
-            exc.ArgumentError,
-            r"'foo' execution option may only be specified "
-            r"on Connection.execution_options\(\), or "
-            r"per-engine using the isolation_level "
-            r"argument to create_engine\(\).",
-            connection.execute,
-            select([1]).execution_options(foo="bar"),
-        )
-
-    def test_per_engine(self, characteristic_fixture):
-
-        engine, connection = characteristic_fixture
-
-        pool, dialect, url = engine.pool, engine.dialect, engine.url
-
-        eng = base.Engine(
-            pool, dialect, url, execution_options={"foo": "new_value"}
-        )
-
-        conn = eng.connect()
-        eq_(eng.dialect.get_foo(conn.connection), "new_value")
-
-    def test_per_option_engine(self, characteristic_fixture):
-
-        engine, connection = characteristic_fixture
-
-        eng = engine.execution_options(foo="new_value")
-
-        conn = eng.connect()
-        eq_(
-            eng.dialect.get_foo(conn.connection),
-            "new_value",
-        )
-
-
-class ResetFixture(object):
-    @testing.fixture()
-    def reset_agent(self, testing_engine):
-        engine = testing_engine()
-        engine.connect().close()
-
-        harness = mock.Mock(
-            do_rollback=mock.Mock(side_effect=testing.db.dialect.do_rollback),
-            do_commit=mock.Mock(side_effect=testing.db.dialect.do_commit),
-            engine=engine,
-        )
-        event.listen(engine, "rollback", harness.rollback)
-        event.listen(engine, "commit", harness.commit)
-        event.listen(engine, "rollback_savepoint", harness.rollback_savepoint)
-        event.listen(engine, "rollback_twophase", harness.rollback_twophase)
-        event.listen(engine, "commit_twophase", harness.commit_twophase)
-
-        with mock.patch.object(
-            engine.dialect, "do_rollback", harness.do_rollback
-        ), mock.patch.object(engine.dialect, "do_commit", harness.do_commit):
-            yield harness
-
-        event.remove(engine, "rollback", harness.rollback)
-        event.remove(engine, "commit", harness.commit)
-        event.remove(engine, "rollback_savepoint", harness.rollback_savepoint)
-        event.remove(engine, "rollback_twophase", harness.rollback_twophase)
-        event.remove(engine, "commit_twophase", harness.commit_twophase)
-
-
-class ResetAgentTest(ResetFixture, fixtures.TestBase):
-    # many of these tests illustate rollback-on-return being redundant
-    # vs. what the transaction just did, however this is to ensure
-    # even if statements were invoked on the DBAPI connection directly,
-    # the state is cleared.    options to optimize this with clear
-    # docs etc. should be added.
-
-    __backend__ = True
-
-    def test_begin_close(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            trans = connection.begin()
-        assert not trans.is_active
-        eq_(
-            reset_agent.mock_calls,
-            [mock.call.rollback(connection), mock.call.do_rollback(mock.ANY)],
-        )
-
-    def test_begin_rollback(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            trans = connection.begin()
-            trans.rollback()
-        eq_(
-            reset_agent.mock_calls,
-            [
-                mock.call.rollback(connection),
-                mock.call.do_rollback(mock.ANY),
-                mock.call.do_rollback(mock.ANY),
-            ],
-        )
-
-    def test_begin_commit(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            trans = connection.begin()
-            trans.commit()
-        eq_(
-            reset_agent.mock_calls,
-            [
-                mock.call.commit(connection),
-                mock.call.do_commit(mock.ANY),
-                mock.call.do_rollback(mock.ANY),
-            ],
-        )
-
-    def test_trans_close(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            trans = connection.begin()
-            trans.close()
-        eq_(
-            reset_agent.mock_calls,
-            [
-                mock.call.rollback(connection),
-                mock.call.do_rollback(mock.ANY),
-                mock.call.do_rollback(mock.ANY),
-            ],
-        )
-
-    @testing.requires.savepoints
-    def test_begin_nested_trans_close_one(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            t1 = connection.begin()
-            t2 = connection.begin_nested()
-            assert connection._nested_transaction is t2
-            assert connection._transaction is t1
-            t2.close()
-            assert connection._nested_transaction is None
-            assert connection._transaction is t1
-            t1.close()
-        assert not t1.is_active
-        eq_(
-            reset_agent.mock_calls,
-            [
-                mock.call.rollback_savepoint(connection, mock.ANY, mock.ANY),
-                mock.call.rollback(connection),
-                mock.call.do_rollback(mock.ANY),
-                mock.call.do_rollback(mock.ANY),
-            ],
-        )
-
-    @testing.requires.savepoints
-    def test_begin_nested_trans_close_two(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            t1 = connection.begin()
-            t2 = connection.begin_nested()
-            assert connection._nested_transaction is t2
-            assert connection._transaction is t1
-
-            t1.close()
-
-            assert connection._nested_transaction is None
-            assert connection._transaction is None
-
-        assert not t1.is_active
-        eq_(
-            reset_agent.mock_calls,
-            [
-                mock.call.rollback(connection),
-                mock.call.do_rollback(mock.ANY),
-                mock.call.do_rollback(mock.ANY),
-            ],
-        )
-
-    @testing.requires.savepoints
-    def test_begin_nested_trans_rollback(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            t1 = connection.begin()
-            t2 = connection.begin_nested()
-            assert connection._nested_transaction is t2
-            assert connection._transaction is t1
-            t2.close()
-            assert connection._nested_transaction is None
-            assert connection._transaction is t1
-            t1.rollback()
-            assert connection._transaction is None
-        assert not t2.is_active
-        assert not t1.is_active
-        eq_(
-            reset_agent.mock_calls,
-            [
-                mock.call.rollback_savepoint(connection, mock.ANY, mock.ANY),
-                mock.call.rollback(connection),
-                mock.call.do_rollback(mock.ANY),
-                mock.call.do_rollback(mock.ANY),
-            ],
-        )
-
-    @testing.requires.savepoints
-    def test_begin_nested_close(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            with testing.expect_deprecated_20(
-                r"Calling Connection.begin_nested\(\) in "
-                r"2.0 style use will return"
-            ):
-                trans = connection.begin_nested()
-        assert not trans.is_active
-        eq_(
-            reset_agent.mock_calls,
-            [
-                mock.call.rollback(connection),
-                mock.call.do_rollback(mock.ANY),
-            ],
-        )
-
-    @testing.requires.savepoints
-    def test_begin_begin_nested_close(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            trans = connection.begin()
-            trans2 = connection.begin_nested()
-        assert not trans2.is_active
-        assert not trans.is_active
-        eq_(
-            reset_agent.mock_calls,
-            [
-                mock.call.rollback(connection),
-                mock.call.do_rollback(mock.ANY),
-            ],
-        )
-
-    @testing.requires.savepoints
-    def test_begin_begin_nested_rollback_commit(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            trans = connection.begin()
-            trans2 = connection.begin_nested()
-            trans2.rollback()
-            trans.commit()
-        eq_(
-            reset_agent.mock_calls,
-            [
-                mock.call.rollback_savepoint(connection, mock.ANY, mock.ANY),
-                mock.call.commit(connection),
-                mock.call.do_commit(mock.ANY),
-                mock.call.do_rollback(mock.ANY),
-            ],
-        )
-
-    @testing.requires.savepoints
-    def test_begin_begin_nested_rollback_rollback(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            trans = connection.begin()
-            trans2 = connection.begin_nested()
-            trans2.rollback()
-            trans.rollback()
-        eq_(
-            reset_agent.mock_calls,
-            [
-                mock.call.rollback_savepoint(connection, mock.ANY, mock.ANY),
-                mock.call.rollback(connection),
-                mock.call.do_rollback(mock.ANY),
-                mock.call.do_rollback(mock.ANY),
-            ],
-        )
-
-    @testing.requires.two_phase_transactions
-    def test_reset_via_agent_begin_twophase(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            trans = connection.begin_twophase()  # noqa
-
-        # pg8000 rolls back via the rollback_twophase
-        eq_(
-            reset_agent.mock_calls[0],
-            mock.call.rollback_twophase(connection, mock.ANY, mock.ANY),
-        )
-
-    @testing.requires.two_phase_transactions
-    def test_reset_via_agent_begin_twophase_commit(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            trans = connection.begin_twophase()
-            trans.commit()
-        eq_(
-            reset_agent.mock_calls[0],
-            mock.call.commit_twophase(connection, mock.ANY, mock.ANY),
-        )
-
-        eq_(reset_agent.mock_calls[-1], mock.call.do_rollback(mock.ANY))
-
-    @testing.requires.two_phase_transactions
-    def test_reset_via_agent_begin_twophase_rollback(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            trans = connection.begin_twophase()
-            trans.rollback()
-        eq_(
-            reset_agent.mock_calls[0:2],
-            [
-                mock.call.rollback_twophase(connection, mock.ANY, mock.ANY),
-                mock.call.do_rollback(mock.ANY),
-            ],
-        )
-
-        eq_(reset_agent.mock_calls[-1], mock.call.do_rollback(mock.ANY))
-
-
-class FutureResetAgentTest(
-    ResetFixture, fixtures.FutureEngineMixin, fixtures.TestBase
-):
-
-    __backend__ = True
-
-    def test_reset_agent_no_conn_transaction(self, reset_agent):
-        with reset_agent.engine.connect():
-            pass
-
-        eq_(reset_agent.mock_calls, [mock.call.do_rollback(mock.ANY)])
-
-    def test_begin_close(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            trans = connection.begin()
-
-        assert not trans.is_active
-        eq_(
-            reset_agent.mock_calls,
-            [mock.call.rollback(connection), mock.call.do_rollback(mock.ANY)],
-        )
-
-    def test_begin_rollback(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            trans = connection.begin()
-            trans.rollback()
-        assert not trans.is_active
-        eq_(
-            reset_agent.mock_calls,
-            [
-                mock.call.rollback(connection),
-                mock.call.do_rollback(mock.ANY),
-                mock.call.do_rollback(mock.ANY),
-            ],
-        )
-
-    def test_begin_commit(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            trans = connection.begin()
-            trans.commit()
-        assert not trans.is_active
-        eq_(
-            reset_agent.mock_calls,
-            [
-                mock.call.commit(connection),
-                mock.call.do_commit(mock.ANY),
-                mock.call.do_rollback(mock.ANY),
-            ],
-        )
-
-    @testing.requires.savepoints
-    def test_begin_nested_close(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            trans = connection.begin_nested()
-        # it's a savepoint, but root made sure it closed
-        assert not trans.is_active
-        eq_(
-            reset_agent.mock_calls,
-            [mock.call.rollback(connection), mock.call.do_rollback(mock.ANY)],
-        )
-
-    @testing.requires.savepoints
-    def test_begin_begin_nested_close(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            trans = connection.begin()
-            trans2 = connection.begin_nested()
-        assert not trans2.is_active
-        assert not trans.is_active
-        eq_(
-            reset_agent.mock_calls,
-            [mock.call.rollback(connection), mock.call.do_rollback(mock.ANY)],
-        )
-
-    @testing.requires.savepoints
-    def test_begin_begin_nested_rollback_commit(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            trans = connection.begin()
-            trans2 = connection.begin_nested()
-            trans2.rollback()  # this is not a connection level event
-            trans.commit()
-        eq_(
-            reset_agent.mock_calls,
-            [
-                mock.call.rollback_savepoint(connection, mock.ANY, None),
-                mock.call.commit(connection),
-                mock.call.do_commit(mock.ANY),
-                mock.call.do_rollback(mock.ANY),
-            ],
-        )
-
-    @testing.requires.savepoints
-    def test_begin_begin_nested_rollback_rollback(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            trans = connection.begin()
-            trans2 = connection.begin_nested()
-            trans2.rollback()
-            trans.rollback()
-        eq_(
-            reset_agent.mock_calls,
-            [
-                mock.call.rollback_savepoint(connection, mock.ANY, mock.ANY),
-                mock.call.rollback(connection),
-                mock.call.do_rollback(mock.ANY),
-                mock.call.do_rollback(mock.ANY),  # this is the reset on return
-            ],
-        )
-
-    @testing.requires.two_phase_transactions
-    def test_reset_via_agent_begin_twophase(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            trans = connection.begin_twophase()
-        assert not trans.is_active
-        # pg8000 uses the rollback_twophase as the full rollback.
-        eq_(
-            reset_agent.mock_calls[0],
-            mock.call.rollback_twophase(connection, mock.ANY, False),
-        )
-
-    @testing.requires.two_phase_transactions
-    def test_reset_via_agent_begin_twophase_commit(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            trans = connection.begin_twophase()
-            trans.commit()
-
-        # again pg8000 vs. other PG drivers have different API
-        eq_(
-            reset_agent.mock_calls[0],
-            mock.call.commit_twophase(connection, mock.ANY, False),
-        )
-
-        eq_(reset_agent.mock_calls[-1], mock.call.do_rollback(mock.ANY))
-
-    @testing.requires.two_phase_transactions
-    def test_reset_via_agent_begin_twophase_rollback(self, reset_agent):
-        with reset_agent.engine.connect() as connection:
-            trans = connection.begin_twophase()
-            trans.rollback()
-
-        # pg8000 vs. the other postgresql drivers have different
-        # twophase implementations.  the base postgresql driver emits
-        # "ROLLBACK PREPARED" explicitly then calls do_rollback().
-        # pg8000 has a dedicated API method.  so we get either one or
-        # two do_rollback() at the end, just need at least one.
-        eq_(
-            reset_agent.mock_calls[0:2],
-            [
-                mock.call.rollback_twophase(connection, mock.ANY, False),
-                mock.call.do_rollback(mock.ANY),
-                # mock.call.do_rollback(mock.ANY),
-            ],
-        )
-        eq_(reset_agent.mock_calls[-1], mock.call.do_rollback(mock.ANY))
-
-
-class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
-    __backend__ = True
-
-    @classmethod
-    def define_tables(cls, metadata):
-        Table(
-            "users",
-            metadata,
-            Column("user_id", INT, primary_key=True, autoincrement=False),
-            Column("user_name", VARCHAR(20)),
-            test_needs_acid=True,
-        )
-        Table(
-            "users_autoinc",
-            metadata,
-            Column(
-                "user_id", INT, primary_key=True, test_needs_autoincrement=True
-            ),
-            Column("user_name", VARCHAR(20)),
-            test_needs_acid=True,
-        )
-
-    @testing.fixture
-    def local_connection(self):
-        with testing.db.connect() as conn:
-            yield conn
 
     def test_interrupt_ctxmanager_engine(self, trans_ctx_manager_fixture):
         fn = trans_ctx_manager_fixture
@@ -1775,6 +790,8 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
     def test_ctxmanager_autobegins_real_trans_from_nested(
         self, local_connection
     ):
+        # the legacy version of this test in 1.4
+        # was test_ctxmanager_commits_real_trans_from_nested
         m1 = mock.Mock()
 
         event.listen(
@@ -1793,7 +810,6 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
 
         assert not nested_trans.is_active
         assert nested_trans._deactivated_from_connection
-        # legacy mode, no savepoint at all
         eq_(
             m1.mock_calls,
             [
@@ -2043,3 +1059,727 @@ class FutureTransactionTest(fixtures.FutureEngineMixin, fixtures.TablesTest):
                 conn.scalar(select(func.count(1)).select_from(users)),
                 0,
             )
+
+
+class AutoRollbackTest(fixtures.TestBase):
+    __backend__ = True
+
+    @classmethod
+    def setup_test_class(cls):
+        global metadata
+        metadata = MetaData()
+
+    @classmethod
+    def teardown_test_class(cls):
+        metadata.drop_all(testing.db)
+
+    def test_rollback_deadlock(self):
+        """test that returning connections to the pool clears any object
+        locks."""
+
+        conn1 = testing.db.connect()
+        conn2 = testing.db.connect()
+        users = Table(
+            "deadlock_users",
+            metadata,
+            Column("user_id", INT, primary_key=True),
+            Column("user_name", VARCHAR(20)),
+            test_needs_acid=True,
+        )
+        with conn1.begin():
+            users.create(conn1)
+        conn1.exec_driver_sql("select * from deadlock_users")
+        conn1.close()
+
+        # without auto-rollback in the connection pool's return() logic,
+        # this deadlocks in PostgreSQL, because conn1 is returned to the
+        # pool but still has a lock on "deadlock_users". comment out the
+        # rollback in pool/ConnectionFairy._close() to see !
+
+        with conn2.begin():
+            users.drop(conn2)
+        conn2.close()
+
+
+class IsolationLevelTest(fixtures.TestBase):
+    __requires__ = (
+        "isolation_level",
+        "ad_hoc_engines",
+    )
+    __backend__ = True
+
+    def _default_isolation_level(self):
+        return testing.requires.get_isolation_levels(testing.config)["default"]
+
+    def _non_default_isolation_level(self):
+        levels = testing.requires.get_isolation_levels(testing.config)
+
+        default = levels["default"]
+        supported = levels["supported"]
+
+        s = set(supported).difference(["AUTOCOMMIT", default])
+        if s:
+            return s.pop()
+        else:
+            assert False, "no non-default isolation level available"
+
+    @testing.requires.legacy_isolation_level
+    def test_engine_param_stays(self):
+
+        eng = testing_engine()
+        isolation_level = eng.dialect.get_isolation_level(
+            eng.connect().connection
+        )
+        level = self._non_default_isolation_level()
+
+        ne_(isolation_level, level)
+
+        eng = testing_engine(options=dict(isolation_level=level))
+        eq_(eng.dialect.get_isolation_level(eng.connect().connection), level)
+
+        # check that it stays
+        conn = eng.connect()
+        eq_(eng.dialect.get_isolation_level(conn.connection), level)
+        conn.close()
+
+        conn = eng.connect()
+        eq_(eng.dialect.get_isolation_level(conn.connection), level)
+        conn.close()
+
+    def test_default_level(self):
+        eng = testing_engine(options=dict())
+        isolation_level = eng.dialect.get_isolation_level(
+            eng.connect().connection
+        )
+        eq_(isolation_level, self._default_isolation_level())
+
+    def test_reset_level(self):
+        eng = testing_engine(options=dict())
+        conn = eng.connect()
+        eq_(
+            eng.dialect.get_isolation_level(conn.connection),
+            self._default_isolation_level(),
+        )
+
+        eng.dialect.set_isolation_level(
+            conn.connection, self._non_default_isolation_level()
+        )
+        eq_(
+            eng.dialect.get_isolation_level(conn.connection),
+            self._non_default_isolation_level(),
+        )
+
+        eng.dialect.reset_isolation_level(conn.connection)
+        eq_(
+            eng.dialect.get_isolation_level(conn.connection),
+            self._default_isolation_level(),
+        )
+
+        conn.close()
+
+    @testing.requires.legacy_isolation_level
+    def test_reset_level_with_setting(self):
+        eng = testing_engine(
+            options=dict(isolation_level=self._non_default_isolation_level())
+        )
+        conn = eng.connect()
+        eq_(
+            eng.dialect.get_isolation_level(conn.connection),
+            self._non_default_isolation_level(),
+        )
+        eng.dialect.set_isolation_level(
+            conn.connection, self._default_isolation_level()
+        )
+        eq_(
+            eng.dialect.get_isolation_level(conn.connection),
+            self._default_isolation_level(),
+        )
+        eng.dialect.reset_isolation_level(conn.connection)
+        eq_(
+            eng.dialect.get_isolation_level(conn.connection),
+            self._non_default_isolation_level(),
+        )
+        conn.close()
+
+    @testing.requires.legacy_isolation_level
+    def test_invalid_level_engine_param(self):
+        eng = testing_engine(options=dict(isolation_level="FOO"))
+        assert_raises_message(
+            exc.ArgumentError,
+            "Invalid value '%s' for isolation_level. "
+            "Valid isolation levels for %s are %s"
+            % (
+                "FOO",
+                eng.dialect.name,
+                ", ".join(eng.dialect._isolation_lookup),
+            ),
+            eng.connect,
+        )
+
+    # TODO: all the dialects seem to be manually raising ArgumentError
+    # individually within their set_isolation_level() methods, when this
+    # should be a default dialect feature so that
+    # error messaging etc. is consistent, including that it works for 3rd
+    # party dialects.
+    # TODO: barring that, at least implement this for the Oracle dialect
+    @testing.fails_on(
+        "oracle",
+        "cx_oracle dialect doesnt have argument error here, "
+        "raises it via the DB rejecting it",
+    )
+    def test_invalid_level_execution_option(self):
+        eng = testing_engine(
+            options=dict(execution_options=dict(isolation_level="FOO"))
+        )
+        assert_raises_message(
+            exc.ArgumentError,
+            "Invalid value '%s' for isolation_level. "
+            "Valid isolation levels for %s are %s"
+            % (
+                "FOO",
+                eng.dialect.name,
+                ", ".join(eng.dialect._isolation_lookup),
+            ),
+            eng.connect,
+        )
+
+    def test_connection_invalidated(self):
+        eng = testing_engine()
+        conn = eng.connect()
+        c2 = conn.execution_options(
+            isolation_level=self._non_default_isolation_level()
+        )
+        c2.invalidate()
+        c2.connection
+
+        # TODO: do we want to rebuild the previous isolation?
+        # for now, this is current behavior so we will leave it.
+        eq_(c2.get_isolation_level(), self._default_isolation_level())
+
+    def test_per_connection(self):
+        from sqlalchemy.pool import QueuePool
+
+        eng = testing_engine(
+            options=dict(poolclass=QueuePool, pool_size=2, max_overflow=0)
+        )
+
+        c1 = eng.connect()
+        c1 = c1.execution_options(
+            isolation_level=self._non_default_isolation_level()
+        )
+        c2 = eng.connect()
+        eq_(
+            eng.dialect.get_isolation_level(c1.connection),
+            self._non_default_isolation_level(),
+        )
+        eq_(
+            eng.dialect.get_isolation_level(c2.connection),
+            self._default_isolation_level(),
+        )
+        c1.close()
+        c2.close()
+        c3 = eng.connect()
+        eq_(
+            eng.dialect.get_isolation_level(c3.connection),
+            self._default_isolation_level(),
+        )
+        c4 = eng.connect()
+        eq_(
+            eng.dialect.get_isolation_level(c4.connection),
+            self._default_isolation_level(),
+        )
+
+        c3.close()
+        c4.close()
+
+    def test_exception_in_transaction(self):
+        eng = testing_engine()
+        c1 = eng.connect()
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            r"This connection has already initialized a SQLAlchemy "
+            r"Transaction\(\) object via begin\(\) or autobegin; "
+            r"isolation_level may not be altered unless rollback\(\) or "
+            r"commit\(\) is called first.",
+        ):
+            with c1.begin():
+                c1 = c1.execution_options(
+                    isolation_level=self._non_default_isolation_level()
+                )
+
+        # was never set, so we are on original value
+        eq_(
+            eng.dialect.get_isolation_level(c1.connection),
+            self._default_isolation_level(),
+        )
+
+    def test_per_statement_bzzt(self):
+        assert_raises_message(
+            exc.ArgumentError,
+            r"'isolation_level' execution option may only be specified "
+            r"on Connection.execution_options\(\), or "
+            r"per-engine using the isolation_level "
+            r"argument to create_engine\(\).",
+            select(1).execution_options,
+            isolation_level=self._non_default_isolation_level(),
+        )
+
+    def test_per_engine(self):
+        # new in 0.9
+        eng = testing_engine(
+            testing.db.url,
+            options=dict(
+                execution_options={
+                    "isolation_level": self._non_default_isolation_level()
+                }
+            ),
+        )
+        conn = eng.connect()
+        eq_(
+            eng.dialect.get_isolation_level(conn.connection),
+            self._non_default_isolation_level(),
+        )
+
+    def test_per_option_engine(self):
+        eng = testing_engine(testing.db.url).execution_options(
+            isolation_level=self._non_default_isolation_level()
+        )
+
+        conn = eng.connect()
+        eq_(
+            eng.dialect.get_isolation_level(conn.connection),
+            self._non_default_isolation_level(),
+        )
+
+    def test_isolation_level_accessors_connection_default(self):
+        eng = testing_engine(testing.db.url)
+        with eng.connect() as conn:
+            eq_(conn.default_isolation_level, self._default_isolation_level())
+        with eng.connect() as conn:
+            eq_(conn.get_isolation_level(), self._default_isolation_level())
+
+    def test_isolation_level_accessors_connection_option_modified(self):
+        eng = testing_engine(testing.db.url)
+        with eng.connect() as conn:
+            c2 = conn.execution_options(
+                isolation_level=self._non_default_isolation_level()
+            )
+            eq_(conn.default_isolation_level, self._default_isolation_level())
+            eq_(
+                conn.get_isolation_level(), self._non_default_isolation_level()
+            )
+            eq_(c2.get_isolation_level(), self._non_default_isolation_level())
+
+
+class ConnectionCharacteristicTest(fixtures.TestBase):
+    @testing.fixture
+    def characteristic_fixture(self):
+        class FooCharacteristic(characteristics.ConnectionCharacteristic):
+            transactional = True
+
+            def reset_characteristic(self, dialect, dbapi_conn):
+
+                dialect.reset_foo(dbapi_conn)
+
+            def set_characteristic(self, dialect, dbapi_conn, value):
+
+                dialect.set_foo(dbapi_conn, value)
+
+            def get_characteristic(self, dialect, dbapi_conn):
+                return dialect.get_foo(dbapi_conn)
+
+        class FooDialect(default.DefaultDialect):
+            connection_characteristics = util.immutabledict(
+                {"foo": FooCharacteristic()}
+            )
+
+            def reset_foo(self, dbapi_conn):
+                dbapi_conn.foo = "original_value"
+
+            def set_foo(self, dbapi_conn, value):
+                dbapi_conn.foo = value
+
+            def get_foo(self, dbapi_conn):
+                return dbapi_conn.foo
+
+        connection = mock.Mock()
+
+        def creator():
+            connection.foo = "original_value"
+            return connection
+
+        pool = _pool.SingletonThreadPool(creator=creator)
+        u = url.make_url("foo://")
+        return base.Engine(pool, FooDialect(), u), connection
+
+    def test_engine_param_stays(self, characteristic_fixture):
+
+        engine, connection = characteristic_fixture
+
+        foo_level = engine.dialect.get_foo(engine.connect().connection)
+
+        new_level = "new_level"
+
+        ne_(foo_level, new_level)
+
+        eng = engine.execution_options(foo=new_level)
+        eq_(eng.dialect.get_foo(eng.connect().connection), new_level)
+
+        # check that it stays
+        conn = eng.connect()
+        eq_(eng.dialect.get_foo(conn.connection), new_level)
+        conn.close()
+
+        conn = eng.connect()
+        eq_(eng.dialect.get_foo(conn.connection), new_level)
+        conn.close()
+
+    def test_default_level(self, characteristic_fixture):
+        engine, connection = characteristic_fixture
+
+        eq_(
+            engine.dialect.get_foo(engine.connect().connection),
+            "original_value",
+        )
+
+    def test_connection_invalidated(self, characteristic_fixture):
+        engine, connection = characteristic_fixture
+
+        conn = engine.connect()
+        c2 = conn.execution_options(foo="new_value")
+        eq_(connection.foo, "new_value")
+        c2.invalidate()
+        c2.connection
+
+        eq_(connection.foo, "original_value")
+
+    def test_exception_in_transaction(self, characteristic_fixture):
+        # this was a warning in 1.x.  it appears we did not test the
+        # 2.0 error case in 1.4
+
+        engine, connection = characteristic_fixture
+
+        c1 = engine.connect()
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            r"This connection has already initialized a SQLAlchemy "
+            r"Transaction\(\) object via begin\(\) or autobegin; "
+            r"foo may not be altered unless rollback\(\) or "
+            r"commit\(\) is called first.",
+        ):
+            with c1.begin():
+                c1 = c1.execution_options(foo="new_foo")
+
+        # was never set, so we are on original value
+        eq_(engine.dialect.get_foo(c1.connection), "original_value")
+
+    @testing.fails("no error is raised yet here.")
+    def test_per_statement_bzzt(self, characteristic_fixture):
+        engine, connection = characteristic_fixture
+
+        # this would need some on-execute mechanism to look inside of
+        # the characteristics list.   unfortunately this would
+        # add some latency.
+
+        assert_raises_message(
+            exc.ArgumentError,
+            r"'foo' execution option may only be specified "
+            r"on Connection.execution_options\(\), or "
+            r"per-engine using the isolation_level "
+            r"argument to create_engine\(\).",
+            connection.execute,
+            select([1]).execution_options(foo="bar"),
+        )
+
+    def test_per_engine(self, characteristic_fixture):
+
+        engine, connection = characteristic_fixture
+
+        pool, dialect, url = engine.pool, engine.dialect, engine.url
+
+        eng = base.Engine(
+            pool, dialect, url, execution_options={"foo": "new_value"}
+        )
+
+        conn = eng.connect()
+        eq_(eng.dialect.get_foo(conn.connection), "new_value")
+
+    def test_per_option_engine(self, characteristic_fixture):
+
+        engine, connection = characteristic_fixture
+
+        eng = engine.execution_options(foo="new_value")
+
+        conn = eng.connect()
+        eq_(
+            eng.dialect.get_foo(conn.connection),
+            "new_value",
+        )
+
+
+class ResetFixture(object):
+    @testing.fixture()
+    def reset_agent(self, testing_engine):
+        engine = testing_engine()
+        engine.connect().close()
+
+        harness = mock.Mock(
+            do_rollback=mock.Mock(side_effect=testing.db.dialect.do_rollback),
+            do_commit=mock.Mock(side_effect=testing.db.dialect.do_commit),
+            engine=engine,
+        )
+        event.listen(engine, "rollback", harness.rollback)
+        event.listen(engine, "commit", harness.commit)
+        event.listen(engine, "rollback_savepoint", harness.rollback_savepoint)
+        event.listen(engine, "rollback_twophase", harness.rollback_twophase)
+        event.listen(engine, "commit_twophase", harness.commit_twophase)
+
+        with mock.patch.object(
+            engine.dialect, "do_rollback", harness.do_rollback
+        ), mock.patch.object(engine.dialect, "do_commit", harness.do_commit):
+            yield harness
+
+        event.remove(engine, "rollback", harness.rollback)
+        event.remove(engine, "commit", harness.commit)
+        event.remove(engine, "rollback_savepoint", harness.rollback_savepoint)
+        event.remove(engine, "rollback_twophase", harness.rollback_twophase)
+        event.remove(engine, "commit_twophase", harness.commit_twophase)
+
+
+class ResetAgentTest(ResetFixture, fixtures.TestBase):
+    # many of these tests illustate rollback-on-return being redundant
+    # vs. what the transaction just did, however this is to ensure
+    # even if statements were invoked on the DBAPI connection directly,
+    # the state is cleared.    options to optimize this with clear
+    # docs etc. should be added.
+
+    __backend__ = True
+
+    def test_begin_close(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin()
+
+        assert not trans.is_active
+        eq_(
+            reset_agent.mock_calls,
+            [mock.call.rollback(connection), mock.call.do_rollback(mock.ANY)],
+        )
+
+    def test_begin_rollback(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin()
+            trans.rollback()
+        assert not trans.is_active
+        eq_(
+            reset_agent.mock_calls,
+            [
+                mock.call.rollback(connection),
+                mock.call.do_rollback(mock.ANY),
+                mock.call.do_rollback(mock.ANY),
+            ],
+        )
+
+    def test_begin_commit(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin()
+            trans.commit()
+        assert not trans.is_active
+        eq_(
+            reset_agent.mock_calls,
+            [
+                mock.call.commit(connection),
+                mock.call.do_commit(mock.ANY),
+                mock.call.do_rollback(mock.ANY),
+            ],
+        )
+
+    def test_trans_close(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin()
+            trans.close()
+        eq_(
+            reset_agent.mock_calls,
+            [
+                mock.call.rollback(connection),
+                mock.call.do_rollback(mock.ANY),
+                mock.call.do_rollback(mock.ANY),
+            ],
+        )
+
+    @testing.requires.savepoints
+    def test_begin_nested_trans_close_one(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            t1 = connection.begin()
+            t2 = connection.begin_nested()
+            assert connection._nested_transaction is t2
+            assert connection._transaction is t1
+            t2.close()
+            assert connection._nested_transaction is None
+            assert connection._transaction is t1
+            t1.close()
+        assert not t1.is_active
+        eq_(
+            reset_agent.mock_calls,
+            [
+                mock.call.rollback_savepoint(connection, mock.ANY, mock.ANY),
+                mock.call.rollback(connection),
+                mock.call.do_rollback(mock.ANY),
+                mock.call.do_rollback(mock.ANY),
+            ],
+        )
+
+    @testing.requires.savepoints
+    def test_begin_nested_trans_close_two(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            t1 = connection.begin()
+            t2 = connection.begin_nested()
+            assert connection._nested_transaction is t2
+            assert connection._transaction is t1
+
+            t1.close()
+
+            assert connection._nested_transaction is None
+            assert connection._transaction is None
+
+        assert not t1.is_active
+        eq_(
+            reset_agent.mock_calls,
+            [
+                mock.call.rollback(connection),
+                mock.call.do_rollback(mock.ANY),
+                mock.call.do_rollback(mock.ANY),
+            ],
+        )
+
+    @testing.requires.savepoints
+    def test_begin_nested_trans_rollback(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            t1 = connection.begin()
+            t2 = connection.begin_nested()
+            assert connection._nested_transaction is t2
+            assert connection._transaction is t1
+            t2.close()
+            assert connection._nested_transaction is None
+            assert connection._transaction is t1
+            t1.rollback()
+            assert connection._transaction is None
+        assert not t2.is_active
+        assert not t1.is_active
+        eq_(
+            reset_agent.mock_calls,
+            [
+                mock.call.rollback_savepoint(connection, mock.ANY, mock.ANY),
+                mock.call.rollback(connection),
+                mock.call.do_rollback(mock.ANY),
+                mock.call.do_rollback(mock.ANY),
+            ],
+        )
+
+    @testing.requires.savepoints
+    def test_begin_nested_close(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin_nested()
+        # it's a savepoint, but root made sure it closed
+        assert not trans.is_active
+        eq_(
+            reset_agent.mock_calls,
+            [mock.call.rollback(connection), mock.call.do_rollback(mock.ANY)],
+        )
+
+    @testing.requires.savepoints
+    def test_begin_begin_nested_close(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin()
+            trans2 = connection.begin_nested()
+        assert not trans2.is_active
+        assert not trans.is_active
+        eq_(
+            reset_agent.mock_calls,
+            [mock.call.rollback(connection), mock.call.do_rollback(mock.ANY)],
+        )
+
+    @testing.requires.savepoints
+    def test_begin_begin_nested_rollback_commit(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin()
+            trans2 = connection.begin_nested()
+            trans2.rollback()  # this is not a connection level event
+            trans.commit()
+        eq_(
+            reset_agent.mock_calls,
+            [
+                mock.call.rollback_savepoint(connection, mock.ANY, None),
+                mock.call.commit(connection),
+                mock.call.do_commit(mock.ANY),
+                mock.call.do_rollback(mock.ANY),
+            ],
+        )
+
+    @testing.requires.savepoints
+    def test_begin_begin_nested_rollback_rollback(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin()
+            trans2 = connection.begin_nested()
+            trans2.rollback()
+            trans.rollback()
+        eq_(
+            reset_agent.mock_calls,
+            [
+                mock.call.rollback_savepoint(connection, mock.ANY, mock.ANY),
+                mock.call.rollback(connection),
+                mock.call.do_rollback(mock.ANY),
+                mock.call.do_rollback(mock.ANY),  # this is the reset on return
+            ],
+        )
+
+    @testing.requires.two_phase_transactions
+    def test_reset_via_agent_begin_twophase(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin_twophase()
+        assert not trans.is_active
+        # pg8000 uses the rollback_twophase as the full rollback.
+        eq_(
+            reset_agent.mock_calls[0],
+            mock.call.rollback_twophase(connection, mock.ANY, False),
+        )
+
+    @testing.requires.two_phase_transactions
+    def test_reset_via_agent_begin_twophase_commit(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin_twophase()
+            trans.commit()
+
+        # again pg8000 vs. other PG drivers have different API
+        eq_(
+            reset_agent.mock_calls[0],
+            mock.call.commit_twophase(connection, mock.ANY, False),
+        )
+
+        eq_(reset_agent.mock_calls[-1], mock.call.do_rollback(mock.ANY))
+
+    @testing.requires.two_phase_transactions
+    def test_reset_via_agent_begin_twophase_rollback(self, reset_agent):
+        with reset_agent.engine.connect() as connection:
+            trans = connection.begin_twophase()
+            trans.rollback()
+
+        # pg8000 vs. the other postgresql drivers have different
+        # twophase implementations.  the base postgresql driver emits
+        # "ROLLBACK PREPARED" explicitly then calls do_rollback().
+        # pg8000 has a dedicated API method.  so we get either one or
+        # two do_rollback() at the end, just need at least one.
+        eq_(
+            reset_agent.mock_calls[0:2],
+            [
+                mock.call.rollback_twophase(connection, mock.ANY, False),
+                mock.call.do_rollback(mock.ANY),
+                # mock.call.do_rollback(mock.ANY),
+            ],
+        )
+        eq_(reset_agent.mock_calls[-1], mock.call.do_rollback(mock.ANY))
+
+    def test_reset_agent_no_conn_transaction(self, reset_agent):
+        with reset_agent.engine.connect():
+            pass
+
+        eq_(reset_agent.mock_calls, [mock.call.do_rollback(mock.ANY)])

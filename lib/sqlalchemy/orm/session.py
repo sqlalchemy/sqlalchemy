@@ -1499,6 +1499,11 @@ class Session(_SessionClassMethods):
          by :meth:`_engine.Connection.execution_options`, and may also
          provide additional options understood only in an ORM context.
 
+         .. seealso::
+
+            :ref:`orm_queryguide_execution_options` - ORM-specific execution
+            options
+
         :param bind_arguments: dictionary of additional arguments to determine
          the bind.  May include "mapper", "bind", or other custom arguments.
          Contents of this dictionary are passed to the
@@ -1592,7 +1597,7 @@ class Session(_SessionClassMethods):
         bind = self.get_bind(**bind_arguments)
 
         conn = self._connection_for_bind(bind)
-        result = conn._execute_20(statement, params or {}, execution_options)
+        result = conn.execute(statement, params or {}, execution_options)
 
         if compile_state_cls:
             result = compile_state_cls.orm_setup_cursor_result(

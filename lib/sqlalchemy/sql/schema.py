@@ -2518,10 +2518,10 @@ class DefaultGenerator(Executable, SchemaItem):
             self.column.default = self
 
     def _execute_on_connection(
-        self, connection, multiparams, params, execution_options
+        self, connection, distilled_params, execution_options
     ):
         return connection._execute_default(
-            self, multiparams, params, execution_options
+            self, distilled_params, execution_options
         )
 
     @property

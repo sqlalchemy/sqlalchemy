@@ -17,6 +17,7 @@ from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import expect_deprecated
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.mock import call
 from sqlalchemy.testing.mock import MagicMock
 from sqlalchemy.testing.mock import Mock
@@ -482,7 +483,7 @@ class CreateEngineTest(fixtures.TestBase):
         )
         assert e.echo is True
 
-    def test_engine_from_config_future(self):
+    def test_engine_from_config_future_parameter_ignored(self):
         dbapi = mock_dbapi
 
         config = {
@@ -491,10 +492,9 @@ class CreateEngineTest(fixtures.TestBase):
             "sqlalchemy.future": "true",
         }
 
-        e = engine_from_config(config, module=dbapi, _initialize=False)
-        assert e._is_future
+        engine_from_config(config, module=dbapi, _initialize=False)
 
-    def test_engine_from_config_not_future(self):
+    def test_engine_from_config_future_false_raises(self):
         dbapi = mock_dbapi
 
         config = {
@@ -503,8 +503,12 @@ class CreateEngineTest(fixtures.TestBase):
             "sqlalchemy.future": "false",
         }
 
-        e = engine_from_config(config, module=dbapi, _initialize=False)
-        assert not e._is_future
+        with expect_raises_message(
+            exc.ArgumentError,
+            r"The 'future' parameter passed to create_engine\(\) "
+            r"may only be set to True.",
+        ):
+            engine_from_config(config, module=dbapi, _initialize=False)
 
     def test_pool_reset_on_return_from_config(self):
         dbapi = mock_dbapi

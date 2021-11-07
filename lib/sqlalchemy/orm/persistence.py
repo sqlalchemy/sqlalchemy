@@ -938,7 +938,7 @@ def _emit_update_statements(
                 has_all_defaults,
                 has_all_pks,
             ) in records:
-                c = connection._execute_20(
+                c = connection.execute(
                     statement.values(value_params),
                     params,
                     execution_options=execution_options,
@@ -971,7 +971,7 @@ def _emit_update_statements(
                     has_all_defaults,
                     has_all_pks,
                 ) in records:
-                    c = connection._execute_20(
+                    c = connection.execute(
                         statement, params, execution_options=execution_options
                     )
 
@@ -997,7 +997,7 @@ def _emit_update_statements(
                     assert_singlerow and len(multiparams) == 1
                 )
 
-                c = connection._execute_20(
+                c = connection.execute(
                     statement, multiparams, execution_options=execution_options
                 )
 
@@ -1093,7 +1093,7 @@ def _emit_insert_statements(
             records = list(records)
             multiparams = [rec[2] for rec in records]
 
-            c = connection._execute_20(
+            c = connection.execute(
                 statement, multiparams, execution_options=execution_options
             )
 
@@ -1152,7 +1152,7 @@ def _emit_insert_statements(
             if do_executemany:
                 multiparams = [rec[2] for rec in records]
 
-                c = connection._execute_20(
+                c = connection.execute(
                     statement, multiparams, execution_options=execution_options
                 )
 
@@ -1212,13 +1212,13 @@ def _emit_insert_statements(
                     has_all_defaults,
                 ) in records:
                     if value_params:
-                        result = connection._execute_20(
+                        result = connection.execute(
                             statement.values(value_params),
                             params,
                             execution_options=execution_options,
                         )
                     else:
-                        result = connection._execute_20(
+                        result = connection.execute(
                             statement,
                             params,
                             execution_options=execution_options,
@@ -1321,7 +1321,7 @@ def _emit_post_update_statements(
             check_rowcount = assert_singlerow
             for state, state_dict, mapper_rec, connection, params in records:
 
-                c = connection._execute_20(
+                c = connection.execute(
                     statement, params, execution_options=execution_options
                 )
 
@@ -1345,7 +1345,7 @@ def _emit_post_update_statements(
                 assert_singlerow and len(multiparams) == 1
             )
 
-            c = connection._execute_20(
+            c = connection.execute(
                 statement, multiparams, execution_options=execution_options
             )
 
@@ -1425,7 +1425,7 @@ def _emit_delete_statements(
                 # rows can be verified
                 for params in del_objects:
 
-                    c = connection._execute_20(
+                    c = connection.execute(
                         statement, params, execution_options=execution_options
                     )
                     rows_matched += c.rowcount
@@ -1435,11 +1435,11 @@ def _emit_delete_statements(
                     "- versioning cannot be verified."
                     % connection.dialect.dialect_description
                 )
-                connection._execute_20(
+                connection.execute(
                     statement, del_objects, execution_options=execution_options
                 )
         else:
-            c = connection._execute_20(
+            c = connection.execute(
                 statement, del_objects, execution_options=execution_options
             )
 

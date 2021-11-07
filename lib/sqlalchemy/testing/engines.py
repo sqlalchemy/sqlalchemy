@@ -269,7 +269,6 @@ def reconnecting_engine(url=None, options=None):
 def testing_engine(
     url=None,
     options=None,
-    future=None,
     asyncio=False,
     transfer_staticpool=False,
 ):
@@ -277,10 +276,6 @@ def testing_engine(
 
     if asyncio:
         from sqlalchemy.ext.asyncio import create_async_engine as create_engine
-    elif future or (
-        config.db and config.db._is_future and future is not False
-    ):
-        from sqlalchemy.future import create_engine
     else:
         from sqlalchemy import create_engine
     from sqlalchemy.engine.url import make_url
@@ -417,28 +412,3 @@ class DBAPIProxyConnection(object):
 
     def __getattr__(self, key):
         return getattr(self.conn, key)
-
-
-def proxying_engine(
-    conn_cls=DBAPIProxyConnection, cursor_cls=DBAPIProxyCursor
-):
-    """Produce an engine that provides proxy hooks for
-    common methods.
-
-    """
-
-    def mock_conn():
-        return conn_cls(config.db, cursor_cls)
-
-    def _wrap_do_on_connect(do_on_connect):
-        def go(dbapi_conn):
-            return do_on_connect(dbapi_conn.conn)
-
-        return go
-
-    return testing_engine(
-        options={
-            "creator": mock_conn,
-            "_wrap_do_on_connect": _wrap_do_on_connect,
-        }
-    )

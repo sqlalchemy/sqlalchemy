@@ -538,8 +538,9 @@ class DDLTransactionTest(fixtures.TestBase):
         finally:
             m.drop_all(testing.db)
 
-    def _listening_engine_fixture(self, future=False):
-        eng = engines.testing_engine(future=future)
+    @testing.fixture
+    def listening_engine_fixture(self):
+        eng = engines.testing_engine()
 
         m1 = mock.Mock()
 
@@ -558,17 +559,7 @@ class DDLTransactionTest(fixtures.TestBase):
 
         return eng, m1
 
-    @testing.fixture
-    def listening_engine_fixture(self):
-        return self._listening_engine_fixture(future=False)
-
-    @testing.fixture
-    def future_listening_engine_fixture(self):
-        return self._listening_engine_fixture(future=True)
-
-    def test_ddl_legacy_engine(
-        self, metadata_fixture, listening_engine_fixture
-    ):
+    def test_ddl_engine(self, metadata_fixture, listening_engine_fixture):
         eng, m1 = listening_engine_fixture
 
         metadata_fixture.create_all(eng)
@@ -583,68 +574,10 @@ class DDLTransactionTest(fixtures.TestBase):
             ],
         )
 
-    def test_ddl_future_engine(
-        self, metadata_fixture, future_listening_engine_fixture
-    ):
-        eng, m1 = future_listening_engine_fixture
-
-        metadata_fixture.create_all(eng)
-
-        eq_(
-            m1.mock_calls,
-            [
-                mock.call.begin(mock.ANY),
-                mock.call.cursor_execute("CREATE TABLE ..."),
-                mock.call.cursor_execute("CREATE TABLE ..."),
-                mock.call.commit(mock.ANY),
-            ],
-        )
-
-    def test_ddl_legacy_connection_no_transaction(
+    def test_ddl_connection_autobegin_transaction(
         self, metadata_fixture, listening_engine_fixture
     ):
         eng, m1 = listening_engine_fixture
-
-        with eng.connect() as conn:
-            with testing.expect_deprecated(
-                "The current statement is being autocommitted using "
-                "implicit autocommit"
-            ):
-                metadata_fixture.create_all(conn)
-
-        eq_(
-            m1.mock_calls,
-            [
-                mock.call.cursor_execute("CREATE TABLE ..."),
-                mock.call.commit(mock.ANY),
-                mock.call.cursor_execute("CREATE TABLE ..."),
-                mock.call.commit(mock.ANY),
-            ],
-        )
-
-    def test_ddl_legacy_connection_transaction(
-        self, metadata_fixture, listening_engine_fixture
-    ):
-        eng, m1 = listening_engine_fixture
-
-        with eng.connect() as conn:
-            with conn.begin():
-                metadata_fixture.create_all(conn)
-
-        eq_(
-            m1.mock_calls,
-            [
-                mock.call.begin(mock.ANY),
-                mock.call.cursor_execute("CREATE TABLE ..."),
-                mock.call.cursor_execute("CREATE TABLE ..."),
-                mock.call.commit(mock.ANY),
-            ],
-        )
-
-    def test_ddl_future_connection_autobegin_transaction(
-        self, metadata_fixture, future_listening_engine_fixture
-    ):
-        eng, m1 = future_listening_engine_fixture
 
         with eng.connect() as conn:
             metadata_fixture.create_all(conn)
@@ -661,10 +594,10 @@ class DDLTransactionTest(fixtures.TestBase):
             ],
         )
 
-    def test_ddl_future_connection_explicit_begin_transaction(
-        self, metadata_fixture, future_listening_engine_fixture
+    def test_ddl_connection_explicit_begin_transaction(
+        self, metadata_fixture, listening_engine_fixture
     ):
-        eng, m1 = future_listening_engine_fixture
+        eng, m1 = listening_engine_fixture
 
         with eng.connect() as conn:
             with conn.begin():

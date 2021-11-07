@@ -502,11 +502,11 @@ class StatementLambdaElement(roles.AllowsLambdaRole, LambdaElement):
         return LinkedLambdaElement(other, parent_lambda=self, opts=opts)
 
     def _execute_on_connection(
-        self, connection, multiparams, params, execution_options
+        self, connection, distilled_params, execution_options
     ):
         if self._rec.expected_expr.supports_execution:
             return connection._execute_clauseelement(
-                self, multiparams, params, execution_options
+                self, distilled_params, execution_options
             )
         else:
             raise exc.ObjectNotExecutableError(self)
@@ -568,11 +568,11 @@ class NullLambdaStatement(roles.AllowsLambdaRole, elements.ClauseElement):
         return NullLambdaStatement(statement)
 
     def _execute_on_connection(
-        self, connection, multiparams, params, execution_options
+        self, connection, distilled_params, execution_options
     ):
         if self._resolved.supports_execution:
             return connection._execute_clauseelement(
-                self, multiparams, params, execution_options
+                self, distilled_params, execution_options
             )
         else:
             raise exc.ObjectNotExecutableError(self)

@@ -4926,38 +4926,36 @@ class KwargPropagationTest(fixtures.TestBase):
 
 class ExecutionOptionsTest(fixtures.TestBase):
     def test_non_dml(self):
-        stmt = table1.select()
+        stmt = table1.select().execution_options(foo="bar")
         compiled = stmt.compile()
 
-        eq_(compiled.execution_options, {})
+        eq_(compiled.execution_options, {"foo": "bar"})
 
     def test_dml(self):
-        stmt = table1.insert()
+        stmt = table1.insert().execution_options(foo="bar")
         compiled = stmt.compile()
 
-        eq_(compiled.execution_options, {"autocommit": True})
+        eq_(compiled.execution_options, {"foo": "bar"})
 
     def test_embedded_element_true_to_none(self):
-        stmt = table1.insert()
-        eq_(stmt._execution_options, {"autocommit": True})
+        stmt = table1.insert().execution_options(foo="bar")
+        eq_(stmt._execution_options, {"foo": "bar"})
         s2 = select(table1).select_from(stmt.cte())
         eq_(s2._execution_options, {})
 
         compiled = s2.compile()
-        eq_(compiled.execution_options, {"autocommit": True})
+        eq_(compiled.execution_options, {})
 
     def test_embedded_element_true_to_false(self):
-        stmt = table1.insert()
-        eq_(stmt._execution_options, {"autocommit": True})
+        stmt = table1.insert().execution_options(foo="bar")
+        eq_(stmt._execution_options, {"foo": "bar"})
         s2 = (
-            select(table1)
-            .select_from(stmt.cte())
-            .execution_options(autocommit=False)
+            select(table1).select_from(stmt.cte()).execution_options(foo="bat")
         )
-        eq_(s2._execution_options, {"autocommit": False})
+        eq_(s2._execution_options, {"foo": "bat"})
 
         compiled = s2.compile()
-        eq_(compiled.execution_options, {"autocommit": False})
+        eq_(compiled.execution_options, {"foo": "bat"})
 
 
 class DDLTest(fixtures.TestBase, AssertsCompiledSQL):

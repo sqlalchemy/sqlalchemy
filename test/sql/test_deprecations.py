@@ -47,7 +47,6 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
-from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.schema import Column
@@ -1263,49 +1262,6 @@ class PKIncrementTest(fixtures.TablesTest):
             ],
         )
 
-    def test_autoincrement_autocommit(self):
-        with testing.db.connect() as conn:
-            with testing.expect_deprecated_20(
-                "The current statement is being autocommitted using "
-                "implicit autocommit, "
-            ):
-                self._test_autoincrement(conn)
-
-
-class DefaultTest(fixtures.TestBase):
-    __backend__ = True
-
-    @testing.provide_metadata
-    def test_close_on_branched(self):
-        metadata = self.metadata
-
-        def mydefault_using_connection(ctx):
-            conn = ctx.connection
-            try:
-                return conn.execute(select(text("12"))).scalar()
-            finally:
-                # ensure a "close()" on this connection does nothing,
-                # since its a "branched" connection
-                conn.close()
-
-        table = Table(
-            "foo",
-            metadata,
-            Column("x", Integer),
-            Column("y", Integer, default=mydefault_using_connection),
-        )
-
-        metadata.create_all(testing.db)
-        with testing.db.connect() as conn:
-            with testing.expect_deprecated_20(
-                r"The .close\(\) method on a so-called 'branched' "
-                r"connection is deprecated as of 1.4, as are "
-                r"'branched' connections overall"
-            ):
-                conn.execute(table.insert().values(x=5))
-
-            eq_(conn.execute(select(table)).first(), (5, 12))
-
 
 class DMLTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     __dialect__ = "default"
@@ -1852,95 +1808,6 @@ class DDLDeprecatedBindTest(fixtures.TestBase):
         with testing.db.begin() as conn:
             if inspect(conn).has_table("foo"):
                 conn.execute(schema.DropTable(table("foo")))
-
-    def test_bind_ddl_deprecated(self, connection):
-        with testing.expect_deprecated_20(
-            "The DDL.bind argument is deprecated"
-        ):
-            ddl = schema.DDL("create table foo(id integer)", bind=connection)
-
-        with testing.expect_deprecated_20(
-            r"The DDLElement.execute\(\) method is considered legacy"
-        ):
-            ddl.execute()
-
-    def test_bind_create_table_deprecated(self, connection):
-        t1 = Table("foo", MetaData(), Column("id", Integer))
-
-        with testing.expect_deprecated_20(
-            "The CreateTable.bind argument is deprecated"
-        ):
-            ddl = schema.CreateTable(t1, bind=connection)
-
-        with testing.expect_deprecated_20(
-            r"The DDLElement.execute\(\) method is considered legacy"
-        ):
-            ddl.execute()
-
-        is_true(inspect(connection).has_table("foo"))
-
-    def test_bind_create_index_deprecated(self, connection):
-        t1 = Table("foo", MetaData(), Column("id", Integer))
-        t1.create(connection)
-
-        idx = schema.Index("foo_idx", t1.c.id)
-
-        with testing.expect_deprecated_20(
-            "The CreateIndex.bind argument is deprecated"
-        ):
-            ddl = schema.CreateIndex(idx, bind=connection)
-
-        with testing.expect_deprecated_20(
-            r"The DDLElement.execute\(\) method is considered legacy"
-        ):
-            ddl.execute()
-
-        is_true(
-            "foo_idx"
-            in [ix["name"] for ix in inspect(connection).get_indexes("foo")]
-        )
-
-    def test_bind_drop_table_deprecated(self, connection):
-        t1 = Table("foo", MetaData(), Column("id", Integer))
-
-        t1.create(connection)
-
-        with testing.expect_deprecated_20(
-            "The DropTable.bind argument is deprecated"
-        ):
-            ddl = schema.DropTable(t1, bind=connection)
-
-        with testing.expect_deprecated_20(
-            r"The DDLElement.execute\(\) method is considered legacy"
-        ):
-            ddl.execute()
-
-        is_false(inspect(connection).has_table("foo"))
-
-    def test_bind_drop_index_deprecated(self, connection):
-        t1 = Table("foo", MetaData(), Column("id", Integer))
-        idx = schema.Index("foo_idx", t1.c.id)
-        t1.create(connection)
-
-        is_true(
-            "foo_idx"
-            in [ix["name"] for ix in inspect(connection).get_indexes("foo")]
-        )
-
-        with testing.expect_deprecated_20(
-            "The DropIndex.bind argument is deprecated"
-        ):
-            ddl = schema.DropIndex(idx, bind=connection)
-
-        with testing.expect_deprecated_20(
-            r"The DDLElement.execute\(\) method is considered legacy"
-        ):
-            ddl.execute()
-
-        is_false(
-            "foo_idx"
-            in [ix["name"] for ix in inspect(connection).get_indexes("foo")]
-        )
 
     @testing.combinations(
         (schema.AddConstraint,),

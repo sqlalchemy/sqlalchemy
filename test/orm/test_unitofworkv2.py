@@ -3174,7 +3174,7 @@ class NullEvaluatingTest(fixtures.MappedTest, testing.AssertsExecutionResults):
         eq_(s.query(cast(JSONThing.data_null, String)).scalar(), None)
 
 
-class EnsureCacheTest(fixtures.FutureEngineMixin, UOWTest):
+class EnsureCacheTest(UOWTest):
     def test_ensure_cache(self):
         users, User = self.tables.users, self.classes.User
 

@@ -384,7 +384,8 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def legacy_isolation_level(self):
-        # refers to the engine isolation_level setting
+        # refers dialects where "isolation_level" can be passed to
+        # create_engine
         return only_on(
             ("postgresql", "sqlite", "mysql", "mariadb", "mssql"),
             "DBAPI has no isolation level support",
@@ -1366,10 +1367,6 @@ class DefaultRequirements(SuiteRequirements):
     @property
     def mssql_freetds(self):
         return only_on(["mssql+pymssql"])
-
-    @property
-    def legacy_engine(self):
-        return exclusions.skip_if(lambda config: config.db._is_future)
 
     @property
     def ad_hoc_engines(self):

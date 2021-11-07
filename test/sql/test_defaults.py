@@ -841,13 +841,6 @@ class DefaultRoundTripTest(fixtures.TablesTest):
         eq_(55, row._mapping["col3"])
 
 
-class FutureDefaultRoundTripTest(
-    fixtures.FutureEngineMixin, DefaultRoundTripTest
-):
-
-    __backend__ = True
-
-
 class CTEDefaultTest(fixtures.TablesTest):
     __requires__ = ("ctes", "returning", "ctes_on_dml")
     __backend__ = True

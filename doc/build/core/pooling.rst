@@ -266,8 +266,9 @@ behaviors are needed::
     @event.listens_for(some_engine, "engine_connect")
     def ping_connection(connection, branch):
         if branch:
-            # "branch" refers to a sub-connection of a connection,
-            # we don't want to bother pinging on these.
+            # this parameter is always False as of SQLAlchemy 2.0,
+            # but is still accepted by the event hook.  In 1.x versions
+            # of SQLAlchemy, "branched" connections should be skipped.
             return
 
         try:

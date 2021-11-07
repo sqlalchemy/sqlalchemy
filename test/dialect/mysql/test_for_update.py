@@ -76,11 +76,10 @@ class MySQLForUpdateLockingTest(fixtures.DeclarativeMappedTest):
     def run_test(self):
         connection = testing.db.connect()
         connection.exec_driver_sql("set innodb_lock_wait_timeout=1")
-        main_trans = connection.begin()
         try:
             yield Session(bind=connection)
         finally:
-            main_trans.rollback()
+            connection.rollback()
             connection.close()
 
     def _assert_a_is_locked(self, should_be_locked):

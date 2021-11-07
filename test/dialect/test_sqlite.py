@@ -841,6 +841,7 @@ class AttachedDBTest(fixtures.TestBase):
         self.metadata = MetaData()
 
     def teardown_test(self):
+        self.conn.rollback()
         with self.conn.begin():
             self.metadata.drop_all(self.conn)
         self.conn.close()
@@ -2466,10 +2467,6 @@ class SavepointTest(fixtures.TablesTest):
             [(1,), (2,), (3,)],
         )
         connection.close()
-
-
-class FutureSavepointTest(fixtures.FutureEngineMixin, SavepointTest):
-    pass
 
 
 class TypeReflectionTest(fixtures.TestBase):

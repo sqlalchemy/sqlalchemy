@@ -134,10 +134,10 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
         )
 
     def _execute_on_connection(
-        self, connection, multiparams, params, execution_options
+        self, connection, distilled_params, execution_options
     ):
         return connection._execute_function(
-            self, multiparams, params, execution_options
+            self, distilled_params, execution_options
         )
 
     def scalar_table_valued(self, name, type_=None):
@@ -570,50 +570,6 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
         if self._execution_options:
             s = s.execution_options(**self._execution_options)
         return s
-
-    @util.deprecated_20(
-        ":meth:`.FunctionElement.scalar`",
-        alternative="Scalar execution in SQLAlchemy 2.0 is performed "
-        "by the :meth:`_engine.Connection.scalar` method of "
-        ":class:`_engine.Connection`, "
-        "or in the ORM by the :meth:`.Session.scalar` method of "
-        ":class:`.Session`.",
-    )
-    def scalar(self):
-        """Execute this :class:`.FunctionElement` against an embedded
-        'bind' and return a scalar value.
-
-        This first calls :meth:`~.FunctionElement.select` to
-        produce a SELECT construct.
-
-        Note that :class:`.FunctionElement` can be passed to
-        the :meth:`.Connectable.scalar` method of :class:`_engine.Connection`
-        or :class:`_engine.Engine`.
-
-        """
-        return self.select().execute().scalar()
-
-    @util.deprecated_20(
-        ":meth:`.FunctionElement.execute`",
-        alternative="All statement execution in SQLAlchemy 2.0 is performed "
-        "by the :meth:`_engine.Connection.execute` method of "
-        ":class:`_engine.Connection`, "
-        "or in the ORM by the :meth:`.Session.execute` method of "
-        ":class:`.Session`.",
-    )
-    def execute(self):
-        """Execute this :class:`.FunctionElement` against an embedded
-        'bind'.
-
-        This first calls :meth:`~.FunctionElement.select` to
-        produce a SELECT construct.
-
-        Note that :class:`.FunctionElement` can be passed to
-        the :meth:`.Connectable.execute` method of :class:`_engine.Connection`
-        or :class:`_engine.Engine`.
-
-        """
-        return self.select().execute()
 
     def _bind_param(self, operator, obj, type_=None, **kw):
         return BindParameter(

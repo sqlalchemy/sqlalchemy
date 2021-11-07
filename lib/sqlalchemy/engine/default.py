@@ -33,10 +33,6 @@ from ..sql import compiler
 from ..sql import expression
 from ..sql.elements import quoted_name
 
-AUTOCOMMIT_REGEXP = re.compile(
-    r"\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER)", re.I | re.UNICODE
-)
-
 # When we're handed literal SQL, ensure it's a SELECT query
 SERVER_SIDE_CURSOR_RE = re.compile(r"\s*SELECT", re.I | re.UNICODE)
 
@@ -112,16 +108,10 @@ class DefaultDialect(interfaces.Dialect):
     # *not* the FLOAT type however.
     supports_native_decimal = False
 
-    if util.py3k:
-        supports_unicode_statements = True
-        supports_unicode_binds = True
-        returns_unicode_strings = sqltypes.String.RETURNS_UNICODE
-        description_encoding = None
-    else:
-        supports_unicode_statements = False
-        supports_unicode_binds = False
-        returns_unicode_strings = sqltypes.String.RETURNS_UNKNOWN
-        description_encoding = "use_encoding"
+    supports_unicode_statements = True
+    supports_unicode_binds = True
+    returns_unicode_strings = sqltypes.String.RETURNS_UNICODE
+    description_encoding = None
 
     name = "default"
 
@@ -401,15 +391,6 @@ class DefaultDialect(interfaces.Dialect):
         except NotImplementedError:
             self.default_isolation_level = None
 
-        if self.returns_unicode_strings is sqltypes.String.RETURNS_UNKNOWN:
-            if util.py3k:
-                raise exc.InvalidRequestError(
-                    "RETURNS_UNKNOWN is unsupported in Python 3"
-                )
-            self.returns_unicode_strings = self._check_unicode_returns(
-                connection
-            )
-
         if (
             self.description_encoding is not None
             and self._check_unicode_description(connection)
@@ -462,60 +443,6 @@ class DefaultDialect(interfaces.Dialect):
 
         """
         return self.get_isolation_level(dbapi_conn)
-
-    def _check_unicode_returns(self, connection, additional_tests=None):
-        cast_to = util.text_type
-
-        if self.positional:
-            parameters = self.execute_sequence_format()
-        else:
-            parameters = {}
-
-        def check_unicode(test):
-            statement = cast_to(expression.select(test).compile(dialect=self))
-            try:
-                cursor = connection.connection.cursor()
-                connection._cursor_execute(cursor, statement, parameters)
-                row = cursor.fetchone()
-                cursor.close()
-            except exc.DBAPIError as de:
-                # note that _cursor_execute() will have closed the cursor
-                # if an exception is thrown.
-                util.warn(
-                    "Exception attempting to "
-                    "detect unicode returns: %r" % de
-                )
-                return False
-            else:
-                return isinstance(row[0], util.text_type)
-
-        tests = [
-            # detect plain VARCHAR
-            expression.cast(
-                expression.literal_column("'test plain returns'"),
-                sqltypes.VARCHAR(60),
-            ),
-            # detect if there's an NVARCHAR type with different behavior
-            # available
-            expression.cast(
-                expression.literal_column("'test unicode returns'"),
-                sqltypes.Unicode(60),
-            ),
-        ]
-
-        if additional_tests:
-            tests += additional_tests
-
-        results = {check_unicode(test) for test in tests}
-
-        if results.issuperset([True, False]):
-            return sqltypes.String.RETURNS_CONDITIONAL
-        else:
-            return (
-                sqltypes.String.RETURNS_UNICODE
-                if results == {True}
-                else sqltypes.String.RETURNS_BYTES
-            )
 
     def _check_unicode_description(self, connection):
         cast_to = util.text_type
@@ -580,11 +507,10 @@ class DefaultDialect(interfaces.Dialect):
             )
 
             @event.listens_for(engine, "engine_connect")
-            def set_connection_characteristics(connection, branch):
-                if not branch:
-                    self._set_connection_characteristics(
-                        connection, characteristics
-                    )
+            def set_connection_characteristics(connection):
+                self._set_connection_characteristics(
+                    connection, characteristics
+                )
 
     def set_connection_execution_options(self, connection, opts):
         supported_names = set(self.connection_characteristics).intersection(
@@ -610,24 +536,13 @@ class DefaultDialect(interfaces.Dialect):
                 if obj.transactional
             ]
             if trans_objs:
-                if connection._is_future:
-                    raise exc.InvalidRequestError(
-                        "This connection has already initialized a SQLAlchemy "
-                        "Transaction() object via begin() or autobegin; "
-                        "%s may not be altered unless rollback() or commit() "
-                        "is called first."
-                        % (", ".join(name for name, obj in trans_objs))
-                    )
-                else:
-                    util.warn(
-                        "Connection is already established with a "
-                        "Transaction; "
-                        "setting %s may implicitly rollback or "
-                        "commit "
-                        "the existing transaction, or have no effect until "
-                        "next transaction"
-                        % (", ".join(name for name, obj in trans_objs))
-                    )
+                raise exc.InvalidRequestError(
+                    "This connection has already initialized a SQLAlchemy "
+                    "Transaction() object via begin() or autobegin; "
+                    "%s may not be altered unless rollback() or commit() "
+                    "is called first."
+                    % (", ".join(name for name, obj in trans_objs))
+                )
 
         dbapi_connection = connection.connection.dbapi_connection
         for name, characteristic, value in characteristic_values:
@@ -1175,21 +1090,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     def no_parameters(self):
         return self.execution_options.get("no_parameters", False)
 
-    @util.memoized_property
-    def should_autocommit(self):
-        autocommit = self.execution_options.get(
-            "autocommit",
-            not self.compiled
-            and self.statement
-            and expression.PARSE_AUTOCOMMIT
-            or False,
-        )
-
-        if autocommit is expression.PARSE_AUTOCOMMIT:
-            return self.should_autocommit_text(self.unicode_statement)
-        else:
-            return autocommit
-
     def _execute_scalar(self, stmt, type_, parameters=None):
         """Execute a string statement on the current cursor, returning a
         scalar result.
@@ -1232,16 +1132,9 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                 return proc(r)
         return r
 
-    @property
+    @util.memoized_property
     def connection(self):
-        conn = self.root_connection
-        if conn._is_future:
-            return conn
-        else:
-            return conn._branch()
-
-    def should_autocommit_text(self, statement):
-        return AUTOCOMMIT_REGEXP.match(statement)
+        return self.root_connection
 
     def _use_server_side_cursor(self):
         if not self.dialect.supports_server_side_cursors:
@@ -1522,7 +1415,9 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         if self.isddl or self.is_text:
             return
 
-        inputsizes = self.compiled._get_set_input_sizes_lookup(
+        compiled = self.compiled
+
+        inputsizes = compiled._get_set_input_sizes_lookup(
             include_types=self.include_set_input_sizes,
             exclude_types=self.exclude_set_input_sizes,
         )
@@ -1530,30 +1425,31 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         if inputsizes is None:
             return
 
-        if self.dialect._has_events:
+        dialect = self.dialect
+
+        if dialect._has_events:
             inputsizes = dict(inputsizes)
-            self.dialect.dispatch.do_setinputsizes(
+            dialect.dispatch.do_setinputsizes(
                 inputsizes, self.cursor, self.statement, self.parameters, self
             )
 
-        has_escaped_names = bool(self.compiled.escaped_bind_names)
+        has_escaped_names = bool(compiled.escaped_bind_names)
         if has_escaped_names:
-            escaped_bind_names = self.compiled.escaped_bind_names
+            escaped_bind_names = compiled.escaped_bind_names
 
-        if self.dialect.positional:
+        if dialect.positional:
             items = [
-                (key, self.compiled.binds[key])
-                for key in self.compiled.positiontup
+                (key, compiled.binds[key]) for key in compiled.positiontup
             ]
         else:
             items = [
                 (key, bindparam)
-                for bindparam, key in self.compiled.bind_names.items()
+                for bindparam, key in compiled.bind_names.items()
             ]
 
         generic_inputsizes = []
         for key, bindparam in items:
-            if bindparam in self.compiled.literal_execute_params:
+            if bindparam in compiled.literal_execute_params:
                 continue
 
             if key in self._expanded_parameters:
@@ -1601,9 +1497,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                     (escaped_name, dbtype, bindparam.type)
                 )
         try:
-            self.dialect.do_set_input_sizes(
-                self.cursor, generic_inputsizes, self
-            )
+            dialect.do_set_input_sizes(self.cursor, generic_inputsizes, self)
         except BaseException as e:
             self.root_connection._handle_dbapi_exception(
                 e, None, None, None, self

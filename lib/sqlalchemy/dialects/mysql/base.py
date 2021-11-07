@@ -1039,10 +1039,6 @@ from ...types import DATE
 from ...types import VARBINARY
 from ...util import topological
 
-AUTOCOMMIT_RE = re.compile(
-    r"\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER|LOAD +DATA|REPLACE)",
-    re.I | re.UNICODE,
-)
 SET_RE = re.compile(
     r"\s*SET\s+(?:(?:GLOBAL|SESSION)\s+)?\w", re.I | re.UNICODE
 )
@@ -1135,9 +1131,6 @@ ischema_names = {
 
 
 class MySQLExecutionContext(default.DefaultExecutionContext):
-    def should_autocommit_text(self, statement):
-        return AUTOCOMMIT_RE.match(statement)
-
     def create_server_side_cursor(self):
         if self.dialect.supports_server_side_cursors:
             return self._dbapi_connection.cursor(self.dialect._sscursor)

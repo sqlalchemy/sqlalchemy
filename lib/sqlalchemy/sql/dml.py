@@ -223,9 +223,6 @@ class UpdateBase(
 
     __visit_name__ = "update_base"
 
-    _execution_options = Executable._execution_options.union(
-        {"autocommit": True}
-    )
     _hints = util.immutabledict()
     named_with_column = False
 

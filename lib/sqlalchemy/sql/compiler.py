@@ -456,11 +456,11 @@ class Compiled(object):
         self._gen_time = util.perf_counter()
 
     def _execute_on_connection(
-        self, connection, multiparams, params, execution_options
+        self, connection, distilled_params, execution_options
     ):
         if self.can_execute:
             return connection._execute_compiled(
-                self, multiparams, params, execution_options
+                self, distilled_params, execution_options
             )
         else:
             raise exc.ObjectNotExecutableError(self.statement)

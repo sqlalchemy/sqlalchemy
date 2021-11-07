@@ -338,11 +338,6 @@ class SequenceExecTest(fixtures.TestBase):
             self._assert_seq_result(r.inserted_primary_key[0])
 
 
-class FutureSequenceExecTest(fixtures.FutureEngineMixin, SequenceExecTest):
-    __requires__ = ("sequences",)
-    __backend__ = True
-
-
 class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     __requires__ = ("sequences",)
     __backend__ = True
@@ -500,11 +495,6 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_next_value_type(self):
         seq = Sequence("my_sequence", data_type=BigInteger)
         assert isinstance(seq.next_value().type, BigInteger)
-
-
-class FutureSequenceTest(fixtures.FutureEngineMixin, SequenceTest):
-    __requires__ = ("sequences",)
-    __backend__ = True
 
 
 class TableBoundSequenceTest(fixtures.TablesTest):
