@@ -161,14 +161,6 @@ $$ LANGUAGE plpgsql;"""
             future_connection.dialect.server_version_info,
         )
 
-    @testing.requires.psycopg2_compatibility
-    def test_pg_dialect_no_native_unicode_in(self, testing_engine):
-        with testing.expect_raises_message(
-            exc.ArgumentError,
-            "psycopg2 native_unicode mode is required under Python 3",
-        ):
-            testing_engine(options=dict(use_native_unicode=False))
-
     def test_psycopg2_empty_connection_string(self):
         dialect = psycopg2_dialect.dialect()
         u = url.make_url("postgresql+psycopg2://")

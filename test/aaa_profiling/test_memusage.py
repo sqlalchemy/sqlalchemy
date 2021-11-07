@@ -29,7 +29,6 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm.session import _sessions
 from sqlalchemy.processors import to_decimal_processor_factory
-from sqlalchemy.processors import to_unicode_processor_factory
 from sqlalchemy.sql import column
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql.visitors import cloned_traverse
@@ -282,14 +281,6 @@ class MemUsageTest(EnsureZeroed):
         @profile_memory()
         def go():
             to_decimal_processor_factory(decimal.Decimal, 10)(1.2)
-
-        go()
-
-    @testing.requires.cextensions
-    def test_UnicodeResultProcessor_init(self):
-        @profile_memory()
-        def go():
-            to_unicode_processor_factory("utf8")
 
         go()
 

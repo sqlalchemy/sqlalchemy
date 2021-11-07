@@ -714,18 +714,6 @@ class TypesTest(fixtures.TestBase):
 
             eq_(sqla_result, cx_oracle_result)
 
-    def test_coerce_to_unicode(self, connection):
-        engine = testing_engine(options=dict(coerce_to_unicode=False))
-        with engine.connect() as conn_no_coerce:
-            value = exec_sql(
-                conn_no_coerce, "SELECT 'hello' FROM DUAL"
-            ).scalar()
-            assert not isinstance(value, util.binary_type)
-            assert isinstance(value, util.text_type)
-
-        value = exec_sql(connection, "SELECT 'hello' FROM DUAL").scalar()
-        assert isinstance(value, util.text_type)
-
     def test_reflect_dates(self, metadata, connection):
         Table(
             "date_types",

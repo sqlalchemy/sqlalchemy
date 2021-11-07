@@ -312,192 +312,12 @@ str_to_date(PyObject *self, PyObject *arg)
 
 typedef struct {
     PyObject_HEAD
-    PyObject *encoding;
-    PyObject *errors;
-} UnicodeResultProcessor;
-
-typedef struct {
-    PyObject_HEAD
     PyObject *type;
     PyObject *format;
 } DecimalResultProcessor;
 
 
 
-/**************************
- * UnicodeResultProcessor *
- **************************/
-
-static int
-UnicodeResultProcessor_init(UnicodeResultProcessor *self, PyObject *args,
-                            PyObject *kwds)
-{
-    PyObject *encoding, *errors = NULL;
-    static char *kwlist[] = {"encoding", "errors", NULL};
-
-#if PY_MAJOR_VERSION >= 3
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "U|U:__init__", kwlist,
-                                     &encoding, &errors))
-        return -1;
-#else
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "S|S:__init__", kwlist,
-                                     &encoding, &errors))
-        return -1;
-#endif
-
-#if PY_MAJOR_VERSION >= 3
-    encoding = PyUnicode_AsASCIIString(encoding);
-#else
-    Py_INCREF(encoding);
-#endif
-    self->encoding = encoding;
-
-    if (errors) {
-#if PY_MAJOR_VERSION >= 3
-        errors = PyUnicode_AsASCIIString(errors);
-#else
-        Py_INCREF(errors);
-#endif
-    } else {
-#if PY_MAJOR_VERSION >= 3
-        errors = PyBytes_FromString("strict");
-#else
-        errors = PyString_FromString("strict");
-#endif
-        if (errors == NULL)
-            return -1;
-    }
-    self->errors = errors;
-
-    return 0;
-}
-
-static PyObject *
-UnicodeResultProcessor_process(UnicodeResultProcessor *self, PyObject *value)
-{
-    const char *encoding, *errors;
-    char *str;
-    Py_ssize_t len;
-
-    if (value == Py_None)
-        Py_RETURN_NONE;
-
-#if PY_MAJOR_VERSION >= 3
-    if (PyBytes_AsStringAndSize(value, &str, &len))
-        return NULL;
-
-    encoding = PyBytes_AS_STRING(self->encoding);
-    errors = PyBytes_AS_STRING(self->errors);
-#else
-    if (PyString_AsStringAndSize(value, &str, &len))
-        return NULL;
-
-    encoding = PyString_AS_STRING(self->encoding);
-    errors = PyString_AS_STRING(self->errors);
-#endif
-
-    return PyUnicode_Decode(str, len, encoding, errors);
-}
-
-static PyObject *
-UnicodeResultProcessor_conditional_process(UnicodeResultProcessor *self, PyObject *value)
-{
-    const char *encoding, *errors;
-    char *str;
-    Py_ssize_t len;
-
-    if (value == Py_None)
-        Py_RETURN_NONE;
-
-#if PY_MAJOR_VERSION >= 3
-    if (PyUnicode_Check(value) == 1) {
-        Py_INCREF(value);
-        return value;
-    }
-
-    if (PyBytes_AsStringAndSize(value, &str, &len))
-        return NULL;
-
-    encoding = PyBytes_AS_STRING(self->encoding);
-    errors = PyBytes_AS_STRING(self->errors);
-#else
-
-    if (PyUnicode_Check(value) == 1) {
-        Py_INCREF(value);
-        return value;
-    }
-
-    if (PyString_AsStringAndSize(value, &str, &len))
-        return NULL;
-
-
-    encoding = PyString_AS_STRING(self->encoding);
-    errors = PyString_AS_STRING(self->errors);
-#endif
-
-    return PyUnicode_Decode(str, len, encoding, errors);
-}
-
-static void
-UnicodeResultProcessor_dealloc(UnicodeResultProcessor *self)
-{
-    Py_XDECREF(self->encoding);
-    Py_XDECREF(self->errors);
-#if PY_MAJOR_VERSION >= 3
-    Py_TYPE(self)->tp_free((PyObject*)self);
-#else
-    self->ob_type->tp_free((PyObject*)self);
-#endif
-}
-
-static PyMethodDef UnicodeResultProcessor_methods[] = {
-    {"process", (PyCFunction)UnicodeResultProcessor_process, METH_O,
-     "The value processor itself."},
-    {"conditional_process", (PyCFunction)UnicodeResultProcessor_conditional_process, METH_O,
-     "Conditional version of the value processor."},
-    {NULL}  /* Sentinel */
-};
-
-static PyTypeObject UnicodeResultProcessorType = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "sqlalchemy.cprocessors.UnicodeResultProcessor",        /* tp_name */
-    sizeof(UnicodeResultProcessor),             /* tp_basicsize */
-    0,                                          /* tp_itemsize */
-    (destructor)UnicodeResultProcessor_dealloc, /* tp_dealloc */
-    0,                                          /* tp_print */
-    0,                                          /* tp_getattr */
-    0,                                          /* tp_setattr */
-    0,                                          /* tp_compare */
-    0,                                          /* tp_repr */
-    0,                                          /* tp_as_number */
-    0,                                          /* tp_as_sequence */
-    0,                                          /* tp_as_mapping */
-    0,                                          /* tp_hash  */
-    0,                                          /* tp_call */
-    0,                                          /* tp_str */
-    0,                                          /* tp_getattro */
-    0,                                          /* tp_setattro */
-    0,                                          /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,   /* tp_flags */
-    "UnicodeResultProcessor objects",           /* tp_doc */
-    0,                                          /* tp_traverse */
-    0,                                          /* tp_clear */
-    0,                                          /* tp_richcompare */
-    0,                                          /* tp_weaklistoffset */
-    0,                                          /* tp_iter */
-    0,                                          /* tp_iternext */
-    UnicodeResultProcessor_methods,             /* tp_methods */
-    0,                                          /* tp_members */
-    0,                                          /* tp_getset */
-    0,                                          /* tp_base */
-    0,                                          /* tp_dict */
-    0,                                          /* tp_descr_get */
-    0,                                          /* tp_descr_set */
-    0,                                          /* tp_dictoffset */
-    (initproc)UnicodeResultProcessor_init,      /* tp_init */
-    0,                                          /* tp_alloc */
-    0,                                          /* tp_new */
-};
 
 /**************************
  * DecimalResultProcessor *
@@ -664,10 +484,6 @@ initcprocessors(void)
 {
     PyObject *m;
 
-    UnicodeResultProcessorType.tp_new = PyType_GenericNew;
-    if (PyType_Ready(&UnicodeResultProcessorType) < 0)
-        INITERROR;
-
     DecimalResultProcessorType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&DecimalResultProcessorType) < 0)
         INITERROR;
@@ -681,10 +497,6 @@ initcprocessors(void)
         INITERROR;
 
     PyDateTime_IMPORT;
-
-    Py_INCREF(&UnicodeResultProcessorType);
-    PyModule_AddObject(m, "UnicodeResultProcessor",
-                       (PyObject *)&UnicodeResultProcessorType);
 
     Py_INCREF(&DecimalResultProcessorType);
     PyModule_AddObject(m, "DecimalResultProcessor",

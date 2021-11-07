@@ -3826,10 +3826,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
         result = connection.execute(
             select(data_table.c.data["k1"].astext)
         ).first()
-        if connection.dialect.returns_unicode_strings:
-            assert isinstance(result[0], util.text_type)
-        else:
-            assert isinstance(result[0], util.string_types)
+        assert isinstance(result[0], util.text_type)
 
     def test_query_returned_as_int(self, connection):
         self._fixture_data(connection)

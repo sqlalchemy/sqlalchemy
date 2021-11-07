@@ -40,13 +40,6 @@ may be passed to :func:`_sa.create_engine()`, and include the following:
 
     :ref:`psycopg2_unicode`
 
-* ``use_native_unicode``: Under Python 2 only, this can be set to False to
-  disable the use of psycopg2's native Unicode support.
-
-  .. seealso::
-
-    :ref:`psycopg2_disable_native_unicode`
-
 
 * ``executemany_mode``, ``executemany_batch_page_size``,
   ``executemany_values_page_size``: Allows use of psycopg2
@@ -295,10 +288,7 @@ size defaults to 100.  These can be affected by passing new values to
 Unicode with Psycopg2
 ----------------------
 
-The psycopg2 DBAPI driver supports Unicode data transparently.   Under Python 2
-only, the SQLAlchemy psycopg2 dialect will enable the
-``psycopg2.extensions.UNICODE`` extension by default to ensure Unicode is
-handled properly; under Python 3, this is psycopg2's default behavior.
+The psycopg2 DBAPI driver supports Unicode data transparently.
 
 The client character encoding can be controlled for the psycopg2 dialect
 in the following ways:
@@ -347,21 +337,6 @@ in the following ways:
                                  # encoding
     client_encoding = utf8
 
-.. _psycopg2_disable_native_unicode:
-
-Disabling Native Unicode
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-Under Python 2 only, SQLAlchemy can also be instructed to skip the usage of the
-psycopg2 ``UNICODE`` extension and to instead utilize its own unicode
-encode/decode services, which are normally reserved only for those DBAPIs that
-don't fully support unicode directly.  Passing ``use_native_unicode=False`` to
-:func:`_sa.create_engine` will disable usage of ``psycopg2.extensions.
-UNICODE``. SQLAlchemy will instead encode data itself into Python bytestrings
-on the way in and coerce from bytes on the way back, using the value of the
-:func:`_sa.create_engine` ``encoding`` parameter, which defaults to ``utf-8``.
-SQLAlchemy's own unicode encode/decode functionality is steadily becoming
-obsolete as most DBAPIs now support unicode fully.
 
 
 Transactions
@@ -659,10 +634,6 @@ class PGDialect_psycopg2(PGDialect):
 
     _has_native_hstore = True
 
-    engine_config_types = PGDialect.engine_config_types.union(
-        {"use_native_unicode": util.asbool}
-    )
-
     colspecs = util.update_copy(
         PGDialect.colspecs,
         {
@@ -678,7 +649,6 @@ class PGDialect_psycopg2(PGDialect):
 
     def __init__(
         self,
-        use_native_unicode=True,
         client_encoding=None,
         use_native_hstore=True,
         use_native_uuid=True,
@@ -688,16 +658,10 @@ class PGDialect_psycopg2(PGDialect):
         **kwargs
     ):
         PGDialect.__init__(self, **kwargs)
-        self.use_native_unicode = use_native_unicode
-        if not use_native_unicode:
-            raise exc.ArgumentError(
-                "psycopg2 native_unicode mode is required under Python 3"
-            )
         if not use_native_hstore:
             self._has_native_hstore = False
         self.use_native_hstore = use_native_hstore
         self.use_native_uuid = use_native_uuid
-        self.supports_unicode_binds = use_native_unicode
         self.client_encoding = client_encoding
 
         # Parse executemany_mode argument, allowing it to be only one of the
@@ -892,8 +856,6 @@ class PGDialect_psycopg2(PGDialect):
             executemany_values = (
                 "(%s)" % context.compiled.insert_single_values_expr
             )
-            if not self.supports_unicode_statements:
-                executemany_values = executemany_values.encode(self.encoding)
 
             # guard for statement that was altered via event hook or similar
             if executemany_values not in statement:

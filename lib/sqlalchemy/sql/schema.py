@@ -1639,13 +1639,6 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             if isinstance(self.default, (ColumnDefault, Sequence)):
                 args.append(self.default)
             else:
-                if getattr(self.type, "_warn_on_bytestring", False):
-                    if isinstance(self.default, util.binary_type):
-                        util.warn(
-                            "Unicode column '%s' has non-unicode "
-                            "default value %r specified."
-                            % (self.key, self.default)
-                        )
                 args.append(ColumnDefault(self.default))
 
         if self.server_default is not None:

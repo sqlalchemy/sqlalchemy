@@ -259,21 +259,14 @@ class EncodingErrorsTest(fixtures.TestBase):
     def test_older_cx_oracle_warning(self, cx_Oracle, cx_oracle_type):
         cx_Oracle.version = "6.3"
 
-        ignore_dialect = cx_oracle.dialect(
-            dbapi=cx_Oracle, encoding_errors="ignore"
-        )
-        ignore_outputhandler = (
-            ignore_dialect._generate_connection_outputtype_handler()
-        )
-
-        cursor = mock.Mock()
-
         with testing.expect_warnings(
             r"cx_oracle version \(6, 3\) does not support encodingErrors"
         ):
-            ignore_outputhandler(
-                cursor, "foo", cx_oracle_type, None, None, None
+            dialect = cx_oracle.dialect(
+                dbapi=cx_Oracle, encoding_errors="ignore"
             )
+
+            eq_(dialect._cursor_var_unicode_kwargs, {})
 
     @_oracle_char_combinations
     def test_encoding_errors_cx_oracle(
@@ -319,10 +312,18 @@ class EncodingErrorsTest(fixtures.TestBase):
         cursor = mock.Mock()
         plain_outputhandler(cursor, "foo", cx_oracle_type, None, None, None)
 
-        eq_(
-            cursor.mock_calls,
-            [mock.call.var(mock.ANY, None, cursor.arraysize)],
-        )
+        if cx_oracle_type in (cx_Oracle.FIXED_CHAR, cx_Oracle.STRING):
+            # no calls; without encodingErrors, use cx_Oracle's default unicode
+            # handling
+            eq_(
+                cursor.mock_calls,
+                [],
+            )
+        else:
+            eq_(
+                cursor.mock_calls,
+                [mock.call.var(mock.ANY, None, cursor.arraysize)],
+            )
 
 
 class ComputedReturningTest(fixtures.TablesTest):

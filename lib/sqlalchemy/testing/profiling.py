@@ -105,11 +105,7 @@ class ProfileStatsFile(object):
             dbapi_key,
         ]
 
-        platform_tokens.append(
-            "nativeunicode"
-            if config.db.dialect.convert_unicode
-            else "dbapiunicode"
-        )
+        platform_tokens.append("dbapiunicode")
         _has_cext = has_compiled_ext()
         platform_tokens.append(_has_cext and "cextensions" or "nocextensions")
         return "_".join(platform_tokens)

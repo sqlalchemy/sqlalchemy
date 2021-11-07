@@ -13,7 +13,6 @@ as the base class for their own corresponding classes.
 
 """
 
-import codecs
 import functools
 import random
 import re
@@ -26,7 +25,6 @@ from .base import Connection
 from .. import event
 from .. import exc
 from .. import pool
-from .. import processors
 from .. import types as sqltypes
 from .. import util
 from ..sql import compiler
@@ -92,7 +90,6 @@ class DefaultDialect(interfaces.Dialect):
 
     engine_config_types = util.immutabledict(
         [
-            ("convert_unicode", util.bool_or_str("force")),
             ("pool_timeout", util.asint),
             ("echo", util.bool_or_str("debug")),
             ("echo_pool", util.bool_or_str("debug")),
@@ -108,9 +105,6 @@ class DefaultDialect(interfaces.Dialect):
     # *not* the FLOAT type however.
     supports_native_decimal = False
 
-    supports_unicode_statements = True
-    supports_unicode_binds = True
-    returns_unicode_strings = sqltypes.String.RETURNS_UNICODE
     description_encoding = None
 
     name = "default"
@@ -223,13 +217,6 @@ class DefaultDialect(interfaces.Dialect):
     NO_DIALECT_SUPPORT = NO_DIALECT_SUPPORT
 
     @util.deprecated_params(
-        convert_unicode=(
-            "1.3",
-            "The :paramref:`_sa.create_engine.convert_unicode` parameter "
-            "and corresponding dialect-level parameters are deprecated, "
-            "and will be removed in a future release.  Modern DBAPIs support "
-            "Python Unicode natively and this parameter is unnecessary.",
-        ),
         empty_in_strategy=(
             "1.4",
             "The :paramref:`_sa.create_engine.empty_in_strategy` keyword is "
@@ -250,7 +237,6 @@ class DefaultDialect(interfaces.Dialect):
     )
     def __init__(
         self,
-        convert_unicode=False,
         encoding="utf-8",
         paramstyle=None,
         dbapi=None,
@@ -279,7 +265,6 @@ class DefaultDialect(interfaces.Dialect):
             else:
                 self.server_side_cursors = True
 
-        self.convert_unicode = convert_unicode
         self.encoding = encoding
         self.positional = False
         self._ischema = None
@@ -305,16 +290,6 @@ class DefaultDialect(interfaces.Dialect):
             )
         self.label_length = label_length
         self.compiler_linting = compiler_linting
-        if self.description_encoding == "use_encoding":
-            self._description_decoder = (
-                processors.to_unicode_processor_factory
-            )(encoding)
-        elif self.description_encoding is not None:
-            self._description_decoder = (
-                processors.to_unicode_processor_factory
-            )(self.description_encoding)
-        self._encoder = codecs.getencoder(self.encoding)
-        self._decoder = processors.to_unicode_processor_factory(self.encoding)
 
     def _ensure_has_table_connection(self, arg):
 
@@ -391,12 +366,6 @@ class DefaultDialect(interfaces.Dialect):
         except NotImplementedError:
             self.default_isolation_level = None
 
-        if (
-            self.description_encoding is not None
-            and self._check_unicode_description(connection)
-        ):
-            self._description_decoder = self.description_encoding = None
-
         if not self._user_defined_max_identifier_length:
             max_ident_length = self._check_max_identifier_length(connection)
             if max_ident_length:
@@ -443,22 +412,6 @@ class DefaultDialect(interfaces.Dialect):
 
         """
         return self.get_isolation_level(dbapi_conn)
-
-    def _check_unicode_description(self, connection):
-        cast_to = util.text_type
-
-        cursor = connection.connection.cursor()
-        try:
-            cursor.execute(
-                cast_to(
-                    expression.select(
-                        expression.literal_column("'x'").label("some_label")
-                    ).compile(dialect=self)
-                )
-            )
-            return isinstance(cursor.description[0][0], util.text_type)
-        finally:
-            cursor.close()
 
     def type_descriptor(self, typeobj):
         """Provide a database-specific :class:`.TypeEngine` object, given
@@ -790,10 +743,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                 self.unicode_statement, schema_translate_map
             )
 
-        if not dialect.supports_unicode_statements:
-            self.statement = dialect._encoder(self.unicode_statement)[0]
-        else:
-            self.statement = self.unicode_statement
+        self.statement = self.unicode_statement
 
         self.cursor = self.create_cursor()
         self.compiled_parameters = []
@@ -913,12 +863,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         # final self.unicode_statement is now assigned, encode if needed
         # by dialect
-        if not dialect.supports_unicode_statements:
-            self.statement = self.unicode_statement.encode(
-                self.dialect.encoding
-            )
-        else:
-            self.statement = self.unicode_statement
+        self.statement = self.unicode_statement
 
         # Convert the dictionary of bind parameter values
         # into a dict or list to be sent to the DBAPI's
@@ -934,25 +879,14 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                 ]
                 parameters.append(dialect.execute_sequence_format(param))
         else:
-            encode = not dialect.supports_unicode_statements
-            if encode:
-                encoder = dialect._encoder
             for compiled_params in self.compiled_parameters:
 
-                if encode:
-                    param = {
-                        encoder(key)[0]: processors[key](compiled_params[key])
-                        if key in processors
-                        else compiled_params[key]
-                        for key in compiled_params
-                    }
-                else:
-                    param = {
-                        key: processors[key](compiled_params[key])
-                        if key in processors
-                        else compiled_params[key]
-                        for key in compiled_params
-                    }
+                param = {
+                    key: processors[key](compiled_params[key])
+                    if key in processors
+                    else compiled_params[key]
+                    for key in compiled_params
+                }
 
                 parameters.append(param)
 
@@ -988,13 +922,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         elif isinstance(parameters[0], dialect.execute_sequence_format):
             self.parameters = parameters
         elif isinstance(parameters[0], dict):
-            if dialect.supports_unicode_statements:
-                self.parameters = parameters
-            else:
-                self.parameters = [
-                    {dialect._encoder(k)[0]: d[k] for k in d}
-                    for d in parameters
-                ] or [{}]
+            self.parameters = parameters
         else:
             self.parameters = [
                 dialect.execute_sequence_format(p) for p in parameters
@@ -1002,13 +930,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         self.executemany = len(parameters) > 1
 
-        if not dialect.supports_unicode_statements and isinstance(
-            statement, util.text_type
-        ):
-            self.unicode_statement = statement
-            self.statement = dialect._encoder(statement)[0]
-        else:
-            self.statement = self.unicode_statement = statement
+        self.statement = self.unicode_statement = statement
 
         self.cursor = self.create_cursor()
         return self
@@ -1101,11 +1023,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         """
 
         conn = self.root_connection
-        if (
-            isinstance(stmt, util.text_type)
-            and not self.dialect.supports_unicode_statements
-        ):
-            stmt = self.dialect._encoder(stmt)[0]
 
         if "schema_translate_map" in self.execution_options:
             schema_translate_map = self.execution_options.get(

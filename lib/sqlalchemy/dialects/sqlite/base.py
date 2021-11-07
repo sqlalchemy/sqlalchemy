@@ -1795,8 +1795,6 @@ class SQLiteExecutionContext(default.DefaultExecutionContext):
 class SQLiteDialect(default.DefaultDialect):
     name = "sqlite"
     supports_alter = False
-    supports_unicode_statements = True
-    supports_unicode_binds = True
 
     # SQlite supports "DEFAULT VALUES" but *does not* support
     # "VALUES (DEFAULT)"

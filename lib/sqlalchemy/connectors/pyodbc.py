@@ -18,9 +18,6 @@ class PyODBCConnector(Connector):
     supports_sane_rowcount_returning = True
     supports_sane_multi_rowcount = False
 
-    supports_unicode_statements = True
-    supports_unicode_binds = True
-
     supports_native_decimal = True
     default_paramstyle = "named"
 
@@ -30,12 +27,8 @@ class PyODBCConnector(Connector):
     # hold the desired driver name
     pyodbc_driver_name = None
 
-    def __init__(
-        self, supports_unicode_binds=None, use_setinputsizes=False, **kw
-    ):
+    def __init__(self, use_setinputsizes=False, **kw):
         super(PyODBCConnector, self).__init__(**kw)
-        if supports_unicode_binds is not None:
-            self.supports_unicode_binds = supports_unicode_binds
         self.use_setinputsizes = use_setinputsizes
 
     @classmethod

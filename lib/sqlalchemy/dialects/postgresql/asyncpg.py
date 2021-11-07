@@ -863,10 +863,7 @@ class PGDialect_asyncpg(PGDialect):
     driver = "asyncpg"
     supports_statement_cache = True
 
-    supports_unicode_statements = True
     supports_server_side_cursors = True
-
-    supports_unicode_binds = True
 
     default_paramstyle = "format"
     supports_sane_multi_rowcount = False

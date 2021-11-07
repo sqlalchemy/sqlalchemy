@@ -10,7 +10,7 @@ r"""
     :name: Oracle
     :full_support: 11.2, 18c
     :normal_support: 11+
-    :best_effort: 8+
+    :best_effort: 9+
 
 
 Auto Increment Behavior
@@ -341,6 +341,9 @@ and specify "passive_updates=False" on each relationship().
 Oracle 8 Compatibility
 ----------------------
 
+.. warning:: The status of Oracle 8 compatibility is not known for SQLAlchemy
+   2.0.
+
 When Oracle 8 is detected, the dialect internally configures itself to the
 following behaviors:
 
@@ -349,16 +352,12 @@ following behaviors:
   makes use of Oracle's (+) operator.
 
 * the NVARCHAR2 and NCLOB datatypes are no longer generated as DDL when
-  the :class:`~sqlalchemy.types.Unicode` is used - VARCHAR2 and CLOB are
-  issued instead.   This because these types don't seem to work correctly on
-  Oracle 8 even though they are available.  The
-  :class:`~sqlalchemy.types.NVARCHAR` and
+  the :class:`~sqlalchemy.types.Unicode` is used - VARCHAR2 and CLOB are issued
+  instead. This because these types don't seem to work correctly on Oracle 8
+  even though they are available. The :class:`~sqlalchemy.types.NVARCHAR` and
   :class:`~sqlalchemy.dialects.oracle.NCLOB` types will always generate
   NVARCHAR2 and NCLOB.
 
-* the "native unicode" mode is disabled when using cx_oracle, i.e. SQLAlchemy
-  encodes all Python unicode objects to "string" before passing in as bind
-  parameters.
 
 Synonym/DBLINK Reflection
 -------------------------
@@ -1439,8 +1438,6 @@ class OracleDialect(default.DefaultDialect):
     name = "oracle"
     supports_statement_cache = True
     supports_alter = True
-    supports_unicode_statements = False
-    supports_unicode_binds = False
     max_identifier_length = 128
 
     supports_simple_order_by_label = False
@@ -1575,17 +1572,6 @@ class OracleDialect(default.DefaultDialect):
         else:
             # use the default
             return None
-
-    def _check_unicode_returns(self, connection):
-        additional_tests = [
-            expression.cast(
-                expression.literal_column("'test nvarchar2 returns'"),
-                sqltypes.NVARCHAR(60),
-            )
-        ]
-        return super(OracleDialect, self)._check_unicode_returns(
-            connection, additional_tests
-        )
 
     _isolation_lookup = ["READ COMMITTED", "SERIALIZABLE"]
 
