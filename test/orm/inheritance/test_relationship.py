@@ -2190,7 +2190,7 @@ class ContainsEagerMultipleOfType(
             "a_b.kind AS a_b_kind, a_b.a_id AS a_b_a_id, a.id AS a_id_1, "
             "a.kind AS a_kind, a.a_id AS a_a_id FROM a "
             "LEFT OUTER JOIN a AS a_b ON a.id = a_b.a_id AND a_b.kind IN "
-            "([POSTCOMPILE_kind_1]) LEFT OUTER JOIN x AS b_x "
+            "(__[POSTCOMPILE_kind_1]) LEFT OUTER JOIN x AS b_x "
             "ON a_b.id = b_x.a_id",
         )
 
@@ -2383,7 +2383,7 @@ class JoinedloadOverWPolyAliased(
             joinedload(cls.links).joinedload(Link.child).joinedload(cls.links)
         )
         if cls is self.classes.Sub1:
-            extra = " WHERE parent.type IN ([POSTCOMPILE_type_1])"
+            extra = " WHERE parent.type IN (__[POSTCOMPILE_type_1])"
         else:
             extra = ""
 
@@ -2413,7 +2413,7 @@ class JoinedloadOverWPolyAliased(
         )
 
         if Link.child.property.mapper.class_ is self.classes.Sub1:
-            extra = "AND parent_1.type IN ([POSTCOMPILE_type_1]) "
+            extra = "AND parent_1.type IN (__[POSTCOMPILE_type_1]) "
         else:
             extra = ""
 

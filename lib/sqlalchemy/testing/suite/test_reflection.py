@@ -2,7 +2,6 @@ import operator
 import re
 
 import sqlalchemy as sa
-from sqlalchemy import func
 from .. import config
 from .. import engines
 from .. import eq_
@@ -15,6 +14,7 @@ from ..schema import Column
 from ..schema import Table
 from ... import event
 from ... import ForeignKey
+from ... import func
 from ... import Identity
 from ... import inspect
 from ... import Integer
@@ -25,6 +25,7 @@ from ... import types as sql_types
 from ...schema import DDL
 from ...schema import Index
 from ...sql.elements import quoted_name
+from ...sql.schema import BLANK_SCHEMA
 from ...testing import is_false
 from ...testing import is_true
 
@@ -509,6 +510,20 @@ class ComponentReflectionTest(fixtures.TablesTest):
     @testing.requires.schema_reflection
     def test_get_schema_names(self):
         insp = inspect(self.bind)
+
+        self.assert_(testing.config.test_schema in insp.get_schema_names())
+
+    @testing.requires.schema_reflection
+    def test_get_schema_names_w_translate_map(self, connection):
+        """test #7300"""
+
+        connection = connection.execution_options(
+            schema_translate_map={
+                "foo": "bar",
+                BLANK_SCHEMA: testing.config.test_schema,
+            }
+        )
+        insp = inspect(connection)
 
         self.assert_(testing.config.test_schema in insp.get_schema_names())
 

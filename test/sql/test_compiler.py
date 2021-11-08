@@ -4174,7 +4174,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         )
         self.assert_compile(
             expr,
-            "(mytable.myid, mytable.name) IN " "([POSTCOMPILE_param_1])",
+            "(mytable.myid, mytable.name) IN " "(__[POSTCOMPILE_param_1])",
             checkparams={"param_1": [(1, "foo"), (5, "bar")]},
             check_post_param={"param_1": [(1, "foo"), (5, "bar")]},
             check_literal_execute={},
@@ -4209,7 +4209,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         dialect.tuple_in_values = True
         self.assert_compile(
             tuple_(table1.c.myid, table1.c.name).in_([(1, "foo"), (5, "bar")]),
-            "(mytable.myid, mytable.name) IN " "([POSTCOMPILE_param_1])",
+            "(mytable.myid, mytable.name) IN " "(__[POSTCOMPILE_param_1])",
             dialect=dialect,
             checkparams={"param_1": [(1, "foo"), (5, "bar")]},
             check_post_param={"param_1": [(1, "foo"), (5, "bar")]},
@@ -4345,7 +4345,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             tuple_(table1.c.myid, table1.c.name).in_(
                 bindparam("foo", expanding=True)
             ),
-            "(mytable.myid, mytable.name) IN ([POSTCOMPILE_foo])",
+            "(mytable.myid, mytable.name) IN (__[POSTCOMPILE_foo])",
         )
 
         dialect = default.DefaultDialect()
@@ -4354,13 +4354,13 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             tuple_(table1.c.myid, table1.c.name).in_(
                 bindparam("foo", expanding=True)
             ),
-            "(mytable.myid, mytable.name) IN ([POSTCOMPILE_foo])",
+            "(mytable.myid, mytable.name) IN (__[POSTCOMPILE_foo])",
             dialect=dialect,
         )
 
         self.assert_compile(
             table1.c.myid.in_(bindparam("foo", expanding=True)),
-            "mytable.myid IN ([POSTCOMPILE_foo])",
+            "mytable.myid IN (__[POSTCOMPILE_foo])",
         )
 
     def test_limit_offset_select_literal_binds(self):
@@ -4421,7 +4421,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         (
             "one",
             select(literal("someliteral")),
-            "SELECT [POSTCOMPILE_param_1] AS anon_1",
+            "SELECT __[POSTCOMPILE_param_1] AS anon_1",
             dict(
                 check_literal_execute={"param_1": "someliteral"},
                 check_post_param={},
@@ -4430,14 +4430,14 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         (
             "two",
             select(table1.c.myid + 3),
-            "SELECT mytable.myid + [POSTCOMPILE_myid_1] "
+            "SELECT mytable.myid + __[POSTCOMPILE_myid_1] "
             "AS anon_1 FROM mytable",
             dict(check_literal_execute={"myid_1": 3}, check_post_param={}),
         ),
         (
             "three",
             select(table1.c.myid.in_([4, 5, 6])),
-            "SELECT mytable.myid IN ([POSTCOMPILE_myid_1]) "
+            "SELECT mytable.myid IN (__[POSTCOMPILE_myid_1]) "
             "AS anon_1 FROM mytable",
             dict(
                 check_literal_execute={"myid_1": [4, 5, 6]},
@@ -4447,14 +4447,14 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         (
             "four",
             select(func.mod(table1.c.myid, 5)),
-            "SELECT mod(mytable.myid, [POSTCOMPILE_mod_2]) "
+            "SELECT mod(mytable.myid, __[POSTCOMPILE_mod_2]) "
             "AS mod_1 FROM mytable",
             dict(check_literal_execute={"mod_2": 5}, check_post_param={}),
         ),
         (
             "five",
             select(literal("foo").in_([])),
-            "SELECT [POSTCOMPILE_param_1] IN ([POSTCOMPILE_param_2]) "
+            "SELECT __[POSTCOMPILE_param_1] IN (__[POSTCOMPILE_param_2]) "
             "AS anon_1",
             dict(
                 check_literal_execute={"param_1": "foo", "param_2": []},
@@ -4464,7 +4464,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         (
             "six",
             select(literal(util.b("foo"))),
-            "SELECT [POSTCOMPILE_param_1] AS anon_1",
+            "SELECT __[POSTCOMPILE_param_1] AS anon_1",
             dict(
                 check_literal_execute={"param_1": util.b("foo")},
                 check_post_param={},
@@ -4473,7 +4473,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         (
             "seven",
             select(table1.c.myid == bindparam("foo", callable_=lambda: 5)),
-            "SELECT mytable.myid = [POSTCOMPILE_foo] AS anon_1 FROM mytable",
+            "SELECT mytable.myid = __[POSTCOMPILE_foo] AS anon_1 FROM mytable",
             dict(check_literal_execute={"foo": 5}, check_post_param={}),
         ),
         argnames="stmt, expected, kw",
@@ -4495,7 +4495,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
                 table1.c.myid == bindparam("foo", 5, literal_execute=True)
             ),
             "SELECT mytable.myid FROM mytable "
-            "WHERE mytable.myid = [POSTCOMPILE_foo]",
+            "WHERE mytable.myid = __[POSTCOMPILE_foo]",
         )
 
     def test_render_literal_execute_parameter_literal_binds(self):
@@ -4540,7 +4540,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
                 table1.c.myid.in_(bindparam("foo", expanding=True))
             ),
             "SELECT mytable.myid FROM mytable "
-            "WHERE mytable.myid IN ([POSTCOMPILE_foo])",
+            "WHERE mytable.myid IN (__[POSTCOMPILE_foo])",
         )
 
     def test_render_expanding_parameter_literal_binds(self):
@@ -5122,7 +5122,7 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateTable(t1),
-            "CREATE TABLE [SCHEMA__none].t1 (q INTEGER)",
+            "CREATE TABLE __[SCHEMA__none].t1 (q INTEGER)",
             schema_translate_map=schema_translate_map,
         )
         self.assert_compile(
@@ -5134,7 +5134,7 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateTable(t2),
-            "CREATE TABLE [SCHEMA_foo].t2 (q INTEGER)",
+            "CREATE TABLE __[SCHEMA_foo].t2 (q INTEGER)",
             schema_translate_map=schema_translate_map,
         )
         self.assert_compile(
@@ -5146,7 +5146,7 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateTable(t3),
-            "CREATE TABLE [SCHEMA_bar].t3 (q INTEGER)",
+            "CREATE TABLE __[SCHEMA_bar].t3 (q INTEGER)",
             schema_translate_map=schema_translate_map,
         )
         self.assert_compile(
@@ -5167,7 +5167,7 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateTable(t1),
-            "CREATE TABLE [SCHEMA__none].t1 (q INTEGER)",
+            "CREATE TABLE __[SCHEMA__none].t1 (q INTEGER)",
             schema_translate_map=schema_translate_map,
         )
         self.assert_compile(
@@ -5179,7 +5179,7 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateTable(t2),
-            "CREATE TABLE [SCHEMA_foo % ^ #].t2 (q INTEGER)",
+            "CREATE TABLE __[SCHEMA_foo % ^ #].t2 (q INTEGER)",
             schema_translate_map=schema_translate_map,
         )
         self.assert_compile(
@@ -5191,7 +5191,7 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateTable(t3),
-            "CREATE TABLE [SCHEMA_bar {}].t3 (q INTEGER)",
+            "CREATE TABLE __[SCHEMA_bar {}].t3 (q INTEGER)",
             schema_translate_map=schema_translate_map,
         )
         self.assert_compile(
@@ -5236,39 +5236,39 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateSequence(s1),
-            "CREATE SEQUENCE [SCHEMA__none].s1 START WITH 1",
+            "CREATE SEQUENCE __[SCHEMA__none].s1 START WITH 1",
             schema_translate_map=schema_translate_map,
         )
 
         self.assert_compile(
             s1.next_value(),
-            "<next sequence value: [SCHEMA__none].s1>",
+            "<next sequence value: __[SCHEMA__none].s1>",
             schema_translate_map=schema_translate_map,
             dialect="default_enhanced",
         )
 
         self.assert_compile(
             schema.CreateSequence(s2),
-            "CREATE SEQUENCE [SCHEMA_foo].s2 START WITH 1",
+            "CREATE SEQUENCE __[SCHEMA_foo].s2 START WITH 1",
             schema_translate_map=schema_translate_map,
         )
 
         self.assert_compile(
             s2.next_value(),
-            "<next sequence value: [SCHEMA_foo].s2>",
+            "<next sequence value: __[SCHEMA_foo].s2>",
             schema_translate_map=schema_translate_map,
             dialect="default_enhanced",
         )
 
         self.assert_compile(
             schema.CreateSequence(s3),
-            "CREATE SEQUENCE [SCHEMA_bar].s3 START WITH 1",
+            "CREATE SEQUENCE __[SCHEMA_bar].s3 START WITH 1",
             schema_translate_map=schema_translate_map,
         )
 
         self.assert_compile(
             s3.next_value(),
-            "<next sequence value: [SCHEMA_bar].s3>",
+            "<next sequence value: __[SCHEMA_bar].s3>",
             schema_translate_map=schema_translate_map,
             dialect="default_enhanced",
         )
@@ -5306,24 +5306,24 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             schema.CreateTable(t1),
-            "CREATE TABLE [SCHEMA__none].t1 "
-            "(id INTEGER DEFAULT <next sequence value: [SCHEMA__none].s1> "
+            "CREATE TABLE __[SCHEMA__none].t1 "
+            "(id INTEGER DEFAULT <next sequence value: __[SCHEMA__none].s1> "
             "NOT NULL, PRIMARY KEY (id))",
             schema_translate_map=schema_translate_map,
             dialect="default_enhanced",
         )
         self.assert_compile(
             schema.CreateTable(t2),
-            "CREATE TABLE [SCHEMA__none].t2 "
-            "(id INTEGER DEFAULT <next sequence value: [SCHEMA_foo].s2> "
+            "CREATE TABLE __[SCHEMA__none].t2 "
+            "(id INTEGER DEFAULT <next sequence value: __[SCHEMA_foo].s2> "
             "NOT NULL, PRIMARY KEY (id))",
             schema_translate_map=schema_translate_map,
             dialect="default_enhanced",
         )
         self.assert_compile(
             schema.CreateTable(t3),
-            "CREATE TABLE [SCHEMA__none].t3 "
-            "(id INTEGER DEFAULT <next sequence value: [SCHEMA_bar].s3> "
+            "CREATE TABLE __[SCHEMA__none].t3 "
+            "(id INTEGER DEFAULT <next sequence value: __[SCHEMA_bar].s3> "
             "NOT NULL, PRIMARY KEY (id))",
             schema_translate_map=schema_translate_map,
             dialect="default_enhanced",
@@ -5517,12 +5517,12 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
 
         self.assert_compile(
             stmt,
-            "SELECT [SCHEMA__none].myothertable.otherid, "
-            "[SCHEMA__none].myothertable.othername, "
+            "SELECT __[SCHEMA__none].myothertable.otherid, "
+            "__[SCHEMA__none].myothertable.othername, "
             "mytable_1.myid, mytable_1.name, mytable_1.description "
-            "FROM [SCHEMA__none].myothertable JOIN "
-            "[SCHEMA__none].mytable AS mytable_1 "
-            "ON [SCHEMA__none].myothertable.otherid = mytable_1.myid "
+            "FROM __[SCHEMA__none].myothertable JOIN "
+            "__[SCHEMA__none].mytable AS mytable_1 "
+            "ON __[SCHEMA__none].myothertable.otherid = mytable_1.myid "
             "WHERE mytable_1.name = :name_1",
             schema_translate_map=schema_translate_map,
         )

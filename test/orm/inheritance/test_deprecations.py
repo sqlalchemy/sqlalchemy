@@ -532,7 +532,7 @@ class RelationshipToSingleTest(
                 "companies.name AS companies_name FROM companies "
                 "LEFT OUTER JOIN employees AS employees_1 ON "
                 "companies.company_id = employees_1.company_id "
-                "AND employees_1.type IN ([POSTCOMPILE_type_1])",
+                "AND employees_1.type IN (__[POSTCOMPILE_type_1])",
             )
 
 
@@ -739,7 +739,7 @@ class SingleFromPolySelectableTest(
             "engineer.engineer_info AS engineer_engineer_info, "
             "engineer.manager_id AS engineer_manager_id "
             "FROM employee JOIN engineer ON employee.id = engineer.id) "
-            "AS anon_1 WHERE anon_1.employee_type IN ([POSTCOMPILE_type_1])",
+            "AS anon_1 WHERE anon_1.employee_type IN (__[POSTCOMPILE_type_1])",
         )
 
 

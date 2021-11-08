@@ -1639,7 +1639,7 @@ class DeclarativeMixinPropertyTest(
         self.assert_compile(
             s.query(Derived.data_syn).filter(Derived.data_syn == "foo"),
             "SELECT test.data AS test_data FROM test WHERE test.data = "
-            ":data_1 AND test.type IN ([POSTCOMPILE_type_1])",
+            ":data_1 AND test.type IN (__[POSTCOMPILE_type_1])",
             dialect="default",
             checkparams={"type_1": ["derived"], "data_1": "foo"},
         )

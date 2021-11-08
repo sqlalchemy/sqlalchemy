@@ -2465,7 +2465,7 @@ class LegacyOperatorTest(AssertsCompiledSQL, fixtures.TestBase):
 
         self.assert_compile(
             column("x").notin_(["foo", "bar"]),
-            "(x NOT IN ([POSTCOMPILE_x_1]))",
+            "(x NOT IN (__[POSTCOMPILE_x_1]))",
         )
 
     def test_issue_5429_operators(self):

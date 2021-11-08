@@ -2615,6 +2615,9 @@ def _schema_elements(schema):
     # test/dialect/mssql/test_compiler.py -> test_schema_many_tokens_*
     #
 
+    if schema.startswith("__[SCHEMA_"):
+        return None, schema
+
     push = []
     symbol = ""
     bracket = False
