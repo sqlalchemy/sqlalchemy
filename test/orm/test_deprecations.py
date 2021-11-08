@@ -7282,7 +7282,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             lambda users: users.select().where(users.c.id.in_([7, 8])),
             "SELECT anon_1.id AS anon_1_id, anon_1.name AS anon_1_name "
             "FROM (SELECT users.id AS id, users.name AS name "
-            "FROM users WHERE users.id IN ([POSTCOMPILE_id_1])) AS anon_1 "
+            "FROM users WHERE users.id IN (__[POSTCOMPILE_id_1])) AS anon_1 "
             "WHERE anon_1.name = :name_1",
         ),
         (
@@ -7292,14 +7292,14 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             "SELECT anon_1.users_id AS anon_1_users_id, anon_1.users_name "
             "AS anon_1_users_name FROM (SELECT users.id AS users_id, "
             "users.name AS users_name FROM users "
-            "WHERE users.id IN ([POSTCOMPILE_id_1])) AS anon_1 "
+            "WHERE users.id IN (__[POSTCOMPILE_id_1])) AS anon_1 "
             "WHERE anon_1.users_name = :name_1",
         ),
         (
             lambda User, sess: sess.query(User).where(User.id.in_([7, 8])),
             "SELECT anon_1.id AS anon_1_id, anon_1.name AS anon_1_name "
             "FROM (SELECT users.id AS id, users.name AS name "
-            "FROM users WHERE users.id IN ([POSTCOMPILE_id_1])) AS anon_1 "
+            "FROM users WHERE users.id IN (__[POSTCOMPILE_id_1])) AS anon_1 "
             "WHERE anon_1.name = :name_1",
         ),
     )
@@ -7813,7 +7813,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
                 "users_1.name AS users_1_name "
                 "FROM users AS users_1, ("
                 "SELECT users.id AS id, users.name AS name FROM users "
-                "WHERE users.id IN ([POSTCOMPILE_id_1])) AS anon_1 "
+                "WHERE users.id IN (__[POSTCOMPILE_id_1])) AS anon_1 "
                 "WHERE users_1.id > anon_1.id",
                 check_post_param={"id_1": [7, 8]},
             )
@@ -7826,7 +7826,8 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
                 "SELECT users_1.id AS users_1_id, "
                 "users_1.name AS users_1_name "
                 "FROM (SELECT users.id AS id, users.name AS name "
-                "FROM users WHERE users.id IN ([POSTCOMPILE_id_1])) AS anon_1 "
+                "FROM users WHERE users.id IN "
+                "(__[POSTCOMPILE_id_1])) AS anon_1 "
                 "JOIN users AS users_1 ON users_1.id > anon_1.id",
                 check_post_param={"id_1": [7, 8]},
             )
@@ -7839,7 +7840,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
                 "SELECT users_1.id AS users_1_id, "
                 "users_1.name AS users_1_name "
                 "FROM (SELECT users.id AS id, users.name AS name FROM "
-                "users WHERE users.id IN ([POSTCOMPILE_id_1])) AS anon_1 "
+                "users WHERE users.id IN (__[POSTCOMPILE_id_1])) AS anon_1 "
                 "JOIN users AS users_1 ON users_1.id > anon_1.id",
                 check_post_param={"id_1": [7, 8]},
             )
@@ -7854,7 +7855,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
                 "FROM "
                 "(SELECT users.id AS id, users.name AS name "
                 "FROM users WHERE users.id "
-                "IN ([POSTCOMPILE_id_1])) AS anon_1 "
+                "IN (__[POSTCOMPILE_id_1])) AS anon_1 "
                 "JOIN users AS users_1 ON users_1.id > anon_1.id",
                 check_post_param={"id_1": [7, 8]},
             )

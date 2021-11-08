@@ -2043,7 +2043,9 @@ class OperatorTest(QueryTest, AssertsCompiledSQL):
     def test_in(self):
         User = self.classes.User
 
-        self._test(User.id.in_(["a", "b"]), "users.id IN ([POSTCOMPILE_id_1])")
+        self._test(
+            User.id.in_(["a", "b"]), "users.id IN (__[POSTCOMPILE_id_1])"
+        )
 
     def test_in_on_relationship_not_supported(self):
         User, Address = self.classes.User, self.classes.Address

@@ -152,7 +152,7 @@ class LambdaElementTest(
             asserter_.assert_(
                 CompiledSQL(
                     "SELECT users.id FROM users WHERE users.name "
-                    "IN ([POSTCOMPILE_val_1]) ORDER BY users.id",
+                    "IN (__[POSTCOMPILE_val_1]) ORDER BY users.id",
                     params={"val_1": case},
                 )
             )
@@ -1130,7 +1130,7 @@ class LambdaElementTest(
     def test_in_parameters_one(self):
 
         expr1 = select(1).where(column("q").in_(["a", "b", "c"]))
-        self.assert_compile(expr1, "SELECT 1 WHERE q IN ([POSTCOMPILE_q_1])")
+        self.assert_compile(expr1, "SELECT 1 WHERE q IN (__[POSTCOMPILE_q_1])")
 
         self.assert_compile(
             expr1,
@@ -1141,7 +1141,7 @@ class LambdaElementTest(
 
     def test_in_parameters_two(self):
         expr2 = select(1).where(lambda: column("q").in_(["a", "b", "c"]))
-        self.assert_compile(expr2, "SELECT 1 WHERE q IN ([POSTCOMPILE_q_1])")
+        self.assert_compile(expr2, "SELECT 1 WHERE q IN (__[POSTCOMPILE_q_1])")
         self.assert_compile(
             expr2,
             "SELECT 1 WHERE q IN (:q_1_1, :q_1_2, :q_1_3)",
@@ -1153,7 +1153,7 @@ class LambdaElementTest(
         expr3 = lambdas.lambda_stmt(
             lambda: select(1).where(column("q").in_(["a", "b", "c"]))
         )
-        self.assert_compile(expr3, "SELECT 1 WHERE q IN ([POSTCOMPILE_q_1])")
+        self.assert_compile(expr3, "SELECT 1 WHERE q IN (__[POSTCOMPILE_q_1])")
         self.assert_compile(
             expr3,
             "SELECT 1 WHERE q IN (:q_1_1, :q_1_2, :q_1_3)",
@@ -1169,7 +1169,7 @@ class LambdaElementTest(
 
         expr4 = go(["a", "b", "c"])
         self.assert_compile(
-            expr4, "SELECT 1 WHERE q IN ([POSTCOMPILE_names_1])"
+            expr4, "SELECT 1 WHERE q IN (__[POSTCOMPILE_names_1])"
         )
         self.assert_compile(
             expr4,
@@ -1821,7 +1821,7 @@ class DeferredLambdaElementTest(
             opts=lambdas.LambdaOptions(track_closure_variables=False),
         )
 
-        self.assert_compile(elem.expr, "t1.q IN ([POSTCOMPILE_vv_1])")
+        self.assert_compile(elem.expr, "t1.q IN (__[POSTCOMPILE_vv_1])")
 
         assert_raises_message(
             exc.InvalidRequestError,

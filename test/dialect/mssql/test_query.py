@@ -220,6 +220,21 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         r = connection.execute(t1.insert(), dict(descr="hello"))
         eq_(r.inserted_primary_key, (100,))
 
+    def test_compiler_symbol_conflict(self, connection, metadata):
+        t = Table("t", metadata, Column("POSTCOMPILE_DATA", String(50)))
+
+        t.create(connection)
+
+        connection.execute(t.insert().values(POSTCOMPILE_DATA="some data"))
+        eq_(
+            connection.scalar(
+                select(t.c.POSTCOMPILE_DATA).where(
+                    t.c.POSTCOMPILE_DATA.in_(["some data", "some other data"])
+                )
+            ),
+            "some data",
+        )
+
     @testing.provide_metadata
     def _test_disable_scope_identity(self):
         engine = engines.testing_engine(options={"use_scope_identity": False})
