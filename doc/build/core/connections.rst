@@ -27,7 +27,7 @@ The typical usage of :func:`_sa.create_engine` is once per particular database
 URL, held globally for the lifetime of a single application process. A single
 :class:`_engine.Engine` manages many individual :term:`DBAPI` connections on behalf of
 the process and is intended to be called upon in a concurrent fashion. The
-:class:`_engine.Engine` is **not** synonymous to the DBAPI ``connect`` function, which
+:class:`_engine.Engine` is **not** synonymous to the DBAPI ``connect()`` function, which
 represents just one connection resource - the :class:`_engine.Engine` is most
 efficient when created just once at the module level of an application, not
 per-object or per-function call.
@@ -71,11 +71,8 @@ the perspective of the database itself, the connection pool will not actually
 "close" the connection assuming the pool has room to store this connection  for
 the next use.  When the connection is returned to the pool for re-use, the
 pooling mechanism issues a ``rollback()`` call on the DBAPI connection so that
-any transactional state or locks are removed, and the connection is ready for
-its next use.
-
-.. deprecated:: 2.0 The :class:`_engine.CursorResult` object is replaced in SQLAlchemy
-   2.0 with a newly refined object known as :class:`_future.Result`.
+any transactional state or locks are removed (this is known as
+:ref:`pool_reset_on_return`), and the connection is ready for its next use.
 
 Our example above illustrated the execution of a textual SQL string, which
 should be invoked by using the :func:`_expression.text` construct to indicate that
@@ -96,88 +93,164 @@ Using Transactions
   object internally. See :ref:`unitofwork_transaction` for further
   information.
 
-The :class:`~sqlalchemy.engine.Connection` object provides a :meth:`_engine.Connection.begin`
-method which returns a :class:`.Transaction` object.  Like the :class:`_engine.Connection`
-itself, this object is usually used within a Python ``with:`` block so
-that its scope is managed::
+Commit As You Go
+----------------
+
+The :class:`~sqlalchemy.engine.Connection` object always emits SQL statements
+within the context of a transaction block.   The first time the
+:meth:`_engine.Connection.execute` method is called to execute a SQL
+statement, this transaction is begun automatically, using a behavior known
+as **autobegin**.  The transaction remains in place for the scope of the
+:class:`_engine.Connection` object until the :meth:`_engine.Connection.commit`
+or :meth:`_engine.Connection.rollback` methods are called.  Subsequent
+to the transaction ending, the :class:`_engine.Connection` waits for the
+:meth:`_engine.Connection.execute` method to be called again, at which point
+it autobegins again.
+
+This calling style is referred towards as **commit as you go**, and is
+illustrated in the example below::
+
+    with engine.connect() as connection:
+        connection.execute(some_table.insert(), {"x": 7, "y": "this is some data"})
+        connection.execute(some_other_table.insert(), {"q": 8, "p": "this is some more data"})
+
+        connection.commit()  # commit the transaction
+
+.. topic::  the Python DBAPI is where autobegin actually happens
+
+    The design of "commit as you go" is intended to be complementary to the
+    design of the :term:`DBAPI`, which is the underyling database interface
+    that SQLAlchemy interacts with. In the DBAPI, the ``connection`` object does
+    not assume changes to the database will be automatically committed, instead
+    requiring in the default case that the ``connection.commit()`` method is
+    called in order to commit changes to the database. It should be noted that
+    the DBAPI itself **does not have a begin() method at all**.  All
+    Python DBAPIs implement "autobegin" as the primary means of managing
+    transactions, and handle the job of emitting a statement like BEGIN on the
+    connection when SQL statements are first emitted.
+    SQLAlchemy's API is basically re-stating this behavior in terms of higher
+    level Python objects.
+
+In "commit as you go" style, we can call upon :meth:`_engine.Connection.commit`
+and :meth:`_engine.Connection.rollback` methods freely within an ongoing
+sequence of other statements emitted using :meth:`_engine.Connection.execute`;
+each time the transaction is ended, and a new statement is
+emitted, a new transaction begins implicitly::
+
+    with engine.connect() as connection:
+        connection.execute(<some statement>)
+        connection.commit()  # commits "some statement"
+
+        # new transaction starts
+        connection.execute(<some other statement>)
+        connection.rollback()  # rolls back "some other statement"
+
+        # new transaction starts
+        connection.execute(<a third statement>)
+        connection.commit()  # commits "a third statement"
+
+.. versionadded:: 2.0 "commit as you go" style is a new feature of
+   SQLAlchemy 2.0.  It is also available in SQLAlchemy 1.4's "transitional"
+   mode when using a "future" style engine.
+
+Begin Once
+----------------
+
+The :class:`_engine.Connection` object provides a more explicit transaction
+management style referred towards as **begin once**. In contrast to "commit as
+you go", "begin once" allows the start point of the transaction to be
+stated explicitly,
+and allows that the transaction itself may be framed out as a context manager
+block so that the end of the transaction is instead implicit. To use
+"begin once", the :meth:`_engine.Connection.begin` method is used, which returns a
+:class:`.Transaction` object which represents the DBAPI transaction.
+This object also supports explicit management via its own
+:meth:`_engine.Transaction.commit` and :meth:`_engine.Transaction.rollback`
+methods, but as a preferred practice also supports the context manager interface,
+where it will commit itself when
+the block ends normally and emit a rollback if an exception is raised, before
+propagating the exception outwards. Below illustrates the form of a "begin
+once" block::
 
     with engine.connect() as connection:
         with connection.begin():
-            r1 = connection.execute(table1.select())
-            connection.execute(table1.insert(), {"col1": 7, "col2": "this is some data"})
+            connection.execute(some_table.insert(), {"x": 7, "y": "this is some data"})
+            connection.execute(some_other_table.insert(), {"q": 8, "p": "this is some more data"})
 
-The above block can be stated more simply by using the :meth:`_engine.Engine.begin`
-method of :class:`_engine.Engine`::
+        # transaction is committed
 
-    # runs a transaction
+Connect and Begin Once from the Engine
+---------------------------------------
+
+A convenient shorthand form for the above "begin once" block is to use
+the :meth:`_engine.Engine.begin` method at the level of the originating
+:class:`_engine.Engine` object, rather than performing the two separate
+steps of :meth:`_engine.Engine.connect` and :meth:`_engine.Connection.begin`;
+the :meth:`_engine.Engine.begin` method returns a special context manager
+that internally maintains both the context manager for the :class:`_engine.Connection`
+as well as the context manager for the :class:`_engine.Transaction` normally
+returned by the :meth:`_engine.Connection.begin` method::
+
     with engine.begin() as connection:
-        r1 = connection.execute(table1.select())
-        connection.execute(table1.insert(), {"col1": 7, "col2": "this is some data"})
+        connection.execute(some_table.insert(), {"x": 7, "y": "this is some data"})
+        connection.execute(some_other_table.insert(), {"q": 8, "p": "this is some more data"})
 
-The block managed by each ``.begin()`` method has the behavior such that
-the transaction is committed when the block completes.   If an exception is
-raised, the transaction is instead rolled back, and the exception propagated
-outwards.
+    # transaction is committed, and Connection is released to the connection
+    # pool
 
-The underlying object used to represent the transaction is the
-:class:`.Transaction` object.  This object is returned by the
-:meth:`_engine.Connection.begin` method and includes the methods
-:meth:`.Transaction.commit` and :meth:`.Transaction.rollback`.   The context
-manager calling form, which invokes these methods automatically, is recommended
-as a best practice.
+.. tip::
 
-.. _autocommit:
+    Within the :meth:`_engine.Engine.begin` block, we can call upon the
+    :meth:`_engine.Connection.commit` or :meth:`_engine.Connection.rollback`
+    methods, which will end the transaction normally demarcated by the block
+    ahead of time.  However, if we do so, no further SQL operations may be
+    emitted on the :class:`_engine.Connection` until the block ends::
 
-Library Level (e.g. emulated) Autocommit
-==========================================
+        >>> from sqlalchemy import create_engine
+        >>> e = create_engine("sqlite://", echo=True)
+        >>> with e.begin() as conn:
+        ...     conn.commit()
+        ...     conn.begin()
+        ...
+        2021-11-08 09:49:07,517 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+        2021-11-08 09:49:07,517 INFO sqlalchemy.engine.Engine COMMIT
+        Traceback (most recent call last):
+        ...
+        sqlalchemy.exc.InvalidRequestError: Can't operate on closed transaction inside
+        context manager.  Please complete the context manager before emitting
+        further commands.
 
-.. deprecated:: 1.4  The "autocommit" feature of SQLAlchemy Core is deprecated
-   and will not be present in version 2.0 of SQLAlchemy.   DBAPI-level
-   AUTOCOMMIT is now widely available which offers superior performance
-   and occurs transparently.  See :ref:`migration_20_autocommit` for background.
+Mixing Styles
+-------------
 
-.. note:: This section discusses the feature within SQLAlchemy that automatically
-   invokes the ``.commit()`` method on a DBAPI connection, however this is against
-   a DBAPI connection that **is itself transactional**.  For true AUTOCOMMIT,
-   see the next section :ref:`dbapi_autocommit`.
+The "commit as you go" and "begin once" styles can be freely mixed within
+a single :meth:`_engine.Engine.connect` block, provided that the call to
+:meth:`_engine.Connection.begin` does not conflict with the "autobegin"
+behavior.  To accomplish this, :meth:`_engine.Connection.begin` should only
+be called either before any SQL statements have been emitted, or directly
+after a previous call to :meth:`_engine.Connection.commit` or :meth:`_engine.Connection.rollback`::
 
-The previous transaction example illustrates how to use :class:`.Transaction`
-so that several executions can take part in the same transaction. What happens
-when we issue an INSERT, UPDATE or DELETE call without using
-:class:`.Transaction`?  While some DBAPI
-implementations provide various special "non-transactional" modes, the core
-behavior of DBAPI per PEP-0249 is that a *transaction is always in progress*,
-providing only ``rollback()`` and ``commit()`` methods but no ``begin()``.
-SQLAlchemy assumes this is the case for any given DBAPI.
+    with engine.connect() as connection:
+        with connection.begin():
+            # run statements in a "begin once" block
+            connection.execute(some_table.insert(), {"x": 7, "y": "this is some data"})
 
-Given this requirement, SQLAlchemy implements its own "autocommit" feature which
-works completely consistently across all backends. This is achieved by
-detecting statements which represent data-changing operations, i.e. INSERT,
-UPDATE, DELETE, as well as data definition language (DDL) statements such as
-CREATE TABLE, ALTER TABLE, and then issuing a COMMIT automatically if no
-transaction is in progress. The detection is based on the presence of the
-``autocommit=True`` execution option on the statement.   If the statement
-is a text-only statement and the flag is not set, a regular expression is used
-to detect INSERT, UPDATE, DELETE, as well as a variety of other commands
-for a particular backend::
+        # transaction is committed
 
-    conn = engine.connect()
-    conn.execute(text("INSERT INTO users VALUES (1, 'john')"))  # autocommits
+        # run a new statement outside of a block. The connection
+        # autobegins
+        connection.execute(some_other_table.insert(), {"q": 8, "p": "this is some more data"})
 
-The "autocommit" feature is only in effect when no :class:`.Transaction` has
-otherwise been declared.   This means the feature is not generally used with
-the ORM, as the :class:`.Session` object by default always maintains an
-ongoing :class:`.Transaction`.
+        # commit explicitly
+        connection.commit()
 
-Full control of the "autocommit" behavior is available using the generative
-:meth:`_engine.Connection.execution_options` method provided on :class:`_engine.Connection`
-and :class:`_engine.Engine`, using the "autocommit" flag which will
-turn on or off the autocommit for the selected scope. For example, a
-:func:`_expression.text` construct representing a stored procedure that commits might use
-it so that a SELECT statement will issue a COMMIT::
+        # can use a "begin once" block here
+        with connection.begin():
+            # run more statements
+            connection.execute(...)
 
-    with engine.connect().execution_options(autocommit=True) as conn:
-        conn.execute(text("SELECT my_mutating_procedure()"))
+When developing code that uses "begin once", the library will raise
+:class:`_exc.InvalidRequestError` if a transaction was already "autobegun".
 
 .. _dbapi_autocommit:
 
@@ -315,7 +388,8 @@ reverted when a connection is returned to the connection pool.
 Understanding the DBAPI-Level Autocommit Isolation Level
 ---------------------------------------------------------
 
-In the parent section, we introduced the concept of the :paramref:`_engine.Connection.execution_options.isolation_level`
+In the parent section, we introduced the concept of the
+:paramref:`_engine.Connection.execution_options.isolation_level`
 parameter and how it can be used to set database isolation levels, including
 DBAPI-level "autocommit" which is treated by SQLAlchemy as another transaction
 isolation level.   In this section we will attempt to clarify the implications
@@ -331,20 +405,29 @@ If we wanted to check out a :class:`_engine.Connection` object and use it
 
 Above illustrates normal usage of "DBAPI autocommit" mode.   There is no
 need to make use of methods such as :meth:`_engine.Connection.begin`
-or :meth:`_future.Connection.commit` (noting the latter applies to :term:`2.0 style` usage).
+or :meth:`_engine.Connection.commit`, as all statements are committed
+to the database immediately.  When the block ends, the :class:`_engine.Connection`
+object will revert the "autocommit" isolation level, and the DBAPI connection
+is released to the connection pool where the DBAPI ``connection.rollback()``
+method will normally be invoked, but as the above statements were already
+committed, this rollback has no change on the state of the database.
 
-What's important to note however is that the above autocommit mode is
-**persistent on that particular Connection until we change it directly using
-isolation_level again**.  The isolation level is also reset on the DBAPI
-connection when we :term:`release` the connection
-back to the connection pool.  However, calling upon :meth:`_engine.Connection.begin`
-**will not** change the isolation level, meaning we stay in autocommit.  The
-example below illustrates this::
+It is important to note that "autocommit" mode
+persists even when the :meth:`_engine.Connection.begin` method is called;
+the DBAPI will not emit any BEGIN to the database, nor will it emit
+COMMIT when :meth:`_engine.Connection.commit` is called.  This usage is also
+not an error scenario, as it is expected that the "autocommit" isolation level
+may be applied to code that otherwise was written assuming a transactional context;
+the "isolation level" is, after all, a configurational detail of the transaction
+itself just like any other isolation level.
+
+In the example below, statements remain
+**autocommitting** regardless of SQLAlchemy-level transaction blocks::
 
   with engine.connect() as connection:
       connection = connection.execution_options(isolation_level="AUTOCOMMIT")
 
-      # this begin() does nothing, isolation stays at AUTOCOMMIT
+      # this begin() does not affect the DBAPI connection, isolation stays at AUTOCOMMIT
       with connection.begin() as trans:
           connection.execute(<statement>)
           connection.execute(<statement>)
@@ -357,11 +440,12 @@ it probably will have no effect due to autocommit mode::
     ...
     INFO sqlalchemy.engine.Engine COMMIT using DBAPI connection.commit(), DBAPI should ignore due to autocommit mode
 
-Similarly, when using :term:`2.0 style` :paramref:`_sa.create_engine.future`
-mode, the :class:`_engine.Connection` will use :ref:`autobegin <migration_20_autocommit>`
-behavior, meaning that the pattern below will raise an error::
-
-  engine = create_engine(..., future=True)
+At the same time, even though we are using "DBAPI autocommit", SQLAlchemy's
+transactional semantics, that is, the in-Python behavior of :meth:`_engine.Connection.begin`
+as well as the behavior of "autobegin", **remain in place, even though these
+don't impact the DBAPI connection itself**.  To illustrate, the code
+below will raise an error, as :meth:`_engine.Connection.begin` is being
+called after autobegin has already occurred::
 
   with engine.connect() as connection:
       connection = connection.execution_options(isolation_level="AUTOCOMMIT")
@@ -373,16 +457,27 @@ behavior, meaning that the pattern below will raise an error::
       with connection.begin() as trans:
           connection.execute(<statement>)
 
-This is all to demonstrate that the autocommit isolation level setting is
-**completely independent from the begin/commit behavior of the SQLAlchemy
-Connection object**. The "autocommit" mode will not interact with :meth:`_engine.Connection.begin`
-in any way and the :class:`_engine.Connection` does not consult this status
-when performing its own state changes with regards to the transaction (with
-the exception of suggesting within engine logging that these blocks are not
-actually committing).  The rationale for this design is to maintain a
-completely consistent usage pattern with the :class:`_engine.Connection` where
-DBAPI-autocommit mode can be changed independently without indicating any code
-changes elsewhere.
+The above example also demonstrates the same theme that the "autocommit"
+isolation level is a configurational detail of the underlying database
+transaction, and is independent of the begin/commit behavior of the SQLAlchemy
+Connection object. The "autocommit" mode will not interact with
+:meth:`_engine.Connection.begin` in any way and the :class:`_engine.Connection`
+does not consult this status when performing its own state changes with regards
+to the transaction (with the exception of suggesting within engine logging that
+these blocks are not actually committing). The rationale for this design is to
+maintain a completely consistent usage pattern with the
+:class:`_engine.Connection` where DBAPI-autocommit mode can be changed
+independently without indicating any code changes elsewhere.
+
+Changing Between Isolation Levels
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. topic:: TL;DR;
+
+    prefer to use individual :class:`_engine.Connection` objects
+    each with just one isolation level, rather than switching isolation on a single
+    :class:`_engine.Connection`.  The code will be easier to read and less
+    error prone.
 
 Isolation level settings, including autocommit mode, are reset automatically
 when the connection is released back to the connection pool. Therefore it is
@@ -393,12 +488,13 @@ To illustrate how to use "autocommit" in an ad-hoc mode within the scope of a
 single :class:`_engine.Connection` checkout, the
 :paramref:`_engine.Connection.execution_options.isolation_level` parameter
 must be re-applied with the previous isolation level.
-We can write our above block "correctly" as (noting 2.0 style usage below)::
+The previous section illustrated an attempt to call :meth:`_engine.Connection.begin`
+in order to start a transaction while autocommit was taking place; we can
+rewrite that example to actually do so by first reverting the isolation level
+before we call upon :meth:`_engine.Connection.begin`::
 
     # if we wanted to flip autocommit on and off on a single connection/
     # which... we usually don't.
-
-    engine = create_engine(..., future=True)
 
     with engine.connect() as connection:
 
@@ -407,7 +503,7 @@ We can write our above block "correctly" as (noting 2.0 style usage below)::
         # run statement(s) in autocommit mode
         connection.execute(<statement>)
 
-        # "commit" the autobegun "transaction" (2.0/future mode only)
+        # "commit" the autobegun "transaction"
         connection.commit()
 
         # switch to default isolation level
@@ -424,8 +520,6 @@ probably a better idea to work with the architecture of of the
 :class:`_engine.Connection` which already handles resetting of isolation level
 automatically upon checkin. The **preferred** way to write the above is to
 use two blocks ::
-
-    engine = create_engine(..., future=True)
 
     # use an autocommit block
     with engine.connect().execution_options(isolation_level="AUTOCOMMIT") as connection:
@@ -553,139 +647,6 @@ execution option::
         # process row
 
 
-.. _dbengine_implicit:
-
-
-Connectionless Execution, Implicit Execution
-============================================
-
-.. deprecated:: 2.0 The features of "connectionless" and "implicit" execution
-   in SQLAlchemy are deprecated and will be removed in version 2.0.  See
-   :ref:`migration_20_implicit_execution` for background.
-
-Recall from the first section we mentioned executing with and without explicit
-usage of :class:`_engine.Connection`. "Connectionless" execution
-refers to the usage of the ``execute()`` method on an object
-which is not a :class:`_engine.Connection`.  This was illustrated using the
-:meth:`_engine.Engine.execute` method of :class:`_engine.Engine`::
-
-    result = engine.execute(text("select username from users"))
-    for row in result:
-        print("username:", row['username'])
-
-In addition to "connectionless" execution, it is also possible
-to use the :meth:`~.Executable.execute` method of
-any :class:`.Executable` construct, which is a marker for SQL expression objects
-that support execution.   The SQL expression object itself references an
-:class:`_engine.Engine` or :class:`_engine.Connection` known as the **bind**, which it uses
-in order to provide so-called "implicit" execution services.
-
-Given a table as below::
-
-    from sqlalchemy import MetaData, Table, Column, Integer
-
-    metadata_obj = MetaData()
-    users_table = Table('users', metadata_obj,
-        Column('id', Integer, primary_key=True),
-        Column('name', String(50))
-    )
-
-Explicit execution delivers the SQL text or constructed SQL expression to the
-:meth:`_engine.Connection.execute` method of :class:`~sqlalchemy.engine.Connection`:
-
-.. sourcecode:: python+sql
-
-    engine = create_engine('sqlite:///file.db')
-    with engine.connect() as connection:
-        result = connection.execute(users_table.select())
-        for row in result:
-            # ....
-
-Explicit, connectionless execution delivers the expression to the
-:meth:`_engine.Engine.execute` method of :class:`~sqlalchemy.engine.Engine`:
-
-.. sourcecode:: python+sql
-
-    engine = create_engine('sqlite:///file.db')
-    result = engine.execute(users_table.select())
-    for row in result:
-        # ....
-    result.close()
-
-Implicit execution is also connectionless, and makes usage of the :meth:`~.Executable.execute` method
-on the expression itself.   This method is provided as part of the
-:class:`.Executable` class, which refers to a SQL statement that is sufficient
-for being invoked against the database.    The method makes usage of
-the assumption that either an
-:class:`~sqlalchemy.engine.Engine` or
-:class:`~sqlalchemy.engine.Connection` has been **bound** to the expression
-object.   By "bound" we mean that the special attribute :attr:`_schema.MetaData.bind`
-has been used to associate a series of
-:class:`_schema.Table` objects and all SQL constructs derived from them with a specific
-engine::
-
-    engine = create_engine('sqlite:///file.db')
-    metadata_obj.bind = engine
-    result = users_table.select().execute()
-    for row in result:
-        # ....
-    result.close()
-
-Above, we associate an :class:`_engine.Engine` with a :class:`_schema.MetaData` object using
-the special attribute :attr:`_schema.MetaData.bind`.  The :func:`_expression.select` construct produced
-from the :class:`_schema.Table` object has a method :meth:`~.Executable.execute`, which will
-search for an :class:`_engine.Engine` that's "bound" to the :class:`_schema.Table`.
-
-Overall, the usage of "bound metadata" has three general effects:
-
-* SQL statement objects gain an :meth:`.Executable.execute` method which automatically
-  locates a "bind" with which to execute themselves.
-* The ORM :class:`.Session` object supports using "bound metadata" in order
-  to establish which :class:`_engine.Engine` should be used to invoke SQL statements
-  on behalf of a particular mapped class, though the :class:`.Session`
-  also features its own explicit system of establishing complex :class:`_engine.Engine`/
-  mapped class configurations.
-* The :meth:`_schema.MetaData.create_all`, :meth:`_schema.MetaData.drop_all`, :meth:`_schema.Table.create`,
-  :meth:`_schema.Table.drop`, and "autoload" features all make usage of the bound
-  :class:`_engine.Engine` automatically without the need to pass it explicitly.
-
-.. note::
-
-    The concepts of "bound metadata" and "implicit execution" are not emphasized in modern SQLAlchemy.
-    While they offer some convenience, they are no longer required by any API and
-    are never necessary.
-
-    In applications where multiple :class:`_engine.Engine` objects are present, each one logically associated
-    with a certain set of tables (i.e. *vertical sharding*), the "bound metadata" technique can be used
-    so that individual :class:`_schema.Table` can refer to the appropriate :class:`_engine.Engine` automatically;
-    in particular this is supported within the ORM via the :class:`.Session` object
-    as a means to associate :class:`_schema.Table` objects with an appropriate :class:`_engine.Engine`,
-    as an alternative to using the bind arguments accepted directly by the :class:`.Session`.
-
-    However, the "implicit execution" technique is not at all appropriate for use with the
-    ORM, as it bypasses the transactional context maintained by the :class:`.Session`.
-
-    Overall, in the *vast majority* of cases, "bound metadata" and "implicit execution"
-    are **not useful**.   While "bound metadata" has a marginal level of usefulness with regards to
-    ORM configuration, "implicit execution" is a very old usage pattern that in most
-    cases is more confusing than it is helpful, and its usage is discouraged.
-    Both patterns seem to encourage the overuse of expedient "short cuts" in application design
-    which lead to problems later on.
-
-    Modern SQLAlchemy usage, especially the ORM, places a heavy stress on working within the context
-    of a transaction at all times; the "implicit execution" concept makes the job of
-    associating statement execution with a particular transaction much more difficult.
-    The :meth:`.Executable.execute` method on a particular SQL statement
-    usually implies that the execution is not part of any particular transaction, which is
-    usually not the desired effect.
-
-In both "connectionless" examples, the
-:class:`~sqlalchemy.engine.Connection` is created behind the scenes; the
-:class:`~sqlalchemy.engine.CursorResult` returned by the ``execute()``
-call references the :class:`~sqlalchemy.engine.Connection` used to issue
-the SQL statement. When the :class:`_engine.CursorResult` is closed, the underlying
-:class:`_engine.Connection` is closed for us, resulting in the
-DBAPI connection being returned to the pool with transactional resources removed.
 
 .. _schema_translating:
 
