@@ -90,7 +90,6 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import pep435_enum
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import picklers
-from sqlalchemy.testing.util import round_decimal
 
 
 def _all_dialect_modules():
@@ -3458,7 +3457,7 @@ class NumericRawSQLTest(fixtures.TestBase):
         metadata.create_all(connection)
         connection.execute(t.insert(), dict(val=data))
 
-    @testing.fails_on("sqlite", "Doesn't provide Decimal results natively")
+    @testing.requires.numeric_received_as_decimal_untyped
     @testing.provide_metadata
     def test_decimal_fp(self, connection):
         metadata = self.metadata
@@ -3469,7 +3468,7 @@ class NumericRawSQLTest(fixtures.TestBase):
         assert isinstance(val, decimal.Decimal)
         eq_(val, decimal.Decimal("45.5"))
 
-    @testing.fails_on("sqlite", "Doesn't provide Decimal results natively")
+    @testing.requires.numeric_received_as_decimal_untyped
     @testing.provide_metadata
     def test_decimal_int(self, connection):
         metadata = self.metadata
@@ -3495,11 +3494,7 @@ class NumericRawSQLTest(fixtures.TestBase):
         val = connection.exec_driver_sql("select val from t").scalar()
         assert isinstance(val, float)
 
-        # some DBAPIs have unusual float handling
-        if testing.against("oracle+cx_oracle"):
-            eq_(round_decimal(val, 3), 46.583)
-        else:
-            eq_(val, 46.583)
+        eq_(val, 46.583)
 
 
 class IntervalTest(fixtures.TablesTest, AssertsExecutionResults):

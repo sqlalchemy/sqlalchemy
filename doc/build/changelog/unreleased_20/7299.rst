@@ -1,0 +1,17 @@
+.. change::
+    :tags: bug, sqlite
+    :tickets: 7299
+
+    Removed the warning that emits from the :class:`_types.Numeric` type about
+    DBAPIs not supporting Decimal values natively. This warning was oriented
+    towards SQLite, which does not have any real way without additional
+    extensions or workarounds of handling precision numeric values more than 15
+    significant digits as it only uses floating point math to represent
+    numbers. As this is a known and documented limitation in SQLite itself, and
+    not a quirk of the pysqlite driver, there's no need for SQLAlchemy to warn
+    for this. The change does not otherwise modify how precision numerics are
+    handled. Values can continue to be handled as ``Decimal()`` or ``float()``
+    as configured with the :class:`_types.Numeric`, :class:`_types.Float` , and
+    related datatypes, just without the ability to maintain precision beyond 15
+    significant digits when using SQLite, unless alternate representations such
+    as strings are used.

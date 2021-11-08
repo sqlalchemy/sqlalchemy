@@ -490,16 +490,6 @@ class Numeric(_LookupExpressionAdapter, TypeEngine):
                 # we're a "numeric", DBAPI will give us Decimal directly
                 return None
             else:
-                util.warn(
-                    "Dialect %s+%s does *not* support Decimal "
-                    "objects natively, and SQLAlchemy must "
-                    "convert from floating point - rounding "
-                    "errors and other issues may occur. Please "
-                    "consider storing Decimal numbers as strings "
-                    "or integers on this platform for lossless "
-                    "storage." % (dialect.name, dialect.driver)
-                )
-
                 # we're a "numeric", DBAPI returns floats, convert.
                 return processors.to_decimal_processor_factory(
                     decimal.Decimal,

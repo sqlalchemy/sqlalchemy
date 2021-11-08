@@ -35,6 +35,7 @@ from ... import testing
 from ... import Text
 from ... import Time
 from ... import TIMESTAMP
+from ... import type_coerce
 from ... import TypeDecorator
 from ... import Unicode
 from ... import UnicodeText
@@ -524,9 +525,6 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
 
     @testing.fixture
     def do_numeric_test(self, metadata, connection):
-        @testing.emits_warning(
-            r".*does \*not\* support Decimal objects natively"
-        )
         def run(type_, input_, output, filter_=None, check_scale=False):
             t = Table("t", metadata, Column("x", type_))
             t.create(connection)
@@ -541,9 +539,30 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
             if check_scale:
                 eq_([str(x) for x in result], [str(x) for x in output])
 
+            connection.execute(t.delete())
+
+            # test that this is actually a number!
+            # note we have tiny scale here as we have tests with very
+            # small scale Numeric types.  PostgreSQL will raise an error
+            # if you use values outside the available scale.
+            if type_.asdecimal:
+                test_value = decimal.Decimal("2.9")
+                add_value = decimal.Decimal("37.12")
+            else:
+                test_value = 2.9
+                add_value = 37.12
+
+            connection.execute(t.insert(), {"x": test_value})
+            assert_we_are_a_number = connection.scalar(
+                select(type_coerce(t.c.x + add_value, type_))
+            )
+            eq_(
+                round(assert_we_are_a_number, 3),
+                round(test_value + add_value, 3),
+            )
+
         return run
 
-    @testing.emits_warning(r".*does \*not\* support Decimal objects natively")
     def test_render_literal_numeric(self, literal_round_trip):
         literal_round_trip(
             Numeric(precision=8, scale=4),
@@ -551,7 +570,6 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
             [decimal.Decimal("15.7563")],
         )
 
-    @testing.emits_warning(r".*does \*not\* support Decimal objects natively")
     def test_render_literal_numeric_asfloat(self, literal_round_trip):
         literal_round_trip(
             Numeric(precision=8, scale=4, asdecimal=False),
@@ -637,14 +655,12 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
     # to render CAST unconditionally since this is kind of an edge case.
 
     @testing.requires.implicit_decimal_binds
-    @testing.emits_warning(r".*does \*not\* support Decimal objects natively")
     def test_decimal_coerce_round_trip(self, connection):
         expr = decimal.Decimal("15.7563")
 
         val = connection.scalar(select(literal(expr)))
         eq_(val, expr)
 
-    @testing.emits_warning(r".*does \*not\* support Decimal objects natively")
     def test_decimal_coerce_round_trip_w_cast(self, connection):
         expr = decimal.Decimal("15.7563")
 
@@ -984,7 +1000,6 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         return datatype, compare_value, p_s
 
     @_index_fixtures(False)
-    @testing.emits_warning(r".*does \*not\* support Decimal objects natively")
     def test_index_typed_access(self, datatype, value):
         data_table = self.tables.data_table
         data_element = {"key1": value}
@@ -1007,7 +1022,6 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             is_(type(roundtrip), type(compare_value))
 
     @_index_fixtures(True)
-    @testing.emits_warning(r".*does \*not\* support Decimal objects natively")
     def test_index_typed_comparison(self, datatype, value):
         data_table = self.tables.data_table
         data_element = {"key1": value}
@@ -1032,7 +1046,6 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             eq_(row, (compare_value,))
 
     @_index_fixtures(True)
-    @testing.emits_warning(r".*does \*not\* support Decimal objects natively")
     def test_path_typed_comparison(self, datatype, value):
         data_table = self.tables.data_table
         data_element = {"key1": {"subkey1": value}}
