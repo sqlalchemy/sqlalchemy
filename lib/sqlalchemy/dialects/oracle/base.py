@@ -306,7 +306,7 @@ an INSERT in order to increment a sequence within an INSERT statement and get
 the value back at the same time. To disable this feature across the board,
 specify ``implicit_returning=False`` to :func:`_sa.create_engine`::
 
-    engine = create_engine("oracle://scott:tiger@dsn",
+    engine = create_engine("oracle+cx_oracle://scott:tiger@dsn",
                            implicit_returning=False)
 
 Implicit returning can also be disabled on a table-by-table basis as a table
@@ -450,7 +450,7 @@ the ``exclude_tablespaces`` parameter::
 
     # exclude SYSAUX and SOME_TABLESPACE, but not SYSTEM
     e = create_engine(
-      "oracle://scott:tiger@xe",
+      "oracle+cx_oracle://scott:tiger@xe",
       exclude_tablespaces=["SYSAUX", "SOME_TABLESPACE"])
 
 .. versionadded:: 1.1

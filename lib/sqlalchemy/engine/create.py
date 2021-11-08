@@ -42,7 +42,7 @@ def create_engine(url, **kwargs):
     first positional argument, usually a string
     that indicates database dialect and connection arguments::
 
-        engine = create_engine("postgresql://scott:tiger@localhost/test")
+        engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test")
 
     .. note::
 
@@ -55,7 +55,7 @@ def create_engine(url, **kwargs):
     and its underlying :class:`.Dialect` and :class:`_pool.Pool`
     constructs::
 
-        engine = create_engine("mysql://scott:tiger@hostname/dbname",
+        engine = create_engine("mysql+mysqldb://scott:tiger@hostname/dbname",
                                     encoding='latin1', echo=True)
 
     The string form of the URL is

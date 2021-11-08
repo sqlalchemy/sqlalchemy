@@ -421,7 +421,7 @@ familiar with.
   **pool size plus the max overflow**.     That means if you have configured
   your engine as::
 
-   engine = create_engine("mysql://u:p@host/db", pool_size=10, max_overflow=20)
+   engine = create_engine("mysql+mysqldb://u:p@host/db", pool_size=10, max_overflow=20)
 
   The above :class:`_engine.Engine` will allow **at most 30 connections** to be in
   play at any time, not including connections that were detached from the

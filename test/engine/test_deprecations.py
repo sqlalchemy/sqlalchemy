@@ -278,7 +278,7 @@ class CreateEngineTest(fixtures.TestBase):
             "only argument accepted is 'mock'"
         ):
             e = create_engine(
-                "postgresql://", strategy="mock", executor=executor
+                "postgresql+psycopg2://", strategy="mock", executor=executor
             )
 
         assert isinstance(e, MockConnection)
@@ -292,7 +292,7 @@ class CreateEngineTest(fixtures.TestBase):
                 tsa.exc.ArgumentError,
                 "unknown strategy: 'threadlocal'",
                 create_engine,
-                "postgresql://",
+                "postgresql+psycopg2://",
                 strategy="threadlocal",
             )
 
@@ -302,7 +302,7 @@ class CreateEngineTest(fixtures.TestBase):
             "and no longer has any effect."
         ):
             create_engine(
-                "postgresql://",
+                "postgresql+psycopg2://",
                 empty_in_strategy="static",
                 module=Mock(),
                 _initialize=False,

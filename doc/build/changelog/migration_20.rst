@@ -318,7 +318,7 @@ The new engine is described at :class:`_future.Engine` which delivers a new
 
     from sqlalchemy import create_engine
 
-    engine = create_engine("postgresql:///")
+    engine = create_engine("postgresql+psycopg2:///")
 
     with engine.connect() as conn:
         conn.execute(text("insert into table (x) values (:some_x)"), {"some_x": 10})

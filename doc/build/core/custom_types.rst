@@ -446,7 +446,7 @@ transparently::
                         PGPString("this is my passphrase")),
                 )
 
-    engine = create_engine("postgresql://scott:tiger@localhost/test", echo=True)
+    engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test", echo=True)
     with engine.begin() as conn:
         metadata_obj.create_all(conn)
 

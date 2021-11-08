@@ -286,10 +286,10 @@ class URL(
         E.g.::
 
             >>> from sqlalchemy.engine import make_url
-            >>> url = make_url("postgresql://user:pass@host/dbname")
+            >>> url = make_url("postgresql+psycopg2://user:pass@host/dbname")
             >>> url = url.update_query_string("alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt")
             >>> str(url)
-            'postgresql://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt'
+            'postgresql+psycopg2://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt'
 
         :param query_string: a URL escaped query string, not including the
          question mark.
@@ -320,10 +320,10 @@ class URL(
         E.g.::
 
             >>> from sqlalchemy.engine import make_url
-            >>> url = make_url("postgresql://user:pass@host/dbname")
+            >>> url = make_url("postgresql+psycopg2://user:pass@host/dbname")
             >>> url = url.update_query_pairs([("alt_host", "host1"), ("alt_host", "host2"), ("ssl_cipher", "/path/to/crt")])
             >>> str(url)
-            'postgresql://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt'
+            'postgresql+psycopg2://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt'
 
         :param key_value_pairs: A sequence of tuples containing two strings
          each.
@@ -389,10 +389,10 @@ class URL(
 
 
             >>> from sqlalchemy.engine import make_url
-            >>> url = make_url("postgresql://user:pass@host/dbname")
+            >>> url = make_url("postgresql+psycopg2://user:pass@host/dbname")
             >>> url = url.update_query_dict({"alt_host": ["host1", "host2"], "ssl_cipher": "/path/to/crt"})
             >>> str(url)
-            'postgresql://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt'
+            'postgresql+psycopg2://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt'
 
 
         :param query_parameters: A dictionary with string keys and values
@@ -485,7 +485,7 @@ class URL(
 
 
             >>> from sqlalchemy.engine import make_url
-            >>> url = make_url("postgresql://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt")
+            >>> url = make_url("postgresql+psycopg2://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt")
             >>> url.query
             immutabledict({'alt_host': ('host1', 'host2'), 'ssl_cipher': '/path/to/crt'})
             >>> url.normalized_query

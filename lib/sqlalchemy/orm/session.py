@@ -1001,10 +1001,10 @@ class Session(_SessionClassMethods):
            described at :meth:`.Session.get_bind`.  Usage looks like::
 
             Session = sessionmaker(binds={
-                SomeMappedClass: create_engine('postgresql://engine1'),
-                SomeDeclarativeBase: create_engine('postgresql://engine2'),
-                some_mapper: create_engine('postgresql://engine3'),
-                some_table: create_engine('postgresql://engine4'),
+                SomeMappedClass: create_engine('postgresql+psycopg2://engine1'),
+                SomeDeclarativeBase: create_engine('postgresql+psycopg2://engine2'),
+                some_mapper: create_engine('postgresql+psycopg2://engine3'),
+                some_table: create_engine('postgresql+psycopg2://engine4'),
                 })
 
            .. seealso::
@@ -1086,7 +1086,7 @@ class Session(_SessionClassMethods):
         :param autocommit: the "autocommit" keyword is present for backwards
             compatibility but must remain at its default value of ``False``.
 
-        """
+        """  # noqa
 
         # considering allowing the "autocommit" keyword to still be accepted
         # as long as it's False, so that external test suites, oslo.db etc
@@ -3906,7 +3906,7 @@ class sessionmaker(_SessionClassMethods):
 
         # an Engine, which the Session will use for connection
         # resources
-        engine = create_engine('postgresql://scott:tiger@localhost/')
+        engine = create_engine('postgresql+psycopg2://scott:tiger@localhost/')
 
         Session = sessionmaker(engine)
 

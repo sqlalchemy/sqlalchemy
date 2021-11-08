@@ -16,6 +16,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing import ne_
 from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.mock import call
@@ -447,7 +448,7 @@ class CreateEngineTest(fixtures.TestBase):
     def test_connect_query(self):
         dbapi = MockDBAPI(foober="12", lala="18", fooz="somevalue")
         e = create_engine(
-            "postgresql://scott:tiger@somehost/test?foobe"
+            "postgresql+psycopg2://scott:tiger@somehost/test?foobe"
             "r=12&lala=18&fooz=somevalue",
             module=dbapi,
             _initialize=False,
@@ -459,7 +460,8 @@ class CreateEngineTest(fixtures.TestBase):
             foober=12, lala=18, hoho={"this": "dict"}, fooz="somevalue"
         )
         e = create_engine(
-            "postgresql://scott:tiger@somehost/test?fooz=" "somevalue",
+            "postgresql+psycopg2://scott:tiger@somehost/test?fooz="
+            "somevalue",
             connect_args={"foober": 12, "lala": 18, "hoho": {"this": "dict"}},
             module=dbapi,
             _initialize=False,
@@ -470,7 +472,7 @@ class CreateEngineTest(fixtures.TestBase):
         dbapi = mock_dbapi
 
         config = {
-            "sqlalchemy.url": "postgresql://scott:tiger@somehost/test"
+            "sqlalchemy.url": "postgresql+psycopg2://scott:tiger@somehost/test"
             "?fooz=somevalue",
             "sqlalchemy.pool_recycle": "50",
             "sqlalchemy.echo": "true",
@@ -479,7 +481,7 @@ class CreateEngineTest(fixtures.TestBase):
         e = engine_from_config(config, module=dbapi, _initialize=False)
         assert e.pool._recycle == 50
         assert e.url == url.make_url(
-            "postgresql://scott:tiger@somehost/test?foo" "z=somevalue"
+            "postgresql+psycopg2://scott:tiger@somehost/test?foo" "z=somevalue"
         )
         assert e.echo is True
 
@@ -487,7 +489,7 @@ class CreateEngineTest(fixtures.TestBase):
         dbapi = mock_dbapi
 
         config = {
-            "sqlalchemy.url": "postgresql://scott:tiger@somehost/test"
+            "sqlalchemy.url": "postgresql+psycopg2://scott:tiger@somehost/test"
             "?fooz=somevalue",
             "sqlalchemy.future": "true",
         }
@@ -498,7 +500,7 @@ class CreateEngineTest(fixtures.TestBase):
         dbapi = mock_dbapi
 
         config = {
-            "sqlalchemy.url": "postgresql://scott:tiger@somehost/test"
+            "sqlalchemy.url": "postgresql+psycopg2://scott:tiger@somehost/test"
             "?fooz=somevalue",
             "sqlalchemy.future": "false",
         }
@@ -519,7 +521,7 @@ class CreateEngineTest(fixtures.TestBase):
             ("none", pool.reset_none),
         ]:
             config = {
-                "sqlalchemy.url": "postgresql://scott:tiger@somehost/test",
+                "sqlalchemy.url": "postgresql+psycopg2://scott:tiger@somehost/test",  # noqa
                 "sqlalchemy.pool_reset_on_return": value,
             }
 
@@ -603,7 +605,10 @@ class CreateEngineTest(fixtures.TestBase):
         # module instead of psycopg
 
         e = create_engine(
-            "postgresql://", creator=connect, module=dbapi, _initialize=False
+            "postgresql+psycopg2://",
+            creator=connect,
+            module=dbapi,
+            _initialize=False,
         )
         e.connect()
 
@@ -612,7 +617,10 @@ class CreateEngineTest(fixtures.TestBase):
             foober=12, lala=18, hoho={"this": "dict"}, fooz="somevalue"
         )
         e = create_engine(
-            "postgresql://", pool_recycle=472, module=dbapi, _initialize=False
+            "postgresql+psycopg2://",
+            pool_recycle=472,
+            module=dbapi,
+            _initialize=False,
         )
         assert e.pool._recycle == 472
 
@@ -628,7 +636,7 @@ class CreateEngineTest(fixtures.TestBase):
             (False, pool.reset_none),
         ]:
             e = create_engine(
-                "postgresql://",
+                "postgresql+psycopg2://",
                 pool_reset_on_return=value,
                 module=dbapi,
                 _initialize=False,
@@ -638,7 +646,7 @@ class CreateEngineTest(fixtures.TestBase):
         assert_raises(
             exc.ArgumentError,
             create_engine,
-            "postgresql://",
+            "postgresql+psycopg2://",
             pool_reset_on_return="hi",
             module=dbapi,
             _initialize=False,
@@ -654,7 +662,7 @@ class CreateEngineTest(fixtures.TestBase):
         assert_raises(
             TypeError,
             create_engine,
-            "postgresql://",
+            "postgresql+psycopg2://",
             use_ansi=True,
             module=mock_dbapi,
         )
@@ -672,7 +680,7 @@ class CreateEngineTest(fixtures.TestBase):
         assert_raises(
             TypeError,
             create_engine,
-            "postgresql://",
+            "postgresql+psycopg2://",
             lala=5,
             module=mock_dbapi,
         )
@@ -695,25 +703,25 @@ class CreateEngineTest(fixtures.TestBase):
         """test the url attribute on ``Engine``."""
 
         e = create_engine(
-            "mysql://scott:tiger@localhost/test",
+            "mysql+mysqldb://scott:tiger@localhost/test",
             module=mock_dbapi,
             _initialize=False,
         )
-        u = url.make_url("mysql://scott:tiger@localhost/test")
+        u = url.make_url("mysql+mysqldb://scott:tiger@localhost/test")
         e2 = create_engine(u, module=mock_dbapi, _initialize=False)
-        assert e.url.drivername == e2.url.drivername == "mysql"
+        assert e.url.drivername == e2.url.drivername == "mysql+mysqldb"
         assert e.url.username == e2.url.username == "scott"
         assert e2.url is u
-        assert str(u) == "mysql://scott:tiger@localhost/test"
-        assert repr(u) == "mysql://scott:***@localhost/test"
-        assert repr(e) == "Engine(mysql://scott:***@localhost/test)"
-        assert repr(e2) == "Engine(mysql://scott:***@localhost/test)"
+        assert str(u) == "mysql+mysqldb://scott:tiger@localhost/test"
+        assert repr(u) == "mysql+mysqldb://scott:***@localhost/test"
+        assert repr(e) == "Engine(mysql+mysqldb://scott:***@localhost/test)"
+        assert repr(e2) == "Engine(mysql+mysqldb://scott:***@localhost/test)"
 
     def test_poolargs(self):
         """test that connection pool args make it thru"""
 
         e = create_engine(
-            "postgresql://",
+            "postgresql+psycopg2://",
             creator=None,
             pool_recycle=50,
             echo_pool=None,
@@ -725,7 +733,7 @@ class CreateEngineTest(fixtures.TestBase):
         # these args work for QueuePool
 
         e = create_engine(
-            "postgresql://",
+            "postgresql+psycopg2://",
             max_overflow=8,
             pool_timeout=60,
             poolclass=tsa.pool.QueuePool,
@@ -782,6 +790,26 @@ class CreateEngineTest(fixtures.TestBase):
         e.connect()
         e.connect()
         eq_(sp.called, 1)
+
+    def test_default_driver(self):
+        successes = 0
+        for url_prefix, driver_name in [
+            ("mariadb://", "mysqldb"),
+            ("mssql://", "pyodbc"),
+            ("mysql://", "mysqldb"),
+            ("oracle://", "cx_oracle"),
+            ("postgresql://", "psycopg2"),
+            ("sqlite://", "pysqlite"),
+        ]:
+            try:
+                en = create_engine(url_prefix)
+                eq_(en.dialect.driver, driver_name)
+                successes += 1
+            except ModuleNotFoundError:
+                # not all test environments will have every driver installed
+                pass
+        # but we should at least find one
+        ne_(successes, 0, "No default drivers found.")
 
 
 class TestRegNewDBAPI(fixtures.TestBase):

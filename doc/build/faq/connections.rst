@@ -27,13 +27,13 @@ How do I pass custom connect arguments to my database API?
 The :func:`_sa.create_engine` call accepts additional arguments either
 directly via the ``connect_args`` keyword argument::
 
-    e = create_engine("mysql://scott:tiger@localhost/test",
+    e = create_engine("mysql+mysqldb://scott:tiger@localhost/test",
                         connect_args={"encoding": "utf8"})
 
 Or for basic string and integer arguments, they can usually be specified
 in the query string of the URL::
 
-    e = create_engine("mysql://scott:tiger@localhost/test?encoding=utf8")
+    e = create_engine("mysql+mysqldb://scott:tiger@localhost/test?encoding=utf8")
 
 .. seealso::
 
@@ -312,7 +312,7 @@ using the following proof of concept script.  Once run, it will emit a
 
     if __name__ == "__main__":
 
-        engine = create_engine("mysql://scott:tiger@localhost/test", echo_pool=True)
+        engine = create_engine("mysql+mysqldb://scott:tiger@localhost/test", echo_pool=True)
 
         def do_a_thing(engine):
             with engine.begin() as conn:
@@ -322,7 +322,7 @@ using the following proof of concept script.  Once run, it will emit a
 
         e = reconnecting_engine(
             create_engine(
-                "mysql://scott:tiger@localhost/test", echo_pool=True
+                "mysql+mysqldb://scott:tiger@localhost/test", echo_pool=True
             ),
             num_retries=5,
             retry_interval=2,
@@ -379,7 +379,7 @@ configured using ``reset_on_return``::
     from sqlalchemy import create_engine
     from sqlalchemy.pool import QueuePool
 
-    engine = create_engine('mysql://scott:tiger@localhost/myisam_database', pool=QueuePool(reset_on_return=False))
+    engine = create_engine('mysql+mysqldb://scott:tiger@localhost/myisam_database', pool=QueuePool(reset_on_return=False))
 
 I'm on SQL Server - how do I turn those ROLLBACKs into COMMITs?
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -388,7 +388,7 @@ I'm on SQL Server - how do I turn those ROLLBACKs into COMMITs?
 to ``True``, ``False``, and ``None``.   Setting to ``commit`` will cause
 a COMMIT as any connection is returned to the pool::
 
-    engine = create_engine('mssql://scott:tiger@mydsn', pool=QueuePool(reset_on_return='commit'))
+    engine = create_engine('mssql+pyodbc://scott:tiger@mydsn', pool=QueuePool(reset_on_return='commit'))
 
 
 I am using multiple connections with a SQLite database (typically to test transaction operation), and my test program is not working!

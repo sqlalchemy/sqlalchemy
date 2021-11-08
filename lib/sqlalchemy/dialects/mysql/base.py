@@ -213,7 +213,7 @@ techniques are used.
 To set isolation level using :func:`_sa.create_engine`::
 
     engine = create_engine(
-                    "mysql://scott:tiger@localhost/test",
+                    "mysql+mysqldb://scott:tiger@localhost/test",
                     isolation_level="READ UNCOMMITTED"
                 )
 
@@ -423,7 +423,7 @@ the ``first_connect`` and ``connect`` events::
 
     from sqlalchemy import create_engine, event
 
-    eng = create_engine("mysql://scott:tiger@localhost/test", echo='debug')
+    eng = create_engine("mysql+mysqldb://scott:tiger@localhost/test", echo='debug')
 
     # `insert=True` will ensure this is the very first listener to run
     @event.listens_for(eng, "connect", insert=True)
@@ -950,7 +950,7 @@ SQLAlchemy also emits NOT NULL for TIMESTAMP columns that do specify
 
 
     from sqlalchemy import create_engine
-    e = create_engine("mysql://scott:tiger@localhost/test", echo=True)
+    e = create_engine("mysql+mysqldb://scott:tiger@localhost/test", echo=True)
     m.create_all(e)
 
 output::

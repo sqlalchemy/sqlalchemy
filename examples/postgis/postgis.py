@@ -233,7 +233,7 @@ if __name__ == "__main__":
     from sqlalchemy.ext.declarative import declarative_base
 
     engine = create_engine(
-        "postgresql://scott:tiger@localhost/test", echo=True
+        "postgresql+psycopg2://scott:tiger@localhost/test", echo=True
     )
     metadata = MetaData(engine)
     Base = declarative_base(metadata=metadata)

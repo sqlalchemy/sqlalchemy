@@ -1161,7 +1161,7 @@ class MockStrategyTest(fixtures.TestBase):
         def dump(sql, *multiparams, **params):
             buf.write(util.text_type(sql.compile(dialect=engine.dialect)))
 
-        engine = create_mock_engine("postgresql://", executor=dump)
+        engine = create_mock_engine("postgresql+psycopg2://", executor=dump)
         return engine, buf
 
     def test_sequence_not_duped(self):

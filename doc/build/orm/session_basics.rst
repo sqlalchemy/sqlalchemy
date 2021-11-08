@@ -61,7 +61,7 @@ may look like::
 
     # an Engine, which the Session will use for connection
     # resources
-    engine = create_engine('postgresql://scott:tiger@localhost/')
+    engine = create_engine('postgresql+psycopg2://scott:tiger@localhost/')
 
     # create session and add objects
     with Session(engine) as session:
@@ -144,7 +144,7 @@ scope, the :class:`_orm.sessionmaker` can provide a factory for
 
     # an Engine, which the Session will use for connection
     # resources, typically in module scope
-    engine = create_engine('postgresql://scott:tiger@localhost/')
+    engine = create_engine('postgresql+psycopg2://scott:tiger@localhost/')
 
     # a sessionmaker(), also in the same scope as the engine
     Session = sessionmaker(engine)
@@ -169,7 +169,7 @@ and also maintains a begin/commit/rollback block::
 
     # an Engine, which the Session will use for connection
     # resources
-    engine = create_engine('postgresql://scott:tiger@localhost/')
+    engine = create_engine('postgresql+psycopg2://scott:tiger@localhost/')
 
     # a sessionmaker(), also in the same scope as the engine
     Session = sessionmaker(engine)

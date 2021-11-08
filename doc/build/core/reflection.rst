@@ -182,7 +182,7 @@ and options:
 .. sourcecode:: pycon+sql
 
     >>> from sqlalchemy import MetaData, Table, create_engine
-    >>> mysql_engine = create_engine("mysql://scott:tiger@localhost/test")
+    >>> mysql_engine = create_engine("mysql+mysqldb://scott:tiger@localhost/test")
     >>> metadata_obj = MetaData()
     >>> my_mysql_table = Table("my_table", metadata_obj, autoload_with=mysql_engine)
 
@@ -233,7 +233,7 @@ We now get a new :class:`_schema.Table` that is generic and uses
 
 .. sourcecode:: pycon+sql
 
-    >>> pg_engine = create_engine("postgresql://scott:tiger@localhost/test", echo=True)
+    >>> pg_engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test", echo=True)
     >>> my_generic_table.create(pg_engine)
     {opensql}CREATE TABLE my_table (
         id SERIAL NOT NULL,

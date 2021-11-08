@@ -1431,7 +1431,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
                 from sqlalchemy.dialects.postgresql import array
 
                 engine = create_engine(
-                    'postgresql://scott:tiger@localhost/mydatabase'
+                    'postgresql+psycopg2://scott:tiger@localhost/mydatabase'
                 )
                 metadata_obj = MetaData()
                 tbl = Table(

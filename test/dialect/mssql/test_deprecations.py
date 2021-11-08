@@ -64,14 +64,14 @@ class LegacySchemaAliasingTest(fixtures.TestBase, AssertsCompiledSQL):
     @testing.combinations(
         (
             {
-                "sqlalchemy.url": "mssql://foodsn",
+                "sqlalchemy.url": "mssql+pyodbc://foodsn",
                 "sqlalchemy.legacy_schema_aliasing": "true",
             },
             True,
         ),
         (
             {
-                "sqlalchemy.url": "mssql://foodsn",
+                "sqlalchemy.url": "mssql+pyodbc://foodsn",
                 "sqlalchemy.legacy_schema_aliasing": "false",
             },
             False,

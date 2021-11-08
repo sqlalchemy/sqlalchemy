@@ -178,7 +178,9 @@ class DeprecationWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
             "The create_engine.convert_unicode parameter and "
             "corresponding dialect-level"
         ):
-            create_engine("mysql://", convert_unicode=True, module=mock.Mock())
+            create_engine(
+                "mysql+mysqldb://", convert_unicode=True, module=mock.Mock()
+            )
 
     def test_empty_and_or(self):
         with testing.expect_deprecated(

@@ -346,7 +346,7 @@ were set to include ``test_schema``, and we invoked a table
 reflection process as follows::
 
     >>> from sqlalchemy import Table, MetaData, create_engine, text
-    >>> engine = create_engine("postgresql://scott:tiger@localhost/test")
+    >>> engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test")
     >>> with engine.connect() as conn:
     ...     conn.execute(text("SET search_path TO test_schema, public"))
     ...     meta = MetaData()

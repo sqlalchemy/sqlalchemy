@@ -158,7 +158,7 @@ SQLAlchemy's pooling::
 	encoding="UTF-8", nencoding="UTF-8"
     )
 
-    engine = create_engine("oracle://", creator=pool.acquire, poolclass=NullPool)
+    engine = create_engine("oracle+cx_oracle://", creator=pool.acquire, poolclass=NullPool)
 
 The above engine may then be used normally where cx_Oracle's pool handles
 connection pooling::
@@ -196,7 +196,7 @@ This can be achieved by wrapping ``pool.acquire()``::
     def creator():
         return pool.acquire(cclass="MYCLASS", purity=cx_Oracle.ATTR_PURITY_SELF)
 
-    engine = create_engine("oracle://", creator=creator, poolclass=NullPool)
+    engine = create_engine("oracle+cx_oracle://", creator=creator, poolclass=NullPool)
 
 The above engine may then be used normally where cx_Oracle handles session
 pooling and Oracle Database additionally uses DRCP::

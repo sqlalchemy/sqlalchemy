@@ -35,7 +35,7 @@ directly to :func:`~sqlalchemy.create_engine` as keyword arguments:
 ``pool_size``, ``max_overflow``, ``pool_recycle`` and
 ``pool_timeout``.  For example::
 
-  engine = create_engine('postgresql://me@localhost/mydb',
+  engine = create_engine('postgresql+psycopg2://me@localhost/mydb',
                          pool_size=20, max_overflow=0)
 
 In the case of SQLite, the :class:`.SingletonThreadPool` or
@@ -358,7 +358,7 @@ such as MySQL that automatically close connections that have been stale after a 
 period of time::
 
     from sqlalchemy import create_engine
-    e = create_engine("mysql://scott:tiger@localhost/test", pool_recycle=3600)
+    e = create_engine("mysql+mysqldb://scott:tiger@localhost/test", pool_recycle=3600)
 
 Above, any DBAPI connection that has been open for more than one hour will be invalidated and replaced,
 upon next checkout.   Note that the invalidation **only** occurs during checkout - not on
@@ -469,7 +469,7 @@ are three general approaches to this:
    more than once::
 
     from sqlalchemy.pool import NullPool
-    engine = create_engine("mysql://user:pass@host/dbname", poolclass=NullPool)
+    engine = create_engine("mysql+mysqldb://user:pass@host/dbname", poolclass=NullPool)
 
 
 2. Call :meth:`_engine.Engine.dispose` on any given :class:`_engine.Engine` as
@@ -480,7 +480,7 @@ are three general approaches to this:
    single call to :meth:`_engine.Engine.dispose` will ensure any remaining
    connections are flushed. **This is the recommended approach**::
 
-    engine = create_engine("mysql://user:pass@host/dbname")
+    engine = create_engine("mysql+mysqldb://user:pass@host/dbname")
 
     def run_in_process():
         # process starts.  ensure engine.dispose() is called just once

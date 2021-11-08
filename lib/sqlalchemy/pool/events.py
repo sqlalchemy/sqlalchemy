@@ -32,12 +32,12 @@ class PoolEvents(event.Events):
     targets, which will be resolved to the ``.pool`` attribute of the
     given engine or the :class:`_pool.Pool` class::
 
-        engine = create_engine("postgresql://scott:tiger@localhost/test")
+        engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test")
 
         # will associate with engine.pool
         event.listen(engine, 'checkout', my_on_checkout)
 
-    """
+    """  # noqa
 
     _target_class_doc = "SomeEngineOrPool"
     _dispatch_target = Pool

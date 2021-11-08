@@ -62,7 +62,7 @@ def create_mock_engine(url, executor, **kw):
         def dump(sql, *multiparams, **params):
             print(sql.compile(dialect=engine.dialect))
 
-        engine = create_mock_engine('postgresql://', dump)
+        engine = create_mock_engine('postgresql+psycopg2://', dump)
         metadata.create_all(engine, checkfirst=False)
 
     :param url: A string URL which typically needs to contain only the

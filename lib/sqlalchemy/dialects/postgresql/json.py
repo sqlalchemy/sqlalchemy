@@ -159,7 +159,7 @@ class JSON(sqltypes.JSON):
     using psycopg2, the DBAPI only allows serializers at the per-cursor
     or per-connection level.   E.g.::
 
-        engine = create_engine("postgresql://scott:tiger@localhost/test",
+        engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test",
                                 json_serializer=my_serialize_fn,
                                 json_deserializer=my_deserialize_fn
                         )

@@ -22,7 +22,7 @@ Creating an engine is just a matter of issuing a single call,
 :func:`_sa.create_engine()`::
 
     from sqlalchemy import create_engine
-    engine = create_engine('postgresql://scott:tiger@localhost:5432/mydatabase')
+    engine = create_engine('postgresql+psycopg2://scott:tiger@localhost:5432/mydatabase')
 
 The above engine creates a :class:`.Dialect` object tailored towards
 PostgreSQL, as well as a :class:`_pool.Pool` object which will establish a DBAPI
@@ -243,7 +243,7 @@ Engine Creation API
         for keys and either strings or tuples of strings for values, e.g.::
 
             >>> from sqlalchemy.engine import make_url
-            >>> url = make_url("postgresql://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt")
+            >>> url = make_url("postgresql+psycopg2://user:pass@host/dbname?alt_host=host1&alt_host=host2&ssl_cipher=%2Fpath%2Fto%2Fcrt")
             >>> url.query
             immutabledict({'alt_host': ('host1', 'host2'), 'ssl_cipher': '/path/to/crt'})
 
@@ -360,7 +360,7 @@ underlying implementation the connection::
 
 
     engine = create_engine(
-        "postgresql://user:pass@hostname/dbname",
+        "postgresql+psycopg2://user:pass@hostname/dbname",
         connect_args={"connection_factory": MyConnectionFactory}
     )
 
@@ -387,7 +387,7 @@ collections can then be modified in place to alter how they are used::
 
     from sqlalchemy import event
 
-    engine = create_engine("postgresql://user:pass@hostname/dbname")
+    engine = create_engine("postgresql+psycopg2://user:pass@hostname/dbname")
 
     @event.listens_for(engine, "do_connect")
     def receive_do_connect(dialect, conn_rec, cargs, cparams):
@@ -406,7 +406,7 @@ parameter, this could be implemented as::
 
     from sqlalchemy import event
 
-    engine = create_engine("postgresql://user@hostname/dbname")
+    engine = create_engine("postgresql+psycopg2://user@hostname/dbname")
 
     @event.listens_for(engine, "do_connect")
     def provide_token(dialect, conn_rec, cargs, cparams):
@@ -430,7 +430,7 @@ SQLAlchemy::
     from sqlalchemy import event
 
     engine = create_engine(
-        "postgresql://user:pass@hostname/dbname"
+        "postgresql+psycopg2://user:pass@hostname/dbname"
     )
 
     @event.listens_for(engine, "connect")
@@ -450,7 +450,7 @@ and returning it::
     from sqlalchemy import event
 
     engine = create_engine(
-        "postgresql://user:pass@hostname/dbname"
+        "postgresql+psycopg2://user:pass@hostname/dbname"
     )
 
     @event.listens_for(engine, "do_connect")

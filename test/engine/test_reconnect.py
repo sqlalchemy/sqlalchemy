@@ -166,7 +166,7 @@ class PrePingMockTest(fixtures.TestBase):
 
     def _pool_fixture(self, pre_ping, pool_kw=None):
         dialect = url.make_url(
-            "postgresql://foo:bar@localhost/test"
+            "postgresql+psycopg2://foo:bar@localhost/test"
         ).get_dialect()()
         dialect.dbapi = self.dbapi
         _pool = pool.QueuePool(
@@ -360,7 +360,7 @@ class MockReconnectTest(fixtures.TestBase):
         self.dbapi = MockDBAPI()
 
         self.db = testing_engine(
-            "postgresql://foo:bar@localhost/test",
+            "postgresql+psycopg2://foo:bar@localhost/test",
             options=dict(module=self.dbapi, _initialize=False),
         )
 

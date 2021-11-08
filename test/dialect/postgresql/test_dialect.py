@@ -171,42 +171,44 @@ $$ LANGUAGE plpgsql;"""
 
     def test_psycopg2_empty_connection_string(self):
         dialect = psycopg2_dialect.dialect()
-        u = url.make_url("postgresql://")
+        u = url.make_url("postgresql+psycopg2://")
         cargs, cparams = dialect.create_connect_args(u)
         eq_(cargs, [""])
         eq_(cparams, {})
 
     def test_psycopg2_nonempty_connection_string(self):
         dialect = psycopg2_dialect.dialect()
-        u = url.make_url("postgresql://host")
+        u = url.make_url("postgresql+psycopg2://host")
         cargs, cparams = dialect.create_connect_args(u)
         eq_(cargs, [])
         eq_(cparams, {"host": "host"})
 
     def test_psycopg2_empty_connection_string_w_query_one(self):
         dialect = psycopg2_dialect.dialect()
-        u = url.make_url("postgresql:///?service=swh-log")
+        u = url.make_url("postgresql+psycopg2:///?service=swh-log")
         cargs, cparams = dialect.create_connect_args(u)
         eq_(cargs, [])
         eq_(cparams, {"service": "swh-log"})
 
     def test_psycopg2_empty_connection_string_w_query_two(self):
         dialect = psycopg2_dialect.dialect()
-        u = url.make_url("postgresql:///?any_random_thing=yes")
+        u = url.make_url("postgresql+psycopg2:///?any_random_thing=yes")
         cargs, cparams = dialect.create_connect_args(u)
         eq_(cargs, [])
         eq_(cparams, {"any_random_thing": "yes"})
 
     def test_psycopg2_nonempty_connection_string_w_query(self):
         dialect = psycopg2_dialect.dialect()
-        u = url.make_url("postgresql://somehost/?any_random_thing=yes")
+        u = url.make_url(
+            "postgresql+psycopg2://somehost/?any_random_thing=yes"
+        )
         cargs, cparams = dialect.create_connect_args(u)
         eq_(cargs, [])
         eq_(cparams, {"host": "somehost", "any_random_thing": "yes"})
 
     def test_psycopg2_nonempty_connection_string_w_query_two(self):
         dialect = psycopg2_dialect.dialect()
-        url_string = "postgresql://USER:PASS@/DB?host=hostA"
+        url_string = "postgresql+psycopg2://USER:PASS@/DB?host=hostA"
         u = url.make_url(url_string)
         cargs, cparams = dialect.create_connect_args(u)
         eq_(cargs, [])
@@ -215,7 +217,7 @@ $$ LANGUAGE plpgsql;"""
     def test_psycopg2_nonempty_connection_string_w_query_three(self):
         dialect = psycopg2_dialect.dialect()
         url_string = (
-            "postgresql://USER:PASS@/DB"
+            "postgresql+psycopg2://USER:PASS@/DB"
             "?host=hostA:portA&host=hostB&host=hostC"
         )
         u = url.make_url(url_string)

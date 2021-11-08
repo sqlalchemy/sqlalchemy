@@ -216,7 +216,7 @@ methods.   Using SQLAlchemy 2.0-style operation, these methods affect the
 
 Engine::
 
-    engine = create_engine("postgresql://user:pass@host/dbname", future=True)
+    engine = create_engine("postgresql+psycopg2://user:pass@host/dbname", future=True)
 
     with engine.connect() as conn:
         conn.execute(
@@ -252,7 +252,7 @@ that will maintain a begin/commit/rollback context for that object.
 
 Engine::
 
-    engine = create_engine("postgresql://user:pass@host/dbname", future=True)
+    engine = create_engine("postgresql+psycopg2://user:pass@host/dbname", future=True)
 
     with engine.begin() as conn:
         conn.execute(
@@ -290,7 +290,7 @@ specific behavior that is reversed from the 1.x series.
 
 Engine::
 
-    engine = create_engine("postgresql://user:pass@host/dbname", future=True)
+    engine = create_engine("postgresql+psycopg2://user:pass@host/dbname", future=True)
 
     with engine.begin() as conn:
         savepoint = conn.begin_nested()
@@ -383,8 +383,8 @@ also :meth:`_orm.Session.prepare` the session for
 interacting with transactions not managed by SQLAlchemy. To use two phase
 transactions set the flag ``twophase=True`` on the session::
 
-    engine1 = create_engine('postgresql://db1')
-    engine2 = create_engine('postgresql://db2')
+    engine1 = create_engine('postgresql+psycopg2://db1')
+    engine2 = create_engine('postgresql+psycopg2://db2')
 
     Session = sessionmaker(twophase=True)
 
@@ -448,7 +448,7 @@ in all cases, which is then used as the source of connectivity for a
     from sqlalchemy.orm import sessionmaker
 
     eng = create_engine(
-        "postgresql://scott:tiger@localhost/test",
+        "postgresql+psycopg2://scott:tiger@localhost/test",
         isolation_level='REPEATABLE READ'
     )
 
@@ -465,7 +465,7 @@ operations::
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
-    eng = create_engine("postgresql://scott:tiger@localhost/test")
+    eng = create_engine("postgresql+psycopg2://scott:tiger@localhost/test")
 
     autocommit_engine = eng.execution_options(isolation_level="AUTOCOMMIT")
 
@@ -505,7 +505,7 @@ we can pass the ``bind`` argument directly, overriding the pre-existing bind.
 We can for example create our :class:`_orm.Session` from a default
 :class:`.sessionmaker` and pass an engine set for autocommit::
 
-    plain_engine = create_engine("postgresql://scott:tiger@localhost/test")
+    plain_engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test")
 
     autocommit_engine = plain_engine.execution_options(isolation_level="AUTOCOMMIT")
 
@@ -630,7 +630,7 @@ are reverted::
     # global application scope.  create Session class, engine
     Session = sessionmaker()
 
-    engine = create_engine('postgresql://...')
+    engine = create_engine('postgresql+psycopg2://...')
 
     class SomeTest(TestCase):
         def setUp(self):

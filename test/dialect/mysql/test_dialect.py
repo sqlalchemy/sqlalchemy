@@ -202,7 +202,7 @@ class DialectTest(fixtures.TestBase):
         dialect = mysqldb.dialect()
         connect_args = dialect.create_connect_args(
             make_url(
-                "mysql://scott:tiger@localhost:3306/test"
+                "mysql+mysqldb://scott:tiger@localhost:3306/test"
                 "?%s=%s" % (kwarg, value)
             )
         )
@@ -262,7 +262,7 @@ class DialectTest(fixtures.TestBase):
     def test_random_arg(self):
         dialect = testing.db.dialect
         kw = dialect.create_connect_args(
-            make_url("mysql://u:p@host/db?foo=true")
+            make_url("mysql+mysqldb://u:p@host/db?foo=true")
         )[1]
         eq_(kw["foo"], "true")
 
@@ -303,7 +303,7 @@ class DialectTest(fixtures.TestBase):
 
 class ParseVersionTest(fixtures.TestBase):
     def test_mariadb_madness(self):
-        mysql_dialect = make_url("mysql://").get_dialect()()
+        mysql_dialect = make_url("mysql+mysqldb://").get_dialect()()
 
         is_(mysql_dialect.is_mariadb, False)
 

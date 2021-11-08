@@ -30,7 +30,7 @@ class ConnectionEvents(event.Events):
                                                         executemany):
             log.info("Received statement: %s", statement)
 
-        engine = create_engine('postgresql://scott:tiger@localhost/test')
+        engine = create_engine('postgresql+psycopg2://scott:tiger@localhost/test')
         event.listen(engine, "before_cursor_execute", before_cursor_execute)
 
     or with a specific :class:`_engine.Connection`::
@@ -88,7 +88,7 @@ class ConnectionEvents(event.Events):
       and parameters.  See those methods for a description of
       specific return arguments.
 
-    """
+    """  # noqa
 
     _target_class_doc = "SomeEngine"
     _dispatch_target = ConnectionEventsTarget

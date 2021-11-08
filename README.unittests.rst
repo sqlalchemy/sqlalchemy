@@ -83,17 +83,29 @@ a pre-set URL.  These can be seen using --dbs::
 
     $ pytest --dbs
     Available --db options (use --dburi to override)
+                aiomysql    mysql+aiomysql://scott:tiger@127.0.0.1:3306/test?charset=utf8mb4
+       aiomysql_fallback    mysql+aiomysql://scott:tiger@127.0.0.1:3306/test?charset=utf8mb4&async_fallback=true
+               aiosqlite    sqlite+aiosqlite:///:memory:
+          aiosqlite_file    sqlite+aiosqlite:///async_querytest.db
+                 asyncmy    mysql+asyncmy://scott:tiger@127.0.0.1:3306/test?charset=utf8mb4
+        asyncmy_fallback    mysql+asyncmy://scott:tiger@127.0.0.1:3306/test?charset=utf8mb4&async_fallback=true
+                 asyncpg    postgresql+asyncpg://scott:tiger@192.168.0.199/test
+    asyncpg_async_fallback  postgresql+asyncpg://scott:tiger@192.168.0.199/test?async_fallback=true
+        asyncpg_fallback    postgresql+asyncpg://scott:tiger@127.0.0.1:5432/test?async_fallback=true
                  default    sqlite:///:memory:
-                 mariadb    mariadb://scott:tiger@192.168.0.199:3307/test
-                   mssql    mssql+pyodbc://scott:tiger^5HHH@mssql2017:1433/test?driver=ODBC+Driver+13+for+SQL+Server
+            docker_mssql    mssql+pymssql://scott:tiger^5HHH@127.0.0.1:1433/test
+                 mariadb    mariadb+mysqldb://scott:tiger@127.0.0.1:3306/test
+                   mssql    mssql+pyodbc://scott:tiger^5HHH@localhost:1433/test?driver=ODBC+Driver+17+for+SQL+Server
+               mssql_199    mssql+pyodbc://scott:tiger^5HHH@192.168.0.199:1433/test?driver=ODBC+Driver+17+for+SQL+Server
            mssql_pymssql    mssql+pymssql://scott:tiger@ms_2008
-                   mysql    mysql://scott:tiger@127.0.0.1:3306/test?charset=utf8mb4
-                  oracle    oracle://scott:tiger@127.0.0.1:1521
-                 oracle8    oracle://scott:tiger@127.0.0.1:1521/?use_ansi=0
+                   mysql    mysql+mysqldb://scott:tiger@127.0.0.1:3306/test?charset=utf8mb4
+                  oracle    oracle+cx_oracle://scott:tiger@127.0.0.1:1521
+                 oracle8    oracle+cx_oracle://scott:tiger@127.0.0.1:1521/?use_ansi=0
                   pg8000    postgresql+pg8000://scott:tiger@127.0.0.1:5432/test
-              postgresql    postgresql://scott:tiger@127.0.0.1:5432/test
+              postgresql    postgresql+psycopg2://scott:tiger@192.168.0.199/test
     postgresql_psycopg2cffi postgresql+psycopg2cffi://scott:tiger@127.0.0.1:5432/test
                  pymysql    mysql+pymysql://scott:tiger@127.0.0.1:3306/test?charset=utf8mb4
+        pysqlcipher_file    sqlite+pysqlcipher://:test@/querytest.db.enc
                   sqlite    sqlite:///:memory:
              sqlite_file    sqlite:///querytest.db
 
@@ -110,7 +122,7 @@ creating a new file called ``test.cfg`` and adding your own ``[db]`` section::
 
     # test.cfg file
     [db]
-    my_postgresql=postgresql://username:pass@hostname/dbname
+    my_postgresql=postgresql+psycopg2://username:pass@hostname/dbname
 
 Above, we can now run the tests with ``my_postgresql``::
 
@@ -121,7 +133,7 @@ with the tox runner also::
 
     # test.cfg file
     [db]
-    postgresql=postgresql://username:pass@hostname/dbname
+    postgresql=postgresql+psycopg2://username:pass@hostname/dbname
 
 Now when we run ``tox -e py27-postgresql``, it will use our custom URL instead
 of the fixed one in setup.cfg.

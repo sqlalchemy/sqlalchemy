@@ -21,7 +21,7 @@ Basic Usage
 Recall from :doc:`/core/engines` that an :class:`_engine.Engine` is created via
 the :func:`_sa.create_engine` call::
 
-    engine = create_engine('mysql://scott:tiger@localhost/test')
+    engine = create_engine('mysql+mysqldb://scott:tiger@localhost/test')
 
 The typical usage of :func:`_sa.create_engine` is once per particular database
 URL, held globally for the lifetime of a single application process. A single
@@ -328,7 +328,7 @@ parameter to :func:`_sa.create_engine`::
     from sqlalchemy import create_engine
 
     eng = create_engine(
-        "postgresql://scott:tiger@localhost/test",
+        "postgresql+psycopg2://scott:tiger@localhost/test",
         execution_options={
             "isolation_level": "REPEATABLE READ"
         }
@@ -348,7 +348,7 @@ separated off from the main engine::
 
     from sqlalchemy import create_engine
 
-    eng = create_engine("postgresql://scott:tiger@localhost/test")
+    eng = create_engine("postgresql+psycopg2://scott:tiger@localhost/test")
 
     autocommit_engine = eng.execution_options(isolation_level="AUTOCOMMIT")
 
@@ -789,7 +789,7 @@ used items when the size of the cache reaches a certain threshold.  The size
 of this cache defaults to 500 and may be configured using the
 :paramref:`_sa.create_engine.query_cache_size` parameter::
 
-    engine = create_engine("postgresql://scott:tiger@localhost/test", query_cache_size=1200)
+    engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test", query_cache_size=1200)
 
 The size of the cache can grow to be a factor of 150% of the size given, before
 it's pruned back down to the target size.  A cache of size 1200 above can therefore

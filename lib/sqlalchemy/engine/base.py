@@ -1887,7 +1887,7 @@ class Transaction(TransactionalContext):
     :class:`_engine.Connection`::
 
         from sqlalchemy import create_engine
-        engine = create_engine("postgresql://scott:tiger@localhost/test")
+        engine = create_engine("postgresql+psycopg2://scott:tiger@localhost/test")
         connection = engine.connect()
         trans = connection.begin()
         connection.execute(text("insert into x (a, b) values (1, 2)"))
@@ -1914,7 +1914,7 @@ class Transaction(TransactionalContext):
 
     .. index::
       single: thread safety; Transaction
-    """
+    """  # noqa
 
     __slots__ = ()
 
@@ -2413,7 +2413,7 @@ class Engine(ConnectionEventsTarget, log.Identified):
             from sqlalchemy import event
             from sqlalchemy.engine import Engine
 
-            primary_engine = create_engine("mysql://")
+            primary_engine = create_engine("mysql+mysqldb://")
             shard1 = primary_engine.execution_options(shard_id="shard1")
             shard2 = primary_engine.execution_options(shard_id="shard2")
 
