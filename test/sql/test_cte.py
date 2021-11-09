@@ -551,6 +551,54 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT cte.id, cte.manager_id, cte.id_1 FROM cte",
         )
 
+    @testing.combinations(True, False, argnames="use_object")
+    @testing.combinations("order_by", "group_by", argnames="order_by")
+    def test_order_by_group_by_label_w_scalar_subquery(
+        self, use_object, order_by
+    ):
+        """test issue #7269"""
+        t = table("test", column("a"))
+
+        b = t.c.a.label("b")
+
+        if use_object:
+            arg = b
+        else:
+            arg = "b"
+
+        if order_by == "order_by":
+            cte = select(b).order_by(arg).cte()
+        elif order_by == "group_by":
+            cte = select(b).group_by(arg).cte()
+        else:
+            assert False
+
+        stmt = select(select(cte.c.b).label("c"))
+
+        if use_object and order_by == "group_by":
+            # group_by(b) is de-references the label, due a difference in
+            # handling between coercions.GroupByImpl and coercions.OrderByImpl.
+            # "order by" makes use of the ClauseElement._order_by_label_element
+            # feature but group_by() doesn't.  it's not clear if group_by()
+            # could do the same thing order_by() does.
+            self.assert_compile(
+                stmt,
+                "WITH anon_1 AS "
+                "(SELECT test.a AS b FROM test GROUP BY test.a) "
+                "SELECT (SELECT anon_1.b FROM anon_1) AS c",
+            )
+        else:
+            self.assert_compile(
+                stmt,
+                "WITH anon_1 AS (SELECT test.a AS b FROM test %s b) "
+                "SELECT (SELECT anon_1.b FROM anon_1) AS c"
+                % ("ORDER BY" if order_by == "order_by" else "GROUP BY")
+                # prior to the fix, the use_object version came out as:
+                # "WITH anon_1 AS (SELECT test.a AS b FROM test "
+                # "ORDER BY test.a) "
+                # "SELECT (SELECT anon_1.b FROM anon_1) AS c"
+            )
+
     def test_wrecur_dupe_col_names_w_grouping(self):
         """test #6710
 
