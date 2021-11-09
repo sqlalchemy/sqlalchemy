@@ -3216,8 +3216,6 @@ class SQLCompiler(Compiled):
         # passed in.  for ORM use this will convert from an ORM-state
         # SELECT to a regular "Core" SELECT.  other composed operations
         # such as computation of joins will be performed.
-        kwargs["within_columns_clause"] = False
-
         compile_state = select_stmt._compile_state_factory(
             select_stmt, self, **kwargs
         )
