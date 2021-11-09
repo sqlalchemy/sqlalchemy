@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 7304
+
+    Fixed issue where deferred polymorphic loading of attributes from a
+    joined-table inheritance subclass would fail to populate the attribute
+    correctly if the :func:`_orm.load_only` option were used to originally
+    exclude that attribute, in the case where the load_only were descending
+    from a relationship loader option.  The fix allows that other valid options
+    such as ``defer(..., raiseload=True)`` etc. still function as expected.

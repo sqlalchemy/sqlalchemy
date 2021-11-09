@@ -1,23 +1,29 @@
-from sqlalchemy import Column
+from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
+from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import backref
+from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectin_polymorphic
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
+from sqlalchemy.testing import assertsql
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import EachOf
 from sqlalchemy.testing.assertsql import Or
 from sqlalchemy.testing.fixtures import fixture_session
+from sqlalchemy.testing.schema import Column
 from ._poly_fixtures import _Polymorphic
 from ._poly_fixtures import Company
 from ._poly_fixtures import Engineer
@@ -690,3 +696,161 @@ class LoaderOptionsTest(
         result = no_opt()
         with self.assert_statement_count(testing.db, 1):
             eq_(result, [Parent(children=[ChildSubclass1(others=[Other()])])])
+
+
+class IgnoreOptionsOnSubclassAttrLoad(fixtures.DeclarativeMappedTest):
+    """test #7304 and related cases
+
+    in this case we trigger the subclass attribute load, while at the same
+    time there will be a deferred loader option present in the state's
+    options that was established by the previous loader.
+
+    test both that the option takes effect (i.e. raiseload) and that a deferred
+    loader doesn't interfere with the mapper's load of the attribute.
+
+    """
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Parent(Base):
+            __tablename__ = "parent"
+
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+
+            entity_id = Column(ForeignKey("entity.id"))
+            entity = relationship("Entity")
+
+        class Entity(Base):
+            __tablename__ = "entity"
+
+            id = Column(
+                Integer, primary_key=True, test_needs_autoincrement=True
+            )
+            type = Column(String(32))
+
+            __mapper_args__ = {
+                "polymorphic_on": type,
+                "polymorphic_identity": "entity",
+            }
+
+        class SubEntity(Entity):
+            __tablename__ = "sub_entity"
+
+            id = Column(ForeignKey(Entity.id), primary_key=True)
+
+            name = Column(String(32))
+
+            __mapper_args__ = {"polymorphic_identity": "entity_two"}
+
+    @classmethod
+    def insert_data(cls, connection):
+        Parent, SubEntity = cls.classes("Parent", "SubEntity")
+
+        with Session(connection) as session:
+            session.add(Parent(entity=SubEntity(name="some name")))
+            session.commit()
+
+    @testing.combinations(
+        defaultload,
+        joinedload,
+        selectinload,
+        lazyload,
+        argnames="first_option",
+    )
+    @testing.combinations(
+        ("load_only", "id", True),
+        ("defer", "name", True),
+        ("undefer", "name", True),
+        ("raise", "name", False),
+        (None, None, True),
+        # these don't seem possible at the moment as the "type" column
+        # doesn't load and it can't recognize the polymorphic identity.
+        # we assume load_only() is smart enough to include this column
+        # ("defer", '*', True),
+        # ("undefer", '*', True),
+        # ("raise", '*', False),
+        argnames="second_option,second_argument,expect_load",
+    )
+    def test_subclass_loadattr(
+        self, first_option, second_option, second_argument, expect_load
+    ):
+        Parent, Entity, SubEntity = self.classes(
+            "Parent", "Entity", "SubEntity"
+        )
+
+        stmt = select(Parent)
+
+        will_lazyload = first_option in (defaultload, lazyload)
+
+        opt = first_option(Parent.entity)
+
+        if second_argument == "name":
+            second_argument = SubEntity.name
+        elif second_argument == "id":
+            second_argument = Entity.id
+
+        if second_option is None:
+            sub_opt = opt
+        elif second_option == "raise":
+            sub_opt = opt.defer(second_argument, raiseload=True)
+        else:
+            sub_opt = getattr(opt, second_option)(second_argument)
+
+        stmt = stmt.options(sub_opt)
+
+        session = fixture_session()
+        result = session.execute(stmt).scalars()
+
+        parent_obj = result.first()
+
+        entity_id = parent_obj.__dict__["entity_id"]
+
+        with assertsql.assert_engine(testing.db) as asserter_:
+            if expect_load:
+                eq_(parent_obj.entity.name, "some name")
+            else:
+                with expect_raises_message(
+                    exc.InvalidRequestError,
+                    "'SubEntity.name' is not available due to raiseload=True",
+                ):
+                    parent_obj.entity.name
+
+        expected = []
+
+        if will_lazyload:
+            expected.append(
+                CompiledSQL(
+                    "SELECT entity.id AS entity_id, "
+                    "entity.type AS entity_type FROM entity "
+                    "WHERE entity.id = :pk_1",
+                    [{"pk_1": entity_id}],
+                )
+            )
+
+        if second_option in ("undefer", "load_only", None):
+            # load will be a mapper optimized load for the name alone
+            expected.append(
+                CompiledSQL(
+                    "SELECT sub_entity.name AS sub_entity_name "
+                    "FROM sub_entity "
+                    "WHERE :param_1 = sub_entity.id",
+                    [{"param_1": entity_id}],
+                )
+            )
+        elif second_option == "defer":
+            # load will be a deferred load.  this is because the explicit
+            # call to the deferred load put a deferred loader on the attribute
+            expected.append(
+                CompiledSQL(
+                    "SELECT sub_entity.name AS sub_entity_name FROM entity "
+                    "JOIN sub_entity ON entity.id = sub_entity.id "
+                    "WHERE entity.id = :pk_1",
+                    [{"pk_1": entity_id}],
+                )
+            )
+
+        asserter_.assert_(*expected)
