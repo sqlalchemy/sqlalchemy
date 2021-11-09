@@ -763,13 +763,12 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             )
 
         include_columns = kwargs.pop("include_columns", None)
-
-        resolve_fks = kwargs.pop("resolve_fks", True)
-
         if include_columns is not None:
             for c in self.c:
                 if c.name not in include_columns:
                     self._columns.remove(c)
+
+        resolve_fks = kwargs.pop("resolve_fks", True)
 
         for key in ("quote", "quote_schema"):
             if key in kwargs:
@@ -777,11 +776,12 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                     "Can't redefine 'quote' or 'quote_schema' arguments"
                 )
 
-        if "comment" in kwargs:
-            self.comment = kwargs.pop("comment", None)
-
-        if "info" in kwargs:
-            self.info = kwargs.pop("info")
+        # update `self` with these kwargs, if provided
+        self.comment = kwargs.pop("comment", self.comment)
+        self.implicit_returning = kwargs.pop(
+            "implicit_returning", self.implicit_returning
+        )
+        self.info = kwargs.pop("info", self.info)
 
         if autoload:
             if not autoload_replace:
