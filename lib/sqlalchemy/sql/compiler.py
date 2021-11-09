@@ -1247,7 +1247,7 @@ class SQLCompiler(Compiled):
             return expr
 
         statement = re.sub(
-            r"\[POSTCOMPILE_(\S+?)(~~.+?~~)?\]",
+            r"__\[POSTCOMPILE_(\S+?)(~~.+?~~)?\]",
             process_expanding,
             self.string,
         )
@@ -2374,9 +2374,9 @@ class SQLCompiler(Compiled):
                     # for postcompile w/ expanding, move the "wrapped" part
                     # of this into the inside
                     m = re.match(
-                        r"^(.*)\(\[POSTCOMPILE_(\S+?)\]\)(.*)$", wrapped
+                        r"^(.*)\(__\[POSTCOMPILE_(\S+?)\]\)(.*)$", wrapped
                     )
-                    wrapped = "([POSTCOMPILE_%s~~%s~~REPL~~%s~~])" % (
+                    wrapped = "(__[POSTCOMPILE_%s~~%s~~REPL~~%s~~])" % (
                         m.group(2),
                         m.group(1),
                         m.group(3),
@@ -2582,7 +2582,7 @@ class SQLCompiler(Compiled):
                 self.escaped_bind_names = {}
             self.escaped_bind_names[escaped_from] = name
         if post_compile:
-            return "[POSTCOMPILE_%s]" % name
+            return "__[POSTCOMPILE_%s]" % name
         else:
             return self.bindtemplate % {"name": name}
 
@@ -5037,7 +5037,7 @@ class IdentifierPreparer(object):
                         "in schema translate name '%s'" % name
                     )
                 return quoted_name(
-                    "[SCHEMA_%s]" % (name or "_none"), quote=False
+                    "__[SCHEMA_%s]" % (name or "_none"), quote=False
                 )
             else:
                 return obj.schema
@@ -5063,7 +5063,7 @@ class IdentifierPreparer(object):
                     )
             return self.quote_schema(effective_schema)
 
-        return re.sub(r"(\[SCHEMA_([^\]]+)\])", replace, statement)
+        return re.sub(r"(__\[SCHEMA_([^\]]+)\])", replace, statement)
 
     def _escape_identifier(self, value):
         """Escape an identifier.

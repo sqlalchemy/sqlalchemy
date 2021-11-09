@@ -191,7 +191,7 @@ class SelectTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
             ),
             "SELECT test_table.x, lower(test_table.y) AS y FROM "
             "test_table WHERE test_table.y IN "
-            "([POSTCOMPILE_y_1~~lower(~~REPL~~)~~])",
+            "(__[POSTCOMPILE_y_1~~lower(~~REPL~~)~~])",
             render_postcompile=False,
         )
 

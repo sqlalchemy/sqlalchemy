@@ -2948,7 +2948,7 @@ class AnnotationsTest(fixtures.TestBase):
             (table1.c.col1 == 5, "table1.col1 = :col1_1"),
             (
                 table1.c.col1.in_([2, 3, 4]),
-                "table1.col1 IN ([POSTCOMPILE_col1_1])",
+                "table1.col1 IN (__[POSTCOMPILE_col1_1])",
             ),
         ]:
             eq_(str(expr), expected)

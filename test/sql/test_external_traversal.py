@@ -206,7 +206,7 @@ class TraversalTest(
 
         and the compiler postcompile reg is::
 
-            re.sub(r"\[POSTCOMPILE_(\S+)\]", process_expanding, self.string)
+            re.sub(r"\__[POSTCOMPILE_(\S+)\]", process_expanding, self.string)
 
         Interestingly, brackets in the name seems to work out.
 
@@ -241,7 +241,7 @@ class TraversalTest(
 
         stmt = and_(expr, expr2)
         self.assert_compile(
-            stmt, "x IN ([POSTCOMPILE_x_1]) AND x IN ([POSTCOMPILE_x_1])"
+            stmt, "x IN (__[POSTCOMPILE_x_1]) AND x IN (__[POSTCOMPILE_x_1])"
         )
         self.assert_compile(
             stmt, "x IN (1, 2, 3) AND x IN (1, 2, 3)", literal_binds=True

@@ -884,7 +884,7 @@ class PostCompileParamsTest(
         self.assert_compile(
             stmt,
             "SELECT some_table.id FROM some_table "
-            "WHERE some_table.x = [POSTCOMPILE_q]",
+            "WHERE some_table.x = __[POSTCOMPILE_q]",
             {},
         )
 

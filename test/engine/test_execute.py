@@ -1226,12 +1226,12 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
             t1.drop(conn)
 
         asserter.assert_(
-            CompiledSQL("CREATE TABLE [SCHEMA__none].t1 (x INTEGER)"),
-            CompiledSQL("CREATE TABLE [SCHEMA_foo].t2 (x INTEGER)"),
-            CompiledSQL("CREATE TABLE [SCHEMA_bar].t3 (x INTEGER)"),
-            CompiledSQL("DROP TABLE [SCHEMA_bar].t3"),
-            CompiledSQL("DROP TABLE [SCHEMA_foo].t2"),
-            CompiledSQL("DROP TABLE [SCHEMA__none].t1"),
+            CompiledSQL("CREATE TABLE __[SCHEMA__none].t1 (x INTEGER)"),
+            CompiledSQL("CREATE TABLE __[SCHEMA_foo].t2 (x INTEGER)"),
+            CompiledSQL("CREATE TABLE __[SCHEMA_bar].t3 (x INTEGER)"),
+            CompiledSQL("DROP TABLE __[SCHEMA_bar].t3"),
+            CompiledSQL("DROP TABLE __[SCHEMA_foo].t2"),
+            CompiledSQL("DROP TABLE __[SCHEMA__none].t1"),
         )
 
     def test_ddl_hastable(self, plain_tables, connection):
@@ -1331,27 +1331,29 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
             conn.execute(t3.delete(), execution_options=execution_options)
 
         asserter.assert_(
-            CompiledSQL("INSERT INTO [SCHEMA__none].t1 (x) VALUES (:x)"),
-            CompiledSQL("INSERT INTO [SCHEMA_foo].t2 (x) VALUES (:x)"),
-            CompiledSQL("INSERT INTO [SCHEMA_bar].t3 (x) VALUES (:x)"),
+            CompiledSQL("INSERT INTO __[SCHEMA__none].t1 (x) VALUES (:x)"),
+            CompiledSQL("INSERT INTO __[SCHEMA_foo].t2 (x) VALUES (:x)"),
+            CompiledSQL("INSERT INTO __[SCHEMA_bar].t3 (x) VALUES (:x)"),
             CompiledSQL(
-                "UPDATE [SCHEMA__none].t1 SET x=:x WHERE "
-                "[SCHEMA__none].t1.x = :x_1"
+                "UPDATE __[SCHEMA__none].t1 SET x=:x WHERE "
+                "__[SCHEMA__none].t1.x = :x_1"
             ),
             CompiledSQL(
-                "UPDATE [SCHEMA_foo].t2 SET x=:x WHERE "
-                "[SCHEMA_foo].t2.x = :x_1"
+                "UPDATE __[SCHEMA_foo].t2 SET x=:x WHERE "
+                "__[SCHEMA_foo].t2.x = :x_1"
             ),
             CompiledSQL(
-                "UPDATE [SCHEMA_bar].t3 SET x=:x WHERE "
-                "[SCHEMA_bar].t3.x = :x_1"
+                "UPDATE __[SCHEMA_bar].t3 SET x=:x WHERE "
+                "__[SCHEMA_bar].t3.x = :x_1"
             ),
-            CompiledSQL("SELECT [SCHEMA__none].t1.x FROM [SCHEMA__none].t1"),
-            CompiledSQL("SELECT [SCHEMA_foo].t2.x FROM [SCHEMA_foo].t2"),
-            CompiledSQL("SELECT [SCHEMA_bar].t3.x FROM [SCHEMA_bar].t3"),
-            CompiledSQL("DELETE FROM [SCHEMA__none].t1"),
-            CompiledSQL("DELETE FROM [SCHEMA_foo].t2"),
-            CompiledSQL("DELETE FROM [SCHEMA_bar].t3"),
+            CompiledSQL(
+                "SELECT __[SCHEMA__none].t1.x FROM __[SCHEMA__none].t1"
+            ),
+            CompiledSQL("SELECT __[SCHEMA_foo].t2.x FROM __[SCHEMA_foo].t2"),
+            CompiledSQL("SELECT __[SCHEMA_bar].t3.x FROM __[SCHEMA_bar].t3"),
+            CompiledSQL("DELETE FROM __[SCHEMA__none].t1"),
+            CompiledSQL("DELETE FROM __[SCHEMA_foo].t2"),
+            CompiledSQL("DELETE FROM __[SCHEMA_bar].t3"),
         )
 
     def test_crud(self, plain_tables, connection):
@@ -1389,27 +1391,29 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
             conn.execute(t3.delete())
 
         asserter.assert_(
-            CompiledSQL("INSERT INTO [SCHEMA__none].t1 (x) VALUES (:x)"),
-            CompiledSQL("INSERT INTO [SCHEMA_foo].t2 (x) VALUES (:x)"),
-            CompiledSQL("INSERT INTO [SCHEMA_bar].t3 (x) VALUES (:x)"),
+            CompiledSQL("INSERT INTO __[SCHEMA__none].t1 (x) VALUES (:x)"),
+            CompiledSQL("INSERT INTO __[SCHEMA_foo].t2 (x) VALUES (:x)"),
+            CompiledSQL("INSERT INTO __[SCHEMA_bar].t3 (x) VALUES (:x)"),
             CompiledSQL(
-                "UPDATE [SCHEMA__none].t1 SET x=:x WHERE "
-                "[SCHEMA__none].t1.x = :x_1"
+                "UPDATE __[SCHEMA__none].t1 SET x=:x WHERE "
+                "__[SCHEMA__none].t1.x = :x_1"
             ),
             CompiledSQL(
-                "UPDATE [SCHEMA_foo].t2 SET x=:x WHERE "
-                "[SCHEMA_foo].t2.x = :x_1"
+                "UPDATE __[SCHEMA_foo].t2 SET x=:x WHERE "
+                "__[SCHEMA_foo].t2.x = :x_1"
             ),
             CompiledSQL(
-                "UPDATE [SCHEMA_bar].t3 SET x=:x WHERE "
-                "[SCHEMA_bar].t3.x = :x_1"
+                "UPDATE __[SCHEMA_bar].t3 SET x=:x WHERE "
+                "__[SCHEMA_bar].t3.x = :x_1"
             ),
-            CompiledSQL("SELECT [SCHEMA__none].t1.x FROM [SCHEMA__none].t1"),
-            CompiledSQL("SELECT [SCHEMA_foo].t2.x FROM [SCHEMA_foo].t2"),
-            CompiledSQL("SELECT [SCHEMA_bar].t3.x FROM [SCHEMA_bar].t3"),
-            CompiledSQL("DELETE FROM [SCHEMA__none].t1"),
-            CompiledSQL("DELETE FROM [SCHEMA_foo].t2"),
-            CompiledSQL("DELETE FROM [SCHEMA_bar].t3"),
+            CompiledSQL(
+                "SELECT __[SCHEMA__none].t1.x FROM __[SCHEMA__none].t1"
+            ),
+            CompiledSQL("SELECT __[SCHEMA_foo].t2.x FROM __[SCHEMA_foo].t2"),
+            CompiledSQL("SELECT __[SCHEMA_bar].t3.x FROM __[SCHEMA_bar].t3"),
+            CompiledSQL("DELETE FROM __[SCHEMA__none].t1"),
+            CompiledSQL("DELETE FROM __[SCHEMA_foo].t2"),
+            CompiledSQL("DELETE FROM __[SCHEMA_bar].t3"),
         )
 
     def test_via_engine(self, plain_tables, metadata):
@@ -1431,7 +1435,7 @@ class SchemaTranslateTest(fixtures.TestBase, testing.AssertsExecutionResults):
             with eng.connect() as conn:
                 conn.execute(select(t2.c.x))
         asserter.assert_(
-            CompiledSQL("SELECT [SCHEMA_foo].t2.x FROM [SCHEMA_foo].t2")
+            CompiledSQL("SELECT __[SCHEMA_foo].t2.x FROM __[SCHEMA_foo].t2")
         )
 
 
