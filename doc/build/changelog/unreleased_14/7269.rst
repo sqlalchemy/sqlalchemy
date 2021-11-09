@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 7269
+
+    Fixed issue where using the feature of using a string label for ordering or
+    grouping described at :ref:`tutorial_order_by_label` would fail to function
+    correctly if used on a :class:`.CTE` construct, when the CTE were embedded
+    inside of an enclosing :class:`_sql.Select` statement that itself was set
+    up as a scalar subquery.
+
+
