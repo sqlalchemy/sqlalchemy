@@ -1,0 +1,17 @@
+.. change::
+    :tags: mssql, bug
+    :tickets: 7300
+
+    Adjusted the compiler's generation of "post compile" symbols including
+    those used for "expanding IN" as well as for the "schema translate map" to
+    not be based directly on plain bracketed strings with underscores, as this
+    conflicts directly with SQL Server's quoting format of also using brackets,
+    which produces false matches when the compiler replaces "post compile" and
+    "schema translate" symbols. The issue created easy to reproduce examples
+    both with the :meth:`.Inspector.get_schema_names` method when used in
+    conjunction with the
+    :paramref:`_engine.Connection.execution_options.schema_translate_map`
+    feature, as well in the unlikely case that a symbol overlapping with the
+    internal name "POSTCOMPILE" would be used with a feature like "expanding
+    in".
+

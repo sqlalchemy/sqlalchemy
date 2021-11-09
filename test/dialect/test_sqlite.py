@@ -1159,7 +1159,7 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
             .in_([(1, 2), (3, 4)])
             .compile(dialect=sqlite.dialect())
         )
-        eq_(str(compiled), "(q, p) IN ([POSTCOMPILE_param_1])")
+        eq_(str(compiled), "(q, p) IN (__[POSTCOMPILE_param_1])")
         eq_(
             compiled._literal_execute_expanding_parameter(
                 "param_1",

@@ -1208,7 +1208,7 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
 
         self.assert_compile(
             expr,
-            "x IN ([POSTCOMPILE_x_1~~~~REPL~~::myenum[]~~])",
+            "x IN (__[POSTCOMPILE_x_1~~~~REPL~~::myenum[]~~])",
             dialect=postgresql.psycopg2.dialect(),
         )
 
@@ -1226,7 +1226,7 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
 
         self.assert_compile(
             expr,
-            "x IN ([POSTCOMPILE_x_1~~~~REPL~~::VARCHAR(15)[]~~])",
+            "x IN (__[POSTCOMPILE_x_1~~~~REPL~~::VARCHAR(15)[]~~])",
             dialect=postgresql.psycopg2.dialect(),
         )
 

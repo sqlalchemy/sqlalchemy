@@ -1415,14 +1415,14 @@ class OperatorPrecedenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         self.assert_compile(
             self.table2.select().where(5 + self.table2.c.field.in_([5, 6])),
             "SELECT op.field FROM op WHERE :param_1 + "
-            "(op.field IN ([POSTCOMPILE_field_1]))",
+            "(op.field IN (__[POSTCOMPILE_field_1]))",
         )
 
     def test_operator_precedence_6(self):
         self.assert_compile(
             self.table2.select().where((5 + self.table2.c.field).in_([5, 6])),
             "SELECT op.field FROM op WHERE :field_1 + op.field "
-            "IN ([POSTCOMPILE_param_1])",
+            "IN (__[POSTCOMPILE_param_1])",
         )
 
     def test_operator_precedence_7(self):
@@ -1766,28 +1766,28 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_in_1(self):
         self.assert_compile(
             self.table1.c.myid.in_(["a"]),
-            "mytable.myid IN ([POSTCOMPILE_myid_1])",
+            "mytable.myid IN (__[POSTCOMPILE_myid_1])",
             checkparams={"myid_1": ["a"]},
         )
 
     def test_in_2(self):
         self.assert_compile(
             ~self.table1.c.myid.in_(["a"]),
-            "(mytable.myid NOT IN ([POSTCOMPILE_myid_1]))",
+            "(mytable.myid NOT IN (__[POSTCOMPILE_myid_1]))",
             checkparams={"myid_1": ["a"]},
         )
 
     def test_in_3(self):
         self.assert_compile(
             self.table1.c.myid.in_(["a", "b"]),
-            "mytable.myid IN ([POSTCOMPILE_myid_1])",
+            "mytable.myid IN (__[POSTCOMPILE_myid_1])",
             checkparams={"myid_1": ["a", "b"]},
         )
 
     def test_in_4(self):
         self.assert_compile(
             self.table1.c.myid.in_(iter(["a", "b"])),
-            "mytable.myid IN ([POSTCOMPILE_myid_1])",
+            "mytable.myid IN (__[POSTCOMPILE_myid_1])",
             checkparams={"myid_1": ["a", "b"]},
         )
 
@@ -1882,7 +1882,7 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_in_19(self):
         self.assert_compile(
             self.table1.c.myid.in_([1, 2, 3]),
-            "mytable.myid IN ([POSTCOMPILE_myid_1])",
+            "mytable.myid IN (__[POSTCOMPILE_myid_1])",
             checkparams={"myid_1": [1, 2, 3]},
         )
 
@@ -1989,7 +1989,7 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         if is_in:
             self.assert_compile(
                 expr,
-                "(a, b, c) %s ([POSTCOMPILE_param_1])"
+                "(a, b, c) %s (__[POSTCOMPILE_param_1])"
                 % ("IN" if is_in else "NOT IN"),
                 checkparams={"param_1": [(3, "hi", b"there"), (4, "Q", b"P")]},
             )
@@ -2002,7 +2002,7 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         else:
             self.assert_compile(
                 expr,
-                "((a, b, c) NOT IN ([POSTCOMPILE_param_1]))",
+                "((a, b, c) NOT IN (__[POSTCOMPILE_param_1]))",
                 checkparams={"param_1": [(3, "hi", b"there"), (4, "Q", b"P")]},
             )
             self.assert_compile(
@@ -2029,7 +2029,7 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         if is_in:
             self.assert_compile(
                 expr,
-                "(a, b, c) IN ([POSTCOMPILE_param_1])",
+                "(a, b, c) IN (__[POSTCOMPILE_param_1])",
                 checkparams={"param_1": []},
             )
             self.assert_compile(
@@ -2041,7 +2041,7 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         else:
             self.assert_compile(
                 expr,
-                "((a, b, c) NOT IN ([POSTCOMPILE_param_1]))",
+                "((a, b, c) NOT IN (__[POSTCOMPILE_param_1]))",
                 checkparams={"param_1": []},
             )
             self.assert_compile(
@@ -2064,7 +2064,7 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         if is_in:
             self.assert_compile(
                 expr,
-                "a IN ([POSTCOMPILE_a_1])",
+                "a IN (__[POSTCOMPILE_a_1])",
                 checkparams={"a_1": []},
             )
             self.assert_compile(
@@ -2076,7 +2076,7 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         else:
             self.assert_compile(
                 expr,
-                "(a NOT IN ([POSTCOMPILE_a_1]))",
+                "(a NOT IN (__[POSTCOMPILE_a_1]))",
                 checkparams={"a_1": []},
             )
             self.assert_compile(
@@ -2094,7 +2094,8 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         stmt = and_(expr1, expr2)
         self.assert_compile(
-            stmt, "a IN ([POSTCOMPILE_a_1]) AND (a NOT IN ([POSTCOMPILE_a_2]))"
+            stmt,
+            "a IN (__[POSTCOMPILE_a_1]) AND (a NOT IN (__[POSTCOMPILE_a_2]))",
         )
         self.assert_compile(
             stmt, "a IN (5) AND (a NOT IN (5))", literal_binds=True
@@ -2108,7 +2109,8 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         stmt = and_(expr1, expr2)
         self.assert_compile(
-            stmt, "a IN ([POSTCOMPILE_a_1]) AND (a NOT IN ([POSTCOMPILE_a_2]))"
+            stmt,
+            "a IN (__[POSTCOMPILE_a_1]) AND (a NOT IN (__[POSTCOMPILE_a_2]))",
         )
         self.assert_compile(
             stmt,
@@ -2120,7 +2122,7 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         s = {1, 2, 3}
         self.assert_compile(
             self.table1.c.myid.in_(s),
-            "mytable.myid IN ([POSTCOMPILE_myid_1])",
+            "mytable.myid IN (__[POSTCOMPILE_myid_1])",
             checkparams={"myid_1": list(s)},
         )
 
@@ -2138,7 +2140,7 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         seq = MySeq([1, 2, 3])
         self.assert_compile(
             self.table1.c.myid.in_(seq),
-            "mytable.myid IN ([POSTCOMPILE_myid_1])",
+            "mytable.myid IN (__[POSTCOMPILE_myid_1])",
             checkparams={"myid_1": [1, 2, 3]},
         )
 

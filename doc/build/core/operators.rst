@@ -172,9 +172,9 @@ values to the :meth:`_sql.ColumnOperators.in_` method::
 
 
     >>> print(column('x').in_([1, 2, 3]))
-    x IN ([POSTCOMPILE_x_1])
+    x IN (__[POSTCOMPILE_x_1])
 
-The special bound form ``POSTCOMPILE`` is rendered into individual parameters
+The special bound form ``__[POSTCOMPILE`` is rendered into individual parameters
 at execution time, illustrated below:
 
 .. sourcecode:: pycon+sql
@@ -212,12 +212,12 @@ NOT IN
 "NOT IN" is available via the :meth:`_sql.ColumnOperators.not_in` operator::
 
     >>> print(column('x').not_in([1, 2, 3]))
-    (x NOT IN ([POSTCOMPILE_x_1]))
+    (x NOT IN (__[POSTCOMPILE_x_1]))
 
 This is typically more easily available by negating with the ``~`` operator::
 
     >>> print(~column('x').in_([1, 2, 3]))
-    (x NOT IN ([POSTCOMPILE_x_1]))
+    (x NOT IN (__[POSTCOMPILE_x_1]))
 
 Tuple IN Expressions
 ~~~~~~~~~~~~~~~~~~~~
@@ -232,7 +232,7 @@ then receives a list of tuples::
     >>> tup = tuple_(column('x', Integer), column('y', Integer))
     >>> expr = tup.in_([(1, 2), (3, 4)])
     >>> print(expr)
-    (x, y) IN ([POSTCOMPILE_param_1])
+    (x, y) IN (__[POSTCOMPILE_param_1])
 
 To illustrate the parameters rendered:
 

@@ -367,7 +367,7 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                 "SELECT addresses.user_id AS addresses_user_id, addresses.id "
                 "AS addresses_id, addresses.email_address "
                 "AS addresses_email_address FROM addresses "
-                "WHERE addresses.user_id IN ([POSTCOMPILE_primary_keys]) "
+                "WHERE addresses.user_id IN (__[POSTCOMPILE_primary_keys]) "
                 "AND addresses.email_address != :email_address_1 "
                 "ORDER BY addresses.id",
                 [{"primary_keys": [7, 8, 9, 10], "email_address_1": "name"}],
@@ -1227,7 +1227,8 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                     "SELECT addresses.user_id AS addresses_user_id, "
                     "addresses.id AS addresses_id, addresses.email_address "
                     "AS addresses_email_address FROM addresses "
-                    "WHERE addresses.user_id IN ([POSTCOMPILE_primary_keys]) "
+                    "WHERE addresses.user_id IN "
+                    "(__[POSTCOMPILE_primary_keys]) "
                     "AND addresses.email_address != :email_address_1 "
                     "ORDER BY addresses.id",
                     [
@@ -1304,7 +1305,7 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                     "ON items_1.id = order_items_1.item_id "
                     "AND items_1.description = :description_1) "
                     "ON orders.id = order_items_1.order_id "
-                    "WHERE orders.user_id IN ([POSTCOMPILE_primary_keys]) "
+                    "WHERE orders.user_id IN (__[POSTCOMPILE_primary_keys]) "
                     "AND orders.description = :description_2 "
                     "ORDER BY orders.id, items_1.id",
                     [
