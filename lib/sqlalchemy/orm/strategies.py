@@ -382,7 +382,26 @@ class DeferredColumnLoader(LoaderStrategy):
         # dictionary.  Normally, the DeferredColumnLoader.setup_query()
         # sets up that data in the "memoized_populators" dictionary
         # and "create_row_processor()" here is never invoked.
-        if not self.is_class_level:
+
+        if (
+            context.refresh_state
+            and context.query._compile_options._only_load_props
+            and self.key in context.query._compile_options._only_load_props
+        ):
+            self.parent_property._get_strategy(
+                (("deferred", False), ("instrument", True))
+            ).create_row_processor(
+                context,
+                query_entity,
+                path,
+                loadopt,
+                mapper,
+                result,
+                adapter,
+                populators,
+            )
+
+        elif not self.is_class_level:
             if self.raiseload:
                 set_deferred_for_local_state = (
                     self.parent_property._raise_column_loader
