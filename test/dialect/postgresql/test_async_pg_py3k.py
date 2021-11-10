@@ -258,6 +258,7 @@ class AsyncPgTest(fixtures.TestBase):
         "setup_asyncpg_jsonb_codec",
         argnames="methname",
     )
+    @testing.requires.python38
     @async_test
     async def test_codec_registration(
         self, metadata, async_testing_engine, methname
