@@ -1263,6 +1263,12 @@ class SuiteRequirements(Requirements):
         return self.python37
 
     @property
+    def python38(self):
+        return exclusions.only_if(
+            lambda: util.py38, "Python 3.8 or above required"
+        )
+
+    @property
     def cpython(self):
         return exclusions.only_if(
             lambda: util.cpython, "cPython interpreter needed"
