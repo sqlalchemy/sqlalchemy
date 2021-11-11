@@ -2042,6 +2042,18 @@ class Session(_SessionClassMethods):
         """Return a new :class:`_query.Query` object corresponding to this
         :class:`_orm.Session`.
 
+        Note that the :class:`_query.Query` object is legacy as of
+        SQLAlchemy 2.0; the :func:`_sql.select` construct is now used
+        to construct ORM queries.
+
+        .. seealso::
+
+            :ref:`unified_tutorial`
+
+            :ref:`queryguide_toplevel`
+
+            :ref:`query_api_toplevel` - legacy API doc
+
         """
 
         return self._query_cls(entities, self, **kwargs)

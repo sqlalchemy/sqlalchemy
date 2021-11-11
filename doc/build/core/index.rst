@@ -17,3 +17,6 @@ Language provides a schema-centric usage paradigm.
     engines_connections
     api_basics
     future
+
+.. toctree::
+   :hidden:

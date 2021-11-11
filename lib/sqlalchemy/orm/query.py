@@ -101,9 +101,6 @@ class Query(
     :meth:`_query.Query.with_session`
     method.
 
-    For a full walk through of :class:`_query.Query` usage, see the
-    :ref:`ormtutorial_toplevel`.
-
     """
 
     # elements that are in Core and can be cached in the same way
@@ -2290,17 +2287,6 @@ class Query(
 
          .. note:: This flag is considered legacy.
 
-        .. seealso::
-
-            :ref:`ormtutorial_joins` in the ORM tutorial.
-
-            :ref:`inheritance_toplevel` for details on how
-            :meth:`_query.Query.join` is used for inheritance relationships.
-
-            :func:`_orm.join` - a standalone ORM-level join function,
-            used internally by :meth:`_query.Query.join`, which in previous
-            SQLAlchemy versions was the primary ORM-level joining interface.
-
         """
 
         aliased, from_joinpoint, isouter, full = (
@@ -2772,11 +2758,6 @@ class Query(
         appropriate to the entity class represented by this
         :class:`_query.Query`.
 
-        .. seealso::
-
-            :ref:`orm_tutorial_literal_sql` - usage examples in the
-            ORM tutorial
-
         """
         statement = coercions.expect(
             roles.SelectStatementRole, statement, apply_propagate_attrs=self
@@ -3116,8 +3097,6 @@ class Query(
             .. seealso::
 
                 :ref:`faq_query_deduplicating`
-
-                :ref:`orm_tutorial_query_returning`
 
         For fine grained control over specific columns to count, to skip the
         usage of a subquery or otherwise control of the FROM clause, or to use

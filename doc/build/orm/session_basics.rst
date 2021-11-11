@@ -547,21 +547,7 @@ objects in the application.   The :class:`_orm.Session` can also emit UPDATE
 and DELETE statements with arbitrary WHERE clauses as well, and at the same
 time refresh locally present objects which match those rows.
 
-To emit an ORM-enabled UPDATE in :term:`1.x style`, the :meth:`_query.Query.update` method
-may be used::
-
-    session.query(User).filter(User.name == "squidward").\
-        update({"name": "spongebob"}, synchronize_session="fetch")
-
-Above, an UPDATE will be emitted against all rows that match the name
-"squidward" and be updated to the name "spongebob".  The
-:paramref:`_query.Query.update.synchronize_session` parameter referring to
-"fetch" indicates the list of affected primary keys should be fetched either
-via a separate SELECT statement or via RETURNING if the backend database supports it;
-objects locally present in memory will be updated in memory based on these
-primary key identities.
-
-For ORM-enabled UPDATEs in :term:`2.0 style`, :meth:`_orm.Session.execute` is used with the
+To emit an ORM-enabled UPDATE, :meth:`_orm.Session.execute` is used with the
 Core :class:`_sql.Update` construct::
 
     from sqlalchemy import update
@@ -571,8 +557,13 @@ Core :class:`_sql.Update` construct::
 
     result = session.execute(stmt)
 
-Above, the :meth:`_dml.Update.execution_options` method may be used to
-establish execution-time options such as "synchronize_session".
+Above, an UPDATE will be emitted against all rows that match the name
+"squidward" and be updated to the name "spongebob".  The
+special execution option ``synchronize_session`` referring to
+"fetch" indicates the list of affected primary keys should be fetched either
+via a separate SELECT statement or via RETURNING if the backend database supports it;
+objects locally present in memory will be updated in memory based on these
+primary key identities.
 
 The result object returned is an instance of :class:`_result.CursorResult`; to
 retrieve the number of rows matched by any UPDATE or DELETE statement, use
@@ -584,12 +575,7 @@ DELETEs work in the same way as UPDATE except there is no "values / set"
 clause established.  When synchronize_session is used, matching objects
 within the :class:`_orm.Session` will be marked as deleted and expunged.
 
-ORM-enabled delete, :term:`1.x style`::
-
-    session.query(User).filter(User.name == "squidward").\
-        delete(synchronize_session="fetch")
-
-ORM-enabled delete, :term:`2.0 style`::
+ORM-enabled delete::
 
     from sqlalchemy import delete
 

@@ -18,3 +18,8 @@ tutorial.
     extending
     extensions/index
     examples
+
+.. toctree::
+   :hidden:
+
+    tutorial

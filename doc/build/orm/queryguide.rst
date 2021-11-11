@@ -13,6 +13,20 @@ Readers of this section should be familiar with the SQLAlchemy overview
 at :ref:`unified_tutorial`, and in particular most of the content here expands
 upon the content at :ref:`tutorial_selecting_data`.
 
+.. admonition:: Attention legacy users
+
+    In the SQLAlchemy 2.x series, SQL SELECT statements for the ORM are
+    constructed using the same :func:`_sql.select` construct as is used in
+    Core, which is then invoked in terms of a :class:`_orm.Session` using the
+    :meth:`_orm.Session.execute` method (as are the :func:`_sql.update` and
+    :func:`_sql.delete` constructs now used for the
+    :ref:`orm_expression_update_delete` feature). However, the legacy
+    :class:`_query.Query` object, which performs these same steps as more of an
+    "all-in-one" object, continues to remain available as a thin facade over
+    this new system, to support applications that were built on the 1.x series
+    without the need for wholesale replacement of all queries. For reference on
+    this object, see the section :ref:`query_api_toplevel`.
+
 
 ..  Setup code, not for display
 
@@ -1066,7 +1080,6 @@ The ``yield_per`` execution option is equvialent to the
 
     :ref:`engine_stream_results`
 
-
 ORM Update / Delete with Arbitrary WHERE clause
 ================================================
 
@@ -1082,3 +1095,30 @@ matching objects locally present in the :class:`_orm.Session`. See the section
 
     >>> conn.close()
     ROLLBACK
+
+.. _queryguide_additional:
+
+Additional ORM API Constructs
+=============================
+
+
+.. autofunction:: sqlalchemy.orm.aliased
+
+.. autoclass:: sqlalchemy.orm.util.AliasedClass
+
+.. autoclass:: sqlalchemy.orm.util.AliasedInsp
+
+.. autoclass:: sqlalchemy.orm.Bundle
+    :members:
+
+.. autoclass:: sqlalchemy.orm.Load
+    :members:
+
+.. autofunction:: sqlalchemy.orm.with_loader_criteria
+
+.. autofunction:: join
+
+.. autofunction:: outerjoin
+
+.. autofunction:: with_parent
+
