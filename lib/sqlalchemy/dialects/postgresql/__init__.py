@@ -24,6 +24,7 @@ from .base import CHAR
 from .base import CIDR
 from .base import CreateEnumType
 from .base import DATE
+from .base import DOMAIN
 from .base import DOUBLE_PRECISION
 from .base import DropEnumType
 from .base import ENUM
@@ -96,6 +97,7 @@ __all__ = (
     "INTERVAL",
     "ARRAY",
     "ENUM",
+    "DOMAIN",
     "dialect",
     "array",
     "HSTORE",

@@ -36,6 +36,7 @@ from sqlalchemy import util
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.dialects.postgresql import DATERANGE
+from sqlalchemy.dialects.postgresql import DOMAIN
 from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.dialects.postgresql import hstore
 from sqlalchemy.dialects.postgresql import INT4RANGE
@@ -855,6 +856,62 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
         assert "my_enum" not in [
             e["name"] for e in inspect(connection).get_enums()
         ]
+
+
+class DomainTest(fixtures.TestBase, AssertsExecutionResults):
+    __backend__ = True
+    __only_on__ = "postgresql"
+
+    def test_create_table(self, metadata, connection):
+        metadata = self.metadata
+        Email = DOMAIN(
+            name="email",
+            data_type=Text,
+            constraint=r"VALUE ~ '[^@]+@[^@]+\.[^@]+'",
+        )
+        t1 = Table(
+            "table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("email", Email),
+        )
+        t1.create(connection)
+        t1.create(connection, checkfirst=True)  # check the create
+        connection.execute(t1.insert(), dict(email="test@example.com"))
+        connection.execute(t1.insert(), dict(email="a@b.c"))
+        connection.execute(t1.insert(), dict(email="example@gmail.co.uk"))
+        eq_(
+            connection.execute(t1.select().order_by(t1.c.id)).fetchall(),
+            [
+                (1, "test@example.com"),
+                (2, "a@b.c"),
+                (3, "example@gmail.co.uk"),
+            ],
+        )
+
+    def test_name_required(self, metadata, connection):
+        dtype = DOMAIN(metadata=metadata)
+        assert_raises(exc.CompileError, dtype.create, connection)
+        # not sure why this doesn't work...
+        # assert_raises(
+        #     exc.CompileError, dtype.compile, dialect=connection.dialect
+        # )
+
+    def test_drops_on_table(self, connection, metadata):
+        Email = DOMAIN(
+            name="email",
+            data_type=Text,
+            constraint=r"VALUE ~ '[^@]+@[^@]+\.[^@]+'",
+        )
+        table = Table("e1", metadata, Column("e1", Email))
+
+        table.create(connection)
+        table.drop(connection)
+        assert ("email",) not in inspect(connection).get_domains().keys()
+        table.create(connection)
+        assert ("email",) in inspect(connection).get_domains().keys()
+        table.drop(connection)
+        assert ("email",) not in inspect(connection).get_domains().keys()
 
 
 class OIDTest(fixtures.TestBase):
