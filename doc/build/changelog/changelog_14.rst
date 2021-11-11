@@ -15,7 +15,241 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.27
-    :include_notes_from: unreleased_14
+    :released: November 11, 2021
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 7291
+
+        Fixed issue in future :class:`_future.Connection` object where the
+        :meth:`_future.Connection.execute` method would not accept a non-dict
+        mapping object, such as SQLAlchemy's own :class:`.RowMapping` or other
+        ``abc.collections.Mapping`` object as a parameter dictionary.
+
+    .. change::
+        :tags: bug, mysql, mariadb
+        :tickets: 7167
+
+        Reorganized the list of reserved words into two separate lists, one for
+        MySQL and one for MariaDB, so that these diverging sets of words can be
+        managed more accurately; adjusted the MySQL/MariaDB dialect to switch among
+        these lists based on either explicitly configured or
+        server-version-detected "MySQL" or "MariaDB" backend. Added all current
+        reserved words through MySQL 8 and current MariaDB versions including
+        recently added keywords like "lead" . Pull request courtesy Kevin Kirsche.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7224
+
+        Fixed bug in "relationship to aliased class" feature introduced at
+        :ref:`relationship_aliased_class` where it was not possible to create a
+        loader strategy option targeting an attribute on the target using the
+        :func:`_orm.aliased` construct directly in a second loader option, such as
+        ``selectinload(A.aliased_bs).joinedload(aliased_b.cs)``, without explicitly
+        qualifying using :meth:`_orm.PropComparator.of_type` on the preceding
+        element of the path. Additionally, targeting the non-aliased class directly
+        would be accepted (inappropriately), but would silently fail, such as
+        ``selectinload(A.aliased_bs).joinedload(B.cs)``; this now raises an error
+        referring to the typing mismatch.
+
+
+    .. change::
+        :tags: bug, schema
+        :tickets: 7295
+
+        Fixed issue in :class:`.Table` where the
+        :paramref:`.Table.implicit_returning` parameter would not be
+        accommodated correctly when passed along with
+        :paramref:`.Table.extend_existing` to augment an existing
+        :class:`.Table`.
+
+    .. change::
+        :tags: bug, postgresql, asyncpg
+        :tickets: 7283
+
+        Changed the asyncpg dialect to bind the :class:`.Float` type to the "float"
+        PostgreSQL type instead of "numeric" so that the value ``float(inf)`` can
+        be accommodated. Added test suite support for persistence of the "inf"
+        value.
+
+
+    .. change::
+        :tags: bug, engine, regression
+        :tickets: 7274
+        :versions: 2.0.0b1
+
+        Fixed regression where the :meth:`_engine.CursorResult.fetchmany` method
+        would fail to autoclose a server-side cursor (i.e. when ``stream_results``
+        or ``yield_per`` is in use, either Core or ORM oriented results) when the
+        results were fully exhausted.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7274
+        :versions: 2.0.0b1
+
+        All :class:`_result.Result` objects will now consistently raise
+        :class:`_exc.ResourceClosedError` if they are used after a hard close,
+        which includes the "hard close" that occurs after calling "single row or
+        value" methods like :meth:`_result.Result.first` and
+        :meth:`_result.Result.scalar`. This was already the behavior of the most
+        common class of result objects returned for Core statement executions, i.e.
+        those based on :class:`_engine.CursorResult`, so this behavior is not new.
+        However, the change has been extended to properly accommodate for the ORM
+        "filtering" result objects returned when using 2.0 style ORM queries,
+        which would previously behave in "soft closed" style of returning empty
+        results, or wouldn't actually "soft close" at all and would continue
+        yielding from the underlying cursor.
+
+        As part of this change, also added :meth:`_result.Result.close` to the base
+        :class:`_result.Result` class and implemented it for the filtered result
+        implementations that are used by the ORM, so that it is possible to call
+        the :meth:`_engine.CursorResult.close` method on the underlying
+        :class:`_engine.CursorResult` when the the ``yield_per`` execution option
+        is in use to close a server side cursor before remaining ORM results have
+        been fetched. This was again already available for Core result sets but the
+        change makes it available for 2.0 style ORM results as well.
+
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 7281
+        :versions: 2.0.0b1
+
+        Fixed issue in MySQL :meth:`_mysql.Insert.on_duplicate_key_update` which
+        would render the wrong column name when an expression were used in a VALUES
+        expression. Pull request courtesy Cristian Sabaila.
+
+    .. change::
+        :tags: bug, sql, regression
+        :tickets: 7292
+
+        Fixed regression where the row objects returned for ORM queries, which are
+        now the normal :class:`_sql.Row` objects, would not be interpreted by the
+        :meth:`_sql.ColumnOperators.in_` operator as tuple values to be broken out
+        into individual bound parameters, and would instead pass them as single
+        values to the driver leading to failures. The change to the "expanding IN"
+        system now accommodates for the expression already being of type
+        :class:`.TupleType` and treats values accordingly if so. In the uncommon
+        case of using "tuple-in" with an untyped statement such as a textual
+        statement with no typing information, a tuple value is detected for values
+        that implement ``collections.abc.Sequence``, but that are not ``str`` or
+        ``bytes``, as always when testing for ``Sequence``.
+
+    .. change::
+        :tags: usecase, sql
+
+        Added :class:`.TupleType` to the top level ``sqlalchemy`` import namespace.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 7269
+
+        Fixed issue where using the feature of using a string label for ordering or
+        grouping described at :ref:`tutorial_order_by_label` would fail to function
+        correctly if used on a :class:`.CTE` construct, when the CTE were embedded
+        inside of an enclosing :class:`_sql.Select` statement that itself was set
+        up as a scalar subquery.
+
+
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 7239
+
+        Fixed 1.4 regression where :meth:`_orm.Query.filter_by` would not function
+        correctly on a :class:`_orm.Query` that was produced from
+        :meth:`_orm.Query.union`, :meth:`_orm.Query.from_self` or similar.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7304
+
+        Fixed issue where deferred polymorphic loading of attributes from a
+        joined-table inheritance subclass would fail to populate the attribute
+        correctly if the :func:`_orm.load_only` option were used to originally
+        exclude that attribute, in the case where the load_only were descending
+        from a relationship loader option.  The fix allows that other valid options
+        such as ``defer(..., raiseload=True)`` etc. still function as expected.
+
+    .. change::
+        :tags: postgresql, usecase, asyncpg
+        :tickets: 7284
+        :versions: 2.0.0b1
+
+        Added overridable methods ``PGDialect_asyncpg.setup_asyncpg_json_codec``
+        and ``PGDialect_asyncpg.setup_asyncpg_jsonb_codec`` codec, which handle the
+        required task of registering JSON/JSONB codecs for these datatypes when
+        using asyncpg. The change is that methods are broken out as individual,
+        overridable methods to support third party dialects that need to alter or
+        disable how these particular codecs are set up.
+
+
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 7272
+        :versions: 2.0.0b1
+
+        Fixed issue in future :class:`_future.Engine` where calling upon
+        :meth:`_future.Engine.begin` and entering the context manager would not
+        close the connection if the actual BEGIN operation failed for some reason,
+        such as an event handler raising an exception; this use case failed to be
+        tested for the future version of the engine. Note that the "future" context
+        managers which handle ``begin()`` blocks in Core and ORM don't actually run
+        the "BEGIN" operation until the context managers are actually entered. This
+        is different from the legacy version which runs the "BEGIN" operation up
+        front.
+
+    .. change::
+        :tags: mssql, bug
+        :tickets: 7300
+
+        Adjusted the compiler's generation of "post compile" symbols including
+        those used for "expanding IN" as well as for the "schema translate map" to
+        not be based directly on plain bracketed strings with underscores, as this
+        conflicts directly with SQL Server's quoting format of also using brackets,
+        which produces false matches when the compiler replaces "post compile" and
+        "schema translate" symbols. The issue created easy to reproduce examples
+        both with the :meth:`.Inspector.get_schema_names` method when used in
+        conjunction with the
+        :paramref:`_engine.Connection.execution_options.schema_translate_map`
+        feature, as well in the unlikely case that a symbol overlapping with the
+        internal name "POSTCOMPILE" would be used with a feature like "expanding
+        in".
+
+
+    .. change::
+        :tags: postgresql, pg8000
+        :tickets: 7167
+
+        Improve array handling when using PostgreSQL with the
+        pg8000 dialect.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 7244
+
+        Fixed 1.4 regression where :meth:`_orm.Query.filter_by` would not function
+        correctly when :meth:`_orm.Query.join` were joined to an entity which made
+        use of :meth:`_orm.PropComparator.of_type` to specify an aliased version of
+        the target entity. The issue also applies to future style ORM queries
+        constructed with :func:`_sql.select`.
+
+
+    .. change::
+        :tags: bug, sql, regression
+        :tickets: 7287
+
+        Fixed regression where the :func:`_sql.text` construct would no longer be
+        accepted as a target case in the "whens" list within a :func:`_sql.case`
+        construct. The regression appears related to an attempt to guard against
+        some forms of literal values that were considered to be ambiguous when
+        passed here; however, there's no reason the target cases shouldn't be
+        interpreted as open-ended SQL expressions just like anywhere else, and a
+        literal string or tuple will be converted to a bound parameter as would be
+        the case elsewhere.
 
 .. changelog::
     :version: 1.4.26

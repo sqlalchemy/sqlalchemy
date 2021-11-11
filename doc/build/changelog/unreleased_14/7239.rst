@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, orm, regression
-    :tickets: 7239
-
-    Fixed 1.4 regression where :meth:`_orm.Query.filter_by` would not function
-    correctly on a :class:`_orm.Query` that was produced from
-    :meth:`_orm.Query.union`, :meth:`_orm.Query.from_self` or similar.
