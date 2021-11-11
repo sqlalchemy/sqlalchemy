@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, mysql
-    :tickets: 7281
-    :versions: 2.0.0b1
-
-    Fixed issue in MySQL :meth:`_mysql.Insert.on_duplicate_key_update` which
-    would render the wrong column name when an expression were used in a VALUES
-    expression. Pull request courtesy Cristian Sabaila.

@@ -1,6 +1,0 @@
-.. change::
-    :tags: postgresql, pg8000
-    :tickets: 7167
-
-    Improve array handling when using PostgreSQL with the
-    pg8000 dialect.
