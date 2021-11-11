@@ -13,7 +13,6 @@ from sqlalchemy import MetaData
 from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy import Unicode
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.sql import literal_column
 from sqlalchemy.sql import select
@@ -29,8 +28,6 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.types import TypeDecorator
 from sqlalchemy.types import TypeEngine
-from sqlalchemy.util import b
-from sqlalchemy.util import u
 
 
 class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -1426,29 +1423,6 @@ class ServerDefaultsOnPKTest(fixtures.TestBase):
         r = connection.execute(t.insert(), dict(data="data"))
         eq_(r.inserted_primary_key, (5,))
         eq_(list(connection.execute(t.select())), [(5, "data")])
-
-
-class UnicodeDefaultsTest(fixtures.TestBase):
-    __backend__ = True
-
-    def test_no_default(self):
-        Column(Unicode(32))
-
-    def test_unicode_default(self):
-        default = u("foo")
-        Column(Unicode(32), default=default)
-
-    def test_nonunicode_default(self):
-        default = b("foo")
-        assert_raises_message(
-            sa.exc.SAWarning,
-            "Unicode column 'foobar' has non-unicode "
-            "default value b?'foo' specified.",
-            Column,
-            "foobar",
-            Unicode(32),
-            default=default,
-        )
 
 
 class InsertFromSelectTest(fixtures.TablesTest):

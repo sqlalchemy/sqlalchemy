@@ -27,7 +27,6 @@ from .base import BIT
 from .base import MySQLCompiler
 from .base import MySQLDialect
 from .base import MySQLIdentifierPreparer
-from ... import processors
 from ... import util
 
 
@@ -87,8 +86,6 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
     driver = "mysqlconnector"
     supports_statement_cache = True
 
-    supports_unicode_binds = True
-
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
 
@@ -100,29 +97,6 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
     preparer = MySQLIdentifierPreparer_mysqlconnector
 
     colspecs = util.update_copy(MySQLDialect.colspecs, {BIT: _myconnpyBIT})
-
-    def __init__(self, *arg, **kw):
-        super(MySQLDialect_mysqlconnector, self).__init__(*arg, **kw)
-
-        # hack description encoding since mysqlconnector randomly
-        # returns bytes or not
-        self._description_decoder = (
-            processors.to_conditional_unicode_processor_factory
-        )(self.description_encoding)
-
-    def _check_unicode_description(self, connection):
-        # hack description encoding since mysqlconnector randomly
-        # returns bytes or not
-        return False
-
-    @property
-    def description_encoding(self):
-        # total guess
-        return "latin-1"
-
-    @util.memoized_property
-    def supports_unicode_statements(self):
-        return util.py3k or self._mysqlconnector_version_info > (2, 0)
 
     @classmethod
     def dbapi(cls):

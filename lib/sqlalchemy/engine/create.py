@@ -95,21 +95,6 @@ def create_engine(url, **kwargs):
         additional keyword arguments.  See the example
         at :ref:`custom_dbapi_args`.
 
-    :param convert_unicode=False: if set to True, causes
-        all :class:`.String` datatypes to act as though the
-        :paramref:`.String.convert_unicode` flag has been set to ``True``,
-        regardless of a setting of ``False`` on an individual :class:`.String`
-        type.  This has the effect of causing all :class:`.String` -based
-        columns to accommodate Python Unicode objects directly as though the
-        datatype were the :class:`.Unicode` type.
-
-        .. deprecated:: 1.3
-
-            The :paramref:`_sa.create_engine.convert_unicode` parameter
-            is deprecated and will be removed in a future release.
-            All modern DBAPIs now support Python Unicode directly and this
-            parameter is unnecessary.
-
     :param creator: a callable which returns a DBAPI connection.
         This creation function will be passed to the underlying
         connection pool and will be used to create all new database
@@ -168,63 +153,6 @@ def create_engine(url, **kwargs):
         .. seealso::
 
             :ref:`change_4737`
-
-    :param encoding: **legacy Python 2 value only, where it only applies to
-        specific DBAPIs, not used in Python 3 for any modern DBAPI driver.
-        Please refer to individual dialect documentation for client encoding
-        behaviors.**  Defaults to the string value ``utf-8``.  This value
-        refers **only** to the character encoding that is used when SQLAlchemy
-        sends or receives data from a :term:`DBAPI` that does not support
-        Python Unicode and **is only used under Python 2**, only for certain
-        DBAPI drivers, and only in certain circumstances. **Python 3 users
-        please DISREGARD this parameter and refer to the documentation for the
-        specific dialect in use in order to configure character encoding
-        behavior.**
-
-        .. note:: The ``encoding`` parameter deals only with in-Python
-           encoding issues that were prevalent with **some DBAPIS only**
-           under **Python 2 only**.  Under Python 3 it is not used by
-           any modern dialect. For  DBAPIs that require
-           client encoding configurations, which are most of those outside
-           of SQLite, please consult specific :ref:`dialect documentation
-           <dialect_toplevel>` for details.
-
-        All modern DBAPIs that work in Python 3 necessarily feature direct
-        support for Python unicode strings.   Under Python 2, this was not
-        always the case.  For those scenarios where the DBAPI is detected as
-        not supporting a Python ``unicode`` object under Python 2, this
-        encoding is used to determine the source/destination encoding.  It is
-        **not used** for those cases where the DBAPI handles unicode directly.
-
-        To properly configure a system to accommodate Python ``unicode``
-        objects, the DBAPI should be configured to handle unicode to the
-        greatest degree as is appropriate - see the notes on unicode pertaining
-        to the specific target database in use at :ref:`dialect_toplevel`.
-
-        Areas where string encoding may need to be accommodated
-        outside of the DBAPI, nearly always under **Python 2 only**,
-        include zero or more of:
-
-        * the values passed to bound parameters, corresponding to
-          the :class:`.Unicode` type or the :class:`.String` type
-          when ``convert_unicode`` is ``True``;
-        * the values returned in result set columns corresponding
-          to the :class:`.Unicode` type or the :class:`.String`
-          type when ``convert_unicode`` is ``True``;
-        * the string SQL statement passed to the DBAPI's
-          ``cursor.execute()`` method;
-        * the string names of the keys in the bound parameter
-          dictionary passed to the DBAPI's ``cursor.execute()``
-          as well as ``cursor.setinputsizes()`` methods;
-        * the string column names retrieved from the DBAPI's
-          ``cursor.description`` attribute.
-
-        When using Python 3, the DBAPI is required to support all of the above
-        values as Python ``unicode`` objects, which in Python 3 are just known
-        as ``str``.  In Python 2, the DBAPI does not specify unicode behavior
-        at all, so SQLAlchemy must make decisions for each of the above values
-        on a per-DBAPI basis - implementations are completely inconsistent in
-        their behavior.
 
     :param execution_options: Dictionary execution options which will
         be applied to all connections.  See

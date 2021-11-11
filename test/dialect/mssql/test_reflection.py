@@ -22,7 +22,6 @@ from sqlalchemy import types as sqltypes
 from sqlalchemy import util
 from sqlalchemy.dialects import mssql
 from sqlalchemy.dialects.mssql import base
-from sqlalchemy.dialects.mssql.information_schema import CoerceUnicode
 from sqlalchemy.dialects.mssql.information_schema import tables
 from sqlalchemy.schema import CreateIndex
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -550,12 +549,6 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
 
 
 class InfoCoerceUnicodeTest(fixtures.TestBase, AssertsCompiledSQL):
-    def test_info_unicode_coercion(self):
-
-        dialect = mssql.dialect()
-        value = CoerceUnicode().bind_processor(dialect)("a string")
-        assert isinstance(value, util.text_type)
-
     def test_info_unicode_cast_no_2000(self):
         dialect = mssql.dialect()
         dialect.server_version_info = base.MS_2000_VERSION

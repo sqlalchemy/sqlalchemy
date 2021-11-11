@@ -81,7 +81,6 @@ from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_deprecated_20
 from sqlalchemy.testing import expect_raises
-from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
@@ -92,7 +91,6 @@ from sqlalchemy.testing.schema import pep435_enum
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import picklers
 from sqlalchemy.testing.util import round_decimal
-from sqlalchemy.util import u
 
 
 def _all_dialect_modules():
@@ -337,12 +335,6 @@ class AdaptTest(fixtures.TestBase):
         t1 = String(length=50)
         t2 = t1.adapt(Text)
         eq_(t2.length, 50)
-
-    def test_convert_unicode_text_type(self):
-        with testing.expect_deprecated(
-            "The String.convert_unicode parameter is deprecated"
-        ):
-            eq_(types.String(convert_unicode=True).python_type, util.text_type)
 
 
 class TypeAffinityTest(fixtures.TestBase):
@@ -1026,50 +1018,6 @@ class UserDefinedTest(
         eq_(a.dialect_specific_args["bar"], "bar")
 
 
-class StringConvertUnicodeTest(fixtures.TestBase):
-    @testing.combinations((Unicode,), (String,), argnames="datatype")
-    @testing.combinations((True,), (False,), argnames="convert_unicode")
-    @testing.combinations(
-        (String.RETURNS_CONDITIONAL,),
-        (String.RETURNS_BYTES,),
-        (String.RETURNS_UNICODE),
-        argnames="returns_unicode_strings",
-    )
-    def test_convert_unicode(
-        self, datatype, convert_unicode, returns_unicode_strings
-    ):
-        s1 = datatype()
-        dialect = mock.Mock(
-            returns_unicode_strings=returns_unicode_strings,
-            encoding="utf-8",
-            convert_unicode=convert_unicode,
-        )
-
-        proc = s1.result_processor(dialect, None)
-
-        string = u("méil")
-        bytestring = string.encode("utf-8")
-
-        if (
-            datatype is Unicode or convert_unicode
-        ) and returns_unicode_strings in (
-            String.RETURNS_CONDITIONAL,
-            String.RETURNS_BYTES,
-        ):
-            eq_(proc(bytestring), string)
-
-            if returns_unicode_strings is String.RETURNS_CONDITIONAL:
-                eq_(proc(string), string)
-            else:
-                if util.py3k:
-                    # trying to decode a unicode
-                    assert_raises(TypeError, proc, string)
-                else:
-                    assert_raises(UnicodeEncodeError, proc, string)
-        else:
-            is_(proc, None)
-
-
 class TypeCoerceCastTest(fixtures.TablesTest):
     __backend__ = True
 
@@ -1666,59 +1614,6 @@ class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
             datetime.datetime(2015, 4, 18, 10, 15, 17),
         )
-
-
-class UnicodeTest(fixtures.TestBase):
-
-    """Exercise the Unicode and related types.
-
-    Note:  unicode round trip tests are now in
-    sqlalchemy/testing/suite/test_types.py.
-
-    """
-
-    __backend__ = True
-
-    data = util.u(
-        "Alors vous imaginez ma surprise, au lever du jour, quand "
-        "une drôle de petite voix m’a réveillé. "
-        "Elle disait: « S’il vous plaît… dessine-moi un mouton! »"
-    )
-
-    def test_unicode_warnings_typelevel_native_unicode(self):
-
-        unicodedata = self.data
-        u = Unicode()
-        dialect = default.DefaultDialect()
-        dialect.supports_unicode_binds = True
-        uni = u.dialect_impl(dialect).bind_processor(dialect)
-        if util.py3k:
-            assert_raises(exc.SAWarning, uni, b"x")
-            assert isinstance(uni(unicodedata), str)
-        else:
-            assert_raises(exc.SAWarning, uni, "x")
-            assert isinstance(uni(unicodedata), unicode)  # noqa
-
-    def test_unicode_warnings_typelevel_sqla_unicode(self):
-        unicodedata = self.data
-        u = Unicode()
-        dialect = default.DefaultDialect()
-        dialect.supports_unicode_binds = False
-        uni = u.dialect_impl(dialect).bind_processor(dialect)
-        assert_raises(exc.SAWarning, uni, util.b("x"))
-        assert isinstance(uni(unicodedata), util.binary_type)
-
-        eq_(uni(unicodedata), unicodedata.encode("utf-8"))
-
-    def test_unicode_warnings_totally_wrong_type(self):
-        u = Unicode()
-        dialect = default.DefaultDialect()
-        dialect.supports_unicode_binds = False
-        uni = u.dialect_impl(dialect).bind_processor(dialect)
-        with expect_warnings(
-            "Unicode type received non-unicode bind param value 5."
-        ):
-            eq_(uni(5), 5)
 
 
 class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
@@ -2479,13 +2374,11 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         # depending on backend.
         assert "('x'," in e.print_sql()
 
-    @testing.uses_deprecated(".*convert_unicode")
     def test_repr(self):
         e = Enum(
             "x",
             "y",
             name="somename",
-            convert_unicode=True,
             quote=True,
             inherit_schema=True,
             native_enum=False,

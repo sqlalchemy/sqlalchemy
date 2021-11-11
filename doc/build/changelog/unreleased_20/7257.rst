@@ -1,0 +1,25 @@
+.. change::
+    :tags: general, changed
+    :tickets: 7257
+
+    Migrated the codebase to remove all pre-2.0 behaviors and architectures
+    that were previously noted as deprecated for removal in 2.0, including:
+
+    * removal of all Python 2 code, minimum version is now Python 3.7
+
+    * :class:`_engine.Engine` and :class:`_engine.Connection` now use the
+      new 2.0 style of working, which includes "autobegin", library level
+      autocommit removed, subtransactions and "branched" connections
+      removed
+
+    * Result objects use 2.0-style behaviors; :class:`_result.Row` is fully
+      a named tuple without "mapping" behavior, use :class:`_result.RowMapping`
+      for "mapping" behavior
+
+    * All Unicode encoding/decoding architecture has been removed from
+      SQLAlchemy.  All modern DBAPI implementations support Unicode
+      transparently thanks to Python 3, so the ``convert_unicode`` feature
+      as well as related mechanisms to look for bytestrings in
+      DBAPI ``cursor.description`` etc. have been removed.
+
+    * More are in progress as development continues

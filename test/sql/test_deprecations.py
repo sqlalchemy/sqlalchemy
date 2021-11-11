@@ -9,7 +9,6 @@ from sqlalchemy import bindparam
 from sqlalchemy import case
 from sqlalchemy import CHAR
 from sqlalchemy import column
-from sqlalchemy import create_engine
 from sqlalchemy import exc
 from sqlalchemy import exists
 from sqlalchemy import ForeignKey
@@ -29,7 +28,6 @@ from sqlalchemy import String
 from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import text
-from sqlalchemy import util
 from sqlalchemy.engine import default
 from sqlalchemy.sql import coercions
 from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
@@ -159,29 +157,6 @@ class DeprecationWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
         ):
             preparer.quote_schema("hi", True)
 
-    def test_string_convert_unicode(self):
-        with testing.expect_deprecated(
-            "The String.convert_unicode parameter is deprecated and "
-            "will be removed in a future release."
-        ):
-            String(convert_unicode=True)
-
-    def test_string_convert_unicode_force(self):
-        with testing.expect_deprecated(
-            "The String.convert_unicode parameter is deprecated and "
-            "will be removed in a future release."
-        ):
-            String(convert_unicode="force")
-
-    def test_engine_convert_unicode(self):
-        with testing.expect_deprecated(
-            "The create_engine.convert_unicode parameter and "
-            "corresponding dialect-level"
-        ):
-            create_engine(
-                "mysql+mysqldb://", convert_unicode=True, module=mock.Mock()
-            )
-
     def test_empty_and_or(self):
         with testing.expect_deprecated(
             r"Invoking and_\(\) without arguments is deprecated, and "
@@ -211,57 +186,6 @@ class DeprecationWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
             _copy.mock_calls,
             [mock.call(target_table="tt", schema="s", arbitrary="arb")],
         )
-
-
-class ConvertUnicodeDeprecationTest(fixtures.TestBase):
-
-    __backend__ = True
-
-    data = util.u(
-        "Alors vous imaginez ma surprise, au lever du jour, quand "
-        "une drôle de petite voix m’a réveillé. "
-        "Elle disait: « S’il vous plaît… dessine-moi un mouton! »"
-    )
-
-    def test_unicode_warnings_dialectlevel(self):
-
-        unicodedata = self.data
-
-        with testing.expect_deprecated(
-            "The create_engine.convert_unicode parameter and "
-            "corresponding dialect-level"
-        ):
-            dialect = default.DefaultDialect(convert_unicode=True)
-        dialect.supports_unicode_binds = False
-
-        s = String()
-        uni = s.dialect_impl(dialect).bind_processor(dialect)
-
-        uni(util.b("x"))
-        assert isinstance(uni(unicodedata), util.binary_type)
-
-        eq_(uni(unicodedata), unicodedata.encode("utf-8"))
-
-    def test_ignoring_unicode_error(self):
-        """checks String(unicode_error='ignore') is passed to
-        underlying codec."""
-
-        unicodedata = self.data
-
-        with testing.expect_deprecated(
-            "The String.convert_unicode parameter is deprecated and "
-            "will be removed in a future release.",
-            "The String.unicode_errors parameter is deprecated and "
-            "will be removed in a future release.",
-        ):
-            type_ = String(
-                248, convert_unicode="force", unicode_error="ignore"
-            )
-        dialect = default.DefaultDialect(encoding="ascii")
-        proc = type_.result_processor(dialect, 10)
-
-        utfdata = unicodedata.encode("utf8")
-        eq_(proc(utfdata), unicodedata.encode("ascii", "ignore").decode())
 
 
 class SubqueryCoercionsTest(fixtures.TestBase, AssertsCompiledSQL):

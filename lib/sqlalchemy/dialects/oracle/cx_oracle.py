@@ -119,7 +119,7 @@ itself.  These options are always passed directly to :func:`_sa.create_engine`
 , such as::
 
     e = create_engine(
-        "oracle+cx_oracle://user:pass@dsn", coerce_to_unicode=False)
+        "oracle+cx_oracle://user:pass@dsn", coerce_to_decimal=False)
 
 The parameters accepted by the cx_oracle dialect are as follows:
 
@@ -129,8 +129,6 @@ The parameters accepted by the cx_oracle dialect are as follows:
   50 rows).
 
 * ``auto_convert_lobs`` - defaults to True; See :ref:`cx_oracle_lob`.
-
-* ``coerce_to_unicode`` - see :ref:`cx_oracle_unicode` for detail.
 
 * ``coerce_to_decimal`` - see :ref:`cx_oracle_numeric` for detail.
 
@@ -210,8 +208,7 @@ Unicode
 -------
 
 As is the case for all DBAPIs under Python 3, all strings are inherently
-Unicode strings.     Under Python 2, cx_Oracle also supports Python Unicode
-objects directly.    In all cases however, the driver requires an explicit
+Unicode strings.   In all cases however, the driver requires an explicit
 encoding configuration.
 
 Ensuring the Correct Client Encoding
@@ -264,25 +261,6 @@ SQLAlchemy dialect to use NCHAR/NCLOB for the :class:`.Unicode` /
    unless the ``use_nchar_for_unicode=True`` is passed to the dialect
    when :func:`_sa.create_engine` is called.
 
-Unicode Coercion of result rows under Python 2
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-When result sets are fetched that include strings, under Python 3 the cx_Oracle
-DBAPI returns all strings as Python Unicode objects, since Python 3 only has a
-Unicode string type.  This occurs for data fetched from datatypes such as
-VARCHAR2, CHAR, CLOB, NCHAR, NCLOB, etc.  In order to provide cross-
-compatibility under Python 2, the SQLAlchemy cx_Oracle dialect will add
-Unicode-conversion to string data under Python 2 as well.  Historically, this
-made use of converters that were supplied by cx_Oracle but were found to be
-non-performant; SQLAlchemy's own converters are used for the string to Unicode
-conversion under Python 2.  To disable the Python 2 Unicode conversion for
-VARCHAR2, CHAR, and CLOB, the flag ``coerce_to_unicode=False`` can be passed to
-:func:`_sa.create_engine`.
-
-.. versionchanged:: 1.3 Unicode conversion is applied to all string values
-   by default under python 2.  The ``coerce_to_unicode`` now defaults to True
-   and can be set to False to disable the Unicode coercion of strings that are
-   delivered as VARCHAR2/CHAR/CLOB data.
 
 .. _cx_oracle_unicode_encoding_errors:
 
@@ -855,9 +833,6 @@ class OracleDialect_cx_oracle(OracleDialect):
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
 
-    supports_unicode_statements = True
-    supports_unicode_binds = True
-
     use_setinputsizes = True
 
     driver = "cx_oracle"
@@ -892,6 +867,8 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     _cx_oracle_threaded = None
 
+    _cursor_var_unicode_kwargs = util.immutabledict()
+
     @util.deprecated_params(
         threaded=(
             "1.3",
@@ -906,7 +883,6 @@ class OracleDialect_cx_oracle(OracleDialect):
     def __init__(
         self,
         auto_convert_lobs=True,
-        coerce_to_unicode=True,
         coerce_to_decimal=True,
         arraysize=50,
         encoding_errors=None,
@@ -917,10 +893,13 @@ class OracleDialect_cx_oracle(OracleDialect):
         OracleDialect.__init__(self, **kwargs)
         self.arraysize = arraysize
         self.encoding_errors = encoding_errors
+        if encoding_errors:
+            self._cursor_var_unicode_kwargs = {
+                "encodingErrors": encoding_errors
+            }
         if threaded is not None:
             self._cx_oracle_threaded = threaded
         self.auto_convert_lobs = auto_convert_lobs
-        self.coerce_to_unicode = coerce_to_unicode
         self.coerce_to_decimal = coerce_to_decimal
         if self._use_nchar_for_unicode:
             self.colspecs = self.colspecs.copy()
@@ -938,6 +917,13 @@ class OracleDialect_cx_oracle(OracleDialect):
                 raise exc.InvalidRequestError(
                     "cx_Oracle version 5.2 and above are supported"
                 )
+
+            if encoding_errors and self.cx_oracle_ver < (6, 4):
+                util.warn(
+                    "cx_oracle version %r does not support encodingErrors"
+                    % (self.cx_oracle_ver,)
+                )
+                self._cursor_var_unicode_kwargs = util.immutabledict()
 
             self._include_setinputsizes = {
                 cx_Oracle.DATETIME,
@@ -974,19 +960,6 @@ class OracleDialect_cx_oracle(OracleDialect):
 
         self._is_cx_oracle_6 = self.cx_oracle_ver >= (6,)
 
-    @property
-    def _cursor_var_unicode_kwargs(self):
-        if self.encoding_errors:
-            if self.cx_oracle_ver >= (6, 4):
-                return {"encodingErrors": self.encoding_errors}
-            else:
-                util.warn(
-                    "cx_oracle version %r does not support encodingErrors"
-                    % (self.cx_oracle_ver,)
-                )
-
-        return {}
-
     def _parse_cx_oracle_ver(self, version):
         m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", version)
         if m:
@@ -1002,9 +975,6 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     def initialize(self, connection):
         super(OracleDialect_cx_oracle, self).initialize(connection)
-        if self._is_oracle_8:
-            self.supports_unicode_binds = False
-
         self._detect_decimal_char(connection)
 
     def get_isolation_level(self, connection):
@@ -1141,9 +1111,10 @@ class OracleDialect_cx_oracle(OracleDialect):
                         cursor, name, default_type, size, precision, scale
                     )
 
-            # allow all strings to come back natively as Unicode
+            # if unicode options were specified, add a decoder, otherwise
+            # cx_Oracle should return Unicode
             elif (
-                dialect.coerce_to_unicode
+                dialect._cursor_var_unicode_kwargs
                 and default_type
                 in (
                     cx_Oracle.STRING,
@@ -1337,13 +1308,6 @@ class OracleDialect_cx_oracle(OracleDialect):
                 for key, dbtype, sqltype in list_of_tuples
                 if dbtype
             )
-
-            if not self.supports_unicode_binds:
-                # oracle 8 only
-                collection = (
-                    (self.dialect._encoder(key)[0], dbtype)
-                    for key, dbtype in collection
-                )
 
             cursor.setinputsizes(**{key: dbtype for key, dbtype in collection})
 

@@ -9,7 +9,6 @@
 
 """
 
-import codecs
 import datetime as dt
 import decimal
 import json
@@ -127,9 +126,7 @@ class String(Concatenable, TypeEngine):
 
     """The base for all string and character types.
 
-    In SQL, corresponds to VARCHAR.  Can also take Python unicode objects
-    and encode to the database's encoding in bind params (and the reverse for
-    result sets.)
+    In SQL, corresponds to VARCHAR.
 
     The `length` field is usually required when the `String` type is
     used within a CREATE TABLE statement, as VARCHAR requires a length
@@ -139,91 +136,10 @@ class String(Concatenable, TypeEngine):
 
     __visit_name__ = "string"
 
-    RETURNS_UNICODE = util.symbol(
-        "RETURNS_UNICODE",
-        """Indicates that the DBAPI returns Python Unicode for VARCHAR,
-        NVARCHAR, and other character-based datatypes in all cases.
-
-        This is the default value for
-        :attr:`.DefaultDialect.returns_unicode_strings` under Python 3.
-
-        .. versionadded:: 1.4
-
-        """,
-    )
-
-    RETURNS_BYTES = util.symbol(
-        "RETURNS_BYTES",
-        """Indicates that the DBAPI returns byte objects under Python 3
-        or non-Unicode string objects under Python 2 for VARCHAR, NVARCHAR,
-        and other character-based datatypes in all cases.
-
-        This may be applied to the
-        :attr:`.DefaultDialect.returns_unicode_strings` attribute.
-
-        .. versionadded:: 1.4
-
-        """,
-    )
-
-    RETURNS_CONDITIONAL = util.symbol(
-        "RETURNS_CONDITIONAL",
-        """Indicates that the DBAPI may return Unicode or bytestrings for
-        VARCHAR, NVARCHAR, and other character-based datatypes, and that
-        SQLAlchemy's default String datatype will need to test on a per-row
-        basis for Unicode or bytes.
-
-        This may be applied to the
-        :attr:`.DefaultDialect.returns_unicode_strings` attribute.
-
-        .. versionadded:: 1.4
-
-        """,
-    )
-
-    RETURNS_UNKNOWN = util.symbol(
-        "RETURNS_UNKNOWN",
-        """Indicates that the dialect should test on first connect what the
-        string-returning behavior of character-based datatypes is.
-
-        This is the default value for DefaultDialect.unicode_returns under
-        Python 2.
-
-        This may be applied to the
-        :attr:`.DefaultDialect.returns_unicode_strings` attribute under
-        Python 2 only.   The value is disallowed under Python 3.
-
-        .. versionadded:: 1.4
-
-        .. deprecated:: 1.4  This value will be removed in SQLAlchemy 2.0.
-
-        """,
-    )
-
-    @util.deprecated_params(
-        convert_unicode=(
-            "1.3",
-            "The :paramref:`.String.convert_unicode` parameter is deprecated "
-            "and will be removed in a future release.  All modern DBAPIs "
-            "now support Python Unicode directly and this parameter is "
-            "unnecessary.",
-        ),
-        unicode_error=(
-            "1.3",
-            "The :paramref:`.String.unicode_errors` parameter is deprecated "
-            "and will be removed in a future release.  This parameter is "
-            "unnecessary for modern Python DBAPIs and degrades performance "
-            "significantly.",
-        ),
-    )
     def __init__(
         self,
         length=None,
         collation=None,
-        convert_unicode=False,
-        unicode_error=None,
-        _warn_on_bytestring=False,
-        _expect_unicode=False,
     ):
         """
         Create a string-holding type.
@@ -245,65 +161,17 @@ class String(Concatenable, TypeEngine):
             >>> print(select(cast('some string', String(collation='utf8'))))
             SELECT CAST(:param_1 AS VARCHAR COLLATE utf8) AS anon_1
 
-        :param convert_unicode: When set to ``True``, the
-          :class:`.String` type will assume that
-          input is to be passed as Python Unicode objects under Python 2,
-          and results returned as Python Unicode objects.
-          In the rare circumstance that the DBAPI does not support
-          Python unicode under Python 2, SQLAlchemy will use its own
-          encoder/decoder functionality on strings, referring to the
-          value of the :paramref:`_sa.create_engine.encoding` parameter
-          parameter passed to :func:`_sa.create_engine` as the encoding.
-
-          For the extremely rare case that Python Unicode
-          is to be encoded/decoded by SQLAlchemy on a backend
-          that *does* natively support Python Unicode,
-          the string value ``"force"`` can be passed here which will
-          cause SQLAlchemy's encode/decode services to be
-          used unconditionally.
-
           .. note::
 
-            SQLAlchemy's unicode-conversion flags and features only apply
-            to Python 2; in Python 3, all string objects are Unicode objects.
-            For this reason, as well as the fact that virtually all modern
-            DBAPIs now support Unicode natively even under Python 2,
-            the :paramref:`.String.convert_unicode` flag is inherently a
-            legacy feature.
-
-          .. note::
-
-            In the vast majority of cases, the :class:`.Unicode` or
-            :class:`.UnicodeText` datatypes should be used for a
-            :class:`_schema.Column` that expects to store non-ascii data.
-            These
-            datatypes will ensure that the correct types are used on the
-            database side as well as set up the correct Unicode behaviors
-            under Python 2.
-
-          .. seealso::
-
-            :paramref:`_sa.create_engine.convert_unicode` -
-            :class:`_engine.Engine`-wide parameter
-
-        :param unicode_error: Optional, a method to use to handle Unicode
-          conversion errors. Behaves like the ``errors`` keyword argument to
-          the standard library's ``string.decode()`` functions, requires
-          that :paramref:`.String.convert_unicode` is set to
-          ``"force"``
+            In most cases, the :class:`.Unicode` or :class:`.UnicodeText`
+            datatypes should be used for a :class:`_schema.Column` that expects
+            to store non-ascii data. These datatypes will ensure that the
+            correct types are used on the database.
 
         """
-        if unicode_error is not None and convert_unicode != "force":
-            raise exc.ArgumentError(
-                "convert_unicode must be 'force' " "when unicode_error is set."
-            )
 
         self.length = length
         self.collation = collation
-        self._expect_unicode = convert_unicode or _expect_unicode
-        self._expect_unicode_error = unicode_error
-
-        self._warn_on_bytestring = _warn_on_bytestring
 
     def literal_processor(self, dialect):
         def process(value):
@@ -317,100 +185,24 @@ class String(Concatenable, TypeEngine):
         return process
 
     def bind_processor(self, dialect):
-        if self._expect_unicode or dialect.convert_unicode:
-            if (
-                dialect.supports_unicode_binds
-                and self._expect_unicode != "force"
-            ):
-                if self._warn_on_bytestring:
-
-                    def process(value):
-                        if isinstance(value, util.binary_type):
-                            util.warn_limited(
-                                "Unicode type received non-unicode "
-                                "bind param value %r.",
-                                (util.ellipses_string(value),),
-                            )
-                        return value
-
-                    return process
-                else:
-                    return None
-            else:
-                encoder = codecs.getencoder(dialect.encoding)
-                warn_on_bytestring = self._warn_on_bytestring
-
-                def process(value):
-                    if isinstance(value, util.text_type):
-                        return encoder(value, self._expect_unicode_error)[0]
-                    elif warn_on_bytestring and value is not None:
-                        util.warn_limited(
-                            "Unicode type received non-unicode bind "
-                            "param value %r.",
-                            (util.ellipses_string(value),),
-                        )
-                    return value
-
-            return process
-        else:
-            return None
+        return None
 
     def result_processor(self, dialect, coltype):
-        wants_unicode = self._expect_unicode or dialect.convert_unicode
-        needs_convert = wants_unicode and (
-            dialect.returns_unicode_strings is not String.RETURNS_UNICODE
-            or self._expect_unicode in ("force", "force_nocheck")
-        )
-        needs_isinstance = (
-            needs_convert
-            and dialect.returns_unicode_strings
-            in (
-                String.RETURNS_CONDITIONAL,
-                String.RETURNS_UNICODE,
-            )
-            and self._expect_unicode != "force_nocheck"
-        )
-        if needs_convert:
-            if needs_isinstance:
-                return processors.to_conditional_unicode_processor_factory(
-                    dialect.encoding, self._expect_unicode_error
-                )
-            else:
-                return processors.to_unicode_processor_factory(
-                    dialect.encoding, self._expect_unicode_error
-                )
-        else:
-            return None
+        return None
 
     @property
     def python_type(self):
-        if self._expect_unicode:
-            return util.text_type
-        else:
-            return str
+        return util.text_type
 
     def get_dbapi_type(self, dbapi):
         return dbapi.STRING
-
-    @classmethod
-    def _warn_deprecated_unicode(cls):
-        util.warn_deprecated(
-            "The convert_unicode on Engine and String as well as the "
-            "unicode_error flag on String are deprecated.  All modern "
-            "DBAPIs now support Python Unicode natively under Python 2, and "
-            "under Python 3 all strings are inherently Unicode.  These flags "
-            "will be removed in a future release.",
-            version="1.3",
-        )
 
 
 class Text(String):
 
     """A variably sized string type.
 
-    In SQL, usually corresponds to CLOB or TEXT. Can also take Python
-    unicode objects and encode to the database's encoding in bind
-    params (and the reverse for result sets.)  In general, TEXT objects
+    In SQL, usually corresponds to CLOB or TEXT.  In general, TEXT objects
     do not have a length; while some databases will accept a length
     argument here, it will be rejected by others.
 
@@ -428,9 +220,7 @@ class Unicode(String):
     some backends implies an underlying column type that is explicitly
     supporting of non-ASCII data, such as ``NVARCHAR`` on Oracle and SQL
     Server.  This will impact the output of ``CREATE TABLE`` statements and
-    ``CAST`` functions at the dialect level, and also in some cases will
-    indicate different behavior in the DBAPI itself in how it handles bound
-    parameters.
+    ``CAST`` functions at the dialect level.
 
     The character encoding used by the :class:`.Unicode` type that is used to
     transmit and receive data to the database is usually determined by the
@@ -440,18 +230,10 @@ class Unicode(String):
     in the :ref:`dialect_toplevel` section.
 
     In modern SQLAlchemy, use of the :class:`.Unicode` datatype does not
-    typically imply any encoding/decoding behavior within SQLAlchemy itself.
-    Historically, when DBAPIs did not support Python ``unicode`` objects under
-    Python 2, SQLAlchemy handled unicode encoding/decoding services itself
-    which would be controlled by the flag :paramref:`.String.convert_unicode`;
-    this flag is deprecated as it is no longer needed for Python 3.
-
-    When using Python 2, data that is passed to columns that use the
-    :class:`.Unicode` datatype must be of type ``unicode``, and not ``str``
-    which in Python 2 is equivalent to ``bytes``.  In Python 3, all data
-    passed to columns that use the :class:`.Unicode` datatype should be
-    of type ``str``.   See the flag :paramref:`.String.convert_unicode` for
-    more discussion of unicode encode/decode behavior under Python 2.
+    imply any encoding/decoding behavior within SQLAlchemy itself.  In Python
+    3, all string objects are inherently Unicode capable, and SQLAlchemy
+    does not produce bytestring objects nor does it accommodate a DBAPI that
+    does not return Python Unicode objects in result sets for string values.
 
     .. warning:: Some database backends, particularly SQL Server with pyodbc,
        are known to have undesirable behaviors regarding data that is noted
@@ -466,8 +248,6 @@ class Unicode(String):
         :class:`.UnicodeText` - unlengthed textual counterpart
         to :class:`.Unicode`.
 
-        :paramref:`.String.convert_unicode`
-
         :meth:`.DialectEvents.do_setinputsizes`
 
 
@@ -479,13 +259,9 @@ class Unicode(String):
         """
         Create a :class:`.Unicode` object.
 
-        Parameters are the same as that of :class:`.String`,
-        with the exception that ``convert_unicode``
-        defaults to ``True``.
+        Parameters are the same as that of :class:`.String`.
 
         """
-        kwargs.setdefault("_expect_unicode", True)
-        kwargs.setdefault("_warn_on_bytestring", True)
         super(Unicode, self).__init__(length=length, **kwargs)
 
 
@@ -508,17 +284,10 @@ class UnicodeText(Text):
         """
         Create a Unicode-converting Text type.
 
-        Parameters are the same as that of :class:`_expression.TextClause`,
-        with the exception that ``convert_unicode``
-        defaults to ``True``.
+        Parameters are the same as that of :class:`_expression.TextClause`.
 
         """
-        kwargs.setdefault("_expect_unicode", True)
-        kwargs.setdefault("_warn_on_bytestring", True)
         super(UnicodeText, self).__init__(length=length, **kwargs)
-
-    def _warn_deprecated_unicode(self):
-        pass
 
 
 class Integer(_LookupExpressionAdapter, TypeEngine):
@@ -1306,15 +1075,6 @@ class Enum(Emulated, String, SchemaType):
 
     __visit_name__ = "enum"
 
-    @util.deprecated_params(
-        convert_unicode=(
-            "1.3",
-            "The :paramref:`.Enum.convert_unicode` parameter is deprecated "
-            "and will be removed in a future release.  All modern DBAPIs "
-            "now support Python Unicode directly and this parameter is "
-            "unnecessary.",
-        )
-    )
     def __init__(self, *enums, **kw):
         r"""Construct an enum.
 
@@ -1326,11 +1086,6 @@ class Enum(Emulated, String, SchemaType):
 
            .. versionadded:: 1.1 a PEP-435 style enumerated class may be
               passed.
-
-        :param convert_unicode: Enable unicode-aware bind parameter and
-           result-set processing for this Enum's data under Python 2 only.
-           Under Python 2, this is set automatically based on the presence of
-           unicode label strings.  This flag will be removed in SQLAlchemy 2.0.
 
         :param create_constraint: defaults to False.  When creating a
            non-native enumerated type, also build a CHECK constraint on the
@@ -1481,13 +1236,7 @@ class Enum(Emulated, String, SchemaType):
         values, objects = self._parse_into_values(enums, kw)
         self._setup_for_values(values, objects, kw)
 
-        convert_unicode = kw.pop("convert_unicode", None)
         self.validate_strings = kw.pop("validate_strings", False)
-
-        if convert_unicode is None:
-            _expect_unicode = True
-        else:
-            _expect_unicode = convert_unicode
 
         if self.enums:
             length = max(len(x) for x in self.enums)
@@ -1504,9 +1253,7 @@ class Enum(Emulated, String, SchemaType):
 
         self._valid_lookup[None] = self._object_lookup[None] = None
 
-        super(Enum, self).__init__(
-            length=length, _expect_unicode=_expect_unicode
-        )
+        super(Enum, self).__init__(length=length)
 
         if self.enum_class:
             kw.setdefault("name", self.enum_class.__name__.lower())
@@ -1615,9 +1362,7 @@ class Enum(Emulated, String, SchemaType):
                 op, other_comparator
             )
             if op is operators.concat_op:
-                typ = String(
-                    self.type.length, _expect_unicode=self.type._expect_unicode
-                )
+                typ = String(self.type.length)
             return op, typ
 
     comparator_factory = Comparator
@@ -1659,7 +1404,6 @@ class Enum(Emulated, String, SchemaType):
         return util.constructor_copy(self, self._generic_type_affinity, *args)
 
     def adapt_to_emulated(self, impltype, **kw):
-        kw.setdefault("_expect_unicode", self._expect_unicode)
         kw.setdefault("validate_strings", self.validate_strings)
         kw.setdefault("name", self.name)
         kw.setdefault("schema", self.schema)
@@ -2605,7 +2349,7 @@ class JSON(Indexable, TypeEngine):
 
     @util.memoized_property
     def _str_impl(self):
-        return String(_expect_unicode=True)
+        return String()
 
     def bind_processor(self, dialect):
         string_process = self._str_impl.bind_processor(dialect)
