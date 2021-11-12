@@ -2872,6 +2872,12 @@ class Session(_SessionClassMethods, EventTarget):
         finally:
             self.autoflush = autoflush
 
+    @util.langhelpers.tag_method_for_warnings(
+        "This warning originated from the Session 'autoflush' process, "
+        "which was invoked automatically in response to a user-initiated "
+        "operation.",
+        sa_exc.SAWarning,
+    )
     def _autoflush(self) -> None:
         if self.autoflush and not self._flushing:
             try:

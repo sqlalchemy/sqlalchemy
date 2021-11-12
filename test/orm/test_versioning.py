@@ -53,13 +53,13 @@ def conditional_sane_rowcount_warnings(
     ):
         if update:
             warnings += (
-                "Dialect .* does not support updated rowcount - "
-                "versioning cannot be verified.",
+                "Dialect .* does not support "
+                "updated rowcount - versioning cannot be verified.",
             )
         if delete:
             warnings += (
-                "Dialect .* does not support deleted rowcount - "
-                "versioning cannot be verified.",
+                "Dialect .* does not support "
+                "deleted rowcount - versioning cannot be verified.",
             )
 
         with expect_warnings(*warnings):
