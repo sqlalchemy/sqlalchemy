@@ -363,6 +363,18 @@ class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
             literal_binds=True,
         )
 
+    def test_is_literal(self):
+        t = text(
+            "select * from foo where lala=':bar' ahd hoho=':foo:whee'",
+            is_literal=True,
+        )
+
+        self.assert_compile(
+            t,
+            "select * from foo where lala=':bar' ahd hoho=':foo:whee'",
+            checkparams={},
+        )
+
     def _assert_type_map(self, t, compare):
         map_ = dict((b.key, b.type) for b in t._bindparams.values())
         for k in compare:
@@ -465,7 +477,7 @@ class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
                 r"SELECT * FROM pg_attribute WHERE "
                 r"attrelid = :tab\:\:regclass"
             ),
-            "SELECT * FROM pg_attribute WHERE " "attrelid = %(tab)s::regclass",
+            "SELECT * FROM pg_attribute WHERE attrelid = %(tab)s::regclass",
             params={"tab": None},
             dialect="postgresql",
         )
@@ -478,7 +490,7 @@ class BindParamTest(fixtures.TestBase, AssertsCompiledSQL):
                 r"SELECT * FROM pg_attribute WHERE "
                 r"attrelid = foo::regclass"
             ),
-            "SELECT * FROM pg_attribute WHERE " "attrelid = foo::regclass",
+            "SELECT * FROM pg_attribute WHERE attrelid = foo::regclass",
             params={},
             dialect="postgresql",
         )

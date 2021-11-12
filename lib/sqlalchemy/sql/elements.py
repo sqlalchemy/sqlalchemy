@@ -1754,7 +1754,7 @@ class TextClause(
 
     _is_textual = True
 
-    _bind_params_regex = re.compile(r"(?<![:\w\x5c]):(\w+)(?!:)", re.UNICODE)
+    _bind_params_regex = re.compile(r"(?<![:\w\x5c]):(\w+)(:)?", re.UNICODE)
     _execution_options = Executable._execution_options.union(
         {"autocommit": PARSE_AUTOCOMMIT}
     )
@@ -1778,17 +1778,23 @@ class TextClause(
 
     _allow_label_resolve = False
 
-    def __init__(self, text, bind=None):
+    def __init__(self, text, bind=None, is_literal=False):
         self._bind = bind
         self._bindparams = {}
 
         def repl(m):
+            if m.group(2) == ":":
+                return ":%s:" % m.group(1)
             self._bindparams[m.group(1)] = BindParameter(m.group(1))
             return ":%s" % m.group(1)
 
-        # scan the string and search for bind parameter names, add them
-        # to the list of bindparams
-        self.text = self._bind_params_regex.sub(repl, text)
+        if is_literal:
+            # ignore any potential bind-like parameters in the text parameter
+            self.text = text
+        else:
+            # scan the string and search for bind parameter names, add them
+            # to the list of bindparams
+            self.text = self._bind_params_regex.sub(repl, text)
 
     @classmethod
     @_document_text_coercion("text", ":func:`.text`", ":paramref:`.text.text`")
@@ -1799,7 +1805,7 @@ class TextClause(
             "will be removed in SQLAlchemy 2.0.",
         ),
     )
-    def _create_text(cls, text, bind=None):
+    def _create_text(cls, text, bind=None, is_literal=False):
         r"""Construct a new :class:`_expression.TextClause` clause,
         representing
         a textual SQL string directly.
@@ -1831,6 +1837,19 @@ class TextClause(
         an inline string, use a backslash to escape::
 
             t = text("SELECT * FROM users WHERE name='\:username'")
+
+        or set the `is_literal` parameter to `True` to ignore any bind-like strings::
+
+            t = text("SELECT * FROM users WHERE name=':username'", is_literal=True)
+
+        Note that escaping colons is only required for trailing colons, not strings
+        including or ending in a colon. For example, the following should not
+        be escaped:
+
+            t = text("SELECT * FROM users WHERE name=':username:'")
+            t = text("SELECT * FROM users WHERE name=':username:with:colon'")
+            t = text("SELECT * FROM pg_attribute WHERE attrelid = foo::regclass")
+            t = text("SELECT * FROM foo WHERE clock='05:06:07')
 
         The :class:`_expression.TextClause`
         construct includes methods which can
@@ -1888,7 +1907,7 @@ class TextClause(
 
 
         """
-        return TextClause(text, bind=bind)
+        return TextClause(text, bind=bind, is_literal=is_literal)
 
     @_generative
     def bindparams(self, *binds, **names_to_values):
