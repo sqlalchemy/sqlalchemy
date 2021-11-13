@@ -41,6 +41,29 @@ def create_async_engine(*arg, **kw):
     return AsyncEngine(sync_engine)
 
 
+def async_engine_from_config(configuration, prefix="sqlalchemy.", **kwargs):
+    """Create a new AsyncEngine instance using a configuration dictionary.
+
+    This function is analogous to the :func:`_sa.engine_from_config` function
+    in SQLAlchemy Core, except that the requested dialect must be an
+    asyncio-compatible dialect such as :ref:`dialect-postgresql-asyncpg`.
+    The argument signature of the function is identical to that
+    of :func:`_sa.engine_from_config`.
+
+    .. versionadded:: 1.4.29
+
+    """
+    options = {
+        key[len(prefix) :]: value
+        for key, value in configuration.items()
+        if key.startswith(prefix)
+    }
+    options["_coerce_config"] = True
+    options.update(kwargs)
+    url = options.pop("url")
+    return create_async_engine(url, **options)
+
+
 class AsyncConnectable:
     __slots__ = "_slots_dispatch", "__weakref__"
 

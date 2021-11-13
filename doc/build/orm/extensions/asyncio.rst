@@ -732,6 +732,8 @@ Engine API Documentation
 
 .. autofunction:: create_async_engine
 
+.. autofunction:: async_engine_from_config
+
 .. autoclass:: AsyncEngine
    :members:
 
