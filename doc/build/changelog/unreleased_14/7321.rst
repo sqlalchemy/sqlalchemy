@@ -1,0 +1,16 @@
+.. change::
+    :tags: bug, mypy
+    :tickets: 7321
+
+    Fixed Mypy crash which would occur when using Mypy plugin against code
+    which made use of :class:`_orm.declared_attr` methods for non-mapped names
+    like ``__mapper_args__``, ``__table_args__``, or other dunder names, as the
+    plugin would try to interpret these as mapped attributes which would then
+    be later mis-handled. As part of this change, the decorated function is
+    still converted by the plugin into a generic assignment statement (e.g.
+    ``__mapper_args__: Any``) so that the argument signature can continue to be
+    annotated in the same way one would for any other ``@classmethod`` without
+    Mypy complaining about the wrong argument type for a method that isn't
+    explicitly ``@classmethod``.
+
+

@@ -241,7 +241,20 @@ def _scan_declarative_decorator_stmt(
 
     left_hand_explicit_type: Optional[ProperType] = None
 
-    if isinstance(stmt.func.type, CallableType):
+    if util.name_is_dunder(stmt.name):
+        # for dunder names like __table_args__, __tablename__,
+        # __mapper_args__ etc., rewrite these as simple assignment
+        # statements; otherwise mypy doesn't like if the decorated
+        # function has an annotation like ``cls: Type[Foo]`` because
+        # it isn't @classmethod
+        any_ = AnyType(TypeOfAny.special_form)
+        left_node = NameExpr(stmt.var.name)
+        left_node.node = stmt.var
+        new_stmt = AssignmentStmt([left_node], TempNode(any_))
+        new_stmt.type = left_node.node.type
+        cls.defs.body[dec_index] = new_stmt
+        return
+    elif isinstance(stmt.func.type, CallableType):
         func_type = stmt.func.type.ret_type
         if isinstance(func_type, UnboundType):
             type_id = names.type_id_for_unbound_type(func_type, cls, api)
