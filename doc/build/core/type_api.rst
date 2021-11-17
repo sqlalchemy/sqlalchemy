@@ -18,6 +18,8 @@ Base Type API
 
 .. autoclass:: NullType
 
+.. autoclass:: ExternalType
+    :members:
 
 .. autoclass:: Variant
    :members: with_variant, __init__
