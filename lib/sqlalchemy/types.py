@@ -13,6 +13,7 @@ __all__ = [
     "TypeEngine",
     "TypeDecorator",
     "UserDefinedType",
+    "ExternalType",
     "INT",
     "CHAR",
     "VARCHAR",
@@ -110,6 +111,7 @@ from .sql.sqltypes import UnicodeText
 from .sql.sqltypes import VARBINARY
 from .sql.sqltypes import VARCHAR
 from .sql.type_api import adapt_type
+from .sql.type_api import ExternalType
 from .sql.type_api import to_instance
 from .sql.type_api import TypeDecorator
 from .sql.type_api import TypeEngine

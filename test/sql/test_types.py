@@ -1464,6 +1464,8 @@ class VariantBackendTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_type_decorator_compile_variant_two(self):
         class UTypeOne(types.UserDefinedType):
+            cache_ok = True
+
             def get_col_spec(self):
                 return "UTYPEONE"
 
@@ -1474,6 +1476,8 @@ class VariantBackendTest(fixtures.TestBase, AssertsCompiledSQL):
                 return process
 
         class UTypeTwo(types.UserDefinedType):
+            cache_ok = True
+
             def get_col_spec(self):
                 return "UTYPETWO"
 
@@ -1522,6 +1526,8 @@ class VariantBackendTest(fixtures.TestBase, AssertsCompiledSQL):
 class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
     def setup_test(self):
         class UTypeOne(types.UserDefinedType):
+            cache_ok = True
+
             def get_col_spec(self):
                 return "UTYPEONE"
 
@@ -1532,6 +1538,8 @@ class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
                 return process
 
         class UTypeTwo(types.UserDefinedType):
+            cache_ok = True
+
             def get_col_spec(self):
                 return "UTYPETWO"
 
@@ -2961,6 +2969,8 @@ class ExpressionTest(
         global MyCustomType, MyTypeDec
 
         class MyCustomType(types.UserDefinedType):
+            cache_ok = True
+
             def get_col_spec(self):
                 return "INT"
 
