@@ -1034,7 +1034,7 @@ class OverlappingFksSiblingTest(fixtures.MappedTest):
 
     @testing.provide_metadata
     def test_works_two(self):
-        # doesn't actually work with real FKs beacuse it creates conflicts :)
+        # doesn't actually work with real FKs because it creates conflicts :)
         self._fixture_one(
             add_b_a=True, add_b_a_overlaps="a_member", add_bsub1_a=True
         )

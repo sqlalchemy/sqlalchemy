@@ -1580,7 +1580,7 @@ class InheritanceTest(_Polymorphic):
         )
 
         # note this doesn't apply to "bound" loaders since they don't seem
-        # to have this ".*" featue.
+        # to have this ".*" feature.
 
     def test_load_only_subclass_of_type(self):
         s = fixture_session()
