@@ -260,7 +260,8 @@ class Load(Generative, LoaderOption):
         self._process(
             compile_state,
             compile_state._lead_mapper_entities,
-            not bool(compile_state.current_path),
+            not bool(compile_state.current_path)
+            and not compile_state.compile_options._for_refresh_state,
         )
 
     def _process(self, compile_state, mapper_entities, raiseerr):

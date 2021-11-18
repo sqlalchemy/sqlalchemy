@@ -25,6 +25,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.assertsql import CountStatements
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -849,6 +850,58 @@ class ExpireTest(_fixtures.FixtureTest):
         u.name
         assert "name" in u.__dict__
         assert len(u.addresses) == 2
+
+    @testing.combinations(
+        (True, False),
+        (False, False),
+        (False, True),
+    )
+    def test_skip_options_that_dont_match(self, test_control_case, do_expire):
+        """test #7318"""
+
+        User, Address, Order = self.classes("User", "Address", "Order")
+        users, addresses, orders = self.tables("users", "addresses", "orders")
+
+        self.mapper_registry.map_imperatively(Order, orders)
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    Address, backref="user", lazy="joined"
+                ),
+                "orders": relationship(Order),
+            },
+        )
+        self.mapper_registry.map_imperatively(Address, addresses)
+        sess = fixture_session()
+
+        if test_control_case:
+            # this would be the error we are skipping, make sure it happens
+            # for up front
+            with expect_raises_message(
+                sa.exc.ArgumentError,
+                'Mapped attribute "User.addresses" does not apply to '
+                "any of the root entities in this query",
+            ):
+                row = sess.execute(
+                    select(Order).options(joinedload(User.addresses))
+                ).first()
+        else:
+            stmt = (
+                select(User, Order)
+                .join_from(User, Order)
+                .options(joinedload(User.addresses))
+                .order_by(User.id, Order.id)
+            )
+
+            row = sess.execute(stmt).first()
+
+            u1, o1 = row
+            if do_expire:
+                sess.expire(o1)
+            eq_(o1.description, "order 1")
 
     def test_mapper_joinedload_props_load(self):
         users, Address, addresses, User = (
