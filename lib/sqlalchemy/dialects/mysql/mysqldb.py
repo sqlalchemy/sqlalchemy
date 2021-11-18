@@ -308,23 +308,22 @@ class MySQLDialect_mysqldb(MySQLDialect):
         else:
             return cset_name()
 
-    _isolation_lookup = set(
-        [
+    def get_isolation_level_values(self, dbapi_conn):
+        return (
             "SERIALIZABLE",
             "READ UNCOMMITTED",
             "READ COMMITTED",
             "REPEATABLE READ",
             "AUTOCOMMIT",
-        ]
-    )
+        )
 
-    def _set_isolation_level(self, connection, level):
+    def set_isolation_level(self, dbapi_conn, level):
         if level == "AUTOCOMMIT":
-            connection.autocommit(True)
+            dbapi_conn.autocommit(True)
         else:
-            connection.autocommit(False)
-            super(MySQLDialect_mysqldb, self)._set_isolation_level(
-                connection, level
+            dbapi_conn.autocommit(False)
+            super(MySQLDialect_mysqldb, self).set_isolation_level(
+                dbapi_conn, level
             )
 
 

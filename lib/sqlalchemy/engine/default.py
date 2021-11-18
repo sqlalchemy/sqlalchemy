@@ -239,6 +239,7 @@ class DefaultDialect(interfaces.Dialect):
         self,
         encoding="utf-8",
         paramstyle=None,
+        isolation_level=None,
         dbapi=None,
         implicit_returning=None,
         supports_native_boolean=None,
@@ -250,12 +251,6 @@ class DefaultDialect(interfaces.Dialect):
         server_side_cursors=False,
         **kwargs
     ):
-
-        if not getattr(self, "ported_sqla_06", True):
-            util.warn(
-                "The %s dialect is not yet ported to the 0.6 format"
-                % self.name
-            )
 
         if server_side_cursors:
             if not self.supports_server_side_cursors:
@@ -279,6 +274,7 @@ class DefaultDialect(interfaces.Dialect):
             self.implicit_returning = implicit_returning
         self.positional = self.paramstyle in ("qmark", "format", "numeric")
         self.identifier_preparer = self.preparer(self)
+        self._on_connect_isolation_level = isolation_level
         self.type_compiler = self.type_compiler(self)
         if supports_native_boolean is not None:
             self.supports_native_boolean = supports_native_boolean
@@ -344,6 +340,18 @@ class DefaultDialect(interfaces.Dialect):
             __import__(package + ".provision")
         except ImportError:
             pass
+
+    def _builtin_onconnect(self):
+        if self._on_connect_isolation_level is not None:
+
+            def builtin_connect(dbapi_conn, conn_rec):
+                self._assert_and_set_isolation_level(
+                    dbapi_conn, self._on_connect_isolation_level
+                )
+
+            return builtin_connect
+        else:
+            return None
 
     def initialize(self, connection):
         try:
@@ -573,11 +581,51 @@ class DefaultDialect(interfaces.Dialect):
     def is_disconnect(self, e, connection, cursor):
         return False
 
+    @util.memoized_instancemethod
+    def _gen_allowed_isolation_levels(self, dbapi_conn):
+
+        try:
+            raw_levels = list(self.get_isolation_level_values(dbapi_conn))
+        except NotImplementedError:
+            return None
+        else:
+            normalized_levels = [
+                level.replace("_", " ").upper() for level in raw_levels
+            ]
+            if raw_levels != normalized_levels:
+                raise ValueError(
+                    f"Dialect {self.name!r} get_isolation_level_values() "
+                    f"method should return names as UPPERCASE using spaces, "
+                    f"not underscores; got "
+                    f"{sorted(set(raw_levels).difference(normalized_levels))}"
+                )
+            return tuple(normalized_levels)
+
+    def _assert_and_set_isolation_level(self, dbapi_conn, level):
+        level = level.replace("_", " ").upper()
+
+        _allowed_isolation_levels = self._gen_allowed_isolation_levels(
+            dbapi_conn
+        )
+        if (
+            _allowed_isolation_levels
+            and level not in _allowed_isolation_levels
+        ):
+            raise exc.ArgumentError(
+                f"Invalid value {level!r} for isolation_level. "
+                f"Valid isolation levels for {self.name!r} are "
+                f"{', '.join(_allowed_isolation_levels)}"
+            )
+
+        self.set_isolation_level(dbapi_conn, level)
+
     def reset_isolation_level(self, dbapi_conn):
         # default_isolation_level is read from the first connection
         # after the initial set of 'isolation_level', if any, so is
         # the configured default of this dialect.
-        self.set_isolation_level(dbapi_conn, self.default_isolation_level)
+        self._assert_and_set_isolation_level(
+            dbapi_conn, self.default_isolation_level
+        )
 
     def normalize_name(self, name):
         if name is None:

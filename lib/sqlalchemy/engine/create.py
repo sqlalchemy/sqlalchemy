@@ -206,34 +206,32 @@ def create_engine(url, **kwargs):
            should **always be set to True**.  Some SQLAlchemy features will
            fail to function properly if this flag is set to ``False``.
 
-    :param isolation_level: this string parameter is interpreted by various
-        dialects in order to affect the transaction isolation level of the
-        database connection.   The parameter essentially accepts some subset of
-        these string arguments: ``"SERIALIZABLE"``, ``"REPEATABLE READ"``,
-        ``"READ COMMITTED"``, ``"READ UNCOMMITTED"`` and ``"AUTOCOMMIT"``.
-        Behavior here varies per backend, and
-        individual dialects should be consulted directly.
+    :param isolation_level: optional string name of an isolation level
+        which will be set on all new connections unconditionally.
+        Isolation levels are typically some subset of the string names
+        ``"SERIALIZABLE"``, ``"REPEATABLE READ"``,
+        ``"READ COMMITTED"``, ``"READ UNCOMMITTED"`` and ``"AUTOCOMMIT"``
+        based on backend.
 
-        Note that the isolation level can also be set on a
-        per-:class:`_engine.Connection` basis as well, using the
+        The :paramref:`_sa.create_engine.isolation_level` parameter is
+        in contrast to the
         :paramref:`.Connection.execution_options.isolation_level`
-        feature.
+        execution option, which may be set on an individual
+        :class:`.Connection`, as well as the same parameter passed to
+        :meth:`.Engine.execution_options`, where it may be used to create
+        multiple engines with different isolation levels that share a common
+        connection pool and dialect.
+
+        .. versionchanged:: 2.0 The
+           :paramref:`_sa.create_engine.isolation_level`
+           parameter has been generalized to work on all dialects which support
+           the concept of isolation level, and is provided as a more succinct,
+           up front configuration switch in contrast to the execution option
+           which is more of an ad-hoc programmatic option.
 
         .. seealso::
 
-            :attr:`_engine.Connection.default_isolation_level`
-            - view default level
-
-            :paramref:`.Connection.execution_options.isolation_level`
-            - set per :class:`_engine.Connection` isolation level
-
-            :ref:`SQLite Transaction Isolation <sqlite_isolation_level>`
-
-            :ref:`PostgreSQL Transaction Isolation <postgresql_isolation_level>`
-
-            :ref:`MySQL Transaction Isolation <mysql_isolation_level>`
-
-            :ref:`session_transaction_isolation` - for the ORM
+            :ref:`dbapi_autocommit`
 
     :param json_deserializer: for dialects that support the
         :class:`_types.JSON`
@@ -594,6 +592,10 @@ def create_engine(url, **kwargs):
                 do_on_connect(dbapi_connection)
 
             event.listen(pool, "connect", on_connect)
+
+        builtin_on_connect = dialect._builtin_onconnect()
+        if builtin_on_connect:
+            event.listen(pool, "connect", builtin_on_connect)
 
         def first_connect(dbapi_connection, connection_record):
             c = base.Connection(

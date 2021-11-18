@@ -1024,6 +1024,9 @@ class OracleDialect_cx_oracle(OracleDialect):
 
         return result
 
+    def get_isolation_level_values(self, dbapi_conn):
+        return super().get_isolation_level_values(dbapi_conn) + ["AUTOCOMMIT"]
+
     def set_isolation_level(self, connection, level):
         if hasattr(connection, "dbapi_connection"):
             dbapi_connection = connection.dbapi_connection

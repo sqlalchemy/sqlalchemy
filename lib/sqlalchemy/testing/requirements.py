@@ -20,6 +20,7 @@ import sys
 
 from . import exclusions
 from . import only_on
+from .. import create_engine
 from .. import util
 from ..pool import QueuePool
 
@@ -873,6 +874,59 @@ class SuiteRequirements(Requirements):
                 ]
             }
         """
+        with config.db.connect() as conn:
+
+            try:
+                supported = conn.dialect.get_isolation_level_values(
+                    conn.connection.dbapi_connection
+                )
+            except NotImplementedError:
+                return None
+            else:
+                return {
+                    "default": conn.dialect.default_isolation_level,
+                    "supported": supported,
+                }
+
+    @property
+    def get_isolation_level_values(self):
+        """target dialect supports the
+        :meth:`_engine.Dialect.get_isolation_level_values`
+        method added in SQLAlchemy 2.0.
+
+        """
+
+        def go(config):
+            with config.db.connect() as conn:
+                try:
+                    conn.dialect.get_isolation_level_values(
+                        conn.connection.dbapi_connection
+                    )
+                except NotImplementedError:
+                    return False
+                else:
+                    return True
+
+        return exclusions.only_if(go)
+
+    @property
+    def dialect_level_isolation_level_param(self):
+        """test that the dialect allows the 'isolation_level' argument
+        to be handled by DefaultDialect"""
+
+        def go(config):
+            try:
+                e = create_engine(
+                    config.db.url, isolation_level="READ COMMITTED"
+                )
+            except:
+                return False
+            else:
+                return (
+                    e.dialect._on_connect_isolation_level == "READ COMMITTED"
+                )
+
+        return exclusions.only_if(go)
 
     @property
     def json_type(self):

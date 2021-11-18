@@ -1577,10 +1577,8 @@ class OracleDialect(default.DefaultDialect):
             # use the default
             return None
 
-    _isolation_lookup = ["READ COMMITTED", "SERIALIZABLE"]
-
-    def get_isolation_level(self, connection):
-        raise NotImplementedError("implemented by cx_Oracle dialect")
+    def get_isolation_level_values(self, dbapi_conn):
+        return ["READ COMMITTED", "SERIALIZABLE"]
 
     def get_default_isolation_level(self, dbapi_conn):
         try:
@@ -1589,9 +1587,6 @@ class OracleDialect(default.DefaultDialect):
             raise
         except:
             return "READ COMMITTED"
-
-    def set_isolation_level(self, connection, level):
-        raise NotImplementedError("implemented by cx_Oracle dialect")
 
     def has_table(self, connection, table_name, schema=None):
         self._ensure_has_table_connection(connection)

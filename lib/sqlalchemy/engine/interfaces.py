@@ -911,6 +911,11 @@ class Dialect(object):
         isolation level facilities; these APIs should be preferred for
         most typical use cases.
 
+        If the dialect also implements the
+        :meth:`.Dialect.get_isolation_level_values` method, then the given
+        level is guaranteed to be one of the string names within that sequence,
+        and the method will not need to anticipate a lookup failure.
+
         .. seealso::
 
             :meth:`_engine.Connection.get_isolation_level`
@@ -978,6 +983,48 @@ class Dialect(object):
         method unless overridden by a dialect.
 
         .. versionadded:: 1.3.22
+
+        """
+        raise NotImplementedError()
+
+    def get_isolation_level_values(self, dbapi_conn):
+        """return a sequence of string isolation level names that are accepted
+        by this dialect.
+
+        The available names should use the following conventions:
+
+        * use UPPERCASE names.   isolation level methods will accept lowercase
+          names but these are normalized into UPPERCASE before being passed
+          along to the dialect.
+        * separate words should be separated by spaces, not underscores, e.g.
+          ``REPEATABLE READ``.  isolation level names will have underscores
+          converted to spaces before being passed along to the dialect.
+        * The names for the four standard isolation names to the extent that
+          they are supported by the backend should be ``READ UNCOMMITTED``
+          ``READ COMMITTED``, ``REPEATABLE READ``, ``SERIALIZABLE``
+        * if the dialect supports an autocommit option it should be provided
+          using the isolation level name ``AUTOCOMMIT``.
+        * Other isolation modes may also be present, provided that they
+          are named in UPPERCASE and use spaces not underscores.
+
+        This function is used so that the default dialect can check that
+        a given isolation level parameter is valid, else raises an
+        :class:`_exc.ArgumentError`.
+
+        A DBAPI connection is passed to the method, in the unlikely event that
+        the dialect needs to interrogate the connection itself to determine
+        this list, however it is expected that most backends will return
+        a hardcoded list of values.  If the dialect supports "AUTOCOMMIT",
+        that value should also be present in the sequence returned.
+
+        The method raises ``NotImplementedError`` by default.  If a dialect
+        does not implement this method, then the default dialect will not
+        perform any checking on a given isolation level value before passing
+        it onto the :meth:`.Dialect.set_isolation_level` method.  This is
+        to allow backwards-compatibility with third party dialects that may
+        not yet be implementing this method.
+
+        .. versionadded:: 2.0
 
         """
         raise NotImplementedError()

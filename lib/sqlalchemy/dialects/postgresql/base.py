@@ -3148,7 +3148,6 @@ class PGDialect(default.DefaultDialect):
     preparer = PGIdentifierPreparer
     execution_ctx_cls = PGExecutionContext
     inspector = PGInspector
-    isolation_level = None
 
     implicit_returning = True
     full_returning = True
@@ -3195,19 +3194,9 @@ class PGDialect(default.DefaultDialect):
     _supports_create_index_concurrently = True
     _supports_drop_index_concurrently = True
 
-    def __init__(
-        self,
-        isolation_level=None,
-        json_serializer=None,
-        json_deserializer=None,
-        **kwargs
-    ):
+    def __init__(self, json_serializer=None, json_deserializer=None, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
 
-        # the isolation_level parameter to the PGDialect itself is legacy.
-        # still works however the execution_options method is the one that
-        # is documented.
-        self.isolation_level = isolation_level
         self._json_deserializer = json_deserializer
         self._json_serializer = json_serializer
 
@@ -3247,33 +3236,17 @@ class PGDialect(default.DefaultDialect):
         )
         self.supports_identity_columns = self.server_version_info >= (10,)
 
-    def on_connect(self):
-        if self.isolation_level is not None:
-
-            def connect(conn):
-                self.set_isolation_level(conn, self.isolation_level)
-
-            return connect
-        else:
-            return None
-
-    _isolation_lookup = set(
-        [
+    def get_isolation_level_values(self, dbapi_conn):
+        # note the generic dialect doesn't have AUTOCOMMIT, however
+        # all postgresql dialects should include AUTOCOMMIT.
+        return (
             "SERIALIZABLE",
             "READ UNCOMMITTED",
             "READ COMMITTED",
             "REPEATABLE READ",
-        ]
-    )
+        )
 
     def set_isolation_level(self, connection, level):
-        level = level.replace("_", " ")
-        if level not in self._isolation_lookup:
-            raise exc.ArgumentError(
-                "Invalid value '%s' for isolation_level. "
-                "Valid isolation levels for %s are %s"
-                % (level, self.name, ", ".join(self._isolation_lookup))
-            )
         cursor = connection.cursor()
         cursor.execute(
             "SET SESSION CHARACTERISTICS AS TRANSACTION "

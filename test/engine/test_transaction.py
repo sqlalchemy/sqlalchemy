@@ -1102,6 +1102,8 @@ class AutoRollbackTest(fixtures.TestBase):
 
 
 class IsolationLevelTest(fixtures.TestBase):
+    """see also sqlalchemy/testing/suite/test_dialect.py::IsolationLevelTest"""
+
     __requires__ = (
         "isolation_level",
         "ad_hoc_engines",
@@ -1123,7 +1125,6 @@ class IsolationLevelTest(fixtures.TestBase):
         else:
             assert False, "no non-default isolation level available"
 
-    @testing.requires.legacy_isolation_level
     def test_engine_param_stays(self):
 
         eng = testing_engine()
@@ -1177,7 +1178,6 @@ class IsolationLevelTest(fixtures.TestBase):
 
         conn.close()
 
-    @testing.requires.legacy_isolation_level
     def test_reset_level_with_setting(self):
         eng = testing_engine(
             options=dict(isolation_level=self._non_default_isolation_level())
@@ -1201,45 +1201,88 @@ class IsolationLevelTest(fixtures.TestBase):
         )
         conn.close()
 
-    @testing.requires.legacy_isolation_level
+    def test_underscore_replacement(self, connection_no_trans):
+        conn = connection_no_trans
+        with mock.patch.object(
+            conn.dialect, "set_isolation_level"
+        ) as mock_sil, mock.patch.object(
+            conn.dialect,
+            "_gen_allowed_isolation_levels",
+            mock.Mock(return_value=["READ COMMITTED", "REPEATABLE READ"]),
+        ):
+            conn.execution_options(isolation_level="REPEATABLE_READ")
+            dbapi_conn = conn.connection.dbapi_connection
+
+        eq_(mock_sil.mock_calls, [mock.call(dbapi_conn, "REPEATABLE READ")])
+
+    def test_casing_replacement(self, connection_no_trans):
+        conn = connection_no_trans
+        with mock.patch.object(
+            conn.dialect, "set_isolation_level"
+        ) as mock_sil, mock.patch.object(
+            conn.dialect,
+            "_gen_allowed_isolation_levels",
+            mock.Mock(return_value=["READ COMMITTED", "REPEATABLE READ"]),
+        ):
+            conn.execution_options(isolation_level="repeatable_read")
+            dbapi_conn = conn.connection.dbapi_connection
+
+        eq_(mock_sil.mock_calls, [mock.call(dbapi_conn, "REPEATABLE READ")])
+
+    def test_dialect_doesnt_follow_naming_guidelines(
+        self, connection_no_trans
+    ):
+        conn = connection_no_trans
+
+        conn.dialect.__dict__.pop("_gen_allowed_isolation_levels", None)
+        with mock.patch.object(
+            conn.dialect,
+            "get_isolation_level_values",
+            mock.Mock(
+                return_value=[
+                    "READ COMMITTED",
+                    "REPEATABLE_READ",
+                    "serializable",
+                ]
+            ),
+        ):
+            with expect_raises_message(
+                ValueError,
+                f"Dialect {conn.dialect.name!r} "
+                r"get_isolation_level_values\(\) method "
+                r"should "
+                r"return names as UPPERCASE using spaces, not underscores; "
+                r"got \['REPEATABLE_READ', 'serializable'\]",
+            ):
+                conn.execution_options(isolation_level="READ COMMITTED")
+
     def test_invalid_level_engine_param(self):
         eng = testing_engine(options=dict(isolation_level="FOO"))
         assert_raises_message(
             exc.ArgumentError,
-            "Invalid value '%s' for isolation_level. "
-            "Valid isolation levels for %s are %s"
-            % (
-                "FOO",
-                eng.dialect.name,
-                ", ".join(eng.dialect._isolation_lookup),
-            ),
+            f"Invalid value 'FOO' for isolation_level. "
+            f"Valid isolation levels for {eng.dialect.name!r} are "
+            f"""{', '.join(
+                testing.requires.get_isolation_levels(
+                    testing.config
+                )['supported']
+            )}""",
             eng.connect,
         )
 
-    # TODO: all the dialects seem to be manually raising ArgumentError
-    # individually within their set_isolation_level() methods, when this
-    # should be a default dialect feature so that
-    # error messaging etc. is consistent, including that it works for 3rd
-    # party dialects.
-    # TODO: barring that, at least implement this for the Oracle dialect
-    @testing.fails_on(
-        "oracle",
-        "cx_oracle dialect doesnt have argument error here, "
-        "raises it via the DB rejecting it",
-    )
     def test_invalid_level_execution_option(self):
         eng = testing_engine(
             options=dict(execution_options=dict(isolation_level="FOO"))
         )
         assert_raises_message(
             exc.ArgumentError,
-            "Invalid value '%s' for isolation_level. "
-            "Valid isolation levels for %s are %s"
-            % (
-                "FOO",
-                eng.dialect.name,
-                ", ".join(eng.dialect._isolation_lookup),
-            ),
+            f"Invalid value 'FOO' for isolation_level. "
+            f"Valid isolation levels for {eng.dialect.name!r} are "
+            f"""{', '.join(
+                testing.requires.get_isolation_levels(
+                    testing.config
+                )['supported']
+            )}""",
             eng.connect,
         )
 

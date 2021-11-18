@@ -172,6 +172,9 @@ class PyODBCConnector(Connector):
             ]
         )
 
+    def get_isolation_level_values(self, dbapi_conn):
+        return super().get_isolation_level_values(dbapi_conn) + ["AUTOCOMMIT"]
+
     def set_isolation_level(self, connection, level):
         # adjust for ConnectionFairy being present
         # allows attribute set e.g. "connection.autocommit = True"

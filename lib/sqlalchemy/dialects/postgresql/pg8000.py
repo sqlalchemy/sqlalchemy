@@ -437,6 +437,15 @@ class PGDialect_pg8000(PGDialect):
         # connection was closed normally
         return "connection is closed" in str(e)
 
+    def get_isolation_level_values(self, dbapi_conn):
+        return (
+            "AUTOCOMMIT",
+            "READ COMMITTED",
+            "READ UNCOMMITTED",
+            "REPEATABLE READ",
+            "SERIALIZABLE",
+        )
+
     def set_isolation_level(self, connection, level):
         level = level.replace("_", " ")
 
@@ -446,7 +455,7 @@ class PGDialect_pg8000(PGDialect):
 
         if level == "AUTOCOMMIT":
             connection.autocommit = True
-        elif level in self._isolation_lookup:
+        else:
             connection.autocommit = False
             cursor = connection.cursor()
             cursor.execute(
@@ -455,12 +464,6 @@ class PGDialect_pg8000(PGDialect):
             )
             cursor.execute("COMMIT")
             cursor.close()
-        else:
-            raise exc.ArgumentError(
-                "Invalid value '%s' for isolation_level. "
-                "Valid isolation levels for %s are %s or AUTOCOMMIT"
-                % (level, self.name, ", ".join(self._isolation_lookup))
-            )
 
     def set_readonly(self, connection, value):
         cursor = connection.cursor()
@@ -559,13 +562,6 @@ class PGDialect_pg8000(PGDialect):
 
             def on_connect(conn):
                 self.set_client_encoding(conn, self.client_encoding)
-
-            fns.append(on_connect)
-
-        if self.isolation_level is not None:
-
-            def on_connect(conn):
-                self.set_isolation_level(conn, self.isolation_level)
 
             fns.append(on_connect)
 

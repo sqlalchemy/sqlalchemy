@@ -284,11 +284,17 @@ that loses not only "read committed" but also loses atomicity.
   not change autocommit mode**).
 
 SQLAlchemy dialects should support these isolation levels as well as autocommit
-to as great a degree as possible.   The levels are set via family of
-"execution_options" parameters and methods that are throughout the Core, such
-as the :meth:`_engine.Connection.execution_options` method.   The parameter is
-known as :paramref:`_engine.Connection.execution_options.isolation_level` and
-the values are strings which are typically a subset of the following names::
+to as great a degree as possible.
+
+Setting Isolation Level or DBAPI Autocommit for a Connection
+------------------------------------------------------------
+
+For an individual :class:`_engine.Connection` object that's acquired from
+:meth:`.Engine.connect`, the isolation level can be set for the duration of
+that :class:`_engine.Connection` object using the
+:meth:`_engine.Connection.execution_options` method. The parameter is known as
+:paramref:`_engine.Connection.execution_options.isolation_level` and the values
+are strings which are typically a subset of the following names::
 
     # possible values for Connection.execution_options(isolation_level="<value>")
 
@@ -319,11 +325,43 @@ begin a transaction::
    objects with different execution options, which nonetheless share the same
    dialect and connection pool.
 
-The :paramref:`_engine.Connection.execution_options.isolation_level` option may
-also be set engine wide, as is often preferable.  This is achieved by
-passing it within the :paramref:`_sa.create_engine.execution_options`
-parameter to :func:`_sa.create_engine`::
+.. note:: The :paramref:`_engine.Connection.execution_options.isolation_level`
+   parameter necessarily does not apply to statement level options, such as
+   that of :meth:`_sql.Executable.execution_options`, and will be rejected if
+   set at this level. This because the option must be set on a DBAPI connection
+   on a per-transaction basis.
 
+Setting Isolation Level or DBAPI Autocommit for an Engine
+----------------------------------------------------------
+
+The :paramref:`_engine.Connection.execution_options.isolation_level` option may
+also be set engine wide, as is often preferable.  This may be
+achieved by passing the :paramref:`_sa.create_engine.isolation_level`
+parameter to :func:`.sa.create_engine`::
+
+    from sqlalchemy import create_engine
+
+    eng = create_engine(
+        "postgresql://scott:tiger@localhost/test",
+        isolation_level="REPEATABLE READ"
+    )
+
+With the above setting, each new DBAPI connection the moment it's created will
+be set to use a ``"REPEATABLE READ"`` isolation level setting for all
+subsequent operations.
+
+.. _dbapi_autocommit_multiple:
+
+Maintaining Multiple Isolation Levels for a Single Engine
+----------------------------------------------------------
+
+The isolation level may also be set per engine, with a potentially greater
+level of flexibility, using either the
+:paramref:`_sa.create_engine.execution_options` parameter to
+:func:`_sa.create_engine` or the :meth:`_engine.Engine.execution_options`
+method, the latter of which will create a copy of the :class:`.Engine` that
+shares the dialect and connection pool of the original engine, but has its own
+per-connection isolation level setting::
 
     from sqlalchemy import create_engine
 
@@ -336,22 +374,24 @@ parameter to :func:`_sa.create_engine`::
 
 With the above setting, the DBAPI connection will be set to use a
 ``"REPEATABLE READ"`` isolation level setting for each new transaction
-begun.
+begun; but the connection as pooled will be reset to the original isolation
+level that was present when the connection first occurred.   At the level
+of :func:`_sa.create_engine`, the end effect is not any different
+from using the :paramref:`_sa.create_engine.isolation_level` parameter.
 
-An application that frequently chooses to run operations within different
-isolation levels may wish to create multiple "sub-engines" of a lead
+However, an application that frequently chooses to run operations within
+different isolation levels may wish to create multiple "sub-engines" of a lead
 :class:`_engine.Engine`, each of which will be configured to a different
-isolation level.  One such use case is an application that has operations
-that break into "transactional" and "read-only" operations, a separate
-:class:`_engine.Engine` that makes use of ``"AUTOCOMMIT"`` may be
-separated off from the main engine::
+isolation level. One such use case is an application that has operations that
+break into "transactional" and "read-only" operations, a separate
+:class:`_engine.Engine` that makes use of ``"AUTOCOMMIT"`` may be separated off
+from the main engine::
 
     from sqlalchemy import create_engine
 
     eng = create_engine("postgresql+psycopg2://scott:tiger@localhost/test")
 
     autocommit_engine = eng.execution_options(isolation_level="AUTOCOMMIT")
-
 
 Above, the :meth:`_engine.Engine.execution_options` method creates a shallow
 copy of the original :class:`_engine.Engine`.  Both ``eng`` and
@@ -363,11 +403,6 @@ The isolation level setting, regardless of which one it is, is unconditionally
 reverted when a connection is returned to the connection pool.
 
 
-.. note:: The :paramref:`_engine.Connection.execution_options.isolation_level`
-   parameter necessarily does not apply to statement level options, such as
-   that of :meth:`_sql.Executable.execution_options`.  This because the option
-   must be set on a DBAPI connection on a per-transaction basis.
-
 .. seealso::
 
       :ref:`SQLite Transaction Isolation <sqlite_isolation_level>`
@@ -377,6 +412,8 @@ reverted when a connection is returned to the connection pool.
       :ref:`MySQL Transaction Isolation <mysql_isolation_level>`
 
       :ref:`SQL Server Transaction Isolation <mssql_isolation_level>`
+
+      :ref:`Oracle Transaction Isolation <oracle_isolation_level>`
 
       :ref:`session_transaction_isolation` - for the ORM
 

@@ -2385,7 +2385,6 @@ class MySQLDialect(default.DefaultDialect):
 
     def __init__(
         self,
-        isolation_level=None,
         json_serializer=None,
         json_deserializer=None,
         is_mariadb=None,
@@ -2393,49 +2392,20 @@ class MySQLDialect(default.DefaultDialect):
     ):
         kwargs.pop("use_ansiquotes", None)  # legacy
         default.DefaultDialect.__init__(self, **kwargs)
-        self.isolation_level = isolation_level
         self._json_serializer = json_serializer
         self._json_deserializer = json_deserializer
         self._set_mariadb(is_mariadb, None)
 
-    def on_connect(self):
-        if self.isolation_level is not None:
-
-            def connect(conn):
-                self.set_isolation_level(conn, self.isolation_level)
-
-            return connect
-        else:
-            return None
-
-    _isolation_lookup = set(
-        [
+    def get_isolation_level_values(self, dbapi_conn):
+        return (
             "SERIALIZABLE",
             "READ UNCOMMITTED",
             "READ COMMITTED",
             "REPEATABLE READ",
-        ]
-    )
+        )
 
-    def set_isolation_level(self, connection, level):
-        level = level.replace("_", " ")
-
-        # adjust for ConnectionFairy being present
-        # allows attribute set e.g. "connection.autocommit = True"
-        # to work properly
-        if hasattr(connection, "dbapi_connection"):
-            connection = connection.dbapi_connection
-
-        self._set_isolation_level(connection, level)
-
-    def _set_isolation_level(self, connection, level):
-        if level not in self._isolation_lookup:
-            raise exc.ArgumentError(
-                "Invalid value '%s' for isolation_level. "
-                "Valid isolation levels for %s are %s"
-                % (level, self.name, ", ".join(self._isolation_lookup))
-            )
-        cursor = connection.cursor()
+    def set_isolation_level(self, dbapi_conn, level):
+        cursor = dbapi_conn.cursor()
         cursor.execute("SET SESSION TRANSACTION ISOLATION LEVEL %s" % level)
         cursor.execute("COMMIT")
         cursor.close()

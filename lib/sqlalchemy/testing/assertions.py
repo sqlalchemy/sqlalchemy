@@ -384,9 +384,13 @@ def _expect_raises(except_cls, msg=None, check_context=False):
         ec.error = err
         success = True
         if msg is not None:
-            assert re.search(
-                msg, util.text_type(err), re.UNICODE
-            ), "%r !~ %s" % (msg, err)
+            # I'm often pdbing here, and "err" above isn't
+            # in scope, so assign the string explicitly
+            error_as_string = util.text_type(err)
+            assert re.search(msg, error_as_string, re.UNICODE), "%r !~ %s" % (
+                msg,
+                error_as_string,
+            )
         if check_context and not are_we_already_in_a_traceback:
             _assert_proper_exception_context(err)
         print(util.text_type(err).encode("utf-8"))
