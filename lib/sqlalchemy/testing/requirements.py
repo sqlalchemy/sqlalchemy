@@ -957,6 +957,21 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def numeric_received_as_decimal_untyped(self):
+        """target backend will return result columns that are explicitly
+        against NUMERIC or similar precision-numeric datatypes (not including
+        FLOAT or INT types) as Python Decimal objects, and not as floats
+        or ints, including when no SQLAlchemy-side typing information is
+        associated with the statement (e.g. such as a raw SQL string).
+
+        This should be enabled if either the DBAPI itself returns Decimal
+        objects, or if the dialect has set up DBAPI-specific return type
+        handlers such that Decimal objects come back automatically.
+
+        """
+        return exclusions.open()
+
+    @property
     def nested_aggregates(self):
         """target database can select an aggregate from a subquery that's
         also using an aggregate

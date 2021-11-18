@@ -1,7 +1,6 @@
 from decimal import Decimal
 import os
 import random
-import warnings
 
 from sqlalchemy import __version__
 from sqlalchemy import Column
@@ -10,21 +9,9 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import Numeric
 from sqlalchemy import String
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
-
-
-warnings.filterwarnings("ignore", r".*Decimal objects natively")  # noqa
-
-# speed up cdecimal if available
-try:
-    import cdecimal
-    import sys
-
-    sys.modules["decimal"] = cdecimal
-except ImportError:
-    pass
 
 
 Base = declarative_base()

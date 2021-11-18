@@ -1138,16 +1138,9 @@ class DefaultRequirements(SuiteRequirements):
 
         """
 
-        def broken_cx_oracle(config):
-            return (
-                against(config, "oracle+cx_oracle")
-                and config.db.dialect.cx_oracle_ver <= (6, 0, 2)
-                and config.db.dialect.cx_oracle_ver > (6,)
-            )
-
         return fails_if(
             [
-                ("sqlite", None, None, "TODO"),
+                ("sqlite", None, None, "SQLite numeric limitation"),
             ]
         )
 
@@ -1171,6 +1164,13 @@ class DefaultRequirements(SuiteRequirements):
             [
                 ("oracle", None, None, "driver doesn't do this automatically"),
             ]
+        )
+
+    @property
+    def numeric_received_as_decimal_untyped(self):
+        return fails_on(
+            "sqlite",
+            "sqlite doesn't return Decimal objects without special handlers",
         )
 
     @property
