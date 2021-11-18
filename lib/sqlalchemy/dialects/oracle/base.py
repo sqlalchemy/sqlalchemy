@@ -1440,6 +1440,8 @@ class OracleDialect(default.DefaultDialect):
     supports_alter = True
     max_identifier_length = 128
 
+    implicit_returning = True
+
     supports_simple_order_by_label = False
     cte_follows_insert = True
 
@@ -1505,9 +1507,11 @@ class OracleDialect(default.DefaultDialect):
     def initialize(self, connection):
         super(OracleDialect, self).initialize(connection)
 
-        self.implicit_returning = self.__dict__.get(
-            "implicit_returning", self.server_version_info > (10,)
-        )
+        # Oracle 8i has RETURNING:
+        # https://docs.oracle.com/cd/A87860_01/doc/index.htm
+
+        # so does Oracle8:
+        # https://docs.oracle.com/cd/A64702_01/doc/index.htm
 
         if self._is_oracle_8:
             self.colspecs = self.colspecs.copy()

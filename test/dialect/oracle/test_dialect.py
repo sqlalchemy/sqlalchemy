@@ -525,16 +525,15 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
         assert not dialect._use_nchar_for_unicode
 
         dialect.initialize(Mock())
-        assert not dialect.implicit_returning
+
+        # oracle 8 / 8i support returning
+        assert dialect.implicit_returning
+
         assert not dialect._supports_char_length
         assert not dialect.use_ansi
         self.assert_compile(String(50), "VARCHAR2(50)", dialect=dialect)
         self.assert_compile(Unicode(50), "VARCHAR2(50)", dialect=dialect)
         self.assert_compile(UnicodeText(), "CLOB", dialect=dialect)
-
-        dialect = self._dialect((8, 2, 5), implicit_returning=True)
-        dialect.initialize(testing.db.connect())
-        assert dialect.implicit_returning
 
     def test_default_flags(self):
         """test with no initialization or server version info"""

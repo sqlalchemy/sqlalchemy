@@ -48,8 +48,6 @@ from sqlalchemy.sql import literal_column
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
-from sqlalchemy.testing import engines
-from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
@@ -61,7 +59,7 @@ from sqlalchemy.util import u
 
 
 class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
-    __prefer__ = "postgresql"
+    __dialect__ = "postgresql"
 
     def test_format(self):
         seq = Sequence("my_seq_no_schema")
@@ -80,27 +78,6 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
             dialect.identifier_preparer.format_sequence(seq)
             == '"Some_Schema"."My_Seq"'
         )
-
-    @testing.only_on("postgresql", "foo")
-    @testing.provide_metadata
-    def test_reverse_eng_name(self):
-        metadata = self.metadata
-        engine = engines.testing_engine(options=dict(implicit_returning=False))
-        for tname, cname in [
-            ("tb1" * 30, "abc"),
-            ("tb2", "abc" * 30),
-            ("tb3" * 30, "abc" * 30),
-            ("tb4", "abc"),
-        ]:
-            t = Table(
-                tname[:57],
-                metadata,
-                Column(cname[:57], Integer, primary_key=True),
-            )
-            t.create(engine)
-            with engine.begin() as conn:
-                r = conn.execute(t.insert())
-                eq_(r.inserted_primary_key, (1,))
 
     @testing.combinations(
         (None, ""),

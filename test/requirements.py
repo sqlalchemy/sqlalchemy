@@ -1643,6 +1643,12 @@ class DefaultRequirements(SuiteRequirements):
         return skip_if("mssql")
 
     @property
+    def supports_autoincrement_w_composite_pk(self):
+        """integer autoincrement works for tables with composite primary
+        keys"""
+        return fails_if("sqlite")
+
+    @property
     def identity_columns(self):
         return only_if(["postgresql >= 10", "oracle >= 12", "mssql"])
 

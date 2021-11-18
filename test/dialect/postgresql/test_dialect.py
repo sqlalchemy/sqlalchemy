@@ -1192,6 +1192,26 @@ $$ LANGUAGE plpgsql;
         connection.execute(text("CREATE SEQUENCE fooseq"))
         t.create(connection, checkfirst=True)
 
+    @testing.combinations(True, False, argnames="implicit_returning")
+    def test_sequence_detection_tricky_names(
+        self, metadata, connection, implicit_returning
+    ):
+        for tname, cname in [
+            ("tb1" * 30, "abc"),
+            ("tb2", "abc" * 30),
+            ("tb3" * 30, "abc" * 30),
+            ("tb4", "abc"),
+        ]:
+            t = Table(
+                tname[:57],
+                metadata,
+                Column(cname[:57], Integer, primary_key=True),
+                implicit_returning=implicit_returning,
+            )
+            t.create(connection)
+            r = connection.execute(t.insert())
+            eq_(r.inserted_primary_key, (1,))
+
     @testing.provide_metadata
     def test_schema_roundtrips(self, connection):
         meta = self.metadata
