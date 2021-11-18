@@ -1,4 +1,5 @@
 from typing import Any
+from typing import Dict
 
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import declared_attr
@@ -13,9 +14,9 @@ class Foo(Base):
         return "name"
 
     @declared_attr
-    def __mapper_args__(cls) -> dict[Any, Any]:
+    def __mapper_args__(cls) -> Dict[Any, Any]:
         return {}
 
     @declared_attr
-    def __table_args__(cls) -> dict[Any, Any]:
+    def __table_args__(cls) -> Dict[Any, Any]:
         return {}
