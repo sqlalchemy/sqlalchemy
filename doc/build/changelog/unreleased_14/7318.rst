@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 7318
+
+    Fixed ORM regression where the new behavior of "eager loaders run on
+    unexpire" added in :ticket:`1763` would lead to loader option errors being
+    raised inappropriately for the case where a single :class:`_orm.Query` or
+    :class:`_sql.Select` were used to load multiple kinds of entities, along
+    with loader options that apply to just one of those kinds of entity like a
+    :func:`_orm.joinedload`, and later the objects would be refreshed from
+    expiration, where the loader options would attempt to be applied to the
+    mismatched object type and then raise an exception. The check for this
+    mismatch now bypasses raising an error for this case.
