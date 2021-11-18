@@ -273,20 +273,22 @@ be reverted when the DBAPI connection has a rollback.
 Remote-Schema Table Introspection and PostgreSQL search_path
 ------------------------------------------------------------
 
-**TL;DR;**: keep the ``search_path`` variable set to its default of ``public``,
-name schemas **other** than ``public`` explicitly within ``Table`` definitions.
+.. admonition:: Section Best Practices Summarized
 
-The PostgreSQL dialect can reflect tables from any schema.  The
-:paramref:`_schema.Table.schema` argument, or alternatively the
-:paramref:`.MetaData.reflect.schema` argument determines which schema will
-be searched for the table or tables.   The reflected :class:`_schema.Table`
-objects
-will in all cases retain this ``.schema`` attribute as was specified.
-However, with regards to tables which these :class:`_schema.Table`
-objects refer to
-via foreign key constraint, a decision must be made as to how the ``.schema``
-is represented in those remote tables, in the case where that remote
-schema name is also a member of the current
+    keep the ``search_path`` variable set to its default of ``public``, without
+    any other schema names. For other schema names, name these explicitly
+    within :class:`_schema.Table` definitions. Alternatively, the
+    ``postgresql_ignore_search_path`` option will cause all reflected
+    :class:`_schema.Table` objects to have a :attr:`_schema.Table.schema`
+    attribute set up.
+
+The PostgreSQL dialect can reflect tables from any schema, as outlined in
+:ref:`schema_table_reflection`.
+
+With regards to tables which these :class:`_schema.Table`
+objects refer to via foreign key constraint, a decision must be made as to how
+the ``.schema`` is represented in those remote tables, in the case where that
+remote schema name is also a member of the current
 `PostgreSQL search path
 <https://www.postgresql.org/docs/current/static/ddl-schemas.html#DDL-SCHEMAS-PATH>`_.
 
@@ -349,8 +351,8 @@ reflection process as follows::
     >>> engine = create_engine("postgresql://scott:tiger@localhost/test")
     >>> with engine.connect() as conn:
     ...     conn.execute(text("SET search_path TO test_schema, public"))
-    ...     meta = MetaData()
-    ...     referring = Table('referring', meta,
+    ...     metadata_obj = MetaData()
+    ...     referring = Table('referring', metadata_obj,
     ...                       autoload_with=conn)
     ...
     <sqlalchemy.engine.result.CursorResult object at 0x101612ed0>
@@ -359,7 +361,7 @@ The above process would deliver to the :attr:`_schema.MetaData.tables`
 collection
 ``referred`` table named **without** the schema::
 
-    >>> meta.tables['referred'].schema is None
+    >>> metadata_obj.tables['referred'].schema is None
     True
 
 To alter the behavior of reflection such that the referred schema is
@@ -370,8 +372,8 @@ dialect-specific argument to both :class:`_schema.Table` as well as
 
     >>> with engine.connect() as conn:
     ...     conn.execute(text("SET search_path TO test_schema, public"))
-    ...     meta = MetaData()
-    ...     referring = Table('referring', meta,
+    ...     metadata_obj = MetaData()
+    ...     referring = Table('referring', metadata_obj,
     ...                       autoload_with=conn,
     ...                       postgresql_ignore_search_path=True)
     ...
@@ -379,7 +381,7 @@ dialect-specific argument to both :class:`_schema.Table` as well as
 
 We will now have ``test_schema.referred`` stored as schema-qualified::
 
-    >>> meta.tables['test_schema.referred'].schema
+    >>> metadata_obj.tables['test_schema.referred'].schema
     'test_schema'
 
 .. sidebar:: Best Practices for PostgreSQL Schema reflection
@@ -401,12 +403,10 @@ installation, this is the name ``public``.  So a table that refers to another
 which is in the ``public`` (i.e. default) schema will always have the
 ``.schema`` attribute set to ``None``.
 
-.. versionadded:: 0.9.2 Added the ``postgresql_ignore_search_path``
-   dialect-level option accepted by :class:`_schema.Table` and
-   :meth:`_schema.MetaData.reflect`.
-
-
 .. seealso::
+
+    :ref:`reflection_schema_qualified_interaction` - discussion of the issue
+    from a backend-agnostic perspective
 
     `The Schema Search Path
     <https://www.postgresql.org/docs/9.0/static/ddl-schemas.html#DDL-SCHEMAS-PATH>`_

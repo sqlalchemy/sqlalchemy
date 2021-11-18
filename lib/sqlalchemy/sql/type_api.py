@@ -843,7 +843,7 @@ class UserDefinedType(util.with_metaclass(VisitableCheckKWArg, TypeEngine)):
 
     Once the type is made, it's immediately usable::
 
-      table = Table('foo', meta,
+      table = Table('foo', metadata_obj,
           Column('id', Integer, primary_key=True),
           Column('data', MyType(16))
           )

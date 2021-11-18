@@ -1048,7 +1048,7 @@ localized to the current VALUES clause being processed::
     def mydefault(context):
         return context.get_current_parameters()['counter'] + 12
 
-    mytable = Table('mytable', meta,
+    mytable = Table('mytable', metadata_obj,
         Column('counter', Integer),
         Column('counter_plus_twelve',
                Integer, default=mydefault, onupdate=mydefault)
