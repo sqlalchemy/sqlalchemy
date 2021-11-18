@@ -1,4 +1,5 @@
 from typing import Any
+from typing import Dict
 from typing import Type
 
 from sqlalchemy.orm import declarative_base
@@ -16,12 +17,12 @@ class Foo(Base):
         return "name"
 
     @declared_attr
-    def __mapper_args__(cls: Type["Foo"]) -> dict[Any, Any]:
+    def __mapper_args__(cls: Type["Foo"]) -> Dict[Any, Any]:
         return {}
 
     # this was a workaround that works if there's no plugin present, make
     # sure that doesn't crash anything
     @classmethod
     @declared_attr
-    def __table_args__(cls: Type["Foo"]) -> dict[Any, Any]:
+    def __table_args__(cls: Type["Foo"]) -> Dict[Any, Any]:
         return {}
