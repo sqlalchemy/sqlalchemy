@@ -293,6 +293,7 @@ def _apply_placeholder_attr_to_class(
     else:
         type_ = AnyType(TypeOfAny.special_form)
     var = Var(attrname)
+    var._fullname = cls.fullname + "." + attrname
     var.info = cls.info
     var.type = type_
     cls.info.names[attrname] = SymbolTableNode(MDEF, var)
