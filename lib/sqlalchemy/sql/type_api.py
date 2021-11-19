@@ -810,7 +810,180 @@ class VisitableCheckKWArg(util.EnsureKWArgType, TraversibleType):
     pass
 
 
-class UserDefinedType(util.with_metaclass(VisitableCheckKWArg, TypeEngine)):
+class ExternalType(object):
+    """mixin that defines attributes and behaviors specific to third-party
+    datatypes.
+
+    "Third party" refers to datatypes that are defined outside the scope
+    of SQLAlchemy within either end-user application code or within
+    external extensions to SQLAlchemy.
+
+    Subclasses currently include :class:`.TypeDecorator` and
+    :class:`.UserDefinedType`.
+
+    .. versionadded:: 1.4.28
+
+    """
+
+    cache_ok = None
+    """Indicate if statements using this :class:`.ExternalType` are "safe to
+    cache".
+
+    The default value ``None`` will emit a warning and then not allow caching
+    of a statement which includes this type.   Set to ``False`` to disable
+    statements using this type from being cached at all without a warning.
+    When set to ``True``, the object's class and selected elements from its
+    state will be used as part of the cache key.  For example, using a
+    :class:`.TypeDecorator`::
+
+        class MyType(TypeDecorator):
+            impl = String
+
+            cache_ok = True
+
+            def __init__(self, choices):
+                self.choices = tuple(choices)
+                self.internal_only = True
+
+    The cache key for the above type would be equivalent to::
+
+        >>> MyType(["a", "b", "c"])._static_cache_key
+        (<class '__main__.MyType'>, ('choices', ('a', 'b', 'c')))
+
+    The caching scheme will extract attributes from the type that correspond
+    to the names of parameters in the ``__init__()`` method.  Above, the
+    "choices" attribute becomes part of the cache key but "internal_only"
+    does not, because there is no parameter named "internal_only".
+
+    The requirements for cacheable elements is that they are hashable
+    and also that they indicate the same SQL rendered for expressions using
+    this type every time for a given cache value.
+
+    To accommodate for datatypes that refer to unhashable structures such
+    as dictionaries, sets and lists, these objects can be made "cacheable"
+    by assigning hashable structures to the attributes whose names
+    correspond with the names of the arguments.  For example, a datatype
+    which accepts a dictionary of lookup values may publish this as a sorted
+    series of tuples.   Given a previously un-cacheable type as::
+
+        class LookupType(UserDefinedType):
+            '''a custom type that accepts a dictionary as a parameter.
+
+            this is the non-cacheable version, as "self.lookup" is not
+            hashable.
+
+            '''
+
+            def __init__(self, lookup):
+                self.lookup = lookup
+
+            def get_col_spec(self, **kw):
+                return "VARCHAR(255)"
+
+            def bind_processor(self, dialect):
+                # ...  works with "self.lookup" ...
+
+    Where "lookup" is a dictionary.  The type will not be able to generate
+    a cache key::
+
+        >>> type_ = LookupType({"a": 10, "b": 20})
+        >>> type_._static_cache_key
+        <stdin>:1: SAWarning: UserDefinedType LookupType({'a': 10, 'b': 20}) will not
+        produce a cache key because the ``cache_ok`` flag is not set to True.
+        Set this flag to True if this type object's state is safe to use
+        in a cache key, or False to disable this warning.
+        symbol('no_cache')
+
+    If we **did** set up such a cache key, it wouldn't be usable. We would
+    get a tuple structure that contains a dictionary inside of it, which
+    cannot itself be used as a key in a "cache dictionary" such as SQLAlchemy's
+    statement cache, since Python dictionaries aren't hashable::
+
+        >>> # set cache_ok = True
+        >>> type_.cache_ok = True
+
+        >>> # this is the cache key it would generate
+        >>> key = type_._static_cache_key
+        >>> key
+        (<class '__main__.LookupType'>, ('lookup', {'a': 10, 'b': 20}))
+
+        >>> # however this key is not hashable, will fail when used with
+        >>> # SQLAlchemy statement cache
+        >>> some_cache = {key: "some sql value"}
+        Traceback (most recent call last): File "<stdin>", line 1,
+        in <module> TypeError: unhashable type: 'dict'
+
+    The type may be made cacheable by assigning a sorted tuple of tuples
+    to the ".lookup" attribute::
+
+        class LookupType(UserDefinedType):
+            '''a custom type that accepts a dictionary as a parameter.
+
+            The dictionary is stored both as itself in a private variable,
+            and published in a public variable as a sorted tuple of tuples,
+            which is hashable and will also return the same value for any
+            two equivalent dictionaries.  Note it assumes the keys and
+            values of the dictionary are themselves hashable.
+
+            '''
+
+            cache_ok = True
+
+            def __init__(self, lookup):
+                self._lookup = lookup
+
+                # assume keys/values of "lookup" are hashable; otherwise
+                # they would also need to be converted in some way here
+                self.lookup = tuple(
+                    (key, lookup[key]) for key in sorted(lookup)
+                )
+
+            def get_col_spec(self, **kw):
+                return "VARCHAR(255)"
+
+            def bind_processor(self, dialect):
+                # ...  works with "self._lookup" ...
+
+    Where above, the cache key for ``LookupType({"a": 10, "b": 20})`` will be::
+
+        >>> LookupType({"a": 10, "b": 20})._static_cache_key
+        (<class '__main__.LookupType'>, ('lookup', (('a', 10), ('b', 20))))
+
+    .. versionadded:: 1.4.14 - added the ``cache_ok`` flag to allow
+       some configurability of caching for :class:`.TypeDecorator` classes.
+
+    .. versionadded:: 1.4.28 - added the :class:`.ExternalType` mixin which
+       generalizes the ``cache_ok`` flag to both the :class:`.TypeDecorator`
+       and :class:`.UserDefinedType` classes.
+
+    .. seealso::
+
+        :ref:`sql_caching`
+
+    """  # noqa: E501
+
+    @property
+    def _static_cache_key(self):
+        if self.cache_ok is None:
+            subtype_idx = self.__class__.__mro__.index(ExternalType)
+            subtype = self.__class__.__mro__[max(subtype_idx - 1, 0)]
+
+            util.warn(
+                "%s %r will not produce a cache key because "
+                "the ``cache_ok`` flag is not set to True.  "
+                "Set this flag to True if this type object's "
+                "state is safe to use in a cache key, or False to "
+                "disable this warning." % (subtype.__name__, self)
+            )
+        elif self.cache_ok is True:
+            return super(ExternalType, self)._static_cache_key
+
+        return NO_CACHE
+
+
+class UserDefinedType(
+    util.with_metaclass(VisitableCheckKWArg, ExternalType, TypeEngine)
+):
     """Base for user defined types.
 
     This should be the base of new types.  Note that
@@ -820,6 +993,8 @@ class UserDefinedType(util.with_metaclass(VisitableCheckKWArg, TypeEngine)):
       import sqlalchemy.types as types
 
       class MyType(types.UserDefinedType):
+          cache_ok = True
+
           def __init__(self, precision = 8):
               self.precision = precision
 
@@ -854,6 +1029,20 @@ class UserDefinedType(util.with_metaclass(VisitableCheckKWArg, TypeEngine)):
     .. versionadded:: 1.0.0 the owning expression is passed to
        the ``get_col_spec()`` method via the keyword argument
        ``type_expression``, if it receives ``**kw`` in its signature.
+
+    The :attr:`.UserDefinedType.cache_ok` class-level flag indicates if this
+    custom :class:`.UserDefinedType` is safe to be used as part of a cache key.
+    This flag defaults to ``None`` which will initially generate a warning
+    when the SQL compiler attempts to generate a cache key for a statement
+    that uses this type.  If the :class:`.UserDefinedType` is not guaranteed
+    to produce the same bind/result behavior and SQL generation
+    every time, this flag should be set to ``False``; otherwise if the
+    class produces the same behavior each time, it may be set to ``True``.
+    See :attr:`.UserDefinedType.cache_ok` for further notes on how this works.
+
+    .. versionadded:: 1.4.28 Generalized the :attr:`.ExternalType.cache_ok`
+       flag so that it is available for both :class:`.TypeDecorator` as well
+       as :class:`.UserDefinedType`.
 
     """
 
@@ -952,7 +1141,7 @@ class NativeForEmulated(object):
         return cls(**kw)
 
 
-class TypeDecorator(SchemaEventTarget, TypeEngine):
+class TypeDecorator(ExternalType, SchemaEventTarget, TypeEngine):
     """Allows the creation of types which add additional functionality
     to an existing type.
 
@@ -1115,47 +1304,6 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
 
     """
 
-    cache_ok = None
-    """Indicate if statements using this :class:`.TypeDecorator` are "safe to
-    cache".
-
-    The default value ``None`` will emit a warning and then not allow caching
-    of a statement which includes this type.   Set to ``False`` to disable
-    statements using this type from being cached at all without a warning.
-    When set to ``True``, the object's class and selected elements from its
-    state will be used as part of the cache key, e.g.::
-
-        class MyType(TypeDecorator):
-            impl = String
-
-            cache_ok = True
-
-            def __init__(self, choices):
-                self.choices = tuple(choices)
-                self.internal_only = True
-
-    The cache key for the above type would be equivalent to::
-
-        (<class '__main__.MyType'>, ('choices', ('a', 'b', 'c')))
-
-    The caching scheme will extract attributes from the type that correspond
-    to the names of parameters in the ``__init__()`` method.  Above, the
-    "choices" attribute becomes part of the cache key but "internal_only"
-    does not, because there is no parameter named "internal_only".
-
-    The requirements for cacheable elements is that they are hashable
-    and also that they indicate the same SQL rendered for expressions using
-    this type every time for a given cache value.
-
-    .. versionadded:: 1.4.14 - added the ``cache_ok`` flag to allow
-       some configurability of caching for :class:`.TypeDecorator` classes.
-
-    .. seealso::
-
-        :ref:`sql_caching`
-
-    """
-
     class Comparator(TypeEngine.Comparator):
         """A :class:`.TypeEngine.Comparator` that is specific to
         :class:`.TypeDecorator`.
@@ -1190,21 +1338,6 @@ class TypeDecorator(SchemaEventTarget, TypeEngine):
                 (TypeDecorator.Comparator, self.impl.comparator_factory),
                 {},
             )
-
-    @property
-    def _static_cache_key(self):
-        if self.cache_ok is None:
-            util.warn(
-                "TypeDecorator %r will not produce a cache key because "
-                "the ``cache_ok`` flag is not set to True.  "
-                "Set this flag to True if this type object's "
-                "state is safe to use in a cache key, or False to "
-                "disable this warning." % self
-            )
-        elif self.cache_ok is True:
-            return super(TypeDecorator, self)._static_cache_key
-
-        return NO_CACHE
 
     def _gen_dialect_impl(self, dialect):
         """

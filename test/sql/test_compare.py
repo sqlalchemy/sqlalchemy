@@ -67,6 +67,7 @@ from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.sql.selectable import Select
 from sqlalchemy.sql.selectable import Selectable
 from sqlalchemy.sql.selectable import SelectStatementGrouping
+from sqlalchemy.sql.type_api import UserDefinedType
 from sqlalchemy.sql.visitors import InternalTraversal
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -1744,19 +1745,21 @@ class ExecutableFlagsTest(fixtures.TestBase):
 
 
 class TypesTest(fixtures.TestBase):
-    def test_typedec_no_cache(self):
-        class MyType(TypeDecorator):
+    @testing.combinations(TypeDecorator, UserDefinedType)
+    def test_thirdparty_no_cache(self, base):
+        class MyType(base):
             impl = String
 
         expr = column("q", MyType()) == 1
 
         with expect_warnings(
-            r"TypeDecorator MyType\(\) will not produce a cache key"
+            r"%s MyType\(\) will not produce a cache key" % base.__name__
         ):
             is_(expr._generate_cache_key(), None)
 
-    def test_typedec_cache_false(self):
-        class MyType(TypeDecorator):
+    @testing.combinations(TypeDecorator, UserDefinedType)
+    def test_thirdparty_cache_false(self, base):
+        class MyType(base):
             impl = String
 
             cache_ok = False
@@ -1765,8 +1768,9 @@ class TypesTest(fixtures.TestBase):
 
         is_(expr._generate_cache_key(), None)
 
-    def test_typedec_cache_ok(self):
-        class MyType(TypeDecorator):
+    @testing.combinations(TypeDecorator, UserDefinedType)
+    def test_thirdparty_cache_ok(self, base):
+        class MyType(base):
             impl = String
 
             cache_ok = True

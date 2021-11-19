@@ -67,6 +67,7 @@ to and/or from the database is required.
 .. autoclass:: TypeDecorator
    :members:
 
+   .. autoattribute:: cache_ok
 
 TypeDecorator Recipes
 ---------------------
@@ -594,6 +595,7 @@ is needed, use :class:`.TypeDecorator` instead.
 .. autoclass:: UserDefinedType
    :members:
 
+   .. autoattribute:: cache_ok
 
 .. _custom_and_decorated_types_reflection:
 
