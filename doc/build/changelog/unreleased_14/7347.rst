@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, mypy
+    :tickets: 7321
+
+    Fixed Mypy crash when running id daemon mode caused by a
+    missing attribute on an internal mypy ``Var`` instance.
