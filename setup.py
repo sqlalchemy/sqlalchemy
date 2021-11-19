@@ -1,7 +1,3 @@
-from distutils.command.build_ext import build_ext
-from distutils.errors import CCompilerError
-from distutils.errors import DistutilsExecError
-from distutils.errors import DistutilsPlatformError
 import os
 import platform
 import re
@@ -10,8 +6,20 @@ import sys
 from setuptools import Distribution as _Distribution
 from setuptools import Extension
 from setuptools import setup
+from setuptools.command.build_ext import build_ext
 from setuptools.command.test import test as TestCommand
 
+# attempt to use pep-632 imports for setuptools symbols; however,
+# since these symbols were only added to setuptools as of 59.0.1,
+# fall back to the distutils symbols otherwise
+try:
+    from setuptools.errors import CCompilerError
+    from setuptools.errors import DistutilsExecError
+    from setuptools.errors import DistutilsPlatformError
+except ImportError:
+    from distutils.errors import CCompilerError
+    from distutils.errors import DistutilsExecError
+    from distutils.errors import DistutilsPlatformError
 
 cmdclass = {}
 
