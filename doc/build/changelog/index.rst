@@ -14,14 +14,6 @@ Current Migration Guide
 
    migration_20
 
-SQLAlchemy 2.0 Overview and Status
-----------------------------------
-
-.. toctree::
-   :titlesonly:
-
-   migration_20
-
 Change logs
 -----------
 
@@ -51,6 +43,7 @@ Older Migration Guides
 .. toctree::
    :titlesonly:
 
+   migration_14
    migration_13
    migration_12
    migration_11

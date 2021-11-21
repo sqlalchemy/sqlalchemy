@@ -1,10 +1,13 @@
 .. _migration_20_toplevel:
 
 =============================
-Migrating to SQLAlchemy 2.0
+What's New in SQLAlchemy 2.0?
 =============================
 
 .. admonition:: About this document
+
+    This document describes changes between SQLAlchemy version 1.4
+    and SQLAlchemy version 2.0.
 
     SQLAlchemy 2.0 presents a major shift for a wide variety of key
     SQLAlchemy usage patterns in both the Core and ORM components.   The goal
@@ -28,9 +31,64 @@ Migrating to SQLAlchemy 2.0
     :class:`.orm.query.Query`  and Declarative. It also hopes standardize some
     newer capabilities that have proven to be very effective.
 
+The 1.4->2.0 Migration Path
+===========================
 
-Overview
-========
+The most prominent architectural features and API changes that are considered
+to be "SQLAlchemy 2.0" were in fact released as fully available within the 1.4
+series, to provide for a clean upgrade path from the 1.x to the 2.x series
+as well as to serve as a beta platform for the features themselves.  These
+changes include:
+
+* :ref:`New ORM statement paradigm <change_5159>`
+* :ref:`SQL caching throughout Core and ORM <change_4639>`
+* :ref:`New Declarative features, ORM integration <change_5508>`
+* :ref:`New Result object <change_result_14_core>`
+* :ref:`select() / case() Accept Positional Expressions <change_5284>`
+* :ref:`asyncio support for Core and ORM <change_3414>`
+
+The above bullets link to the description of these new paradigms as introduced
+in SQLAlchemy 1.4. in the :ref:`migration_14_toplevel` document.
+
+For SQLAlchemy 2.0, all API features and behaviors
+that were marked as :ref:`deprecated for 2.0 <deprecation_20_mode>` are
+now finalized; in particular, major APIs that are **no longer present**
+include:
+
+* :ref:`Bound MetaData and connectionless execution <migration_20_implicit_execution>`
+* :ref:`Emulated autocommit on Connection <migration_20_autocommit>`
+* :ref:`The Session.autocommit parameter / mode <migration_20_session_autocommit>`
+* :ref:`List / keyword arguments to select() <migration_20_5284>`
+* Python 2 support
+
+The above bullets refer to the most prominent fully backwards-incompatible
+changes that are finalized in the 2.0 release. The migration path for
+applications to accommodate for these changes as well as others is framed as
+a transition path first into the 1.4 series of SQLAlchemy where the "future"
+APIs are available to provide for the "2.0" way of working, and then to the
+2.0 series where the no-longer-used APIs above and others are removed.
+
+The complete steps for this migration path are later in this document at
+:ref:`migration_20_overview`.
+
+New Features and Improvements
+=============================
+
+This section covers new features and improvements in SQLAlchemy 2.0 which
+are not otherwise part of the major 1.4->2.0 migration path.
+
+Behavioral Changes
+==================
+
+This section covers behavioral changes made in SQLAlchemy 2.0 which are
+not otherwise part of the major 1.4->2.0 migration path; changes here are
+not expected to have significant effects on backwards compatibility.
+
+
+.. _migration_20_overview:
+
+1.x -> 2.x Migration Overview
+=============================
 
 The SQLAlchemy 2.0 transition presents itself in the SQLAlchemy 1.4 release as
 a series of steps that allow an application of any size or complexity to be
@@ -1966,6 +2024,7 @@ the :func:`_orm.selectinload` strategy presents a collection-oriented
 eager loader that is superior in most respects to :func:`_orm.joinedload`
 and should be preferred.
 
+.. _migration_20_session_autocommit:
 
 Autocommit mode removed from Session; autobegin support added
 -------------------------------------------------------------
