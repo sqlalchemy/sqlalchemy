@@ -148,7 +148,7 @@ def _clear(owner, elements):
             del _key_to_collection[key]
 
 
-class _EventKey(object):
+class _EventKey:
     """Represent :func:`.listen` arguments."""
 
     __slots__ = (

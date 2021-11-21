@@ -61,7 +61,7 @@ def clear_managers():
     proxies.clear()
 
 
-class _DBProxy(object):
+class _DBProxy:
 
     """Layers connection pooling behavior on top of a standard DB-API module.
 

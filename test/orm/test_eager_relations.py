@@ -5408,13 +5408,13 @@ class CyclicalInheritingEagerTestOne(fixtures.MappedTest):
     def test_basic(self):
         t2, t1 = self.tables.t2, self.tables.t1
 
-        class T(object):
+        class T:
             pass
 
         class SubT(T):
             pass
 
-        class T2(object):
+        class T2:
             pass
 
         class SubT2(T2):

@@ -27,7 +27,7 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
 
-class Canary(object):
+class Canary:
     def __init__(self):
         self.data = set()
         self.added = set()
@@ -77,14 +77,14 @@ class Canary(object):
         return value
 
 
-class OrderedDictFixture(object):
+class OrderedDictFixture:
     @testing.fixture
     def ordered_dict_mro(self):
         return type("ordered", (collections.MappedCollection,), {})
 
 
 class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
-    class Entity(object):
+    class Entity:
         def __init__(self, a=None, b=None, c=None):
             self.a = a
             self.b = b
@@ -117,7 +117,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         if creator is None:
             creator = self.entity_maker
 
-        class Foo(object):
+        class Foo:
             pass
 
         canary = Canary()
@@ -170,7 +170,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         if creator is None:
             creator = self.entity_maker
 
-        class Foo(object):
+        class Foo:
             pass
 
         instrumentation.register_class(Foo)
@@ -206,7 +206,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         if creator is None:
             creator = self.entity_maker
 
-        class Foo(object):
+        class Foo:
             pass
 
         canary = Canary()
@@ -451,7 +451,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         if creator is None:
             creator = self.entity_maker
 
-        class Foo(object):
+        class Foo:
             pass
 
         canary = Canary()
@@ -525,7 +525,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         # or __delslice__ methods.  The __setitem__
         # and __delitem__ must therefore accept
         # slice objects (i.e. as in py3k)
-        class ListLike(object):
+        class ListLike:
             def __init__(self):
                 self.data = list()
 
@@ -581,7 +581,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self.assert_(getattr(MyList, "_sa_instrumented") == id(MyList))
 
     def test_list_duck(self):
-        class ListLike(object):
+        class ListLike:
             def __init__(self):
                 self.data = list()
 
@@ -617,7 +617,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self.assert_(getattr(ListLike, "_sa_instrumented") == id(ListLike))
 
     def test_list_emulates(self):
-        class ListIsh(object):
+        class ListIsh:
             __emulates__ = list
 
             def __init__(self):
@@ -658,7 +658,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         if creator is None:
             creator = self.entity_maker
 
-        class Foo(object):
+        class Foo:
             pass
 
         canary = Canary()
@@ -700,7 +700,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         if creator is None:
             creator = self.entity_maker
 
-        class Foo(object):
+        class Foo:
             pass
 
         canary = Canary()
@@ -968,7 +968,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         if creator is None:
             creator = self.entity_maker
 
-        class Foo(object):
+        class Foo:
             pass
 
         canary = Canary()
@@ -1032,7 +1032,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self.assert_(getattr(MySet, "_sa_instrumented") == id(MySet))
 
     def test_set_duck(self):
-        class SetLike(object):
+        class SetLike:
             def __init__(self):
                 self.data = set()
 
@@ -1068,7 +1068,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self.assert_(getattr(SetLike, "_sa_instrumented") == id(SetLike))
 
     def test_set_emulates(self):
-        class SetIsh(object):
+        class SetIsh:
             __emulates__ = set
 
             def __init__(self):
@@ -1109,7 +1109,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         if creator is None:
             creator = self.dictable_entity
 
-        class Foo(object):
+        class Foo:
             pass
 
         canary = Canary()
@@ -1170,7 +1170,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         if creator is None:
             creator = self.dictable_entity
 
-        class Foo(object):
+        class Foo:
             pass
 
         canary = Canary()
@@ -1298,7 +1298,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         if creator is None:
             creator = self.dictable_entity
 
-        class Foo(object):
+        class Foo:
             pass
 
         canary = Canary()
@@ -1421,7 +1421,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self.assert_(getattr(MyOrdered, "_sa_instrumented") == id(MyOrdered))
 
     def test_dict_duck(self):
-        class DictLike(object):
+        class DictLike:
             def __init__(self):
                 self.data = dict()
 
@@ -1472,7 +1472,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self.assert_(getattr(DictLike, "_sa_instrumented") == id(DictLike))
 
     def test_dict_emulates(self):
-        class DictIsh(object):
+        class DictIsh:
             __emulates__ = dict
 
             def __init__(self):
@@ -1528,7 +1528,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         if creator is None:
             creator = self.entity_maker
 
-        class Foo(object):
+        class Foo:
             pass
 
         canary = Canary()
@@ -1579,7 +1579,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         assert_eq()
 
     def test_object_duck(self):
-        class MyCollection(object):
+        class MyCollection:
             def __init__(self):
                 self.data = set()
 
@@ -1613,7 +1613,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         )
 
     def test_object_emulates(self):
-        class MyCollection2(object):
+        class MyCollection2:
             __emulates__ = None
 
             def __init__(self):
@@ -1654,7 +1654,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         )
 
     def test_recipes(self):
-        class Custom(object):
+        class Custom:
             def __init__(self):
                 self.data = []
 
@@ -1689,7 +1689,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             def __iter__(self):
                 return iter(self.data)
 
-        class Foo(object):
+        class Foo:
             pass
 
         canary = Canary()
@@ -1762,7 +1762,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
         self.assert_(dr3 is cr3)
 
     def test_lifecycle(self):
-        class Foo(object):
+        class Foo:
             pass
 
         canary = Canary()
@@ -2176,10 +2176,10 @@ class CustomCollectionsTest(fixtures.MappedTest):
         class MyList(list):
             pass
 
-        class Foo(object):
+        class Foo:
             pass
 
-        class Bar(object):
+        class Bar:
             pass
 
         self.mapper_registry.map_imperatively(
@@ -2199,10 +2199,10 @@ class CustomCollectionsTest(fixtures.MappedTest):
             self.tables.sometable,
         )
 
-        class Foo(object):
+        class Foo:
             pass
 
-        class Bar(object):
+        class Bar:
             pass
 
         self.mapper_registry.map_imperatively(
@@ -2230,10 +2230,10 @@ class CustomCollectionsTest(fixtures.MappedTest):
             self.tables.sometable,
         )
 
-        class Foo(object):
+        class Foo:
             pass
 
-        class Bar(object):
+        class Bar:
             pass
 
         class AppenderDict(dict):
@@ -2274,10 +2274,10 @@ class CustomCollectionsTest(fixtures.MappedTest):
             self.tables.sometable,
         )
 
-        class Foo(object):
+        class Foo:
             pass
 
-        class Bar(object):
+        class Bar:
             def __init__(self, data):
                 self.data = data
 
@@ -2324,7 +2324,7 @@ class CustomCollectionsTest(fixtures.MappedTest):
         self._test_list(list)
 
     def test_list_no_setslice(self):
-        class ListLike(object):
+        class ListLike:
             def __init__(self):
                 self.data = list()
 
@@ -2374,10 +2374,10 @@ class CustomCollectionsTest(fixtures.MappedTest):
             self.tables.sometable,
         )
 
-        class Parent(object):
+        class Parent:
             pass
 
-        class Child(object):
+        class Child:
             pass
 
         self.mapper_registry.map_imperatively(
@@ -2505,13 +2505,13 @@ class CustomCollectionsTest(fixtures.MappedTest):
             self.tables.sometable,
         )
 
-        class Parent(object):
+        class Parent:
             pass
 
-        class Child(object):
+        class Child:
             pass
 
-        class MyCollection(object):
+        class MyCollection:
             def __init__(self):
                 self.data = []
 
@@ -2566,7 +2566,7 @@ class CustomCollectionsTest(fixtures.MappedTest):
 
 class InstrumentationTest(fixtures.ORMTest):
     def test_uncooperative_descriptor_in_sweep(self):
-        class DoNotTouch(object):
+        class DoNotTouch:
             def __get__(self, obj, owner):
                 raise AttributeError
 
@@ -2580,7 +2580,7 @@ class InstrumentationTest(fixtures.ORMTest):
         collections._instrument_class(Touchy)
 
     def test_referenced_by_owner(self):
-        class Foo(object):
+        class Foo:
             pass
 
         instrumentation.register_class(Foo)

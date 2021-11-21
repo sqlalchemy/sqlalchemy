@@ -263,7 +263,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         self.remove(state, dict_, value, initiator, passive=passive)
 
 
-class DynamicCollectionAdapter(object):
+class DynamicCollectionAdapter:
     """simplified CollectionAdapter for internal API consistency"""
 
     def __init__(self, data):
@@ -284,7 +284,7 @@ class DynamicCollectionAdapter(object):
     __nonzero__ = __bool__
 
 
-class AppenderMixin(object):
+class AppenderMixin:
     query_class = None
 
     def __init__(self, attr, state):
@@ -434,7 +434,7 @@ def mixin_user_query(cls):
     return type(name, (AppenderMixin, cls), {"query_class": cls})
 
 
-class CollectionHistory(object):
+class CollectionHistory:
     """Overrides AttributeHistory to receive append/remove events directly."""
 
     def __init__(self, attr, state, apply_to=None):

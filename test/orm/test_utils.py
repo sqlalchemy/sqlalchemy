@@ -46,7 +46,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         return table
 
     def test_simple(self):
-        class Point(object):
+        class Point:
             pass
 
         table = self._fixture(Point)
@@ -61,7 +61,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         assert alias.id.__clause_element__().table is not table
 
     def test_named_entity(self):
-        class Point(object):
+        class Point:
             pass
 
         self._fixture(Point)
@@ -73,7 +73,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     def test_named_selectable(self):
-        class Point(object):
+        class Point:
             pass
 
         table = self._fixture(Point)
@@ -85,7 +85,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     def test_not_instantiatable(self):
-        class Point(object):
+        class Point:
             pass
 
         self._fixture(Point)
@@ -94,7 +94,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         assert_raises(TypeError, alias)
 
     def test_instancemethod(self):
-        class Point(object):
+        class Point:
             def zero(self):
                 self.x, self.y = 0, 0
 
@@ -106,7 +106,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         assert getattr(alias, "zero")
 
     def test_classmethod(self):
-        class Point(object):
+        class Point:
             @classmethod
             def max_x(cls):
                 return 100
@@ -119,7 +119,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         assert Point.max_x() == alias.max_x() == 100
 
     def test_simple_property(self):
-        class Point(object):
+        class Point:
             @property
             def max_x(self):
                 return 100
@@ -133,7 +133,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         assert Point.max_x is alias.max_x
 
     def test_descriptors(self):
-        class descriptor(object):
+        class descriptor:
             def __init__(self, fn):
                 self.fn = fn
 
@@ -146,7 +146,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
             def method(self):
                 return "method"
 
-        class Point(object):
+        class Point:
             center = (0, 0)
 
             @descriptor
@@ -171,7 +171,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
                 assert child.table is table
 
     def test_hybrid_descriptor_one(self):
-        class Point(object):
+        class Point:
             def __init__(self, x, y):
                 self.x, self.y = x, y
 
@@ -191,7 +191,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     def test_hybrid_descriptor_two(self):
-        class Point(object):
+        class Point:
             def __init__(self, x, y):
                 self.x, self.y = x, y
 
@@ -217,7 +217,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     def test_hybrid_descriptor_three(self):
-        class Point(object):
+        class Point:
             def __init__(self, x, y):
                 self.x, self.y = x, y
 
@@ -289,7 +289,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     def test_proxy_descriptor_one(self):
-        class Point(object):
+        class Point:
             def __init__(self, x, y):
                 self.x, self.y = x, y
 
@@ -407,7 +407,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     def test_parententity_vs_parentmapper(self):
-        class Point(object):
+        class Point:
             pass
 
         self._fixture(Point, properties={"x_syn": synonym("x")})

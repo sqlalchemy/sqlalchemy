@@ -11,7 +11,7 @@ from sqlalchemy.sql.schema import ForeignKey
 
 
 @as_declarative()
-class Base(object):
+class Base:
     updated_at = Column(Integer)
 
 

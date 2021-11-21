@@ -2290,7 +2290,7 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         )
 
     def test_col_prop_builtin_function(self):
-        class Foo(object):
+        class Foo:
             pass
 
         self.mapper_registry.map_imperatively(

@@ -88,7 +88,7 @@ def Column(*args, **kw):
     return col
 
 
-class eq_type_affinity(object):
+class eq_type_affinity:
     """Helper to compare types inside of datastructures based on affinity.
 
     E.g.::
@@ -125,7 +125,7 @@ class eq_type_affinity(object):
         return self.target._type_affinity is not other._type_affinity
 
 
-class eq_clause_element(object):
+class eq_clause_element:
     """Helper to compare SQL structures based on compare()"""
 
     def __init__(self, target):

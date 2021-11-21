@@ -8,7 +8,7 @@
 from .. import util
 
 
-class SQLRole(object):
+class SQLRole:
     """Define a "role" within a SQL statement structure.
 
     Classes within SQL Core participate within SQLRole hierarchies in order
@@ -23,12 +23,12 @@ class SQLRole(object):
     uses_inspection = False
 
 
-class UsesInspection(object):
+class UsesInspection:
     _post_inspect = None
     uses_inspection = True
 
 
-class AllowsLambdaRole(object):
+class AllowsLambdaRole:
     allows_lambda = True
 
 

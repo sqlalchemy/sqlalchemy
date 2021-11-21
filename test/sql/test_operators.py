@@ -449,7 +449,7 @@ class CustomUnaryOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
 
-class _CustomComparatorTests(object):
+class _CustomComparatorTests:
     def test_override_builtin(self):
         c1 = Column("foo", self._add_override_factory())
         self._assert_add_override(c1)
@@ -2126,7 +2126,7 @@ class InTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
     def test_in_arbitrary_sequence(self):
-        class MySeq(object):
+        class MySeq:
             def __init__(self, d):
                 self.d = d
 

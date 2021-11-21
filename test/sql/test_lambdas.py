@@ -689,7 +689,7 @@ class LambdaElementTest(
         # refer to unknown types of objects inside the lambda.  these have
         # to be resolved outside of the lambda because we otherwise can't
         # be sure they can be safely used as cache keys.
-        class Thing(object):
+        class Thing:
             def __init__(self, col_expr):
                 self.col_expr = col_expr
 
@@ -713,7 +713,7 @@ class LambdaElementTest(
         # refer to unknown types of objects inside the lambda.  these have
         # to be resolved outside of the lambda because we otherwise can't
         # be sure they can be safely used as cache keys.
-        class Thing(object):
+        class Thing:
             def __init__(self, col_expr):
                 self.col_expr = col_expr
 
@@ -765,7 +765,7 @@ class LambdaElementTest(
         # test the above 'test_reject_plain_object' with the expected
         # workaround
 
-        class Thing(object):
+        class Thing:
             def __init__(self, col_expr):
                 self.col_expr = col_expr
 
@@ -1662,7 +1662,7 @@ class LambdaElementTest(
     def test_cache_key_instance_variable_issue_incorrect(self):
         t1 = table("t1", column("q"), column("p"))
 
-        class Foo(object):
+        class Foo:
             def __init__(self, value):
                 self.value = value
 
@@ -1681,7 +1681,7 @@ class LambdaElementTest(
     def test_cache_key_instance_variable_issue_correct_one(self):
         t1 = table("t1", column("q"), column("p"))
 
-        class Foo(object):
+        class Foo:
             def __init__(self, value):
                 self.value = value
 
@@ -1701,7 +1701,7 @@ class LambdaElementTest(
     def test_cache_key_instance_variable_issue_correct_two(self):
         t1 = table("t1", column("q"), column("p"))
 
-        class Foo(object):
+        class Foo:
             def __init__(self, value):
                 self.value = value
 

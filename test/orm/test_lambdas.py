@@ -151,7 +151,7 @@ class LambdaTest(QueryTest, AssertsCompiledSQL):
             if use_indirect_access:
 
                 def query(names):
-                    class Foo(object):
+                    class Foo:
                         def __init__(self):
                             self.u1 = aliased(User)
 

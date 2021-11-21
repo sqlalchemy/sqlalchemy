@@ -53,7 +53,7 @@ try:
 except ImportError:
     _baserow_usecext = False
 
-    class BaseRow(object):
+    class BaseRow:
         __slots__ = ("_parent", "_data", "_keymap", "_key_style")
 
         def __init__(self, parent, processors, keymap, key_style, data):

@@ -150,7 +150,7 @@ def track_cascade_events(descriptor, prop):
     event.listen(descriptor, "set", set_, raw=True, retval=True)
 
 
-class UOWTransaction(object):
+class UOWTransaction:
     def __init__(self, session):
         self.session = session
 
@@ -477,7 +477,7 @@ class UOWTransaction(object):
             self.session._register_persistent(other)
 
 
-class IterateMappersMixin(object):
+class IterateMappersMixin:
     def _mappers(self, uow):
         if self.fromparent:
             return iter(
@@ -539,7 +539,7 @@ class Preprocess(IterateMappersMixin):
             return False
 
 
-class PostSortRec(object):
+class PostSortRec:
     __slots__ = ("disabled",)
 
     def __new__(cls, uow, *args):

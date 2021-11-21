@@ -357,7 +357,7 @@ class FromLinter(collections.namedtuple("FromLinter", ["froms", "edges"])):
                 util.warn(message)
 
 
-class Compiled(object):
+class Compiled:
 
     """Represent a compiled SQL or DDL expression.
 
@@ -4970,7 +4970,7 @@ class StrSQLTypeCompiler(GenericTypeCompiler):
             return get_col_spec(**kw)
 
 
-class IdentifierPreparer(object):
+class IdentifierPreparer:
 
     """Handle quoting and case-folding of identifiers based on options."""
 

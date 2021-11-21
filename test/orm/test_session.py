@@ -970,7 +970,7 @@ class SessionStateTest(_fixtures.FixtureTest):
 
         sess = fixture_session()
 
-        class Foo(object):
+        class Foo:
             def __init__(self):
                 sess.add(self)
 
@@ -1988,7 +1988,7 @@ class SessionInterface(fixtures.MappedTest):
 
         # flush will no-op without something in the unit of work
         def _():
-            class OK(object):
+            class OK:
                 pass
 
             self._map_it(OK)
@@ -2058,7 +2058,7 @@ class SessionInterface(fixtures.MappedTest):
         )
 
     def test_unmapped_instance(self):
-        class Unmapped(object):
+        class Unmapped:
             pass
 
         self._test_instance_guards(Unmapped())
@@ -2070,14 +2070,14 @@ class SessionInterface(fixtures.MappedTest):
             self._test_class_guards(prim, is_class=False)
 
     def test_unmapped_class_for_instance(self):
-        class Unmapped(object):
+        class Unmapped:
             pass
 
         self._test_instance_guards(Unmapped)
         self._test_class_guards(Unmapped)
 
     def test_mapped_class_for_instance(self):
-        class Mapped(object):
+        class Mapped:
             pass
 
         self._map_it(Mapped)
@@ -2086,7 +2086,7 @@ class SessionInterface(fixtures.MappedTest):
         # no class guards- it would pass.
 
     def test_missing_state(self):
-        class Mapped(object):
+        class Mapped:
             pass
 
         early = Mapped()
@@ -2096,7 +2096,7 @@ class SessionInterface(fixtures.MappedTest):
         self._test_class_guards(early, is_class=False)
 
     def test_refresh_arg_signature(self):
-        class Mapped(object):
+        class Mapped:
             pass
 
         self._map_it(Mapped)

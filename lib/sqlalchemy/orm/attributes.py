@@ -637,7 +637,7 @@ OP_BULK_REPLACE = util.symbol("BULK_REPLACE")
 OP_MODIFIED = util.symbol("MODIFIED")
 
 
-class AttributeEvent(object):
+class AttributeEvent:
     """A token propagated throughout the course of a chain of attribute
     events.
 
@@ -690,7 +690,7 @@ class AttributeEvent(object):
 Event = AttributeEvent
 
 
-class AttributeImpl(object):
+class AttributeImpl:
     """internal implementation for instrumented attributes."""
 
     def __init__(

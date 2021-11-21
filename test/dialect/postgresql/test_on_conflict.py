@@ -281,7 +281,7 @@ class OnConflictTest(fixtures.TablesTest):
     def test_on_conflict_do_update_clauseelem_as_key_set(self, connection):
         users = self.tables.users
 
-        class MyElem(object):
+        class MyElem:
             def __init__(self, expr):
                 self.expr = expr
 

@@ -1811,7 +1811,7 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_new_calling_style_thing_ok_actually_use_iter(self, table_fixture):
         table1, table2 = table_fixture
 
-        class Thing(object):
+        class Thing:
             def __iter__(self):
                 return iter([table1.c.name, table1.c.description])
 

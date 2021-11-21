@@ -12,7 +12,7 @@ from ... import types as sqltypes
 from ... import util
 
 
-class _NumericType(object):
+class _NumericType:
     """Base for MySQL numeric types.
 
     This is the base both for NUMERIC as well as INTEGER, hence

@@ -7,7 +7,7 @@ reg: registry = registry()
 
 
 @reg.as_declarative_base()
-class Base(object):
+class Base:
     updated_at = Column(Integer)
 
 

@@ -442,7 +442,7 @@ class NestedTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         )
 
     def _fixture(self):
-        class AB(object):
+        class AB:
             def __init__(self, a, b, cd):
                 self.a = a
                 self.b = b
@@ -466,7 +466,7 @@ class NestedTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             def __ne__(self, other):
                 return not self.__eq__(other)
 
-        class CD(object):
+        class CD:
             def __init__(self, c, d):
                 self.c = c
                 self.d = d
@@ -484,7 +484,7 @@ class NestedTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             def __ne__(self, other):
                 return not self.__eq__(other)
 
-        class Thing(object):
+        class Thing:
             def __init__(self, ab):
                 self.ab = ab
 

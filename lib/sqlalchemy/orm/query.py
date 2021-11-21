@@ -3408,7 +3408,7 @@ class AliasOption(interfaces.LoaderOption):
         pass
 
 
-class BulkUD(object):
+class BulkUD:
     """State used for the orm.Query version of update() / delete().
 
     This object is now specific to Query only.

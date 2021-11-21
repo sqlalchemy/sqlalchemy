@@ -335,7 +335,7 @@ class MemUsageTest(EnsureZeroed):
 
     @testing.fails()
     def test_fixture_failure(self):
-        class Foo(object):
+        class Foo:
             pass
 
         stuff = []
@@ -356,7 +356,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
     # ensure a pure growing test trips the assertion
     @testing.fails_if(lambda: True)
     def test_fixture(self):
-        class Foo(object):
+        class Foo:
             pass
 
         x = []
@@ -556,7 +556,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             *[Column("col%d" % i, Integer) for i in range(10)]
         )
 
-        class Wide(object):
+        class Wide:
             pass
 
         self.mapper_registry.map_imperatively(
@@ -604,7 +604,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             ),
         )
 
-        class SomeClass(object):
+        class SomeClass:
             pass
 
         self.mapper_registry.map_imperatively(SomeClass, some_table)
@@ -1021,7 +1021,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             Column("t1id", ForeignKey("t1.id")),
         )
 
-        class T1(object):
+        class T1:
             pass
 
         t1_mapper = self.mapper_registry.map_imperatively(T1, t1)
@@ -1029,7 +1029,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
         @testing.emits_warning()
         @profile_memory()
         def go():
-            class T2(object):
+            class T2:
                 pass
 
             t2_mapper = self.mapper_registry.map_imperatively(T2, t2)
@@ -1065,10 +1065,10 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             Column("t1id", Integer, ForeignKey("table1.id")),
         )
 
-        class Foo(object):
+        class Foo:
             pass
 
-        class Bar(object):
+        class Bar:
             pass
 
         self.mapper_registry.map_imperatively(
@@ -1119,10 +1119,10 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             Column("t1id", Integer, ForeignKey("table1.id")),
         )
 
-        class Foo(object):
+        class Foo:
             pass
 
-        class Bar(object):
+        class Bar:
             pass
 
         self.mapper_registry.map_imperatively(
@@ -1203,7 +1203,7 @@ class CycleTest(_fixtures.FixtureTest):
 
         users = self.tables.users
 
-        class Foo(object):
+        class Foo:
             @hybrid.hybrid_property
             def user_name(self):
                 return self.name
@@ -1593,7 +1593,7 @@ class CycleTest(_fixtures.FixtureTest):
         go()
 
     def test_weak_sequence(self):
-        class Foo(object):
+        class Foo:
             pass
 
         f = Foo()

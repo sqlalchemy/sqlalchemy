@@ -14,7 +14,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 
 
-class _ExprFixture(object):
+class _ExprFixture:
     def _test_table(self, type_):
         test_table = Table(
             "test_table", MetaData(), Column("x", String), Column("y", type_)
@@ -363,7 +363,7 @@ class DerivedTest(_ExprFixture, fixtures.TestBase, AssertsCompiledSQL):
         )
 
 
-class RoundTripTestBase(object):
+class RoundTripTestBase:
     def test_round_trip(self, connection):
         connection.execute(
             self.tables.test_table.insert(),

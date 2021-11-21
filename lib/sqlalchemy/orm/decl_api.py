@@ -138,7 +138,7 @@ class declared_attr(interfaces._MappedAttribute, property):
     easily reused across different mappings.  The example below illustrates
     both::
 
-        class ProvidesUser(object):
+        class ProvidesUser:
             "A mixin that adds a 'user' relationship to classes."
 
             @declared_attr
@@ -271,7 +271,7 @@ class declared_attr(interfaces._MappedAttribute, property):
         Below, both MyClass as well as MySubClass will have a distinct
         ``id`` Column object established::
 
-            class HasIdMixin(object):
+            class HasIdMixin:
                 @declared_attr.cascading
                 def id(cls):
                     if has_inherited_table(cls):
@@ -477,7 +477,7 @@ def declarative_base(
     )
 
 
-class registry(object):
+class registry:
     """Generalized registry for mapping classes.
 
     The :class:`_orm.registry` serves as the basis for maintaining a collection
@@ -861,7 +861,7 @@ class registry(object):
             mapper_registry = registry()
 
             @mapper_registry.as_declarative_base()
-            class Base(object):
+            class Base:
                 @declared_attr
                 def __tablename__(cls):
                     return cls.__name__.lower()
@@ -1006,7 +1006,7 @@ def as_declarative(**kw):
         from sqlalchemy.orm import as_declarative
 
         @as_declarative()
-        class Base(object):
+        class Base:
             @declared_attr
             def __tablename__(cls):
                 return cls.__name__.lower()

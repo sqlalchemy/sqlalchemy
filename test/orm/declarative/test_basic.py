@@ -191,7 +191,7 @@ class DeclarativeTest(DeclarativeTestBase):
     def test_dispose_attrs(self):
         reg = registry()
 
-        class Foo(object):
+        class Foo:
             __tablename__ = "some_table"
 
             id = Column(Integer, primary_key=True)
@@ -213,7 +213,7 @@ class DeclarativeTest(DeclarativeTestBase):
         )
 
     def test_deferred_reflection_default_error(self):
-        class MyExt(object):
+        class MyExt:
             @classmethod
             def prepare(cls):
                 "sample prepare method"
@@ -358,7 +358,7 @@ class DeclarativeTest(DeclarativeTestBase):
                 x = sa.sql.expression.column(Integer)
                 y = Column(Integer)
 
-        class MyMixin(object):
+        class MyMixin:
             x = sa.sql.expression.column(Integer)
             y = Column(Integer)
 
@@ -393,7 +393,7 @@ class DeclarativeTest(DeclarativeTestBase):
             r"non-schema 'sqlalchemy.sql.column\(\)' object; "
         ):
 
-            class MyMixin2(object):
+            class MyMixin2:
                 @declared_attr
                 def x(cls):
                     return sa.sql.expression.column(Integer)
@@ -1198,7 +1198,7 @@ class DeclarativeTest(DeclarativeTestBase):
             )
 
     def test_custom_base(self):
-        class MyBase(object):
+        class MyBase:
             def foobar(self):
                 return "foobar"
 
@@ -1614,7 +1614,7 @@ class DeclarativeTest(DeclarativeTestBase):
     def test_table_cls_attribute_return_none(self):
         from sqlalchemy.schema import Column, PrimaryKeyConstraint
 
-        class AutoTable(object):
+        class AutoTable:
             @declared_attr
             def __tablename__(cls):
                 return cls.__name__
@@ -2237,7 +2237,7 @@ class DeclarativeTest(DeclarativeTestBase):
         )
 
     def test_cls_docstring(self):
-        class MyBase(object):
+        class MyBase:
             """MyBase Docstring"""
 
         Base = declarative_base(cls=MyBase)

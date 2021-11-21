@@ -113,7 +113,7 @@ mapping against the ``my_data`` table::
 
     from sqlalchemy import mapper
 
-    class MyDataClass(object):
+    class MyDataClass:
         pass
 
     # associates mutation listeners with MyDataClass.data
@@ -286,7 +286,7 @@ objects to each of the ``Vertex.start`` and ``Vertex.end`` attributes::
         Column('y2', Integer),
         )
 
-    class Vertex(object):
+    class Vertex:
         pass
 
     mapper(Vertex, vertices, properties={
@@ -366,7 +366,7 @@ from ..sql.base import SchemaEventTarget
 from ..util import memoized_property
 
 
-class MutableBase(object):
+class MutableBase:
     """Common base class to :class:`.Mutable`
     and :class:`.MutableComposite`.
 

@@ -473,7 +473,7 @@ class PickleTypesTest(fixtures.TestBase):
             loads(dumps(meta))
 
 
-class _UserDefinedTypeFixture(object):
+class _UserDefinedTypeFixture:
     @classmethod
     def define_tables(cls, metadata):
         class MyType(types.UserDefinedType):
@@ -1064,7 +1064,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
 
         # test coerce from nulltype - e.g. use an object that
         # doesn't match to a known type
-        class MyObj(object):
+        class MyObj:
             def __str__(self):
                 return "THISISMYOBJ"
 
@@ -1190,7 +1190,7 @@ class TypeCoerceCastTest(fixtures.TablesTest):
         t = self.tables.t
         conn.execute(t.insert().values(data=coerce_fn("d1", MyType)))
 
-        class MyFoob(object):
+        class MyFoob:
             def __clause_element__(self):
                 return t.c.data
 
@@ -2323,7 +2323,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
         m1.create_all(testing.db)
 
     def test_non_native_constraint_custom_type(self):
-        class Foob(object):
+        class Foob:
             def __init__(self, name):
                 self.name = name
 
@@ -3202,7 +3202,7 @@ class ExpressionTest(
         class MyFoobarType(types.UserDefinedType):
             pass
 
-        class Foo(object):
+        class Foo:
             pass
 
         # unknown type + integer, right hand bind
@@ -3315,11 +3315,11 @@ class ExpressionTest(
 
     def test_detect_coercion_of_builtins(self):
         @inspection._self_inspects
-        class SomeSQLAThing(object):
+        class SomeSQLAThing:
             def __repr__(self):
                 return "some_sqla_thing()"
 
-        class SomeOtherThing(object):
+        class SomeOtherThing:
             pass
 
         assert_raises_message(
@@ -3629,7 +3629,7 @@ class BooleanTest(
         )
 
     def test_non_native_constraint_custom_type(self):
-        class Foob(object):
+        class Foob:
             def __init__(self, value):
                 self.value = value
 

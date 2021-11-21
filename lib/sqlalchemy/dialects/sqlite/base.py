@@ -863,7 +863,7 @@ class _SQliteJson(JSON):
         return process
 
 
-class _DateTimeMixin(object):
+class _DateTimeMixin:
     _reg = None
     _storage_format = None
 

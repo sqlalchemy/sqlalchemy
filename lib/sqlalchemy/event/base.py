@@ -38,7 +38,7 @@ def _is_event_name(name):
     ) or name.startswith("_sa_event")
 
 
-class _UnpickleDispatch(object):
+class _UnpickleDispatch:
     """Serializable callable that re-generates an instance of
     :class:`_Dispatch` given a particular :class:`.Events` subclass.
 
@@ -54,7 +54,7 @@ class _UnpickleDispatch(object):
             raise AttributeError("No class with a 'dispatch' member present.")
 
 
-class _Dispatch(object):
+class _Dispatch:
     """Mirror the event listening definitions of an Events class with
     listener collections.
 
@@ -275,7 +275,7 @@ class Events(util.with_metaclass(_EventMeta, object)):
         cls.dispatch._clear()
 
 
-class _JoinedDispatcher(object):
+class _JoinedDispatcher:
     """Represent a connection between two _Dispatch objects."""
 
     __slots__ = "local", "parent", "_instance_cls"
@@ -302,7 +302,7 @@ class _JoinedDispatcher(object):
         return self.parent._events
 
 
-class dispatcher(object):
+class dispatcher:
     """Descriptor used by target classes to
     deliver the _Dispatch class at the class level
     and produce new _Dispatch instances for target

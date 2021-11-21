@@ -22,7 +22,7 @@ from .. import sql
 from .. import util
 
 
-class DependencyProcessor(object):
+class DependencyProcessor:
     def __init__(self, prop):
         self.prop = prop
         self.cascade = prop.cascade

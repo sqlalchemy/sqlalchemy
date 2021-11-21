@@ -37,7 +37,7 @@ def instrument_declarative(cls, cls_registry, metadata):
     )
 
 
-class ConcreteBase(object):
+class ConcreteBase:
     """A helper class for 'concrete' declarative mappings.
 
     :class:`.ConcreteBase` will use the :func:`.polymorphic_union`
@@ -315,7 +315,7 @@ class AbstractConcreteBase(ConcreteBase):
         )
 
 
-class DeferredReflection(object):
+class DeferredReflection:
     """A helper class for construction of mappings based on
     a deferred reflection step.
 

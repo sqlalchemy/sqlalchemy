@@ -1146,7 +1146,7 @@ class _BASETIMEIMPL(TIME):
     __visit_name__ = "_BASETIMEIMPL"
 
 
-class _DateTimeBase(object):
+class _DateTimeBase:
     def bind_processor(self, dialect):
         def process(value):
             if type(value) == datetime.date:
@@ -1181,7 +1181,7 @@ class DATETIMEOFFSET(_DateTimeBase, sqltypes.DateTime):
         self.precision = precision
 
 
-class _UnicodeLiteral(object):
+class _UnicodeLiteral:
     def literal_processor(self, dialect):
         def process(value):
 

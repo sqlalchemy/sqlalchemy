@@ -235,7 +235,7 @@ def expect_col_expression_collection(role, expressions):
         yield resolved, column, strname, add_element
 
 
-class RoleImpl(object):
+class RoleImpl:
     __slots__ = ("_role_class", "name", "_use_inspection")
 
     def _literal_coercion(self, element, **kw):
@@ -282,7 +282,7 @@ class RoleImpl(object):
         util.raise_(exc.ArgumentError(msg, code=code), replace_context=err)
 
 
-class _Deannotate(object):
+class _Deannotate:
     __slots__ = ()
 
     def _post_coercion(self, resolved, **kw):
@@ -291,13 +291,13 @@ class _Deannotate(object):
         return _deep_deannotate(resolved)
 
 
-class _StringOnly(object):
+class _StringOnly:
     __slots__ = ()
 
     _resolve_literal_only = True
 
 
-class _ReturnsStringKey(object):
+class _ReturnsStringKey:
     __slots__ = ()
 
     def _implicit_coercions(
@@ -312,7 +312,7 @@ class _ReturnsStringKey(object):
         return element
 
 
-class _ColumnCoercions(object):
+class _ColumnCoercions:
     __slots__ = ()
 
     def _warn_for_scalar_subquery_coercion(self):
@@ -358,7 +358,7 @@ def _no_text_coercion(
     )
 
 
-class _NoTextCoercion(object):
+class _NoTextCoercion:
     __slots__ = ()
 
     def _literal_coercion(self, element, argname=None, **kw):
@@ -370,7 +370,7 @@ class _NoTextCoercion(object):
             self._raise_for_expected(element, argname)
 
 
-class _CoerceLiterals(object):
+class _CoerceLiterals:
     __slots__ = ()
     _coerce_consts = False
     _coerce_star = False
@@ -417,7 +417,7 @@ class LiteralValueImpl(RoleImpl):
         return element
 
 
-class _SelectIsNotFrom(object):
+class _SelectIsNotFrom:
     __slots__ = ()
 
     def _raise_for_expected(self, element, argname=None, resolved=None, **kw):

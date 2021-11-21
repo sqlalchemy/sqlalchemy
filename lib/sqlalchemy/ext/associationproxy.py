@@ -306,7 +306,7 @@ class AssociationProxy(interfaces.InspectionAttrInfo):
         )
 
 
-class AssociationProxyInstance(object):
+class AssociationProxyInstance:
     """A per-class object that serves class- and object-specific results.
 
     This is used by :class:`.AssociationProxy` when it is invoked
@@ -936,7 +936,7 @@ class ColumnAssociationProxyInstance(
         )
 
 
-class _lazy_collection(object):
+class _lazy_collection:
     def __init__(self, obj, target):
         self.parent = obj
         self.target = target
@@ -952,7 +952,7 @@ class _lazy_collection(object):
         self.target = state["target"]
 
 
-class _AssociationCollection(object):
+class _AssociationCollection:
     def __init__(self, lazy_collection, creator, getter, setter, parent):
         """Constructs an _AssociationCollection.
 

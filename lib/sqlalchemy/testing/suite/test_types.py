@@ -45,7 +45,7 @@ from ...orm import Session
 from ...util import u
 
 
-class _LiteralRoundTripFixture(object):
+class _LiteralRoundTripFixture:
     supports_whereclause = True
 
     @testing.fixture

@@ -211,7 +211,7 @@ class RowTest(fixtures.TestBase):
     __backend__ = True
 
     def _rowproxy_fixture(self, keys, processors, row, row_cls):
-        class MockMeta(object):
+        class MockMeta:
             def __init__(self):
                 pass
 
@@ -260,7 +260,7 @@ class RowTest(fixtures.TestBase):
         self._test_getitem_value_refcounts_new(tuple)
 
     def test_value_refcounts_custom_seq(self):
-        class CustomSeq(object):
+        class CustomSeq:
             def __init__(self, data):
                 self.data = data
 

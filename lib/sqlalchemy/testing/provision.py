@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 FOLLOWER_IDENT = None
 
 
-class register(object):
+class register:
     def __init__(self):
         self.fns = {}
 

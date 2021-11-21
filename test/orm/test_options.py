@@ -75,7 +75,7 @@ class QueryTest(_fixtures.FixtureTest):
         )
 
 
-class PathTest(object):
+class PathTest:
     def _make_path(self, path):
         r = []
         for i, item in enumerate(path):

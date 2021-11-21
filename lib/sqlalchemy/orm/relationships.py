@@ -2604,7 +2604,7 @@ def _annotate_columns(element, annotations):
     return element
 
 
-class JoinCondition(object):
+class JoinCondition:
     def __init__(
         self,
         parent_persist_selectable,
@@ -3677,7 +3677,7 @@ class JoinCondition(object):
         return lazywhere, bind_to_col, equated_columns
 
 
-class _ColInAnnotations(object):
+class _ColInAnnotations:
     """Serializable object that tests for a name in c._annotations."""
 
     __slots__ = ("name",)

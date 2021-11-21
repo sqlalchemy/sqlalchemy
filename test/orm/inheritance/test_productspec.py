@@ -85,7 +85,7 @@ class InheritTest(fixtures.MappedTest):
             Column("size", Integer, default=0),
         )
 
-        class Product(object):
+        class Product:
             def __init__(self, name, mark=""):
                 self.name = name
                 self.mark = mark
@@ -110,7 +110,7 @@ class InheritTest(fixtures.MappedTest):
                     )
                 )
 
-        class SpecLine(object):
+        class SpecLine:
             def __init__(self, leader=None, follower=None, quantity=1):
                 self.leader = leader
                 self.follower = follower
@@ -123,7 +123,7 @@ class InheritTest(fixtures.MappedTest):
                     repr(self.follower),
                 )
 
-        class Document(object):
+        class Document:
             def __init__(self, name, data=None):
                 self.name = name
                 self.data = data

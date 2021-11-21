@@ -359,7 +359,7 @@ class CursorResultTest(fixtures.TablesTest):
         result = connection.execute(select(1))
         row = result.first()
 
-        class unprintable(object):
+        class unprintable:
             def __str__(self):
                 raise ValueError("nope")
 
@@ -1410,7 +1410,7 @@ class CursorResultTest(fixtures.TablesTest):
 
         """
 
-        class MyList(object):
+        class MyList:
             def __init__(self, data):
                 self.internal_list = data
 
@@ -2885,7 +2885,7 @@ class AlternateCursorResultTest(fixtures.TablesTest):
         argnames="method_name",
     )
     def test_handle_error_in_fetch(self, strategy_cls, method_name):
-        class cursor(object):
+        class cursor:
             def raise_(self):
                 raise IOError("random non-DBAPI error during cursor operation")
 

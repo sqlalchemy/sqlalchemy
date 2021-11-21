@@ -453,7 +453,7 @@ interface are detected and instrumented via duck-typing:
 
 .. sourcecode:: python+sql
 
-    class ListLike(object):
+    class ListLike:
         def __init__(self):
             self.data = []
         def append(self, item):
@@ -475,7 +475,7 @@ Duck-typing (i.e. guesswork) isn't rock-solid, of course, so you can be
 explicit about the interface you are implementing by providing an
 ``__emulates__`` class attribute::
 
-    class SetLike(object):
+    class SetLike:
         __emulates__ = set
 
         def __init__(self):
@@ -511,7 +511,7 @@ get the job done.
 
     from sqlalchemy.orm.collections import collection
 
-    class SetLike(object):
+    class SetLike:
         __emulates__ = set
 
         def __init__(self):

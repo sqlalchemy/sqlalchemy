@@ -106,7 +106,7 @@ def mark_base_test_class():
     return _fixture_functions.mark_base_test_class()
 
 
-class Config(object):
+class Config:
     def __init__(self, db, db_opts, options, file_config):
         self._set_name(db)
         self.db = db

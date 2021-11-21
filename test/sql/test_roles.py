@@ -41,7 +41,7 @@ m = MetaData()
 t = Table("t", m, Column("q", Integer))
 
 
-class NotAThing1(object):
+class NotAThing1:
     pass
 
 
@@ -55,7 +55,7 @@ class NotAThing2(ClauseElement):
 not_a_thing2 = NotAThing2()
 
 
-class NotAThing3(object):
+class NotAThing3:
     def __clause_element__(self):
         return not_a_thing2
 
@@ -215,7 +215,7 @@ class RoleTest(fixtures.TestBase):
         def some_function():
             pass
 
-        class Thing(object):
+        class Thing:
             def __clause_element__(self):
                 return some_function
 

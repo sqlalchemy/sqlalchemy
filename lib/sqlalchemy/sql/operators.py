@@ -33,7 +33,7 @@ from operator import truediv
 from .. import util
 
 
-class Operators(object):
+class Operators:
     """Base of comparison and logical operators.
 
     Implements base methods
@@ -227,7 +227,7 @@ class Operators(object):
         raise NotImplementedError(str(op))
 
 
-class custom_op(object):
+class custom_op:
     """Represent a 'custom' operator.
 
     :class:`.custom_op` is normally instantiated when the

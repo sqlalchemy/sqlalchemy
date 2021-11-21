@@ -60,7 +60,7 @@ class ListCollection(list):
     pass
 
 
-class ObjectCollection(object):
+class ObjectCollection:
     def __init__(self):
         self.values = list()
 
@@ -103,14 +103,14 @@ class AutoFlushTest(fixtures.MappedTest):
         )
 
     def _fixture(self, collection_class, is_dict=False):
-        class Parent(object):
+        class Parent:
             collection = association_proxy("_collection", "child")
 
-        class Child(object):
+        class Child:
             def __init__(self, name):
                 self.name = name
 
-        class Association(object):
+        class Association:
             if is_dict:
 
                 def __init__(self, key, child):
@@ -974,7 +974,7 @@ class ScalarTest(fixtures.MappedTest):
             Column("baz", String(128)),
         )
 
-        class Parent(object):
+        class Parent:
             foo = association_proxy("child", "foo")
             bar = association_proxy(
                 "child", "bar", creator=lambda v: Child(bar=v)
@@ -986,7 +986,7 @@ class ScalarTest(fixtures.MappedTest):
             def __init__(self, name):
                 self.name = name
 
-        class Child(object):
+        class Child:
             def __init__(self, **kw):
                 for attr in kw:
                     setattr(self, attr, kw[attr])
@@ -1095,14 +1095,14 @@ class ScalarTest(fixtures.MappedTest):
             Column("name", String(50)),
         )
 
-        class A(object):
+        class A:
             a2b_name = association_proxy("a2b_single", "name")
             b_single = association_proxy("a2b_single", "b")
 
-        class A2B(object):
+        class A2B:
             pass
 
-        class B(object):
+        class B:
             pass
 
         self.mapper_registry.map_imperatively(
@@ -1136,12 +1136,12 @@ class ScalarTest(fixtures.MappedTest):
         get = Mock()
         set_ = Mock()
 
-        class Parent(object):
+        class Parent:
             foo = association_proxy(
                 "child", "foo", getset_factory=lambda cc, parent: (get, set_)
             )
 
-        class Child(object):
+        class Child:
             def __init__(self, foo):
                 self.foo = foo
 
@@ -1319,17 +1319,17 @@ class LazyLoadTest(fixtures.MappedTest):
         self.assert_(p._children is not None)
 
 
-class Parent(object):
+class Parent:
     def __init__(self, name):
         self.name = name
 
 
-class Child(object):
+class Child:
     def __init__(self, name):
         self.name = name
 
 
-class KVChild(object):
+class KVChild:
     def __init__(self, name, value):
         self.name = name
         self.value = value
@@ -1461,7 +1461,7 @@ class ReconstitutionTest(fixtures.MappedTest):
         # assert r2 == {'c1': 'c1', 'c2': 'c2'}
 
 
-class PickleKeyFunc(object):
+class PickleKeyFunc:
     def __init__(self, name):
         self.name = name
 
@@ -2483,7 +2483,7 @@ class AttributeAccessTest(fixtures.TestBase):
 
         Base = declarative_base()
 
-        class Mixin(object):
+        class Mixin:
             @declared_attr
             def children(cls):
                 return association_proxy("_children", "value")
@@ -2620,7 +2620,7 @@ class AttributeAccessTest(fixtures.TestBase):
     def test_resolved_to_correct_class_five(self):
         Base = declarative_base()
 
-        class Mixin(object):
+        class Mixin:
             children = association_proxy("_children", "value")
 
         class Parent(Mixin, Base):
@@ -2650,7 +2650,7 @@ class AttributeAccessTest(fixtures.TestBase):
         foo._calc_owner(None, None)
         is_(foo.owning_class, None)
 
-        class Bat(object):
+        class Bat:
             foo = association_proxy("x", "y")
 
         Bat.foo
@@ -2677,7 +2677,7 @@ class AttributeAccessTest(fixtures.TestBase):
         is_(Bat.foo.owning_class, Bat)
 
 
-class ScalarRemoveTest(object):
+class ScalarRemoveTest:
     useobject = None
     cascade_scalar_deletes = None
     uselist = None
@@ -2938,7 +2938,7 @@ class InfoTest(fixtures.TestBase):
         eq_(assoc.info, {})
 
     def test_via_cls(self):
-        class Foob(object):
+        class Foob:
             assoc = association_proxy("a", "b")
 
         eq_(Foob.assoc.info, {})

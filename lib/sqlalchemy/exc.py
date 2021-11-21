@@ -19,7 +19,7 @@ from .util import compat
 _version_token = None
 
 
-class HasDescriptionCode(object):
+class HasDescriptionCode:
     """helper which adds 'code' as an attribute and '_code_str' as a method"""
 
     code = None
@@ -375,7 +375,7 @@ class UnboundExecutionError(InvalidRequestError):
     """SQL was attempted without a database connection to execute it on."""
 
 
-class DontWrapMixin(object):
+class DontWrapMixin:
     """A mixin class which, when applied to a user-defined Exception class,
     will not be wrapped inside of :exc:`.StatementError` if the error is
     emitted within the process of executing a statement.

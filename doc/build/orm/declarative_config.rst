@@ -360,7 +360,7 @@ Allows the callable / class used to generate a :class:`_schema.Table` to be cust
 This is a very open-ended hook that can allow special customizations
 to a :class:`_schema.Table` that one generates here::
 
-    class MyMixin(object):
+    class MyMixin:
         @classmethod
         def __table_cls__(cls, name, metadata_obj, *arg, **kw):
             return Table(
@@ -378,7 +378,7 @@ This may be useful in some customization schemes to determine that single-table
 inheritance should take place based on the arguments for the table itself,
 such as, define as single-inheritance if there is no primary key present::
 
-    class AutoTable(object):
+    class AutoTable:
         @declared_attr
         def __tablename__(cls):
             return cls.__name__

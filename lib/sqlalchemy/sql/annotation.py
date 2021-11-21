@@ -20,7 +20,7 @@ from .. import util
 EMPTY_ANNOTATIONS = util.immutabledict()
 
 
-class SupportsAnnotations(object):
+class SupportsAnnotations:
     _annotations = EMPTY_ANNOTATIONS
 
     @util.memoized_property
@@ -122,7 +122,7 @@ class SupportsWrappingAnnotations(SupportsAnnotations):
             return self
 
 
-class Annotated(object):
+class Annotated:
     """clones a SupportsAnnotated and applies an 'annotations' dictionary.
 
     Unlike regular clones, this clone also mimics __hash__() and

@@ -18,7 +18,7 @@ from ..util import warn_deprecated
 __all__ = ["scoped_session", "ScopedSessionMixin"]
 
 
-class ScopedSessionMixin(object):
+class ScopedSessionMixin:
     @property
     def _proxied(self):
         return self.registry()
@@ -190,7 +190,7 @@ class scoped_session(ScopedSessionMixin):
 
             Session = scoped_session(sessionmaker())
 
-            class MyClass(object):
+            class MyClass:
                 query = Session.query_property()
 
             # after mappers are defined
@@ -207,7 +207,7 @@ class scoped_session(ScopedSessionMixin):
 
         """
 
-        class query(object):
+        class query:
             def __get__(s, instance, owner):
                 try:
                     mapper = class_mapper(owner)

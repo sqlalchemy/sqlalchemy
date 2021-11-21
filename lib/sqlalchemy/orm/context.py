@@ -47,7 +47,7 @@ _EMPTY_DICT = util.immutabledict()
 LABEL_STYLE_LEGACY_ORM = util.symbol("LABEL_STYLE_LEGACY_ORM")
 
 
-class QueryContext(object):
+class QueryContext:
     __slots__ = (
         "compile_state",
         "query",
@@ -2312,7 +2312,7 @@ def _legacy_determine_last_joined_entity(setup_joins, entity_zero):
     return None
 
 
-class _QueryEntity(object):
+class _QueryEntity:
     """represent an entity column returned within a Query result."""
 
     __slots__ = ()

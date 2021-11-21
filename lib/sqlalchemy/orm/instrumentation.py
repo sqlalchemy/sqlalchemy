@@ -470,7 +470,7 @@ class ClassManager(HasMemoized, dict):
         )
 
 
-class _SerializeManager(object):
+class _SerializeManager:
     """Provide serialization of a :class:`.ClassManager`.
 
     The :class:`.InstanceState` uses ``__init__()`` on serialize
@@ -504,7 +504,7 @@ class _SerializeManager(object):
         manager.dispatch.unpickle(state, state_dict)
 
 
-class InstrumentationFactory(object):
+class InstrumentationFactory:
     """Factory for new ClassManager instances."""
 
     def create_manager_for_cls(self, class_):

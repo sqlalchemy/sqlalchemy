@@ -26,7 +26,7 @@ from sqlalchemy.orm import loading
 from sqlalchemy.orm.interfaces import UserDefinedOption
 
 
-class ORMCache(object):
+class ORMCache:
 
     """An add-on for an ORM :class:`.Session` optionally loads full results
     from a dogpile cache region.

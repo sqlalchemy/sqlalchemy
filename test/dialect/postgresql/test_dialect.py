@@ -278,7 +278,7 @@ class PGCodeTest(fixtures.TestBase):
             eq_(errmsg.orig.sqlstate, "23505")
 
 
-class ExecuteManyMode(object):
+class ExecuteManyMode:
     __only_on__ = "postgresql+psycopg2"
     __backend__ = True
 

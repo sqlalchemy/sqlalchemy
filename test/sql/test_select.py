@@ -67,7 +67,7 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_new_calling_style_clauseelement_thing_that_has_iter(self):
-        class Thing(object):
+        class Thing:
             def __clause_element__(self):
                 return table1
 
@@ -82,11 +82,11 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_new_calling_style_inspectable_ce_thing_that_has_iter(self):
-        class Thing(object):
+        class Thing:
             def __iter__(self):
                 return iter(["a", "b", "c"])
 
-        class InspectedThing(object):
+        class InspectedThing:
             def __clause_element__(self):
                 return table1
 

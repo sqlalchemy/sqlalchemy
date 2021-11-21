@@ -810,7 +810,7 @@ class VisitableCheckKWArg(util.EnsureKWArgType, TraversibleType):
     pass
 
 
-class ExternalType(object):
+class ExternalType:
     """mixin that defines attributes and behaviors specific to third-party
     datatypes.
 
@@ -1064,7 +1064,7 @@ class UserDefinedType(
         return self
 
 
-class Emulated(object):
+class Emulated:
     """Mixin for base types that emulate the behavior of a DB-native type.
 
     An :class:`.Emulated` type will use an available database type
@@ -1111,7 +1111,7 @@ class Emulated(object):
                 return super(Emulated, self).adapt(impltype, **kw)
 
 
-class NativeForEmulated(object):
+class NativeForEmulated:
     """Indicates DB-native types supported by an :class:`.Emulated` type.
 
     .. versionadded:: 1.2.0b3

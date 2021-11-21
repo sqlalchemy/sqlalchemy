@@ -899,7 +899,7 @@ class InstanceState(interfaces.InspectionAttrInfo):
             state._strong_obj = None
 
 
-class AttributeState(object):
+class AttributeState:
     """Provide an inspection interface corresponding
     to a particular attribute on a particular mapped object.
 
@@ -997,7 +997,7 @@ class AttributeState(object):
         return self.state.get_history(self.key, PASSIVE_OFF ^ INIT_OK)
 
 
-class PendingCollection(object):
+class PendingCollection:
     """A writable placeholder for an unloaded collection.
 
     Stores items appended to and removed from a collection that has not yet

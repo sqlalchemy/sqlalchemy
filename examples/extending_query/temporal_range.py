@@ -11,7 +11,7 @@ from sqlalchemy import DateTime
 from sqlalchemy import orm
 
 
-class HasTemporal(object):
+class HasTemporal:
     """Mixin that identifies a class as having a timestamp column"""
 
     timestamp = Column(

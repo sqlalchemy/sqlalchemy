@@ -256,7 +256,7 @@ class ValidatorTest(_fixtures.FixtureTest):
         users = self.tables.users
         canary = Mock()
 
-        class SomeValidator(object):
+        class SomeValidator:
             def __call__(self, obj, key, name):
                 canary(key, name)
                 ne_(name, "fred")
@@ -272,7 +272,7 @@ class ValidatorTest(_fixtures.FixtureTest):
     def test_validator_multi_warning(self):
         users = self.tables.users
 
-        class Foo(object):
+        class Foo:
             @validates("name")
             def validate_one(self, key, value):
                 pass
@@ -290,7 +290,7 @@ class ValidatorTest(_fixtures.FixtureTest):
             users,
         )
 
-        class Bar(object):
+        class Bar:
             @validates("id")
             def validate_three(self, key, value):
                 return value + 10

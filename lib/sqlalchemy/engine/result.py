@@ -35,7 +35,7 @@ else:
             return lambda row: (it(row),)
 
 
-class ResultMetaData(object):
+class ResultMetaData:
     """Base for metadata about result rows."""
 
     __slots__ = ()
@@ -655,7 +655,7 @@ class ResultInternal(InPlaceGenerative):
         return uniques, strategy
 
 
-class _WithKeys(object):
+class _WithKeys:
     # used mainly to share documentation on the keys method.
     def keys(self):
         """Return an iterable view which yields the string keys that would
@@ -1516,7 +1516,7 @@ class MappingResult(_WithKeys, FilterResult):
         )
 
 
-class FrozenResult(object):
+class FrozenResult:
     """Represents a :class:`.Result` object in a "frozen" state suitable
     for caching.
 

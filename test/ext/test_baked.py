@@ -292,7 +292,7 @@ class LikeQueryTest(BakedTest):
     def test_get_pk_w_null(self):
         """test the re-implementation of logic to do get with IS NULL."""
 
-        class AddressUser(object):
+        class AddressUser:
             pass
 
         self.mapper_registry.map_imperatively(

@@ -25,7 +25,7 @@ from .. import util
 from ..pool import QueuePool
 
 
-class Requirements(object):
+class Requirements:
     pass
 
 

@@ -1142,7 +1142,7 @@ class ColumnElement(
         return self._anon_label(label, add_hash=idx)
 
 
-class WrapsColumnExpression(object):
+class WrapsColumnExpression:
     """Mixin that defines a :class:`_expression.ColumnElement`
     as a wrapper with special
     labeling behavior for an expression that already has a name.

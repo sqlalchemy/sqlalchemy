@@ -37,7 +37,7 @@ class DescriptorProperty(MapperProperty):
     def instrument_class(self, mapper):
         prop = self
 
-        class _ProxyImpl(object):
+        class _ProxyImpl:
             accepts_scalar_loader = False
             load_on_unexpire = True
             collection = False
@@ -523,7 +523,7 @@ class ConcreteInheritedProperty(DescriptorProperty):
                 % (self.parent, self.key, self.parent)
             )
 
-        class NoninheritedConcreteProp(object):
+        class NoninheritedConcreteProp:
             def __set__(s, obj, value):
                 warn()
 
@@ -595,7 +595,7 @@ class SynonymProperty(DescriptorProperty):
                 Column('job_status', String(50))
             )
 
-            class MyClass(object):
+            class MyClass:
                 @property
                 def _job_status_descriptor(self):
                     return "Status: %s" % self._job_status

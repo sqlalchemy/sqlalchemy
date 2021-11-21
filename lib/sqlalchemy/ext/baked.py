@@ -30,7 +30,7 @@ from ..util import collections_abc
 log = logging.getLogger(__name__)
 
 
-class Bakery(object):
+class Bakery:
     """Callable which returns a :class:`.BakedQuery`.
 
     This object is returned by the class method
@@ -52,7 +52,7 @@ class Bakery(object):
         return self.cls(self.cache, initial_fn, args)
 
 
-class BakedQuery(object):
+class BakedQuery:
     """A builder object for :class:`.query.Query` objects."""
 
     __slots__ = "steps", "_bakery", "_cache_key", "_spoiled"
@@ -309,7 +309,7 @@ class BakedQuery(object):
         return query
 
 
-class Result(object):
+class Result:
     """Invokes a :class:`.BakedQuery` against a :class:`.Session`.
 
     The :class:`_baked.Result` object is where the actual :class:`.query.Query`

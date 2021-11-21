@@ -38,7 +38,7 @@ else:
     import ConfigParser as configparser
     import collections as collections_abc  # noqa
 
-    class ABC(object):
+    class ABC:
         __metaclass__ = abc.ABCMeta
 
 

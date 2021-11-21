@@ -1186,7 +1186,7 @@ class _UnboundLoad(Load):
                 return None
 
 
-class loader_option(object):
+class loader_option:
     def __init__(self):
         pass
 

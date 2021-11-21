@@ -717,7 +717,7 @@ def generate_relationship(
         raise TypeError("Unknown relationship function: %s" % return_fn)
 
 
-class AutomapBase(object):
+class AutomapBase:
     """Base class for an "automap" schema.
 
     The :class:`.AutomapBase` class can be compared to the "declarative base"

@@ -24,7 +24,7 @@ from .compat import threading
 EMPTY_SET = frozenset()
 
 
-class ImmutableContainer(object):
+class ImmutableContainer:
     def _immutable(self, *arg, **kw):
         raise TypeError("%s object is immutable" % self.__class__.__name__)
 
@@ -140,7 +140,7 @@ class FacadeDict(ImmutableContainer, dict):
         return "FacadeDict(%s)" % dict.__repr__(self)
 
 
-class Properties(object):
+class Properties:
     """Provide a __getattr__/__setattr__ interface over a dict."""
 
     __slots__ = ("_data",)
@@ -454,7 +454,7 @@ class OrderedSet(set):
     __isub__ = difference_update
 
 
-class IdentitySet(object):
+class IdentitySet:
     """A set that considers only object id() for uniqueness.
 
     This strategy has edge cases for builtin types- it's possible to have
@@ -676,7 +676,7 @@ class IdentitySet(object):
         return "%s(%r)" % (type(self).__name__, list(self._members.values()))
 
 
-class WeakSequence(object):
+class WeakSequence:
     def __init__(self, __elements=()):
         # adapted from weakref.WeakKeyDictionary, prevent reference
         # cycles in the collection itself
@@ -780,7 +780,7 @@ def unique_list(seq, hashfunc=None):
         ]
 
 
-class UniqueAppender(object):
+class UniqueAppender:
     """Appends items to a collection ensuring uniqueness.
 
     Additional appends() of the same object are ignored.  Membership is
@@ -960,7 +960,7 @@ class LRUCache(dict):
             self._mutex.release()
 
 
-class ScopedRegistry(object):
+class ScopedRegistry:
     """A Registry that can store one or multiple instances of a single
     class on the basis of a "scope" function.
 

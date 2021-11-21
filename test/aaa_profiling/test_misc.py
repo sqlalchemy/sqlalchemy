@@ -20,7 +20,7 @@ class EnumTest(fixtures.TestBase):
     __requires__ = ("cpython", "python_profiling_backend")
 
     def setup_test(self):
-        class SomeEnum(object):
+        class SomeEnum:
             # Implements PEP 435 in the minimal fashion needed by SQLAlchemy
 
             _members = {}

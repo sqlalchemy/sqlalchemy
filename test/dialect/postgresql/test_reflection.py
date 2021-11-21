@@ -40,7 +40,7 @@ from sqlalchemy.testing.assertions import is_
 from sqlalchemy.testing.assertions import is_true
 
 
-class ReflectionFixtures(object):
+class ReflectionFixtures:
     @testing.fixture(
         params=[
             ("engine", True),
@@ -1773,7 +1773,7 @@ class ReflectionTest(
 
 
 class CustomTypeReflectionTest(fixtures.TestBase):
-    class CustomType(object):
+    class CustomType:
         def __init__(self, arg1=None, arg2=None):
             self.arg1 = arg1
             self.arg2 = arg2

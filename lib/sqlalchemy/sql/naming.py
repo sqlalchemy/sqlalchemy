@@ -27,7 +27,7 @@ from .. import event
 from .. import exc
 
 
-class ConventionDict(object):
+class ConventionDict:
     def __init__(self, const, table, convention):
         self.const = const
         self._is_fk = isinstance(const, ForeignKeyConstraint)

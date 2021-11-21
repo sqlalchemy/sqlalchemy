@@ -1437,7 +1437,7 @@ AnEnum("Bar", 2)
 AnEnum("Baz", 3)
 
 
-class ArrayRoundTripTest(object):
+class ArrayRoundTripTest:
 
     __only_on__ = "postgresql"
     __backend__ = True
@@ -3189,7 +3189,7 @@ class HStoreRoundTripTest(fixtures.TablesTest):
         self._assert_data([{r"key \"foo\"": r'value \"bar"\ xyz'}], connection)
 
     def test_orm_round_trip(self, registry):
-        class Data(object):
+        class Data:
             def __init__(self, name, data):
                 self.name = name
                 self.data = data
@@ -3446,7 +3446,7 @@ class _RangeTypeRoundTrip(fixtures.TablesTest):
         eq_(data, [(self._data_obj().__class__(empty=True),)])
 
 
-class _Int4RangeTests(object):
+class _Int4RangeTests:
 
     _col_type = INT4RANGE
     _col_str = "INT4RANGE"
@@ -3458,7 +3458,7 @@ class _Int4RangeTests(object):
         return self.extras().NumericRange(1, 2)
 
 
-class _Int8RangeTests(object):
+class _Int8RangeTests:
 
     _col_type = INT8RANGE
     _col_str = "INT8RANGE"
@@ -3472,7 +3472,7 @@ class _Int8RangeTests(object):
         )
 
 
-class _NumRangeTests(object):
+class _NumRangeTests:
 
     _col_type = NUMRANGE
     _col_str = "NUMRANGE"
@@ -3486,7 +3486,7 @@ class _NumRangeTests(object):
         )
 
 
-class _DateRangeTests(object):
+class _DateRangeTests:
 
     _col_type = DATERANGE
     _col_str = "DATERANGE"
@@ -3500,7 +3500,7 @@ class _DateRangeTests(object):
         )
 
 
-class _DateTimeRangeTests(object):
+class _DateTimeRangeTests:
 
     _col_type = TSRANGE
     _col_str = "TSRANGE"
@@ -3515,7 +3515,7 @@ class _DateTimeRangeTests(object):
         )
 
 
-class _DateTimeTZRangeTests(object):
+class _DateTimeTZRangeTests:
 
     _col_type = TSTZRANGE
     _col_str = "TSTZRANGE"

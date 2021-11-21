@@ -134,7 +134,7 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
 
         from sqlalchemy import Column, Integer, String
 
-        class Foo(object):
+        class Foo:
             id = Column(Integer)
             name = Column(String)
 
@@ -152,7 +152,7 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
     def test_loader_criteria_bound_param_thing(self):
         from sqlalchemy import Column, Integer
 
-        class Foo(object):
+        class Foo:
             id = Column(Integer)
 
         def go(param):

@@ -193,7 +193,7 @@ orm_instrumentation._instrumentation_factory = (
 orm_instrumentation.instrumentation_finders = instrumentation_finders
 
 
-class InstrumentationManager(object):
+class InstrumentationManager:
     """User-defined class instrumentation extension.
 
     :class:`.InstrumentationManager` can be subclassed in order

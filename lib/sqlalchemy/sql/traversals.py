@@ -48,7 +48,7 @@ def _preconfigure_traversals(target_hierarchy):
             )
 
 
-class HasCacheKey(object):
+class HasCacheKey:
     _cache_key_traversal = NO_CACHE
     __slots__ = ()
 
@@ -713,7 +713,7 @@ class _CacheKey(ExtendedInternalTraversal):
 _cache_key_traversal_visitor = _CacheKey()
 
 
-class HasCopyInternals(object):
+class HasCopyInternals:
     def _clone(self, **kw):
         raise NotImplementedError()
 

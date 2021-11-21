@@ -13,5 +13,5 @@
 from .mock import MockConnection  # noqa
 
 
-class MockEngineStrategy(object):
+class MockEngineStrategy:
     MockConnection = MockConnection

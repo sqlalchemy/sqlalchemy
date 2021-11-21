@@ -35,7 +35,7 @@ def modifies_instrumentation_finders(fn, *args, **kw):
         instrumentation.instrumentation_finders.extend(pristine)
 
 
-class _ExtBase(object):
+class _ExtBase:
     @classmethod
     def teardown_test_class(cls):
         instrumentation._reinstall_default_lookups()
@@ -107,7 +107,7 @@ class DisposeTest(_ExtBase, fixtures.TestBase):
 
                 return get
 
-        class MyClass(object):
+        class MyClass:
             __sa_instrumentation_manager__ = MyClassState
 
         assert attributes.manager_of_class(MyClass) is None
@@ -139,12 +139,12 @@ class UserDefinedExtensionTest(_ExtBase, fixtures.ORMTest):
     def setup_test_class(cls):
         global MyBaseClass, MyClass
 
-        class MyBaseClass(object):
+        class MyBaseClass:
             __sa_instrumentation_manager__ = (
                 instrumentation.InstrumentationManager
             )
 
-        class MyClass(object):
+        class MyClass:
 
             # This proves that a staticmethod will work here; don't
             # flatten this back to a class assignment!
@@ -523,7 +523,7 @@ class UserDefinedExtensionTest(_ExtBase, fixtures.ORMTest):
     def test_alternate_finders(self):
         """Ensure the generic finder front-end deals with edge cases."""
 
-        class Unknown(object):
+        class Unknown:
             pass
 
         class Known(MyBaseClass):
@@ -569,7 +569,7 @@ class UserDefinedExtensionTest(_ExtBase, fixtures.ORMTest):
 
 class FinderTest(_ExtBase, fixtures.ORMTest):
     def test_standard(self):
-        class A(object):
+        class A:
             pass
 
         register_class(A)
@@ -577,7 +577,7 @@ class FinderTest(_ExtBase, fixtures.ORMTest):
         eq_(type(manager_of_class(A)), instrumentation.ClassManager)
 
     def test_nativeext_interfaceexact(self):
-        class A(object):
+        class A:
             __sa_instrumentation_manager__ = (
                 instrumentation.InstrumentationManager
             )
@@ -589,7 +589,7 @@ class FinderTest(_ExtBase, fixtures.ORMTest):
         class Mine(instrumentation.ClassManager):
             pass
 
-        class A(object):
+        class A:
             __sa_instrumentation_manager__ = Mine
 
         register_class(A)
@@ -600,7 +600,7 @@ class FinderTest(_ExtBase, fixtures.ORMTest):
         class Mine(instrumentation.ClassManager):
             pass
 
-        class A(object):
+        class A:
             pass
 
         def find(cls):
@@ -612,7 +612,7 @@ class FinderTest(_ExtBase, fixtures.ORMTest):
 
     @modifies_instrumentation_finders
     def test_customfinder_pass(self):
-        class A(object):
+        class A:
             pass
 
         def find(cls):
@@ -626,7 +626,7 @@ class FinderTest(_ExtBase, fixtures.ORMTest):
 
 class InstrumentationCollisionTest(_ExtBase, fixtures.ORMTest):
     def test_none(self):
-        class A(object):
+        class A:
             pass
 
         register_class(A)
@@ -634,18 +634,18 @@ class InstrumentationCollisionTest(_ExtBase, fixtures.ORMTest):
         def mgr_factory(cls):
             return instrumentation.ClassManager(cls)
 
-        class B(object):
+        class B:
             __sa_instrumentation_manager__ = staticmethod(mgr_factory)
 
         register_class(B)
 
-        class C(object):
+        class C:
             __sa_instrumentation_manager__ = instrumentation.ClassManager
 
         register_class(C)
 
     def test_single_down(self):
-        class A(object):
+        class A:
             pass
 
         register_class(A)
@@ -664,7 +664,7 @@ class InstrumentationCollisionTest(_ExtBase, fixtures.ORMTest):
         )
 
     def test_single_up(self):
-        class A(object):
+        class A:
             pass
 
         # delay registration
@@ -688,7 +688,7 @@ class InstrumentationCollisionTest(_ExtBase, fixtures.ORMTest):
         def mgr_factory(cls):
             return instrumentation.ClassManager(cls)
 
-        class A(object):
+        class A:
             pass
 
         class B1(A):
@@ -697,7 +697,7 @@ class InstrumentationCollisionTest(_ExtBase, fixtures.ORMTest):
         class B2(A):
             __sa_instrumentation_manager__ = staticmethod(mgr_factory)
 
-        class C(object):
+        class C:
             pass
 
         assert_raises_message(
@@ -711,7 +711,7 @@ class InstrumentationCollisionTest(_ExtBase, fixtures.ORMTest):
         def mgr_factory(cls):
             return instrumentation.ClassManager(cls)
 
-        class A(object):
+        class A:
             pass
 
         class B1(A):
@@ -720,7 +720,7 @@ class InstrumentationCollisionTest(_ExtBase, fixtures.ORMTest):
         class B2(A):
             __sa_instrumentation_manager__ = staticmethod(mgr_factory)
 
-        class C(object):
+        class C:
             pass
 
         register_class(B2)
@@ -735,7 +735,7 @@ class InstrumentationCollisionTest(_ExtBase, fixtures.ORMTest):
         def mgr_factory(cls):
             return instrumentation.ClassManager(cls)
 
-        class A(object):
+        class A:
             pass
 
         class B1(A):
@@ -744,7 +744,7 @@ class InstrumentationCollisionTest(_ExtBase, fixtures.ORMTest):
         class B2(A):
             __sa_instrumentation_manager__ = staticmethod(mgr_factory)
 
-        class C(object):
+        class C:
             pass
 
         register_class(C)
@@ -773,7 +773,7 @@ class ExtendedEventsTest(_ExtBase, fixtures.ORMTest):
             0, lambda cls: MyClassManager
         )
 
-        class A(object):
+        class A:
             pass
 
         register_class(A)

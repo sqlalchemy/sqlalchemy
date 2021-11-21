@@ -55,7 +55,7 @@ def _start_current_test(id_):
         _profile_stats.reset_count()
 
 
-class ProfileStatsFile(object):
+class ProfileStatsFile:
     """Store per-platform/fn profiling results in a file.
 
     There was no json module available when this was written, but now

@@ -71,7 +71,7 @@ class PolymorphicCircularTest(fixtures.MappedTest):
             join = table1.outerjoin(table2).outerjoin(table3).alias("pjoin")
             # join = None
 
-        class Table1(object):
+        class Table1:
             def __init__(self, name, data=None):
                 self.name = name
                 if data is not None:
@@ -94,7 +94,7 @@ class PolymorphicCircularTest(fixtures.MappedTest):
         class Table3(Table1):
             pass
 
-        class Data(object):
+        class Data:
             def __init__(self, data):
                 self.data = data
 

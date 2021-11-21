@@ -373,7 +373,7 @@ class QueryTest(testing.AssertsExecutionResults, fixtures.TestBase):
         eq_(connection.scalar(table.select()), 7)
 
 
-class Foo(object):
+class Foo:
     def __init__(self, **kw):
         for k in kw:
             setattr(self, k, kw[k])

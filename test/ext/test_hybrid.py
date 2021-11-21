@@ -137,7 +137,7 @@ class PropertyComparatorTest(fixtures.TestBase, AssertsCompiledSQL):
         """test :ticket:`6215`"""
         Base = declarative_base()
 
-        class SomeMixin(object):
+        class SomeMixin:
             @hybrid.hybrid_property
             def same_name(self):
                 return self.id
@@ -1163,7 +1163,7 @@ class SpecialObjectTest(fixtures.TestBase, AssertsCompiledSQL):
             for currency_from, rate in zip(symbols, values)
         )
 
-        class Amount(object):
+        class Amount:
             def __init__(self, amount, currency):
                 self.currency = currency
                 self.amount = amount

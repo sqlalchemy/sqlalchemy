@@ -41,7 +41,7 @@ class SubFoo(Foo):
     pass
 
 
-class FooWithEq(object):
+class FooWithEq:
     def __init__(self, **kw):
         for k in kw:
             setattr(self, k, kw[k])
@@ -91,7 +91,7 @@ class MyPoint(Point):
         return value
 
 
-class _MutableDictTestFixture(object):
+class _MutableDictTestFixture:
     @classmethod
     def _type_fixture(cls):
         return MutableDict
@@ -312,7 +312,7 @@ class _MutableDictTestBase(_MutableDictTestFixture):
         eq_(f1.data, {"a": "b"})
 
 
-class _MutableListTestFixture(object):
+class _MutableListTestFixture:
     @classmethod
     def _type_fixture(cls):
         return MutableList
@@ -618,7 +618,7 @@ class _MutableListTestBase(_MutableListTestFixture):
             assert isinstance(obj, MutableList)
 
 
-class _MutableSetTestFixture(object):
+class _MutableSetTestFixture:
     @classmethod
     def _type_fixture(cls):
         return MutableSet
@@ -853,7 +853,7 @@ class _MutableSetTestBase(_MutableSetTestFixture):
         eq_(f1.data, set([1, 2]))
 
 
-class _MutableNoHashFixture(object):
+class _MutableNoHashFixture:
     @testing.fixture(autouse=True, scope="class")
     def set_class(self):
         global Foo
@@ -1057,7 +1057,7 @@ class MutableColumnCopyArrayTest(_MutableListTestBase, fixtures.MappedTest):
 
         Base = declarative_base(metadata=metadata)
 
-        class Mixin(object):
+        class Mixin:
             data = Column(MutableList.as_mutable(ARRAY(Integer)))
 
         class Foo(Mixin, Base):
@@ -1279,7 +1279,7 @@ class CustomMutableAssociationScalarJSONTest(
         eq_(type(f1.data), self._type_fixture())
 
 
-class _CompositeTestBase(object):
+class _CompositeTestBase:
     @classmethod
     def define_tables(cls, metadata):
         Table(

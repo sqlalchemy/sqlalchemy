@@ -13,7 +13,7 @@ from sqlalchemy.testing import is_true
 
 class TestInstrumentDeclarative(fixtures.TestBase):
     def test_ok(self):
-        class Foo(object):
+        class Foo:
             __tablename__ = "foo"
             id = sa.Column(sa.Integer, primary_key=True)
 
@@ -50,7 +50,7 @@ class DeprecatedImportsTest(fixtures.TestBase):
         with self._expect_warning("as_declarative"):
 
             @legacy_decl.as_declarative()
-            class Base(object):
+            class Base:
                 pass
 
         class Foo(Base):
@@ -61,7 +61,7 @@ class DeprecatedImportsTest(fixtures.TestBase):
 
     def test_has_inherited_table(self, registry):
         @registry.mapped
-        class Foo(object):
+        class Foo:
             __tablename__ = "foo"
             id = sa.Column(sa.Integer, primary_key=True)
 
@@ -80,7 +80,7 @@ class DeprecatedImportsTest(fixtures.TestBase):
         with self._expect_warning("synonym_for"):
 
             @registry.mapped
-            class Foo(object):
+            class Foo:
                 __tablename__ = "foo"
                 id = sa.Column(sa.Integer, primary_key=True)
 

@@ -215,7 +215,7 @@ import sys
 import time
 
 
-class Profiler(object):
+class Profiler:
     tests = []
 
     _setup = None
@@ -400,7 +400,7 @@ class Profiler(object):
         return suites
 
 
-class TestResult(object):
+class TestResult:
     def __init__(
         self, profile, test, stats=None, total_time=None, sort="cumulative"
     ):

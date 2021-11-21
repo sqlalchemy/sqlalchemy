@@ -12,7 +12,7 @@ from ..util import compat
 _repr_stack = set()
 
 
-class BasicEntity(object):
+class BasicEntity:
     def __init__(self, **kw):
         for key, value in kw.items():
             setattr(self, key, value)
@@ -39,7 +39,7 @@ class BasicEntity(object):
 _recursion_stack = set()
 
 
-class ComparableMixin(object):
+class ComparableMixin:
     def __ne__(self, other):
         return not self.__eq__(other)
 

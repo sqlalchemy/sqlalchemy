@@ -47,7 +47,7 @@ from sqlalchemy.testing.schema import Table
 from test.orm import _fixtures
 
 
-class _RelationshipErrors(object):
+class _RelationshipErrors:
     def _assert_raises_no_relevant_fks(
         self, fn, expr, relname, primary, *arg, **kw
     ):
@@ -2516,10 +2516,10 @@ class JoinConditionErrorTest(fixtures.TestBase):
         )
         t2 = Table("t2", m, Column("id", Integer, primary_key=True))
 
-        class C1(object):
+        class C1:
             pass
 
-        class C2(object):
+        class C2:
             pass
 
         registry.map_imperatively(
@@ -2577,10 +2577,10 @@ class JoinConditionErrorTest(fixtures.TestBase):
             Column("t1id", Integer, ForeignKey("t1.id")),
         )
 
-        class C1(object):
+        class C1:
             pass
 
-        class C2(object):
+        class C2:
             pass
 
         registry.map_imperatively(C1, t1, properties={"c2": relationship(C2)})
@@ -2599,10 +2599,10 @@ class JoinConditionErrorTest(fixtures.TestBase):
             Column("t1id", Integer),
         )
 
-        class C1(object):
+        class C1:
             pass
 
-        class C2(object):
+        class C2:
             pass
 
         registry.map_imperatively(C1, t1, properties={"c2": relationship(C2)})
@@ -3507,10 +3507,10 @@ class ViewOnlyLocalRemoteM2M(fixtures.TestBase):
             Column("t2_id", Integer, ForeignKey("t2.id")),
         )
 
-        class A(object):
+        class A:
             pass
 
-        class B(object):
+        class B:
             pass
 
         registry.map_imperatively(B, t2)
@@ -5558,7 +5558,7 @@ class ActiveHistoryFlagTest(_fixtures.FixtureTest):
     def test_composite_property_flag(self):
         Order, orders = self.classes.Order, self.tables.orders
 
-        class MyComposite(object):
+        class MyComposite:
             def __init__(self, description, isopen):
                 self.description = description
                 self.isopen = isopen

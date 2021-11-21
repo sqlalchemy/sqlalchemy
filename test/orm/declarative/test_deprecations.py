@@ -45,7 +45,7 @@ class BoundMetadataDeclarativeTest(fixtures.MappedTest):
         reg = registry(_bind=testing.db)
 
         @reg.mapped
-        class User(object):
+        class User:
             __tablename__ = "user"
             id = Column(Integer, primary_key=True)
 

@@ -137,7 +137,7 @@ usage of the absolute value function::
 
     from sqlalchemy import func
 
-    class Interval(object):
+    class Interval:
         # ...
 
         @hybrid_property
@@ -166,7 +166,7 @@ object for class-level expressions::
    the new hybrid with the additional state will be attached to the class
    with the non-matching name. To use the example above::
 
-    class Interval(object):
+    class Interval:
         # ...
 
         @hybrid_property
@@ -189,7 +189,7 @@ Defining Setters
 Hybrid properties can also define setter methods.  If we wanted
 ``length`` above, when set, to modify the endpoint value::
 
-    class Interval(object):
+    class Interval:
         # ...
 
         @hybrid_property
@@ -231,7 +231,7 @@ accommodate a value passed to :meth:`_query.Query.update` which can affect
 this, using the :meth:`.hybrid_property.update_expression` decorator.
 A handler that works similarly to our setter would be::
 
-    class Interval(object):
+    class Interval:
         # ...
 
         @hybrid_property
@@ -267,7 +267,7 @@ above.
    of the hybrid must match that of how it is accessed.    Something
    like this wouldn't work::
 
-        class Interval(object):
+        class Interval:
             # ...
 
             def _get(self):
@@ -849,7 +849,7 @@ class hybrid_method(interfaces.InspectionAttrInfo):
 
             from sqlalchemy.ext.hybrid import hybrid_method
 
-            class SomeClass(object):
+            class SomeClass:
                 @hybrid_method
                 def value(self, x, y):
                     return self._value + x + y
@@ -902,7 +902,7 @@ class hybrid_property(interfaces.InspectionAttrInfo):
 
             from sqlalchemy.ext.hybrid import hybrid_property
 
-            class SomeClass(object):
+            class SomeClass:
                 @hybrid_property
                 def value(self):
                     return self._value
@@ -958,7 +958,7 @@ class hybrid_property(interfaces.InspectionAttrInfo):
         to be used without conflicting with the same-named attributes
         normally present on the :class:`.QueryableAttribute`::
 
-            class SuperClass(object):
+            class SuperClass:
                 # ...
 
                 @hybrid_property

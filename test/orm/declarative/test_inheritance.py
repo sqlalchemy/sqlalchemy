@@ -308,7 +308,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
             discriminator = Column("type", String(50))
             __mapper_args__ = {"polymorphic_on": discriminator}
 
-        class MyMixin(object):
+        class MyMixin:
 
             pass
 
@@ -324,7 +324,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         assert class_mapper(Engineer).inherits is class_mapper(Person)
 
     def test_intermediate_abstract_class_on_classical(self):
-        class Person(object):
+        class Person:
             pass
 
         person_table = Table(
@@ -357,7 +357,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         eq_(set(class_mapper(Manager).class_manager), {"id", "kind"})
 
     def test_intermediate_unmapped_class_on_classical(self):
-        class Person(object):
+        class Person:
             pass
 
         person_table = Table(
@@ -390,7 +390,7 @@ class DeclarativeInheritanceTest(DeclarativeTestBase):
         eq_(set(class_mapper(Manager).class_manager), {"id", "kind"})
 
     def test_class_w_invalid_multiple_bases(self):
-        class Person(object):
+        class Person:
             pass
 
         person_table = Table(

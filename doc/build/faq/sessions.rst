@@ -329,7 +329,7 @@ method, which emits a `SELECT COUNT`. The reason this is not possible is
 because evaluating the query as a list would incur two SQL calls instead of
 one::
 
-    class Iterates(object):
+    class Iterates:
         def __len__(self):
             print("LEN!")
             return 5

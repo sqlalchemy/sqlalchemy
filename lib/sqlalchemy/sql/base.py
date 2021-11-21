@@ -35,7 +35,7 @@ type_api = None
 NO_ARG = util.symbol("NO_ARG")
 
 
-class Immutable(object):
+class Immutable:
     """mark a ClauseElement as 'immutable' when expressions are cloned."""
 
     _is_immutable = True
@@ -276,7 +276,7 @@ def _kw_reg_for_dialect(dialect_name):
     return dict(dialect_cls.construct_arguments)
 
 
-class DialectKWArgs(object):
+class DialectKWArgs:
     """Establish the ability for a class to have dialect-specific arguments
     with defaults and constructor validation.
 
@@ -451,7 +451,7 @@ class DialectKWArgs(object):
                     construct_arg_dictionary[arg_name] = kwargs[k]
 
 
-class CompileState(object):
+class CompileState:
     """Produces additional object state necessary for a statement to be
     compiled.
 
@@ -1056,7 +1056,7 @@ class prefix_anon_map(dict):
         return value
 
 
-class SchemaEventTarget(object):
+class SchemaEventTarget:
     """Base class for elements that are the targets of :class:`.DDLEvents`
     events.
 
@@ -1079,7 +1079,7 @@ class SchemaVisitor(ClauseVisitor):
     __traverse_options__ = {"schema_visitor": True}
 
 
-class ColumnCollection(object):
+class ColumnCollection:
     """Collection of :class:`_expression.ColumnElement` instances,
     typically for
     :class:`_sql.FromClause` objects.

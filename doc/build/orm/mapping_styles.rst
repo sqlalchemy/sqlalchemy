@@ -419,7 +419,7 @@ constructs that can't be easily duplicated must be given as callables,
 using the :class:`_orm.declared_attr` decorator, such as in the
 example at :ref:`orm_declarative_mixins_relationships`::
 
-    class RefTargetMixin(object):
+    class RefTargetMixin:
         @declared_attr
         def target_id(cls):
             return Column('target_id', ForeignKey('target.id'))

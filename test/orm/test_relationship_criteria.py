@@ -104,7 +104,7 @@ class _Fixtures(_fixtures.FixtureTest):
     def mixin_fixture(self):
         users = self.tables.users
 
-        class HasFoob(object):
+        class HasFoob:
             name = Column(String)
 
         class UserWFoob(HasFoob, self.Comparable):
@@ -120,7 +120,7 @@ class _Fixtures(_fixtures.FixtureTest):
     def declattr_mixin_fixture(self):
         users = self.tables.users
 
-        class HasFoob(object):
+        class HasFoob:
             @declared_attr
             def name(cls):
                 return Column(String)
@@ -139,7 +139,7 @@ class _Fixtures(_fixtures.FixtureTest):
         orders, items = self.tables.orders, self.tables.items
         order_items = self.tables.order_items
 
-        class HasFoob(object):
+        class HasFoob:
             description = Column(String)
 
         class HasBat(HasFoob):
@@ -894,7 +894,7 @@ class LoaderCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
 class TemporalFixtureTest(testing.fixtures.DeclarativeMappedTest):
     @classmethod
     def setup_classes(cls):
-        class HasTemporal(object):
+        class HasTemporal:
             """Mixin that identifies a class as having a timestamp column"""
 
             timestamp = Column(

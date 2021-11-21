@@ -34,12 +34,12 @@ member_table = Table(
 )
 
 
-class Organization(object):
+class Organization:
     def __init__(self, name):
         self.name = name
 
 
-class Member(object):
+class Member:
     def __init__(self, name):
         self.name = name
 

@@ -81,7 +81,7 @@ def _distill_raw_params(params):
         raise exc.ArgumentError("mapping or sequence expected for parameters")
 
 
-class TransactionalContext(object):
+class TransactionalContext:
     """Apply Python context manager behavior to transaction objects.
 
     Performs validation to ensure the subject of the transaction is not

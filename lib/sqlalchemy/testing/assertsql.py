@@ -16,7 +16,7 @@ from ..engine.default import DefaultDialect
 from ..schema import _DDLCompiles
 
 
-class AssertRule(object):
+class AssertRule:
 
     is_consumed = False
     errormessage = None
@@ -382,7 +382,7 @@ class Or(AllOf):
             self.errormessage = list(self.rules)[0].errormessage
 
 
-class SQLExecuteObserved(object):
+class SQLExecuteObserved:
     def __init__(self, context, clauseelement, multiparams, params):
         self.context = context
         self.clauseelement = clauseelement
@@ -408,7 +408,7 @@ class SQLCursorExecuteObserved(
     pass
 
 
-class SQLAsserter(object):
+class SQLAsserter:
     def __init__(self):
         self.accumulated = []
 

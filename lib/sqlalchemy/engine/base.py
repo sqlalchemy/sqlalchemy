@@ -2603,7 +2603,7 @@ class Engine(ConnectionEventsTarget, log.Identified):
         return self.pool.connect()
 
 
-class OptionEngineMixin(object):
+class OptionEngineMixin:
     _sa_propagate_class_events = False
 
     def __init__(self, proxied, execution_options):

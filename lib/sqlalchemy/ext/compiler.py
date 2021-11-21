@@ -416,7 +416,7 @@ def deregister(class_):
         del class_._compiler_dispatcher
 
 
-class _dispatcher(object):
+class _dispatcher:
     def __init__(self):
         self.specs = {}
 

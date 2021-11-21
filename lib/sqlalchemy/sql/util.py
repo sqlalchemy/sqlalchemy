@@ -461,7 +461,7 @@ def _quote_ddl_expr(element):
         return repr(element)
 
 
-class _repr_base(object):
+class _repr_base:
     _LIST = 0
     _TUPLE = 1
     _DICT = 2
@@ -969,7 +969,7 @@ class ColumnAdapter(ClauseAdapter):
         self.allow_label_resolve = allow_label_resolve
         self._wrap = None
 
-    class _IncludeExcludeMapping(object):
+    class _IncludeExcludeMapping:
         def __init__(self, parent, columns):
             self.parent = parent
             self.columns = columns

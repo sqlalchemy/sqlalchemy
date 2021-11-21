@@ -12,7 +12,7 @@ class you provide.
 A simple example represents pairs of columns as a ``Point`` object.
 ``Point`` represents such a pair as ``.x`` and ``.y``::
 
-    class Point(object):
+    class Point:
         def __init__(self, x, y):
             self.x = x
             self.y = y
@@ -155,7 +155,7 @@ itself be a composite object, which is then mapped to a class ``HasVertex``::
 
     from sqlalchemy.orm import composite
 
-    class Point(object):
+    class Point:
         def __init__(self, x, y):
             self.x = x
             self.y = y
@@ -174,7 +174,7 @@ itself be a composite object, which is then mapped to a class ``HasVertex``::
         def __ne__(self, other):
             return not self.__eq__(other)
 
-    class Vertex(object):
+    class Vertex:
         def __init__(self, start, end):
             self.start = start
             self.end = end

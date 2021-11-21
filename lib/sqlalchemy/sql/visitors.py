@@ -506,7 +506,7 @@ class ExtendedInternalTraversal(InternalTraversal):
     HasCacheKey objects."""
 
 
-class ExternalTraversal(object):
+class ExternalTraversal:
     """Base class for visitor objects which can traverse externally using
     the :func:`.visitors.traverse` function.
 

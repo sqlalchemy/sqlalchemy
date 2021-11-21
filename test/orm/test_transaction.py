@@ -2455,7 +2455,7 @@ class NaturalPKRollbackTest(fixtures.MappedTest):
         assert s.identity_map[identity_key(User, ("u1",))] is u1
 
 
-class JoinIntoAnExternalTransactionFixture(object):
+class JoinIntoAnExternalTransactionFixture:
     """Test the "join into an external transaction" examples"""
 
     __leave_connections_for_teardown__ = True
@@ -2512,7 +2512,7 @@ class NewStyleJoinIntoAnExternalTransactionTest(
         # begin a non-ORM transaction
         self.trans = self.connection.begin()
 
-        class A(object):
+        class A:
             pass
 
         clear_mappers()
@@ -2579,7 +2579,7 @@ class LegacyJoinIntoAnExternalTransactionTest(
         # begin a non-ORM transaction
         self.trans = self.connection.begin()
 
-        class A(object):
+        class A:
             pass
 
         # TODO: py2 is not hitting this correctly for some reason,

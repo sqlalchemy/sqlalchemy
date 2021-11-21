@@ -26,7 +26,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.collections import MappedCollection
 
 
-class Base(object):
+class Base:
     id = Column(Integer, primary_key=True)
 
 

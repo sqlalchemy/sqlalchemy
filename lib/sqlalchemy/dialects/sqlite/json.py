@@ -36,7 +36,7 @@ class JSON(sqltypes.JSON):
 # Note: these objects currently match exactly those of MySQL, however since
 # these are not generalizable to all JSON implementations, remain separately
 # implemented for each dialect.
-class _FormatTypeMixin(object):
+class _FormatTypeMixin:
     def _format_value(self, value):
         raise NotImplementedError()
 

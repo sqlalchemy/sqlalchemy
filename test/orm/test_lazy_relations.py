@@ -806,7 +806,7 @@ class LazyTest(_fixtures.FixtureTest):
         """
 
         @registry.mapped
-        class A(object):
+        class A:
             __tablename__ = "a"
 
             id = Column(Integer, primary_key=True)
@@ -815,7 +815,7 @@ class LazyTest(_fixtures.FixtureTest):
             b = relationship("B")
 
         @registry.mapped
-        class B(object):
+        class B:
             __tablename__ = "b"
 
             id = Column(Integer, primary_key=True)

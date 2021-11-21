@@ -450,7 +450,7 @@ def class_mapper(class_, configure=True):
         return mapper
 
 
-class InspectionAttr(object):
+class InspectionAttr:
     """A base class applied to all ORM objects that can be returned
     by the :func:`_sa.inspect` function.
 
@@ -563,7 +563,7 @@ class InspectionAttrInfo(InspectionAttr):
         return {}
 
 
-class _MappedAttribute(object):
+class _MappedAttribute:
     """Mixin for attributes which should be replaced by mapper-assigned
     attributes.
 

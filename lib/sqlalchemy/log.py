@@ -57,7 +57,7 @@ def class_logger(cls):
     return cls
 
 
-class Identified(object):
+class Identified:
     logging_name = None
 
     def _should_log_debug(self):
@@ -67,7 +67,7 @@ class Identified(object):
         return self.logger.isEnabledFor(logging.INFO)
 
 
-class InstanceLogger(object):
+class InstanceLogger:
     """A logger adapter (wrapper) for :class:`.Identified` subclasses.
 
     This allows multiple instances (e.g. Engine or Pool instances)
@@ -204,7 +204,7 @@ def instance_logger(instance, echoflag=None):
     instance.logger = logger
 
 
-class echo_property(object):
+class echo_property:
     __doc__ = """\
     When ``True``, enable log output for this element.
 

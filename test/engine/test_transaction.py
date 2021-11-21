@@ -1560,7 +1560,7 @@ class ConnectionCharacteristicTest(fixtures.TestBase):
         )
 
 
-class ResetFixture(object):
+class ResetFixture:
     @testing.fixture()
     def reset_agent(self, testing_engine):
         engine = testing_engine()

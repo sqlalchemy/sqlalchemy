@@ -32,7 +32,7 @@ from ._poly_fixtures import Manager
 from ._poly_fixtures import Person
 
 
-class BaseAndSubFixture(object):
+class BaseAndSubFixture:
     use_options = False
 
     @classmethod

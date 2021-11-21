@@ -11,7 +11,7 @@ from ..sql.compiler import Compiled  # noqa
 from ..sql.compiler import TypeCompiler  # noqa
 
 
-class Dialect(object):
+class Dialect:
     """Define the behavior of a specific database and DB-API combination.
 
     Any aspect of metadata definition, SQL query generation,
@@ -1109,7 +1109,7 @@ class Dialect(object):
         raise NotImplementedError()
 
 
-class CreateEnginePlugin(object):
+class CreateEnginePlugin:
     """A set of hooks intended to augment the construction of an
     :class:`_engine.Engine` object based on entrypoint names in a URL.
 
@@ -1343,7 +1343,7 @@ class CreateEnginePlugin(object):
         """
 
 
-class ExecutionContext(object):
+class ExecutionContext:
     """A messenger object for a Dialect that corresponds to a single
     execution.
 
@@ -1601,7 +1601,7 @@ class Connectable(ConnectionEventsTarget):
         raise NotImplementedError()
 
 
-class ExceptionContext(object):
+class ExceptionContext:
     """Encapsulate information about an error condition in progress.
 
     This object exists solely to be passed to the
@@ -1750,7 +1750,7 @@ class ExceptionContext(object):
     """
 
 
-class AdaptedConnection(object):
+class AdaptedConnection:
     """Interface of an adapted connection object to support the DBAPI protocol.
 
     Used by asyncio dialects to provide a sync-style pep-249 facade on top

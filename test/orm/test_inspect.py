@@ -65,7 +65,7 @@ class TestORMInspection(_fixtures.FixtureTest):
         assert not insp.is_aliased_class
 
     def test_mapper_selectable_fixed(self):
-        class Foo(object):
+        class Foo:
             pass
 
         class Bar(Foo):
@@ -96,7 +96,7 @@ class TestORMInspection(_fixtures.FixtureTest):
         assert insp.is_aliased_class
 
     def test_not_mapped_class(self):
-        class Foo(object):
+        class Foo:
             pass
 
         assert_raises_message(
@@ -107,7 +107,7 @@ class TestORMInspection(_fixtures.FixtureTest):
         )
 
     def test_not_mapped_instance(self):
-        class Foo(object):
+        class Foo:
             pass
 
         assert_raises_message(
@@ -408,7 +408,7 @@ class TestORMInspection(_fixtures.FixtureTest):
         class Thing(InspectionAttr):
             pass
 
-        class AnonClass(object):
+        class AnonClass:
             __foo__ = "bar"
             __bat__ = Thing()
 
@@ -548,7 +548,7 @@ class %s(SuperCls):
         )
 
     def test_all_orm_descriptors_pep520_classical(self):
-        class MyClass(object):
+        class MyClass:
             pass
 
         from sqlalchemy import Table, MetaData, Column, Integer

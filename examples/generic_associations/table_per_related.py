@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 
 
 @as_declarative()
-class Base(object):
+class Base:
     """Base class which provides automated table name
     and surrogate primary key column.
 
@@ -41,7 +41,7 @@ class Base(object):
     id = Column(Integer, primary_key=True)
 
 
-class Address(object):
+class Address:
     """Define columns that will be present in each
     'Address' table.
 
@@ -64,7 +64,7 @@ class Address(object):
         )
 
 
-class HasAddresses(object):
+class HasAddresses:
     """HasAddresses mixin, creates a new Address class
     for each parent.
 

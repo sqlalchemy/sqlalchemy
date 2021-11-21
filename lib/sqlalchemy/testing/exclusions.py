@@ -31,7 +31,7 @@ def fails_if(predicate, reason=None):
     return rule
 
 
-class compound(object):
+class compound:
     def __init__(self):
         self.fails = set()
         self.skips = set()
@@ -186,7 +186,7 @@ def succeeds_if(predicate, reason=None):
     return fails_if(NotPredicate(predicate), reason)
 
 
-class Predicate(object):
+class Predicate:
     @classmethod
     def as_predicate(cls, predicate, description=None):
         if isinstance(predicate, compound):

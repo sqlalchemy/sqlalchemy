@@ -64,7 +64,7 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
         from setting up cx_oracle.CLOBs on
         string-based bind params [ticket:793]."""
 
-        class FakeDBAPI(object):
+        class FakeDBAPI:
             def __getattr__(self, attr):
                 return attr
 
@@ -1190,7 +1190,7 @@ class SetInputSizesTest(fixtures.TestBase):
         )
         t3 = Table("t3", m, Column("foo", TestTypeDec()))
 
-        class CursorWrapper(object):
+        class CursorWrapper:
             # cx_oracle cursor can't be modified so we have to
             # invent a whole wrapping scheme
 

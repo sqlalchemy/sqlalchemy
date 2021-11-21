@@ -195,7 +195,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
     def test_evaluate_clauseelement(self):
         User = self.classes.User
 
-        class Thing(object):
+        class Thing:
             def __clause_element__(self):
                 return User.name.__clause_element__()
 
@@ -209,7 +209,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
     def test_evaluate_invalid(self):
         User = self.classes.User
 
-        class Thing(object):
+        class Thing:
             def __clause_element__(self):
                 return 5
 
@@ -236,7 +236,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         eq_(jill.name, "moonbeam")
 
     def test_evaluate_synonym_string(self):
-        class Foo(object):
+        class Foo:
             pass
 
         self.mapper_registry.map_imperatively(
@@ -251,7 +251,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         eq_(jill.uname, "moonbeam")
 
     def test_evaluate_synonym_attr(self):
-        class Foo(object):
+        class Foo:
             pass
 
         self.mapper_registry.map_imperatively(
@@ -266,7 +266,7 @@ class UpdateDeleteTest(fixtures.MappedTest):
         eq_(jill.uname, "moonbeam")
 
     def test_evaluate_double_synonym_attr(self):
-        class Foo(object):
+        class Foo:
             pass
 
         self.mapper_registry.map_imperatively(

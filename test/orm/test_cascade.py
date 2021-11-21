@@ -3593,14 +3593,14 @@ class OrphanCriterionTest(fixtures.MappedTest):
         r2_present,
         detach_event=True,
     ):
-        class Core(object):
+        class Core:
             pass
 
-        class RelatedOne(object):
+        class RelatedOne:
             def __init__(self, cores):
                 self.cores = cores
 
-        class RelatedTwo(object):
+        class RelatedTwo:
             def __init__(self, cores):
                 self.cores = cores
 
@@ -4492,7 +4492,7 @@ class CollectionCascadesNoBackrefTest(fixtures.TestBase):
     def cascade_fixture(self, registry):
         def go(collection_class):
             @registry.mapped
-            class A(object):
+            class A:
                 __tablename__ = "a"
 
                 id = Column(Integer, primary_key=True)
@@ -4504,7 +4504,7 @@ class CollectionCascadesNoBackrefTest(fixtures.TestBase):
                 )
 
             @registry.mapped
-            class B(object):
+            class B:
                 __tablename__ = "b_"
                 id = Column(Integer, primary_key=True)
                 a_id = Column(ForeignKey("a.id"))

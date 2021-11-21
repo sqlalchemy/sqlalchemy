@@ -76,7 +76,7 @@ class O2MTest(fixtures.MappedTest):
         )
 
     def test_basic(self):
-        class Foo(object):
+        class Foo:
             def __init__(self, data=None):
                 self.data = data
 
@@ -686,7 +686,7 @@ class FalseDiscriminatorTest(fixtures.MappedTest):
         )
 
     def test_false_on_sub(self):
-        class Foo(object):
+        class Foo:
             pass
 
         class Bar(Foo):
@@ -707,7 +707,7 @@ class FalseDiscriminatorTest(fixtures.MappedTest):
         assert isinstance(sess.query(Foo).one(), Bar)
 
     def test_false_on_base(self):
-        class Ding(object):
+        class Ding:
             pass
 
         class Bat(Ding):
@@ -1480,10 +1480,10 @@ class FlushTest(fixtures.MappedTest):
             self.tables.user_roles,
         )
 
-        class User(object):
+        class User:
             pass
 
-        class Role(object):
+        class Role:
             pass
 
         class Admin(User):
@@ -1527,12 +1527,12 @@ class FlushTest(fixtures.MappedTest):
             self.tables.user_roles,
         )
 
-        class User(object):
+        class User:
             def __init__(self, email=None, password=None):
                 self.email = email
                 self.password = password
 
-        class Role(object):
+        class Role:
             def __init__(self, description=None):
                 self.description = description
 
@@ -2090,7 +2090,7 @@ class DistinctPKTest(fixtures.MappedTest):
             Column("person_id", Integer, ForeignKey("persons.id")),
         )
 
-        class Person(object):
+        class Person:
             def __init__(self, name):
                 self.name = name
 
@@ -2231,7 +2231,7 @@ class SyncCompileTest(fixtures.MappedTest):
         j1 = testing.resolve_lambda(j1, **locals())
         j2 = testing.resolve_lambda(j2, **locals())
 
-        class A(object):
+        class A:
             def __init__(self, **kwargs):
                 for key, value in list(kwargs.items()):
                     setattr(self, key, value)
@@ -2310,7 +2310,7 @@ class OverrideColKeyTest(fixtures.MappedTest):
 
     def test_plain(self):
         # control case
-        class Base(object):
+        class Base:
             pass
 
         class Sub(Base):
@@ -2331,7 +2331,7 @@ class OverrideColKeyTest(fixtures.MappedTest):
         # in particular, here we do a "manual" version of
         # what we'd like the mapper to do.
 
-        class Base(object):
+        class Base:
             pass
 
         class Sub(Base):
@@ -2364,7 +2364,7 @@ class OverrideColKeyTest(fixtures.MappedTest):
         assert sess.get(Sub, 10) is s1
 
     def test_override_onlyinparent(self):
-        class Base(object):
+        class Base:
             pass
 
         class Sub(Base):
@@ -2403,7 +2403,7 @@ class OverrideColKeyTest(fixtures.MappedTest):
         # this is originally [ticket:1111].
         # the pattern here is now disallowed by [ticket:1892]
 
-        class Base(object):
+        class Base:
             pass
 
         class Sub(Base):
@@ -2428,7 +2428,7 @@ class OverrideColKeyTest(fixtures.MappedTest):
         assert_raises(sa_exc.InvalidRequestError, go)
 
     def test_pk_fk_different(self):
-        class Base(object):
+        class Base:
             pass
 
         class Sub(Base):
@@ -2452,7 +2452,7 @@ class OverrideColKeyTest(fixtures.MappedTest):
         """test that descriptors prevent inheritance from propagating
         properties to subclasses."""
 
-        class Base(object):
+        class Base:
             pass
 
         class Sub(Base):
@@ -2473,13 +2473,13 @@ class OverrideColKeyTest(fixtures.MappedTest):
         """test that descriptors prevent inheritance from propagating
         properties to subclasses."""
 
-        class MyDesc(object):
+        class MyDesc:
             def __get__(self, instance, owner):
                 if instance is None:
                     return self
                 return "im the data"
 
-        class Base(object):
+        class Base:
             pass
 
         class Sub(Base):
@@ -2495,7 +2495,7 @@ class OverrideColKeyTest(fixtures.MappedTest):
         assert sess.query(Sub).one().data == "im the data"
 
     def test_sub_columns_over_base_descriptors(self):
-        class Base(object):
+        class Base:
             @property
             def subdata(self):
                 return "this is base"
@@ -2521,7 +2521,7 @@ class OverrideColKeyTest(fixtures.MappedTest):
         assert sess.get(Sub, s1.base_id).subdata == "this is sub"
 
     def test_base_descriptors_over_base_cols(self):
-        class Base(object):
+        class Base:
             @property
             def data(self):
                 return "this is base"
@@ -2814,7 +2814,7 @@ class OptimizedLoadTest(fixtures.MappedTest):
         class WithComp(Base):
             pass
 
-        class Comp(object):
+        class Comp:
             def __init__(self, a, b):
                 self.a = a
                 self.b = b
@@ -3022,7 +3022,7 @@ class NoPKOnSubTableWarningTest(fixtures.MappedTest):
     def test_warning_on_sub(self):
         parent, child = self._fixture()
 
-        class P(object):
+        class P:
             pass
 
         class C(P):
@@ -3042,7 +3042,7 @@ class NoPKOnSubTableWarningTest(fixtures.MappedTest):
     def test_no_warning_with_explicit(self):
         parent, child = self._fixture()
 
-        class P(object):
+        class P:
             pass
 
         class C(P):
@@ -3068,7 +3068,7 @@ class InhCondTest(fixtures.MappedTest):
             Column("owner_id", Integer, ForeignKey("owner.owner_id")),
         )
 
-        class Base(object):
+        class Base:
             pass
 
         class Derived(Base):
@@ -3094,7 +3094,7 @@ class InhCondTest(fixtures.MappedTest):
         )
         Table("order", m, Column("id", Integer, primary_key=True))
 
-        class Base(object):
+        class Base:
             pass
 
         class Derived(Base):
@@ -3119,7 +3119,7 @@ class InhCondTest(fixtures.MappedTest):
             "derived", metadata, Column("id", Integer, primary_key=True)
         )
 
-        class Base(object):
+        class Base:
             pass
 
         class Derived(Base):
@@ -3154,7 +3154,7 @@ class InhCondTest(fixtures.MappedTest):
             Column("id", Integer, ForeignKey("base.id"), primary_key=True),
         )
 
-        class Base(object):
+        class Base:
             pass
 
         class Derived(Base):
@@ -3183,7 +3183,7 @@ class InhCondTest(fixtures.MappedTest):
             Column("id", Integer, ForeignKey("base.id"), primary_key=True),
         )
 
-        class Base(object):
+        class Base:
             pass
 
         class Derived(Base):
@@ -3216,7 +3216,7 @@ class InhCondTest(fixtures.MappedTest):
             Column("id", Integer, ForeignKey("base.q"), primary_key=True),
         )
 
-        class Base(object):
+        class Base:
             pass
 
         class Derived(Base):
@@ -3260,11 +3260,11 @@ class PKDiscriminatorTest(fixtures.MappedTest):
     def test_pk_as_discriminator(self):
         parents, children = self.tables.parents, self.tables.children
 
-        class Parent(object):
+        class Parent:
             def __init__(self, name=None):
                 self.name = name
 
-        class Child(object):
+        class Child:
             def __init__(self, name=None):
                 self.name = name
 
@@ -3732,7 +3732,7 @@ class NameConflictTest(fixtures.MappedTest):
         )
 
     def test_name_conflict(self):
-        class Content(object):
+        class Content:
             pass
 
         class Foo(Content):

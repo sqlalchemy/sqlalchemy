@@ -35,7 +35,7 @@ from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.engines import testing_reaper
 
 
-class ShardTest(object):
+class ShardTest:
     __skip_if__ = (lambda: util.win32,)
     __requires__ = ("sqlite",)
 
@@ -152,12 +152,12 @@ class ShardTest(object):
     def setup_mappers(cls):
         global WeatherLocation, Report
 
-        class WeatherLocation(object):
+        class WeatherLocation:
             def __init__(self, continent, city):
                 self.continent = continent
                 self.city = city
 
-        class Report(object):
+        class Report:
             def __init__(self, temperature, id_=None):
                 self.temperature = temperature
                 if id_:

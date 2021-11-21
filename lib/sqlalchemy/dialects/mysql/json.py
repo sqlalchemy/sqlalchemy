@@ -36,7 +36,7 @@ class JSON(sqltypes.JSON):
     pass
 
 
-class _FormatTypeMixin(object):
+class _FormatTypeMixin:
     def _format_value(self, value):
         raise NotImplementedError()
 

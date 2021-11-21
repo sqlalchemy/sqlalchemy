@@ -28,7 +28,7 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 
 
-class ORMExpr(object):
+class ORMExpr:
     def __init__(self, col):
         self.col = col
 
@@ -36,7 +36,7 @@ class ORMExpr(object):
         return self.col
 
 
-class _InsertTestBase(object):
+class _InsertTestBase:
     @classmethod
     def define_tables(cls, metadata):
         Table(

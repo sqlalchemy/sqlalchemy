@@ -91,14 +91,14 @@ class OrderingListTest(fixtures.MappedTest):
             Column("text", String(128)),
         )
 
-        class Slide(object):
+        class Slide:
             def __init__(self, name):
                 self.name = name
 
             def __repr__(self):
                 return '<Slide "%s">' % self.name
 
-        class Bullet(object):
+        class Bullet:
             def __init__(self, text):
                 self.text = text
 
@@ -409,7 +409,7 @@ class OrderingListTest(fixtures.MappedTest):
         eq_([b.position for b in s1.bullets], [0, 1, 2])
 
     def test_funky_ordering(self):
-        class Pos(object):
+        class Pos:
             def __init__(self):
                 self.position = None
 
@@ -481,7 +481,7 @@ class OrderingListTest(fixtures.MappedTest):
             self.assert_(copy.__dict__ == olist.__dict__)
 
 
-class DummyItem(object):
+class DummyItem:
     def __init__(self, order=None):
         self.order = order
 

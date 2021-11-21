@@ -535,7 +535,7 @@ class DeferredColumnLoader(LoaderStrategy):
         )
 
 
-class LoadDeferredColumns(object):
+class LoadDeferredColumns:
     """serializable loader object used by DeferredColumnLoader"""
 
     def __init__(self, key, raiseload=False):
@@ -1119,7 +1119,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
             populators["new"].append((self.key, reset_for_lazy_callable))
 
 
-class LoadLazyAttribute(object):
+class LoadLazyAttribute:
     """semi-serializable loader object used by LazyLoader
 
     Historically, this object would be carried along with instances that
@@ -1569,7 +1569,7 @@ class SubqueryLoader(PostLoader):
 
         return q
 
-    class _SubqCollections(object):
+    class _SubqCollections:
         """Given a :class:`_query.Query` used to emit the "subquery load",
         provide a load interface that executes the query at the
         first moment a value is needed.

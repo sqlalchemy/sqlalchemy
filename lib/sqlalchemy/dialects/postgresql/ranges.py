@@ -10,7 +10,7 @@ from ... import types as sqltypes
 __all__ = ("INT4RANGE", "INT8RANGE", "NUMRANGE")
 
 
-class RangeOperators(object):
+class RangeOperators:
     """
     This mixin provides functionality for the Range Operators
     listed in Table 9-44 of the `PostgreSQL documentation`__ for Range

@@ -168,7 +168,7 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
 
     @testing.fixture
     def tricky_types_parameter_fixture(self):
-        class SomeEnum(object):
+        class SomeEnum:
             # Implements PEP 435 in the minimal fashion needed by SQLAlchemy
             __members__ = OrderedDict()
 

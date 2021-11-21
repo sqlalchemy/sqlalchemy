@@ -10,7 +10,7 @@ from sqlalchemy.types import UserDefinedType
 # Python datatypes
 
 
-class GisElement(object):
+class GisElement:
     """Represents a geometry value."""
 
     def __str__(self):

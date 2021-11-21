@@ -41,7 +41,7 @@ from sqlalchemy.testing.schema import Table
 from test.orm import _fixtures
 
 
-class AssertsUOW(object):
+class AssertsUOW:
     def _get_test_uow(self, session):
         uow = unitofwork.UOWTransaction(session)
         deleted = set(session._deleted)
@@ -2833,11 +2833,11 @@ class TypeWoBoolTest(fixtures.MappedTest, testing.AssertsExecutionResults):
     def define_tables(cls, metadata):
         from sqlalchemy import TypeDecorator
 
-        class NoBool(object):
+        class NoBool:
             def __nonzero__(self):
                 raise NotImplementedError("not supported")
 
-        class MyWidget(object):
+        class MyWidget:
             def __init__(self, text):
                 self.text = text
 

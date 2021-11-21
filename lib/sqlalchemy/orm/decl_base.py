@@ -151,7 +151,7 @@ def _check_declared_props_nocascade(obj, name, cls):
         return False
 
 
-class _MapperConfig(object):
+class _MapperConfig:
     __slots__ = ("cls", "classname", "properties", "declared_attr_reg")
 
     @classmethod

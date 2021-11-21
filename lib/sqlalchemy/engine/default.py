@@ -674,7 +674,7 @@ class DefaultDialect(interfaces.Dialect):
         return connection
 
 
-class _RendersLiteral(object):
+class _RendersLiteral:
     def literal_processor(self, dialect):
         def process(value):
             return "'%s'" % value

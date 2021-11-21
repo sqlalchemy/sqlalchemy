@@ -11,7 +11,7 @@ from . import util as orm_util
 from .. import exc as sa_exc
 
 
-class IdentityMap(object):
+class IdentityMap:
     def __init__(self):
         self._dict = {}
         self._modified = set()

@@ -354,7 +354,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         )
 
     def test_fk_given_non_col_clauseelem(self):
-        class Foo(object):
+        class Foo:
             def __clause_element__(self):
                 return bindparam("x")
 
@@ -379,7 +379,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
     def test_fk_given_col_non_table_clauseelem(self):
         t = Table("t", MetaData(), Column("x", Integer))
 
-        class Foo(object):
+        class Foo:
             def __clause_element__(self):
                 return t.alias().c.x
 
@@ -2072,7 +2072,7 @@ class PKAutoIncrementTest(fixtures.TestBase):
 class SchemaTypeTest(fixtures.TestBase):
     __backend__ = True
 
-    class TrackEvents(object):
+    class TrackEvents:
         column = None
         table = None
         evt_targets = ()
@@ -2961,7 +2961,7 @@ class ConstraintTest(fixtures.TestBase):
     def test_clauseelement_extraction_one(self):
         t = Table("t", MetaData(), Column("x", Integer), Column("y", Integer))
 
-        class MyThing(object):
+        class MyThing:
             def __clause_element__(self):
                 return t.c.x + 5
 
@@ -2971,7 +2971,7 @@ class ConstraintTest(fixtures.TestBase):
     def test_clauseelement_extraction_two(self):
         t = Table("t", MetaData(), Column("x", Integer), Column("y", Integer))
 
-        class MyThing(object):
+        class MyThing:
             def __clause_element__(self):
                 return t.c.x + 5
 
@@ -2984,7 +2984,7 @@ class ConstraintTest(fixtures.TestBase):
 
         expr1 = t.c.x + 5
 
-        class MyThing(object):
+        class MyThing:
             def __clause_element__(self):
                 return expr1
 
@@ -3332,7 +3332,7 @@ class ConstraintTest(fixtures.TestBase):
     def test_column_accessor_clause_element(self):
         c1 = Column("x", Integer)
 
-        class CThing(object):
+        class CThing:
             def __init__(self, c):
                 self.c = c
 
@@ -3743,7 +3743,7 @@ class ConstraintTest(fixtures.TestBase):
         m = MetaData()
         t2 = Table("t2", m, Column("x", Integer))
 
-        class SomeClass(object):
+        class SomeClass:
             def __clause_element__(self):
                 return t2
 
@@ -3758,7 +3758,7 @@ class ConstraintTest(fixtures.TestBase):
 
     @testing.fixture
     def no_pickle_annotated(self):
-        class NoPickle(object):
+        class NoPickle:
             def __reduce__(self):
                 raise NotImplementedError()
 

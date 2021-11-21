@@ -31,7 +31,7 @@ from sqlalchemy.orm.interfaces import PropComparator
 from .dictlike import ProxiedDictMixin
 
 
-class PolymorphicVerticalProperty(object):
+class PolymorphicVerticalProperty:
     """A key/value pair with polymorphic value storage.
 
     The class which is mapped should indicate typing information

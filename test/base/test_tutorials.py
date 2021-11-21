@@ -14,7 +14,7 @@ class DocTest(fixtures.TestBase):
     def _setup_logger(self):
         rootlogger = logging.getLogger("sqlalchemy.engine.Engine")
 
-        class MyStream(object):
+        class MyStream:
             def write(self, string):
                 sys.stdout.write(string)
                 sys.stdout.flush()

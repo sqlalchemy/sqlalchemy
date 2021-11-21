@@ -384,7 +384,7 @@ class PoolDialectTest(PoolTestBase):
     def _dialect(self):
         canary = []
 
-        class PoolDialect(object):
+        class PoolDialect:
             is_async = False
 
             def do_rollback(self, dbapi_connection):

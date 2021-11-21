@@ -249,7 +249,7 @@ class RelationshipTest2(fixtures.MappedTest):
 
         if usedata:
 
-            class Data(object):
+            class Data:
                 def __init__(self, data):
                     self.data = data
 
@@ -553,7 +553,7 @@ class RelationshipTest4(fixtures.MappedTest):
         how to alias the primaryjoin to the polymorphic union ?"""
 
         # class definitions
-        class Person(object):
+        class Person:
             def __init__(self, **kwargs):
                 for key, value in kwargs.items():
                     setattr(self, key, value)
@@ -572,7 +572,7 @@ class RelationshipTest4(fixtures.MappedTest):
                     self.longer_status,
                 )
 
-        class Car(object):
+        class Car:
             def __init__(self, **kwargs):
                 for key, value in kwargs.items():
                     setattr(self, key, value)
@@ -731,7 +731,7 @@ class RelationshipTest5(fixtures.MappedTest):
         """test parent object with child relationship to an inheriting mapper,
         using eager loads, works when there are no child objects present"""
 
-        class Person(object):
+        class Person:
             def __init__(self, **kwargs):
                 for key, value in kwargs.items():
                     setattr(self, key, value)
@@ -750,7 +750,7 @@ class RelationshipTest5(fixtures.MappedTest):
                     self.longer_status,
                 )
 
-        class Car(object):
+        class Car:
             def __init__(self, **kwargs):
                 for key, value in kwargs.items():
                     setattr(self, key, value)
@@ -943,7 +943,7 @@ class RelationshipTest7(fixtures.MappedTest):
         """test that lazy load clause to a polymorphic child mapper generates
         correctly [ticket:493]"""
 
-        class PersistentObject(object):
+        class PersistentObject:
             def __init__(self, **kwargs):
                 for key, value in kwargs.items():
                     setattr(self, key, value)
@@ -1535,7 +1535,7 @@ class MultiLevelTest(fixtures.MappedTest):
         )
 
     def test_threelevels(self):
-        class Employee(object):
+        class Employee:
             def set(me, **kargs):
                 for k, v in kargs.items():
                     setattr(me, k, v)
@@ -1666,13 +1666,13 @@ class ManyToManyPolyTest(fixtures.MappedTest):
         aren't attempted to be matched to the target polymorphic
         selectable"""
 
-        class BaseItem(object):
+        class BaseItem:
             pass
 
         class Item(BaseItem):
             pass
 
-        class Collection(object):
+        class Collection:
             pass
 
         item_join = polymorphic_union(
@@ -1735,7 +1735,7 @@ class CustomPKTest(fixtures.MappedTest):
         """test that the primary_key attribute is propagated to the
         polymorphic mapper"""
 
-        class T1(object):
+        class T1:
             pass
 
         class T2(T1):
@@ -1783,7 +1783,7 @@ class CustomPKTest(fixtures.MappedTest):
         """test that a composite primary key attribute formed by a join
         is "collapsed" into its minimal columns"""
 
-        class T1(object):
+        class T1:
             pass
 
         class T2(T1):

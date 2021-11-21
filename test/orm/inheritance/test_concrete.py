@@ -1400,7 +1400,7 @@ class ColKeysTest(fixtures.MappedTest):
             "pjoin",
         )
 
-        class Location(object):
+        class Location:
             pass
 
         class Refugee(Location):

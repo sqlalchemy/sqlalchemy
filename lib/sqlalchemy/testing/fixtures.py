@@ -26,7 +26,7 @@ from ..schema import sort_tables_and_constraints
 
 
 @config.mark_base_test_class()
-class TestBase(object):
+class TestBase:
     # A sequence of requirement names matching testing.requires decorators
     __requires__ = ()
 
@@ -299,7 +299,7 @@ class TestBase(object):
 _connection_fixture_connection = None
 
 
-class FutureEngineMixin(object):
+class FutureEngineMixin:
     """alembic's suite still using this"""
 
 
@@ -504,7 +504,7 @@ class TablesTest(TestBase):
                 )
 
 
-class NoCache(object):
+class NoCache:
     @config.fixture(autouse=True, scope="function")
     def _disable_cache(self):
         _cache = config.db._compiled_cache
@@ -513,7 +513,7 @@ class NoCache(object):
         config.db._compiled_cache = _cache
 
 
-class RemovesEvents(object):
+class RemovesEvents:
     @util.memoized_property
     def _event_fns(self):
         return set()
@@ -704,7 +704,7 @@ class DeclarativeMappedTest(MappedTest):
                 cls_registry[classname] = cls
                 DeclarativeMeta.__init__(cls, classname, bases, dict_)
 
-        class DeclarativeBasic(object):
+        class DeclarativeBasic:
             __table_cls__ = schema.Table
 
         _DeclBase = declarative_base(

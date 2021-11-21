@@ -2086,7 +2086,7 @@ class CreateJoinsTest(fixtures.MappedTest, AssertsCompiledSQL):
             Column("id", Integer, ForeignKey("base.id"), primary_key=True),
         )
 
-        class Base(object):
+        class Base:
             pass
 
         class A(Base):

@@ -166,7 +166,7 @@ class MyType3(TypeDecorator):
         self.arg = arg
 
 
-class CoreFixtures(object):
+class CoreFixtures:
     # lambdas which return a tuple of ColumnElement objects.
     # must return at least two objects that should compare differently.
     # to test more varieties of "difference" additional objects can be added.
@@ -1049,7 +1049,7 @@ class CoreFixtures(object):
     ]
 
 
-class CacheKeyFixture(object):
+class CacheKeyFixture:
     def _compare_equal(self, a, b, compare_values):
         a_key = a._generate_cache_key()
         b_key = b._generate_cache_key()

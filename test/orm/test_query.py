@@ -1005,7 +1005,7 @@ class RowLabelingTest(QueryTest):
 
     @testing.fixture
     def uname_fixture(self):
-        class Foo(object):
+        class Foo:
             pass
 
         if False:
@@ -1341,7 +1341,7 @@ class GetTest(QueryTest):
     def test_unique_param_names(self):
         users = self.tables.users
 
-        class SomeUser(object):
+        class SomeUser:
             pass
 
         s = users.select().where(users.c.id != 12).alias("users")
@@ -7714,7 +7714,7 @@ class QueryClsTest(QueryTest):
         return MyQuery
 
     def _callable_fixture(self):
-        class MyQueryFactory(object):
+        class MyQueryFactory:
             def __call__(self, *arg, **kw):
                 return Query(*arg, **kw)
 

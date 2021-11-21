@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 
 
-class Versioned(object):
+class Versioned:
     # we have a composite primary key consisting of "id"
     # and "version_id"
     id = Column(Integer, primary_key=True)

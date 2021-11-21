@@ -47,7 +47,7 @@ FullArgSpec = collections.namedtuple(
 )
 
 
-class nullcontext(object):
+class nullcontext:
     """Context manager that does no additional processing.
 
     Vendored from Python 3.7.
@@ -244,7 +244,7 @@ else:
 
     from abc import ABCMeta
 
-    class ABC(object):
+    class ABC:
         __metaclass__ = ABCMeta
 
     try:

@@ -956,7 +956,7 @@ E.g. **don't do this**::
 
     ### this is the **wrong way to do it** ###
 
-    class ThingOne(object):
+    class ThingOne:
         def go(self):
             session = Session()
             try:
@@ -966,7 +966,7 @@ E.g. **don't do this**::
                 session.rollback()
                 raise
 
-    class ThingTwo(object):
+    class ThingTwo:
         def go(self):
             session = Session()
             try:
@@ -988,11 +988,11 @@ transaction automatically::
 
     ### this is a **better** (but not the only) way to do it ###
 
-    class ThingOne(object):
+    class ThingOne:
         def go(self, session):
             session.query(FooBar).update({"x": 5})
 
-    class ThingTwo(object):
+    class ThingTwo:
         def go(self, session):
             session.query(Widget).update({"q": 18})
 

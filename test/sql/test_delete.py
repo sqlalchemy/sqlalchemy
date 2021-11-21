@@ -21,7 +21,7 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
 
-class _DeleteTestBase(object):
+class _DeleteTestBase:
     @classmethod
     def define_tables(cls, metadata):
         Table(

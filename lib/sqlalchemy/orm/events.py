@@ -122,7 +122,7 @@ class InstrumentationEvents(event.Events):
         """Called when an attribute is instrumented."""
 
 
-class _InstrumentationEventsHold(object):
+class _InstrumentationEventsHold:
     """temporary marker object used to transfer from _accept_with() to
     _listen() on the InstrumentationEvents class.
 
@@ -535,7 +535,7 @@ class _EventsHold(event.RefCollection):
     def _clear(cls):
         cls.all_holds.clear()
 
-    class HoldEvents(object):
+    class HoldEvents:
         _dispatch_target = None
 
         @classmethod

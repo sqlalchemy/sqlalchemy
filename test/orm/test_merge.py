@@ -1399,7 +1399,7 @@ class MergeTest(_fixtures.FixtureTest):
     def test_synonym(self):
         users = self.tables.users
 
-        class User(object):
+        class User:
             def _getValue(self):
                 return self._value
 

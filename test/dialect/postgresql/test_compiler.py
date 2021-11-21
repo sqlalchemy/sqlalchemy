@@ -2799,7 +2799,7 @@ class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
     def test_query_on_columns_subquery(self):
         sess = Session()
 
-        class Foo(object):
+        class Foo:
             pass
 
         clear_mappers()
@@ -2817,7 +2817,7 @@ class DistinctOnTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
     def test_query_distinct_on_aliased(self):
-        class Foo(object):
+        class Foo:
             pass
 
         self.mapper_registry.map_imperatively(Foo, self.table)

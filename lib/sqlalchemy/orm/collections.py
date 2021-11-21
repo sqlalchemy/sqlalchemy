@@ -20,7 +20,7 @@ provided.  One is a bundle of generic decorators that map function arguments
 and return values to events::
 
   from sqlalchemy.orm.collections import collection
-  class MyClass(object):
+  class MyClass:
       # ...
 
       @collection.adds(1)
@@ -125,7 +125,7 @@ __all__ = [
 __instrumentation_mutex = util.threading.Lock()
 
 
-class _PlainColumnGetter(object):
+class _PlainColumnGetter:
     """Plain column getter, stores collection of Column objects
     directly.
 
@@ -160,7 +160,7 @@ class _PlainColumnGetter(object):
             return key[0]
 
 
-class _SerializableColumnGetter(object):
+class _SerializableColumnGetter:
     """Column-based getter used in version 0.7.6 only.
 
     Remains here for pickle compatibility with 0.7.6.
@@ -251,7 +251,7 @@ def column_mapped_collection(mapping_spec):
     return lambda: MappedCollection(keyfunc)
 
 
-class _SerializableAttrGetter(object):
+class _SerializableAttrGetter:
     def __init__(self, name):
         self.name = name
         self.getter = operator.attrgetter(name)
@@ -299,7 +299,7 @@ def mapped_collection(keyfunc):
     return lambda: MappedCollection(keyfunc)
 
 
-class collection(object):
+class collection:
     """Decorators for entity collection classes.
 
     The decorators fall into two groups: annotations and interception recipes.
@@ -567,7 +567,7 @@ collection_adapter = operator.attrgetter("_sa_adapter")
 """Fetch the :class:`.CollectionAdapter` for a collection."""
 
 
-class CollectionAdapter(object):
+class CollectionAdapter:
     """Bridges between the ORM and arbitrary Python collections.
 
     Proxies base-level collection operations (append, remove, iterate)

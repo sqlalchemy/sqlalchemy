@@ -859,7 +859,7 @@ Alternatively, the same :class:`_schema.Table` objects can be used in
 fully "classical" style, without using Declarative at all.
 A constructor similar to that supplied by Declarative is illustrated::
 
-    class Employee(object):
+    class Employee:
         def __init__(self, **kw):
             for k in kw:
                 setattr(self, k, kw[k])

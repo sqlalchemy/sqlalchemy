@@ -37,7 +37,7 @@ def current_time():
     return now
 
 
-class VersionedStartEnd(object):
+class VersionedStartEnd:
     start = Column(DateTime, primary_key=True)
     end = Column(DateTime, primary_key=True)
 

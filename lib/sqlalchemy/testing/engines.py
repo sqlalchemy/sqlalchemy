@@ -19,7 +19,7 @@ from .. import event
 from .. import pool
 
 
-class ConnectionKiller(object):
+class ConnectionKiller:
     def __init__(self):
         self.proxy_refs = weakref.WeakKeyDictionary()
         self.testing_engines = collections.defaultdict(set)
@@ -202,7 +202,7 @@ def all_dialects(exclude=None):
         yield mod.dialect()
 
 
-class ReconnectFixture(object):
+class ReconnectFixture:
     def __init__(self, dbapi):
         self.dbapi = dbapi
         self.connections = []
@@ -362,7 +362,7 @@ def mock_engine(dialect_name=None):
     return engine
 
 
-class DBAPIProxyCursor(object):
+class DBAPIProxyCursor:
     """Proxy a DBAPI cursor.
 
     Tests can provide subclasses of this to intercept
@@ -391,7 +391,7 @@ class DBAPIProxyCursor(object):
         return getattr(self.cursor, key)
 
 
-class DBAPIProxyConnection(object):
+class DBAPIProxyConnection:
     """Proxy a DBAPI connection.
 
     Tests can provide subclasses of this to intercept

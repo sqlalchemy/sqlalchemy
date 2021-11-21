@@ -118,7 +118,7 @@ def _key_is_empty(key, decl_class_registry, test):
         return not test(thing)
 
 
-class _MultipleClassMarker(object):
+class _MultipleClassMarker:
     """refers to multiple classes of the same name
     within _decl_class_registry.
 
@@ -182,7 +182,7 @@ class _MultipleClassMarker(object):
         self.contents.add(weakref.ref(item, self._remove_item))
 
 
-class _ModuleMarker(object):
+class _ModuleMarker:
     """Refers to a module name within
     _decl_class_registry.
 
@@ -239,7 +239,7 @@ class _ModuleMarker(object):
             existing.remove_item(cls)
 
 
-class _ModNS(object):
+class _ModNS:
     __slots__ = ("__parent",)
 
     def __init__(self, parent):
@@ -263,7 +263,7 @@ class _ModNS(object):
         )
 
 
-class _GetColumns(object):
+class _GetColumns:
     __slots__ = ("cls",)
 
     def __init__(self, cls):
@@ -297,7 +297,7 @@ inspection._inspects(_GetColumns)(
 )
 
 
-class _GetTable(object):
+class _GetTable:
     __slots__ = "key", "metadata"
 
     def __init__(self, key, metadata):
@@ -314,7 +314,7 @@ def _determine_container(key, value):
     return _GetColumns(value)
 
 
-class _class_resolver(object):
+class _class_resolver:
     __slots__ = (
         "cls",
         "prop",

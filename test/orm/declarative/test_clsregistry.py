@@ -10,7 +10,7 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing.util import gc_collect
 
 
-class MockClass(object):
+class MockClass:
     def __init__(self, base, name):
         self._sa_class_manager = mock.Mock(registry=base)
         tokens = name.split(".")
@@ -19,7 +19,7 @@ class MockClass(object):
         self.metadata = MetaData()
 
 
-class MockProp(object):
+class MockProp:
     parent = "some_parent"
 
 

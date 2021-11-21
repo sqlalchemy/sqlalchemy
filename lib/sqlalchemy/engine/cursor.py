@@ -692,7 +692,7 @@ class CursorResultMetaData(ResultMetaData):
             self._translated_indexes = self._tuplefilter = None
 
 
-class ResultFetchStrategy(object):
+class ResultFetchStrategy:
     """Define a fetching strategy for a result object.
 
 
@@ -1095,7 +1095,7 @@ class _NoResultMetaData(ResultMetaData):
 _NO_RESULT_METADATA = _NoResultMetaData()
 
 
-class BaseCursorResult(object):
+class BaseCursorResult:
     """Base class for database result objects."""
 
     out_parameters = None

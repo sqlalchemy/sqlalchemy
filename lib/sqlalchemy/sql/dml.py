@@ -1017,7 +1017,7 @@ class Insert(ValuesBase):
         self.select = coercions.expect(roles.DMLSelectRole, select)
 
 
-class DMLWhereBase(object):
+class DMLWhereBase:
     _where_criteria = ()
 
     @_generative

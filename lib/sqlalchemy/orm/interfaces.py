@@ -859,7 +859,7 @@ class MapperOption(ORMOption):
         self.process_query(query)
 
 
-class LoaderStrategy(object):
+class LoaderStrategy:
     """Describe the loading behavior of a StrategizedProperty object.
 
     The ``LoaderStrategy`` interacts with the querying process in three

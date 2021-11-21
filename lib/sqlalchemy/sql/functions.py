@@ -662,7 +662,7 @@ class ScalarFunctionColumn(NamedColumn):
         self.type = sqltypes.to_instance(type_)
 
 
-class _FunctionGenerator(object):
+class _FunctionGenerator:
     """Generate SQL function expressions.
 
     :data:`.func` is a special object instance which generates SQL

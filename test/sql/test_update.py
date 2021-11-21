@@ -31,7 +31,7 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 
 
-class _UpdateFromTestBase(object):
+class _UpdateFromTestBase:
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -128,7 +128,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     def test_update_custom_key_thing(self):
         table1 = self.tables.mytable
 
-        class Thing(object):
+        class Thing:
             def __clause_element__(self):
                 return table1.c.name
 
@@ -147,7 +147,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     def test_update_ordered_custom_key_thing(self):
         table1 = self.tables.mytable
 
-        class Thing(object):
+        class Thing:
             def __clause_element__(self):
                 return table1.c.name
 
@@ -166,7 +166,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     def test_update_broken_custom_key_thing(self):
         table1 = self.tables.mytable
 
-        class Thing(object):
+        class Thing:
             def __clause_element__(self):
                 return 5
 
@@ -180,7 +180,7 @@ class UpdateTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
     def test_update_ordered_broken_custom_key_thing(self):
         table1 = self.tables.mytable
 
-        class Thing(object):
+        class Thing:
             def __clause_element__(self):
                 return 5
 

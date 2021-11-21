@@ -35,7 +35,7 @@ def md5_hex(x):
     return m.hexdigest()
 
 
-class safe_reraise(object):
+class safe_reraise:
     """Reraise an exception after invoking some
     handler code.
 
@@ -316,7 +316,7 @@ def %(name)s(%(args)s):
     return decorated
 
 
-class PluginLoader(object):
+class PluginLoader:
     def __init__(self, group, auto_fn=None):
         self.group = group
         self.impls = {}
@@ -845,7 +845,7 @@ def generic_repr(obj, additional_kw=(), to_inspect=None, omit_kwarg=()):
     return "%s(%s)" % (obj.__class__.__name__, ", ".join(output))
 
 
-class portable_instancemethod(object):
+class portable_instancemethod:
     """Turn an instancemethod into a (parent, name) pair
     to produce a serializable callable.
 
@@ -1063,7 +1063,7 @@ def as_interface(obj, cls=None, methods=None, required=None):
             % (obj, qualifier, ", ".join(interface))
         )
 
-    class AnonymousInterface(object):
+    class AnonymousInterface:
         """A callable-holding shell."""
 
     if cls:
@@ -1087,7 +1087,7 @@ def as_interface(obj, cls=None, methods=None, required=None):
     )
 
 
-class memoized_property(object):
+class memoized_property:
     """A read-only @property that is only evaluated once."""
 
     def __init__(self, fget, doc=None):
@@ -1132,7 +1132,7 @@ def memoized_instancemethod(fn):
     return update_wrapper(oneshot, fn)
 
 
-class HasMemoized(object):
+class HasMemoized:
     """A class that maintains the names of memoized elements in a
     collection for easy cache clearing, generative, etc.
 
@@ -1154,7 +1154,7 @@ class HasMemoized(object):
         self.__dict__[key] = value
         self._memoized_keys |= {key}
 
-    class memoized_attribute(object):
+    class memoized_attribute:
         """A read-only @property that is only evaluated once."""
 
         def __init__(self, fget, doc=None):
@@ -1188,7 +1188,7 @@ class HasMemoized(object):
         return update_wrapper(oneshot, fn)
 
 
-class MemoizedSlots(object):
+class MemoizedSlots:
     """Apply memoized items to an object using a __getattr__ scheme.
 
     This allows the functionality of memoized_property and
@@ -1420,7 +1420,7 @@ class classproperty(property):
         return desc.fget(cls)
 
 
-class hybridproperty(object):
+class hybridproperty:
     def __init__(self, func):
         self.func = func
         self.clslevel = func
@@ -1437,7 +1437,7 @@ class hybridproperty(object):
         return self
 
 
-class hybridmethod(object):
+class hybridmethod:
     """Decorate a function as cls- or instance- level."""
 
     def __init__(self, func):
@@ -1480,7 +1480,7 @@ class _symbol(int):
 _symbol.__name__ = "symbol"
 
 
-class symbol(object):
+class symbol:
     """A constant symbol.
 
     >>> symbol('foo') is symbol('foo')

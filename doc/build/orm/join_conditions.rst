@@ -609,7 +609,7 @@ to ``node.c.id``::
         Column('id', Integer, primary_key=True),
         Column('label', String)
     )
-    class Node(object):
+    class Node:
         pass
 
     mapper_registry.map_imperatively(Node, node, properties={

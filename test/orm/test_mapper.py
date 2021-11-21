@@ -167,7 +167,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         from sqlalchemy.orm.base import _is_mapped_class, _is_aliased_class
 
-        class Foo(object):
+        class Foo:
             x = "something"
 
             @property
@@ -206,7 +206,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         from sqlalchemy.orm.base import _entity_descriptor
 
-        class Foo(object):
+        class Foo:
             x = "something"
 
             @property
@@ -386,11 +386,11 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         users, addresses = self.tables.users, self.tables.addresses
 
-        class Foo(object):
+        class Foo:
             def __init__(self):
                 pass
 
-        class Bar(object):
+        class Bar:
             pass
 
         self.mapper(Foo, users)
@@ -406,7 +406,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         """
 
-        class Foo(object):
+        class Foo:
             def __init__(self, id_):
                 self.id = id_
 
@@ -547,7 +547,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_class_hier_only_instrument_once_multiple_configure(self):
         users, addresses = (self.tables.users, self.tables.addresses)
 
-        class A(object):
+        class A:
             pass
 
         class ASub(A):
@@ -556,7 +556,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         class ASubSub(ASub):
             pass
 
-        class B(object):
+        class B:
             pass
 
         from sqlalchemy.testing import mock
@@ -630,7 +630,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         users = self.tables.users
         Address = self.classes.Address
 
-        class MyComposite(object):
+        class MyComposite:
             pass
 
         for constructor, args in [
@@ -899,7 +899,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         assert_calls = []
 
-        class Address(object):
+        class Address:
             def _get_user(self):
                 assert_calls.append("get")
                 return self._user
@@ -941,7 +941,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             Column("parent_id", Integer, ForeignKey("nodes.id")),
         )
 
-        class Node(object):
+        class Node:
             pass
 
         self.mapper(
@@ -1000,7 +1000,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             Column("vendor_id", Integer),
         )
 
-        class Person(object):
+        class Person:
             pass
 
         class Vendor(Person):
@@ -1012,23 +1012,23 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         class Manager(Employee):
             pass
 
-        class Hoho(object):
+        class Hoho:
             pass
 
-        class Lala(object):
+        class Lala:
             pass
 
-        class Fub(object):
+        class Fub:
             pass
 
-        class Frob(object):
+        class Frob:
             pass
 
-        class HasDef(object):
+        class HasDef:
             def name(self):
                 pass
 
-        class Empty(object):
+        class Empty:
             pass
 
         self.mapper(
@@ -1170,7 +1170,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         t.create(connection)
 
-        class A(object):
+        class A:
             pass
 
         self.mapper(A, t, include_properties=["id"])
@@ -1179,7 +1179,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         s.commit()
 
     def test_we_dont_call_bool(self):
-        class NoBoolAllowed(object):
+        class NoBoolAllowed:
             def __bool__(self):
                 raise Exception("nope")
 
@@ -1192,7 +1192,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert s.get(NoBoolAllowed, u1.id) is u1
 
     def test_we_dont_call_eq(self):
-        class NoEqAllowed(object):
+        class NoEqAllowed:
             def __eq__(self, other):
                 raise Exception("nope")
 
@@ -1571,7 +1571,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         class extendedproperty(property):
             attribute = 123
 
-        class User(object):
+        class User:
             def _get_name(self):
                 assert_col.append(("get", self.name))
                 return self.name
@@ -1669,7 +1669,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         # synonym points to non-existent attrbute that hasn't been mapped yet.
         users = self.tables.users
 
-        class User(object):
+        class User:
             def _x(self):
                 return self.id
 
@@ -1691,7 +1691,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         assert hasattr(User.x, "comparator")
 
     def test_synonym_of_non_property_raises(self):
-        class User(object):
+        class User:
             @property
             def x(self):
                 return "hi"
@@ -1756,7 +1756,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         assert_col = []
 
-        class User(object):
+        class User:
             def _get_name(self):
                 assert_col.append(("get", self._name))
                 return self._name
@@ -1886,7 +1886,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         recon = []
 
-        class User(object):
+        class User:
             @reconstructor
             def reconstruct(self):
                 recon.append("go")
@@ -1903,7 +1903,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         recon = []
 
-        class A(object):
+        class A:
             @reconstructor
             def reconstruct(self):
                 assert isinstance(self, A)
@@ -1944,7 +1944,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         recon = []
 
-        class User(object):
+        class User:
             @reconstructor
             def __init__(self):
                 recon.append("go")
@@ -1965,11 +1965,11 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         recon = []
 
-        class recon_obj(object):
+        class recon_obj:
             def __call__(self, obj):
                 recon.append("go")
 
-        class User(object):
+        class User:
             __init__ = reconstructor(recon_obj())
 
         self.mapper(User, users)
@@ -1993,19 +1993,19 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         recon = []
 
-        class recon_obj(object):
+        class recon_obj:
             def __call__(self, obj):
                 recon.append("go")
 
             __sa_reconstructor__ = True
 
-        class recon_meth(object):
+        class recon_meth:
             __func__ = recon_obj()
 
             def __call__(self, *arg, **kw):
                 return self.__func__.__call__(*arg, **kw)
 
-        class User(object):
+        class User:
             __init__ = recon_meth()
 
         self.mapper(User, users)
@@ -2022,7 +2022,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         recon = []
 
-        class A(object):
+        class A:
             @reconstructor
             def __init__(self):
                 assert isinstance(self, A)
@@ -2063,7 +2063,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
         recon = []
 
-        class Base(object):
+        class Base:
             @reconstructor
             def reconstruct(self):
                 recon.append("go")
@@ -2163,7 +2163,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_unmapped_subclass_error_postmap(self):
         users = self.tables.users
 
-        class Base(object):
+        class Base:
             pass
 
         class Sub(Base):
@@ -2186,7 +2186,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_unmapped_subclass_error_premap(self):
         users = self.tables.users
 
-        class Base(object):
+        class Base:
             pass
 
         self.mapper(Base, users)
@@ -2213,7 +2213,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         class OldStyle:
             pass
 
-        class NewStyle(object):
+        class NewStyle:
             pass
 
         class A(NewStyle, OldStyle):
@@ -2277,7 +2277,7 @@ class RequirementsTest(fixtures.MappedTest):
             Column("value", String(10)),
         )
 
-    class _ValueBase(object):
+    class _ValueBase:
         def __init__(self, value="abc", id_=None):
             self.id = id_
             self.value = value
@@ -2456,7 +2456,7 @@ class RequirementsTest(fixtures.MappedTest):
     def test_nonzero_len_recursion(self):
         ht1 = self.tables.ht1
 
-        class H1(object):
+        class H1:
             def __len__(self):
                 return len(self.get_value())
 
@@ -2464,7 +2464,7 @@ class RequirementsTest(fixtures.MappedTest):
                 self.value = "foobar"
                 return self.value
 
-        class H2(object):
+        class H2:
             def __bool__(self):
                 return bool(self.get_value())
 
@@ -2495,7 +2495,7 @@ class IsUserlandTest(fixtures.MappedTest):
         )
 
     def _test(self, value, instancelevel=None):
-        class Foo(object):
+        class Foo:
             someprop = value
 
         m = self.mapper(Foo, self.tables.foo)
@@ -2508,7 +2508,7 @@ class IsUserlandTest(fixtures.MappedTest):
         assert self.tables.foo.c.someprop not in m._columntoproperty
 
     def _test_not(self, value):
-        class Foo(object):
+        class Foo:
             someprop = value
 
         m = self.mapper(Foo, self.tables.foo)
@@ -2632,7 +2632,7 @@ class MagicNamesTest(fixtures.MappedTest):
                 Column(reserved, Integer),
             )
 
-            class T(object):
+            class T:
                 pass
 
             clear_mappers()
@@ -2655,7 +2655,7 @@ class MagicNamesTest(fixtures.MappedTest):
             sa.orm.instrumentation.ClassManager.MANAGER_ATTR,
         ):
 
-            class M(object):
+            class M:
                 pass
 
             clear_mappers()
@@ -2705,10 +2705,10 @@ class DocumentTest(fixtures.TestBase):
             ),
         )
 
-        class Foo(object):
+        class Foo:
             pass
 
-        class Bar(object):
+        class Bar:
             pass
 
         self.mapper(
@@ -2767,7 +2767,7 @@ class ComparatorFactoryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_kwarg_accepted(self):
         users, Address = self.tables.users, self.classes.Address
 
-        class DummyComposite(object):
+        class DummyComposite:
             def __init__(self, x, y):
                 pass
 
@@ -2937,18 +2937,18 @@ class RegistryConfigDisposeTest(fixtures.TestBase):
         ab = bc = True
 
         @reg1.mapped
-        class A(object):
+        class A:
             __tablename__ = "a"
             id = Column(Integer, primary_key=True)
 
         @reg2.mapped
-        class B(object):
+        class B:
             __tablename__ = "b"
             id = Column(Integer, primary_key=True)
             a_id = Column(ForeignKey(A.id))
 
         @reg3.mapped
-        class C(object):
+        class C:
             __tablename__ = "c"
             id = Column(Integer, primary_key=True)
             b_id = Column(ForeignKey(B.id))

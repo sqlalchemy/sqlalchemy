@@ -140,11 +140,11 @@ class DefaultObjectTest(fixtures.TestBase):
         def fn2(x, y, z=3):
             pass
 
-        class fn3(object):
+        class fn3:
             def __init__(self, x, y):
                 pass
 
-        class FN4(object):
+        class FN4:
             def __call__(self, x, y):
                 pass
 
@@ -170,21 +170,21 @@ class DefaultObjectTest(fixtures.TestBase):
 
         fn5 = list
 
-        class fn6a(object):
+        class fn6a:
             def __init__(self, x):
                 eq_(x, "context")
 
-        class fn6b(object):
+        class fn6b:
             def __init__(self, x, y=3):
                 eq_(x, "context")
 
-        class FN7(object):
+        class FN7:
             def __call__(self, x):
                 eq_(x, "context")
 
         fn7 = FN7()
 
-        class FN8(object):
+        class FN8:
             def __call__(self, x, y=3):
                 eq_(x, "context")
 
@@ -396,7 +396,7 @@ class DefaultRoundTripTest(fixtures.TablesTest):
         use_function_defaults = testing.against("postgresql", "mssql")
         is_oracle = testing.against("oracle")
 
-        class MyClass(object):
+        class MyClass:
             @classmethod
             def gen_default(cls, ctx):
                 return "hi"

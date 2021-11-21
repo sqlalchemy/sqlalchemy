@@ -35,7 +35,7 @@ from sqlalchemy.util import WeakSequence
 class WeakSequenceTest(fixtures.TestBase):
     @testing.requires.predictable_gc
     def test_cleanout_elements(self):
-        class Foo(object):
+        class Foo:
             pass
 
         f1, f2, f3 = Foo(), Foo(), Foo()
@@ -49,7 +49,7 @@ class WeakSequenceTest(fixtures.TestBase):
 
     @testing.requires.predictable_gc
     def test_cleanout_appended(self):
-        class Foo(object):
+        class Foo:
             pass
 
         f1, f2, f3 = Foo(), Foo(), Foo()
@@ -273,7 +273,7 @@ class MemoizedAttrTest(fixtures.TestBase):
     def test_memoized_property(self):
         val = [20]
 
-        class Foo(object):
+        class Foo:
             @util.memoized_property
             def bar(self):
                 v = val[0]
@@ -291,7 +291,7 @@ class MemoizedAttrTest(fixtures.TestBase):
     def test_memoized_instancemethod(self):
         val = [20]
 
-        class Foo(object):
+        class Foo:
             @util.memoized_instancemethod
             def bar(self):
                 v = val[0]
@@ -354,7 +354,7 @@ class WrapCallableTest(fixtures.TestBase):
         eq_(c.__doc__, None)
 
     def test_wrapping_update_wrapper_cls(self):
-        class MyFancyDefault(object):
+        class MyFancyDefault:
             """a fancy default"""
 
             def __call__(self):
@@ -368,7 +368,7 @@ class WrapCallableTest(fixtures.TestBase):
         eq_(c.__doc__, "run the fancy default")
 
     def test_wrapping_update_wrapper_cls_noclsdocstring(self):
-        class MyFancyDefault(object):
+        class MyFancyDefault:
             def __call__(self):
                 """run the fancy default"""
                 return 10
@@ -379,7 +379,7 @@ class WrapCallableTest(fixtures.TestBase):
         eq_(c.__doc__, "run the fancy default")
 
     def test_wrapping_update_wrapper_cls_nomethdocstring(self):
-        class MyFancyDefault(object):
+        class MyFancyDefault:
             """a fancy default"""
 
             def __call__(self):
@@ -391,7 +391,7 @@ class WrapCallableTest(fixtures.TestBase):
         eq_(c.__doc__, "a fancy default")
 
     def test_wrapping_update_wrapper_cls_noclsdocstring_nomethdocstring(self):
-        class MyFancyDefault(object):
+        class MyFancyDefault:
             def __call__(self):
                 return 10
 
@@ -1144,7 +1144,7 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
 
 class LRUTest(fixtures.TestBase):
     def test_lru(self):
-        class item(object):
+        class item:
             def __init__(self, id_):
                 self.id = id_
 
@@ -1217,7 +1217,7 @@ class FlattenIteratorTest(fixtures.TestBase):
         assert list(util.flatten_iterator(iter_list)) == ["asdf", "x", "y"]
 
 
-class HashOverride(object):
+class HashOverride:
     def __init__(self, value=None):
         self.value = value
 
@@ -1225,14 +1225,14 @@ class HashOverride(object):
         return hash(self.value)
 
 
-class NoHash(object):
+class NoHash:
     def __init__(self, value=None):
         self.value = value
 
     __hash__ = None
 
 
-class EqOverride(object):
+class EqOverride:
     def __init__(self, value=None):
         self.value = value
 
@@ -1251,7 +1251,7 @@ class EqOverride(object):
             return True
 
 
-class HashEqOverride(object):
+class HashEqOverride:
     def __init__(self, value=None):
         self.value = value
 
@@ -1881,21 +1881,21 @@ class DictlikeIteritemsTest(fixtures.TestBase):
         self._notok(object())
 
     def test_duck_2(self):
-        class duck2(object):
+        class duck2:
             def items(duck):
                 return list(self.baseline)
 
         self._ok(duck2())
 
     def test_duck_4(self):
-        class duck4(object):
+        class duck4:
             def iterkeys(duck):
                 return iter(["a", "b", "c"])
 
         self._notok(duck4())
 
     def test_duck_5(self):
-        class duck5(object):
+        class duck5:
             def keys(duck):
                 return ["a", "b", "c"]
 
@@ -1905,7 +1905,7 @@ class DictlikeIteritemsTest(fixtures.TestBase):
         self._ok(duck5())
 
     def test_duck_6(self):
-        class duck6(object):
+        class duck6:
             def keys(duck):
                 return ["a", "b", "c"]
 
@@ -1914,7 +1914,7 @@ class DictlikeIteritemsTest(fixtures.TestBase):
 
 class DuckTypeCollectionTest(fixtures.TestBase):
     def test_sets(self):
-        class SetLike(object):
+        class SetLike:
             def add(self):
                 pass
 
@@ -1934,7 +1934,7 @@ class DuckTypeCollectionTest(fixtures.TestBase):
 
 class PublicFactoryTest(fixtures.TestBase):
     def _fixture(self):
-        class Thingy(object):
+        class Thingy:
             def __init__(self, value):
                 "make a thingy"
                 self.value = value
@@ -1969,7 +1969,7 @@ class PublicFactoryTest(fixtures.TestBase):
 
 class ArgInspectionTest(fixtures.TestBase):
     def test_get_cls_kwargs(self):
-        class A(object):
+        class A:
             def __init__(self, a):
                 pass
 
@@ -1981,7 +1981,7 @@ class ArgInspectionTest(fixtures.TestBase):
             def __init__(self, a11, **kw):
                 pass
 
-        class B(object):
+        class B:
             def __init__(self, b, **kw):
                 pass
 
@@ -2022,7 +2022,7 @@ class ArgInspectionTest(fixtures.TestBase):
         class CB2A(B2, A):
             pass
 
-        class D(object):
+        class D:
             pass
 
         class BA2(B, A):
@@ -2113,7 +2113,7 @@ class ArgInspectionTest(fixtures.TestBase):
         assert_raises(TypeError, get_callable_argspec, object)
 
     def test_callable_argspec_method(self):
-        class Foo(object):
+        class Foo:
             def foo(self, x, y, **kw):
                 pass
 
@@ -2125,7 +2125,7 @@ class ArgInspectionTest(fixtures.TestBase):
         )
 
     def test_callable_argspec_instance_method_no_self(self):
-        class Foo(object):
+        class Foo:
             def foo(self, x, y, **kw):
                 pass
 
@@ -2135,7 +2135,7 @@ class ArgInspectionTest(fixtures.TestBase):
         )
 
     def test_callable_argspec_unbound_method_no_self(self):
-        class Foo(object):
+        class Foo:
             def foo(self, x, y, **kw):
                 pass
 
@@ -2147,7 +2147,7 @@ class ArgInspectionTest(fixtures.TestBase):
         )
 
     def test_callable_argspec_init(self):
-        class Foo(object):
+        class Foo:
             def __init__(self, x, y):
                 pass
 
@@ -2159,7 +2159,7 @@ class ArgInspectionTest(fixtures.TestBase):
         )
 
     def test_callable_argspec_init_no_self(self):
-        class Foo(object):
+        class Foo:
             def __init__(self, x, y):
                 pass
 
@@ -2169,7 +2169,7 @@ class ArgInspectionTest(fixtures.TestBase):
         )
 
     def test_callable_argspec_call(self):
-        class Foo(object):
+        class Foo:
             def __call__(self, x, y):
                 pass
 
@@ -2181,7 +2181,7 @@ class ArgInspectionTest(fixtures.TestBase):
         )
 
     def test_callable_argspec_call_no_self(self):
-        class Foo(object):
+        class Foo:
             def __call__(self, x, y):
                 pass
 
@@ -2335,7 +2335,7 @@ class SymbolTest(fixtures.TestBase):
         )
 
 
-class _Py3KFixtures(object):
+class _Py3KFixtures:
     def _kw_only_fixture(self):
         pass
 
@@ -2647,18 +2647,18 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
                 parsed = util.format_argspec_init(fn, grouped=grouped)
             eq_(parsed, wanted)
 
-        class Obj(object):
+        class Obj:
             pass
 
         test(Obj.__init__, object_spec)
 
-        class Obj(object):
+        class Obj:
             def __init__(self):
                 pass
 
         test(Obj.__init__, object_spec)
 
-        class Obj(object):
+        class Obj:
             def __init__(slef, a=123):
                 pass
 
@@ -2690,7 +2690,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
 
 class GenericReprTest(fixtures.TestBase):
     def test_all_positional(self):
-        class Foo(object):
+        class Foo:
             def __init__(self, a, b, c):
                 self.a = a
                 self.b = b
@@ -2699,7 +2699,7 @@ class GenericReprTest(fixtures.TestBase):
         eq_(util.generic_repr(Foo(1, 2, 3)), "Foo(1, 2, 3)")
 
     def test_positional_plus_kw(self):
-        class Foo(object):
+        class Foo:
             def __init__(self, a, b, c=5, d=4):
                 self.a = a
                 self.b = b
@@ -2709,7 +2709,7 @@ class GenericReprTest(fixtures.TestBase):
         eq_(util.generic_repr(Foo(1, 2, 3, 6)), "Foo(1, 2, c=3, d=6)")
 
     def test_kw_defaults(self):
-        class Foo(object):
+        class Foo:
             def __init__(self, a=1, b=2, c=3, d=4):
                 self.a = a
                 self.b = b
@@ -2719,7 +2719,7 @@ class GenericReprTest(fixtures.TestBase):
         eq_(util.generic_repr(Foo(1, 5, 3, 7)), "Foo(b=5, d=7)")
 
     def test_multi_kw(self):
-        class Foo(object):
+        class Foo:
             def __init__(self, a, b, c=3, d=4):
                 self.a = a
                 self.b = b
@@ -2746,7 +2746,7 @@ class GenericReprTest(fixtures.TestBase):
         )
 
     def test_multi_kw_repeated(self):
-        class Foo(object):
+        class Foo:
             def __init__(self, a=1, b=2):
                 self.a = a
                 self.b = b
@@ -2762,7 +2762,7 @@ class GenericReprTest(fixtures.TestBase):
         )
 
     def test_discard_vargs(self):
-        class Foo(object):
+        class Foo:
             def __init__(self, a, b, *args):
                 self.a = a
                 self.b = b
@@ -2771,7 +2771,7 @@ class GenericReprTest(fixtures.TestBase):
         eq_(util.generic_repr(Foo(1, 2, 3, 4)), "Foo(1, 2)")
 
     def test_discard_vargs_kwargs(self):
-        class Foo(object):
+        class Foo:
             def __init__(self, a, b, *args, **kw):
                 self.a = a
                 self.b = b
@@ -2780,7 +2780,7 @@ class GenericReprTest(fixtures.TestBase):
         eq_(util.generic_repr(Foo(1, 2, 3, 4, x=7, y=4)), "Foo(1, 2)")
 
     def test_significant_vargs(self):
-        class Foo(object):
+        class Foo:
             def __init__(self, a, b, *args):
                 self.a = a
                 self.b = b
@@ -2789,21 +2789,21 @@ class GenericReprTest(fixtures.TestBase):
         eq_(util.generic_repr(Foo(1, 2, 3, 4)), "Foo(1, 2, 3, 4)")
 
     def test_no_args(self):
-        class Foo(object):
+        class Foo:
             def __init__(self):
                 pass
 
         eq_(util.generic_repr(Foo()), "Foo()")
 
     def test_no_init(self):
-        class Foo(object):
+        class Foo:
             pass
 
         eq_(util.generic_repr(Foo()), "Foo()")
 
 
 class AsInterfaceTest(fixtures.TestBase):
-    class Something(object):
+    class Something:
         def _ignoreme(self):
             pass
 
@@ -2813,11 +2813,11 @@ class AsInterfaceTest(fixtures.TestBase):
         def bar(self):
             pass
 
-    class Partial(object):
+    class Partial:
         def bar(self):
             pass
 
-    class Object(object):
+    class Object:
         pass
 
     def test_no_cls_no_methods(self):
@@ -2931,10 +2931,10 @@ class TestClassHierarchy(fixtures.TestBase):
         eq_(set(util.class_hierarchy(object)), set((object,)))
 
     def test_single(self):
-        class A(object):
+        class A:
             pass
 
-        class B(object):
+        class B:
             pass
 
         eq_(set(util.class_hierarchy(A)), set((A, object)))
@@ -3009,7 +3009,7 @@ class ReraiseTest(fixtures.TestBase):
 
 class TestClassProperty(fixtures.TestBase):
     def test_simple(self):
-        class A(object):
+        class A:
             something = {"foo": 1}
 
         class B(A):
@@ -3269,7 +3269,7 @@ class TestModuleRegistry(fixtures.TestBase):
 
 class MethodOveriddenTest(fixtures.TestBase):
     def test_subclass_overrides_cls_given(self):
-        class Foo(object):
+        class Foo:
             def bar(self):
                 pass
 
@@ -3280,7 +3280,7 @@ class MethodOveriddenTest(fixtures.TestBase):
         is_true(util.method_is_overridden(Bar, Foo.bar))
 
     def test_subclass_overrides(self):
-        class Foo(object):
+        class Foo:
             def bar(self):
                 pass
 
@@ -3291,7 +3291,7 @@ class MethodOveriddenTest(fixtures.TestBase):
         is_true(util.method_is_overridden(Bar(), Foo.bar))
 
     def test_subclass_overrides_skiplevel(self):
-        class Foo(object):
+        class Foo:
             def bar(self):
                 pass
 
@@ -3305,7 +3305,7 @@ class MethodOveriddenTest(fixtures.TestBase):
         is_true(util.method_is_overridden(Bat(), Foo.bar))
 
     def test_subclass_overrides_twolevels(self):
-        class Foo(object):
+        class Foo:
             def bar(self):
                 pass
 
@@ -3319,7 +3319,7 @@ class MethodOveriddenTest(fixtures.TestBase):
         is_true(util.method_is_overridden(Bat(), Foo.bar))
 
     def test_subclass_doesnt_override_cls_given(self):
-        class Foo(object):
+        class Foo:
             def bar(self):
                 pass
 
@@ -3329,7 +3329,7 @@ class MethodOveriddenTest(fixtures.TestBase):
         is_false(util.method_is_overridden(Bar, Foo.bar))
 
     def test_subclass_doesnt_override(self):
-        class Foo(object):
+        class Foo:
             def bar(self):
                 pass
 
@@ -3339,10 +3339,10 @@ class MethodOveriddenTest(fixtures.TestBase):
         is_false(util.method_is_overridden(Bar(), Foo.bar))
 
     def test_subclass_overrides_multi_mro(self):
-        class Base(object):
+        class Base:
             pass
 
-        class Foo(object):
+        class Foo:
             pass
 
         class Bat(Base):

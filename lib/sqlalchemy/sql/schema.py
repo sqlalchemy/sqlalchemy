@@ -2639,7 +2639,7 @@ class ColumnDefault(DefaultGenerator):
         return "ColumnDefault(%r)" % (self.arg,)
 
 
-class IdentityOptions(object):
+class IdentityOptions:
     """Defines options for a named database sequence or an identity column.
 
     .. versionadded:: 1.3.18
@@ -3173,7 +3173,7 @@ class Constraint(DialectKWArgs, SchemaItem):
         raise NotImplementedError()
 
 
-class ColumnCollectionMixin(object):
+class ColumnCollectionMixin:
 
     columns = None
     """A :class:`_expression.ColumnCollection` of :class:`_schema.Column`

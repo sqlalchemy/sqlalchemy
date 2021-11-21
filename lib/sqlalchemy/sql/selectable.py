@@ -228,7 +228,7 @@ class Selectable(ReturnsRows):
         )
 
 
-class HasPrefixes(object):
+class HasPrefixes:
     _prefixes = ()
 
     _has_prefixes_traverse_internals = [
@@ -284,7 +284,7 @@ class HasPrefixes(object):
         )
 
 
-class HasSuffixes(object):
+class HasSuffixes:
     _suffixes = ()
 
     _has_suffixes_traverse_internals = [
@@ -335,7 +335,7 @@ class HasSuffixes(object):
         )
 
 
-class HasHints(object):
+class HasHints:
     _hints = util.immutabledict()
     _statement_hints = ()
 
@@ -1549,7 +1549,7 @@ class Join(roles.DMLTableRole, FromClause):
         return [self] + self.left._from_objects + self.right._from_objects
 
 
-class NoInit(object):
+class NoInit:
     def __init__(self, *arg, **kw):
         raise NotImplementedError(
             "The %s class is not intended to be constructed "
@@ -3360,7 +3360,7 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
         return self.element._from_objects
 
 
-class DeprecatedSelectBaseGenerations(object):
+class DeprecatedSelectBaseGenerations:
     """A collection of methods available on :class:`_sql.Select` and
     :class:`_sql.CompoundSelect`, these are all **deprecated** methods as they
     modify the object in-place.
@@ -4214,7 +4214,7 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         self._bind = bind
 
 
-class DeprecatedSelectGenerations(object):
+class DeprecatedSelectGenerations:
     """A collection of methods available on :class:`_sql.Select`, these
     are all **deprecated** methods as they modify the :class:`_sql.Select`
     object in -place.
@@ -4730,7 +4730,7 @@ class SelectState(util.MemoizedSlots, CompileState):
         return replace_from_obj_index
 
 
-class _SelectFromElements(object):
+class _SelectFromElements:
     def _iterate_from_elements(self):
         # note this does not include elements
         # in _setup_joins or _legacy_setup_joins

@@ -600,7 +600,7 @@ class PickleTest(fixtures.MappedTest):
         pickle.loads(pickle.dumps(screen2))
 
     def test_exceptions(self):
-        class Foo(object):
+        class Foo:
             pass
 
         users = self.tables.users

@@ -596,7 +596,7 @@ class LinkedLambdaElement(StatementLambdaElement):
         return fn(self.parent_lambda._resolved)
 
 
-class AnalyzedCode(object):
+class AnalyzedCode:
     __slots__ = (
         "track_closure_variables",
         "track_bound_values",
@@ -941,7 +941,7 @@ class AnalyzedCode(object):
         )
 
 
-class NonAnalyzedFunction(object):
+class NonAnalyzedFunction:
     __slots__ = ("expr",)
 
     closure_bindparams = None
@@ -955,7 +955,7 @@ class NonAnalyzedFunction(object):
         return self.expr
 
 
-class AnalyzedFunction(object):
+class AnalyzedFunction:
     __slots__ = (
         "analyzed_code",
         "fn",

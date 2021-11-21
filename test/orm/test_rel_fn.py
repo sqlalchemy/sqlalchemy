@@ -24,7 +24,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
 
 
-class _JoinFixtures(object):
+class _JoinFixtures:
     @classmethod
     def setup_test_class(cls):
         m = MetaData()

@@ -51,7 +51,7 @@ class RefCollection(util.MemoizedSlots):
         return weakref.ref(self, registry._collection_gced)
 
 
-class _empty_collection(object):
+class _empty_collection:
     def append(self, element):
         pass
 

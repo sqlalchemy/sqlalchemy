@@ -294,7 +294,7 @@ from ... import util
 from ...connectors.pyodbc import PyODBCConnector
 
 
-class _ms_numeric_pyodbc(object):
+class _ms_numeric_pyodbc:
 
     """Turns Decimals with adjusted() < 0 or > 7 into strings.
 
@@ -366,7 +366,7 @@ class _MSFloat_pyodbc(_ms_numeric_pyodbc, sqltypes.Float):
     pass
 
 
-class _ms_binary_pyodbc(object):
+class _ms_binary_pyodbc:
     """Wraps binary values in dialect-specific Binary wrapper.
     If the value is null, return a pyodbc-specific BinaryNull
     object to prevent pyODBC [and FreeTDS] from defaulting binary
@@ -389,7 +389,7 @@ class _ms_binary_pyodbc(object):
         return process
 
 
-class _ODBCDateTimeBindProcessor(object):
+class _ODBCDateTimeBindProcessor:
     """Add bind processors to handle datetimeoffset behaviors"""
 
     has_tz = False

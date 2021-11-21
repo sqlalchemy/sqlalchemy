@@ -24,7 +24,7 @@ from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
 
 
-class _DynamicFixture(object):
+class _DynamicFixture:
     def _user_address_fixture(self, addresses_args={}):
         users, Address, addresses, User = (
             self.tables.users,
@@ -628,7 +628,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
         )
         item_keywords = self.tables.item_keywords
 
-        class ItemKeyword(object):
+        class ItemKeyword:
             pass
 
         self.mapper_registry.map_imperatively(

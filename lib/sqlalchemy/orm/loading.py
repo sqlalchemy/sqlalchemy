@@ -1304,7 +1304,7 @@ def _decorate_polymorphic_switch(
     return polymorphic_instance
 
 
-class PostLoad(object):
+class PostLoad:
     """Track loaders and states for "post load" operations."""
 
     __slots__ = "loaders", "states", "load_keys"

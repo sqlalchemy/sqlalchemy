@@ -30,7 +30,7 @@ from .inheritance._poly_fixtures import Manager
 from .inheritance._poly_fixtures import Person
 
 
-class _PolymorphicTestBase(object):
+class _PolymorphicTestBase:
     __dialect__ = "default"
 
     def test_any_one(self):

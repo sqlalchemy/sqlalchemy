@@ -3196,7 +3196,7 @@ class MySQLDialect(default.DefaultDialect):
         return rows
 
 
-class _DecodingRow(object):
+class _DecodingRow:
     """Return unicode-decoded values based on type inspection.
 
     Smooth over data type issues (esp. with alpha driver versions) and

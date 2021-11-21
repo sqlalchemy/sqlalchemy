@@ -66,7 +66,7 @@ _notimplemented_ops = set(
 )
 
 
-class EvaluatorCompiler(object):
+class EvaluatorCompiler:
     def __init__(self, target_cls=None):
         self.target_cls = target_cls
 

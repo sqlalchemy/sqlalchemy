@@ -48,7 +48,7 @@ from sqlalchemy.testing.util import gc_collect
 from test.orm import _fixtures
 
 
-class _RemoveListeners(object):
+class _RemoveListeners:
     @testing.fixture(autouse=True)
     def _remove_listeners(self):
         yield
@@ -645,7 +645,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         canary = []
 
-        class A(object):
+        class A:
             pass
 
         class B(A):
@@ -734,7 +734,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
     def test_init_failure_hook(self):
         users = self.tables.users
 
-        class Thing(object):
+        class Thing:
             def __init__(self, **kw):
                 if kw.get("fail"):
                     raise Exception("failure")
@@ -1122,7 +1122,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
     def test_instrument_class_precedes_class_instrumentation(self):
         users = self.tables.users
 
-        class MyClass(object):
+        class MyClass:
             pass
 
         class MySubClass(MyClass):
@@ -1693,7 +1693,7 @@ class DeferredMapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
     def test_isolation_instrument_event(self):
         User = self.classes.User
 
-        class Bar(object):
+        class Bar:
             pass
 
         canary = []
@@ -1710,7 +1710,7 @@ class DeferredMapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
     @testing.requires.predictable_gc
     def test_instrument_event_auto_remove(self):
-        class Bar(object):
+        class Bar:
             pass
 
         dispatch = instrumentation._instrumentation_factory.dispatch
@@ -1858,7 +1858,7 @@ class RemovalTest(_fixtures.FixtureTest):
     def test_unmapped_listen(self):
         users = self.tables.users
 
-        class Foo(object):
+        class Foo:
             pass
 
         fn = Mock()
@@ -1894,7 +1894,7 @@ class RemovalTest(_fixtures.FixtureTest):
 
         fn = Mock()
 
-        class User(object):
+        class User:
             pass
 
         event.listen(User, "load", fn)
@@ -2130,7 +2130,7 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         def my_listener_one(*arg, **kw):
             pass
 
-        class NotASession(object):
+        class NotASession:
             def __call__(self):
                 return fixture_session()
 

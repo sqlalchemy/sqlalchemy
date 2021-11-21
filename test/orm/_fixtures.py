@@ -396,7 +396,7 @@ class FixtureTest(fixtures.MappedTest):
         return CannedResults(self)
 
 
-class CannedResults(object):
+class CannedResults:
     """Built on demand, instances use mappers in effect at time of call."""
 
     def __init__(self, test):

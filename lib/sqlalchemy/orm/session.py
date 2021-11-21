@@ -65,7 +65,7 @@ def _state_session(state):
     return state.session
 
 
-class _SessionClassMethods(object):
+class _SessionClassMethods:
     """Class-level methods for :class:`.Session`, :class:`.sessionmaker`."""
 
     @classmethod

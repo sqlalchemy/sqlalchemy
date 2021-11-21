@@ -778,7 +778,7 @@ class EnumSetTest(
     __dialect__ = mysql.dialect()
     __backend__ = True
 
-    class SomeEnum(object):
+    class SomeEnum:
         # Implements PEP 435 in the minimal fashion needed by SQLAlchemy
         __members__ = OrderedDict()
 

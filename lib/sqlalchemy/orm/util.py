@@ -418,7 +418,7 @@ class ORMAdapter(sql_util.ColumnAdapter):
         return not entity or entity.isa(self.mapper)
 
 
-class AliasedClass(object):
+class AliasedClass:
     r"""Represents an "aliased" form of a mapped class for usage with Query.
 
     The ORM equivalent of a :func:`~sqlalchemy.sql.expression.alias`
@@ -881,7 +881,7 @@ class AliasedInsp(
             return "aliased(%s)" % (self._target.__name__,)
 
 
-class _WrapUserEntity(object):
+class _WrapUserEntity:
     """A wrapper used within the loader_criteria lambda caller so that
     we can bypass declared_attr descriptors on unmapped mixins, which
     normally emit a warning for such use.

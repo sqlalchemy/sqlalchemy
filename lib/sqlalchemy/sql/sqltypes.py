@@ -44,7 +44,7 @@ from ..util import OrderedDict
 from ..util import pickle
 
 
-class _LookupExpressionAdapter(object):
+class _LookupExpressionAdapter:
 
     """Mixin expression adaptations based on lookup tables.
 
@@ -75,7 +75,7 @@ class _LookupExpressionAdapter(object):
     comparator_factory = Comparator
 
 
-class Concatenable(object):
+class Concatenable:
 
     """A mixin that marks a type as supporting 'concatenation',
     typically strings."""
@@ -95,7 +95,7 @@ class Concatenable(object):
     comparator_factory = Comparator
 
 
-class Indexable(object):
+class Indexable:
     """A mixin that marks a type as supporting indexing operations,
     such as array or JSON structures.
 

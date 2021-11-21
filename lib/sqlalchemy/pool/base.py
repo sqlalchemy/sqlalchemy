@@ -25,7 +25,7 @@ reset_commit = util.symbol("reset_commit")
 reset_none = util.symbol("reset_none")
 
 
-class _ConnDialect(object):
+class _ConnDialect:
     """partial implementation of :class:`.Dialect`
     which provides DBAPI connection methods.
 
@@ -332,7 +332,7 @@ class Pool(log.Identified):
         raise NotImplementedError()
 
 
-class _ConnectionRecord(object):
+class _ConnectionRecord:
 
     """Internal object which maintains an individual DBAPI connection
     referenced by a :class:`_pool.Pool`.
@@ -781,7 +781,7 @@ def _finalize_fairy(
 _strong_ref_connection_records = {}
 
 
-class _ConnectionFairy(object):
+class _ConnectionFairy:
 
     """Proxies a DBAPI connection and provides return-on-dereference
     support.

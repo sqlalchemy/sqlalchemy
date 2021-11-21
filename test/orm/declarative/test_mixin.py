@@ -54,7 +54,7 @@ class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
 
 class DeclarativeMixinTest(DeclarativeTestBase):
     def test_simple_wbase(self):
-        class MyMixin(object):
+        class MyMixin:
 
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -79,7 +79,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(obj.foo(), "bar1")
 
     def test_simple_wdecorator(self):
-        class MyMixin(object):
+        class MyMixin:
 
             id = Column(
                 Integer, primary_key=True, test_needs_autoincrement=True
@@ -138,7 +138,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(obj.foo(), "bar1")
 
     def test_unique_column(self):
-        class MyMixin(object):
+        class MyMixin:
 
             id = Column(Integer, primary_key=True)
             value = Column(String, unique=True)
@@ -213,7 +213,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
     def test_mixin_overrides_wbase(self):
         """test a mixin that overrides a column on a superclass."""
 
-        class MixinA(object):
+        class MixinA:
             foo = Column(String(50))
 
         class MixinB(MixinA):
@@ -233,7 +233,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
     def test_mixin_overrides_wdecorator(self):
         """test a mixin that overrides a column on a superclass."""
 
-        class MixinA(object):
+        class MixinA:
             foo = Column(String(50))
 
         class MixinB(MixinA):
@@ -330,10 +330,10 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         reg = registry()
 
-        class B1(object):
+        class B1:
             metadata = m1
 
-        class B2(object):
+        class B2:
             metadata = m2
 
             def fullname(self):
@@ -361,7 +361,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             username = Column(String)
 
         @reg.mapped
-        class BUser(object):
+        class BUser:
             __tablename__ = "user"
 
             id = Column(Integer, primary_key=True)
@@ -427,7 +427,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(MyModel.__table__.name, "mymodel")
 
     def test_classproperty_still_works(self):
-        class MyMixin(object):
+        class MyMixin:
             @classproperty
             def __tablename__(cls):
                 return cls.__name__.lower()
@@ -526,7 +526,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         """
 
-        class MyMixin(object):
+        class MyMixin:
             foo = Column("foo", Integer)
             bar = Column("bar_newname", Integer)
 
@@ -559,7 +559,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             __tablename__ = "person"
             id = Column(Integer, primary_key=True)
 
-        class Mixin(object):
+        class Mixin:
             @declared_attr
             def target_id(cls):
                 return cls.__table__.c.get(
@@ -607,7 +607,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
 
         """
 
-        class MyMixin(object):
+        class MyMixin:
             foo = Column("foo", Integer)
             bar = Column("bar_newname", Integer)
 
@@ -685,7 +685,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
     def test_declare_first_mixin(self):
         canary = mock.Mock()
 
-        class MyMixin(object):
+        class MyMixin:
             @classmethod
             def __declare_first__(cls):
                 canary.declare_first__(cls)
@@ -712,7 +712,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
     def test_declare_first_base(self):
         canary = mock.Mock()
 
-        class MyMixin(object):
+        class MyMixin:
             @classmethod
             def __declare_first__(cls):
                 canary.declare_first__(cls)
@@ -969,7 +969,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
     def test_mapper_args_custom_base(self):
         """test the @declared_attr approach from a custom base."""
 
-        class Base(object):
+        class Base:
             @declared_attr
             def __tablename__(cls):
                 return cls.__name__.lower()
@@ -1087,7 +1087,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         eq_(Joined.__table__.kwargs, {"mysql_engine": "InnoDB"})
 
     def test_col_copy_vs_declared_attr_joined_propagation(self):
-        class Mixin(object):
+        class Mixin:
             a = Column(Integer)
 
             @declared_attr
@@ -1108,7 +1108,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         assert "b" not in B.__table__.c
 
     def test_col_copy_vs_declared_attr_joined_propagation_newname(self):
-        class Mixin(object):
+        class Mixin:
             a = Column("a1", Integer)
 
             @declared_attr
@@ -1129,7 +1129,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         assert "b1" not in B.__table__.c
 
     def test_col_copy_vs_declared_attr_single_propagation(self):
-        class Mixin(object):
+        class Mixin:
             a = Column(Integer)
 
             @declared_attr
@@ -1309,12 +1309,12 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         assert model_col.type.__class__ is Integer
 
     def test_mixin_column_ordering(self):
-        class Foo(object):
+        class Foo:
 
             col1 = Column(Integer)
             col3 = Column(Integer)
 
-        class Bar(object):
+        class Bar:
 
             col2 = Column(Integer)
             col4 = Column(Integer)
@@ -1330,7 +1330,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         )
 
     def test_honor_class_mro_one(self):
-        class HasXMixin(object):
+        class HasXMixin:
             @declared_attr
             def x(self):
                 return Column(Integer)
@@ -1346,7 +1346,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         assert "x" not in Child.__table__.c
 
     def test_honor_class_mro_two(self):
-        class HasXMixin(object):
+        class HasXMixin:
             @declared_attr
             def x(self):
                 return Column(Integer)
@@ -1365,7 +1365,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
         assert C().x() == "hi"
 
     def test_arbitrary_attrs_one(self):
-        class HasMixin(object):
+        class HasMixin:
             @declared_attr
             def some_attr(cls):
                 return cls.__name__ + "SOME ATTR"
@@ -1398,7 +1398,7 @@ class DeclarativeMixinTest(DeclarativeTestBase):
             def __init__(self, filter_, **kw):
                 self.filter = filter_
 
-        class FilterMixin(object):
+        class FilterMixin:
             @declared_attr
             def _filters(cls):
                 return relationship(
@@ -1490,7 +1490,7 @@ class DeclarativeMixinPropertyTest(
     DeclarativeTestBase, testing.AssertsCompiledSQL
 ):
     def test_column_property(self):
-        class MyMixin(object):
+        class MyMixin:
             @declared_attr
             def prop_hoho(cls):
                 return column_property(Column("prop", String(50)))
@@ -1540,7 +1540,7 @@ class DeclarativeMixinPropertyTest(
 
         """
 
-        class MyMixin(object):
+        class MyMixin:
             @declared_attr
             def type_(cls):
                 """this is a document."""
@@ -1566,7 +1566,7 @@ class DeclarativeMixinPropertyTest(
         from sqlalchemy.ext.hybrid import hybrid_property
         from sqlalchemy import inspect
 
-        class Mixin(object):
+        class Mixin:
             @hybrid_property
             def hp1(cls):
                 return 42
@@ -1604,7 +1604,7 @@ class DeclarativeMixinPropertyTest(
     def test_correct_for_proxies_doesnt_impact_synonyms(self):
         from sqlalchemy import inspect
 
-        class Mixin(object):
+        class Mixin:
             @declared_attr
             def data_syn(cls):
                 return synonym("data")
@@ -1645,7 +1645,7 @@ class DeclarativeMixinPropertyTest(
         )
 
     def test_column_in_mapper_args(self):
-        class MyMixin(object):
+        class MyMixin:
             @declared_attr
             def type_(cls):
                 return Column(String(50))
@@ -1663,7 +1663,7 @@ class DeclarativeMixinPropertyTest(
         assert col.table is not None
 
     def test_column_in_mapper_args_used_multiple_times(self):
-        class MyMixin(object):
+        class MyMixin:
 
             version_id = Column(Integer)
             __mapper_args__ = {"version_id_col": version_id}
@@ -1686,7 +1686,7 @@ class DeclarativeMixinPropertyTest(
         )
 
     def test_deferred(self):
-        class MyMixin(object):
+        class MyMixin:
             @declared_attr
             def data(cls):
                 return deferred(Column("data", String(50)))
@@ -1709,7 +1709,7 @@ class DeclarativeMixinPropertyTest(
         assert "data" in d1.__dict__
 
     def _test_relationship(self, usestring):
-        class RefTargetMixin(object):
+        class RefTargetMixin:
             @declared_attr
             def target_id(cls):
                 return Column("target_id", ForeignKey("target.id"))
@@ -1774,7 +1774,7 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
     def test_singleton_behavior_within_decl(self):
         counter = mock.Mock()
 
-        class Mixin(object):
+        class Mixin:
             @declared_attr
             def my_prop(cls):
                 counter(cls)
@@ -1824,7 +1824,7 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
     def test_singleton_gc(self):
         counter = mock.Mock()
 
-        class Mixin(object):
+        class Mixin:
             @declared_attr
             def my_prop(cls):
                 counter(cls.__name__)
@@ -1851,7 +1851,7 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
         )
 
     def test_can_we_access_the_mixin_straight(self):
-        class Mixin(object):
+        class Mixin:
             @declared_attr
             def my_prop(cls):
                 return Column("x", Integer)
@@ -1866,7 +1866,7 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
         )
 
     def test_can_we_access_the_mixin_straight_special_names(self):
-        class Mixin(object):
+        class Mixin:
             @declared_attr
             def __table_args__(cls):
                 return (1, 2, 3)
@@ -1881,7 +1881,7 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
     def test_non_decl_access(self):
         counter = mock.Mock()
 
-        class Mixin(object):
+        class Mixin:
             @declared_attr
             def __tablename__(cls):
                 counter(cls)
@@ -1914,7 +1914,7 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
     def test_property_noncascade(self):
         counter = mock.Mock()
 
-        class Mixin(object):
+        class Mixin:
             @declared_attr
             def my_prop(cls):
                 counter(cls)
@@ -1934,7 +1934,7 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
     def test_property_cascade_mixin(self):
         counter = mock.Mock()
 
-        class Mixin(object):
+        class Mixin:
             @declared_attr.cascading
             def my_prop(cls):
                 counter(cls)
@@ -1954,7 +1954,7 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
     def test_property_cascade_mixin_override(self):
         counter = mock.Mock()
 
-        class Mixin(object):
+        class Mixin:
             @declared_attr.cascading
             def my_prop(cls):
                 counter(cls)
@@ -2000,7 +2000,7 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
         eq_(counter.mock_calls, [mock.call(A), mock.call(B)])
 
     def test_warn_cascading_used_w_tablename(self):
-        class Mixin(object):
+        class Mixin:
             @declared_attr.cascading
             def __tablename__(cls):
                 return "foo"
@@ -2021,7 +2021,7 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
 
         asserted = collections.defaultdict(set)
 
-        class Mixin(object):
+        class Mixin:
             @declared_attr.cascading
             def my_attr(cls):
                 if has_inherited_table(cls):
@@ -2071,7 +2071,7 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
     def test_column_pre_map(self):
         counter = mock.Mock()
 
-        class Mixin(object):
+        class Mixin:
             @declared_attr
             def my_col(cls):
                 counter(cls)
@@ -2092,7 +2092,7 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
 
         counter = mock.Mock()
 
-        class HasAddressCount(object):
+        class HasAddressCount:
             id = Column(Integer, primary_key=True)
 
             @declared_attr
@@ -2168,7 +2168,7 @@ class AbstractTest(DeclarativeTestBase):
 
     def test_implicit_abstract_viadecorator(self):
         @mapper_registry.mapped
-        class A(object):
+        class A:
             __tablename__ = "a"
 
             id = Column(Integer, primary_key=True)

@@ -2870,7 +2870,7 @@ class DeprecatedMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     __dialect__ = "default"
 
     def test_deferred_scalar_loader_name_change(self):
-        class Foo(object):
+        class Foo:
             pass
 
         def myloader(*arg, **kw):
@@ -3108,7 +3108,7 @@ class InstrumentationTest(fixtures.ORMTest):
                     for key, value in dictlike.items():
                         yield value + 5
 
-        class Foo(object):
+        class Foo:
             pass
 
         instrumentation.register_class(Foo)
@@ -3128,7 +3128,7 @@ class InstrumentationTest(fixtures.ORMTest):
             "AttributeEvents"
         ):
 
-            class Base(object):
+            class Base:
                 @collection.iterator
                 def base_iterate(self, x):
                     return "base_iterate"
@@ -3602,7 +3602,7 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_illegal_non_primary_3(self):
         users, addresses = self.tables.users, self.tables.addresses
 
-        class Base(object):
+        class Base:
             pass
 
         class Sub(Base):
@@ -3668,7 +3668,7 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
     def test_illegal_non_primary_3_legacy(self):
         users, addresses = self.tables.users, self.tables.addresses
 
-        class Base(object):
+        class Base:
             pass
 
         class Sub(Base):
@@ -4331,7 +4331,7 @@ class DeclarativeBind(fixtures.TestBase):
         ):
 
             @as_declarative(bind=testing.db)
-            class Base(object):
+            class Base:
                 @declared_attr
                 def __tablename__(cls):
                     return cls.__name__.lower()
@@ -5995,10 +5995,10 @@ class MultiplePathTest(fixtures.MappedTest, AssertsCompiledSQL):
             self.tables.t1,
         )
 
-        class T1(object):
+        class T1:
             pass
 
-        class T2(object):
+        class T2:
             pass
 
         self.mapper_registry.map_imperatively(
@@ -6037,7 +6037,7 @@ class BindSensitiveStringifyTest(fixtures.MappedTest):
         # building a totally separate metadata /mapping here
         # because we need to control if the MetaData is bound or not
 
-        class User(object):
+        class User:
             pass
 
         m = MetaData()
@@ -8369,7 +8369,7 @@ class CollectionCascadesDespiteBackrefTest(fixtures.TestBase):
     def cascade_fixture(self, registry):
         def go(collection_class):
             @registry.mapped
-            class A(object):
+            class A:
                 __tablename__ = "a"
 
                 id = Column(Integer, primary_key=True)
@@ -8378,7 +8378,7 @@ class CollectionCascadesDespiteBackrefTest(fixtures.TestBase):
                 )
 
             @registry.mapped
-            class B(object):
+            class B:
                 __tablename__ = "b_"
                 id = Column(Integer, primary_key=True)
                 a_id = Column(ForeignKey("a.id"))

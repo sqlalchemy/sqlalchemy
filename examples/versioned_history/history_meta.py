@@ -173,7 +173,7 @@ def _history_mapper(local_mapper):
             local_mapper.version_id_col = local_mapper.local_table.c.version
 
 
-class Versioned(object):
+class Versioned:
     use_mapper_versioning = False
     """if True, also assign the version column to be tracked by the mapper"""
 

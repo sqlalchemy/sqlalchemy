@@ -37,7 +37,7 @@ from sqlalchemy.util import ue
 from test.orm import _fixtures
 
 
-class UnitOfWorkTest(object):
+class UnitOfWorkTest:
     pass
 
 
@@ -627,7 +627,7 @@ class ClauseAttributesTest(fixtures.MappedTest):
         eq_(hb.value, False)
 
     def test_clauseelement_accessor(self):
-        class Thing(object):
+        class Thing:
             def __init__(self, value):
                 self.value = value
 
@@ -2191,7 +2191,7 @@ class SaveTest(_fixtures.FixtureTest):
 
         names = []
 
-        class Events(object):
+        class Events:
             def before_insert(self, mapper, connection, instance):
                 self.current_instance = instance
                 names.append(instance.name)
@@ -3496,7 +3496,7 @@ class PartialNullPKTest(fixtures.MappedTest):
 
 
 class EnsurePKSortableTest(fixtures.MappedTest):
-    class SomeEnum(object):
+    class SomeEnum:
         # Implements PEP 435 in the minimal fashion needed by SQLAlchemy
         __members__ = OrderedDict()
 

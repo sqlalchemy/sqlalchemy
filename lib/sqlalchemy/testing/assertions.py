@@ -368,7 +368,7 @@ def _assert_raises(
     return ec.error
 
 
-class _ErrorContainer(object):
+class _ErrorContainer:
     error = None
 
 
@@ -414,7 +414,7 @@ def expect_raises_message(except_cls, msg, check_context=True):
     return _expect_raises(except_cls, msg=msg, check_context=check_context)
 
 
-class AssertsCompiledSQL(object):
+class AssertsCompiledSQL:
     def assert_compile(
         self,
         clause,
@@ -496,14 +496,14 @@ class AssertsCompiledSQL(object):
         if compile_kwargs:
             kw["compile_kwargs"] = compile_kwargs
 
-        class DontAccess(object):
+        class DontAccess:
             def __getattribute__(self, key):
                 raise NotImplementedError(
                     "compiler accessed .statement; use "
                     "compiler.current_executable"
                 )
 
-        class CheckCompilerAccess(object):
+        class CheckCompilerAccess:
             def __init__(self, test_statement):
                 self.test_statement = test_statement
                 self._annotations = {}
@@ -596,7 +596,7 @@ class AssertsCompiledSQL(object):
             )
 
 
-class ComparesTables(object):
+class ComparesTables:
     def assert_tables_equal(self, table, reflected_table, strict_types=False):
         assert len(table.c) == len(reflected_table.c)
         for c, reflected_c in zip(table.c, reflected_table.c):
@@ -640,7 +640,7 @@ class ComparesTables(object):
         )
 
 
-class AssertsExecutionResults(object):
+class AssertsExecutionResults:
     def assert_result(self, result, class_, *objects):
         result = list(result)
         print(repr(result))
