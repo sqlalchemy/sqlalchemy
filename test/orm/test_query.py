@@ -1,3 +1,4 @@
+import collections.abc as collections_abc
 import contextlib
 import functools
 
@@ -82,7 +83,6 @@ from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.types import NullType
 from sqlalchemy.types import TypeDecorator
-from sqlalchemy.util import collections_abc
 from test.orm import _fixtures
 
 

@@ -1,6 +1,7 @@
 # -*- encoding: utf-8
 
 from decimal import Decimal
+from unittest.mock import Mock
 
 from sqlalchemy import Column
 from sqlalchemy import event
@@ -26,7 +27,6 @@ from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
-from sqlalchemy.testing.mock import Mock
 
 
 class ParseConnectTest(fixtures.TestBase):

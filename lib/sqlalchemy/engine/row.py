@@ -8,11 +8,11 @@
 """Define row constructs including :class:`.Row`."""
 
 
+import collections.abc as collections_abc
 import operator
 
 from .. import util
 from ..sql import util as sql_util
-from ..util.compat import collections_abc
 
 MD_INDEX = 0  # integer index in cursor.description
 

@@ -4,9 +4,9 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+from itertools import zip_longest
 
 from .array import ARRAY
-from ... import util
 from ...sql import coercions
 from ...sql import elements
 from ...sql import expression
@@ -237,7 +237,7 @@ class ExcludeConstraint(ColumnCollectionConstraint):
                 name,
                 operator,
             )
-            for (expr, name, operator), colexpr in util.zip_longest(
+            for (expr, name, operator), colexpr in zip_longest(
                 self._render_exprs, self.columns
             )
         ]

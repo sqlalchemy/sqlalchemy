@@ -12,7 +12,6 @@ the functions here are called primarily by Query, Mapper,
 as well as some of the attribute loading strategies.
 
 """
-from __future__ import absolute_import
 
 from . import attributes
 from . import exc as orm_exc

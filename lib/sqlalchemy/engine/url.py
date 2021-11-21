@@ -14,15 +14,17 @@ argument; alternatively, the URL is a public-facing construct which can
 be used directly and is also accepted directly by ``create_engine()``.
 """
 
+import collections.abc as collections_abc
 import re
+from urllib.parse import parse_qsl
+from urllib.parse import quote_plus
+from urllib.parse import unquote
 
 from .interfaces import Dialect
 from .. import exc
 from .. import util
 from ..dialects import plugins
 from ..dialects import registry
-from ..util import collections_abc
-from ..util import compat
 
 
 class URL(
@@ -165,7 +167,7 @@ class URL(
 
     @classmethod
     def _assert_str(cls, v, paramname):
-        if not isinstance(v, compat.string_types):
+        if not isinstance(v, str):
             raise TypeError("%s must be a string" % paramname)
         return v
 
@@ -193,7 +195,7 @@ class URL(
                 )
 
         def _assert_str(v):
-            if not isinstance(v, compat.string_types):
+            if not isinstance(v, str):
                 raise TypeError("Query dictionary keys must be strings")
             return v
 
@@ -308,9 +310,7 @@ class URL(
             :meth:`_engine.URL.update_query_dict`
 
         """  # noqa: E501
-        return self.update_query_pairs(
-            util.parse_qsl(query_string), append=append
-        )
+        return self.update_query_pairs(parse_qsl(query_string), append=append)
 
     def update_query_pairs(self, key_value_pairs, append=False):
         """Return a new :class:`_engine.URL` object with the
@@ -548,7 +548,7 @@ class URL(
             keys = list(self.query)
             keys.sort()
             s += "?" + "&".join(
-                "%s=%s" % (util.quote_plus(k), util.quote_plus(element))
+                "%s=%s" % (quote_plus(k), quote_plus(element))
                 for k in keys
                 for element in util.to_list(self.query[k])
             )
@@ -711,7 +711,7 @@ def make_url(name_or_url):
     existing URL object is passed, just returns the object.
     """
 
-    if isinstance(name_or_url, util.string_types):
+    if isinstance(name_or_url, str):
         return _parse_rfc1738_args(name_or_url)
     else:
         return name_or_url
@@ -744,7 +744,7 @@ def _parse_rfc1738_args(name):
         if components["query"] is not None:
             query = {}
 
-            for key, value in util.parse_qsl(components["query"]):
+            for key, value in parse_qsl(components["query"]):
                 if key in query:
                     query[key] = util.to_list(query[key])
                     query[key].append(value)
@@ -780,15 +780,14 @@ def _rfc_1738_quote(text):
     return re.sub(r"[:@/]", lambda m: "%%%X" % ord(m.group(0)), text)
 
 
-def _rfc_1738_unquote(text):
-    return util.unquote(text)
+_rfc_1738_unquote = unquote
 
 
 def _parse_keyvalue_args(name):
     m = re.match(r"(\w+)://(.*)", name)
     if m is not None:
         (name, args) = m.group(1, 2)
-        opts = dict(util.parse_qsl(args))
+        opts = dict(parse_qsl(args))
         return URL(name, *opts)
     else:
         return None

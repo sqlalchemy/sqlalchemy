@@ -10,8 +10,6 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
-from sqlalchemy.util import u
-from sqlalchemy.util import ue
 
 
 class UnicodeSchemaTest(fixtures.TablesTest):
@@ -23,20 +21,20 @@ class UnicodeSchemaTest(fixtures.TablesTest):
         global t1, t2, t3
 
         t1 = Table(
-            u("unitable1"),
+            "unitable1",
             metadata,
-            Column(u("méil"), Integer, primary_key=True),
-            Column(ue("\u6e2c\u8a66"), Integer),
+            Column("méil", Integer, primary_key=True),
+            Column("\u6e2c\u8a66", Integer),
             test_needs_fk=True,
         )
         t2 = Table(
-            u("Unitéble2"),
+            "Unitéble2",
             metadata,
-            Column(u("méil"), Integer, primary_key=True, key="a"),
+            Column("méil", Integer, primary_key=True, key="a"),
             Column(
-                ue("\u6e2c\u8a66"),
+                "\u6e2c\u8a66",
                 Integer,
-                ForeignKey(u("unitable1.méil")),
+                ForeignKey("unitable1.méil"),
                 key="b",
             ),
             test_needs_fk=True,
@@ -45,55 +43,53 @@ class UnicodeSchemaTest(fixtures.TablesTest):
         # Few DBs support Unicode foreign keys
         if testing.against("sqlite"):
             t3 = Table(
-                ue("\u6e2c\u8a66"),
+                "\u6e2c\u8a66",
                 metadata,
                 Column(
-                    ue("\u6e2c\u8a66_id"),
+                    "\u6e2c\u8a66_id",
                     Integer,
                     primary_key=True,
                     autoincrement=False,
                 ),
                 Column(
-                    ue("unitable1_\u6e2c\u8a66"),
+                    "unitable1_\u6e2c\u8a66",
                     Integer,
-                    ForeignKey(ue("unitable1.\u6e2c\u8a66")),
+                    ForeignKey("unitable1.\u6e2c\u8a66"),
                 ),
+                Column("Unitéble2_b", Integer, ForeignKey("Unitéble2.b")),
                 Column(
-                    u("Unitéble2_b"), Integer, ForeignKey(u("Unitéble2.b"))
-                ),
-                Column(
-                    ue("\u6e2c\u8a66_self"),
+                    "\u6e2c\u8a66_self",
                     Integer,
-                    ForeignKey(ue("\u6e2c\u8a66.\u6e2c\u8a66_id")),
+                    ForeignKey("\u6e2c\u8a66.\u6e2c\u8a66_id"),
                 ),
                 test_needs_fk=True,
             )
         else:
             t3 = Table(
-                ue("\u6e2c\u8a66"),
+                "\u6e2c\u8a66",
                 metadata,
                 Column(
-                    ue("\u6e2c\u8a66_id"),
+                    "\u6e2c\u8a66_id",
                     Integer,
                     primary_key=True,
                     autoincrement=False,
                 ),
-                Column(ue("unitable1_\u6e2c\u8a66"), Integer),
-                Column(u("Unitéble2_b"), Integer),
-                Column(ue("\u6e2c\u8a66_self"), Integer),
+                Column("unitable1_\u6e2c\u8a66", Integer),
+                Column("Unitéble2_b", Integer),
+                Column("\u6e2c\u8a66_self", Integer),
                 test_needs_fk=True,
             )
 
     def test_insert(self, connection):
-        connection.execute(t1.insert(), {u("méil"): 1, ue("\u6e2c\u8a66"): 5})
-        connection.execute(t2.insert(), {u("a"): 1, u("b"): 1})
+        connection.execute(t1.insert(), {"méil": 1, "\u6e2c\u8a66": 5})
+        connection.execute(t2.insert(), {"a": 1, "b": 1})
         connection.execute(
             t3.insert(),
             {
-                ue("\u6e2c\u8a66_id"): 1,
-                ue("unitable1_\u6e2c\u8a66"): 5,
-                u("Unitéble2_b"): 1,
-                ue("\u6e2c\u8a66_self"): 1,
+                "\u6e2c\u8a66_id": 1,
+                "unitable1_\u6e2c\u8a66": 5,
+                "Unitéble2_b": 1,
+                "\u6e2c\u8a66_self": 1,
             },
         )
 
@@ -102,42 +98,42 @@ class UnicodeSchemaTest(fixtures.TablesTest):
         eq_(connection.execute(t3.select()).fetchall(), [(1, 5, 1, 1)])
 
     def test_col_targeting(self, connection):
-        connection.execute(t1.insert(), {u("méil"): 1, ue("\u6e2c\u8a66"): 5})
-        connection.execute(t2.insert(), {u("a"): 1, u("b"): 1})
+        connection.execute(t1.insert(), {"méil": 1, "\u6e2c\u8a66": 5})
+        connection.execute(t2.insert(), {"a": 1, "b": 1})
         connection.execute(
             t3.insert(),
             {
-                ue("\u6e2c\u8a66_id"): 1,
-                ue("unitable1_\u6e2c\u8a66"): 5,
-                u("Unitéble2_b"): 1,
-                ue("\u6e2c\u8a66_self"): 1,
+                "\u6e2c\u8a66_id": 1,
+                "unitable1_\u6e2c\u8a66": 5,
+                "Unitéble2_b": 1,
+                "\u6e2c\u8a66_self": 1,
             },
         )
 
         row = connection.execute(t1.select()).first()
-        eq_(row._mapping[t1.c[u("méil")]], 1)
-        eq_(row._mapping[t1.c[ue("\u6e2c\u8a66")]], 5)
+        eq_(row._mapping[t1.c["méil"]], 1)
+        eq_(row._mapping[t1.c["\u6e2c\u8a66"]], 5)
 
         row = connection.execute(t2.select()).first()
-        eq_(row._mapping[t2.c[u("a")]], 1)
-        eq_(row._mapping[t2.c[u("b")]], 1)
+        eq_(row._mapping[t2.c["a"]], 1)
+        eq_(row._mapping[t2.c["b"]], 1)
 
         row = connection.execute(t3.select()).first()
-        eq_(row._mapping[t3.c[ue("\u6e2c\u8a66_id")]], 1)
-        eq_(row._mapping[t3.c[ue("unitable1_\u6e2c\u8a66")]], 5)
-        eq_(row._mapping[t3.c[u("Unitéble2_b")]], 1)
-        eq_(row._mapping[t3.c[ue("\u6e2c\u8a66_self")]], 1)
+        eq_(row._mapping[t3.c["\u6e2c\u8a66_id"]], 1)
+        eq_(row._mapping[t3.c["unitable1_\u6e2c\u8a66"]], 5)
+        eq_(row._mapping[t3.c["Unitéble2_b"]], 1)
+        eq_(row._mapping[t3.c["\u6e2c\u8a66_self"]], 1)
 
     def test_reflect(self, connection):
-        connection.execute(t1.insert(), {u("méil"): 2, ue("\u6e2c\u8a66"): 7})
-        connection.execute(t2.insert(), {u("a"): 2, u("b"): 2})
+        connection.execute(t1.insert(), {"méil": 2, "\u6e2c\u8a66": 7})
+        connection.execute(t2.insert(), {"a": 2, "b": 2})
         connection.execute(
             t3.insert(),
             {
-                ue("\u6e2c\u8a66_id"): 2,
-                ue("unitable1_\u6e2c\u8a66"): 7,
-                u("Unitéble2_b"): 2,
-                ue("\u6e2c\u8a66_self"): 2,
+                "\u6e2c\u8a66_id": 2,
+                "unitable1_\u6e2c\u8a66": 7,
+                "Unitéble2_b": 2,
+                "\u6e2c\u8a66_self": 2,
             },
         )
 
@@ -146,42 +142,36 @@ class UnicodeSchemaTest(fixtures.TablesTest):
         tt2 = Table(t2.name, meta, autoload_with=connection)
         tt3 = Table(t3.name, meta, autoload_with=connection)
 
-        connection.execute(tt1.insert(), {u("méil"): 1, ue("\u6e2c\u8a66"): 5})
-        connection.execute(tt2.insert(), {u("méil"): 1, ue("\u6e2c\u8a66"): 1})
+        connection.execute(tt1.insert(), {"méil": 1, "\u6e2c\u8a66": 5})
+        connection.execute(tt2.insert(), {"méil": 1, "\u6e2c\u8a66": 1})
         connection.execute(
             tt3.insert(),
             {
-                ue("\u6e2c\u8a66_id"): 1,
-                ue("unitable1_\u6e2c\u8a66"): 5,
-                u("Unitéble2_b"): 1,
-                ue("\u6e2c\u8a66_self"): 1,
+                "\u6e2c\u8a66_id": 1,
+                "unitable1_\u6e2c\u8a66": 5,
+                "Unitéble2_b": 1,
+                "\u6e2c\u8a66_self": 1,
             },
         )
 
         eq_(
-            connection.execute(
-                tt1.select().order_by(desc(u("méil")))
-            ).fetchall(),
+            connection.execute(tt1.select().order_by(desc("méil"))).fetchall(),
             [(2, 7), (1, 5)],
         )
         eq_(
-            connection.execute(
-                tt2.select().order_by(desc(u("méil")))
-            ).fetchall(),
+            connection.execute(tt2.select().order_by(desc("méil"))).fetchall(),
             [(2, 2), (1, 1)],
         )
         eq_(
             connection.execute(
-                tt3.select().order_by(desc(ue("\u6e2c\u8a66_id")))
+                tt3.select().order_by(desc("\u6e2c\u8a66_id"))
             ).fetchall(),
             [(2, 7, 2, 2), (1, 5, 1, 1)],
         )
 
     def test_repr(self):
         meta = MetaData()
-        t = Table(
-            ue("\u6e2c\u8a66"), meta, Column(ue("\u6e2c\u8a66_id"), Integer)
-        )
+        t = Table("\u6e2c\u8a66", meta, Column("\u6e2c\u8a66_id", Integer))
         eq_(
             repr(t),
             (

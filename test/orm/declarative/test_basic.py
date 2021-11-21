@@ -10,7 +10,6 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import UniqueConstraint
-from sqlalchemy import util
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import class_mapper
@@ -46,7 +45,6 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
-from sqlalchemy.util import with_metaclass
 
 
 Base = None
@@ -71,7 +69,7 @@ class DeclarativeTestBase(
         elif self.base_style == "explicit":
             mapper_registry = registry()
 
-            class Base(with_metaclass(DeclarativeMeta)):
+            class Base(metaclass=DeclarativeMeta):
                 __abstract__ = True
                 registry = mapper_registry
                 metadata = mapper_registry.metadata
@@ -252,7 +250,7 @@ class DeclarativeTest(DeclarativeTestBase):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             )
             name = Column("name", String(50))
-            addresses = relationship(util.u("Address"), backref="user")
+            addresses = relationship("Address", backref="user")
 
         class Address(Base, fixtures.ComparableEntity):
             __tablename__ = "addresses"
@@ -288,7 +286,7 @@ class DeclarativeTest(DeclarativeTestBase):
             )
             user = relationship(
                 User,
-                backref=backref("addresses", order_by=util.u("Address.email")),
+                backref=backref("addresses", order_by="Address.email"),
             )
 
         assert Address.user.property.mapper.class_ is User
@@ -534,7 +532,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
         # even though this class has an xyzzy attribute, getattr(cls,"xyzzy")
         # fails
-        class BrokenParent(with_metaclass(BrokenMeta)):
+        class BrokenParent(metaclass=BrokenMeta):
             xyzzy = "magic"
 
         # _as_declarative() inspects obj.__class__.__bases__
@@ -1076,7 +1074,7 @@ class DeclarativeTest(DeclarativeTestBase):
             r"registry is not a sqlalchemy.orm.registry\(\) object",
         ):
 
-            class Base(with_metaclass(DeclarativeMeta)):
+            class Base(metaclass=DeclarativeMeta):
                 metadata = sa.MetaData()
 
     def test_shared_class_registry(self):
@@ -1183,7 +1181,7 @@ class DeclarativeTest(DeclarativeTestBase):
         try:
             hasattr(User.addresses, "property")
         except exc.InvalidRequestError:
-            assert sa.util.compat.py3k
+            assert True
 
         # the exception is preserved.  Remains the
         # same through repeated calls.

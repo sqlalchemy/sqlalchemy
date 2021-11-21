@@ -1615,9 +1615,7 @@ __interfaces = {
         _set_decorators(),
     ),
     # decorators are required for dicts and object collections.
-    dict: ({"iterator": "values"}, _dict_decorators())
-    if util.py3k
-    else ({"iterator": "itervalues"}, _dict_decorators()),
+    dict: ({"iterator": "values"}, _dict_decorators()),
 }
 
 

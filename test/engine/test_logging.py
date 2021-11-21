@@ -10,7 +10,6 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy import testing
-from sqlalchemy import util
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -353,31 +352,17 @@ class LogParamsTest(fixtures.TestBase):
             % (largeparam[0:149], largeparam[-149:]),
         )
 
-        if util.py3k:
-            eq_(
-                self.buf.buffer[5].message,
-                "Row ('%s ... (4702 characters truncated) ... %s',)"
-                % (largeparam[0:149], largeparam[-149:]),
-            )
-        else:
-            eq_(
-                self.buf.buffer[5].message,
-                "Row (u'%s ... (4703 characters truncated) ... %s',)"
-                % (largeparam[0:148], largeparam[-149:]),
-            )
+        eq_(
+            self.buf.buffer[5].message,
+            "Row ('%s ... (4702 characters truncated) ... %s',)"
+            % (largeparam[0:149], largeparam[-149:]),
+        )
 
-        if util.py3k:
-            eq_(
-                repr(row),
-                "('%s ... (4702 characters truncated) ... %s',)"
-                % (largeparam[0:149], largeparam[-149:]),
-            )
-        else:
-            eq_(
-                repr(row),
-                "(u'%s ... (4703 characters truncated) ... %s',)"
-                % (largeparam[0:148], largeparam[-149:]),
-            )
+        eq_(
+            repr(row),
+            "('%s ... (4702 characters truncated) ... %s',)"
+            % (largeparam[0:149], largeparam[-149:]),
+        )
 
     def test_error_large_dict(self):
         assert_raises_message(

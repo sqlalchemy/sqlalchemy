@@ -82,7 +82,7 @@ class CascadeOptions(frozenset):
     )
 
     def __new__(cls, value_list):
-        if isinstance(value_list, util.string_types) or value_list is None:
+        if isinstance(value_list, str) or value_list is None:
             return cls.from_string(value_list)
         values = set(value_list)
         if values.difference(cls._allowed_cascades):
@@ -1645,7 +1645,7 @@ class _ORMJoin(expression.Join):
         # then the "_joined_from_info" concept can go
         left_orm_info = getattr(left, "_joined_from_info", left_info)
         self._joined_from_info = right_info
-        if isinstance(onclause, util.string_types):
+        if isinstance(onclause, str):
             onclause = getattr(left_orm_info.entity, onclause)
         # ####
 
@@ -1870,7 +1870,7 @@ def with_parent(instance, prop, from_entity=None):
       .. versionadded:: 1.2
 
     """
-    if isinstance(prop, util.string_types):
+    if isinstance(prop, str):
         util.warn_deprecated_20(
             "Using strings to indicate relationship names in the ORM "
             "with_parent() function is deprecated and will be removed "

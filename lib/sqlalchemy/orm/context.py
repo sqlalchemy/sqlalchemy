@@ -1434,11 +1434,9 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             aliased_generation = flags["aliased_generation"]
 
             # do a quick inspect to accommodate for a lambda
-            if right is not None and not isinstance(right, util.string_types):
+            if right is not None and not isinstance(right, str):
                 right = inspect(right)
-            if onclause is not None and not isinstance(
-                onclause, util.string_types
-            ):
+            if onclause is not None and not isinstance(onclause, str):
                 onclause = inspect(onclause)
 
             # legacy vvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -1459,9 +1457,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             # legacy ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
             if (
-                isinstance(
-                    right, (interfaces.PropComparator, util.string_types)
-                )
+                isinstance(right, (interfaces.PropComparator, str))
                 and onclause is None
             ):
                 onclause = right
@@ -1481,7 +1477,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             else:
                 of_type = None
 
-            if isinstance(onclause, util.string_types):
+            if isinstance(onclause, str):
                 # string given, e.g. query(Foo).join("bar").
                 # we look to the left entity or what we last joined
                 # towards

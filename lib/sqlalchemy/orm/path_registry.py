@@ -8,6 +8,7 @@
 
 """
 
+from functools import reduce
 from itertools import chain
 import logging
 
@@ -221,7 +222,7 @@ class PathRegistry(HasCacheKey):
 
     @classmethod
     def coerce(cls, raw):
-        return util.reduce(lambda prev, next: prev[next], raw, cls.root)
+        return reduce(lambda prev, next: prev[next], raw, cls.root)
 
     def token(self, token):
         if token.endswith(":" + _WILDCARD_TOKEN):
@@ -232,7 +233,7 @@ class PathRegistry(HasCacheKey):
             raise exc.ArgumentError("invalid token: %s" % token)
 
     def __add__(self, other):
-        return util.reduce(lambda prev, next: prev[next], other.path, self)
+        return reduce(lambda prev, next: prev[next], other.path, self)
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.path)

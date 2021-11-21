@@ -4,8 +4,6 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-from __future__ import with_statement
-
 import contextlib
 import sys
 
@@ -1464,7 +1462,7 @@ class Connection(Connectable):
             raise
         except BaseException as e:
             self._handle_dbapi_exception(
-                e, util.text_type(statement), parameters, None, None
+                e, str(statement), parameters, None, None
             )
             return  # not reached
 
@@ -2518,7 +2516,7 @@ class Engine(ConnectionEventsTarget, log.Identified):
         else:
             yield connection
 
-    @util.contextmanager
+    @contextlib.contextmanager
     def begin(self):
         """Return a context manager delivering a :class:`_engine.Connection`
         with a :class:`.Transaction` established.

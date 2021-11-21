@@ -1,3 +1,5 @@
+from contextlib import nullcontext
+
 from sqlalchemy import and_
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
@@ -10,7 +12,6 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import true
-from sqlalchemy import util
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import Bundle
 from sqlalchemy.orm import joinedload
@@ -1826,7 +1827,7 @@ class SingleFromPolySelectableTest(
 
         with _aliased_join_warning(
             "Engineer->engineer"
-        ) if autoalias else util.nullcontext():
+        ) if autoalias else nullcontext():
             self.assert_compile(
                 q,
                 "SELECT manager.id AS manager_id, employee.id AS employee_id, "
@@ -1891,7 +1892,7 @@ class SingleFromPolySelectableTest(
 
         with _aliased_join_warning(
             "Boss->manager"
-        ) if autoalias else util.nullcontext():
+        ) if autoalias else nullcontext():
             self.assert_compile(
                 q,
                 "SELECT engineer.id AS engineer_id, "

@@ -9,7 +9,6 @@ import re
 
 from .array import ARRAY
 from ... import types as sqltypes
-from ... import util
 from ...sql import functions as sqlfunc
 from ...sql import operators
 
@@ -413,7 +412,7 @@ def _serialize_hstore(val):
     def esc(s, position):
         if position == "value" and s is None:
             return "NULL"
-        elif isinstance(s, util.string_types):
+        elif isinstance(s, str):
             return '"%s"' % s.replace("\\", "\\\\").replace('"', r"\"")
         else:
             raise ValueError(

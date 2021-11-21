@@ -10,7 +10,10 @@
 """
 
 
+import collections.abc as collections_abc
+from functools import reduce
 import itertools
+from itertools import zip_longest
 import operator
 import re
 
@@ -26,7 +29,6 @@ from .. import exc
 from .. import util
 from ..util import HasMemoized
 from ..util import hybridmethod
-
 
 coercions = None
 elements = None
@@ -176,7 +178,7 @@ def _cloned_difference(a, b):
     )
 
 
-class _DialectArgView(util.collections_abc.MutableMapping):
+class _DialectArgView(collections_abc.MutableMapping):
     """A dictionary view of dialect-level arguments in the form
     <dialectname>_<argument_name>.
 
@@ -236,7 +238,7 @@ class _DialectArgView(util.collections_abc.MutableMapping):
         )
 
 
-class _DialectArgDict(util.collections_abc.MutableMapping):
+class _DialectArgDict(collections_abc.MutableMapping):
     """A dictionary view of dialect-level arguments for a specific
     dialect.
 
@@ -615,7 +617,7 @@ class _MetaOptions(type):
         return o1
 
 
-class Options(util.with_metaclass(_MetaOptions)):
+class Options(metaclass=_MetaOptions):
     """A cacheable option dictionary with defaults."""
 
     def __init__(self, **kw):
@@ -638,7 +640,7 @@ class Options(util.with_metaclass(_MetaOptions)):
     def __eq__(self, other):
         # TODO: very inefficient.  This is used only in test suites
         # right now.
-        for a, b in util.zip_longest(self._cache_attrs, other._cache_attrs):
+        for a, b in zip_longest(self._cache_attrs, other._cache_attrs):
             if getattr(self, a) != getattr(other, b):
                 return False
         return True
@@ -1238,7 +1240,7 @@ class ColumnCollection:
         try:
             return self._index[key]
         except KeyError as err:
-            if isinstance(key, util.int_types):
+            if isinstance(key, int):
                 util.raise_(IndexError(key), replace_context=err)
             else:
                 raise
@@ -1251,7 +1253,7 @@ class ColumnCollection:
 
     def __contains__(self, key):
         if key not in self._index:
-            if not isinstance(key, util.string_types):
+            if not isinstance(key, str):
                 raise exc.ArgumentError(
                     "__contains__ requires a string argument"
                 )
@@ -1263,7 +1265,7 @@ class ColumnCollection:
         """Compare this :class:`_expression.ColumnCollection` to another
         based on the names of the keys"""
 
-        for l, r in util.zip_longest(self, other):
+        for l, r in zip_longest(self, other):
             if l is not r:
                 return False
         else:
@@ -1359,7 +1361,7 @@ class ColumnCollection:
     def contains_column(self, col):
         """Checks if a column object exists in this collection"""
         if col not in self._colset:
-            if isinstance(col, util.string_types):
+            if isinstance(col, str):
                 raise exc.ArgumentError(
                     "contains_column cannot be used with string arguments. "
                     "Use ``col_name in table.c`` instead."
@@ -1451,7 +1453,7 @@ class ColumnCollection:
                     # columns that have no reference to the target
                     # column (also occurs with CompoundSelect)
 
-                    col_distance = util.reduce(
+                    col_distance = reduce(
                         operator.add,
                         [
                             sc._annotations.get("weight", 1)
@@ -1459,7 +1461,7 @@ class ColumnCollection:
                             if sc.shares_lineage(column)
                         ],
                     )
-                    c_distance = util.reduce(
+                    c_distance = reduce(
                         operator.add,
                         [
                             sc._annotations.get("weight", 1)

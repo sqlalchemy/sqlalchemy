@@ -34,7 +34,6 @@ from sqlalchemy import text
 from sqlalchemy import tuple_
 from sqlalchemy import types as sqltypes
 from sqlalchemy import UniqueConstraint
-from sqlalchemy import util
 from sqlalchemy.dialects.sqlite import base as sqlite
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.dialects.sqlite import provision
@@ -60,8 +59,6 @@ from sqlalchemy.types import DateTime
 from sqlalchemy.types import Integer
 from sqlalchemy.types import String
 from sqlalchemy.types import Time
-from sqlalchemy.util import u
-from sqlalchemy.util import ue
 
 
 def exec_sql(engine, sql, *args, **kwargs):
@@ -160,7 +157,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
                 ),
             )
             r = conn.execute(func.current_date()).scalar()
-            assert isinstance(r, util.string_types)
+            assert isinstance(r, str)
 
     @testing.provide_metadata
     def test_custom_datetime(self, connection):
@@ -281,9 +278,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
             sqltypes.UnicodeText(),
         ):
             bindproc = t.dialect_impl(dialect).bind_processor(dialect)
-            assert not bindproc or isinstance(
-                bindproc(util.u("some string")), util.text_type
-            )
+            assert not bindproc or isinstance(bindproc("some string"), str)
 
 
 class JSONTest(fixtures.TestBase):
@@ -700,14 +695,14 @@ class DialectTest(
         t = Table(
             "x",
             self.metadata,
-            Column(u("méil"), Integer, primary_key=True),
-            Column(ue("\u6e2c\u8a66"), Integer),
+            Column("méil", Integer, primary_key=True),
+            Column("\u6e2c\u8a66", Integer),
         )
         self.metadata.create_all(testing.db)
 
         result = connection.execute(t.select())
-        assert u("méil") in result.keys()
-        assert ue("\u6e2c\u8a66") in result.keys()
+        assert "méil" in result.keys()
+        assert "\u6e2c\u8a66" in result.keys()
 
     def test_pool_class(self):
         e = create_engine("sqlite+pysqlite://")

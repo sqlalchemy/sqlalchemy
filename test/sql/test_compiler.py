@@ -97,7 +97,6 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
-from sqlalchemy.util import u
 
 table1 = table(
     "mytable",
@@ -5002,10 +5001,10 @@ class DDLTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_reraise_of_column_spec_issue_unicode(self):
         MyType = self._illegal_type_fixture()
-        t1 = Table("t", MetaData(), Column(u("méil"), MyType()))
+        t1 = Table("t", MetaData(), Column("méil", MyType()))
         assert_raises_message(
             exc.CompileError,
-            u(r"\(in table 't', column 'méil'\): Couldn't compile type"),
+            r"\(in table 't', column 'méil'\): Couldn't compile type",
             schema.CreateTable(t1).compile,
         )
 

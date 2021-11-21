@@ -28,8 +28,7 @@ from .. import exc
 
 
 def md5_hex(x):
-    if compat.py3k:
-        x = x.encode("utf-8")
+    x = x.encode("utf-8")
     m = hashlib.md5()
     m.update(x)
     return m.hexdigest()
@@ -72,14 +71,6 @@ class safe_reraise:
                     with_traceback=exc_tb,
                 )
         else:
-            if not compat.py3k and self._exc_info and self._exc_info[1]:
-                # emulate Py3K's behavior of telling us when an exception
-                # occurs in an exception handler.
-                warn(
-                    "An exception has occurred during handling of a "
-                    "previous exception.  The previous exception "
-                    "is:\n %s %s\n" % (self._exc_info[0], self._exc_info[1])
-                )
             self._exc_info = None  # remove potential circular references
             compat.raise_(value, with_traceback=traceback)
 
@@ -99,7 +90,7 @@ def walk_subclasses(cls):
 
 
 def string_or_unprintable(element):
-    if isinstance(element, compat.string_types):
+    if isinstance(element, str):
         return element
     else:
         try:
@@ -148,7 +139,7 @@ def _unique_symbols(used, *bases):
     for base in bases:
         pool = itertools.chain(
             (base,),
-            compat.itertools_imap(lambda i: base + str(i), range(1000)),
+            map(lambda i: base + str(i), range(1000)),
         )
         for sym in pool:
             if sym not in used:
@@ -346,7 +337,7 @@ class PluginLoader:
 
     def register(self, name, modulepath, objname):
         def load():
-            mod = compat.import_(modulepath)
+            mod = __import__(modulepath)
             for token in modulepath.split(".")[1:]:
                 mod = getattr(mod, token)
             return getattr(mod, objname)
@@ -516,7 +507,7 @@ def format_argspec_plus(fn, grouped=True):
        'apply_pos': '(self, a, b, c, **d)'}
 
     """
-    if compat.callable(fn):
+    if callable(fn):
         spec = compat.inspect_getfullargspec(fn)
     else:
         spec = fn
@@ -899,14 +890,8 @@ def class_hierarchy(cls):
             process.append(b)
             hier.add(b)
 
-        if compat.py3k:
-            if c.__module__ == "builtins" or not hasattr(c, "__subclasses__"):
-                continue
-        else:
-            if c.__module__ == "__builtin__" or not hasattr(
-                c, "__subclasses__"
-            ):
-                continue
+        if c.__module__ == "builtins" or not hasattr(c, "__subclasses__"):
+            continue
 
         for s in [_ for _ in c.__subclasses__() if _ not in hier]:
             process.append(s)
@@ -985,7 +970,7 @@ def monkeypatch_proxied_specials(
         )
 
         env = from_instance is not None and {name: from_instance} or {}
-        compat.exec_(py, env)
+        exec(py, env)
         try:
             env[method].__defaults__ = fn.__defaults__
         except AttributeError:
@@ -1073,7 +1058,7 @@ def as_interface(obj, cls=None, methods=None, required=None):
     for method, impl in dictlike_iteritems(obj):
         if method not in interface:
             raise TypeError("%r: unknown in this interface" % method)
-        if not compat.callable(impl):
+        if not callable(impl):
             raise TypeError("%r=%r is not callable" % (method, impl))
         setattr(AnonymousInterface, method, staticmethod(impl))
         found.add(method)
@@ -1230,7 +1215,7 @@ class MemoizedSlots:
 
 # from paste.deploy.converters
 def asbool(obj):
-    if isinstance(obj, compat.string_types):
+    if isinstance(obj, str):
         obj = obj.strip().lower()
         if obj in ["true", "yes", "on", "y", "t", "1"]:
             return True
@@ -1375,14 +1360,8 @@ def assert_arg_type(arg, argtype, name):
 def dictlike_iteritems(dictlike):
     """Return a (key, value) iterator for almost any dict-like object."""
 
-    if compat.py3k:
-        if hasattr(dictlike, "items"):
-            return list(dictlike.items())
-    else:
-        if hasattr(dictlike, "iteritems"):
-            return dictlike.iteritems()
-        elif hasattr(dictlike, "items"):
-            return iter(dictlike.items())
+    if hasattr(dictlike, "items"):
+        return list(dictlike.items())
 
     getter = getattr(dictlike, "__getitem__", getattr(dictlike, "get", None))
     if getter is None:
@@ -1458,7 +1437,7 @@ class hybridmethod:
 class _symbol(int):
     def __new__(self, name, doc=None, canonical=None):
         """Construct a new named symbol."""
-        assert isinstance(name, compat.string_types)
+        assert isinstance(name, str)
         if canonical is None:
             canonical = hash(name)
         v = int.__new__(_symbol, canonical)
@@ -1585,7 +1564,7 @@ def ellipses_string(value, len_=25):
         return value
 
 
-class _hash_limit_string(compat.text_type):
+class _hash_limit_string(str):
     """A string subclass that can only be hashed on a maximum amount
     of unique values.
 

@@ -47,7 +47,7 @@ def cache(fn, self, con, *args, **kw):
         return fn(self, con, *args, **kw)
     key = (
         fn.__name__,
-        tuple(a for a in args if isinstance(a, util.string_types)),
+        tuple(a for a in args if isinstance(a, str)),
         tuple((k, v) for k, v in kw.items() if k != "info_cache"),
     )
     ret = info_cache.get(key)

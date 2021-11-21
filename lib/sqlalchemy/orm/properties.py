@@ -11,7 +11,6 @@ This is a private module which defines the behavior of individual ORM-
 mapped attributes.
 
 """
-from __future__ import absolute_import
 
 from . import attributes
 from .descriptor_props import CompositeProperty

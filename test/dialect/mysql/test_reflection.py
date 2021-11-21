@@ -30,7 +30,6 @@ from sqlalchemy import types
 from sqlalchemy import Unicode
 from sqlalchemy import UnicodeText
 from sqlalchemy import UniqueConstraint
-from sqlalchemy import util
 from sqlalchemy.dialects.mysql import base as mysql
 from sqlalchemy.dialects.mysql import reflection as _reflection
 from sqlalchemy.schema import CreateIndex
@@ -848,8 +847,8 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             },
         ]
         ischema_casing_1 = [
-            (util.u("Test"), util.u("Track"), "TrackID"),
-            (util.u("Test_Schema"), util.u("Track"), "TrackID"),
+            ("Test", "Track", "TrackID"),
+            ("Test_Schema", "Track", "TrackID"),
         ]
         return fkeys_casing_1, ischema_casing_1
 

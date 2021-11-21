@@ -1,4 +1,5 @@
 import inspect as _py_inspect
+import pickle
 
 import sqlalchemy as sa
 from sqlalchemy import event
@@ -40,7 +41,6 @@ from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
-from sqlalchemy.util import pickle
 from sqlalchemy.util.compat import inspect_getfullargspec
 from test.orm import _fixtures
 

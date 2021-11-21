@@ -454,7 +454,7 @@ def bind_values(clause):
 
 
 def _quote_ddl_expr(element):
-    if isinstance(element, util.string_types):
+    if isinstance(element, str):
         element = element.replace("'", "''")
         return "'%s'" % element
     else:

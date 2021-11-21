@@ -1,4 +1,6 @@
 import pickle
+from unittest.mock import call
+from unittest.mock import Mock
 
 from sqlalchemy import event
 from sqlalchemy import exc as sa_exc
@@ -17,8 +19,6 @@ from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import not_in
-from sqlalchemy.testing.mock import call
-from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.util import all_partial_orderings
 from sqlalchemy.testing.util import gc_collect
 

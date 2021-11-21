@@ -5,6 +5,8 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+from . import aiomysql  # noqa
+from . import asyncmy  # noqa
 from . import base  # noqa
 from . import cymysql  # noqa
 from . import mariadbconnector  # noqa
@@ -50,10 +52,6 @@ from .dml import Insert
 from .dml import insert
 from .expression import match
 from ...util import compat
-
-if compat.py3k:
-    from . import aiomysql  # noqa
-    from . import asyncmy  # noqa
 
 # default dialect
 base.dialect = dialect = mysqldb.dialect

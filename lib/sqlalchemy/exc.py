@@ -53,34 +53,27 @@ class HasDescriptionCode:
 class SQLAlchemyError(HasDescriptionCode, Exception):
     """Generic error class."""
 
-    def _message(self, as_unicode=compat.py3k):
+    def _message(self):
         # rules:
         #
-        # 1. under py2k, for __str__ return single string arg as it was
-        # given without converting to unicode.  for __unicode__
-        # do a conversion but check that it's not unicode already just in
-        # case
-        #
-        # 2. under py3k, single arg string will usually be a unicode
+        # 1. single arg string will usually be a unicode
         # object, but since __str__() must return unicode, check for
         # bytestring just in case
         #
-        # 3. for multiple self.args, this is not a case in current
+        # 2. for multiple self.args, this is not a case in current
         # SQLAlchemy though this is happening in at least one known external
         # library, call str() which does a repr().
         #
         if len(self.args) == 1:
             text = self.args[0]
 
-            if as_unicode and isinstance(text, compat.binary_types):
+            if isinstance(text, bytes):
                 text = compat.decode_backslashreplace(text, "utf-8")
             # This is for when the argument is not a string of any sort.
             # Otherwise, converting this exception to string would fail for
             # non-string arguments.
-            elif compat.py3k or not as_unicode:
-                text = str(text)
             else:
-                text = compat.text_type(text)
+                text = str(text)
 
             return text
         else:
@@ -89,8 +82,8 @@ class SQLAlchemyError(HasDescriptionCode, Exception):
             # a repr() of the tuple
             return str(self.args)
 
-    def _sql_message(self, as_unicode):
-        message = self._message(as_unicode)
+    def _sql_message(self):
+        message = self._message()
 
         if self.code:
             message = "%s %s" % (message, self._code_str())
@@ -98,10 +91,7 @@ class SQLAlchemyError(HasDescriptionCode, Exception):
         return message
 
     def __str__(self):
-        return self._sql_message(compat.py3k)
-
-    def __unicode__(self):
-        return self._sql_message(as_unicode=True)
+        return self._sql_message()
 
 
 class ArgumentError(SQLAlchemyError):
@@ -458,17 +448,12 @@ class StatementError(SQLAlchemyError):
         )
 
     @_preloaded.preload_module("sqlalchemy.sql.util")
-    def _sql_message(self, as_unicode):
+    def _sql_message(self):
         util = _preloaded.preloaded.sql_util
 
-        details = [self._message(as_unicode=as_unicode)]
+        details = [self._message()]
         if self.statement:
-            if not as_unicode and not compat.py3k:
-                stmt_detail = "[SQL: %s]" % compat.safe_bytestring(
-                    self.statement
-                )
-            else:
-                stmt_detail = "[SQL: %s]" % self.statement
+            stmt_detail = "[SQL: %s]" % self.statement
             details.append(stmt_detail)
             if self.params:
                 if self.hide_parameters:

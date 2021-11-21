@@ -1,5 +1,8 @@
 """Test event registration and listening."""
 
+from unittest.mock import call
+from unittest.mock import Mock
+
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import testing
@@ -10,8 +13,6 @@ from sqlalchemy.testing import expect_deprecated
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
-from sqlalchemy.testing.mock import call
-from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.util import gc_collect
 
 

@@ -1,3 +1,8 @@
+from contextlib import nullcontext
+import pickle
+from unittest.mock import call
+from unittest.mock import Mock
+
 import sqlalchemy as sa
 from sqlalchemy import and_
 from sqlalchemy import cast
@@ -21,7 +26,6 @@ from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import true
-from sqlalchemy import util
 from sqlalchemy.engine import default
 from sqlalchemy.engine import result_tuple
 from sqlalchemy.orm import aliased
@@ -77,12 +81,9 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
-from sqlalchemy.testing.mock import call
-from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import resolve_lambda
-from sqlalchemy.util import pickle
 from . import _fixtures
 from .inheritance import _poly_fixtures
 from .inheritance._poly_fixtures import _Polymorphic
@@ -433,7 +434,6 @@ class PickleTest(fixtures.MappedTest):
         sess.expunge_all()
         return sess, User, Address, Dingaling
 
-    @testing.requires.non_broken_pickle
     def test_became_bound_options(self):
         sess, User, Address, Dingaling = self._option_test_fixture()
 
@@ -457,7 +457,6 @@ class PickleTest(fixtures.MappedTest):
         u1 = sess.query(User).options(opt).first()
         pickle.loads(pickle.dumps(u1))
 
-    @testing.requires.non_broken_pickle
     @testing.combinations(
         lambda: sa.orm.joinedload("addresses"),
         lambda: sa.orm.defer("name"),
@@ -477,7 +476,6 @@ class PickleTest(fixtures.MappedTest):
             u1 = sess.query(User).options(opt).first()
         pickle.loads(pickle.dumps(u1))
 
-    @testing.requires.non_broken_pickle
     @testing.combinations(
         lambda User: sa.orm.Load(User).joinedload("addresses"),
         lambda User: sa.orm.Load(User).joinedload("addresses").raiseload("*"),
@@ -8413,7 +8411,7 @@ class CollectionCascadesDespiteBackrefTest(fixtures.TestBase):
         b3 = B(key="b3")
 
         if future:
-            dep_ctx = util.nullcontext
+            dep_ctx = nullcontext
         else:
 
             def dep_ctx():

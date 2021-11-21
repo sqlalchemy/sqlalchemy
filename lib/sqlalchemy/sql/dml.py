@@ -9,6 +9,8 @@ Provide :class:`_expression.Insert`, :class:`_expression.Update` and
 :class:`_expression.Delete`.
 
 """
+import collections.abc as collections_abc
+
 from sqlalchemy.types import NullType
 from . import coercions
 from . import roles
@@ -31,7 +33,6 @@ from .selectable import ReturnsRows
 from .visitors import InternalTraversal
 from .. import exc
 from .. import util
-from ..util import collections_abc
 
 
 class DMLState(CompileState):

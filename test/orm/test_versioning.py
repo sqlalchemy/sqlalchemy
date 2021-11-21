@@ -1,5 +1,6 @@
 import contextlib
 import datetime
+from unittest.mock import patch
 import uuid
 
 import sqlalchemy as sa
@@ -29,7 +30,6 @@ from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import fixture_session
-from sqlalchemy.testing.mock import patch
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 

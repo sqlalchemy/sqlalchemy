@@ -1,8 +1,8 @@
 #! coding: utf-8
 
 import copy
-import datetime
 import inspect
+import pickle
 import sys
 
 from sqlalchemy import exc
@@ -28,7 +28,6 @@ from sqlalchemy.util import classproperty
 from sqlalchemy.util import compat
 from sqlalchemy.util import get_callable_argspec
 from sqlalchemy.util import langhelpers
-from sqlalchemy.util import timezone
 from sqlalchemy.util import WeakSequence
 
 
@@ -1741,14 +1740,9 @@ class IdentitySetTest(fixtures.TestBase):
         return super_, sub_, twin1, twin2, unique1, unique2
 
     def _assert_unorderable_types(self, callable_):
-        if util.py3k:
-            assert_raises_message(
-                TypeError, "not supported between instances of", callable_
-            )
-        else:
-            assert_raises_message(
-                TypeError, "cannot compare sets using cmp()", callable_
-            )
+        assert_raises_message(
+            TypeError, "not supported between instances of", callable_
+        )
 
     def test_basic_sanity(self):
         IdentitySet = util.IdentitySet
@@ -2241,13 +2235,13 @@ class SymbolTest(fixtures.TestBase):
         assert sym1 is sym2
 
         # default
-        s = util.pickle.dumps(sym1)
-        util.pickle.loads(s)
+        s = pickle.dumps(sym1)
+        pickle.loads(s)
 
         for protocol in 0, 1, 2:
             print(protocol)
-            serial = util.pickle.dumps(sym1)
-            rt = util.pickle.loads(serial)
+            serial = pickle.dumps(sym1)
+            rt = pickle.loads(serial)
             assert rt is sym1
             assert rt is sym2
 
@@ -2336,33 +2330,15 @@ class SymbolTest(fixtures.TestBase):
 
 
 class _Py3KFixtures:
-    def _kw_only_fixture(self):
+    def _kw_only_fixture(self, a, *, b, c):
         pass
 
-    def _kw_plus_posn_fixture(self):
+    def _kw_plus_posn_fixture(self, a, *args, b, c):
         pass
 
-    def _kw_opt_fixture(self):
+    def _kw_opt_fixture(self, a, *, b, c="c"):
         pass
 
-
-if util.py3k:
-    _locals = {}
-    exec(
-        """
-def _kw_only_fixture(self, a, *, b, c):
-    pass
-
-def _kw_plus_posn_fixture(self, a, *args, b, c):
-    pass
-
-def _kw_opt_fixture(self, a, *, b, c="c"):
-    pass
-""",
-        _locals,
-    )
-    for k in _locals:
-        setattr(_Py3KFixtures, k, _locals[k])
 
 py3k_fixtures = _Py3KFixtures()
 
@@ -3138,100 +3114,43 @@ class BackslashReplaceTest(fixtures.TestBase):
     def test_ascii_to_utf8(self):
         eq_(
             compat.decode_backslashreplace(util.b("hello world"), "utf-8"),
-            util.u("hello world"),
+            "hello world",
         )
 
     def test_utf8_to_utf8(self):
         eq_(
             compat.decode_backslashreplace(
-                util.u("some message méil").encode("utf-8"), "utf-8"
+                "some message méil".encode("utf-8"), "utf-8"
             ),
-            util.u("some message méil"),
+            "some message méil",
         )
 
     def test_latin1_to_utf8(self):
         eq_(
             compat.decode_backslashreplace(
-                util.u("some message méil").encode("latin-1"), "utf-8"
+                "some message méil".encode("latin-1"), "utf-8"
             ),
-            util.u("some message m\\xe9il"),
+            "some message m\\xe9il",
         )
 
         eq_(
             compat.decode_backslashreplace(
-                util.u("some message méil").encode("latin-1"), "latin-1"
+                "some message méil".encode("latin-1"), "latin-1"
             ),
-            util.u("some message méil"),
+            "some message méil",
         )
 
     def test_cp1251_to_utf8(self):
-        message = util.u("some message П").encode("cp1251")
+        message = "some message П".encode("cp1251")
         eq_(message, b"some message \xcf")
         eq_(
             compat.decode_backslashreplace(message, "utf-8"),
-            util.u("some message \\xcf"),
+            "some message \\xcf",
         )
 
         eq_(
             compat.decode_backslashreplace(message, "cp1251"),
-            util.u("some message П"),
-        )
-
-
-class TimezoneTest(fixtures.TestBase):
-    """test the python 2 backport of the "timezone" class.
-
-    Note under python 3, these tests work against the builtin timezone,
-    thereby providing confirmation that the tests are correct.
-
-    """
-
-    @testing.combinations(
-        (datetime.timedelta(0), "UTC"),
-        (datetime.timedelta(hours=5), "UTC+05:00"),
-        (datetime.timedelta(hours=5, minutes=10), "UTC+05:10"),
-        (
-            datetime.timedelta(hours=5, minutes=10, seconds=27),
-            "UTC+05:10:27",
-            testing.requires.granular_timezone,
-        ),
-        (datetime.timedelta(hours=-3, minutes=10), "UTC-02:50"),
-        (
-            datetime.timedelta(
-                hours=5, minutes=10, seconds=27, microseconds=550
-            ),
-            "UTC+05:10:27.000550",
-            testing.requires.granular_timezone,
-        ),
-    )
-    def test_tzname(self, td, expected):
-        eq_(timezone(td).tzname(None), expected)
-
-    def test_utcoffset(self):
-        eq_(
-            timezone(datetime.timedelta(hours=5)).utcoffset(None),
-            datetime.timedelta(hours=5),
-        )
-
-    def test_fromutc(self):
-        tzinfo = timezone(datetime.timedelta(hours=5))
-        dt = datetime.datetime(2017, 10, 5, 12, 55, 38, tzinfo=tzinfo)
-        eq_(
-            dt.astimezone(timezone.utc),
-            datetime.datetime(2017, 10, 5, 7, 55, 38, tzinfo=timezone.utc),
-        )
-
-        # this is the same as hours=-3
-        del_ = datetime.timedelta(days=-1, seconds=75600)
-        eq_(
-            dt.astimezone(timezone(datetime.timedelta(hours=-3))),
-            datetime.datetime(2017, 10, 5, 4, 55, 38, tzinfo=timezone(del_)),
-        )
-
-    def test_repr(self):
-        eq_(
-            repr(timezone(datetime.timedelta(hours=5))),
-            "datetime.timezone(%r)" % (datetime.timedelta(hours=5)),
+            "some message П",
         )
 
 

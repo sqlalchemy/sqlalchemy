@@ -1,6 +1,7 @@
 from copy import deepcopy
 import datetime
 import decimal
+import pickle
 
 from sqlalchemy import ARRAY
 from sqlalchemy import bindparam
@@ -26,7 +27,6 @@ from sqlalchemy import testing
 from sqlalchemy import Text
 from sqlalchemy import true
 from sqlalchemy import types as sqltypes
-from sqlalchemy import util
 from sqlalchemy.dialects import mysql
 from sqlalchemy.dialects import oracle
 from sqlalchemy.dialects import postgresql
@@ -510,7 +510,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         # test pickling
         self.assert_compile(
-            util.pickle.loads(util.pickle.dumps(f1)),
+            pickle.loads(pickle.dumps(f1)),
             "my_func(:my_func_1, :my_func_2, NULL, :my_func_3)",
         )
 
@@ -533,7 +533,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         f1 = func.row_number().over()
 
         self.assert_compile(
-            util.pickle.loads(util.pickle.dumps(f1)),
+            pickle.loads(pickle.dumps(f1)),
             "row_number() OVER ()",
         )
 
@@ -550,7 +550,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         f1 = func.percentile_cont(literal(1)).within_group()
 
         self.assert_compile(
-            util.pickle.loads(util.pickle.dumps(f1)),
+            pickle.loads(pickle.dumps(f1)),
             "percentile_cont(:param_1) WITHIN GROUP (ORDER BY )",
         )
 
@@ -558,7 +558,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             column("q"), column("p").desc()
         )
         self.assert_compile(
-            util.pickle.loads(util.pickle.dumps(f1)),
+            pickle.loads(pickle.dumps(f1)),
             "percentile_cont(:param_1) WITHIN GROUP (ORDER BY q, p DESC)",
         )
 

@@ -28,10 +28,6 @@ as well as support for subclass propagation (e.g. events assigned to
 ``Pool`` vs. ``QueuePool``) are all implemented here.
 
 """
-
-from __future__ import absolute_import
-from __future__ import with_statement
-
 import collections
 from itertools import chain
 import weakref

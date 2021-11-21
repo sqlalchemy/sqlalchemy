@@ -374,12 +374,12 @@ class ARRAY(sqltypes.ARRAY):
             def process(value):
                 if value is None:
                     return value
-                # isinstance(value, util.string_types) is required to handle
+                # isinstance(value, str) is required to handle
                 # the case where a TypeDecorator for and Array of Enum is
                 # used like was required in sa < 1.3.17
                 return super_rp(
                     handle_raw_string(value)
-                    if isinstance(value, util.string_types)
+                    if isinstance(value, str)
                     else value
                 )
 

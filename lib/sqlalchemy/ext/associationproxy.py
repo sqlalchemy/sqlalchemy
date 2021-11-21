@@ -1093,14 +1093,11 @@ class _AssociationList(_AssociationCollection):
         col.append(item)
 
     def count(self, value):
-        return sum(
-            [
-                1
-                for _ in util.itertools_filter(
-                    lambda v: v == value, iter(self)
-                )
-            ]
-        )
+        count = 0
+        for v in self:
+            if v == value:
+                count += 1
+        return count
 
     def extend(self, values):
         for v in values:

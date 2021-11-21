@@ -1,3 +1,5 @@
+from unittest.mock import Mock
+
 import sqlalchemy as sa
 from sqlalchemy import delete
 from sqlalchemy import ForeignKey
@@ -23,7 +25,6 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.fixtures import fixture_session
-from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from test.orm import _fixtures

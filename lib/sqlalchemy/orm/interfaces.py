@@ -16,8 +16,6 @@ are exposed when inspecting mappings.
 
 """
 
-from __future__ import absolute_import
-
 import collections
 
 from . import exc as orm_exc

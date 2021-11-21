@@ -4,10 +4,9 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-from __future__ import absolute_import
+import collections.abc as collections_abc
 
 from ... import types as sqltypes
-from ... import util
 from ...sql import operators
 
 
@@ -71,8 +70,8 @@ class JSONPathType(sqltypes.JSON.JSONPathType):
         super_proc = self.string_bind_processor(dialect)
 
         def process(value):
-            assert isinstance(value, util.collections_abc.Sequence)
-            tokens = [util.text_type(elem) for elem in value]
+            assert isinstance(value, collections_abc.Sequence)
+            tokens = [str(elem) for elem in value]
             value = "{%s}" % (", ".join(tokens))
             if super_proc:
                 value = super_proc(value)
@@ -84,8 +83,8 @@ class JSONPathType(sqltypes.JSON.JSONPathType):
         super_proc = self.string_literal_processor(dialect)
 
         def process(value):
-            assert isinstance(value, util.collections_abc.Sequence)
-            tokens = [util.text_type(elem) for elem in value]
+            assert isinstance(value, collections_abc.Sequence)
+            tokens = [str(elem) for elem in value]
             value = "{%s}" % (", ".join(tokens))
             if super_proc:
                 value = super_proc(value)

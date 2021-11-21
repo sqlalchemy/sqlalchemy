@@ -1,4 +1,6 @@
 import time
+from unittest.mock import call
+from unittest.mock import Mock
 
 import sqlalchemy as tsa
 from sqlalchemy import create_engine
@@ -26,8 +28,6 @@ from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.engines import testing_engine
-from sqlalchemy.testing.mock import call
-from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect

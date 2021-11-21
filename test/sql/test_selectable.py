@@ -1,4 +1,6 @@
 """Test various algorithmic properties of selectables."""
+from itertools import zip_longest
+
 from sqlalchemy import and_
 from sqlalchemy import bindparam
 from sqlalchemy import Boolean
@@ -627,7 +629,7 @@ class SelectableTest(
         """tests for #6808"""
         s1 = select(*cols_expr).select_from(*select_from)
 
-        for ff, efp in util.zip_longest(s1.get_final_froms(), exp_final_froms):
+        for ff, efp in zip_longest(s1.get_final_froms(), exp_final_froms):
             assert ff.compare(efp)
 
         eq_(s1.columns_clause_froms, exp_cc_froms)

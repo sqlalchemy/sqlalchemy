@@ -1324,7 +1324,7 @@ class SQLiteCompiler(compiler.SQLCompiler):
             target_text = "(%s)" % ", ".join(
                 (
                     self.preparer.quote(c)
-                    if isinstance(c, util.string_types)
+                    if isinstance(c, str)
                     else self.process(c, include_table=False, use_schema=False)
                 )
                 for c in clause.inferred_target_elements
@@ -1401,7 +1401,7 @@ class SQLiteCompiler(compiler.SQLCompiler):
             for k, v in set_parameters.items():
                 key_text = (
                     self.preparer.quote(k)
-                    if isinstance(k, util.string_types)
+                    if isinstance(k, str)
                     else self.process(k, use_schema=False)
                 )
                 value_text = self.process(
@@ -2110,7 +2110,7 @@ class SQLiteDialect(default.DefaultDialect):
         coltype = self._resolve_type_affinity(type_)
 
         if default is not None:
-            default = util.text_type(default)
+            default = str(default)
 
         colspec = {
             "name": name,

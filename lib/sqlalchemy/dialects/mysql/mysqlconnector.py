@@ -32,36 +32,17 @@ from ... import util
 
 class MySQLCompiler_mysqlconnector(MySQLCompiler):
     def visit_mod_binary(self, binary, operator, **kw):
-        if self.dialect._mysqlconnector_double_percents:
-            return (
-                self.process(binary.left, **kw)
-                + " %% "
-                + self.process(binary.right, **kw)
-            )
-        else:
-            return (
-                self.process(binary.left, **kw)
-                + " % "
-                + self.process(binary.right, **kw)
-            )
-
-    def post_process_text(self, text):
-        if self.dialect._mysqlconnector_double_percents:
-            return text.replace("%", "%%")
-        else:
-            return text
-
-    def escape_literal_column(self, text):
-        if self.dialect._mysqlconnector_double_percents:
-            return text.replace("%", "%%")
-        else:
-            return text
+        return (
+            self.process(binary.left, **kw)
+            + " % "
+            + self.process(binary.right, **kw)
+        )
 
 
 class MySQLIdentifierPreparer_mysqlconnector(MySQLIdentifierPreparer):
     @property
     def _double_percents(self):
-        return self.dialect._mysqlconnector_double_percents
+        return False
 
     @_double_percents.setter
     def _double_percents(self, value):
@@ -69,10 +50,7 @@ class MySQLIdentifierPreparer_mysqlconnector(MySQLIdentifierPreparer):
 
     def _escape_identifier(self, value):
         value = value.replace(self.escape_quote, self.escape_to_quote)
-        if self.dialect._mysqlconnector_double_percents:
-            return value.replace("%", "%%")
-        else:
-            return value
+        return value
 
 
 class _myconnpyBIT(BIT):
@@ -162,10 +140,6 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
             m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", self.dbapi.__version__)
             if m:
                 return tuple(int(x) for x in m.group(1, 2, 3) if x is not None)
-
-    @util.memoized_property
-    def _mysqlconnector_double_percents(self):
-        return not util.py3k and self._mysqlconnector_version_info < (2, 0)
 
     def _detect_charset(self, connection):
         return connection.connection.charset

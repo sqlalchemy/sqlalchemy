@@ -36,7 +36,6 @@ from sqlalchemy.testing import not_in
 from sqlalchemy.testing import skip
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
-from sqlalchemy.util import ue
 
 
 class ReflectionTest(fixtures.TestBase, ComparesTables):
@@ -1515,33 +1514,33 @@ class UnicodeReflectionTest(fixtures.TablesTest):
         no_has_table = [
             (
                 "no_has_table_1",
-                ue("col_Unit\u00e9ble"),
-                ue("ix_Unit\u00e9ble"),
+                "col_Unit\u00e9ble",
+                "ix_Unit\u00e9ble",
             ),
-            ("no_has_table_2", ue("col_\u6e2c\u8a66"), ue("ix_\u6e2c\u8a66")),
+            ("no_has_table_2", "col_\u6e2c\u8a66", "ix_\u6e2c\u8a66"),
         ]
         no_case_sensitivity = [
             (
-                ue("\u6e2c\u8a66"),
-                ue("col_\u6e2c\u8a66"),
-                ue("ix_\u6e2c\u8a66"),
+                "\u6e2c\u8a66",
+                "col_\u6e2c\u8a66",
+                "ix_\u6e2c\u8a66",
             ),
             (
-                ue("unit\u00e9ble"),
-                ue("col_unit\u00e9ble"),
-                ue("ix_unit\u00e9ble"),
+                "unit\u00e9ble",
+                "col_unit\u00e9ble",
+                "ix_unit\u00e9ble",
             ),
         ]
         full = [
             (
-                ue("Unit\u00e9ble"),
-                ue("col_Unit\u00e9ble"),
-                ue("ix_Unit\u00e9ble"),
+                "Unit\u00e9ble",
+                "col_Unit\u00e9ble",
+                "ix_Unit\u00e9ble",
             ),
             (
-                ue("\u6e2c\u8a66"),
-                ue("col_\u6e2c\u8a66"),
-                ue("ix_\u6e2c\u8a66"),
+                "\u6e2c\u8a66",
+                "col_\u6e2c\u8a66",
+                "ix_\u6e2c\u8a66",
             ),
         ]
 

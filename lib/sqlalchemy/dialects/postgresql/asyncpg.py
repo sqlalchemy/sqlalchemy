@@ -99,6 +99,7 @@ To disable the prepared statement cache, use a value of zero::
 """  # noqa
 
 import collections
+import collections.abc as collections_abc
 import decimal
 import json as _py_json
 import re
@@ -216,8 +217,8 @@ class AsyncpgJSONStrIndexType(sqltypes.JSON.JSONStrIndexType):
 class AsyncpgJSONPathType(json.JSONPathType):
     def bind_processor(self, dialect):
         def process(value):
-            assert isinstance(value, util.collections_abc.Sequence)
-            tokens = [util.text_type(elem) for elem in value]
+            assert isinstance(value, collections_abc.Sequence)
+            tokens = [str(elem) for elem in value]
             return tokens
 
         return process

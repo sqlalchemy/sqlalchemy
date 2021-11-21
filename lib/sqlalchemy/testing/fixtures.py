@@ -429,7 +429,7 @@ class TablesTest(TestBase):
                     try:
                         conn.execute(table.delete())
                     except sa.exc.DBAPIError as ex:
-                        util.print_(
+                        print(
                             ("Error emptying table %s: %r" % (table, ex)),
                             file=sys.stderr,
                         )
@@ -483,7 +483,7 @@ class TablesTest(TestBase):
         for table, data in cls.fixtures().items():
             if len(data) < 2:
                 continue
-            if isinstance(table, util.string_types):
+            if isinstance(table, str):
                 table = cls.tables[table]
             headers[table] = data[0]
             rows[table] = data[1:]
@@ -654,7 +654,7 @@ class MappedTest(TablesTest, assertions.AssertsExecutionResults):
                 cls_registry[classname] = cls
                 type.__init__(cls, classname, bases, dict_)
 
-        class _Base(util.with_metaclass(FindFixture, object)):
+        class _Base(metaclass=FindFixture):
             pass
 
         class Basic(BasicEntity, _Base):

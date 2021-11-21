@@ -8,8 +8,6 @@
 """Public API functions for the event system.
 
 """
-from __future__ import absolute_import
-
 from .base import _registrars
 from .registry import _EventKey
 from .. import exc

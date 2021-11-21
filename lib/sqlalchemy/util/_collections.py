@@ -6,20 +6,13 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """Collection classes and helpers."""
-
-from __future__ import absolute_import
-
+import collections.abc as collections_abc
+from itertools import filterfalse
 import operator
 import types
 import weakref
 
-from .compat import binary_types
-from .compat import collections_abc
-from .compat import itertools_filterfalse
-from .compat import py37
-from .compat import string_types
 from .compat import threading
-
 
 EMPTY_SET = frozenset()
 
@@ -245,107 +238,8 @@ def _ordered_dictionary_sort(d, key=None):
     d.update(items)
 
 
-if py37:
-    OrderedDict = dict
-    sort_dictionary = _ordered_dictionary_sort
-
-else:
-    # prevent sort_dictionary from being used against a plain dictionary
-    # for Python < 3.7
-
-    def sort_dictionary(d, key=None):
-        """Sort an OrderedDict in place."""
-
-        d._ordered_dictionary_sort(key=key)
-
-    class OrderedDict(dict):
-        """Dictionary that maintains insertion order.
-
-        Superseded by Python dict as of Python 3.7
-
-        """
-
-        __slots__ = ("_list",)
-
-        def _ordered_dictionary_sort(self, key=None):
-            _ordered_dictionary_sort(self, key=key)
-
-        def __reduce__(self):
-            return OrderedDict, (self.items(),)
-
-        def __init__(self, ____sequence=None, **kwargs):
-            self._list = []
-            if ____sequence is None:
-                if kwargs:
-                    self.update(**kwargs)
-            else:
-                self.update(____sequence, **kwargs)
-
-        def clear(self):
-            self._list = []
-            dict.clear(self)
-
-        def copy(self):
-            return self.__copy__()
-
-        def __copy__(self):
-            return OrderedDict(self)
-
-        def update(self, ____sequence=None, **kwargs):
-            if ____sequence is not None:
-                if hasattr(____sequence, "keys"):
-                    for key in ____sequence.keys():
-                        self.__setitem__(key, ____sequence[key])
-                else:
-                    for key, value in ____sequence:
-                        self[key] = value
-            if kwargs:
-                self.update(kwargs)
-
-        def setdefault(self, key, value):
-            if key not in self:
-                self.__setitem__(key, value)
-                return value
-            else:
-                return self.__getitem__(key)
-
-        def __iter__(self):
-            return iter(self._list)
-
-        def keys(self):
-            return list(self)
-
-        def values(self):
-            return [self[key] for key in self._list]
-
-        def items(self):
-            return [(key, self[key]) for key in self._list]
-
-        def __setitem__(self, key, obj):
-            if key not in self:
-                try:
-                    self._list.append(key)
-                except AttributeError:
-                    # work around Python pickle loads() with
-                    # dict subclass (seems to ignore __setstate__?)
-                    self._list = [key]
-            dict.__setitem__(self, key, obj)
-
-        def __delitem__(self, key):
-            dict.__delitem__(self, key)
-            self._list.remove(key)
-
-        def pop(self, key, *default):
-            present = key in self
-            value = dict.pop(self, key, *default)
-            if present:
-                self._list.remove(key)
-            return value
-
-        def popitem(self):
-            item = dict.popitem(self)
-            self._list.remove(item[0])
-            return item
+OrderedDict = dict
+sort_dictionary = _ordered_dictionary_sort
 
 
 class OrderedSet(set):
@@ -515,7 +409,7 @@ class IdentitySet:
 
         if len(self) > len(other):
             return False
-        for m in itertools_filterfalse(
+        for m in filterfalse(
             other._members.__contains__, iter(self._members.keys())
         ):
             return False
@@ -540,7 +434,7 @@ class IdentitySet:
         if len(self) < len(other):
             return False
 
-        for m in itertools_filterfalse(
+        for m in filterfalse(
             self._members.__contains__, iter(other._members.keys())
         ):
             return False
@@ -818,7 +712,7 @@ def to_list(x, default=None):
     if x is None:
         return default
     if not isinstance(x, collections_abc.Iterable) or isinstance(
-        x, string_types + binary_types
+        x, (str, bytes)
     ):
         return [x]
     elif isinstance(x, list):

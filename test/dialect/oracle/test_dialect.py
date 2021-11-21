@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import re
+from unittest.mock import Mock
 
 from sqlalchemy import bindparam
 from sqlalchemy import Computed
@@ -30,12 +31,9 @@ from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
-from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.suite import test_select
-from sqlalchemy.util import u
-from sqlalchemy.util import ue
 
 
 class DialectTest(fixtures.TestBase):
@@ -242,7 +240,7 @@ class EncodingErrorsTest(fixtures.TestBase):
     )
 
     def _assert_errorhandler(self, outconverter, has_errorhandler):
-        data = ue("\uee2c\u9a66")  # this is u"\uee2c\u9a66"
+        data = "\uee2c\u9a66"  # this is u"\uee2c\u9a66"
 
         utf8_w_errors = data.encode("utf-16")
 
@@ -757,25 +755,25 @@ class UnicodeSchemaTest(fixtures.TestBase):
         )
         metadata.create_all(connection)
 
-        connection.execute(table.insert(), {"_underscorecolumn": u("’é")})
+        connection.execute(table.insert(), {"_underscorecolumn": "’é"})
         result = connection.execute(
-            table.select().where(table.c._underscorecolumn == u("’é"))
+            table.select().where(table.c._underscorecolumn == "’é")
         ).scalar()
-        eq_(result, u("’é"))
+        eq_(result, "’é")
 
     def test_quoted_column_unicode(self, metadata, connection):
         table = Table(
             "atable",
             metadata,
-            Column(u("méil"), Unicode(255), primary_key=True),
+            Column("méil", Unicode(255), primary_key=True),
         )
         metadata.create_all(connection)
 
-        connection.execute(table.insert(), {u("méil"): u("’é")})
+        connection.execute(table.insert(), {"méil": "’é"})
         result = connection.execute(
-            table.select().where(table.c[u("méil")] == u("’é"))
+            table.select().where(table.c["méil"] == "’é")
         ).scalar()
-        eq_(result, u("’é"))
+        eq_(result, "’é")
 
 
 class CXOracleConnectArgsTest(fixtures.TestBase):

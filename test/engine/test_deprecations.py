@@ -1,4 +1,5 @@
 import re
+from unittest.mock import Mock
 
 import sqlalchemy as tsa
 import sqlalchemy as sa
@@ -36,7 +37,6 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.engines import testing_engine
-from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 

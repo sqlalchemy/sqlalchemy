@@ -1,3 +1,4 @@
+import pickle
 import re
 
 from sqlalchemy import and_
@@ -44,7 +45,6 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing.schema import eq_clause_element
-from sqlalchemy.util import pickle
 
 A = B = t1 = t2 = t3 = table1 = table2 = table3 = table4 = None
 

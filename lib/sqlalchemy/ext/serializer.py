@@ -53,6 +53,8 @@ needed for:
 
 """
 
+from io import BytesIO
+import pickle
 import re
 
 from .. import Column
@@ -64,9 +66,6 @@ from ..orm.mapper import Mapper
 from ..orm.session import Session
 from ..util import b64decode
 from ..util import b64encode
-from ..util import byte_buffer
-from ..util import pickle
-from ..util import text_type
 
 
 __all__ = ["Serializer", "Deserializer", "dumps", "loads"]
@@ -92,11 +91,9 @@ def Serializer(*args, **kw):
                     pickle.dumps(obj._annotations["parententity"].class_)
                 )
             else:
-                id_ = "table:" + text_type(obj.key)
+                id_ = f"table:{obj.key}"
         elif isinstance(obj, Column) and isinstance(obj.table, Table):
-            id_ = (
-                "column:" + text_type(obj.table.key) + ":" + text_type(obj.key)
-            )
+            id_ = f"column:{obj.table.key}:{obj.key}"
         elif isinstance(obj, Session):
             id_ = "session:"
         elif isinstance(obj, Engine):
@@ -129,7 +126,7 @@ def Deserializer(file, metadata=None, scoped_session=None, engine=None):
             return None
 
     def persistent_load(id_):
-        m = our_ids.match(text_type(id_))
+        m = our_ids.match(str(id_))
         if not m:
             return None
         else:
@@ -165,13 +162,13 @@ def Deserializer(file, metadata=None, scoped_session=None, engine=None):
 
 
 def dumps(obj, protocol=pickle.HIGHEST_PROTOCOL):
-    buf = byte_buffer()
+    buf = BytesIO()
     pickler = Serializer(buf, protocol)
     pickler.dump(obj)
     return buf.getvalue()
 
 
 def loads(data, metadata=None, scoped_session=None, engine=None):
-    buf = byte_buffer(data)
+    buf = BytesIO(data)
     unpickler = Deserializer(buf, metadata, scoped_session, engine)
     return unpickler.load()

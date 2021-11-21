@@ -6,6 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 import asyncio
+from contextvars import copy_context as _copy_context
 import sys
 from typing import Any
 from typing import Callable
@@ -13,22 +14,17 @@ from typing import Coroutine
 
 import greenlet
 
-from . import compat
 from .langhelpers import memoized_property
 from .. import exc
 
-if compat.py37:
-    try:
-        from contextvars import copy_context as _copy_context
+try:
 
-        # If greenlet.gr_context is present in current version of greenlet,
-        # it will be set with a copy of the current context on creation.
-        # Refs: https://github.com/python-greenlet/greenlet/pull/198
-        getattr(greenlet.greenlet, "gr_context")
-    except (ImportError, AttributeError):
-        _copy_context = None
-else:
-    _copy_context = None
+    # If greenlet.gr_context is present in current version of greenlet,
+    # it will be set with a copy of the current context on creation.
+    # Refs: https://github.com/python-greenlet/greenlet/pull/198
+    getattr(greenlet.greenlet, "gr_context")
+except (ImportError, AttributeError):
+    _copy_context = None  # noqa
 
 
 def is_exit_exception(e):
@@ -193,10 +189,7 @@ def get_event_loop():
     Python 3.10 deprecates get_event_loop() as a standalone.
 
     """
-    if compat.py37:
-        try:
-            return asyncio.get_running_loop()
-        except RuntimeError:
-            return asyncio.get_event_loop_policy().get_event_loop()
-    else:
-        return asyncio.get_event_loop()
+    try:
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.get_event_loop_policy().get_event_loop()

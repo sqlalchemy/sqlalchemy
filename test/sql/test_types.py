@@ -275,13 +275,13 @@ class AdaptTest(fixtures.TestBase):
         eq_(types.Integer().python_type, int)
         eq_(types.Numeric().python_type, decimal.Decimal)
         eq_(types.Numeric(asdecimal=False).python_type, float)
-        eq_(types.LargeBinary().python_type, util.binary_type)
+        eq_(types.LargeBinary().python_type, bytes)
         eq_(types.Float().python_type, float)
         eq_(types.Interval().python_type, datetime.timedelta)
         eq_(types.Date().python_type, datetime.date)
         eq_(types.DateTime().python_type, datetime.datetime)
         eq_(types.String().python_type, str)
-        eq_(types.Unicode().python_type, util.text_type)
+        eq_(types.Unicode().python_type, str)
         eq_(types.Enum("one", "two", "three").python_type, str)
 
         assert_raises(
@@ -624,8 +624,8 @@ class UserDefinedRoundTripTest(_UserDefinedTypeFixture, fixtures.TablesTest):
                 user_id=2,
                 goofy="jack",
                 goofy2="jack",
-                goofy4=util.u("jack"),
-                goofy7=util.u("jack"),
+                goofy4="jack",
+                goofy7="jack",
                 goofy8=12,
                 goofy9=12,
                 goofy10=12,
@@ -637,8 +637,8 @@ class UserDefinedRoundTripTest(_UserDefinedTypeFixture, fixtures.TablesTest):
                 user_id=3,
                 goofy="lala",
                 goofy2="lala",
-                goofy4=util.u("lala"),
-                goofy7=util.u("lala"),
+                goofy4="lala",
+                goofy7="lala",
                 goofy8=15,
                 goofy9=15,
                 goofy10=15,
@@ -650,8 +650,8 @@ class UserDefinedRoundTripTest(_UserDefinedTypeFixture, fixtures.TablesTest):
                 user_id=4,
                 goofy="fred",
                 goofy2="fred",
-                goofy4=util.u("fred"),
-                goofy7=util.u("fred"),
+                goofy4="fred",
+                goofy7="fred",
                 goofy8=9,
                 goofy9=9,
                 goofy10=9,
@@ -786,8 +786,8 @@ class BindProcessorInsertValuesTest(UserDefinedRoundTripTest):
                 user_id=2,
                 goofy="jack",
                 goofy2="jack",
-                goofy4=util.u("jack"),
-                goofy7=util.u("jack"),
+                goofy4="jack",
+                goofy7="jack",
                 goofy8=12,
                 goofy9=12,
                 goofy10=12,
@@ -798,8 +798,8 @@ class BindProcessorInsertValuesTest(UserDefinedRoundTripTest):
                 user_id=3,
                 goofy="lala",
                 goofy2="lala",
-                goofy4=util.u("lala"),
-                goofy7=util.u("lala"),
+                goofy4="lala",
+                goofy7="lala",
                 goofy8=15,
                 goofy9=15,
                 goofy10=15,
@@ -810,8 +810,8 @@ class BindProcessorInsertValuesTest(UserDefinedRoundTripTest):
                 user_id=4,
                 goofy="fred",
                 goofy2="fred",
-                goofy4=util.u("fred"),
-                goofy7=util.u("fred"),
+                goofy4="fred",
+                goofy7="fred",
                 goofy8=9,
                 goofy9=9,
                 goofy10=9,
@@ -3494,7 +3494,7 @@ class NumericRawSQLTest(fixtures.TestBase):
         metadata = self.metadata
         self._fixture(connection, metadata, Integer, 45)
         val = connection.exec_driver_sql("select val from t").scalar()
-        assert isinstance(val, util.int_types)
+        assert isinstance(val, int)
         eq_(val, 45)
 
     @testing.provide_metadata

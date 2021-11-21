@@ -344,7 +344,6 @@ _current_class = None
 
 def pytest_runtest_setup(item):
     from sqlalchemy.testing import asyncio
-    from sqlalchemy.util import string_types
 
     if not isinstance(item, pytest.Function):
         return
@@ -382,7 +381,7 @@ def pytest_runtest_setup(item):
                             "__Original test failure__:\n"
                             + _current_report.longreprtext,
                         )
-                    elif e.args[-1] and isinstance(e.args[-1], string_types):
+                    elif e.args[-1] and isinstance(e.args[-1], str):
                         args = list(e.args)
                         args[-1] += (
                             "\n__Original test failure__:\n"

@@ -15,6 +15,8 @@ defines a large part of the ORM's interactivity.
 """
 
 import operator
+from typing import Generic
+from typing import TypeVar
 
 from . import collections
 from . import exc as orm_exc
@@ -366,13 +368,8 @@ def _queryable_attribute_unreduce(key, mapped_class, parententity, entity):
         return getattr(entity, key)
 
 
-if util.py3k:
-    from typing import TypeVar, Generic
-
-    _T = TypeVar("_T")
-    _Generic_T = Generic[_T]
-else:
-    _Generic_T = type("_Generic_T", (), {})
+_T = TypeVar("_T")
+_Generic_T = Generic[_T]
 
 
 class Mapped(QueryableAttribute, _Generic_T):
@@ -1555,12 +1552,7 @@ class CollectionAttributeImpl(AttributeImpl):
                 if hasattr(iterable, "_sa_iterator"):
                     iterable = iterable._sa_iterator()
                 elif setting_type is dict:
-                    if util.py3k:
-                        iterable = iterable.values()
-                    else:
-                        iterable = getattr(
-                            iterable, "itervalues", iterable.values
-                        )()
+                    iterable = iterable.values()
                 else:
                     iterable = iter(iterable)
         new_values = list(iterable)

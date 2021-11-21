@@ -5,9 +5,8 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-from __future__ import absolute_import
-
 import contextlib
+from itertools import filterfalse
 import re
 import sys
 import warnings
@@ -26,7 +25,6 @@ from .. import util
 from ..engine import default
 from ..engine import url
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
-from ..util import compat
 from ..util import decorator
 
 
@@ -58,7 +56,7 @@ def expect_warnings_on(db, *messages, **kw):
     """
     spec = db_spec(db)
 
-    if isinstance(db, util.string_types) and not spec(config._current):
+    if isinstance(db, str) and not spec(config._current):
         yield
     else:
         with expect_warnings(*messages, **kw):
@@ -144,7 +142,6 @@ def _expect_warnings(
     messages,
     regex=True,
     assert_=True,
-    py2konly=False,
     raise_on_any_unexpected=False,
 ):
 
@@ -210,7 +207,7 @@ def _expect_warnings(
             finally:
                 _SEEN = _FILTERS = _EXC_CLS = None
 
-                if assert_ and (not py2konly or not compat.py3k):
+                if assert_:
                     assert not seen, "Warnings were not seen: %s" % ", ".join(
                         "%r" % (s.pattern if regex else s) for s in seen
                     )
@@ -325,9 +322,6 @@ def _assert_proper_exception_context(exception):
 
     """
 
-    if not util.py3k:
-        return
-
     if (
         exception.__context__ is not exception.__cause__
         and not exception.__suppress_context__
@@ -386,14 +380,14 @@ def _expect_raises(except_cls, msg=None, check_context=False):
         if msg is not None:
             # I'm often pdbing here, and "err" above isn't
             # in scope, so assign the string explicitly
-            error_as_string = util.text_type(err)
+            error_as_string = str(err)
             assert re.search(msg, error_as_string, re.UNICODE), "%r !~ %s" % (
                 msg,
                 error_as_string,
             )
         if check_context and not are_we_already_in_a_traceback:
             _assert_proper_exception_context(err)
-        print(util.text_type(err).encode("utf-8"))
+        print(str(err).encode("utf-8"))
 
     # it's generally a good idea to not carry traceback objects outside
     # of the except: block, but in this case especially we seem to have
@@ -456,7 +450,7 @@ class AssertsCompiledSQL:
                 dialect.supports_default_metavalue = supports_default_metavalue
             elif dialect == "default_enhanced":
                 dialect = default.StrCompileDialect()
-            elif isinstance(dialect, util.string_types):
+            elif isinstance(dialect, str):
                 dialect = url.URL.create(dialect).get_dialect()()
 
         if default_schema_name:
@@ -553,21 +547,10 @@ class AssertsCompiledSQL:
         c = CheckCompilerAccess(clause).compile(dialect=dialect, **kw)
 
         param_str = repr(getattr(c, "params", {}))
-        if util.py3k:
-            param_str = param_str.encode("utf-8").decode("ascii", "ignore")
-            print(
-                ("\nSQL String:\n" + util.text_type(c) + param_str).encode(
-                    "utf-8"
-                )
-            )
-        else:
-            print(
-                "\nSQL String:\n"
-                + util.text_type(c).encode("utf-8")
-                + param_str
-            )
+        param_str = param_str.encode("utf-8").decode("ascii", "ignore")
+        print(("\nSQL String:\n" + str(c) + param_str).encode("utf-8"))
 
-        cc = re.sub(r"[\n\t]", "", util.text_type(c))
+        cc = re.sub(r"[\n\t]", "", str(c))
 
         eq_(cc, result, "%r != %r on dialect %r" % (cc, result, dialect))
 
@@ -687,9 +670,7 @@ class AssertsExecutionResults:
         found = util.IdentitySet(result)
         expected = {immutabledict(e) for e in expected}
 
-        for wrong in util.itertools_filterfalse(
-            lambda o: isinstance(o, cls), found
-        ):
+        for wrong in filterfalse(lambda o: isinstance(o, cls), found):
             fail(
                 'Unexpected type "%s", expected "%s"'
                 % (type(wrong).__name__, cls.__name__)

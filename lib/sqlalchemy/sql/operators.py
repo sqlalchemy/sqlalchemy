@@ -1394,7 +1394,7 @@ def _escaped_like_impl(fn, other, escape, autoescape):
         if escape is None:
             escape = "/"
 
-        if not isinstance(other, util.compat.string_types):
+        if not isinstance(other, str):
             raise TypeError("String value expected when autoescape=True")
 
         if escape not in ("%", "_"):

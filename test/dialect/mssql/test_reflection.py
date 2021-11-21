@@ -19,7 +19,6 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import types
 from sqlalchemy import types as sqltypes
-from sqlalchemy import util
 from sqlalchemy.dialects import mssql
 from sqlalchemy.dialects.mssql import base
 from sqlalchemy.dialects.mssql.information_schema import tables
@@ -782,8 +781,8 @@ class IdentityReflectionTest(fixtures.TablesTest):
                 eq_(type(col["identity"]["increment"]), int)
             elif col["name"] == "id3":
                 eq_(col["identity"], {"start": 1, "increment": 1})
-                eq_(type(col["identity"]["start"]), util.compat.long_type)
-                eq_(type(col["identity"]["increment"]), util.compat.long_type)
+                eq_(type(col["identity"]["start"]), int)
+                eq_(type(col["identity"]["increment"]), int)
             elif col["name"] == "id4":
                 eq_(col["identity"], {"start": 1, "increment": 1})
                 eq_(type(col["identity"]["start"]), int)

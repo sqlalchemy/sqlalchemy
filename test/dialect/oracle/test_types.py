@@ -32,7 +32,6 @@ from sqlalchemy import TypeDecorator
 from sqlalchemy import types as sqltypes
 from sqlalchemy import Unicode
 from sqlalchemy import UnicodeText
-from sqlalchemy import util
 from sqlalchemy import VARCHAR
 from sqlalchemy.dialects.oracle import base as oracle
 from sqlalchemy.dialects.oracle import cx_oracle
@@ -48,7 +47,6 @@ from sqlalchemy.testing.engines import testing_engine
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.util import b
-from sqlalchemy.util import u
 
 
 def exec_sql(conn, sql, *args, **kwargs):
@@ -784,13 +782,13 @@ class TypesTest(fixtures.TestBase):
                 cx_oracle._OracleNChar,
             )
 
-        data = u("m’a réveillé.")
+        data = "m’a réveillé."
         connection.execute(t2.insert(), dict(nv_data=data, c_data=data))
         nv_data, c_data = connection.execute(t2.select()).first()
         eq_(nv_data, data)
         eq_(c_data, data + (" " * 7))  # char is space padded
-        assert isinstance(nv_data, util.text_type)
-        assert isinstance(c_data, util.text_type)
+        assert isinstance(nv_data, str)
+        assert isinstance(c_data, str)
 
     def test_reflect_unicode_no_nvarchar(self, metadata, connection):
         Table("tnv", metadata, Column("data", sqltypes.Unicode(255)))
@@ -805,11 +803,11 @@ class TypesTest(fixtures.TestBase):
                 cx_oracle._OracleString,
             )
 
-        data = u("m’a réveillé.")
+        data = "m’a réveillé."
         connection.execute(t2.insert(), {"data": data})
         res = connection.execute(t2.select()).first().data
         eq_(res, data)
-        assert isinstance(res, util.text_type)
+        assert isinstance(res, str)
 
     def test_char_length(self, metadata, connection):
         t1 = Table(
@@ -1133,7 +1131,7 @@ class EuroNumericTest(fixtures.TestBase):
                     {},
                 ),
             ]:
-                if isinstance(stmt, util.string_types):
+                if isinstance(stmt, str):
                     test_exp = conn.exec_driver_sql(stmt, kw).scalar()
                 else:
                     test_exp = conn.scalar(stmt, **kw)
@@ -1153,13 +1151,13 @@ class SetInputSizesTest(fixtures.TestBase):
         (oracle.BINARY_DOUBLE, 25.34534, "NATIVE_FLOAT", False),
         (oracle.BINARY_FLOAT, 25.34534, "NATIVE_FLOAT", False),
         (oracle.DOUBLE_PRECISION, 25.34534, None, False),
-        (Unicode(30), u("test"), "NCHAR", True),
-        (UnicodeText(), u("test"), "NCLOB", True),
-        (Unicode(30), u("test"), None, False),
-        (UnicodeText(), u("test"), "CLOB", False),
+        (Unicode(30), "test", "NCHAR", True),
+        (UnicodeText(), "test", "NCLOB", True),
+        (Unicode(30), "test", None, False),
+        (UnicodeText(), "test", "CLOB", False),
         (String(30), "test", None, False),
         (CHAR(30), "test", "FIXED_CHAR", False),
-        (NCHAR(30), u("test"), "FIXED_NCHAR", False),
+        (NCHAR(30), "test", "FIXED_NCHAR", False),
         (oracle.LONG(), "test", None, False),
         argnames="datatype, value, sis_value_text, set_nchar_flag",
     )

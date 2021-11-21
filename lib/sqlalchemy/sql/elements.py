@@ -10,8 +10,6 @@
 
 """
 
-from __future__ import unicode_literals
-
 import itertools
 import operator
 import re
@@ -3869,7 +3867,7 @@ class BinaryExpression(ColumnElement):
     ):
         # allow compatibility with libraries that
         # refer to BinaryExpression directly and pass strings
-        if isinstance(operator, util.string_types):
+        if isinstance(operator, str):
             operator = operators.custom_op(operator)
         self._orig = (left.__hash__(), right.__hash__())
         self._propagate_attrs = left._propagate_attrs or right._propagate_attrs
@@ -4638,10 +4636,7 @@ class NamedColumn(ColumnElement):
 
     @util.memoized_property
     def description(self):
-        if util.py3k:
-            return self.name
-        else:
-            return self.name.encode("ascii", "backslashreplace")
+        return self.name
 
     @HasMemoized.memoized_attribute
     def _tq_key_label(self):
@@ -5068,7 +5063,7 @@ class ReleaseSavepointClause(_IdentifiedClause):
     __visit_name__ = "release_savepoint"
 
 
-class quoted_name(util.MemoizedSlots, util.text_type):
+class quoted_name(util.MemoizedSlots, str):
     """Represent a SQL identifier combined with quoting preferences.
 
     :class:`.quoted_name` is a Python unicode/str subclass which
@@ -5138,19 +5133,19 @@ class quoted_name(util.MemoizedSlots, util.text_type):
         return self
 
     def __reduce__(self):
-        return quoted_name, (util.text_type(self), self.quote)
+        return quoted_name, (str(self), self.quote)
 
     def _memoized_method_lower(self):
         if self.quote:
             return self
         else:
-            return util.text_type(self).lower()
+            return str(self).lower()
 
     def _memoized_method_upper(self):
         if self.quote:
             return self
         else:
-            return util.text_type(self).upper()
+            return str(self).upper()
 
 
 def _find_columns(clause):
@@ -5238,7 +5233,7 @@ class _truncated_label(quoted_name):
         return super(_truncated_label, cls).__new__(cls, value, quote)
 
     def __reduce__(self):
-        return self.__class__, (util.text_type(self), self.quote)
+        return self.__class__, (str(self), self.quote)
 
     def apply_map(self, map_):
         return self
@@ -5324,26 +5319,26 @@ class _anonymous_label(_truncated_label):
 
     def __add__(self, other):
         if "%" in other and not isinstance(other, _anonymous_label):
-            other = util.text_type(other).replace("%", "%%")
+            other = str(other).replace("%", "%%")
         else:
-            other = util.text_type(other)
+            other = str(other)
 
         return _anonymous_label(
             quoted_name(
-                util.text_type.__add__(self, other),
+                str.__add__(self, other),
                 self.quote,
             )
         )
 
     def __radd__(self, other):
         if "%" in other and not isinstance(other, _anonymous_label):
-            other = util.text_type(other).replace("%", "%%")
+            other = str(other).replace("%", "%%")
         else:
-            other = util.text_type(other)
+            other = str(other)
 
         return _anonymous_label(
             quoted_name(
-                util.text_type.__add__(other, self),
+                str.__add__(other, self),
                 self.quote,
             )
         )

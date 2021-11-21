@@ -301,7 +301,7 @@ class Load(Generative, LoaderOption):
                     "refer to a mapped entity" % (path.prop,)
                 )
 
-        if isinstance(attr, util.string_types):
+        if isinstance(attr, str):
 
             default_token = attr.endswith(_DEFAULT_TOKEN)
             attr_str_name = attr
@@ -643,7 +643,7 @@ class Load(Generative, LoaderOption):
         i = -1
 
         for i, (c_token, p_token) in enumerate(zip(to_chop, path.path)):
-            if isinstance(c_token, util.string_types):
+            if isinstance(c_token, str):
                 # TODO: this is approximated from the _UnboundLoad
                 # version and probably has issues, not fully covered.
 
@@ -816,9 +816,7 @@ class _UnboundLoad(Load):
         cloned.strategy = self.strategy
         if self.path:
             attr = self.path[-1]
-            if isinstance(attr, util.string_types) and attr.endswith(
-                _DEFAULT_TOKEN
-            ):
+            if isinstance(attr, str) and attr.endswith(_DEFAULT_TOKEN):
                 attr = attr.split(":")[0] + ":" + _WILDCARD_TOKEN
             cloned._generate_path(
                 parent.path + self.path[0:-1], attr, self.strategy, None
@@ -851,7 +849,7 @@ class _UnboundLoad(Load):
     def _generate_path(self, path, attr, for_strategy, wildcard_key):
         if (
             wildcard_key
-            and isinstance(attr, util.string_types)
+            and isinstance(attr, str)
             and attr in (_WILDCARD_TOKEN, _DEFAULT_TOKEN)
         ):
             if attr == _DEFAULT_TOKEN:
@@ -914,7 +912,7 @@ class _UnboundLoad(Load):
         opt = _UnboundLoad()
 
         def _split_key(key):
-            if isinstance(key, util.string_types):
+            if isinstance(key, str):
                 # coerce fooload('*') into "default loader strategy"
                 if key == _WILDCARD_TOKEN:
                     return (_DEFAULT_TOKEN,)
@@ -945,7 +943,7 @@ class _UnboundLoad(Load):
         for i, (c_token, (p_entity, p_prop)) in enumerate(
             zip(to_chop, path.pairs())
         ):
-            if isinstance(c_token, util.string_types):
+            if isinstance(c_token, str):
                 if i == 0 and c_token.endswith(":" + _DEFAULT_TOKEN):
                     return to_chop
                 elif (
@@ -1045,7 +1043,7 @@ class _UnboundLoad(Load):
         # what entity we are referring towards.
         token = start_path[0]
 
-        if isinstance(token, util.string_types):
+        if isinstance(token, str):
             entity = self._find_entity_basestring(entities, token, raiseerr)
         elif isinstance(token, PropComparator):
             prop = token.property

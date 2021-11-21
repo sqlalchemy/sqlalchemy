@@ -8,6 +8,7 @@
 """Define generic result set constructs."""
 
 
+import collections.abc as collections_abc
 import functools
 import itertools
 import operator
@@ -19,7 +20,6 @@ from .. import util
 from ..sql.base import _generative
 from ..sql.base import HasMemoized
 from ..sql.base import InPlaceGenerative
-from ..util import collections_abc
 
 
 if _baserow_usecext:

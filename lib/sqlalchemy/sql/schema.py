@@ -28,8 +28,6 @@ Since these objects are part of the SQL expression language, they are usable
 as components in SQL expressions.
 
 """
-from __future__ import absolute_import
-
 import collections
 
 import sqlalchemy
@@ -1572,7 +1570,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
         type_ = kwargs.pop("type_", None)
         args = list(args)
         if args:
-            if isinstance(args[0], util.string_types):
+            if isinstance(args[0], str):
                 if name is not None:
                     raise exc.ArgumentError(
                         "May not pass name positionally and as a keyword."
@@ -1819,7 +1817,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             )
 
         if self.index:
-            if isinstance(self.index, util.string_types):
+            if isinstance(self.index, str):
                 raise exc.ArgumentError(
                     "The 'index' keyword argument on Column is boolean only. "
                     "To create indexes with a specific name, create an "
@@ -1832,7 +1830,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             )
 
         elif self.unique:
-            if isinstance(self.unique, util.string_types):
+            if isinstance(self.unique, str):
                 raise exc.ArgumentError(
                     "The 'unique' keyword argument on Column is boolean "
                     "only. To create unique constraints or indexes with a "
@@ -2125,7 +2123,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
         self._colspec = coercions.expect(roles.DDLReferredColumnRole, column)
 
-        if isinstance(self._colspec, util.string_types):
+        if isinstance(self._colspec, str):
             self._table_column = None
         else:
             self._table_column = self._colspec
@@ -2395,7 +2393,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
         """
 
-        if isinstance(self._colspec, util.string_types):
+        if isinstance(self._colspec, str):
 
             parenttable, tablekey, colname = self._resolve_col_tokens()
 
@@ -2472,7 +2470,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         table.foreign_keys.add(self)
         # set up remote ".column" attribute, or a note to pick it
         # up when the other Table/Column shows up
-        if isinstance(self._colspec, util.string_types):
+        if isinstance(self._colspec, str):
             parenttable, table_key, colname = self._resolve_col_tokens()
             fk_key = (table_key, colname)
             if table_key in parenttable.metadata.tables:
@@ -3068,9 +3066,7 @@ class DefaultClause(FetchedValue):
     has_argument = True
 
     def __init__(self, arg, for_update=False, _reflected=False):
-        util.assert_arg_type(
-            arg, (util.string_types[0], ClauseElement, TextClause), "arg"
-        )
+        util.assert_arg_type(arg, (str, ClauseElement, TextClause), "arg")
         super(DefaultClause, self).__init__(for_update)
         self.arg = arg
         self.reflected = _reflected
@@ -3264,7 +3260,7 @@ class ColumnCollectionMixin:
 
     def _col_expressions(self, table):
         return [
-            table.c[col] if isinstance(col, util.string_types) else col
+            table.c[col] if isinstance(col, str) else col
             for col in self._pending_colargs
         ]
 
@@ -4422,7 +4418,7 @@ class MetaData(SchemaItem):
             return "MetaData()"
 
     def __contains__(self, table_or_key):
-        if not isinstance(table_or_key, util.string_types):
+        if not isinstance(table_or_key, str):
             table_or_key = table_or_key.key
         return table_or_key in self.tables
 
@@ -4501,7 +4497,7 @@ class MetaData(SchemaItem):
     def _bind_to(self, bind):
         """Bind this MetaData to an Engine, Connection, string or URL."""
         url = util.preloaded.engine_url
-        if isinstance(bind, util.string_types + (url.URL,)):
+        if isinstance(bind, (str, url.URL)):
             self._bind = sqlalchemy.create_engine(bind)
         else:
             self._bind = bind
@@ -4838,7 +4834,7 @@ class ThreadLocalMetaData(MetaData):
     def _bind_to(self, bind):
         """Bind to a Connectable in the caller's thread."""
         url = util.preloaded.engine_url
-        if isinstance(bind, util.string_types + (url.URL,)):
+        if isinstance(bind, (str, url.URL)):
             try:
                 self.context._engine = self.__engines[bind]
             except KeyError:

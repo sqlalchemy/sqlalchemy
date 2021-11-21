@@ -16,11 +16,6 @@ os.environ["SQLALCHEMY_WARN_20"] = "true"
 
 collect_ignore_glob = []
 
-# minimum version for a py3k only test is at
-# 3.6 because these are asyncio tests anyway
-if sys.version_info[0:2] < (3, 6):
-    collect_ignore_glob.append("*_py3k.py")
-
 pytest.register_assert_rewrite("sqlalchemy.testing.assertions")
 
 

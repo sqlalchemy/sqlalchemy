@@ -5,8 +5,6 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 """Internal implementation for declarative."""
-from __future__ import absolute_import
-
 import collections
 import weakref
 

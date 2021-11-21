@@ -5,7 +5,6 @@ from sqlalchemy import MetaData
 from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy import util
 from sqlalchemy.dialects import sqlite
 from sqlalchemy.schema import CreateSequence
 from sqlalchemy.schema import DropSequence
@@ -113,7 +112,7 @@ class SequenceExecTest(fixtures.TestBase):
     def _assert_seq_result(self, ret):
         """asserts return of next_value is an int"""
 
-        assert isinstance(ret, util.int_types)
+        assert isinstance(ret, int)
         assert ret >= testing.db.dialect.default_sequence_base
 
     def test_execute(self, connection):

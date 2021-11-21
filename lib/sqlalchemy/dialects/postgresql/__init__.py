@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+from . import asyncpg  # noqa
 from . import base
 from . import pg8000  # noqa
 from . import psycopg2  # noqa
@@ -56,9 +57,6 @@ from .ranges import NUMRANGE
 from .ranges import TSRANGE
 from .ranges import TSTZRANGE
 from ...util import compat
-
-if compat.py3k:
-    from . import asyncpg  # noqa
 
 base.dialect = dialect = psycopg2.dialect
 

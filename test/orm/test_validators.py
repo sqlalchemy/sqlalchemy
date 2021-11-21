@@ -1,3 +1,6 @@
+from unittest.mock import call
+from unittest.mock import Mock
+
 from sqlalchemy import exc
 from sqlalchemy.orm import collections
 from sqlalchemy.orm import relationship
@@ -8,8 +11,6 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.fixtures import fixture_session
-from sqlalchemy.testing.mock import call
-from sqlalchemy.testing.mock import Mock
 from test.orm import _fixtures
 
 

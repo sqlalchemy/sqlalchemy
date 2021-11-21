@@ -540,7 +540,7 @@ class AsyncSession(ReversibleProxy):
         await self.close()
 
     def _maker_context_manager(self):
-        # no @contextlib.asynccontextmanager until python3.7, gr
+        # TODO: can this use asynccontextmanager ??
         return _AsyncSessionContextManager(self)
 
 
