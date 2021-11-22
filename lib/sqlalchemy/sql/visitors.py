@@ -120,6 +120,8 @@ class Traversible(util.with_metaclass(TraversibleType)):
 
     """
 
+    __slots__ = ()
+
     def __class_getitem__(cls, key):
         # allow generic classes in py3.9+
         return cls

@@ -21,6 +21,8 @@ EMPTY_ANNOTATIONS = util.immutabledict()
 
 
 class SupportsAnnotations:
+    __slots__ = ()
+
     _annotations = EMPTY_ANNOTATIONS
 
     @util.memoized_property
@@ -44,6 +46,7 @@ class SupportsAnnotations:
 
 
 class SupportsCloneAnnotations(SupportsAnnotations):
+    __slots__ = ()
 
     _clone_annotations_traverse_internals = [
         ("_annotations", InternalTraversal.dp_annotations_key)
@@ -92,6 +95,8 @@ class SupportsCloneAnnotations(SupportsAnnotations):
 
 
 class SupportsWrappingAnnotations(SupportsAnnotations):
+    __slots__ = ()
+
     def _annotate(self, values):
         """return a copy of this ClauseElement with annotations
         updated by the given dictionary.

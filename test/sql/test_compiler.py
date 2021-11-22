@@ -79,6 +79,7 @@ from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql.elements import BooleanClauseList
 from sqlalchemy.sql.elements import ColumnElement
+from sqlalchemy.sql.elements import CompilerColumnElement
 from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy.sql.expression import ClauseList
 from sqlalchemy.sql.expression import HasPrefixes
@@ -214,6 +215,25 @@ class TestCompilerFixture(fixtures.TestBase, AssertsCompiledSQL):
 
 class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
+
+    def test_compiler_column_element_is_slots(self):
+        class SomeColThing(CompilerColumnElement):
+            __slots__ = ("name",)
+            __visit_name__ = "some_col_thing"
+
+            def __init__(self, name):
+                self.name = name
+
+        c1 = SomeColThing("some name")
+        eq_(c1.name, "some name")
+        assert not hasattr(c1, "__dict__")
+
+    def test_compile_label_is_slots(self):
+
+        c1 = compiler._CompileLabel(column("q"), "somename")
+
+        eq_(c1.name, "somename")
+        assert not hasattr(c1, "__dict__")
 
     def test_attribute_sanity(self):
         assert hasattr(table1, "c")

@@ -525,12 +525,12 @@ class TypeCompiler(util.with_metaclass(util.EnsureKWArgType, object)):
 
 # this was a Visitable, but to allow accurate detection of
 # column elements this is actually a column element
-class _CompileLabel(elements.ColumnElement):
+class _CompileLabel(elements.CompilerColumnElement):
 
     """lightweight label object which acts as an expression.Label."""
 
     __visit_name__ = "label"
-    __slots__ = "element", "name"
+    __slots__ = "element", "name", "_alt_names"
 
     def __init__(self, col, name, alt_names=()):
         self.element = col

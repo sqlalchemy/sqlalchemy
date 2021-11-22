@@ -2041,8 +2041,9 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
             self.drop(bind=bind, checkfirst=checkfirst)
 
 
-class _ColonCast(elements.Cast):
+class _ColonCast(elements.CompilerColumnElement):
     __visit_name__ = "colon_cast"
+    __slots__ = ("type", "clause", "typeclause")
 
     def __init__(self, expression, type_):
         self.type = type_

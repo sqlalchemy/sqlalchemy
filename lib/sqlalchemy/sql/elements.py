@@ -170,13 +170,103 @@ def not_(clause):
     return operators.inv(coercions.expect(roles.ExpressionElementRole, clause))
 
 
+class CompilerElement(Traversible):
+    """base class for SQL elements that can be compiled to produce a
+    SQL string.
+
+    .. versionadded:: 2.0
+
+    """
+
+    __slots__ = ()
+    __visit_name__ = "compiler_element"
+
+    supports_execution = False
+
+    stringify_dialect = "default"
+
+    @util.preload_module("sqlalchemy.engine.default")
+    @util.preload_module("sqlalchemy.engine.url")
+    def compile(self, bind=None, dialect=None, **kw):
+        """Compile this SQL expression.
+
+        The return value is a :class:`~.Compiled` object.
+        Calling ``str()`` or ``unicode()`` on the returned value will yield a
+        string representation of the result. The
+        :class:`~.Compiled` object also can return a
+        dictionary of bind parameter names and values
+        using the ``params`` accessor.
+
+        :param bind: An ``Engine`` or ``Connection`` from which a
+            ``Compiled`` will be acquired. This argument takes precedence over
+            this :class:`_expression.ClauseElement`'s bound engine, if any.
+
+        :param column_keys: Used for INSERT and UPDATE statements, a list of
+            column names which should be present in the VALUES clause of the
+            compiled statement. If ``None``, all columns from the target table
+            object are rendered.
+
+        :param dialect: A ``Dialect`` instance from which a ``Compiled``
+            will be acquired. This argument takes precedence over the `bind`
+            argument as well as this :class:`_expression.ClauseElement`
+            's bound engine,
+            if any.
+
+        :param compile_kwargs: optional dictionary of additional parameters
+            that will be passed through to the compiler within all "visit"
+            methods.  This allows any custom flag to be passed through to
+            a custom compilation construct, for example.  It is also used
+            for the case of passing the ``literal_binds`` flag through::
+
+                from sqlalchemy.sql import table, column, select
+
+                t = table('t', column('x'))
+
+                s = select(t).where(t.c.x == 5)
+
+                print(s.compile(compile_kwargs={"literal_binds": True}))
+
+            .. versionadded:: 0.9.0
+
+        .. seealso::
+
+            :ref:`faq_sql_expression_string`
+
+        """
+
+        if not dialect:
+            if bind:
+                dialect = bind.dialect
+            elif self.bind:
+                dialect = self.bind.dialect
+            else:
+                if self.stringify_dialect == "default":
+                    default = util.preloaded.engine_default
+                    dialect = default.StrCompileDialect()
+                else:
+                    url = util.preloaded.engine_url
+                    dialect = url.URL.create(
+                        self.stringify_dialect
+                    ).get_dialect()()
+
+        return self._compiler(dialect, **kw)
+
+    def _compiler(self, dialect, **kw):
+        """Return a compiler appropriate for this ClauseElement, given a
+        Dialect."""
+
+        return dialect.statement_compiler(dialect, self, **kw)
+
+    def __str__(self):
+        return str(self.compile())
+
+
 @inspection._self_inspects
 class ClauseElement(
-    roles.SQLRole,
     SupportsWrappingAnnotations,
     MemoizedHasCacheKey,
     HasCopyInternals,
-    Traversible,
+    CompilerElement,
 ):
     """Base class for elements of a programmatically constructed SQL
     expression.
@@ -190,10 +280,6 @@ class ClauseElement(
     as SQL constructs are built, and are set up at construction time.
 
     """
-
-    supports_execution = False
-
-    stringify_dialect = "default"
 
     _from_objects = []
     bind = None
@@ -423,72 +509,6 @@ class ClauseElement(
 
         return self
 
-    @util.preload_module("sqlalchemy.engine.default")
-    @util.preload_module("sqlalchemy.engine.url")
-    def compile(self, bind=None, dialect=None, **kw):
-        """Compile this SQL expression.
-
-        The return value is a :class:`~.Compiled` object.
-        Calling ``str()`` or ``unicode()`` on the returned value will yield a
-        string representation of the result. The
-        :class:`~.Compiled` object also can return a
-        dictionary of bind parameter names and values
-        using the ``params`` accessor.
-
-        :param bind: An ``Engine`` or ``Connection`` from which a
-            ``Compiled`` will be acquired. This argument takes precedence over
-            this :class:`_expression.ClauseElement`'s bound engine, if any.
-
-        :param column_keys: Used for INSERT and UPDATE statements, a list of
-            column names which should be present in the VALUES clause of the
-            compiled statement. If ``None``, all columns from the target table
-            object are rendered.
-
-        :param dialect: A ``Dialect`` instance from which a ``Compiled``
-            will be acquired. This argument takes precedence over the `bind`
-            argument as well as this :class:`_expression.ClauseElement`
-            's bound engine,
-            if any.
-
-        :param compile_kwargs: optional dictionary of additional parameters
-            that will be passed through to the compiler within all "visit"
-            methods.  This allows any custom flag to be passed through to
-            a custom compilation construct, for example.  It is also used
-            for the case of passing the ``literal_binds`` flag through::
-
-                from sqlalchemy.sql import table, column, select
-
-                t = table('t', column('x'))
-
-                s = select(t).where(t.c.x == 5)
-
-                print(s.compile(compile_kwargs={"literal_binds": True}))
-
-            .. versionadded:: 0.9.0
-
-        .. seealso::
-
-            :ref:`faq_sql_expression_string`
-
-        """
-
-        if not dialect:
-            if bind:
-                dialect = bind.dialect
-            elif self.bind:
-                dialect = self.bind.dialect
-            else:
-                if self.stringify_dialect == "default":
-                    default = util.preloaded.engine_default
-                    dialect = default.StrCompileDialect()
-                else:
-                    url = util.preloaded.engine_url
-                    dialect = url.URL.create(
-                        self.stringify_dialect
-                    ).get_dialect()()
-
-        return self._compiler(dialect, **kw)
-
     def _compile_w_cache(
         self,
         dialect,
@@ -547,20 +567,6 @@ class ClauseElement(
 
         return compiled_sql, extracted_params, cache_hit
 
-    def _compiler(self, dialect, **kw):
-        """Return a compiler appropriate for this ClauseElement, given a
-        Dialect."""
-
-        return dialect.statement_compiler(dialect, self, **kw)
-
-    def __str__(self):
-        if util.py3k:
-            return str(self.compile())
-        else:
-            return unicode(self.compile()).encode(  # noqa
-                "ascii", "backslashreplace"
-            )  # noqa
-
     def __invert__(self):
         # undocumented element currently used by the ORM for
         # relationship.contains()
@@ -590,6 +596,21 @@ class ClauseElement(
                 id(self),
                 friendly,
             )
+
+
+class CompilerColumnElement(
+    roles.DMLColumnRole,
+    roles.DDLConstraintColumnRole,
+    roles.ColumnsClauseRole,
+    CompilerElement,
+):
+    """A compiler-only column element used for ad-hoc string compilations.
+
+    .. versionadded:: 2.0
+
+    """
+
+    __slots__ = ()
 
 
 class ColumnElement(
@@ -684,6 +705,7 @@ class ColumnElement(
     """
 
     __visit_name__ = "column_element"
+
     primary_key = False
     foreign_keys = []
     _proxies = ()

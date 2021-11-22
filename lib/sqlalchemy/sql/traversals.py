@@ -714,6 +714,8 @@ _cache_key_traversal_visitor = _CacheKey()
 
 
 class HasCopyInternals:
+    __slots__ = ()
+
     def _clone(self, **kw):
         raise NotImplementedError()
 

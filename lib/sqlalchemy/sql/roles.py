@@ -19,48 +19,60 @@ class SQLRole:
 
     """
 
+    __slots__ = ()
     allows_lambda = False
     uses_inspection = False
 
 
 class UsesInspection:
+    __slots__ = ()
     _post_inspect = None
     uses_inspection = True
 
 
 class AllowsLambdaRole:
+    __slots__ = ()
     allows_lambda = True
 
 
 class HasCacheKeyRole(SQLRole):
+    __slots__ = ()
     _role_name = "Cacheable Core or ORM object"
 
 
 class LiteralValueRole(SQLRole):
+    __slots__ = ()
     _role_name = "Literal Python value"
 
 
 class ColumnArgumentRole(SQLRole):
+    __slots__ = ()
     _role_name = "Column expression"
 
 
 class ColumnArgumentOrKeyRole(ColumnArgumentRole):
+    __slots__ = ()
     _role_name = "Column expression or string key"
 
 
 class StrAsPlainColumnRole(ColumnArgumentRole):
+    __slots__ = ()
     _role_name = "Column expression or string key"
 
 
 class ColumnListRole(SQLRole):
     """Elements suitable for forming comma separated lists of expressions."""
 
+    __slots__ = ()
+
 
 class TruncatedLabelRole(SQLRole):
+    __slots__ = ()
     _role_name = "String SQL identifier"
 
 
 class ColumnsClauseRole(AllowsLambdaRole, UsesInspection, ColumnListRole):
+    __slots__ = ()
     _role_name = "Column expression or FROM clause"
 
     @property
@@ -69,14 +81,17 @@ class ColumnsClauseRole(AllowsLambdaRole, UsesInspection, ColumnListRole):
 
 
 class LimitOffsetRole(SQLRole):
+    __slots__ = ()
     _role_name = "LIMIT / OFFSET expression"
 
 
 class ByOfRole(ColumnListRole):
+    __slots__ = ()
     _role_name = "GROUP BY / OF / etc. expression"
 
 
 class GroupByRole(AllowsLambdaRole, UsesInspection, ByOfRole):
+    __slots__ = ()
     # note there's a special case right now where you can pass a whole
     # ORM entity to group_by() and it splits out.   we may not want to keep
     # this around
@@ -85,48 +100,57 @@ class GroupByRole(AllowsLambdaRole, UsesInspection, ByOfRole):
 
 
 class OrderByRole(AllowsLambdaRole, ByOfRole):
+    __slots__ = ()
     _role_name = "ORDER BY expression"
 
 
 class StructuralRole(SQLRole):
-    pass
+    __slots__ = ()
 
 
 class StatementOptionRole(StructuralRole):
+    __slots__ = ()
     _role_name = "statement sub-expression element"
 
 
 class OnClauseRole(AllowsLambdaRole, StructuralRole):
+    __slots__ = ()
     _role_name = "SQL expression for ON clause"
 
 
 class WhereHavingRole(OnClauseRole):
+    __slots__ = ()
     _role_name = "SQL expression for WHERE/HAVING role"
 
 
 class ExpressionElementRole(SQLRole):
+    __slots__ = ()
     _role_name = "SQL expression element"
 
 
 class ConstExprRole(ExpressionElementRole):
+    __slots__ = ()
     _role_name = "Constant True/False/None expression"
 
 
 class LabeledColumnExprRole(ExpressionElementRole):
-    pass
+    __slots__ = ()
 
 
 class BinaryElementRole(ExpressionElementRole):
+    __slots__ = ()
     _role_name = "SQL expression element or literal value"
 
 
 class InElementRole(SQLRole):
+    __slots__ = ()
     _role_name = (
         "IN expression list, SELECT construct, or bound parameter object"
     )
 
 
 class JoinTargetRole(AllowsLambdaRole, UsesInspection, StructuralRole):
+    __slots__ = ()
     _role_name = (
         "Join target, typically a FROM expression, or ORM "
         "relationship attribute"
@@ -134,6 +158,7 @@ class JoinTargetRole(AllowsLambdaRole, UsesInspection, StructuralRole):
 
 
 class FromClauseRole(ColumnsClauseRole, JoinTargetRole):
+    __slots__ = ()
     _role_name = "FROM expression, such as a Table or alias() object"
 
     _is_subquery = False
@@ -144,6 +169,7 @@ class FromClauseRole(ColumnsClauseRole, JoinTargetRole):
 
 
 class StrictFromClauseRole(FromClauseRole):
+    __slots__ = ()
     # does not allow text() or select() objects
 
     @property
@@ -152,6 +178,7 @@ class StrictFromClauseRole(FromClauseRole):
 
 
 class AnonymizedFromClauseRole(StrictFromClauseRole):
+    __slots__ = ()
     # calls .alias() as a post processor
 
     def _anonymous_fromclause(self, name=None, flat=False):
@@ -159,6 +186,7 @@ class AnonymizedFromClauseRole(StrictFromClauseRole):
 
 
 class ReturnsRowsRole(SQLRole):
+    __slots__ = ()
     _role_name = (
         "Row returning expression such as a SELECT, a FROM clause, or an "
         "INSERT/UPDATE/DELETE with RETURNING"
@@ -166,12 +194,14 @@ class ReturnsRowsRole(SQLRole):
 
 
 class StatementRole(SQLRole):
+    __slots__ = ()
     _role_name = "Executable SQL or text() construct"
 
     _propagate_attrs = util.immutabledict()
 
 
 class SelectStatementRole(StatementRole, ReturnsRowsRole):
+    __slots__ = ()
     _role_name = "SELECT construct or equivalent text() construct"
 
     def subquery(self):
@@ -182,16 +212,18 @@ class SelectStatementRole(StatementRole, ReturnsRowsRole):
 
 
 class HasCTERole(ReturnsRowsRole):
-    pass
+    __slots__ = ()
 
 
 class IsCTERole(SQLRole):
+    __slots__ = ()
     _role_name = "CTE object"
 
 
 class CompoundElementRole(AllowsLambdaRole, SQLRole):
     """SELECT statements inside a CompoundSelect, e.g. UNION, EXTRACT, etc."""
 
+    __slots__ = ()
     _role_name = (
         "SELECT construct for inclusion in a UNION or other set construct"
     )
@@ -199,36 +231,42 @@ class CompoundElementRole(AllowsLambdaRole, SQLRole):
 
 # TODO: are we using this?
 class DMLRole(StatementRole):
-    pass
+    __slots__ = ()
 
 
 class DMLTableRole(FromClauseRole):
+    __slots__ = ()
     _role_name = "subject table for an INSERT, UPDATE or DELETE"
 
 
 class DMLColumnRole(SQLRole):
+    __slots__ = ()
     _role_name = "SET/VALUES column expression or string key"
 
 
 class DMLSelectRole(SQLRole):
     """A SELECT statement embedded in DML, typically INSERT from SELECT"""
 
+    __slots__ = ()
     _role_name = "SELECT statement or equivalent textual object"
 
 
 class DDLRole(StatementRole):
-    pass
+    __slots__ = ()
 
 
 class DDLExpressionRole(StructuralRole):
+    __slots__ = ()
     _role_name = "SQL expression element for DDL constraint"
 
 
 class DDLConstraintColumnRole(SQLRole):
+    __slots__ = ()
     _role_name = "String column name or column expression for DDL constraint"
 
 
 class DDLReferredColumnRole(DDLConstraintColumnRole):
+    __slots__ = ()
     _role_name = (
         "String column name or Column object for DDL foreign key constraint"
     )
