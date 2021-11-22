@@ -449,7 +449,6 @@ import re
 from uuid import UUID as _python_UUID
 
 from .array import ARRAY as PGARRAY
-from .base import _ColonCast
 from .base import _DECIMAL_TYPES
 from .base import _FLOAT_TYPES
 from .base import _INT_TYPES
@@ -516,8 +515,7 @@ class _PGHStore(HSTORE):
 
 
 class _PGARRAY(PGARRAY):
-    def bind_expression(self, bindvalue):
-        return _ColonCast(bindvalue, self)
+    render_bind_cast = True
 
 
 class _PGJSON(JSON):

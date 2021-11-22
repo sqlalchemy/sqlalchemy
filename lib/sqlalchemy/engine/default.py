@@ -52,8 +52,12 @@ class DefaultDialect(interfaces.Dialect):
     supports_alter = True
     supports_comments = False
     inline_comments = False
-    use_setinputsizes = False
     supports_statement_cache = True
+
+    bind_typing = interfaces.BindTyping.NONE
+
+    include_set_input_sizes = None
+    exclude_set_input_sizes = None
 
     # the first value we'd get for an autoincrement
     # column.
@@ -260,6 +264,15 @@ class DefaultDialect(interfaces.Dialect):
             else:
                 self.server_side_cursors = True
 
+        if getattr(self, "use_setinputsizes", False):
+            util.warn_deprecated(
+                "The dialect-level use_setinputsizes attribute is "
+                "deprecated.  Please use "
+                "bind_typing = BindTyping.SETINPUTSIZES",
+                "2.0",
+            )
+            self.bind_typing = interfaces.BindTyping.SETINPUTSIZES
+
         self.encoding = encoding
         self.positional = False
         self._ischema = None
@@ -286,6 +299,10 @@ class DefaultDialect(interfaces.Dialect):
             )
         self.label_length = label_length
         self.compiler_linting = compiler_linting
+
+    @util.memoized_property
+    def _bind_typing_render_casts(self):
+        return self.bind_typing is interfaces.BindTyping.RENDER_CASTS
 
     def _ensure_has_table_connection(self, arg):
 
@@ -735,9 +752,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     result_column_struct = None
     returned_default_rows = None
     execution_options = util.immutabledict()
-
-    include_set_input_sizes = None
-    exclude_set_input_sizes = None
 
     cursor_fetch_strategy = _cursor._DEFAULT_FETCH
 
@@ -1373,8 +1387,14 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         style of ``setinputsizes()`` on the cursor, using DB-API types
         from the bind parameter's ``TypeEngine`` objects.
 
-        This method only called by those dialects which require it,
-        currently cx_oracle, asyncpg and pg8000.
+        This method only called by those dialects which set
+        the :attr:`.Dialect.bind_typing` attribute to
+        :attr:`.BindTyping.SETINPUTSIZES`.   cx_Oracle is the only DBAPI
+        that requires setinputsizes(), pyodbc offers it as an option.
+
+        Prior to SQLAlchemy 2.0, the setinputsizes() approach was also used
+        for pg8000 and asyncpg, which has been changed to inline rendering
+        of casts.
 
         """
         if self.isddl or self.is_text:
@@ -1382,10 +1402,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         compiled = self.compiled
 
-        inputsizes = compiled._get_set_input_sizes_lookup(
-            include_types=self.include_set_input_sizes,
-            exclude_types=self.exclude_set_input_sizes,
-        )
+        inputsizes = compiled._get_set_input_sizes_lookup()
 
         if inputsizes is None:
             return

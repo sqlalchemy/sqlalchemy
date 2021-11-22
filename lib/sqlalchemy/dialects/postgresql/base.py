@@ -1388,6 +1388,7 @@ from ... import sql
 from ... import util
 from ...engine import characteristics
 from ...engine import default
+from ...engine import interfaces
 from ...engine import reflection
 from ...sql import coercions
 from ...sql import compiler
@@ -2041,16 +2042,6 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum):
             self.drop(bind=bind, checkfirst=checkfirst)
 
 
-class _ColonCast(elements.CompilerColumnElement):
-    __visit_name__ = "colon_cast"
-    __slots__ = ("type", "clause", "typeclause")
-
-    def __init__(self, expression, type_):
-        self.type = type_
-        self.clause = expression
-        self.typeclause = elements.TypeClause(type_)
-
-
 colspecs = {
     sqltypes.ARRAY: _array.ARRAY,
     sqltypes.Interval: INTERVAL,
@@ -2106,11 +2097,12 @@ ischema_names = {
 
 
 class PGCompiler(compiler.SQLCompiler):
-    def visit_colon_cast(self, element, **kw):
-        return "%s::%s" % (
-            element.clause._compiler_dispatch(self, **kw),
-            element.typeclause._compiler_dispatch(self, **kw),
-        )
+    def render_bind_cast(self, type_, dbapi_type, sqltext):
+        return f"""{sqltext}::{
+                self.dialect.type_compiler.process(
+                    dbapi_type, identifier_preparer=self.preparer
+                )
+            }"""
 
     def visit_array(self, element, **kw):
         return "ARRAY[%s]" % self.visit_clauselist(element, **kw)
@@ -2854,6 +2846,12 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_TSTZRANGE(self, type_, **kw):
         return "TSTZRANGE"
 
+    def visit_json_int_index(self, type_, **kw):
+        return "INT"
+
+    def visit_json_str_index(self, type_, **kw):
+        return "TEXT"
+
     def visit_datetime(self, type_, **kw):
         return self.visit_TIMESTAMP(type_, **kw)
 
@@ -3120,6 +3118,8 @@ class PGDialect(default.DefaultDialect):
     supports_alter = True
     max_identifier_length = 63
     supports_sane_rowcount = True
+
+    bind_typing = interfaces.BindTyping.RENDER_CASTS
 
     supports_native_enum = True
     supports_native_boolean = True

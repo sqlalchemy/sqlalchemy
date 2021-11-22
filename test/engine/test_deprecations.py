@@ -17,9 +17,11 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import ThreadLocalMetaData
+from sqlalchemy.engine import BindTyping
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.engine.base import Engine
+from sqlalchemy.engine.default import DefaultDialect
 from sqlalchemy.engine.mock import MockConnection
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -310,6 +312,16 @@ class CreateEngineTest(fixtures.TestBase):
                 module=Mock(),
                 _initialize=False,
             )
+
+    def test_dialect_use_setinputsizes_attr(self):
+        class MyDialect(DefaultDialect):
+            use_setinputsizes = True
+
+        with testing.expect_deprecated(
+            "The dialect-level use_setinputsizes attribute is deprecated."
+        ):
+            md = MyDialect()
+        is_(md.bind_typing, BindTyping.SETINPUTSIZES)
 
 
 class HandleInvalidatedOnConnectTest(fixtures.TestBase):

@@ -51,6 +51,21 @@ class TypeEngine(Traversible):
     _is_array = False
     _is_type_decorator = False
 
+    render_bind_cast = False
+    """Render bind casts for :attr:`.BindTyping.RENDER_CASTS` mode.
+
+    If True, this type (usually a dialect level impl type) signals
+    to the compiler that a cast should be rendered around a bound parameter
+    for this type.
+
+    .. versionadded:: 2.0
+
+    .. seealso::
+
+        :class:`.BindTyping`
+
+    """
+
     class Comparator(operators.ColumnOperators):
         """Base class for custom comparison operations defined at the
         type level.  See :attr:`.TypeEngine.comparator_factory`.

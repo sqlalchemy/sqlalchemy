@@ -24,6 +24,7 @@ from sqlalchemy import text
 from sqlalchemy import TypeDecorator
 from sqlalchemy import util
 from sqlalchemy import VARCHAR
+from sqlalchemy.engine import BindTyping
 from sqlalchemy.engine import default
 from sqlalchemy.engine.base import Connection
 from sqlalchemy.engine.base import Engine
@@ -3654,7 +3655,7 @@ class SetInputSizesTest(fixtures.TablesTest):
         # setinputsizes() called in order to work.
 
         with mock.patch.object(
-            engine.dialect, "use_setinputsizes", True
+            engine.dialect, "bind_typing", BindTyping.SETINPUTSIZES
         ), mock.patch.object(
             engine.dialect, "do_set_input_sizes", do_set_input_sizes
         ), mock.patch.object(
