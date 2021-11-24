@@ -48,7 +48,6 @@ Session and sessionmaker()
     .. attribute::  execution_options
 
         The complete dictionary of current execution options.
-
         This is a merge of the statement level options with the
         locally passed execution options.
 
