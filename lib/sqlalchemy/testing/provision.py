@@ -9,7 +9,6 @@ from .. import inspect
 from ..engine import url as sa_url
 from ..sql import ddl
 from ..sql import schema
-from ..util import compat
 
 
 log = logging.getLogger(__name__)
@@ -34,7 +33,7 @@ class register:
         return decorate
 
     def __call__(self, cfg, *arg):
-        if isinstance(cfg, compat.string_types):
+        if isinstance(cfg, str):
             url = sa_url.make_url(cfg)
         elif isinstance(cfg, sa_url.URL):
             url = cfg

@@ -13,34 +13,19 @@ created so that multiple test frameworks can be supported at once
 is pytest.
 
 """
-
-from __future__ import absolute_import
-
 import abc
+import configparser
 import logging
 import re
 import sys
+
+from sqlalchemy.testing import asyncio
 
 # flag which indicates we are in the SQLAlchemy testing suite,
 # and not that of Alembic or a third party dialect.
 bootstrapped_as_sqlalchemy = False
 
 log = logging.getLogger("sqlalchemy.testing.plugin_base")
-
-
-py3k = sys.version_info >= (3, 0)
-
-if py3k:
-    import configparser
-
-    ABC = abc.ABC
-else:
-    import ConfigParser as configparser
-    import collections as collections_abc  # noqa
-
-    class ABC:
-        __metaclass__ = abc.ABCMeta
-
 
 # late imports
 fixtures = None
@@ -393,8 +378,7 @@ def _init_symbols(options, file_config):
 
 @post
 def _set_disable_asyncio(opt, file_config):
-    if opt.disable_asyncio or not py3k:
-        from sqlalchemy.testing import asyncio
+    if opt.disable_asyncio:
 
         asyncio.ENABLE_ASYNCIO = False
 
@@ -756,7 +740,7 @@ def _setup_config(config_obj, ctx):
     config._current.push(config_obj, testing)
 
 
-class FixtureFunctions(ABC):
+class FixtureFunctions(abc.ABC):
     @abc.abstractmethod
     def skip_test_exception(self, *arg, **kw):
         raise NotImplementedError()

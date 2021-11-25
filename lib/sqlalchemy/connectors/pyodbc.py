@@ -6,6 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 import re
+from urllib.parse import unquote_plus
 
 from . import Connector
 from .. import util
@@ -49,7 +50,7 @@ class PyODBCConnector(Connector):
                 connect_args[param] = util.asbool(keys.pop(param))
 
         if "odbc_connect" in keys:
-            connectors = [util.unquote_plus(keys.pop("odbc_connect"))]
+            connectors = [unquote_plus(keys.pop("odbc_connect"))]
         else:
 
             def check_quote(token):

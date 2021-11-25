@@ -847,7 +847,6 @@ from ...types import NVARCHAR
 from ...types import SMALLINT
 from ...types import TEXT
 from ...types import VARCHAR
-from ...util import compat
 from ...util import update_wrapper
 from ...util.langhelpers import public_factory
 
@@ -1084,7 +1083,7 @@ class _MSDate(sqltypes.Date):
         def process(value):
             if isinstance(value, datetime.datetime):
                 return value.date()
-            elif isinstance(value, util.string_types):
+            elif isinstance(value, str):
                 m = self._reg.match(value)
                 if not m:
                     raise ValueError(
@@ -1126,7 +1125,7 @@ class TIME(sqltypes.TIME):
         def process(value):
             if isinstance(value, datetime.datetime):
                 return value.time()
-            elif isinstance(value, util.string_types):
+            elif isinstance(value, str):
                 m = self._reg.match(value)
                 if not m:
                     raise ValueError(
@@ -2383,9 +2382,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
         # handle other included columns
         if index.dialect_options["mssql"]["include"]:
             inclusions = [
-                index.table.c[col]
-                if isinstance(col, util.string_types)
-                else col
+                index.table.c[col] if isinstance(col, str) else col
                 for col in index.dialect_options["mssql"]["include"]
             ]
 
@@ -3256,8 +3253,8 @@ class MSDialect(default.DefaultDialect):
                     cdict["identity"] = {}
                 else:
                     if isinstance(coltype, sqltypes.BigInteger):
-                        start = compat.long_type(identity_start)
-                        increment = compat.long_type(identity_increment)
+                        start = int(identity_start)
+                        increment = int(identity_increment)
                     elif isinstance(coltype, sqltypes.Integer):
                         start = int(identity_start)
                         increment = int(identity_increment)

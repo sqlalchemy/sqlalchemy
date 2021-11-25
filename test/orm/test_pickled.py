@@ -1,4 +1,5 @@
 import copy
+import pickle
 
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey
@@ -34,7 +35,6 @@ from sqlalchemy.testing.pickleable import User
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import picklers
-from sqlalchemy.util import pickle
 from test.orm import _fixtures
 from .inheritance._poly_fixtures import _Polymorphic
 from .inheritance._poly_fixtures import Company
@@ -324,7 +324,6 @@ class PickleTest(fixtures.MappedTest):
         u2.addresses.append(Address())
         eq_(len(u2.addresses), 2)
 
-    @testing.requires.non_broken_pickle
     def test_instance_deferred_cols(self):
         users, addresses = (self.tables.users, self.tables.addresses)
 
@@ -495,7 +494,6 @@ class PickleTest(fixtures.MappedTest):
         u2 = state.obj()
         eq_(sa.inspect(u2).info["some_key"], "value")
 
-    @testing.requires.non_broken_pickle
     @testing.combinations(
         lambda User: sa.orm.joinedload(User.addresses),
         lambda User: sa.orm.defer(User.name),
@@ -515,7 +513,6 @@ class PickleTest(fixtures.MappedTest):
         u1 = sess.query(User).options(opt).first()
         pickle.loads(pickle.dumps(u1))
 
-    @testing.requires.non_broken_pickle
     @testing.combinations(
         lambda User: sa.orm.Load(User).joinedload(User.addresses),
         lambda User: sa.orm.Load(User)
@@ -542,7 +539,6 @@ class PickleTest(fixtures.MappedTest):
         u1 = sess.query(User).options(opt).first()
         pickle.loads(pickle.dumps(u1))
 
-    @testing.requires.non_broken_pickle
     def test_became_bound_options(self):
         sess, User, Address, Dingaling = self._option_test_fixture()
 
@@ -695,7 +691,6 @@ class PickleTest(fixtures.MappedTest):
 
 
 class OptionsTest(_Polymorphic):
-    @testing.requires.non_broken_pickle
     def test_options_of_type(self):
 
         with_poly = with_polymorphic(Person, [Engineer, Manager], flat=True)

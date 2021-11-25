@@ -1,5 +1,7 @@
 import copy
 import pickle
+from unittest.mock import call
+from unittest.mock import Mock
 
 from sqlalchemy import cast
 from sqlalchemy import exc
@@ -35,8 +37,6 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing.fixtures import fixture_session
-from sqlalchemy.testing.mock import call
-from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect

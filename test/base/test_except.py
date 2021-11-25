@@ -10,8 +10,6 @@ from sqlalchemy.engine import default
 from sqlalchemy.testing import combinations_list
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
-from sqlalchemy.util import compat
-from sqlalchemy.util import u
 
 
 class Error(Exception):
@@ -157,16 +155,13 @@ class WrapTest(fixtures.TestBase):
     def test_wrap_unicode_arg(self):
         # this is not supported by the API but oslo_db is doing it
         orig = sa_exceptions.DBAPIError(False, False, False)
-        orig.args = [u("méil")]
+        orig.args = ["méil"]
         eq_(
-            compat.text_type(orig),
-            compat.u(
-                "méil\n(Background on this error at: "
-                "https://sqlalche.me/e/%s/dbapi)"
-                % sa_exceptions._version_token
-            ),
+            str(orig),
+            "méil\n(Background on this error at: "
+            "https://sqlalche.me/e/%s/dbapi)" % sa_exceptions._version_token,
         )
-        eq_(orig.args, (u("méil"),))
+        eq_(orig.args, ("méil",))
 
     def test_tostring_large_dict(self):
         try:

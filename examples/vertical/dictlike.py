@@ -30,7 +30,6 @@ accessing them like a Python dict can be very convenient.  The example below
 can be used with many common vertical schemas as-is or with minor adaptations.
 
 """
-from __future__ import unicode_literals
 
 
 class ProxiedDictMixin:

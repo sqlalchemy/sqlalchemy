@@ -5,6 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+import collections.abc as collections_abc
 import numbers
 import re
 
@@ -17,7 +18,6 @@ from .visitors import Visitable
 from .. import exc
 from .. import inspection
 from .. import util
-from ..util import collections_abc
 
 
 elements = None
@@ -224,7 +224,7 @@ def expect_col_expression_collection(role, expressions):
         column = None
 
         resolved = expect(role, expr)
-        if isinstance(resolved, util.string_types):
+        if isinstance(resolved, str):
             strname = resolved = expr
         else:
             cols = []
@@ -303,7 +303,7 @@ class _ReturnsStringKey:
     def _implicit_coercions(
         self, original_element, resolved, argname=None, **kw
     ):
-        if isinstance(original_element, util.string_types):
+        if isinstance(original_element, str):
             return original_element
         else:
             self._raise_for_expected(original_element, argname, resolved)
@@ -362,7 +362,7 @@ class _NoTextCoercion:
     __slots__ = ()
 
     def _literal_coercion(self, element, argname=None, **kw):
-        if isinstance(element, util.string_types) and issubclass(
+        if isinstance(element, str) and issubclass(
             elements.TextClause, self._role_class
         ):
             _no_text_coercion(element, argname)
@@ -380,7 +380,7 @@ class _CoerceLiterals:
         return _no_text_coercion(element, argname)
 
     def _literal_coercion(self, element, argname=None, **kw):
-        if isinstance(element, util.string_types):
+        if isinstance(element, str):
             if self._coerce_star and element == "*":
                 return elements.ColumnClause("*", is_literal=True)
             else:
@@ -542,7 +542,7 @@ class InElementImpl(RoleImpl):
 
     def _literal_coercion(self, element, expr, operator, **kw):
         if isinstance(element, collections_abc.Iterable) and not isinstance(
-            element, util.string_types
+            element, str
         ):
             non_literal_expressions = {}
             element = list(element)
@@ -729,7 +729,7 @@ class TruncatedLabelImpl(_StringOnly, RoleImpl):
     def _implicit_coercions(
         self, original_element, resolved, argname=None, **kw
     ):
-        if isinstance(original_element, util.string_types):
+        if isinstance(original_element, str):
             return resolved
         else:
             self._raise_for_expected(original_element, argname, resolved)
@@ -844,7 +844,7 @@ class StatementImpl(_CoerceLiterals, RoleImpl):
 
     def _post_coercion(self, resolved, original_element, argname=None, **kw):
         if resolved is not original_element and not isinstance(
-            original_element, util.string_types
+            original_element, str
         ):
             # use same method as Connection uses; this will later raise
             # ObjectNotExecutableError

@@ -33,7 +33,7 @@ class _cymysqlBIT(BIT):
         def process(value):
             if value is not None:
                 v = 0
-                for i in util.iterbytes(value):
+                for i in iter(value):
                     v = v << 8 | i
                 return v
             return value

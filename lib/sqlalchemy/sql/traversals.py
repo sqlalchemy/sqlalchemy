@@ -1,6 +1,8 @@
 from collections import deque
 from collections import namedtuple
+import collections.abc as collections_abc
 import itertools
+from itertools import zip_longest
 import operator
 
 from . import operators
@@ -8,9 +10,7 @@ from .visitors import ExtendedInternalTraversal
 from .visitors import InternalTraversal
 from .. import util
 from ..inspection import inspect
-from ..util import collections_abc
 from ..util import HasMemoized
-from ..util import py37
 
 SKIP_TRAVERSE = util.symbol("skip_traverse")
 COMPARE_FAILED = False
@@ -331,7 +331,7 @@ class CacheKey(namedtuple("CacheKey", ["key", "bindparams"])):
                 s1 = s1[idx]
                 s2 = s2[idx]
 
-            for idx, (e1, e2) in enumerate(util.zip_longest(s1, s2)):
+            for idx, (e1, e2) in enumerate(zip_longest(s1, s2)):
                 if idx < pickup_index:
                     continue
                 if e1 != e2:
@@ -669,38 +669,20 @@ class _CacheKey(ExtendedInternalTraversal):
         )
 
     def visit_dml_values(self, attrname, obj, parent, anon_map, bindparams):
-        if py37:
-            # in py37 we can assume two dictionaries created in the same
-            # insert ordering will retain that sorting
-            return (
-                attrname,
-                tuple(
-                    (
-                        k._gen_cache_key(anon_map, bindparams)
-                        if hasattr(k, "__clause_element__")
-                        else k,
-                        obj[k]._gen_cache_key(anon_map, bindparams),
-                    )
-                    for k in obj
-                ),
-            )
-        else:
-            expr_values = {k for k in obj if hasattr(k, "__clause_element__")}
-            if expr_values:
-                # expr values can't be sorted deterministically right now,
-                # so no cache
-                anon_map[NO_CACHE] = True
-                return ()
-
-            str_values = expr_values.symmetric_difference(obj)
-
-            return (
-                attrname,
-                tuple(
-                    (k, obj[k]._gen_cache_key(anon_map, bindparams))
-                    for k in sorted(str_values)
-                ),
-            )
+        # in py37 we can assume two dictionaries created in the same
+        # insert ordering will retain that sorting
+        return (
+            attrname,
+            tuple(
+                (
+                    k._gen_cache_key(anon_map, bindparams)
+                    if hasattr(k, "__clause_element__")
+                    else k,
+                    obj[k]._gen_cache_key(anon_map, bindparams),
+                )
+                for k in obj
+            ),
+        )
 
     def visit_dml_multi_values(
         self, attrname, obj, parent, anon_map, bindparams
@@ -1040,7 +1022,7 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
             for (
                 (left_attrname, left_visit_sym),
                 (right_attrname, right_visit_sym),
-            ) in util.zip_longest(
+            ) in zip_longest(
                 left._traverse_internals,
                 right._traverse_internals,
                 fillvalue=(None, None),
@@ -1098,7 +1080,7 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
     def visit_has_cache_key_list(
         self, attrname, left_parent, left, right_parent, right, **kw
     ):
-        for l, r in util.zip_longest(left, right, fillvalue=None):
+        for l, r in zip_longest(left, right, fillvalue=None):
             if l._gen_cache_key(self.anon_map[0], []) != r._gen_cache_key(
                 self.anon_map[1], []
             ):
@@ -1114,7 +1096,7 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
     def visit_fromclause_canonical_column_collection(
         self, attrname, left_parent, left, right_parent, right, **kw
     ):
-        for lcol, rcol in util.zip_longest(left, right, fillvalue=None):
+        for lcol, rcol in zip_longest(left, right, fillvalue=None):
             self.stack.append((lcol, rcol))
 
     def visit_fromclause_derived_column_collection(
@@ -1125,7 +1107,7 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
     def visit_string_clauseelement_dict(
         self, attrname, left_parent, left, right_parent, right, **kw
     ):
-        for lstr, rstr in util.zip_longest(
+        for lstr, rstr in zip_longest(
             sorted(left), sorted(right), fillvalue=None
         ):
             if lstr != rstr:
@@ -1135,23 +1117,23 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
     def visit_clauseelement_tuples(
         self, attrname, left_parent, left, right_parent, right, **kw
     ):
-        for ltup, rtup in util.zip_longest(left, right, fillvalue=None):
+        for ltup, rtup in zip_longest(left, right, fillvalue=None):
             if ltup is None or rtup is None:
                 return COMPARE_FAILED
 
-            for l, r in util.zip_longest(ltup, rtup, fillvalue=None):
+            for l, r in zip_longest(ltup, rtup, fillvalue=None):
                 self.stack.append((l, r))
 
     def visit_clauseelement_list(
         self, attrname, left_parent, left, right_parent, right, **kw
     ):
-        for l, r in util.zip_longest(left, right, fillvalue=None):
+        for l, r in zip_longest(left, right, fillvalue=None):
             self.stack.append((l, r))
 
     def visit_clauseelement_tuple(
         self, attrname, left_parent, left, right_parent, right, **kw
     ):
-        for l, r in util.zip_longest(left, right, fillvalue=None):
+        for l, r in zip_longest(left, right, fillvalue=None):
             self.stack.append((l, r))
 
     def _compare_unordered_sequences(self, seq1, seq2, **kw):
@@ -1174,7 +1156,7 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
     def visit_fromclause_ordered_set(
         self, attrname, left_parent, left, right_parent, right, **kw
     ):
-        for l, r in util.zip_longest(left, right, fillvalue=None):
+        for l, r in zip_longest(left, right, fillvalue=None):
             self.stack.append((l, r))
 
     def visit_string(
@@ -1256,7 +1238,7 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
     def visit_prefix_sequence(
         self, attrname, left_parent, left, right_parent, right, **kw
     ):
-        for (l_clause, l_str), (r_clause, r_str) in util.zip_longest(
+        for (l_clause, l_str), (r_clause, r_str) in zip_longest(
             left, right, fillvalue=(None, None)
         ):
             if l_str != r_str:
@@ -1271,7 +1253,7 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
         for (
             (l_target, l_onclause, l_from, l_flags),
             (r_target, r_onclause, r_from, r_flags),
-        ) in util.zip_longest(left, right, fillvalue=(None, None, None, None)):
+        ) in zip_longest(left, right, fillvalue=(None, None, None, None)):
             if l_flags != r_flags:
                 return COMPARE_FAILED
             self.stack.append((l_target, r_target))
@@ -1292,7 +1274,7 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
         right_keys = sorted(
             right, key=lambda elem: (elem[0].fullname, elem[1])
         )
-        for (ltable, ldialect), (rtable, rdialect) in util.zip_longest(
+        for (ltable, ldialect), (rtable, rdialect) in zip_longest(
             left_keys, right_keys, fillvalue=(None, None)
         ):
             if ldialect != rdialect:
@@ -1317,7 +1299,7 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
     ):
         # sequence of tuple pairs
 
-        for (lk, lv), (rk, rv) in util.zip_longest(
+        for (lk, lv), (rk, rv) in zip_longest(
             left, right, fillvalue=(None, None)
         ):
             if not self._compare_dml_values_or_ce(lk, rk, **kw):
@@ -1349,7 +1331,7 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
                     return COMPARE_FAILED
         elif isinstance(right, collections_abc.Sequence):
             return COMPARE_FAILED
-        elif py37:
+        else:
             # dictionaries guaranteed to support insert ordering in
             # py37 so that we can compare the keys in order.  without
             # this, we can't compare SQL expression keys because we don't
@@ -1359,25 +1341,15 @@ class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
                     return COMPARE_FAILED
                 if not self._compare_dml_values_or_ce(lv, rv, **kw):
                     return COMPARE_FAILED
-        else:
-            for lk in left:
-                lv = left[lk]
-
-                if lk not in right:
-                    return COMPARE_FAILED
-                rv = right[lk]
-
-                if not self._compare_dml_values_or_ce(lv, rv, **kw):
-                    return COMPARE_FAILED
 
     def visit_dml_multi_values(
         self, attrname, left_parent, left, right_parent, right, **kw
     ):
-        for lseq, rseq in util.zip_longest(left, right, fillvalue=None):
+        for lseq, rseq in zip_longest(left, right, fillvalue=None):
             if lseq is None or rseq is None:
                 return COMPARE_FAILED
 
-            for ld, rd in util.zip_longest(lseq, rseq, fillvalue=None):
+            for ld, rd in zip_longest(lseq, rseq, fillvalue=None):
                 if (
                     self.visit_dml_values(
                         attrname, left_parent, ld, right_parent, rd, **kw

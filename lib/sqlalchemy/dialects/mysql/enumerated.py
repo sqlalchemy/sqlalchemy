@@ -201,7 +201,7 @@ class SET(_StringType):
             super_convert = super(SET, self).result_processor(dialect, coltype)
 
             def process(value):
-                if isinstance(value, util.string_types):
+                if isinstance(value, str):
                     # MySQLdb returns a string, let's parse
                     if super_convert:
                         value = super_convert(value)
@@ -222,7 +222,7 @@ class SET(_StringType):
             def process(value):
                 if value is None:
                     return None
-                elif isinstance(value, util.int_types + util.string_types):
+                elif isinstance(value, (int, str)):
                     if super_convert:
                         return super_convert(value)
                     else:
@@ -237,9 +237,7 @@ class SET(_StringType):
 
             def process(value):
                 # accept strings and int (actually bitflag) values directly
-                if value is not None and not isinstance(
-                    value, util.int_types + util.string_types
-                ):
+                if value is not None and not isinstance(value, (int, str)):
                     value = ",".join(value)
 
                 if super_convert:

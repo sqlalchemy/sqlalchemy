@@ -7,7 +7,6 @@
 
 """sqlalchemy.orm.interfaces.LoaderStrategy
    implementations, and related MapperOptions."""
-from __future__ import absolute_import
 
 import collections
 import itertools

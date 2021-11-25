@@ -1,9 +1,7 @@
 import abc
 
-from ..util import ABC
 
-
-class ConnectionCharacteristic(ABC):
+class ConnectionCharacteristic(abc.ABC):
     """An abstract base for an object that can set, get and reset a
     per-connection characteristic, typically one that gets reset when the
     connection is returned to the connection pool.

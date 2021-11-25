@@ -1721,7 +1721,7 @@ class UUID(sqltypes.TypeEngine):
     def coerce_compared_value(self, op, value):
         """See :meth:`.TypeEngine.coerce_compared_value` for a description."""
 
-        if isinstance(value, util.string_types):
+        if isinstance(value, str):
             return self
         else:
             return super(UUID, self).coerce_compared_value(op, value)
@@ -1731,7 +1731,7 @@ class UUID(sqltypes.TypeEngine):
 
             def process(value):
                 if value is not None:
-                    value = util.text_type(value)
+                    value = str(value)
                 return value
 
             return process
@@ -2375,7 +2375,7 @@ class PGCompiler(compiler.SQLCompiler):
             target_text = "(%s)" % ", ".join(
                 (
                     self.preparer.quote(c)
-                    if isinstance(c, util.string_types)
+                    if isinstance(c, str)
                     else self.process(c, include_table=False, use_schema=False)
                 )
                 for c in clause.inferred_target_elements
@@ -2451,7 +2451,7 @@ class PGCompiler(compiler.SQLCompiler):
             for k, v in set_parameters.items():
                 key_text = (
                     self.preparer.quote(k)
-                    if isinstance(k, util.string_types)
+                    if isinstance(k, str)
                     else self.process(k, use_schema=False)
                 )
                 value_text = self.process(
@@ -2653,9 +2653,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
         includeclause = index.dialect_options["postgresql"]["include"]
         if includeclause:
             inclusions = [
-                index.table.c[col]
-                if isinstance(col, util.string_types)
-                else col
+                index.table.c[col] if isinstance(col, str) else col
                 for col in includeclause
             ]
             text += " INCLUDE (%s)" % ", ".join(
@@ -3326,7 +3324,7 @@ class PGDialect(default.DefaultDialect):
             sql.text(query).bindparams(
                 sql.bindparam(
                     "schema",
-                    util.text_type(schema.lower()),
+                    str(schema.lower()),
                     type_=sqltypes.Unicode,
                 )
             )
@@ -3347,7 +3345,7 @@ class PGDialect(default.DefaultDialect):
                 ).bindparams(
                     sql.bindparam(
                         "name",
-                        util.text_type(table_name),
+                        str(table_name),
                         type_=sqltypes.Unicode,
                     )
                 )
@@ -3361,12 +3359,12 @@ class PGDialect(default.DefaultDialect):
                 ).bindparams(
                     sql.bindparam(
                         "name",
-                        util.text_type(table_name),
+                        str(table_name),
                         type_=sqltypes.Unicode,
                     ),
                     sql.bindparam(
                         "schema",
-                        util.text_type(schema),
+                        str(schema),
                         type_=sqltypes.Unicode,
                     ),
                 )
@@ -3384,12 +3382,12 @@ class PGDialect(default.DefaultDialect):
             ).bindparams(
                 sql.bindparam(
                     "name",
-                    util.text_type(sequence_name),
+                    str(sequence_name),
                     type_=sqltypes.Unicode,
                 ),
                 sql.bindparam(
                     "schema",
-                    util.text_type(schema),
+                    str(schema),
                     type_=sqltypes.Unicode,
                 ),
             )
@@ -3418,15 +3416,11 @@ class PGDialect(default.DefaultDialect):
                 """
             query = sql.text(query)
         query = query.bindparams(
-            sql.bindparam(
-                "typname", util.text_type(type_name), type_=sqltypes.Unicode
-            )
+            sql.bindparam("typname", str(type_name), type_=sqltypes.Unicode)
         )
         if schema is not None:
             query = query.bindparams(
-                sql.bindparam(
-                    "nspname", util.text_type(schema), type_=sqltypes.Unicode
-                )
+                sql.bindparam("nspname", str(schema), type_=sqltypes.Unicode)
             )
         cursor = connection.execute(query)
         return bool(cursor.scalar())
@@ -3471,9 +3465,9 @@ class PGDialect(default.DefaultDialect):
         )
         # Since we're binding to unicode, table_name and schema_name must be
         # unicode.
-        table_name = util.text_type(table_name)
+        table_name = str(table_name)
         if schema is not None:
-            schema = util.text_type(schema)
+            schema = str(schema)
         s = sql.text(query).bindparams(table_name=sqltypes.Unicode)
         s = s.columns(oid=sqltypes.Integer)
         if schema:
@@ -3573,7 +3567,7 @@ class PGDialect(default.DefaultDialect):
             ).bindparams(
                 sql.bindparam(
                     "schema",
-                    util.text_type(schema),
+                    str(schema),
                     type_=sqltypes.Unicode,
                 ),
             )

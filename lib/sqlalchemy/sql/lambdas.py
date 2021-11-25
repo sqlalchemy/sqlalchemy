@@ -5,6 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+import collections.abc as collections_abc
 import itertools
 import operator
 import sys
@@ -24,8 +25,6 @@ from .operators import ColumnOperators
 from .. import exc
 from .. import inspection
 from .. import util
-from ..util import collections_abc
-from ..util import compat
 
 _closure_per_cache_key = util.LRUCache(1000)
 
@@ -1111,7 +1110,7 @@ class AnalyzedFunction:
         code += "        return %s\n" % ", ".join("i%d" % i for i in argrange)
         code += "    return closure.__closure__"
         vars_ = {"o%d" % i: cell_values[i] for i in argrange}
-        compat.exec_(code, vars_, vars_)
+        exec(code, vars_, vars_)
         closure = vars_["make_cells"]()
 
         func = type(f)(

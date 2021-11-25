@@ -15,8 +15,6 @@ at the class level of a particular ``_Dispatch`` class as well as within
 instances of ``_Dispatch``.
 
 """
-from __future__ import absolute_import
-
 import weakref
 
 from .attr import _ClsLevelDispatch
@@ -218,7 +216,7 @@ def _remove_dispatcher(cls):
             del _registrars[k]
 
 
-class Events(util.with_metaclass(_EventMeta, object)):
+class Events(metaclass=_EventMeta):
     """Define event listening functions for a particular target type."""
 
     @staticmethod

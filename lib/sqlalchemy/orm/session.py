@@ -6,7 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 """Provides the Session class and related utilities."""
 
-
+import contextlib
 import itertools
 import sys
 import weakref
@@ -1134,7 +1134,7 @@ class Session(_SessionClassMethods):
     def __exit__(self, type_, value, traceback):
         self.close()
 
-    @util.contextmanager
+    @contextlib.contextmanager
     def _maker_context_manager(self):
         with self:
             with self.begin():
@@ -2113,7 +2113,7 @@ class Session(_SessionClassMethods):
         return loading.get_from_identity(self, mapper, key, passive)
 
     @property
-    @util.contextmanager
+    @contextlib.contextmanager
     def no_autoflush(self):
         """Return a context manager that disables autoflush.
 

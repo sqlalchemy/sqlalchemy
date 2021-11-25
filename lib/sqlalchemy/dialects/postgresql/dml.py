@@ -185,7 +185,7 @@ class OnConflictClause(ClauseElement):
     def __init__(self, constraint=None, index_elements=None, index_where=None):
 
         if constraint is not None:
-            if not isinstance(constraint, util.string_types) and isinstance(
+            if not isinstance(constraint, str) and isinstance(
                 constraint,
                 (schema.Index, schema.Constraint, ext.ExcludeConstraint),
             ):
@@ -197,7 +197,7 @@ class OnConflictClause(ClauseElement):
                     "'constraint' and 'index_elements' are mutually exclusive"
                 )
 
-            if isinstance(constraint, util.string_types):
+            if isinstance(constraint, str):
                 self.constraint_target = constraint
                 self.inferred_target_elements = None
                 self.inferred_target_whereclause = None

@@ -441,8 +441,7 @@ place within SQLAlchemy's own marshalling logic, and not that of ``psycopg2``
 which may be more performant.
 
 """  # noqa
-from __future__ import absolute_import
-
+import collections.abc as collections_abc
 import decimal
 import logging
 import re
@@ -466,7 +465,6 @@ from ... import processors
 from ... import types as sqltypes
 from ... import util
 from ...engine import cursor as _cursor
-from ...util import collections_abc
 
 
 logger = logging.getLogger("sqlalchemy.dialects.postgresql")

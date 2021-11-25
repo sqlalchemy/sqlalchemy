@@ -7,7 +7,6 @@
 
 import sqlalchemy as sa
 from .. import exc as sa_exc
-from ..util import compat
 
 _repr_stack = set()
 
@@ -87,9 +86,7 @@ class ComparableMixin:
                 except (AttributeError, sa_exc.UnboundExecutionError):
                     return False
 
-                if hasattr(value, "__iter__") and not isinstance(
-                    value, compat.string_types
-                ):
+                if hasattr(value, "__iter__") and not isinstance(value, str):
                     if hasattr(value, "__getitem__") and not hasattr(
                         value, "keys"
                     ):

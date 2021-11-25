@@ -31,7 +31,6 @@ from sqlalchemy import Time
 from sqlalchemy import types
 from sqlalchemy import Unicode
 from sqlalchemy import UnicodeText
-from sqlalchemy import util
 from sqlalchemy.dialects.mssql import base as mssql
 from sqlalchemy.dialects.mssql import ROWVERSION
 from sqlalchemy.dialects.mssql import TIMESTAMP
@@ -790,7 +789,7 @@ class TypeRoundTripTest(
             2,
             32,
             123456,
-            util.timezone(datetime.timedelta(hours=-5)),
+            datetime.timezone(datetime.timedelta(hours=-5)),
         )
         return t, (d1, t1, d2, d3)
 
@@ -828,7 +827,7 @@ class TypeRoundTripTest(
                 11,
                 2,
                 32,
-                tzinfo=util.timezone(datetime.timedelta(hours=-5)),
+                tzinfo=datetime.timezone(datetime.timedelta(hours=-5)),
             ),
         ),
         (datetime.datetime(2007, 10, 30, 11, 2, 32)),
@@ -849,7 +848,7 @@ class TypeRoundTripTest(
         ).first()
 
         if not date.tzinfo:
-            eq_(row, (date, date.replace(tzinfo=util.timezone.utc)))
+            eq_(row, (date, date.replace(tzinfo=datetime.timezone.utc)))
         else:
             eq_(row, (date.replace(tzinfo=None), date))
 
@@ -875,7 +874,7 @@ class TypeRoundTripTest(
                 2,
                 32,
                 123456,
-                util.timezone(datetime.timedelta(hours=1)),
+                datetime.timezone(datetime.timedelta(hours=1)),
             ),
             1,
             False,
@@ -890,7 +889,7 @@ class TypeRoundTripTest(
                 2,
                 32,
                 123456,
-                util.timezone(datetime.timedelta(hours=-5)),
+                datetime.timezone(datetime.timedelta(hours=-5)),
             ),
             -5,
             False,
@@ -905,7 +904,7 @@ class TypeRoundTripTest(
                 2,
                 32,
                 123456,
-                util.timezone(datetime.timedelta(seconds=4000)),
+                datetime.timezone(datetime.timedelta(seconds=4000)),
             ),
             None,
             True,
@@ -973,7 +972,7 @@ class TypeRoundTripTest(
                     2,
                     32,
                     123456,
-                    util.timezone(
+                    datetime.timezone(
                         datetime.timedelta(hours=expected_offset_hours)
                     ),
                 ),
@@ -1168,7 +1167,7 @@ class StringTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_string_text_literal_binds_explicit_unicode_right(self):
         self.assert_compile(
-            column("x", String()) == util.u("foo"),
+            column("x", String()) == "foo",
             "x = 'foo'",
             literal_binds=True,
         )
@@ -1178,7 +1177,7 @@ class StringTest(fixtures.TestBase, AssertsCompiledSQL):
         # Unicode on Python 3 for plain string, test with unicode
         # string just to confirm literal is doing this
         self.assert_compile(
-            column("x", String()) == literal(util.u("foo")),
+            column("x", String()) == literal("foo"),
             "x = N'foo'",
             literal_binds=True,
         )

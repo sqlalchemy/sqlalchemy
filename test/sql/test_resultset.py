@@ -1,7 +1,12 @@
 import collections
+import collections.abc as collections_abc
 from contextlib import contextmanager
 import csv
+from io import StringIO
 import operator
+import pickle
+from unittest.mock import Mock
+from unittest.mock import patch
 
 from sqlalchemy import CHAR
 from sqlalchemy import column
@@ -24,7 +29,6 @@ from sqlalchemy import true
 from sqlalchemy import tuple_
 from sqlalchemy import type_coerce
 from sqlalchemy import TypeDecorator
-from sqlalchemy import util
 from sqlalchemy import VARCHAR
 from sqlalchemy.engine import cursor as _cursor
 from sqlalchemy.engine import default
@@ -54,11 +58,8 @@ from sqlalchemy.testing import le_
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing import not_in
-from sqlalchemy.testing.mock import Mock
-from sqlalchemy.testing.mock import patch
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
-from sqlalchemy.util import collections_abc
 
 
 class CursorResultTest(fixtures.TablesTest):
@@ -290,7 +291,7 @@ class CursorResultTest(fixtures.TablesTest):
             ],
         )
 
-        for pickle in False, True:
+        for use_pickle in False, True:
             for use_labels in False, True:
                 result = connection.execute(
                     users.select()
@@ -302,8 +303,8 @@ class CursorResultTest(fixtures.TablesTest):
                     )
                 ).fetchall()
 
-                if pickle:
-                    result = util.pickle.loads(util.pickle.dumps(result))
+                if use_pickle:
+                    result = pickle.loads(pickle.dumps(result))
 
                 eq_(result, [(7, "jack"), (8, "ed"), (9, "fred")])
                 if use_labels:
@@ -325,7 +326,7 @@ class CursorResultTest(fixtures.TablesTest):
 
                 # previously would warn
 
-                if pickle:
+                if use_pickle:
                     with expect_raises_message(
                         exc.NoSuchColumnError,
                         "Row was unpickled; lookup by ColumnElement is "
@@ -335,7 +336,7 @@ class CursorResultTest(fixtures.TablesTest):
                 else:
                     eq_(result[0]._mapping[users.c.user_id], 7)
 
-                if pickle:
+                if use_pickle:
                     with expect_raises_message(
                         exc.NoSuchColumnError,
                         "Row was unpickled; lookup by ColumnElement is "
@@ -972,7 +973,7 @@ class CursorResultTest(fixtures.TablesTest):
             lambda: r._mapping[fake_table.c.user_id],
         )
 
-        r = util.pickle.loads(util.pickle.dumps(r))
+        r = pickle.loads(pickle.dumps(r))
         assert_raises_message(
             exc.InvalidRequestError,
             "Ambiguous column name",
@@ -1605,7 +1606,7 @@ class CursorResultTest(fixtures.TablesTest):
             users.select().where(users.c.user_id == 1)
         ).fetchone()
 
-        s = util.StringIO()
+        s = StringIO()
         writer = csv.writer(s)
         # csv performs PySequenceCheck call
         writer.writerow(row)

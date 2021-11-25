@@ -12,8 +12,6 @@ runtime.
 
 import sys
 
-from . import compat
-
 
 class _ModuleRegistry:
     """Registry of modules to load in a package init file.
@@ -60,7 +58,7 @@ class _ModuleRegistry:
             if (
                 not path or module.startswith(path)
             ) and key not in self.__dict__:
-                compat.import_(module, globals(), locals())
+                __import__(module, globals(), locals())
                 self.__dict__[key] = sys.modules[module]
 
 

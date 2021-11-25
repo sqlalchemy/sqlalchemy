@@ -10,7 +10,6 @@ import contextlib
 import re
 
 from .. import event
-from .. import util
 from ..engine import url
 from ..engine.default import DefaultDialect
 from ..schema import _DDLCompiles
@@ -123,7 +122,7 @@ class CompiledSQL(SQLMatchRule):
                 for_executemany=context.compiled.for_executemany,
                 schema_translate_map=map_,
             )
-        _received_statement = re.sub(r"[\n\t]", "", util.text_type(compiled))
+        _received_statement = re.sub(r"[\n\t]", "", str(compiled))
         parameters = execute_observed.parameters
 
         if not parameters:

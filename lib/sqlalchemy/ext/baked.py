@@ -13,6 +13,7 @@ compiled result to be fully cached.
 
 """
 
+import collections.abc as collections_abc
 import logging
 
 from .. import exc as sa_exc
@@ -24,7 +25,6 @@ from ..orm.session import Session
 from ..sql import func
 from ..sql import literal_column
 from ..sql import util as sql_util
-from ..util import collections_abc
 
 
 log = logging.getLogger(__name__)

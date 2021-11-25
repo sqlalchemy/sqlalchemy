@@ -1,6 +1,7 @@
 # coding: utf-8
 import datetime
 import decimal
+from enum import Enum as _PY_Enum
 import re
 import uuid
 
@@ -319,30 +320,30 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             Column(
                 "value",
                 Enum(
-                    util.u("réveillé"),
-                    util.u("drôle"),
-                    util.u("S’il"),
+                    "réveillé",
+                    "drôle",
+                    "S’il",
                     name="onetwothreetype",
                 ),
             ),
         )
         metadata.create_all(connection)
-        connection.execute(t1.insert(), dict(value=util.u("drôle")))
-        connection.execute(t1.insert(), dict(value=util.u("réveillé")))
-        connection.execute(t1.insert(), dict(value=util.u("S’il")))
+        connection.execute(t1.insert(), dict(value="drôle"))
+        connection.execute(t1.insert(), dict(value="réveillé"))
+        connection.execute(t1.insert(), dict(value="S’il"))
         eq_(
             connection.execute(t1.select().order_by(t1.c.id)).fetchall(),
             [
-                (1, util.u("drôle")),
-                (2, util.u("réveillé")),
-                (3, util.u("S’il")),
+                (1, "drôle"),
+                (2, "réveillé"),
+                (3, "S’il"),
             ],
         )
         m2 = MetaData()
         t2 = Table("table", m2, autoload_with=connection)
         eq_(
             t2.c.value.type.enums,
-            [util.u("réveillé"), util.u("drôle"), util.u("S’il")],
+            ["réveillé", "drôle", "S’il"],
         )
 
     def test_non_native_enum(self, metadata, connection):
@@ -390,7 +391,7 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
                 "bar",
                 Enum(
                     "B",
-                    util.u("Ü"),
+                    "Ü",
                     name="myenum",
                     create_constraint=True,
                     native_enum=False,
@@ -406,18 +407,16 @@ class EnumTest(fixtures.TestBase, AssertsExecutionResults):
             go,
             [
                 (
-                    util.u(
-                        "CREATE TABLE foo (\tbar "
-                        "VARCHAR(1), \tCONSTRAINT myenum CHECK "
-                        "(bar IN ('B', 'Ü')))"
-                    ),
+                    "CREATE TABLE foo (\tbar "
+                    "VARCHAR(1), \tCONSTRAINT myenum CHECK "
+                    "(bar IN ('B', 'Ü')))",
                     {},
                 )
             ],
         )
 
-        connection.execute(t1.insert(), {"bar": util.u("Ü")})
-        eq_(connection.scalar(select(t1.c.bar)), util.u("Ü"))
+        connection.execute(t1.insert(), {"bar": "Ü"})
+        eq_(connection.scalar(select(t1.c.bar)), "Ü")
 
     def test_disable_create(self, metadata, connection):
         metadata = self.metadata
@@ -1628,13 +1627,13 @@ class ArrayRoundTripTest:
             arrtable.insert(),
             dict(
                 intarr=[1, 2, 3],
-                strarr=[util.u("abc"), util.u("def")],
+                strarr=["abc", "def"],
             ),
         )
         results = connection.execute(arrtable.select()).fetchall()
         eq_(len(results), 1)
         eq_(results[0].intarr, [1, 2, 3])
-        eq_(results[0].strarr, [util.u("abc"), util.u("def")])
+        eq_(results[0].strarr, ["abc", "def"])
 
     def test_insert_array_w_null(self, connection):
         arrtable = self.tables.arrtable
@@ -1642,13 +1641,13 @@ class ArrayRoundTripTest:
             arrtable.insert(),
             dict(
                 intarr=[1, None, 3],
-                strarr=[util.u("abc"), None],
+                strarr=["abc", None],
             ),
         )
         results = connection.execute(arrtable.select()).fetchall()
         eq_(len(results), 1)
         eq_(results[0].intarr, [1, None, 3])
-        eq_(results[0].strarr, [util.u("abc"), None])
+        eq_(results[0].strarr, ["abc", None])
 
     def test_array_where(self, connection):
         arrtable = self.tables.arrtable
@@ -1656,11 +1655,11 @@ class ArrayRoundTripTest:
             arrtable.insert(),
             dict(
                 intarr=[1, 2, 3],
-                strarr=[util.u("abc"), util.u("def")],
+                strarr=["abc", "def"],
             ),
         )
         connection.execute(
-            arrtable.insert(), dict(intarr=[4, 5, 6], strarr=util.u("ABC"))
+            arrtable.insert(), dict(intarr=[4, 5, 6], strarr="ABC")
         )
         results = connection.execute(
             arrtable.select().where(arrtable.c.intarr == [1, 2, 3])
@@ -1672,7 +1671,7 @@ class ArrayRoundTripTest:
         arrtable = self.tables.arrtable
         connection.execute(
             arrtable.insert(),
-            dict(intarr=[1, 2, 3], strarr=[util.u("abc"), util.u("def")]),
+            dict(intarr=[1, 2, 3], strarr=["abc", "def"]),
         )
         results = connection.execute(
             select(arrtable.c.intarr + [4, 5, 6])
@@ -1684,9 +1683,7 @@ class ArrayRoundTripTest:
         arrtable = self.tables.arrtable
         connection.execute(
             arrtable.insert(),
-            dict(
-                id=5, intarr=[1, 2, 3], strarr=[util.u("abc"), util.u("def")]
-            ),
+            dict(id=5, intarr=[1, 2, 3], strarr=["abc", "def"]),
         )
         results = connection.execute(
             select(arrtable.c.id).where(arrtable.c.intarr < [4, 5, 6])
@@ -1700,24 +1697,24 @@ class ArrayRoundTripTest:
             arrtable.insert(),
             dict(
                 intarr=[4, 5, 6],
-                strarr=[[util.ue("m\xe4\xe4")], [util.ue("m\xf6\xf6")]],
+                strarr=[["m\xe4\xe4"], ["m\xf6\xf6"]],
             ),
         )
         connection.execute(
             arrtable.insert(),
             dict(
                 intarr=[1, 2, 3],
-                strarr=[util.ue("m\xe4\xe4"), util.ue("m\xf6\xf6")],
+                strarr=["m\xe4\xe4", "m\xf6\xf6"],
             ),
         )
         results = connection.execute(
             arrtable.select().order_by(arrtable.c.intarr)
         ).fetchall()
         eq_(len(results), 2)
-        eq_(results[0].strarr, [util.ue("m\xe4\xe4"), util.ue("m\xf6\xf6")])
+        eq_(results[0].strarr, ["m\xe4\xe4", "m\xf6\xf6"])
         eq_(
             results[1].strarr,
-            [[util.ue("m\xe4\xe4")], [util.ue("m\xf6\xf6")]],
+            [["m\xe4\xe4"], ["m\xf6\xf6"]],
         )
 
     def test_array_literal_roundtrip(self, connection):
@@ -1790,7 +1787,7 @@ class ArrayRoundTripTest:
             arrtable.insert(),
             dict(
                 intarr=[4, 5, 6],
-                strarr=[util.u("abc"), util.u("def")],
+                strarr=["abc", "def"],
             ),
         )
         eq_(connection.scalar(select(arrtable.c.intarr[2:3])), [5, 6])
@@ -1909,11 +1906,11 @@ class ArrayRoundTripTest:
 
         def unicode_values(x):
             return [
-                util.u("réveillé"),
-                util.u("drôle"),
-                util.u("S’il %s" % x),
-                util.u("🐍 %s" % x),
-                util.u("« S’il vous"),
+                "réveillé",
+                "drôle",
+                "S’il %s" % x,
+                "🐍 %s" % x,
+                "« S’il vous",
             ]
 
         def json_values(x):
@@ -2328,6 +2325,11 @@ class ArrayEnum(fixtures.TestBase):
     @testing.fixture
     def array_of_enum_fixture(self, metadata, connection):
         def go(array_cls, enum_cls):
+            class MyEnum(_PY_Enum):
+                a = "aaa"
+                b = "bbb"
+                c = "ccc"
+
             tbl = Table(
                 "enum_table",
                 metadata,
@@ -2336,23 +2338,11 @@ class ArrayEnum(fixtures.TestBase):
                     "enum_col",
                     array_cls(enum_cls("foo", "bar", "baz", name="an_enum")),
                 ),
+                Column(
+                    "pyenum_col",
+                    array_cls(enum_cls(MyEnum)),
+                ),
             )
-            if util.py3k:
-                from enum import Enum
-
-                class MyEnum(Enum):
-                    a = "aaa"
-                    b = "bbb"
-                    c = "ccc"
-
-                tbl.append_column(
-                    Column(
-                        "pyenum_col",
-                        array_cls(enum_cls(MyEnum)),
-                    ),
-                )
-            else:
-                MyEnum = None
 
             metadata.create_all(connection)
             connection.execute(
@@ -3151,16 +3141,16 @@ class HStoreRoundTripTest(fixtures.TablesTest):
     def _test_unicode_round_trip(self, connection):
         s = select(
             hstore(
-                array([util.u("réveillé"), util.u("drôle"), util.u("S’il")]),
-                array([util.u("réveillé"), util.u("drôle"), util.u("S’il")]),
+                array(["réveillé", "drôle", "S’il"]),
+                array(["réveillé", "drôle", "S’il"]),
             )
         )
         eq_(
             connection.scalar(s),
             {
-                util.u("réveillé"): util.u("réveillé"),
-                util.u("drôle"): util.u("drôle"),
-                util.u("S’il"): util.u("S’il"),
+                "réveillé": "réveillé",
+                "drôle": "drôle",
+                "S’il": "S’il",
             },
         )
 
@@ -3826,7 +3816,7 @@ class JSONRoundTripTest(fixtures.TablesTest):
         result = connection.execute(
             select(data_table.c.data["k1"].astext)
         ).first()
-        assert isinstance(result[0], util.text_type)
+        assert isinstance(result[0], str)
 
     def test_query_returned_as_int(self, connection):
         self._fixture_data(connection)
@@ -3854,8 +3844,8 @@ class JSONRoundTripTest(fixtures.TablesTest):
         s = select(
             cast(
                 {
-                    util.u("réveillé"): util.u("réveillé"),
-                    "data": {"k1": util.u("drôle")},
+                    "réveillé": "réveillé",
+                    "data": {"k1": "drôle"},
                 },
                 self.data_type,
             )
@@ -3863,8 +3853,8 @@ class JSONRoundTripTest(fixtures.TablesTest):
         eq_(
             connection.scalar(s),
             {
-                util.u("réveillé"): util.u("réveillé"),
-                "data": {"k1": util.u("drôle")},
+                "réveillé": "réveillé",
+                "data": {"k1": "drôle"},
             },
         )
 

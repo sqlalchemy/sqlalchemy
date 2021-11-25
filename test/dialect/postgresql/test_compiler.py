@@ -56,7 +56,6 @@ from sqlalchemy.testing.assertions import AssertsCompiledSQL
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertions import is_
 from sqlalchemy.util import OrderedDict
-from sqlalchemy.util import u
 
 
 class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -190,15 +189,10 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_create_drop_enum(self):
         # test escaping and unicode within CREATE TYPE for ENUM
-        typ = postgresql.ENUM(
-            "val1", "val2", "val's 3", u("méil"), name="myname"
-        )
+        typ = postgresql.ENUM("val1", "val2", "val's 3", "méil", name="myname")
         self.assert_compile(
             postgresql.CreateEnumType(typ),
-            u(
-                "CREATE TYPE myname AS "
-                "ENUM ('val1', 'val2', 'val''s 3', 'méil')"
-            ),
+            "CREATE TYPE myname AS ENUM ('val1', 'val2', 'val''s 3', 'méil')",
         )
 
         typ = postgresql.ENUM("val1", "val2", "val's 3", name="PleaseQuoteMe")

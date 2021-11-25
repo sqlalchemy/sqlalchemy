@@ -18,6 +18,7 @@ ORM session, whereas the ``Select`` construct interacts directly with the
 database to return iterable result sets.
 
 """
+import collections.abc as collections_abc
 import itertools
 import operator
 import types
@@ -68,7 +69,6 @@ from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..sql.selectable import SelectBase
 from ..sql.selectable import SelectStatementGrouping
 from ..sql.visitors import InternalTraversal
-from ..util import collections_abc
 
 __all__ = ["Query", "QueryContext", "aliased"]
 

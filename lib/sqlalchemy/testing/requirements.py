@@ -16,7 +16,6 @@ to provide specific inclusion/exclusions.
 """
 
 import platform
-import sys
 
 from . import exclusions
 from . import only_on
@@ -1272,12 +1271,12 @@ class SuiteRequirements(Requirements):
     @property
     def threading_with_mock(self):
         """Mark tests that use threading and mock at the same time - stability
-        issues have been observed with coverage + python 3.3
+        issues have been observed with coverage
 
         """
         return exclusions.skip_if(
-            lambda config: util.py3k and config.options.has_coverage,
-            "Stability issues with coverage + py3k",
+            lambda config: config.options.has_coverage,
+            "Stability issues with coverage",
         )
 
     @property
@@ -1315,17 +1314,6 @@ class SuiteRequirements(Requirements):
                 return True
 
         return exclusions.only_if(check_lib, "patch library needed")
-
-    @property
-    def non_broken_pickle(self):
-        from sqlalchemy.util import pickle
-
-        return exclusions.only_if(
-            lambda: util.cpython
-            and pickle.__name__ == "cPickle"
-            or sys.version_info >= (3, 2),
-            "Needs cPickle+cPython or newer Python 3 pickle",
-        )
 
     @property
     def predictable_gc(self):
@@ -1505,8 +1493,3 @@ class SuiteRequirements(Requirements):
         sequence. This should be false only for oracle.
         """
         return exclusions.open()
-
-    @property
-    def generic_classes(self):
-        "If X[Y] can be implemented with ``__class_getitem__``. py3.7+"
-        return exclusions.only_if(lambda: util.py37)

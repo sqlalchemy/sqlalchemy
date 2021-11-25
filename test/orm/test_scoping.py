@@ -1,3 +1,5 @@
+from unittest.mock import Mock
+
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
@@ -13,7 +15,6 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
-from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 

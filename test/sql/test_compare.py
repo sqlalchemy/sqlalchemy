@@ -957,8 +957,7 @@ class CoreFixtures:
             .where(table_b_b.c.c > 10),
         )
 
-    if util.py37:
-        fixtures.append(_update_dml_w_dicts)
+    fixtures.append(_update_dml_w_dicts)
 
     def _lambda_fixtures():
         def one():

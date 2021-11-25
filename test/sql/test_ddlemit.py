@@ -1,3 +1,5 @@
+from unittest.mock import Mock
+
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Index
@@ -9,7 +11,6 @@ from sqlalchemy import Table
 from sqlalchemy.sql.ddl import SchemaDropper
 from sqlalchemy.sql.ddl import SchemaGenerator
 from sqlalchemy.testing import fixtures
-from sqlalchemy.testing.mock import Mock
 
 
 class EmitDDLTest(fixtures.TestBase):

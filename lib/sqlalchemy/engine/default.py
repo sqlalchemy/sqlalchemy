@@ -16,6 +16,7 @@ as the base class for their own corresponding classes.
 import functools
 import random
 import re
+from time import perf_counter
 import weakref
 
 from . import characteristics
@@ -780,7 +781,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         self.execution_options = execution_options
 
-        self.unicode_statement = util.text_type(compiled)
+        self.unicode_statement = str(compiled)
         if compiled.schema_translate_map:
             schema_translate_map = self.execution_options.get(
                 "schema_translate_map", {}
@@ -1003,7 +1004,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         if self.compiled is None:
             return "raw sql"
 
-        now = util.perf_counter()
+        now = perf_counter()
 
         ch = self.cache_hit
 
@@ -1515,7 +1516,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
                 for key in compiled_params
             )
         return self._execute_scalar(
-            util.text_type(compiled), type_, parameters=parameters
+            str(compiled), type_, parameters=parameters
         )
 
     current_parameters = None

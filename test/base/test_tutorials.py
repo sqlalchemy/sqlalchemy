@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import doctest
 import logging
 import os
@@ -69,7 +67,7 @@ class DocTest(fixtures.TestBase):
             checker=_get_unicode_checker(),
         )
         parser = doctest.DocTestParser()
-        globs = {"print_function": print_function}
+        globs = {"print_function": print}
 
         for fname in fnames:
             path = os.path.join(sqla_base, "doc/build", fname)

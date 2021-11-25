@@ -302,9 +302,8 @@ class TransactionTest(fixtures.TablesTest):
         savepoint = savepoint[0]
         assert not savepoint.is_active
 
-        if util.py3k:
-            # ensure cause comes from the DBAPI
-            assert isinstance(exc_.__cause__, testing.db.dialect.dbapi.Error)
+        # ensure cause comes from the DBAPI
+        assert isinstance(exc_.__cause__, testing.db.dialect.dbapi.Error)
 
     def test_retains_through_options(self, local_connection):
         connection = local_connection

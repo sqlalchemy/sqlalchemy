@@ -3,7 +3,6 @@ from sqlalchemy import event
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
-from sqlalchemy import util
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import clear_mappers
@@ -655,39 +654,32 @@ class Py3KFunctionInstTest(fixtures.ORMTest):
 
         assert_raises(TypeError, cls, "a", "b", c="c")
 
+    def _kw_only_fixture(self):
+        class A(object):
+            def __init__(self, a, *, b, c):
+                self.a = a
+                self.b = b
+                self.c = c
 
-if util.py3k:
-    _locals = {}
-    exec(
-        """
-def _kw_only_fixture(self):
-    class A:
-        def __init__(self, a, *, b, c):
-            self.a = a
-            self.b = b
-            self.c = c
-    return self._instrument(A)
+        return self._instrument(A)
 
-def _kw_plus_posn_fixture(self):
-    class A:
-        def __init__(self, a, *args, b, c):
-            self.a = a
-            self.b = b
-            self.c = c
-    return self._instrument(A)
+    def _kw_plus_posn_fixture(self):
+        class A(object):
+            def __init__(self, a, *args, b, c):
+                self.a = a
+                self.b = b
+                self.c = c
 
-def _kw_opt_fixture(self):
-    class A:
-        def __init__(self, a, *, b, c="c"):
-            self.a = a
-            self.b = b
-            self.c = c
-    return self._instrument(A)
-""",
-        _locals,
-    )
-    for k in _locals:
-        setattr(Py3KFunctionInstTest, k, _locals[k])
+        return self._instrument(A)
+
+    def _kw_opt_fixture(self):
+        class A(object):
+            def __init__(self, a, *, b, c="c"):
+                self.a = a
+                self.b = b
+                self.c = c
+
+        return self._instrument(A)
 
 
 class MiscTest(fixtures.MappedTest):

@@ -1,8 +1,14 @@
 # coding: utf-8
 
+import collections.abc as collections_abc
 from contextlib import contextmanager
+from contextlib import nullcontext
+from io import StringIO
 import re
 import threading
+from unittest.mock import call
+from unittest.mock import Mock
+from unittest.mock import patch
 import weakref
 
 import sqlalchemy as tsa
@@ -46,14 +52,10 @@ from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertsql import CompiledSQL
-from sqlalchemy.testing.mock import call
-from sqlalchemy.testing.mock import Mock
-from sqlalchemy.testing.mock import patch
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.testing.util import picklers
-from sqlalchemy.util import collections_abc
 
 
 class SomeException(Exception):
@@ -65,7 +67,7 @@ class Foo:
         return "foo"
 
     def __unicode__(self):
-        return util.u("fóó")
+        return "fóó"
 
 
 class ExecuteTest(fixtures.TablesTest):
@@ -444,7 +446,7 @@ class ExecuteTest(fixtures.TablesTest):
                     eq_(conn.execute(obj).scalar(), 1)
 
     def test_stmt_exception_bytestring_raised(self):
-        name = util.u("méil")
+        name = "méil"
         users = self.tables.users
         with testing.db.connect() as conn:
             assert_raises_message(
@@ -461,26 +463,26 @@ class ExecuteTest(fixtures.TablesTest):
     def test_stmt_exception_bytestring_utf8(self):
         # uncommon case for Py3K, bytestring object passed
         # as the error message
-        message = util.u("some message méil").encode("utf-8")
+        message = "some message méil".encode("utf-8")
 
         err = tsa.exc.SQLAlchemyError(message)
-        eq_(str(err), util.u("some message méil"))
+        eq_(str(err), "some message méil")
 
     def test_stmt_exception_bytestring_latin1(self):
         # uncommon case for Py3K, bytestring object passed
         # as the error message
-        message = util.u("some message méil").encode("latin-1")
+        message = "some message méil".encode("latin-1")
 
         err = tsa.exc.SQLAlchemyError(message)
-        eq_(str(err), util.u("some message m\\xe9il"))
+        eq_(str(err), "some message m\\xe9il")
 
     def test_stmt_exception_unicode_hook_unicode(self):
         # uncommon case for Py2K, Unicode object passed
         # as the error message
-        message = util.u("some message méil")
+        message = "some message méil"
 
         err = tsa.exc.SQLAlchemyError(message)
-        eq_(str(err), util.u("some message méil"))
+        eq_(str(err), "some message méil")
 
     def test_stmt_exception_object_arg(self):
         err = tsa.exc.SQLAlchemyError(Foo())
@@ -491,13 +493,13 @@ class ExecuteTest(fixtures.TablesTest):
         eq_(str(err), "('some message', 206)")
 
     def test_stmt_exception_str_multi_args_bytestring(self):
-        message = util.u("some message méil").encode("utf-8")
+        message = "some message méil".encode("utf-8")
 
         err = tsa.exc.SQLAlchemyError(message, 206)
         eq_(str(err), str((message, 206)))
 
     def test_stmt_exception_str_multi_args_unicode(self):
-        message = util.u("some message méil")
+        message = "some message méil"
 
         err = tsa.exc.SQLAlchemyError(message, 206)
         eq_(str(err), str((message, 206)))
@@ -1156,10 +1158,10 @@ class CompiledCacheTest(fixtures.TestBase):
 
 class MockStrategyTest(fixtures.TestBase):
     def _engine_fixture(self):
-        buf = util.StringIO()
+        buf = StringIO()
 
         def dump(sql, *multiparams, **params):
-            buf.write(util.text_type(sql.compile(dialect=engine.dialect)))
+            buf.write(str(sql.compile(dialect=engine.dialect)))
 
         engine = create_mock_engine("postgresql+psycopg2://", executor=dump)
         return engine, buf
@@ -1667,7 +1669,7 @@ class EngineEventsTest(fixtures.TestBase):
                     lambda self: None,
                 )
         else:
-            patcher = util.nullcontext()
+            patcher = nullcontext()
 
         with patcher:
             e1 = testing_engine(config.db_url)

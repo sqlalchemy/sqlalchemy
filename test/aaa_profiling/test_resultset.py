@@ -12,7 +12,6 @@ from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import profiling
-from sqlalchemy.util import u
 
 
 NUM_FIELDS = 10
@@ -49,7 +48,7 @@ class ResultSetTest(fixtures.TablesTest, AssertsExecutionResults):
             t.insert(),
             [
                 dict(
-                    ("field%d" % fnum, u("value%d" % fnum))
+                    ("field%d" % fnum, "value%d" % fnum)
                     for fnum in range(NUM_FIELDS)
                 )
                 for r_num in range(NUM_RECORDS)
@@ -59,7 +58,7 @@ class ResultSetTest(fixtures.TablesTest, AssertsExecutionResults):
             t2.insert(),
             [
                 dict(
-                    ("field%d" % fnum, u("value%d" % fnum))
+                    ("field%d" % fnum, "value%d" % fnum)
                     for fnum in range(NUM_FIELDS)
                 )
                 for r_num in range(NUM_RECORDS)

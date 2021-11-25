@@ -39,7 +39,6 @@ to the pymysql driver as well.
 
 from .mysqldb import MySQLDialect_mysqldb
 from ...util import langhelpers
-from ...util import py3k
 
 
 class MySQLDialect_pymysql(MySQLDialect_mysqldb):
@@ -81,12 +80,10 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
         else:
             return False
 
-    if py3k:
-
-        def _extract_error_code(self, exception):
-            if isinstance(exception.args[0], Exception):
-                exception = exception.args[0]
-            return exception.args[0]
+    def _extract_error_code(self, exception):
+        if isinstance(exception.args[0], Exception):
+            exception = exception.args[0]
+        return exception.args[0]
 
 
 dialect = MySQLDialect_pymysql

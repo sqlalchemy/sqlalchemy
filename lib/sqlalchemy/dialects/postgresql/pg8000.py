@@ -554,7 +554,7 @@ class PGDialect_pg8000(PGDialect):
         fns = []
 
         def on_connect(conn):
-            conn.py_types[quoted_name] = conn.py_types[util.text_type]
+            conn.py_types[quoted_name] = conn.py_types[str]
 
         fns.append(on_connect)
 

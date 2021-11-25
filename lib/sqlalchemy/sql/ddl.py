@@ -180,7 +180,7 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
         self.state = state
 
     def _should_execute(self, target, bind, **kw):
-        if isinstance(self.dialect, util.string_types):
+        if isinstance(self.dialect, str):
             if self.dialect != bind.engine.name:
                 return False
         elif isinstance(self.dialect, (tuple, list, set)):
@@ -288,7 +288,7 @@ class DDL(DDLElement):
 
         """
 
-        if not isinstance(statement, util.string_types):
+        if not isinstance(statement, str):
             raise exc.ArgumentError(
                 "Expected a string or unicode SQL statement, got '%r'"
                 % statement

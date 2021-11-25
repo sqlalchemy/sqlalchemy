@@ -669,7 +669,7 @@ class CursorResultMetaData(ResultMetaData):
             "_keymap": {
                 key: (rec[MD_INDEX], rec[MD_RESULT_MAP_INDEX], _UNPICKLED, key)
                 for key, rec in self._keymap.items()
-                if isinstance(key, util.string_types + util.int_types)
+                if isinstance(key, (str, int))
             },
             "_keys": self._keys,
             "_translated_indexes": self._translated_indexes,

@@ -5,9 +5,9 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+from unittest import mock
 
 from . import config
-from . import mock
 from .assertions import assert_raises
 from .assertions import assert_raises_context_ok
 from .assertions import assert_raises_message

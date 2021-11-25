@@ -1,3 +1,4 @@
+import collections.abc as collections_abc
 import itertools
 
 from .. import AssertsCompiledSQL
@@ -32,11 +33,9 @@ from ... import true
 from ... import tuple_
 from ... import TupleType
 from ... import union
-from ... import util
 from ... import values
 from ...exc import DatabaseError
 from ...exc import ProgrammingError
-from ...util import collections_abc
 
 
 class CollateTest(fixtures.TablesTest):
@@ -131,7 +130,7 @@ class OrderByLabelTest(fixtures.TablesTest):
         ly = (func.lower(table.c.q) + table.c.p).label("ly")
         self._assert_result(
             select(lx, ly).order_by(lx, ly.desc()),
-            [(3, util.u("q1p3")), (5, util.u("q2p2")), (7, util.u("q3p1"))],
+            [(3, "q1p3"), (5, "q2p2"), (7, "q3p1")],
         )
 
     def test_plain_desc(self):

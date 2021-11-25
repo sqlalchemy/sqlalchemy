@@ -1,3 +1,7 @@
+from unittest.mock import call
+from unittest.mock import MagicMock
+from unittest.mock import Mock
+
 import sqlalchemy as tsa
 from sqlalchemy import create_engine
 from sqlalchemy import engine_from_config
@@ -19,9 +23,6 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertions import expect_raises_message
-from sqlalchemy.testing.mock import call
-from sqlalchemy.testing.mock import MagicMock
-from sqlalchemy.testing.mock import Mock
 
 
 dialect = None

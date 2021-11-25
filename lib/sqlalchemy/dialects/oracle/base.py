@@ -564,7 +564,6 @@ from ...types import NCHAR
 from ...types import NVARCHAR
 from ...types import TIMESTAMP
 from ...types import VARCHAR
-from ...util import compat
 
 RESERVED_WORDS = set(
     "SHARE RAW DROP BETWEEN FROM DESC OPTION PRIOR LONG THEN "
@@ -1414,7 +1413,7 @@ class OracleIdentifierPreparer(compiler.IdentifierPreparer):
         return (
             lc_value in self.reserved_words
             or value[0] in self.illegal_initial_characters
-            or not self.legal_characters.match(util.text_type(value))
+            or not self.legal_characters.match(str(value))
         )
 
     def format_savepoint(self, savepoint):
@@ -2029,17 +2028,17 @@ class OracleDialect(default.DefaultDialect):
             value = value.strip()
 
             if "START WITH" in option:
-                identity["start"] = compat.long_type(value)
+                identity["start"] = int(value)
             elif "INCREMENT BY" in option:
-                identity["increment"] = compat.long_type(value)
+                identity["increment"] = int(value)
             elif "MAX_VALUE" in option:
-                identity["maxvalue"] = compat.long_type(value)
+                identity["maxvalue"] = int(value)
             elif "MIN_VALUE" in option:
-                identity["minvalue"] = compat.long_type(value)
+                identity["minvalue"] = int(value)
             elif "CYCLE_FLAG" in option:
                 identity["cycle"] = value == "Y"
             elif "CACHE_SIZE" in option:
-                identity["cache"] = compat.long_type(value)
+                identity["cache"] = int(value)
             elif "ORDER_FLAG" in option:
                 identity["order"] = value == "Y"
         return identity

@@ -981,9 +981,7 @@ class ExternalType:
         return NO_CACHE
 
 
-class UserDefinedType(
-    util.with_metaclass(VisitableCheckKWArg, ExternalType, TypeEngine)
-):
+class UserDefinedType(ExternalType, TypeEngine, metaclass=VisitableCheckKWArg):
     """Base for user defined types.
 
     This should be the base of new types.  Note that

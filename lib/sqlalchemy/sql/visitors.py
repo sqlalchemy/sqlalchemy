@@ -59,7 +59,7 @@ def _generate_compiler_dispatch(cls):
         cls._original_compiler_dispatch = cls._compiler_dispatch
         return
 
-    if not isinstance(visit_name, util.compat.string_types):
+    if not isinstance(visit_name, str):
         raise exc.InvalidRequestError(
             "__visit_name__ on class %s must be a string at the class level"
             % cls.__name__
@@ -114,7 +114,7 @@ class TraversibleType(type):
         super(TraversibleType, cls).__init__(clsname, bases, clsdict)
 
 
-class Traversible(util.with_metaclass(TraversibleType)):
+class Traversible(metaclass=TraversibleType):
     """Base class for visitable objects, applies the
     :class:`.visitors.TraversibleType` metaclass.
 
@@ -200,7 +200,7 @@ def _generate_dispatcher(visitor, internal_dispatch, method_name):
     return langhelpers._exec_code_in_env(meth_text, {}, method_name)
 
 
-class InternalTraversal(util.with_metaclass(_InternalTraversalType, object)):
+class InternalTraversal(metaclass=_InternalTraversalType):
     r"""Defines visitor symbols used for internal traversal.
 
     The :class:`.InternalTraversal` class is used in two ways.  One is that

@@ -14,7 +14,6 @@ from ... import sql
 from ... import String
 from ... import testing
 from ... import text
-from ... import util
 
 
 class RowFetchTest(fixtures.TablesTest):
@@ -306,7 +305,7 @@ class ServerSideCursorsTest(
     ):
         engine = self._fixture(engine_ss_arg)
         with engine.begin() as conn:
-            if isinstance(statement, util.string_types):
+            if isinstance(statement, str):
                 result = conn.exec_driver_sql(statement)
             else:
                 result = conn.execute(statement)

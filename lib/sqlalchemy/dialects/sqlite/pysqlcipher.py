@@ -94,11 +94,8 @@ time, at the expense of slower startup time for new connections.
 
 """  # noqa
 
-from __future__ import absolute_import
-
 from .pysqlite import SQLiteDialect_pysqlite
 from ... import pool
-from ... import util
 
 
 class SQLiteDialect_pysqlcipher(SQLiteDialect_pysqlite):
@@ -109,18 +106,14 @@ class SQLiteDialect_pysqlcipher(SQLiteDialect_pysqlite):
 
     @classmethod
     def dbapi(cls):
-        if util.py3k:
-            try:
-                import sqlcipher3 as sqlcipher
-            except ImportError:
-                pass
-            else:
-                return sqlcipher
-
-            from pysqlcipher3 import dbapi2 as sqlcipher
-
+        try:
+            import sqlcipher3 as sqlcipher
+        except ImportError:
+            pass
         else:
-            from pysqlcipher import dbapi2 as sqlcipher
+            return sqlcipher
+
+        from pysqlcipher3 import dbapi2 as sqlcipher
 
         return sqlcipher
 

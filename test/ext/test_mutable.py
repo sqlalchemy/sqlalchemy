@@ -7,7 +7,6 @@ from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy import util
 from sqlalchemy.ext.mutable import MutableComposite
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.ext.mutable import MutableList
@@ -573,44 +572,24 @@ class _MutableListTestBase(_MutableListTestFixture):
         # print(repr(pickles))
         # return
 
-        if util.py3k:
-            pickles = [
-                b"\x80\x04\x95<\x00\x00\x00\x00\x00\x00\x00\x8c\x16"
-                b"sqlalchemy.ext.mutable\x94\x8c\x0bMutableList\x94\x93\x94)"
-                b"\x81\x94(K\x01K\x02e]\x94(K\x01K\x02eb.",
-                b"ccopy_reg\n_reconstructor\np0\n(csqlalchemy.ext.mutable\n"
-                b"MutableList\np1\nc__builtin__\nlist\np2\n(lp3\nI1\naI2\n"
-                b"atp4\nRp5\n(lp6\nI1\naI2\nab.",
-                b"ccopy_reg\n_reconstructor\nq\x00(csqlalchemy.ext.mutable\n"
-                b"MutableList\nq\x01c__builtin__\nlist\nq\x02]q\x03(K\x01K"
-                b"\x02etq\x04Rq\x05]q\x06(K\x01K\x02eb.",
-                b"\x80\x02csqlalchemy.ext.mutable\nMutableList\nq\x00)\x81q"
-                b"\x01(K\x01K\x02e]q\x02(K\x01K\x02eb.",
-                b"\x80\x03csqlalchemy.ext.mutable\nMutableList\nq\x00)\x81q"
-                b"\x01(K\x01K\x02e]q\x02(K\x01K\x02eb.",
-                b"\x80\x04\x95<\x00\x00\x00\x00\x00\x00\x00\x8c\x16"
-                b"sqlalchemy.ext.mutable\x94\x8c\x0bMutableList\x94\x93\x94)"
-                b"\x81\x94(K\x01K\x02e]\x94(K\x01K\x02eb.",
-            ]
-        else:
-            pickles = [
-                "\x80\x02csqlalchemy.ext.mutable\nMutableList\nq\x00]q\x01"
-                "(K\x01K\x02e\x85q\x02Rq\x03.",
-                "\x80\x02csqlalchemy.ext.mutable\nMutableList"
-                "\nq\x00]q\x01(K\x01K\x02e\x85q\x02Rq\x03.",
-                "csqlalchemy.ext.mutable\nMutableList\np0\n"
-                "((lp1\nI1\naI2\natp2\nRp3\n.",
-                "csqlalchemy.ext.mutable\nMutableList\nq\x00(]"
-                "q\x01(K\x01K\x02etq\x02Rq\x03.",
-                "\x80\x02csqlalchemy.ext.mutable\nMutableList"
-                "\nq\x01]q\x02(K\x01K\x02e\x85Rq\x03.",
-                "\x80\x02csqlalchemy.ext.mutable\nMutableList\n"
-                "q\x01]q\x02(K\x01K\x02e\x85Rq\x03.",
-                "csqlalchemy.ext.mutable\nMutableList\np1\n"
-                "((lp2\nI1\naI2\natRp3\n.",
-                "csqlalchemy.ext.mutable\nMutableList\nq\x01"
-                "(]q\x02(K\x01K\x02etRq\x03.",
-            ]
+        pickles = [
+            b"\x80\x04\x95<\x00\x00\x00\x00\x00\x00\x00\x8c\x16"
+            b"sqlalchemy.ext.mutable\x94\x8c\x0bMutableList\x94\x93\x94)"
+            b"\x81\x94(K\x01K\x02e]\x94(K\x01K\x02eb.",
+            b"ccopy_reg\n_reconstructor\np0\n(csqlalchemy.ext.mutable\n"
+            b"MutableList\np1\nc__builtin__\nlist\np2\n(lp3\nI1\naI2\n"
+            b"atp4\nRp5\n(lp6\nI1\naI2\nab.",
+            b"ccopy_reg\n_reconstructor\nq\x00(csqlalchemy.ext.mutable\n"
+            b"MutableList\nq\x01c__builtin__\nlist\nq\x02]q\x03(K\x01K"
+            b"\x02etq\x04Rq\x05]q\x06(K\x01K\x02eb.",
+            b"\x80\x02csqlalchemy.ext.mutable\nMutableList\nq\x00)\x81q"
+            b"\x01(K\x01K\x02e]q\x02(K\x01K\x02eb.",
+            b"\x80\x03csqlalchemy.ext.mutable\nMutableList\nq\x00)\x81q"
+            b"\x01(K\x01K\x02e]q\x02(K\x01K\x02eb.",
+            b"\x80\x04\x95<\x00\x00\x00\x00\x00\x00\x00\x8c\x16"
+            b"sqlalchemy.ext.mutable\x94\x8c\x0bMutableList\x94\x93\x94)"
+            b"\x81\x94(K\x01K\x02e]\x94(K\x01K\x02eb.",
+        ]
 
         for pickle_ in pickles:
             obj = pickle.loads(pickle_)

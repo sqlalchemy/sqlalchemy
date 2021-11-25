@@ -9,9 +9,11 @@
 
 """
 
+import collections.abc as collections_abc
 import datetime as dt
 import decimal
 import json
+import pickle
 
 from . import coercions
 from . import elements
@@ -38,10 +40,8 @@ from .. import exc
 from .. import inspection
 from .. import processors
 from .. import util
-from ..util import compat
 from ..util import langhelpers
 from ..util import OrderedDict
-from ..util import pickle
 
 
 class _LookupExpressionAdapter:
@@ -192,7 +192,7 @@ class String(Concatenable, TypeEngine):
 
     @property
     def python_type(self):
-        return util.text_type
+        return str
 
     def get_dbapi_type(self, dbapi):
         return dbapi.STRING
@@ -721,7 +721,7 @@ class _Binary(TypeEngine):
 
     @property
     def python_type(self):
-        return util.binary_type
+        return bytes
 
     # Python 3 - sqlite3 doesn't need the `Binary` conversion
     # here, though pg8000 does to indicate "bytea"
@@ -753,7 +753,7 @@ class _Binary(TypeEngine):
     def coerce_compared_value(self, op, value):
         """See :meth:`.TypeEngine.coerce_compared_value` for a description."""
 
-        if isinstance(value, util.string_types):
+        if isinstance(value, str):
             return self
         else:
             return super(_Binary, self).coerce_compared_value(op, value)
@@ -1328,9 +1328,7 @@ class Enum(Emulated, String, SchemaType):
             # here between an INSERT statement and a criteria used in a SELECT,
             # for now we're staying conservative w/ behavioral changes (perhaps
             # someone has a trigger that handles strings on INSERT)
-            if not self.validate_strings and isinstance(
-                elem, compat.string_types
-            ):
+            if not self.validate_strings and isinstance(elem, str):
                 return elem
             else:
                 util.raise_(
@@ -1513,8 +1511,7 @@ class PickleType(TypeDecorator):
 
         :param protocol: defaults to ``pickle.HIGHEST_PROTOCOL``.
 
-        :param pickler: defaults to cPickle.pickle or pickle.pickle if
-          cPickle is not available.  May be any object with
+        :param pickler: defaults to pickle.  May be any object with
           pickle-compatible ``dumps`` and ``loads`` methods.
 
         :param comparator: a 2-arg callable predicate used
@@ -2123,7 +2120,7 @@ class JSON(Indexable, TypeEngine):
             def process(value):
                 if int_processor and isinstance(value, int):
                     value = int_processor(value)
-                elif string_processor and isinstance(value, util.string_types):
+                elif string_processor and isinstance(value, str):
                     value = string_processor(value)
                 return value
 
@@ -2136,7 +2133,7 @@ class JSON(Indexable, TypeEngine):
             def process(value):
                 if int_processor and isinstance(value, int):
                     value = int_processor(value)
-                elif string_processor and isinstance(value, util.string_types):
+                elif string_processor and isinstance(value, str):
                     value = string_processor(value)
                 return value
 
@@ -2178,8 +2175,8 @@ class JSON(Indexable, TypeEngine):
         """Define comparison operations for :class:`_types.JSON`."""
 
         def _setup_getitem(self, index):
-            if not isinstance(index, util.string_types) and isinstance(
-                index, compat.collections_abc.Sequence
+            if not isinstance(index, str) and isinstance(
+                index, collections_abc.Sequence
             ):
                 index = coercions.expect(
                     roles.BinaryElementRole,
@@ -2982,14 +2979,9 @@ _type_map = {
     dt.time: Time(),
     dt.timedelta: Interval(),
     util.NoneType: NULLTYPE,
+    bytes: LargeBinary(),
+    str: Unicode(),
 }
-
-if util.py3k:
-    _type_map[bytes] = LargeBinary()  # noqa
-    _type_map[str] = Unicode()
-else:
-    _type_map[unicode] = Unicode()  # noqa
-    _type_map[str] = String()
 
 
 _type_map_get = _type_map.get

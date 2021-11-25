@@ -430,9 +430,6 @@ SQLAlchemy type (or a subclass of such).
    as better integration of outputtypehandlers.
 
 """  # noqa
-
-from __future__ import absolute_import
-
 import decimal
 import random
 import re
@@ -1127,7 +1124,7 @@ class OracleDialect_cx_oracle(OracleDialect):
                 and default_type is not cx_Oracle.NCLOB
             ):
                 return cursor.var(
-                    util.text_type,
+                    str,
                     size,
                     cursor.arraysize,
                     **dialect._cursor_var_unicode_kwargs
@@ -1213,7 +1210,7 @@ class OracleDialect_cx_oracle(OracleDialect):
             opts.setdefault("threaded", self._cx_oracle_threaded)
 
         def convert_cx_oracle_constant(value):
-            if isinstance(value, util.string_types):
+            if isinstance(value, str):
                 try:
                     int_val = int(value)
                 except ValueError:

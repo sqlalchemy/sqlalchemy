@@ -1,10 +1,11 @@
+from contextlib import nullcontext
+
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy import util
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import configure_mappers
@@ -2922,7 +2923,7 @@ class BetweenSubclassJoinWExtraJoinedLoad(
 
         with _aliased_join_warning(
             "Manager->managers"
-        ) if autoalias else util.nullcontext():
+        ) if autoalias else nullcontext():
             self.assert_compile(
                 q,
                 "SELECT people.type AS people_type, engineers.id AS "

@@ -22,12 +22,13 @@ To generate user-defined SQL strings, see
 :doc:`/ext/compiler`.
 
 """
-
 import collections
+import collections.abc as collections_abc
 import contextlib
 import itertools
 import operator
 import re
+from time import perf_counter
 
 from . import base
 from . import coercions
@@ -453,7 +454,7 @@ class Compiled:
                 self.string = self.preparer._render_schema_translates(
                     self.string, schema_translate_map
                 )
-        self._gen_time = util.perf_counter()
+        self._gen_time = perf_counter()
 
     def _execute_on_connection(
         self, connection, distilled_params, execution_options
@@ -505,7 +506,7 @@ class Compiled:
         return self.construct_params()
 
 
-class TypeCompiler(util.with_metaclass(util.EnsureKWArgType, object)):
+class TypeCompiler(metaclass=util.EnsureKWArgType):
     """Produces DDL specification for TypeEngine objects."""
 
     ensure_kwarg = r"visit_\w+"
@@ -2026,10 +2027,8 @@ class SQLCompiler(Compiled):
 
         elif typ_dialect_impl._is_tuple_type or (
             typ_dialect_impl._isnull
-            and isinstance(values[0], util.collections_abc.Sequence)
-            and not isinstance(
-                values[0], util.string_types + util.binary_types
-            )
+            and isinstance(values[0], collections_abc.Sequence)
+            and not isinstance(values[0], (str, bytes))
         ):
 
             replacement_expression = (
@@ -2077,10 +2076,8 @@ class SQLCompiler(Compiled):
 
         elif typ_dialect_impl._is_tuple_type or (
             typ_dialect_impl._isnull
-            and isinstance(values[0], util.collections_abc.Sequence)
-            and not isinstance(
-                values[0], util.string_types + util.binary_types
-            )
+            and isinstance(values[0], collections_abc.Sequence)
+            and not isinstance(values[0], (str, bytes))
         ):
             assert not typ_dialect_impl._is_array
             to_update = [
@@ -4355,7 +4352,7 @@ class DDLCompiler(Compiled):
             except exc.CompileError as ce:
                 util.raise_(
                     exc.CompileError(
-                        util.u("(in table '%s', column '%s'): %s")
+                        "(in table '%s', column '%s'): %s"
                         % (table.description, column.name, ce.args[0])
                     ),
                     from_=ce,
@@ -4628,7 +4625,7 @@ class DDLCompiler(Compiled):
 
     def get_column_default_string(self, column):
         if isinstance(column.server_default, schema.DefaultClause):
-            if isinstance(column.server_default.arg, util.string_types):
+            if isinstance(column.server_default.arg, str):
                 return self.sql_compiler.render_literal_value(
                     column.server_default.arg, sqltypes.STRINGTYPE
                 )
@@ -5126,14 +5123,14 @@ class IdentifierPreparer:
         return (
             lc_value in self.reserved_words
             or value[0] in self.illegal_initial_characters
-            or not self.legal_characters.match(util.text_type(value))
+            or not self.legal_characters.match(str(value))
             or (lc_value != value)
         )
 
     def _requires_quotes_illegal_chars(self, value):
         """Return True if the given identifier requires quoting, but
         not taking case convention into account."""
-        return not self.legal_characters.match(util.text_type(value))
+        return not self.legal_characters.match(str(value))
 
     def quote_schema(self, schema, force=None):
         """Conditionally quote a schema name.

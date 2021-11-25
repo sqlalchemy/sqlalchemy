@@ -221,8 +221,6 @@ The above query will render::
     WHERE CAST(person.data ->> %(data_1)s AS INTEGER) < %(param_1)s
 
 """  # noqa
-from __future__ import absolute_import
-
 from .. import inspect
 from .. import util
 from ..ext.hybrid import hybrid_property

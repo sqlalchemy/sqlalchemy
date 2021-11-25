@@ -1,5 +1,7 @@
+import collections.abc as collections_abc
 import datetime
 import operator
+import pickle
 
 from sqlalchemy import and_
 from sqlalchemy import between
@@ -14,7 +16,6 @@ from sqlalchemy import or_
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
-from sqlalchemy import util
 from sqlalchemy.dialects import mssql
 from sqlalchemy.dialects import mysql
 from sqlalchemy.dialects import oracle
@@ -677,7 +678,7 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
                     return self.op("->")(index)
 
         col = Column("x", MyType())
-        assert not isinstance(col, util.collections_abc.Iterable)
+        assert not isinstance(col, collections_abc.Iterable)
 
     def test_lshift(self):
         class MyType(UserDefinedType):
@@ -2234,11 +2235,11 @@ class ComparisonOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             & self.table1.c.myid.between(15, 20)
             & self.table1.c.myid.like("hoho")
         )
-        eq_(str(clause), str(util.pickle.loads(util.pickle.dumps(clause))))
+        eq_(str(clause), str(pickle.loads(pickle.dumps(clause))))
 
     def test_pickle_operators_two(self):
         clause = tuple_(1, 2, 3)
-        eq_(str(clause), str(util.pickle.loads(util.pickle.dumps(clause))))
+        eq_(str(clause), str(pickle.loads(pickle.dumps(clause))))
 
     @testing.combinations(
         (operator.lt, "<", ">"),

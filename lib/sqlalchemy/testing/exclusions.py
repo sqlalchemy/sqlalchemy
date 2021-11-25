@@ -201,7 +201,7 @@ class Predicate:
             )
         elif isinstance(predicate, tuple):
             return SpecPredicate(*predicate)
-        elif isinstance(predicate, util.string_types):
+        elif isinstance(predicate, str):
             tokens = re.match(
                 r"([\+\w]+)\s*(?:(>=|==|!=|<=|<|>)\s*([\d\.]+))?", predicate
             )

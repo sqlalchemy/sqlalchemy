@@ -1,3 +1,7 @@
+from unittest.mock import ANY
+from unittest.mock import call
+from unittest.mock import Mock
+
 import sqlalchemy as sa
 from sqlalchemy import delete
 from sqlalchemy import event
@@ -39,9 +43,6 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import fixture_session
-from sqlalchemy.testing.mock import ANY
-from sqlalchemy.testing.mock import call
-from sqlalchemy.testing.mock import Mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import gc_collect

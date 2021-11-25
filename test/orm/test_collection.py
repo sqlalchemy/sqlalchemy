@@ -1,4 +1,5 @@
 import contextlib
+from functools import reduce
 from operator import and_
 
 from sqlalchemy import event
@@ -251,7 +252,7 @@ class CollectionsTest(OrderedDictFixture, fixtures.ORMTest):
             control[0] = e
             assert_eq()
 
-            if util.reduce(
+            if reduce(
                 and_,
                 [
                     hasattr(direct, a)

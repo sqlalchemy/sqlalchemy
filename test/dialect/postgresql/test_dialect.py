@@ -51,8 +51,6 @@ from sqlalchemy.testing.assertions import AssertsExecutionResults
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import eq_regex
 from sqlalchemy.testing.assertions import ne_
-from sqlalchemy.util import u
-from sqlalchemy.util import ue
 
 if True:
     from sqlalchemy.dialects.postgresql.psycopg2 import (
@@ -313,10 +311,10 @@ class ExecuteManyMode:
         )
 
         Table(
-            u("Unitéble2"),
+            "Unitéble2",
             metadata,
-            Column(u("méil"), Integer, primary_key=True),
-            Column(ue("\u6e2c\u8a66"), Integer),
+            Column("méil", Integer, primary_key=True),
+            Column("\u6e2c\u8a66", Integer),
         )
 
     def test_insert(self, connection):
@@ -478,16 +476,16 @@ class ExecuteManyMode:
         )
 
     def test_insert_unicode_keys(self, connection):
-        table = self.tables[u("Unitéble2")]
+        table = self.tables["Unitéble2"]
 
         stmt = table.insert()
 
         connection.execute(
             stmt,
             [
-                {u("méil"): 1, ue("\u6e2c\u8a66"): 1},
-                {u("méil"): 2, ue("\u6e2c\u8a66"): 2},
-                {u("méil"): 3, ue("\u6e2c\u8a66"): 3},
+                {"méil": 1, "\u6e2c\u8a66": 1},
+                {"méil": 2, "\u6e2c\u8a66": 2},
+                {"méil": 3, "\u6e2c\u8a66": 3},
             ],
         )
 

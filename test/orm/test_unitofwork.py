@@ -32,8 +32,6 @@ from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.util import OrderedDict
-from sqlalchemy.util import u
-from sqlalchemy.util import ue
 from test.orm import _fixtures
 
 
@@ -124,7 +122,7 @@ class UnicodeTest(fixtures.MappedTest):
 
         self.mapper_registry.map_imperatively(Test, uni_t1)
 
-        txt = ue("\u0160\u0110\u0106\u010c\u017d")
+        txt = "\u0160\u0110\u0106\u010c\u017d"
         t1 = Test(id=1, txt=txt)
         self.assert_(t1.txt == txt)
 
@@ -147,7 +145,7 @@ class UnicodeTest(fixtures.MappedTest):
         )
         self.mapper_registry.map_imperatively(Test2, uni_t2)
 
-        txt = ue("\u0160\u0110\u0106\u010c\u017d")
+        txt = "\u0160\u0110\u0106\u010c\u017d"
         t1 = Test(txt=txt)
         t1.t2s.append(Test2())
         t1.t2s.append(Test2())
@@ -172,31 +170,31 @@ class UnicodeSchemaTest(fixtures.MappedTest):
             "unitable1",
             metadata,
             Column(
-                u("méil"),
+                "méil",
                 Integer,
                 primary_key=True,
                 key="a",
                 test_needs_autoincrement=True,
             ),
-            Column(ue("\u6e2c\u8a66"), Integer, key="b"),
+            Column("\u6e2c\u8a66", Integer, key="b"),
             Column("type", String(20)),
             test_needs_fk=True,
             test_needs_autoincrement=True,
         )
         t2 = Table(
-            u("Unitéble2"),
+            "Unitéble2",
             metadata,
             Column(
-                u("méil"),
+                "méil",
                 Integer,
                 primary_key=True,
                 key="cc",
                 test_needs_autoincrement=True,
             ),
             Column(
-                ue("\u6e2c\u8a66"), Integer, ForeignKey("unitable1.a"), key="d"
+                "\u6e2c\u8a66", Integer, ForeignKey("unitable1.a"), key="d"
             ),
-            Column(ue("\u6e2c\u8a66_2"), Integer, key="e"),
+            Column("\u6e2c\u8a66_2", Integer, key="e"),
             test_needs_fk=True,
             test_needs_autoincrement=True,
         )
@@ -3594,21 +3592,18 @@ class EnsurePKSortableTest(fixtures.MappedTest):
 
         a.data = "bar"
         b.data = "foo"
-        if sa.util.py3k:
-            message = (
-                r"Could not sort objects by primary key; primary key "
-                r"values must be sortable in Python \(was: '<' not "
-                r"supported between instances of 'MyNotSortableEnum'"
-                r" and 'MyNotSortableEnum'\)"
-            )
+        message = (
+            r"Could not sort objects by primary key; primary key "
+            r"values must be sortable in Python \(was: '<' not "
+            r"supported between instances of 'MyNotSortableEnum'"
+            r" and 'MyNotSortableEnum'\)"
+        )
 
-            assert_raises_message(
-                sa.exc.InvalidRequestError,
-                message,
-                s.flush,
-            )
-        else:
-            s.flush()
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            message,
+            s.flush,
+        )
         s.close()
 
     def test_persistent_flush_sortable(self):

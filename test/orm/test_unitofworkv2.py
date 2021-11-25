@@ -1,3 +1,6 @@
+from unittest.mock import Mock
+from unittest.mock import patch
+
 from sqlalchemy import cast
 from sqlalchemy import DateTime
 from sqlalchemy import event
@@ -34,8 +37,6 @@ from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Conditional
 from sqlalchemy.testing.fixtures import fixture_session
-from sqlalchemy.testing.mock import Mock
-from sqlalchemy.testing.mock import patch
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from test.orm import _fixtures

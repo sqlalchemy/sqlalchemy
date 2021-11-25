@@ -398,7 +398,7 @@ class _ODBCDateTimeBindProcessor:
         def process(value):
             if value is None:
                 return None
-            elif isinstance(value, util.string_types):
+            elif isinstance(value, str):
                 # if a string was passed directly, allow it through
                 return value
             elif not value.tzinfo or (not self.timezone and not self.has_tz):
@@ -577,7 +577,7 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
                 tup[4],
                 tup[5],
                 tup[6] // 1000,
-                util.timezone(
+                datetime.timezone(
                     datetime.timedelta(hours=tup[7], minutes=tup[8])
                 ),
             )

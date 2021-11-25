@@ -39,10 +39,8 @@ from ... import type_coerce
 from ... import TypeDecorator
 from ... import Unicode
 from ... import UnicodeText
-from ... import util
 from ...orm import declarative_base
 from ...orm import Session
-from ...util import u
 
 
 class _LiteralRoundTripFixture:
@@ -93,7 +91,7 @@ class _LiteralRoundTripFixture:
 class _UnicodeFixture(_LiteralRoundTripFixture, fixtures.TestBase):
     __requires__ = ("unicode_data",)
 
-    data = u(
+    data = (
         "Alors vous imaginez ma 🐍 surprise, au lever du jour, "
         "quand une drôle de petite 🐍 voix m’a réveillé. Elle "
         "disait: « S’il vous plaît… dessine-moi 🐍 un mouton! »"
@@ -124,7 +122,7 @@ class _UnicodeFixture(_LiteralRoundTripFixture, fixtures.TestBase):
         row = connection.execute(select(unicode_table.c.unicode_data)).first()
 
         eq_(row, (self.data,))
-        assert isinstance(row[0], util.text_type)
+        assert isinstance(row[0], str)
 
     def test_round_trip_executemany(self, connection):
         unicode_table = self.tables.unicode_table
@@ -139,7 +137,7 @@ class _UnicodeFixture(_LiteralRoundTripFixture, fixtures.TestBase):
         ).fetchall()
         eq_(rows, [(self.data,) for i in range(1, 4)])
         for row in rows:
-            assert isinstance(row[0], util.text_type)
+            assert isinstance(row[0], str)
 
     def _test_null_strings(self, connection):
         unicode_table = self.tables.unicode_table
@@ -154,18 +152,16 @@ class _UnicodeFixture(_LiteralRoundTripFixture, fixtures.TestBase):
         unicode_table = self.tables.unicode_table
 
         connection.execute(
-            unicode_table.insert(), {"id": 1, "unicode_data": u("")}
+            unicode_table.insert(), {"id": 1, "unicode_data": ""}
         )
         row = connection.execute(select(unicode_table.c.unicode_data)).first()
-        eq_(row, (u(""),))
+        eq_(row, ("",))
 
     def test_literal(self, literal_round_trip):
         literal_round_trip(self.datatype, [self.data], [self.data])
 
     def test_literal_non_ascii(self, literal_round_trip):
-        literal_round_trip(
-            self.datatype, [util.u("réve🐍 illé")], [util.u("réve🐍 illé")]
-        )
+        literal_round_trip(self.datatype, ["réve🐍 illé"], ["réve🐍 illé"])
 
 
 class UnicodeVarcharTest(_UnicodeFixture, fixtures.TablesTest):
@@ -243,9 +239,7 @@ class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         literal_round_trip(Text, ["some text"], ["some text"])
 
     def test_literal_non_ascii(self, literal_round_trip):
-        literal_round_trip(
-            Text, [util.u("réve🐍 illé")], [util.u("réve🐍 illé")]
-        )
+        literal_round_trip(Text, ["réve🐍 illé"], ["réve🐍 illé"])
 
     def test_literal_quoting(self, literal_round_trip):
         data = """some 'text' hey "hi there" that's text"""
@@ -277,9 +271,7 @@ class StringTest(_LiteralRoundTripFixture, fixtures.TestBase):
         literal_round_trip(String(40), ["some text"], ["some text"])
 
     def test_literal_non_ascii(self, literal_round_trip):
-        literal_round_trip(
-            String(40), [util.u("réve🐍 illé")], [util.u("réve🐍 illé")]
-        )
+        literal_round_trip(String(40), ["réve🐍 illé"], ["réve🐍 illé"])
 
     def test_literal_quoting(self, literal_round_trip):
         data = """some 'text' hey "hi there" that's text"""
@@ -474,10 +466,7 @@ class IntegerTest(_LiteralRoundTripFixture, fixtures.TestBase):
 
             eq_(row, (data,))
 
-            if util.py3k:
-                assert isinstance(row[0], int)
-            else:
-                assert isinstance(row[0], (long, int))  # noqa
+            assert isinstance(row[0], int)
 
         return run
 
@@ -880,10 +869,10 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             ("boolean", None),
             ("string", "some string"),
             ("string", None),
-            ("string", util.u("réve illé")),
+            ("string", "réve illé"),
             (
                 "string",
-                util.u("réve🐍 illé"),
+                "réve🐍 illé",
                 testing.requires.json_index_supplementary_unicode_element,
             ),
             ("integer", 15),
@@ -1080,8 +1069,8 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
         (-1.0,),
         (15.052,),
         ("a string",),
-        (util.u("réve illé"),),
-        (util.u("réve🐍 illé"),),
+        ("réve illé",),
+        ("réve🐍 illé",),
     )
     def test_single_element_round_trip(self, element):
         data_table = self.tables.data_table
@@ -1243,8 +1232,8 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
                 {
                     "name": "r1",
                     "data": {
-                        util.u("réve🐍 illé"): util.u("réve🐍 illé"),
-                        "data": {"k1": util.u("drôl🐍e")},
+                        "réve🐍 illé": "réve🐍 illé",
+                        "data": {"k1": "drôl🐍e"},
                     },
                 },
             )
@@ -1252,8 +1241,8 @@ class JSONTest(_LiteralRoundTripFixture, fixtures.TablesTest):
             eq_(
                 conn.scalar(select(self.tables.data_table.c.data)),
                 {
-                    util.u("réve🐍 illé"): util.u("réve🐍 illé"),
-                    "data": {"k1": util.u("drôl🐍e")},
+                    "réve🐍 illé": "réve🐍 illé",
+                    "data": {"k1": "drôl🐍e"},
                 },
             )
 

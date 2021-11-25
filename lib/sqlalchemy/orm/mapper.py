@@ -14,9 +14,9 @@ This is a semi-private module; the main configurational API of the ORM is
 available in :class:`~sqlalchemy.orm.`.
 
 """
-from __future__ import absolute_import
 
 from collections import deque
+from functools import reduce
 from itertools import chain
 import sys
 import weakref
@@ -1153,9 +1153,7 @@ class Mapper(
         if with_polymorphic == "*":
             self.with_polymorphic = ("*", None)
         elif isinstance(with_polymorphic, (tuple, list)):
-            if isinstance(
-                with_polymorphic[0], util.string_types + (tuple, list)
-            ):
+            if isinstance(with_polymorphic[0], (str, tuple, list)):
                 self.with_polymorphic = with_polymorphic
             else:
                 self.with_polymorphic = (with_polymorphic, None)
@@ -1500,7 +1498,7 @@ class Mapper(
         if self.polymorphic_on is not None:
             setter = True
 
-            if isinstance(self.polymorphic_on, util.string_types):
+            if isinstance(self.polymorphic_on, str):
                 # polymorphic_on specified as a string - link
                 # it to mapped ColumnProperty
                 try:
@@ -3314,7 +3312,7 @@ class Mapper(
             cols = set(table.c)
             for m in self.iterate_to_root():
                 if m._inherits_equated_pairs and cols.intersection(
-                    util.reduce(
+                    reduce(
                         set.union,
                         [l.proxy_set for l, r in m._inherits_equated_pairs],
                     )

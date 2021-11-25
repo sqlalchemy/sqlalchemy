@@ -1624,10 +1624,7 @@ class AliasedReturnsRows(NoInit, FromClause):
         if isinstance(name, _anonymous_label):
             name = "anon_1"
 
-        if util.py3k:
-            return name
-        else:
-            return name.encode("ascii", "backslashreplace")
+        return name
 
     @property
     def original(self):
@@ -2728,10 +2725,7 @@ class TableClause(roles.DMLTableRole, Immutable, FromClause):
 
     @util.memoized_property
     def description(self):
-        if util.py3k:
-            return self.name
-        else:
-            return self.name.encode("ascii", "backslashreplace")
+        return self.name
 
     def append_column(self, c, **kw):
         existing = c.table
@@ -5267,9 +5261,7 @@ class Select(
                 isinstance(args[0], list)
                 or (
                     hasattr(args[0], "__iter__")
-                    and not isinstance(
-                        args[0], util.string_types + (ClauseElement,)
-                    )
+                    and not isinstance(args[0], (str, ClauseElement))
                     and inspect(args[0], raiseerr=False) is None
                     and not hasattr(args[0], "__clause_element__")
                 )

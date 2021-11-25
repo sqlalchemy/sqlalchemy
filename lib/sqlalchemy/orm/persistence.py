@@ -13,9 +13,9 @@ The functions here are called only by the unit of work functions
 in unitofwork.py.
 
 """
-
 from itertools import chain
 from itertools import groupby
+from itertools import zip_longest
 import operator
 
 from . import attributes
@@ -1171,7 +1171,7 @@ def _emit_insert_statements(
                         last_inserted_params,
                         inserted_primary_key,
                         returned_defaults,
-                    ) in util.zip_longest(
+                    ) in zip_longest(
                         records,
                         c.context.compiled_parameters,
                         c.inserted_primary_key_rows,
@@ -2189,7 +2189,7 @@ class BulkORMUpdate(UpdateDMLState, BulkUDCompileState):
         for k, v in kv_iterator:
             k = coercions.expect(roles.DMLColumnRole, k)
 
-            if isinstance(k, util.string_types):
+            if isinstance(k, str):
                 desc = _entity_namespace_key(mapper, k, default=NO_VALUE)
                 if desc is NO_VALUE:
                     values.append(

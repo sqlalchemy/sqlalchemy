@@ -55,7 +55,7 @@ def register_function(identifier, fn, package="_default"):
     """
     reg = _registry[package]
 
-    identifier = util.text_type(identifier).lower()
+    identifier = str(identifier).lower()
 
     # Check if a function with the same identifier is registered.
     if identifier in reg:
@@ -909,7 +909,7 @@ class _GenericMeta(TraversibleType):
         super(_GenericMeta, cls).__init__(clsname, bases, clsdict)
 
 
-class GenericFunction(util.with_metaclass(_GenericMeta, Function)):
+class GenericFunction(Function, metaclass=_GenericMeta):
     """Define a 'generic' function.
 
     A generic function is a pre-established :class:`.Function`

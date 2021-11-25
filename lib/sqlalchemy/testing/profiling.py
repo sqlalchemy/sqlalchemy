@@ -279,7 +279,7 @@ def count_functions(variance=0.05):
     # ended = time.time()
     pr.disable()
 
-    # s = compat.StringIO()
+    # s = StringIO()
     stats = pstats.Stats(pr, stream=sys.stdout)
 
     # timespent = ended - began

@@ -256,7 +256,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         try:
             hasattr(Address.user, "property")
         except sa.orm.exc.UnmappedClassError:
-            assert util.compat.py3k
+            assert True
 
         for i in range(3):
             assert_raises_message(
@@ -460,11 +460,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         self.mapper(
             User,
             users,
-            properties={
-                util.u("addresses"): relationship(
-                    Address, backref=util.u("user")
-                )
-            },
+            properties={"addresses": relationship(Address, backref="user")},
         )
         u1 = User()
         a1 = Address()

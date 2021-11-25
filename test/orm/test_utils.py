@@ -23,7 +23,6 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.fixtures import fixture_session
-from sqlalchemy.util import compat
 from test.orm import _fixtures
 from .inheritance import _poly_fixtures
 
@@ -313,7 +312,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
                     return cls.x
                 raise AttributeError(key)
 
-        class Point(compat.with_metaclass(MetaPoint)):
+        class Point(metaclass=MetaPoint):
             pass
 
         self._fixture(Point)
@@ -354,7 +353,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
                     return cls._impl_double_x
                 raise AttributeError(key)
 
-        class Point(compat.with_metaclass(MetaPoint)):
+        class Point(metaclass=MetaPoint):
             @hybrid_property
             def _impl_double_x(self):
                 return self.x * 2
@@ -387,7 +386,7 @@ class AliasedClassTest(fixtures.MappedTest, AssertsCompiledSQL):
                     return double_x.__get__(None, cls)
                 raise AttributeError(key)
 
-        class Point(compat.with_metaclass(MetaPoint)):
+        class Point(metaclass=MetaPoint):
             pass
 
         self._fixture(Point)

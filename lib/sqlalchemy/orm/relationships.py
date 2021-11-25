@@ -13,8 +13,6 @@ SQL annotation and aliasing behavior focused on the `primaryjoin`
 and `secondaryjoin` aspects of :func:`_orm.relationship`.
 
 """
-from __future__ import absolute_import
-
 import collections
 import re
 import weakref
@@ -2108,7 +2106,7 @@ class RelationshipProperty(StrategizedProperty):
 
         mapperlib = util.preloaded.orm_mapper
 
-        if isinstance(self.argument, util.string_types):
+        if isinstance(self.argument, str):
             argument = self._clsregistry_resolve_name(self.argument)()
 
         elif callable(self.argument) and not isinstance(
@@ -2183,7 +2181,7 @@ class RelationshipProperty(StrategizedProperty):
         ):
             attr_value = getattr(self, attr)
 
-            if isinstance(attr_value, util.string_types):
+            if isinstance(attr_value, str):
                 setattr(
                     self,
                     attr,
@@ -2420,7 +2418,7 @@ class RelationshipProperty(StrategizedProperty):
         if self.parent.non_primary:
             return
         if self.backref is not None and not self.back_populates:
-            if isinstance(self.backref, util.string_types):
+            if isinstance(self.backref, str):
                 backref_key, kwargs = self.backref, {}
             else:
                 backref_key, kwargs = self.backref

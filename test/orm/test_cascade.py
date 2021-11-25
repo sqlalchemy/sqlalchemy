@@ -7,7 +7,6 @@ from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy import util
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import class_mapper
@@ -170,7 +169,7 @@ class CascadeArgTest(fixtures.MappedTest):
         Address = self.classes.Address
 
         rel = relationship(Address)
-        rel.cascade = util.u("save-update, merge, expunge")
+        rel.cascade = "save-update, merge, expunge"
         eq_(rel.cascade, set(["save-update", "merge", "expunge"]))
 
 

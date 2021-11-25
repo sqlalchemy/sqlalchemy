@@ -2,6 +2,10 @@ import collections
 import random
 import threading
 import time
+from unittest.mock import ANY
+from unittest.mock import call
+from unittest.mock import Mock
+from unittest.mock import patch
 import weakref
 
 import sqlalchemy as tsa
@@ -25,10 +29,6 @@ from sqlalchemy.testing import is_not_none
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.engines import testing_engine
-from sqlalchemy.testing.mock import ANY
-from sqlalchemy.testing.mock import call
-from sqlalchemy.testing.mock import Mock
-from sqlalchemy.testing.mock import patch
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.testing.util import lazy_gc
 

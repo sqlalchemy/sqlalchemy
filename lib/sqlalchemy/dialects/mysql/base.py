@@ -1469,7 +1469,7 @@ class MySQLCompiler(compiler.SQLCompiler):
            keywords at the start of a SELECT.
 
         """
-        if isinstance(select._distinct, util.string_types):
+        if isinstance(select._distinct, str):
             util.warn_deprecated(
                 "Sending string values for 'distinct' is deprecated in the "
                 "MySQL dialect and will be removed in a future release.  "
@@ -2425,7 +2425,7 @@ class MySQLDialect(default.DefaultDialect):
             raise NotImplementedError()
         val = row[0]
         cursor.close()
-        if util.py3k and isinstance(val, bytes):
+        if isinstance(val, bytes):
             val = val.decode()
         return val.upper().replace("-", " ")
 
@@ -2456,7 +2456,7 @@ class MySQLDialect(default.DefaultDialect):
         cursor.execute("SELECT VERSION()")
         val = cursor.fetchone()[0]
         cursor.close()
-        if util.py3k and isinstance(val, bytes):
+        if isinstance(val, bytes):
             val = val.decode()
 
         return self._parse_server_version(val)
@@ -2607,8 +2607,8 @@ class MySQLDialect(default.DefaultDialect):
                 sql.bindparam("table_name", type_=Unicode),
             ),
             {
-                "table_schema": util.text_type(schema),
-                "table_name": util.text_type(table_name),
+                "table_schema": str(schema),
+                "table_name": str(table_name),
             },
         )
         return bool(rs.scalar())
@@ -2627,8 +2627,8 @@ class MySQLDialect(default.DefaultDialect):
                 "TABLE_SCHEMA=:schema_name"
             ),
             dict(
-                name=util.text_type(sequence_name),
-                schema_name=util.text_type(schema),
+                name=str(sequence_name),
+                schema_name=str(schema),
             ),
         )
         return cursor.first() is not None
@@ -3228,7 +3228,7 @@ class _DecodingRow:
         if isinstance(item, _array):
             item = item.tostring()
 
-        if self.charset and isinstance(item, util.binary_type):
+        if self.charset and isinstance(item, bytes):
             return item.decode(self.charset)
         else:
             return item
@@ -3237,7 +3237,7 @@ class _DecodingRow:
         item = getattr(self.rowproxy, attr)
         if isinstance(item, _array):
             item = item.tostring()
-        if self.charset and isinstance(item, util.binary_type):
+        if self.charset and isinstance(item, bytes):
             return item.decode(self.charset)
         else:
             return item

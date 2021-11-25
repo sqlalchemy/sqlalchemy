@@ -49,7 +49,6 @@ from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
-from sqlalchemy.util import compat
 from .test_update import _UpdateFromTestBase
 
 
@@ -178,7 +177,7 @@ class DeprecationWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
         obj = cls.__new__(cls)
         with mock.patch.object(cls, "_copy") as _copy:
             with testing.expect_deprecated(
-                r"The %s\(\) method is deprecated" % compat._qualname(cls.copy)
+                r"The %s\(\) method is deprecated" % cls.copy.__qualname__
             ):
                 obj.copy(schema="s", target_table="tt", arbitrary="arb")
 

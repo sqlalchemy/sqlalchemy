@@ -373,7 +373,7 @@ def _scan_cols(
         cols = [
             stmt.table.c[key]
             for key in parameter_ordering
-            if isinstance(key, util.string_types) and key in stmt.table.c
+            if isinstance(key, str) and key in stmt.table.c
         ] + [c for c in stmt.table.c if c.key not in ordered_keys]
 
     else:
