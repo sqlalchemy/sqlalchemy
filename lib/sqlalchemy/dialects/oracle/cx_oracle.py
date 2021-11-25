@@ -443,6 +443,7 @@ from ... import processors
 from ... import types as sqltypes
 from ... import util
 from ...engine import cursor as _cursor
+from ...engine import interfaces
 
 
 class _OracleInteger(sqltypes.Integer):
@@ -780,8 +781,6 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
 
         self._generate_cursor_outputtype_handler()
 
-        self.include_set_input_sizes = self.dialect._include_setinputsizes
-
     def post_exec(self):
         if self.compiled and self.out_parameters and self.compiled.returning:
             # create a fake cursor result from the out parameters. unlike
@@ -830,7 +829,7 @@ class OracleDialect_cx_oracle(OracleDialect):
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
 
-    use_setinputsizes = True
+    bind_typing = interfaces.BindTyping.SETINPUTSIZES
 
     driver = "cx_oracle"
 
@@ -906,7 +905,6 @@ class OracleDialect_cx_oracle(OracleDialect):
         cx_Oracle = self.dbapi
 
         if cx_Oracle is None:
-            self._include_setinputsizes = {}
             self.cx_oracle_ver = (0, 0, 0)
         else:
             self.cx_oracle_ver = self._parse_cx_oracle_ver(cx_Oracle.version)
@@ -922,7 +920,7 @@ class OracleDialect_cx_oracle(OracleDialect):
                 )
                 self._cursor_var_unicode_kwargs = util.immutabledict()
 
-            self._include_setinputsizes = {
+            self.include_set_input_sizes = {
                 cx_Oracle.DATETIME,
                 cx_Oracle.NCLOB,
                 cx_Oracle.CLOB,
@@ -932,9 +930,9 @@ class OracleDialect_cx_oracle(OracleDialect):
                 cx_Oracle.BLOB,
                 cx_Oracle.FIXED_CHAR,
                 cx_Oracle.TIMESTAMP,
-                _OracleInteger,
-                _OracleBINARY_FLOAT,
-                _OracleBINARY_DOUBLE,
+                int,  # _OracleInteger,
+                # _OracleBINARY_FLOAT, _OracleBINARY_DOUBLE,
+                cx_Oracle.NATIVE_FLOAT,
             }
 
             self._paramval = lambda value: value.getvalue()

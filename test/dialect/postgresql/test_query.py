@@ -149,6 +149,13 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
         metadata.create_all(connection)
         self._assert_data_noautoincrement(connection, table)
 
+    def _ints_and_strs_setinputsizes(self, connection):
+
+        return (
+            connection.dialect._bind_typing_render_casts
+            and String().dialect_impl(connection.dialect).render_bind_cast
+        )
+
     def _assert_data_autoincrement(self, connection, table):
         """
         invoked by:
@@ -190,31 +197,64 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
             conn.execute(table.insert().inline(), {"data": "d8"})
 
-        asserter.assert_(
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
-                {"id": 30, "data": "d1"},
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
-                {"id": 1, "data": "d2"},
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
-                [{"id": 31, "data": "d3"}, {"id": 32, "data": "d4"}],
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (data) VALUES (:data)",
-                [{"data": "d5"}, {"data": "d6"}],
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
-                [{"id": 33, "data": "d7"}],
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (data) VALUES (:data)", [{"data": "d8"}]
-            ),
-        )
+        if self._ints_and_strs_setinputsizes(connection):
+            asserter.assert_(
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(:id::INTEGER, :data::VARCHAR(30))",
+                    {"id": 30, "data": "d1"},
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(:id::INTEGER, :data::VARCHAR(30))",
+                    {"id": 1, "data": "d2"},
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(:id::INTEGER, :data::VARCHAR(30))",
+                    [{"id": 31, "data": "d3"}, {"id": 32, "data": "d4"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (data) VALUES (:data::VARCHAR(30))",
+                    [{"data": "d5"}, {"data": "d6"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(:id::INTEGER, :data::VARCHAR(30))",
+                    [{"id": 33, "data": "d7"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (data) VALUES (:data::VARCHAR(30))",
+                    [{"data": "d8"}],
+                ),
+            )
+        else:
+            asserter.assert_(
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                    {"id": 30, "data": "d1"},
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                    {"id": 1, "data": "d2"},
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                    [{"id": 31, "data": "d3"}, {"id": 32, "data": "d4"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (data) VALUES (:data)",
+                    [{"data": "d5"}, {"data": "d6"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                    [{"id": 33, "data": "d7"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (data) VALUES (:data)",
+                    [{"data": "d8"}],
+                ),
+            )
 
         eq_(
             conn.execute(table.select()).fetchall(),
@@ -255,31 +295,64 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             conn.execute(table.insert().inline(), {"id": 33, "data": "d7"})
             conn.execute(table.insert().inline(), {"data": "d8"})
 
-        asserter.assert_(
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
-                {"id": 30, "data": "d1"},
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
-                {"id": 5, "data": "d2"},
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
-                [{"id": 31, "data": "d3"}, {"id": 32, "data": "d4"}],
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (data) VALUES (:data)",
-                [{"data": "d5"}, {"data": "d6"}],
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
-                [{"id": 33, "data": "d7"}],
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (data) VALUES (:data)", [{"data": "d8"}]
-            ),
-        )
+        if self._ints_and_strs_setinputsizes(connection):
+            asserter.assert_(
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(:id::INTEGER, :data::VARCHAR(30))",
+                    {"id": 30, "data": "d1"},
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(:id::INTEGER, :data::VARCHAR(30))",
+                    {"id": 5, "data": "d2"},
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(:id::INTEGER, :data::VARCHAR(30))",
+                    [{"id": 31, "data": "d3"}, {"id": 32, "data": "d4"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (data) VALUES (:data::VARCHAR(30))",
+                    [{"data": "d5"}, {"data": "d6"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(:id::INTEGER, :data::VARCHAR(30))",
+                    [{"id": 33, "data": "d7"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (data) VALUES (:data::VARCHAR(30))",
+                    [{"data": "d8"}],
+                ),
+            )
+        else:
+            asserter.assert_(
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                    {"id": 30, "data": "d1"},
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                    {"id": 5, "data": "d2"},
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                    [{"id": 31, "data": "d3"}, {"id": 32, "data": "d4"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (data) VALUES (:data)",
+                    [{"data": "d5"}, {"data": "d6"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                    [{"id": 33, "data": "d7"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (data) VALUES (:data)",
+                    [{"data": "d8"}],
+                ),
+            )
 
         eq_(
             conn.execute(table.select()).fetchall(),
@@ -336,32 +409,66 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
 
             conn.execute(table.insert().inline(), {"data": "d8"})
 
-        asserter.assert_(
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
-                {"id": 30, "data": "d1"},
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (data) VALUES (:data) RETURNING "
-                "testtable.id",
-                {"data": "d2"},
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
-                [{"id": 31, "data": "d3"}, {"id": 32, "data": "d4"}],
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (data) VALUES (:data)",
-                [{"data": "d5"}, {"data": "d6"}],
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
-                [{"id": 33, "data": "d7"}],
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (data) VALUES (:data)", [{"data": "d8"}]
-            ),
-        )
+        if self._ints_and_strs_setinputsizes(connection):
+            asserter.assert_(
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(:id::INTEGER, :data::VARCHAR(30))",
+                    {"id": 30, "data": "d1"},
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (data) VALUES "
+                    "(:data::VARCHAR(30)) RETURNING "
+                    "testtable.id",
+                    {"data": "d2"},
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(:id::INTEGER, :data::VARCHAR(30))",
+                    [{"id": 31, "data": "d3"}, {"id": 32, "data": "d4"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (data) VALUES (:data::VARCHAR(30))",
+                    [{"data": "d5"}, {"data": "d6"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(:id::INTEGER, :data::VARCHAR(30))",
+                    [{"id": 33, "data": "d7"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (data) VALUES (:data::VARCHAR(30))",
+                    [{"data": "d8"}],
+                ),
+            )
+        else:
+            asserter.assert_(
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                    {"id": 30, "data": "d1"},
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (data) VALUES (:data) RETURNING "
+                    "testtable.id",
+                    {"data": "d2"},
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                    [{"id": 31, "data": "d3"}, {"id": 32, "data": "d4"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (data) VALUES (:data)",
+                    [{"data": "d5"}, {"data": "d6"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                    [{"id": 33, "data": "d7"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (data) VALUES (:data)",
+                    [{"data": "d8"}],
+                ),
+            )
 
         eq_(
             conn.execute(table.select()).fetchall(),
@@ -404,32 +511,66 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             conn.execute(table.insert().inline(), {"id": 33, "data": "d7"})
             conn.execute(table.insert().inline(), {"data": "d8"})
 
-        asserter.assert_(
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
-                {"id": 30, "data": "d1"},
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (data) VALUES (:data) RETURNING "
-                "testtable.id",
-                {"data": "d2"},
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
-                [{"id": 31, "data": "d3"}, {"id": 32, "data": "d4"}],
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (data) VALUES (:data)",
-                [{"data": "d5"}, {"data": "d6"}],
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
-                [{"id": 33, "data": "d7"}],
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (data) VALUES (:data)", [{"data": "d8"}]
-            ),
-        )
+        if self._ints_and_strs_setinputsizes(connection):
+            asserter.assert_(
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(:id::INTEGER, :data::VARCHAR(30))",
+                    {"id": 30, "data": "d1"},
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (data) VALUES "
+                    "(:data::VARCHAR(30)) RETURNING "
+                    "testtable.id",
+                    {"data": "d2"},
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(:id::INTEGER, :data::VARCHAR(30))",
+                    [{"id": 31, "data": "d3"}, {"id": 32, "data": "d4"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (data) VALUES (:data::VARCHAR(30))",
+                    [{"data": "d5"}, {"data": "d6"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(:id::INTEGER, :data::VARCHAR(30))",
+                    [{"id": 33, "data": "d7"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (data) VALUES (:data::VARCHAR(30))",
+                    [{"data": "d8"}],
+                ),
+            )
+        else:
+            asserter.assert_(
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                    {"id": 30, "data": "d1"},
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (data) VALUES (:data) RETURNING "
+                    "testtable.id",
+                    {"data": "d2"},
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                    [{"id": 31, "data": "d3"}, {"id": 32, "data": "d4"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (data) VALUES (:data)",
+                    [{"data": "d5"}, {"data": "d6"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                    [{"id": 33, "data": "d7"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (data) VALUES (:data)",
+                    [{"data": "d8"}],
+                ),
+            )
 
         eq_(
             conn.execute(table.select()).fetchall(),
@@ -466,35 +607,70 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             conn.execute(table.insert().inline(), {"id": 33, "data": "d7"})
             conn.execute(table.insert().inline(), {"data": "d8"})
 
-        asserter.assert_(
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
-                {"id": 30, "data": "d1"},
-            ),
-            CursorSQL("select nextval('my_seq')", consume_statement=False),
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
-                {"id": 1, "data": "d2"},
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
-                [{"id": 31, "data": "d3"}, {"id": 32, "data": "d4"}],
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
-                ":data)" % seqname,
-                [{"data": "d5"}, {"data": "d6"}],
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
-                [{"id": 33, "data": "d7"}],
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
-                ":data)" % seqname,
-                [{"data": "d8"}],
-            ),
-        )
+        if self._ints_and_strs_setinputsizes(connection):
+            asserter.assert_(
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(:id::INTEGER, :data::VARCHAR(30))",
+                    {"id": 30, "data": "d1"},
+                ),
+                CursorSQL("select nextval('my_seq')", consume_statement=False),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(:id::INTEGER, :data::VARCHAR(30))",
+                    {"id": 1, "data": "d2"},
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(:id::INTEGER, :data::VARCHAR(30))",
+                    [{"id": 31, "data": "d3"}, {"id": 32, "data": "d4"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
+                    ":data::VARCHAR(30))" % seqname,
+                    [{"data": "d5"}, {"data": "d6"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(:id::INTEGER, :data::VARCHAR(30))",
+                    [{"id": 33, "data": "d7"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
+                    ":data::VARCHAR(30))" % seqname,
+                    [{"data": "d8"}],
+                ),
+            )
+        else:
+            asserter.assert_(
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                    {"id": 30, "data": "d1"},
+                ),
+                CursorSQL("select nextval('my_seq')", consume_statement=False),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                    {"id": 1, "data": "d2"},
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                    [{"id": 31, "data": "d3"}, {"id": 32, "data": "d4"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
+                    ":data)" % seqname,
+                    [{"data": "d5"}, {"data": "d6"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                    [{"id": 33, "data": "d7"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
+                    ":data)" % seqname,
+                    [{"data": "d8"}],
+                ),
+            )
         eq_(
             conn.execute(table.select()).fetchall(),
             [
@@ -530,35 +706,70 @@ class InsertTest(fixtures.TestBase, AssertsExecutionResults):
             conn.execute(table.insert().inline(), {"id": 33, "data": "d7"})
             conn.execute(table.insert().inline(), {"data": "d8"})
 
-        asserter.assert_(
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
-                {"id": 30, "data": "d1"},
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES "
-                "(nextval('my_seq'), :data) RETURNING testtable.id",
-                {"data": "d2"},
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
-                [{"id": 31, "data": "d3"}, {"id": 32, "data": "d4"}],
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
-                ":data)" % seqname,
-                [{"data": "d5"}, {"data": "d6"}],
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (:id, :data)",
-                [{"id": 33, "data": "d7"}],
-            ),
-            DialectSQL(
-                "INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
-                ":data)" % seqname,
-                [{"data": "d8"}],
-            ),
-        )
+        if self._ints_and_strs_setinputsizes(connection):
+            asserter.assert_(
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(:id::INTEGER, :data::VARCHAR(30))",
+                    {"id": 30, "data": "d1"},
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(nextval('my_seq'), :data::VARCHAR(30)) "
+                    "RETURNING testtable.id",
+                    {"data": "d2"},
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(:id::INTEGER, :data::VARCHAR(30))",
+                    [{"id": 31, "data": "d3"}, {"id": 32, "data": "d4"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
+                    ":data::VARCHAR(30))" % seqname,
+                    [{"data": "d5"}, {"data": "d6"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(:id::INTEGER, :data::VARCHAR(30))",
+                    [{"id": 33, "data": "d7"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
+                    ":data::VARCHAR(30))" % seqname,
+                    [{"data": "d8"}],
+                ),
+            )
+        else:
+            asserter.assert_(
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                    {"id": 30, "data": "d1"},
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES "
+                    "(nextval('my_seq'), :data) RETURNING testtable.id",
+                    {"data": "d2"},
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                    [{"id": 31, "data": "d3"}, {"id": 32, "data": "d4"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
+                    ":data)" % seqname,
+                    [{"data": "d5"}, {"data": "d6"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (:id, :data)",
+                    [{"id": 33, "data": "d7"}],
+                ),
+                DialectSQL(
+                    "INSERT INTO testtable (id, data) VALUES (nextval('%s'), "
+                    ":data)" % seqname,
+                    [{"data": "d8"}],
+                ),
+            )
 
         eq_(
             connection.execute(table.select()).fetchall(),
@@ -758,7 +969,9 @@ class MatchTest(fixtures.TablesTest, AssertsCompiledSQL):
         matchtable = self.tables.matchtable
         self.assert_compile(
             matchtable.c.title.match("somstr"),
-            "matchtable.title @@ to_tsquery(%s)",
+            # note we assume current tested DBAPIs use emulated setinputsizes
+            # here, the cast is not strictly necessary
+            "matchtable.title @@ to_tsquery(%s::VARCHAR(200))",
         )
 
     def test_simple_match(self, connection):

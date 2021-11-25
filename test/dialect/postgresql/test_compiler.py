@@ -38,7 +38,6 @@ from sqlalchemy.dialects.postgresql import array_agg as pg_array_agg
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.dialects.postgresql import TSRANGE
-from sqlalchemy.dialects.postgresql.base import _ColonCast
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.orm import aliased
@@ -97,14 +96,6 @@ class SequenceTest(fixtures.TestBase, AssertsCompiledSQL):
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     __dialect__ = postgresql.dialect()
-
-    def test_colon_cast_is_slots(self):
-
-        c1 = _ColonCast(column("q"), String(50))
-
-        assert not hasattr(c1, "__dict__")
-
-        self.assert_compile(c1, "q::VARCHAR(50)")
 
     def test_update_returning(self):
         dialect = postgresql.dialect()

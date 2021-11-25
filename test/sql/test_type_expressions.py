@@ -9,6 +9,7 @@ from sqlalchemy import testing
 from sqlalchemy import TypeDecorator
 from sqlalchemy import union
 from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
+from sqlalchemy.sql.type_api import UserDefinedType
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -431,6 +432,8 @@ class RoundTripTestBase:
 
 
 class StringRoundTripTest(fixtures.TablesTest, RoundTripTestBase):
+    __requires__ = ("string_type_isnt_subtype",)
+
     @classmethod
     def define_tables(cls, metadata):
         class MyString(String):
@@ -445,6 +448,29 @@ class StringRoundTripTest(fixtures.TablesTest, RoundTripTestBase):
             metadata,
             Column("x", String(50)),
             Column("y", MyString(50)),
+        )
+
+
+class UserDefinedTypeRoundTripTest(fixtures.TablesTest, RoundTripTestBase):
+    @classmethod
+    def define_tables(cls, metadata):
+        class MyString(UserDefinedType):
+            cache_ok = True
+
+            def get_col_spec(self, **kw):
+                return "VARCHAR(50)"
+
+            def bind_expression(self, bindvalue):
+                return func.lower(bindvalue)
+
+            def column_expression(self, col):
+                return func.upper(col)
+
+        Table(
+            "test_table",
+            metadata,
+            Column("x", String(50)),
+            Column("y", MyString()),
         )
 
 
@@ -474,7 +500,11 @@ class ReturningTest(fixtures.TablesTest):
 
     @classmethod
     def define_tables(cls, metadata):
-        class MyString(String):
+        class MyString(TypeDecorator):
+            impl = String
+
+            cache_ok = True
+
             def column_expression(self, col):
                 return func.lower(col)
 

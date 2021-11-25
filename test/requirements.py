@@ -6,6 +6,7 @@
 import sys
 
 from sqlalchemy import exc
+from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql import text
 from sqlalchemy.testing import exclusions
 from sqlalchemy.testing.exclusions import against
@@ -213,6 +214,7 @@ class DefaultRequirements(SuiteRequirements):
                 "mariadb+pymysql",
                 "mariadb+cymysql",
                 "mariadb+mysqlconnector",
+                "postgresql+asyncpg",
                 "postgresql+pg8000",
             ]
         )
@@ -794,6 +796,24 @@ class DefaultRequirements(SuiteRequirements):
         return fails_if(
             ["oracle"], "oracle converts empty strings to a blank space"
         )
+
+    @property
+    def string_type_isnt_subtype(self):
+        """target dialect does not have a dialect-specific subtype for String.
+
+        This is used for a special type expression test which wants to
+        test the compiler with a subclass of String, where we don't want
+        the dialect changing that type when we grab the 'impl'.
+
+        """
+
+        def go(config):
+            return (
+                sqltypes.String().dialect_impl(config.db.dialect).__class__
+                is sqltypes.String
+            )
+
+        return only_if(go)
 
     @property
     def empty_inserts_executemany(self):

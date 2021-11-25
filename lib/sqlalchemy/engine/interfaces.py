@@ -7,8 +7,58 @@
 
 """Define core interfaces used by the engine system."""
 
+from enum import Enum
+
 from ..sql.compiler import Compiled  # noqa
 from ..sql.compiler import TypeCompiler  # noqa
+
+
+class BindTyping(Enum):
+    """Define different methods of passing typing information for
+    bound parameters in a statement to the database driver.
+
+    .. versionadded:: 2.0
+
+    """
+
+    NONE = 1
+    """No steps are taken to pass typing information to the database driver.
+
+    This is the default behavior for databases such as SQLite, MySQL / MariaDB,
+    SQL Server.
+
+    """
+
+    SETINPUTSIZES = 2
+    """Use the pep-249 setinputsizes method.
+
+    This is only implemented for DBAPIs that support this method and for which
+    the SQLAlchemy dialect has the appropriate infrastructure for that
+    dialect set up.   Current dialects include cx_Oracle as well as
+    optional support for SQL Server using pyodbc.
+
+    When using setinputsizes, dialects also have a means of only using the
+    method for certain datatypes using include/exclude lists.
+
+    When SETINPUTSIZES is used, the :meth:`.Dialect.do_set_input_sizes` method
+    is called for each statement executed which has bound parameters.
+
+    """
+
+    RENDER_CASTS = 3
+    """Render casts or other directives in the SQL string.
+
+    This method is used for all PostgreSQL dialects, including asyncpg,
+    pg8000, psycopg, psycopg2.   Dialects which implement this can choose
+    which kinds of datatypes are explicitly cast in SQL statements and which
+    aren't.
+
+    When RENDER_CASTS is used, the compiler will invoke the
+    :meth:`.SQLCompiler.render_bind_cast` method for each
+    :class:`.BindParameter` object whose dialect-level type sets the
+    :attr:`.TypeEngine.render_bind_cast` attribute.
+
+    """
 
 
 class Dialect:
@@ -153,6 +203,16 @@ class Dialect:
     .. seealso::
 
         :ref:`engine_thirdparty_caching`
+
+    """
+
+    bind_typing = BindTyping.NONE
+    """define a means of passing typing information to the database and/or
+    driver for bound parameters.
+
+    See :class:`.BindTyping` for values.
+
+    ..versionadded:: 2.0
 
     """
 
@@ -587,13 +647,21 @@ class Dialect:
     def do_set_input_sizes(self, cursor, list_of_tuples, context):
         """invoke the cursor.setinputsizes() method with appropriate arguments
 
-        This hook is called if the dialect.use_inputsizes flag is set to True.
+        This hook is called if the :attr:`.Dialect.bind_typing` attribute is
+        set to the
+        :attr:`.BindTyping.SETINPUTSIZES` value.
         Parameter data is passed in a list of tuples (paramname, dbtype,
         sqltype), where ``paramname`` is the key of the parameter in the
         statement, ``dbtype`` is the DBAPI datatype and ``sqltype`` is the
         SQLAlchemy type. The order of tuples is in the correct parameter order.
 
         .. versionadded:: 1.4
+
+        .. versionchanged:: 2.0  - setinputsizes mode is now enabled by
+           setting :attr:`.Dialect.bind_typing` to
+           :attr:`.BindTyping.SETINPUTSIZES`.  Dialects which accept
+           a ``use_setinputsizes`` parameter should set this value
+           appropriately.
 
 
         """

@@ -1582,7 +1582,7 @@ class TypeCoerceTest(fixtures.MappedTest, testing.AssertsExecutionResults):
             return sa.cast(col, Integer)
 
         def bind_expression(self, col):
-            return sa.cast(col, String(50))
+            return sa.cast(sa.type_coerce(col, Integer), String(50))
 
     @classmethod
     def define_tables(cls, metadata):

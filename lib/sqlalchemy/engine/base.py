@@ -7,6 +7,7 @@
 import contextlib
 import sys
 
+from .interfaces import BindTyping
 from .interfaces import Connectable
 from .interfaces import ConnectionEventsTarget
 from .interfaces import ExceptionContext
@@ -1484,7 +1485,7 @@ class Connection(Connectable):
 
         context.pre_exec()
 
-        if dialect.use_setinputsizes:
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
             context._set_input_sizes()
 
         cursor, statement, parameters = (

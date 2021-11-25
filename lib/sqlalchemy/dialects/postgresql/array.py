@@ -330,9 +330,6 @@ class ARRAY(sqltypes.ARRAY):
             and self.item_type.native_enum
         )
 
-    def bind_expression(self, bindvalue):
-        return bindvalue
-
     def bind_processor(self, dialect):
         item_proc = self.item_type.dialect_impl(dialect).bind_processor(
             dialect

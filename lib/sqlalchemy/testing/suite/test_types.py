@@ -480,19 +480,15 @@ class CastTypeDecoratorTest(_LiteralRoundTripFixture, fixtures.TestBase):
             impl = String(50)
             cache_ok = True
 
-            def get_dbapi_type(self, dbapi):
-                return dbapi.NUMBER
-
             def column_expression(self, col):
                 return cast(col, Integer)
 
             def bind_expression(self, col):
-                return cast(col, String(50))
+                return cast(type_coerce(col, Integer), String(50))
 
         return StringAsInt()
 
     def test_special_type(self, metadata, connection, string_as_int):
-
         type_ = string_as_int
 
         t = Table("t", metadata, Column("x", type_))

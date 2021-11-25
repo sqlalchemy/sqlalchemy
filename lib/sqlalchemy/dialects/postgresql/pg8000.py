@@ -94,7 +94,6 @@ import re
 from uuid import UUID as _python_UUID
 
 from .array import ARRAY as PGARRAY
-from .base import _ColonCast
 from .base import _DECIMAL_TYPES
 from .base import _FLOAT_TYPES
 from .base import _INT_TYPES
@@ -115,7 +114,13 @@ from ... import util
 from ...sql.elements import quoted_name
 
 
+class _PGString(sqltypes.String):
+    render_bind_cast = True
+
+
 class _PGNumeric(sqltypes.Numeric):
+    render_bind_cast = True
+
     def result_processor(self, dialect, coltype):
         if self.asdecimal:
             if coltype in _FLOAT_TYPES:
@@ -141,25 +146,28 @@ class _PGNumeric(sqltypes.Numeric):
                 )
 
 
+class _PGFloat(_PGNumeric):
+    __visit_name__ = "float"
+    render_bind_cast = True
+
+
 class _PGNumericNoBind(_PGNumeric):
     def bind_processor(self, dialect):
         return None
 
 
 class _PGJSON(JSON):
+    render_bind_cast = True
+
     def result_processor(self, dialect, coltype):
         return None
-
-    def get_dbapi_type(self, dbapi):
-        return dbapi.JSON
 
 
 class _PGJSONB(JSONB):
+    render_bind_cast = True
+
     def result_processor(self, dialect, coltype):
         return None
-
-    def get_dbapi_type(self, dbapi):
-        return dbapi.JSONB
 
 
 class _PGJSONIndexType(sqltypes.JSON.JSONIndexType):
@@ -168,21 +176,26 @@ class _PGJSONIndexType(sqltypes.JSON.JSONIndexType):
 
 
 class _PGJSONIntIndexType(sqltypes.JSON.JSONIntIndexType):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.INTEGER
+    __visit_name__ = "json_int_index"
+
+    render_bind_cast = True
 
 
 class _PGJSONStrIndexType(sqltypes.JSON.JSONStrIndexType):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.STRING
+    __visit_name__ = "json_str_index"
+
+    render_bind_cast = True
 
 
 class _PGJSONPathType(JSONPathType):
-    def get_dbapi_type(self, dbapi):
-        return 1009
+    pass
+
+    # DBAPI type 1009
 
 
 class _PGUUID(UUID):
+    render_bind_cast = True
+
     def bind_processor(self, dialect):
         if not self.as_uuid:
 
@@ -210,6 +223,8 @@ class _PGEnum(ENUM):
 
 
 class _PGInterval(INTERVAL):
+    render_bind_cast = True
+
     def get_dbapi_type(self, dbapi):
         return dbapi.INTERVAL
 
@@ -219,48 +234,39 @@ class _PGInterval(INTERVAL):
 
 
 class _PGTimeStamp(sqltypes.DateTime):
-    def get_dbapi_type(self, dbapi):
-        if self.timezone:
-            # TIMESTAMPTZOID
-            return 1184
-        else:
-            # TIMESTAMPOID
-            return 1114
+    render_bind_cast = True
+
+
+class _PGDate(sqltypes.Date):
+    render_bind_cast = True
 
 
 class _PGTime(sqltypes.Time):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.TIME
+    render_bind_cast = True
 
 
 class _PGInteger(sqltypes.Integer):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.INTEGER
+    render_bind_cast = True
 
 
 class _PGSmallInteger(sqltypes.SmallInteger):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.INTEGER
+    render_bind_cast = True
 
 
 class _PGNullType(sqltypes.NullType):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.NULLTYPE
+    pass
 
 
 class _PGBigInteger(sqltypes.BigInteger):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.BIGINTEGER
+    render_bind_cast = True
 
 
 class _PGBoolean(sqltypes.Boolean):
-    def get_dbapi_type(self, dbapi):
-        return dbapi.BOOLEAN
+    render_bind_cast = True
 
 
 class _PGARRAY(PGARRAY):
-    def bind_expression(self, bindvalue):
-        return _ColonCast(bindvalue, self)
+    render_bind_cast = True
 
 
 _server_side_id = util.counter()
@@ -362,7 +368,7 @@ class PGDialect_pg8000(PGDialect):
     preparer = PGIdentifierPreparer_pg8000
     supports_server_side_cursors = True
 
-    use_setinputsizes = True
+    render_bind_cast = True
 
     # reversed as of pg8000 1.16.6.  1.16.5 and lower
     # are no longer compatible
@@ -372,8 +378,9 @@ class PGDialect_pg8000(PGDialect):
     colspecs = util.update_copy(
         PGDialect.colspecs,
         {
+            sqltypes.String: _PGString,
             sqltypes.Numeric: _PGNumericNoBind,
-            sqltypes.Float: _PGNumeric,
+            sqltypes.Float: _PGFloat,
             sqltypes.JSON: _PGJSON,
             sqltypes.Boolean: _PGBoolean,
             sqltypes.NullType: _PGNullType,
@@ -386,6 +393,8 @@ class PGDialect_pg8000(PGDialect):
             sqltypes.Interval: _PGInterval,
             INTERVAL: _PGInterval,
             sqltypes.DateTime: _PGTimeStamp,
+            sqltypes.DateTime: _PGTimeStamp,
+            sqltypes.Date: _PGDate,
             sqltypes.Time: _PGTime,
             sqltypes.Integer: _PGInteger,
             sqltypes.SmallInteger: _PGSmallInteger,
@@ -516,20 +525,6 @@ class PGDialect_pg8000(PGDialect):
         cursor.execute("SET CLIENT_ENCODING TO '" + client_encoding + "'")
         cursor.execute("COMMIT")
         cursor.close()
-
-    def do_set_input_sizes(self, cursor, list_of_tuples, context):
-        if self.positional:
-            cursor.setinputsizes(
-                *[dbtype for key, dbtype, sqltype in list_of_tuples]
-            )
-        else:
-            cursor.setinputsizes(
-                **{
-                    key: dbtype
-                    for key, dbtype, sqltype in list_of_tuples
-                    if dbtype
-                }
-            )
 
     def do_begin_twophase(self, connection, xid):
         connection.connection.tpc_begin((0, xid, ""))

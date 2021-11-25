@@ -266,6 +266,10 @@ class DialectSQL(CompiledSQL):
 
     def _dialect_adjusted_statement(self, paramstyle):
         stmt = re.sub(r"[\n\t]", "", self.statement)
+
+        # temporarily escape out PG double colons
+        stmt = stmt.replace("::", "!!")
+
         if paramstyle == "pyformat":
             stmt = re.sub(r":([\w_]+)", r"%(\1)s", stmt)
         else:
@@ -278,6 +282,10 @@ class DialectSQL(CompiledSQL):
             elif paramstyle == "numeric":
                 repl = None
             stmt = re.sub(r":([\w_]+)", repl, stmt)
+
+        # put them back
+        stmt = stmt.replace("!!", "::")
+
         return stmt
 
     def _compare_sql(self, execute_observed, received_statement):

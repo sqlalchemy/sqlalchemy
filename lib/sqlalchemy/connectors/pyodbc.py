@@ -10,6 +10,7 @@ from urllib.parse import unquote_plus
 
 from . import Connector
 from .. import util
+from ..engine import interfaces
 
 
 class PyODBCConnector(Connector):
@@ -22,15 +23,14 @@ class PyODBCConnector(Connector):
     supports_native_decimal = True
     default_paramstyle = "named"
 
-    use_setinputsizes = False
-
     # for non-DSN connections, this *may* be used to
     # hold the desired driver name
     pyodbc_driver_name = None
 
     def __init__(self, use_setinputsizes=False, **kw):
         super(PyODBCConnector, self).__init__(**kw)
-        self.use_setinputsizes = use_setinputsizes
+        if use_setinputsizes:
+            self.bind_typing = interfaces.BindTyping.SETINPUTSIZES
 
     @classmethod
     def dbapi(cls):
@@ -161,8 +161,9 @@ class PyODBCConnector(Connector):
         # for types such as pyodbc.SQL_WLONGVARCHAR, which is the datatype
         # that ticket #5649 is targeting.
 
-        # NOTE: as of #6058, this won't be called if the use_setinputsizes flag
-        # is False, or if no types were specified in list_of_tuples
+        # NOTE: as of #6058, this won't be called if the use_setinputsizes
+        # parameter were not passed to the dialect, or if no types were
+        # specified in list_of_tuples
 
         cursor.setinputsizes(
             [

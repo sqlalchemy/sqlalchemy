@@ -7,6 +7,9 @@ Some key internal constructs are listed here.
 
 .. currentmodule:: sqlalchemy
 
+.. autoclass:: sqlalchemy.engine.BindTyping
+    :members:
+
 .. autoclass:: sqlalchemy.engine.Compiled
     :members:
 
