@@ -27,7 +27,6 @@ methods such as get_table_names, get_columns, etc.
 
 import contextlib
 
-from .base import Connectable
 from .base import Connection
 from .base import Engine
 from .. import exc
@@ -96,7 +95,7 @@ class Inspector:
     def __init__(self, bind):
         """Initialize a new :class:`_reflection.Inspector`.
 
-        :param bind: a :class:`~sqlalchemy.engine.Connectable`,
+        :param bind: a :class:`~sqlalchemy.engine.Connection`,
           which is typically an instance of
           :class:`~sqlalchemy.engine.Engine` or
           :class:`~sqlalchemy.engine.Connection`.
@@ -153,10 +152,8 @@ class Inspector:
         """Construct a new dialect-specific Inspector object from the given
         engine or connection.
 
-        :param bind: a :class:`~sqlalchemy.engine.Connectable`,
-          which is typically an instance of
-          :class:`~sqlalchemy.engine.Engine` or
-          :class:`~sqlalchemy.engine.Connection`.
+        :param bind: a :class:`~sqlalchemy.engine.Connection`
+         or :class:`~sqlalchemy.engine.Engine`.
 
         This method differs from direct a direct constructor call of
         :class:`_reflection.Inspector` in that the
@@ -169,13 +166,6 @@ class Inspector:
 
         """
         return cls._construct(cls._init_legacy, bind)
-
-    @inspection._inspects(Connectable)
-    def _connectable_insp(bind):
-        # this method should not be used unless some unusual case
-        # has subclassed "Connectable"
-
-        return Inspector._construct(Inspector._init_legacy, bind)
 
     @inspection._inspects(Engine)
     def _engine_insp(bind):

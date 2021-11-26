@@ -13,6 +13,18 @@ Some key internal constructs are listed here.
 .. autoclass:: sqlalchemy.engine.Compiled
     :members:
 
+.. autoclass:: sqlalchemy.engine.interfaces.DBAPIConnection
+    :members:
+    :undoc-members:
+
+.. autoclass:: sqlalchemy.engine.interfaces.DBAPICursor
+    :members:
+    :undoc-members:
+
+.. autoclass:: sqlalchemy.engine.interfaces.DBAPIType
+    :members:
+    :undoc-members:
+
 .. autoclass:: sqlalchemy.sql.compiler.DDLCompiler
     :members:
     :inherited-members:

@@ -1576,7 +1576,7 @@ class OracleDialect(default.DefaultDialect):
             # use the default
             return None
 
-    def get_isolation_level_values(self, dbapi_conn):
+    def get_isolation_level_values(self, dbapi_connection):
         return ["READ COMMITTED", "SERIALIZABLE"]
 
     def get_default_isolation_level(self, dbapi_conn):

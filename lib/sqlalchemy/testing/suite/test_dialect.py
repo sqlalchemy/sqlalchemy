@@ -115,7 +115,9 @@ class IsolationLevelTest(fixtures.TestBase):
 
             eq_(conn.get_isolation_level(), non_default)
 
-            conn.dialect.reset_isolation_level(conn.connection)
+            conn.dialect.reset_isolation_level(
+                conn.connection.dbapi_connection
+            )
 
             eq_(conn.get_isolation_level(), existing)
 
@@ -223,7 +225,7 @@ class AutocommitIsolationTest(fixtures.TablesTest):
         c2 = conn.execution_options(isolation_level="AUTOCOMMIT")
         self._test_conn_autocommits(c2, True)
 
-        c2.dialect.reset_isolation_level(c2.connection)
+        c2.dialect.reset_isolation_level(c2.connection.dbapi_connection)
 
         self._test_conn_autocommits(conn, False)
 

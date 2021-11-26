@@ -61,7 +61,7 @@ def create_engine(url, **kwargs):
     constructs::
 
         engine = create_engine("mysql+mysqldb://scott:tiger@hostname/dbname",
-                                    encoding='latin1', echo=True)
+                                    pool_recycle=3600, echo=True)
 
     The string form of the URL is
     ``dialect[+driver]://user:password@host/dbname[?key=value..]``, where
@@ -589,6 +589,7 @@ def create_engine(url, **kwargs):
     engine = engineclass(pool, dialect, u, **engine_args)
 
     if _initialize:
+
         do_on_connect = dialect.on_connect_url(u)
         if do_on_connect:
 
@@ -604,7 +605,9 @@ def create_engine(url, **kwargs):
         def first_connect(dbapi_connection, connection_record):
             c = base.Connection(
                 engine,
-                connection=dbapi_connection,
+                connection=poollib._AdhocProxiedConnection(
+                    dbapi_connection, connection_record
+                ),
                 _has_events=False,
                 # reconnecting will be a reentrant condition, so if the
                 # connection goes away, Connection is then closed

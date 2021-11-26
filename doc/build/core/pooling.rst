@@ -569,6 +569,9 @@ API Documentation - Available Pool Implementations
 
 .. autoclass:: StaticPool
 
+.. autoclass:: PoolProxiedConnection
+    :members:
+
 .. autoclass:: _ConnectionFairy
     :members:
 

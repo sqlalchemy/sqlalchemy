@@ -446,7 +446,7 @@ class PGDialect_pg8000(PGDialect):
         # connection was closed normally
         return "connection is closed" in str(e)
 
-    def get_isolation_level_values(self, dbapi_conn):
+    def get_isolation_level_values(self, dbapi_connection):
         return (
             "AUTOCOMMIT",
             "READ COMMITTED",
@@ -455,21 +455,17 @@ class PGDialect_pg8000(PGDialect):
             "SERIALIZABLE",
         )
 
-    def set_isolation_level(self, connection, level):
+    def set_isolation_level(self, dbapi_connection, level):
         level = level.replace("_", " ")
 
-        # adjust for ConnectionFairy possibly being present
-        if hasattr(connection, "dbapi_connection"):
-            connection = connection.dbapi_connection
-
         if level == "AUTOCOMMIT":
-            connection.autocommit = True
+            dbapi_connection.autocommit = True
         else:
-            connection.autocommit = False
-            cursor = connection.cursor()
+            dbapi_connection.autocommit = False
+            cursor = dbapi_connection.cursor()
             cursor.execute(
                 "SET SESSION CHARACTERISTICS AS TRANSACTION "
-                "ISOLATION LEVEL %s" % level
+                f"ISOLATION LEVEL {level}"
             )
             cursor.execute("COMMIT")
             cursor.close()
@@ -516,13 +512,13 @@ class PGDialect_pg8000(PGDialect):
 
         return val == "on"
 
-    def set_client_encoding(self, connection, client_encoding):
-        # adjust for ConnectionFairy possibly being present
-        if hasattr(connection, "dbapi_connection"):
-            connection = connection.dbapi_connection
-
-        cursor = connection.cursor()
-        cursor.execute("SET CLIENT_ENCODING TO '" + client_encoding + "'")
+    def _set_client_encoding(self, dbapi_connection, client_encoding):
+        cursor = dbapi_connection.cursor()
+        cursor.execute(
+            f"""SET CLIENT_ENCODING TO '{
+            client_encoding.replace("'", "''")
+        }'"""
+        )
         cursor.execute("COMMIT")
         cursor.close()
 
@@ -556,7 +552,7 @@ class PGDialect_pg8000(PGDialect):
         if self.client_encoding is not None:
 
             def on_connect(conn):
-                self.set_client_encoding(conn, self.client_encoding)
+                self._set_client_encoding(conn, self.client_encoding)
 
             fns.append(on_connect)
 

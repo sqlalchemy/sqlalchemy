@@ -714,7 +714,11 @@ class _Binary(TypeEngine):
 
     def literal_processor(self, dialect):
         def process(value):
-            value = value.decode(dialect.encoding).replace("'", "''")
+            # TODO: this is useless for real world scenarios; implement
+            # real binary literals
+            value = value.decode(
+                dialect._legacy_binary_type_literal_encoding
+            ).replace("'", "''")
             return "'%s'" % value
 
         return process

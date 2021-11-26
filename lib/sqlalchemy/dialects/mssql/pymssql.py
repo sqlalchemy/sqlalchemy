@@ -125,16 +125,18 @@ class MSDialect_pymssql(MSDialect):
         else:
             return False
 
-    def get_isolation_level_values(self, dbapi_conn):
-        return super().get_isolation_level_values(dbapi_conn) + ["AUTOCOMMIT"]
+    def get_isolation_level_values(self, dbapi_connection):
+        return super().get_isolation_level_values(dbapi_connection) + [
+            "AUTOCOMMIT"
+        ]
 
-    def set_isolation_level(self, connection, level):
+    def set_isolation_level(self, dbapi_connection, level):
         if level == "AUTOCOMMIT":
-            connection.autocommit(True)
+            dbapi_connection.autocommit(True)
         else:
-            connection.autocommit(False)
+            dbapi_connection.autocommit(False)
             super(MSDialect_pymssql, self).set_isolation_level(
-                connection, level
+                dbapi_connection, level
             )
 
 

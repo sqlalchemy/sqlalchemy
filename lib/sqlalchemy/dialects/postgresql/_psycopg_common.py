@@ -150,7 +150,7 @@ class _PGDialect_common_psycopg(PGDialect):
             # requires that "dsn" be present as a blank string.
             return ([""], opts)
 
-    def get_isolation_level_values(self, dbapi_conn):
+    def get_isolation_level_values(self, dbapi_connection):
         return (
             "AUTOCOMMIT",
             "READ COMMITTED",

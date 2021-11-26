@@ -322,9 +322,6 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
         connection.isolation_level = isolation_level
 
     def get_isolation_level(self, dbapi_connection):
-        if hasattr(dbapi_connection, "dbapi_connection"):
-            dbapi_connection = dbapi_connection.dbapi_connection
-
         status_before = dbapi_connection.info.transaction_status
         value = super().get_isolation_level(dbapi_connection)
 
@@ -334,15 +331,14 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
             dbapi_connection.rollback()
         return value
 
-    def set_isolation_level(self, connection, level):
-        connection = getattr(connection, "dbapi_connection", connection)
+    def set_isolation_level(self, dbapi_connection, level):
         if level == "AUTOCOMMIT":
             self._do_isolation_level(
-                connection, autocommit=True, isolation_level=None
+                dbapi_connection, autocommit=True, isolation_level=None
             )
         else:
             self._do_isolation_level(
-                connection,
+                dbapi_connection,
                 autocommit=False,
                 isolation_level=self._isolation_lookup[level],
             )

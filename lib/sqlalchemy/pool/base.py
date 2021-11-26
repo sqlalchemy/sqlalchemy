@@ -12,6 +12,10 @@
 
 from collections import deque
 import time
+from typing import Any
+from typing import Dict
+from typing import Optional
+from typing import TYPE_CHECKING
 import weakref
 
 from .. import event
@@ -19,6 +23,8 @@ from .. import exc
 from .. import log
 from .. import util
 
+if TYPE_CHECKING:
+    from ..engine.interfaces import DBAPIConnection
 
 reset_rollback = util.symbol("reset_rollback")
 reset_commit = util.symbol("reset_commit")
@@ -781,14 +787,210 @@ def _finalize_fairy(
 _strong_ref_connection_records = {}
 
 
-class _ConnectionFairy:
+class PoolProxiedConnection:
+    """interface for the wrapper connection that is used by the connection
+    pool.
+
+    :class:`.PoolProxiedConnection` is basically the public-facing interface
+    for the :class:`._ConnectionFairy` implemenatation object, users familiar
+    with :class:`._ConnectionFairy` can consider this object to be
+    equivalent.
+
+    .. versionadded:: 2.0
+
+    """
+
+    __slots__ = ()
+
+    @util.memoized_property
+    def dbapi_connection(self) -> "DBAPIConnection":
+        """A reference to the actual DBAPI connection being tracked.
+
+        .. seealso::
+
+            :attr:`.PoolProxiedConnection.driver_connection`
+
+            :attr:`.PoolProxiedConnection.dbapi_connection`
+
+            :ref:`faq_dbapi_connection`
+
+        """
+        raise NotImplementedError()
+
+    @property
+    def driver_connection(self) -> Any:
+        """The connection object as returned by the driver after a connect.
+
+        .. seealso::
+
+            :attr:`.PoolProxiedConnection.dbapi_connection`
+
+            :attr:`._ConnectionRecord.driver_connection`
+
+            :ref:`faq_dbapi_connection`
+
+        """
+        raise NotImplementedError()
+
+    @property
+    def is_valid(self) -> bool:
+        """Return True if this :class:`.PoolProxiedConnection` still refers
+        to an active DBAPI connection."""
+
+        raise NotImplementedError()
+
+    @util.memoized_property
+    def info(self) -> Dict[str, Any]:
+        """Info dictionary associated with the underlying DBAPI connection
+        referred to by this :class:`.ConnectionFairy`, allowing user-defined
+        data to be associated with the connection.
+
+        The data here will follow along with the DBAPI connection including
+        after it is returned to the connection pool and used again
+        in subsequent instances of :class:`._ConnectionFairy`.  It is shared
+        with the :attr:`._ConnectionRecord.info` and
+        :attr:`_engine.Connection.info`
+        accessors.
+
+        The dictionary associated with a particular DBAPI connection is
+        discarded when the connection itself is discarded.
+
+        """
+
+        raise NotImplementedError()
+
+    @property
+    def record_info(self) -> Dict[str, Any]:
+        """Info dictionary associated with the :class:`._ConnectionRecord
+        container referred to by this :class:`.PoolProxiedConnection`.
+
+        Unlike the :attr:`.PoolProxiedConnection.info` dictionary, the lifespan
+        of this dictionary is persistent across connections that are
+        disconnected and/or invalidated within the lifespan of a
+        :class:`._ConnectionRecord`.
+
+        """
+
+        raise NotImplementedError()
+
+    def invalidate(
+        self, e: Optional[Exception] = None, soft: bool = False
+    ) -> None:
+        """Mark this connection as invalidated.
+
+        This method can be called directly, and is also called as a result
+        of the :meth:`_engine.Connection.invalidate` method.   When invoked,
+        the DBAPI connection is immediately closed and discarded from
+        further use by the pool.  The invalidation mechanism proceeds
+        via the :meth:`._ConnectionRecord.invalidate` internal method.
+
+        :param e: an exception object indicating a reason for the invalidation.
+
+        :param soft: if True, the connection isn't closed; instead, this
+         connection will be recycled on next checkout.
+
+        .. seealso::
+
+            :ref:`pool_connection_invalidation`
+
+
+        """
+        raise NotImplementedError()
+
+    def detach(self) -> None:
+        """Separate this connection from its Pool.
+
+        This means that the connection will no longer be returned to the
+        pool when closed, and will instead be literally closed.  The
+        containing ConnectionRecord is separated from the DB-API connection,
+        and will create a new connection when next used.
+
+        Note that any overall connection limiting constraints imposed by a
+        Pool implementation may be violated after a detach, as the detached
+        connection is removed from the pool's knowledge and control.
+
+        """
+
+        raise NotImplementedError()
+
+    def close(self) -> None:
+        """Release this connection back to the pool.
+
+        The :meth:`.PoolProxiedConnection.close` method shadows the
+        :pep:`249` ``.close()`` method, altering its behavior to instead
+        :term:`release` the proxied connection back to the connection pool.
+
+        Upon release to the pool, whether the connection stays "opened" and
+        pooled in the Python process, versus actually closed out and removed
+        from the Python process, is based on the pool implementation in use and
+        its configuration and current state.
+
+        """
+        raise NotImplementedError()
+
+
+class _AdhocProxiedConnection(PoolProxiedConnection):
+    """provides the :class:`.PoolProxiedConnection` interface for cases where
+    the DBAPI connection is not actually proxied.
+
+    This is used by the engine internals to pass a consistent
+    :class:`.PoolProxiedConnection` object to consuming dialects in response to
+    pool events that may not always have the :class:`._ConnectionFairy`
+    available.
+
+    """
+
+    __slots__ = ("dbapi_connection", "_connection_record")
+
+    def __init__(self, dbapi_connection, connection_record):
+        self.dbapi_connection = dbapi_connection
+        self._connection_record = connection_record
+
+    @property
+    def driver_connection(self):
+        return self._connection_record.driver_connection
+
+    @property
+    def connection(self):
+        """An alias to :attr:`._ConnectionFairy.dbapi_connection`.
+
+        This alias is deprecated, please use the new name.
+
+        .. deprecated:: 1.4.24
+
+        """
+        return self._dbapi_connection
+
+    @property
+    def is_valid(self):
+        raise AttributeError("is_valid not implemented by this proxy")
+
+    @property
+    def record_info(self):
+        return self._connection_record.record_info
+
+    def cursor(self, *args, **kwargs):
+        """Return a new DBAPI cursor for the underlying connection.
+
+        This method is a proxy for the ``connection.cursor()`` DBAPI
+        method.
+
+        """
+        return self.dbapi_connection.cursor(*args, **kwargs)
+
+    def __getattr__(self, key):
+        return getattr(self.dbapi_connection, key)
+
+
+class _ConnectionFairy(PoolProxiedConnection):
 
     """Proxies a DBAPI connection and provides return-on-dereference
     support.
 
     This is an internal object used by the :class:`_pool.Pool` implementation
     to provide context management to a DBAPI connection delivered by
-    that :class:`_pool.Pool`.
+    that :class:`_pool.Pool`.   The public facing interface for this class
+    is described by the :class:`.PoolProxiedConnection` class.
 
     The name "fairy" is inspired by the fact that the
     :class:`._ConnectionFairy` object's lifespan is transitory, as it lasts
@@ -806,21 +1008,6 @@ class _ConnectionFairy:
         self.dbapi_connection = dbapi_connection
         self._connection_record = connection_record
         self._echo = echo
-
-    dbapi_connection = None
-    """A reference to the actual DBAPI connection being tracked.
-
-    .. versionadded:: 1.4.24
-
-    .. seealso::
-
-        :attr:`._ConnectionFairy.driver_connection`
-
-        :attr:`._ConnectionRecord.dbapi_connection`
-
-        :ref:`faq_dbapi_connection`
-
-    """
 
     _connection_record = None
     """A reference to the :class:`._ConnectionRecord` object associated
@@ -953,6 +1140,9 @@ class _ConnectionFairy:
                         # try to checkin a second time.
                         del fairy
 
+                    # never called, this is for code linters
+                    raise
+
                 attempts -= 1
 
         pool.logger.info("Reconnection attempts exhausted on checkout")
@@ -1011,15 +1201,7 @@ class _ConnectionFairy:
         referred to by this :class:`.ConnectionFairy`, allowing user-defined
         data to be associated with the connection.
 
-        The data here will follow along with the DBAPI connection including
-        after it is returned to the connection pool and used again
-        in subsequent instances of :class:`._ConnectionFairy`.  It is shared
-        with the :attr:`._ConnectionRecord.info` and
-        :attr:`_engine.Connection.info`
-        accessors.
-
-        The dictionary associated with a particular DBAPI connection is
-        discarded when the connection itself is discarded.
+        See :attr:`.PoolProxiedConnection.info` for full description.
 
         """
         return self._connection_record.info
@@ -1029,12 +1211,7 @@ class _ConnectionFairy:
         """Info dictionary associated with the :class:`._ConnectionRecord
         container referred to by this :class:`.ConnectionFairy`.
 
-        Unlike the :attr:`._ConnectionFairy.info` dictionary, the lifespan
-        of this dictionary is persistent across connections that are
-        disconnected and/or invalidated within the lifespan of a
-        :class:`._ConnectionRecord`.
-
-        .. versionadded:: 1.1
+        See :attr:`.PoolProxiedConnection.record_info` for full description.
 
         """
         if self._connection_record:
@@ -1045,18 +1222,7 @@ class _ConnectionFairy:
     def invalidate(self, e=None, soft=False):
         """Mark this connection as invalidated.
 
-        This method can be called directly, and is also called as a result
-        of the :meth:`_engine.Connection.invalidate` method.   When invoked,
-        the DBAPI connection is immediately closed and discarded from
-        further use by the pool.  The invalidation mechanism proceeds
-        via the :meth:`._ConnectionRecord.invalidate` internal method.
-
-        :param e: an exception object indicating a reason for the invalidation.
-
-        :param soft: if True, the connection isn't closed; instead, this
-         connection will be recycled on next checkout.
-
-         .. versionadded:: 1.0.3
+        See :attr:`.PoolProxiedConnection.invalidate` for full description.
 
         .. seealso::
 
@@ -1088,14 +1254,8 @@ class _ConnectionFairy:
     def detach(self):
         """Separate this connection from its Pool.
 
-        This means that the connection will no longer be returned to the
-        pool when closed, and will instead be literally closed.  The
-        containing ConnectionRecord is separated from the DB-API connection,
-        and will create a new connection when next used.
+        See :meth:`.PoolProxiedConnection.detach` for full description.
 
-        Note that any overall connection limiting constraints imposed by a
-        Pool implementation may be violated after a detach, as the detached
-        connection is removed from the pool's knowledge and control.
         """
 
         if self._connection_record is not None:
@@ -1111,6 +1271,11 @@ class _ConnectionFairy:
                 self._pool.dispatch.detach(self.dbapi_connection, rec)
 
     def close(self):
+        """Release this connection back to the pool.
+
+        See :meth:`.PoolProxiedConnection.close` for full description.
+
+        """
         self._counter -= 1
         if self._counter == 0:
             self._checkin()

@@ -35,7 +35,6 @@ from .cursor import ResultProxy
 from .interfaces import AdaptedConnection
 from .interfaces import BindTyping
 from .interfaces import Compiled
-from .interfaces import Connectable
 from .interfaces import CreateEnginePlugin
 from .interfaces import Dialect
 from .interfaces import ExceptionContext

@@ -2766,25 +2766,25 @@ class MSDialect(default.DefaultDialect):
         ]
     )
 
-    def get_isolation_level_values(self, dbapi_conn):
+    def get_isolation_level_values(self, dbapi_connection):
         return list(self._isolation_lookup)
 
-    def set_isolation_level(self, connection, level):
-        cursor = connection.cursor()
-        cursor.execute("SET TRANSACTION ISOLATION LEVEL %s" % level)
+    def set_isolation_level(self, dbapi_connection, level):
+        cursor = dbapi_connection.cursor()
+        cursor.execute(f"SET TRANSACTION ISOLATION LEVEL {level}")
         cursor.close()
         if level == "SNAPSHOT":
-            connection.commit()
+            dbapi_connection.commit()
 
-    def get_isolation_level(self, connection):
+    def get_isolation_level(self, dbapi_connection):
         last_error = None
 
         views = ("sys.dm_exec_sessions", "sys.dm_pdw_nodes_exec_sessions")
         for view in views:
-            cursor = connection.cursor()
+            cursor = dbapi_connection.cursor()
             try:
                 cursor.execute(
-                    """
+                    f"""
                   SELECT CASE transaction_isolation_level
                     WHEN 0 THEN NULL
                     WHEN 1 THEN 'READ UNCOMMITTED'
@@ -2792,10 +2792,9 @@ class MSDialect(default.DefaultDialect):
                     WHEN 3 THEN 'REPEATABLE READ'
                     WHEN 4 THEN 'SERIALIZABLE'
                     WHEN 5 THEN 'SNAPSHOT' END AS TRANSACTION_ISOLATION_LEVEL
-                    FROM %s
+                    FROM {view}
                     where session_id = @@SPID
                   """
-                    % view
                 )
                 val = cursor.fetchone()[0]
             except self.dbapi.Error as err:
@@ -2811,12 +2810,12 @@ class MSDialect(default.DefaultDialect):
             # DefaultDialect, so the warning here is all that displays
             util.warn(
                 "Could not fetch transaction isolation level, "
-                "tried views: %s; final error was: %s" % (views, last_error)
+                f"tried views: {views}; final error was: {last_error}"
             )
             raise NotImplementedError(
                 "Can't fetch isolation level on this particular "
-                "SQL Server version. tried views: %s; final error was: %s"
-                % (views, last_error)
+                f"SQL Server version. tried views: {views}; final "
+                f"error was: {last_error}"
             )
 
     def initialize(self, connection):

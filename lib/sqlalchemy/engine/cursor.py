@@ -435,11 +435,6 @@ class CursorResultMetaData(ResultMetaData):
 
         dialect = context.dialect
         translate_colname = context._translate_colname
-        description_decoder = (
-            dialect._description_decoder
-            if dialect.description_encoding
-            else None
-        )
         normalize_name = (
             dialect.normalize_name if dialect.requires_name_normalize else None
         )
@@ -450,9 +445,6 @@ class CursorResultMetaData(ResultMetaData):
         for idx, rec in enumerate(cursor_description):
             colname = rec[0]
             coltype = rec[1]
-
-            if description_decoder:
-                colname = description_decoder(colname)
 
             if translate_colname:
                 colname, untranslated = translate_colname(colname)

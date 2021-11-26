@@ -1128,28 +1128,39 @@ class IsolationLevelTest(fixtures.TestBase):
 
         eng = testing_engine()
         isolation_level = eng.dialect.get_isolation_level(
-            eng.connect().connection
+            eng.connect().connection.dbapi_connection
         )
         level = self._non_default_isolation_level()
 
         ne_(isolation_level, level)
 
         eng = testing_engine(options=dict(isolation_level=level))
-        eq_(eng.dialect.get_isolation_level(eng.connect().connection), level)
+        eq_(
+            eng.dialect.get_isolation_level(
+                eng.connect().connection.dbapi_connection
+            ),
+            level,
+        )
 
         # check that it stays
         conn = eng.connect()
-        eq_(eng.dialect.get_isolation_level(conn.connection), level)
+        eq_(
+            eng.dialect.get_isolation_level(conn.connection.dbapi_connection),
+            level,
+        )
         conn.close()
 
         conn = eng.connect()
-        eq_(eng.dialect.get_isolation_level(conn.connection), level)
+        eq_(
+            eng.dialect.get_isolation_level(conn.connection.dbapi_connection),
+            level,
+        )
         conn.close()
 
     def test_default_level(self):
         eng = testing_engine(options=dict())
         isolation_level = eng.dialect.get_isolation_level(
-            eng.connect().connection
+            eng.connect().connection.dbapi_connection
         )
         eq_(isolation_level, self._default_isolation_level())
 
@@ -1157,21 +1168,22 @@ class IsolationLevelTest(fixtures.TestBase):
         eng = testing_engine(options=dict())
         conn = eng.connect()
         eq_(
-            eng.dialect.get_isolation_level(conn.connection),
+            eng.dialect.get_isolation_level(conn.connection.dbapi_connection),
             self._default_isolation_level(),
         )
 
         eng.dialect.set_isolation_level(
-            conn.connection, self._non_default_isolation_level()
+            conn.connection.dbapi_connection,
+            self._non_default_isolation_level(),
         )
         eq_(
-            eng.dialect.get_isolation_level(conn.connection),
+            eng.dialect.get_isolation_level(conn.connection.dbapi_connection),
             self._non_default_isolation_level(),
         )
 
-        eng.dialect.reset_isolation_level(conn.connection)
+        eng.dialect.reset_isolation_level(conn.connection.dbapi_connection)
         eq_(
-            eng.dialect.get_isolation_level(conn.connection),
+            eng.dialect.get_isolation_level(conn.connection.dbapi_connection),
             self._default_isolation_level(),
         )
 
@@ -1183,19 +1195,19 @@ class IsolationLevelTest(fixtures.TestBase):
         )
         conn = eng.connect()
         eq_(
-            eng.dialect.get_isolation_level(conn.connection),
+            eng.dialect.get_isolation_level(conn.connection.dbapi_connection),
             self._non_default_isolation_level(),
         )
         eng.dialect.set_isolation_level(
-            conn.connection, self._default_isolation_level()
+            conn.connection.dbapi_connection, self._default_isolation_level()
         )
         eq_(
-            eng.dialect.get_isolation_level(conn.connection),
+            eng.dialect.get_isolation_level(conn.connection.dbapi_connection),
             self._default_isolation_level(),
         )
-        eng.dialect.reset_isolation_level(conn.connection)
+        eng.dialect.reset_isolation_level(conn.connection.dbapi_connection)
         eq_(
-            eng.dialect.get_isolation_level(conn.connection),
+            eng.dialect.get_isolation_level(conn.connection.dbapi_connection),
             self._non_default_isolation_level(),
         )
         conn.close()
@@ -1311,23 +1323,23 @@ class IsolationLevelTest(fixtures.TestBase):
         )
         c2 = eng.connect()
         eq_(
-            eng.dialect.get_isolation_level(c1.connection),
+            eng.dialect.get_isolation_level(c1.connection.dbapi_connection),
             self._non_default_isolation_level(),
         )
         eq_(
-            eng.dialect.get_isolation_level(c2.connection),
+            eng.dialect.get_isolation_level(c2.connection.dbapi_connection),
             self._default_isolation_level(),
         )
         c1.close()
         c2.close()
         c3 = eng.connect()
         eq_(
-            eng.dialect.get_isolation_level(c3.connection),
+            eng.dialect.get_isolation_level(c3.connection.dbapi_connection),
             self._default_isolation_level(),
         )
         c4 = eng.connect()
         eq_(
-            eng.dialect.get_isolation_level(c4.connection),
+            eng.dialect.get_isolation_level(c4.connection.dbapi_connection),
             self._default_isolation_level(),
         )
 
@@ -1351,7 +1363,7 @@ class IsolationLevelTest(fixtures.TestBase):
 
         # was never set, so we are on original value
         eq_(
-            eng.dialect.get_isolation_level(c1.connection),
+            eng.dialect.get_isolation_level(c1.connection.dbapi_connection),
             self._default_isolation_level(),
         )
 
@@ -1378,7 +1390,7 @@ class IsolationLevelTest(fixtures.TestBase):
         )
         conn = eng.connect()
         eq_(
-            eng.dialect.get_isolation_level(conn.connection),
+            eng.dialect.get_isolation_level(conn.connection.dbapi_connection),
             self._non_default_isolation_level(),
         )
 
@@ -1389,7 +1401,7 @@ class IsolationLevelTest(fixtures.TestBase):
 
         conn = eng.connect()
         eq_(
-            eng.dialect.get_isolation_level(conn.connection),
+            eng.dialect.get_isolation_level(conn.connection.dbapi_connection),
             self._non_default_isolation_level(),
         )
 

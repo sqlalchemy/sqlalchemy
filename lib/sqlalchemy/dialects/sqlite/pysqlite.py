@@ -489,18 +489,14 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
         }
     )
 
-    def set_isolation_level(self, connection, level):
-        if hasattr(connection, "dbapi_connection"):
-            dbapi_connection = connection.dbapi_connection
-        else:
-            dbapi_connection = connection
+    def set_isolation_level(self, dbapi_connection, level):
 
         if level == "AUTOCOMMIT":
             dbapi_connection.isolation_level = None
         else:
             dbapi_connection.isolation_level = ""
             return super(SQLiteDialect_pysqlite, self).set_isolation_level(
-                connection, level
+                dbapi_connection, level
             )
 
     def on_connect(self):
@@ -509,11 +505,7 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
                 return None
             return re.search(a, b) is not None
 
-        def set_regexp(connection):
-            if hasattr(connection, "dbapi_connection"):
-                dbapi_connection = connection.dbapi_connection
-            else:
-                dbapi_connection = connection
+        def set_regexp(dbapi_connection):
             dbapi_connection.create_function(
                 "regexp",
                 2,

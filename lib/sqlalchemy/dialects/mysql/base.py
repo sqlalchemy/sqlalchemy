@@ -2404,14 +2404,14 @@ class MySQLDialect(default.DefaultDialect):
             "REPEATABLE READ",
         )
 
-    def set_isolation_level(self, dbapi_conn, level):
-        cursor = dbapi_conn.cursor()
-        cursor.execute("SET SESSION TRANSACTION ISOLATION LEVEL %s" % level)
+    def set_isolation_level(self, dbapi_connection, level):
+        cursor = dbapi_connection.cursor()
+        cursor.execute(f"SET SESSION TRANSACTION ISOLATION LEVEL {level}")
         cursor.execute("COMMIT")
         cursor.close()
 
-    def get_isolation_level(self, connection):
-        cursor = connection.cursor()
+    def get_isolation_level(self, dbapi_connection):
+        cursor = dbapi_connection.cursor()
         if self._is_mysql and self.server_version_info >= (5, 7, 20):
             cursor.execute("SELECT @@transaction_isolation")
         else:

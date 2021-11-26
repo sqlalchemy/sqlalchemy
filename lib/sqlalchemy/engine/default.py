@@ -110,8 +110,6 @@ class DefaultDialect(interfaces.Dialect):
     # *not* the FLOAT type however.
     supports_native_decimal = False
 
-    description_encoding = None
-
     name = "default"
 
     # length at which to truncate
@@ -221,6 +219,11 @@ class DefaultDialect(interfaces.Dialect):
     NO_CACHE_KEY = NO_CACHE_KEY
     NO_DIALECT_SUPPORT = NO_DIALECT_SUPPORT
 
+    # TODO: this is not to be part of 2.0.  implement rudimentary binary
+    # literals for SQLite, PostgreSQL, MySQL only within
+    # _Binary.literal_processor
+    _legacy_binary_type_literal_encoding = "utf-8"
+
     @util.deprecated_params(
         empty_in_strategy=(
             "1.4",
@@ -242,7 +245,6 @@ class DefaultDialect(interfaces.Dialect):
     )
     def __init__(
         self,
-        encoding="utf-8",
         paramstyle=None,
         isolation_level=None,
         dbapi=None,
@@ -274,7 +276,6 @@ class DefaultDialect(interfaces.Dialect):
             )
             self.bind_typing = interfaces.BindTyping.SETINPUTSIZES
 
-        self.encoding = encoding
         self.positional = False
         self._ischema = None
         self.dbapi = dbapi
@@ -387,7 +388,7 @@ class DefaultDialect(interfaces.Dialect):
 
         try:
             self.default_isolation_level = self.get_default_isolation_level(
-                connection.connection
+                connection.connection.dbapi_connection
             )
         except NotImplementedError:
             self.default_isolation_level = None
