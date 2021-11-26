@@ -775,31 +775,31 @@ class CursorResultTest(fixtures.TablesTest):
 
         users = self.tables.users
 
-        conn = testing.db.connect()
-        keys_lambda = lambda r: r.keys()  # noqa: E731
+        with testing.db.connect() as conn:
+            keys_lambda = lambda r: r.keys()  # noqa: E731
 
-        for meth in [
-            lambda r: r.fetchone(),
-            lambda r: r.fetchall(),
-            lambda r: r.first(),
-            lambda r: r.scalar(),
-            lambda r: r.fetchmany(),
-            lambda r: r._getter("user"),
-            keys_lambda,
-            lambda r: r.columns("user"),
-            lambda r: r.cursor_strategy.fetchone(r, r.cursor),
-        ]:
-            trans = conn.begin()
-            result = conn.execute(users.insert(), dict(user_id=1))
+            for meth in [
+                lambda r: r.fetchone(),
+                lambda r: r.fetchall(),
+                lambda r: r.first(),
+                lambda r: r.scalar(),
+                lambda r: r.fetchmany(),
+                lambda r: r._getter("user"),
+                keys_lambda,
+                lambda r: r.columns("user"),
+                lambda r: r.cursor_strategy.fetchone(r, r.cursor),
+            ]:
+                trans = conn.begin()
+                result = conn.execute(users.insert(), dict(user_id=1))
 
-            assert_raises_message(
-                exc.ResourceClosedError,
-                "This result object does not return rows. "
-                "It has been closed automatically.",
-                meth,
-                result,
-            )
-            trans.rollback()
+                assert_raises_message(
+                    exc.ResourceClosedError,
+                    "This result object does not return rows. "
+                    "It has been closed automatically.",
+                    meth,
+                    result,
+                )
+                trans.rollback()
 
     def test_fetchone_til_end(self, connection):
         result = connection.exec_driver_sql("select * from users")
