@@ -61,9 +61,9 @@ from .ranges import TSRANGE
 from .ranges import TSTZRANGE
 from ...util import compat
 
-# Alias psycopg also as psycopg_asnyc
+# Alias psycopg also as psycopg_async
 psycopg_async = type(
-    "psycopg_asnyc", (ModuleType,), {"dialect": psycopg.dialect_async}
+    "psycopg_async", (ModuleType,), {"dialect": psycopg.dialect_async}
 )
 
 base.dialect = dialect = psycopg2.dialect
