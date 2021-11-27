@@ -197,27 +197,34 @@ def pytest_collection_modifyitems(session, config, items):
     items[:] = [
         item
         for item in items
-        if isinstance(item.parent, pytest.Instance)
-        and not item.parent.parent.name.startswith("_")
+        if item.getparent(pytest.Class) is not None
+        and not item.getparent(pytest.Class).name.startswith("_")
     ]
 
-    test_classes = set(item.parent for item in items)
+    test_classes = set(item.getparent(pytest.Class) for item in items)
+
+    def collect(element):
+        for inst_or_fn in element.collect():
+            if isinstance(inst_or_fn, pytest.Collector):
+                yield from collect(inst_or_fn)
+            else:
+                yield inst_or_fn
 
     def setup_test_classes():
         for test_class in test_classes:
             for sub_cls in plugin_base.generate_sub_tests(
-                test_class.cls, test_class.parent.module
+                test_class.cls, test_class.module
             ):
                 if sub_cls is not test_class.cls:
                     per_cls_dict = rebuilt_items[test_class.cls]
 
-                    # support pytest 5.4.0 and above pytest.Class.from_parent
-                    ctor = getattr(pytest.Class, "from_parent", pytest.Class)
-                    for inst in ctor(
-                        name=sub_cls.__name__, parent=test_class.parent.parent
-                    ).collect():
-                        for t in inst.collect():
-                            per_cls_dict[t.name].append(t)
+                    module = test_class.getparent(pytest.Module)
+                    for fn in collect(
+                        pytest.Class.from_parent(
+                            name=sub_cls.__name__, parent=module
+                        )
+                    ):
+                        per_cls_dict[fn.name].append(fn)
 
     # class requirements will sometimes need to access the DB to check
     # capabilities, so need to do this for async
@@ -225,8 +232,9 @@ def pytest_collection_modifyitems(session, config, items):
 
     newitems = []
     for item in items:
-        if item.parent.cls in rebuilt_items:
-            newitems.extend(rebuilt_items[item.parent.cls][item.name])
+        cls_ = item.cls
+        if cls_ in rebuilt_items:
+            newitems.extend(rebuilt_items[cls_][item.name])
         else:
             newitems.append(item)
 
@@ -235,8 +243,8 @@ def pytest_collection_modifyitems(session, config, items):
     items[:] = sorted(
         newitems,
         key=lambda item: (
-            item.parent.parent.parent.name,
-            item.parent.parent.name,
+            item.getparent(pytest.Module).name,
+            item.getparent(pytest.Class).name,
             item.name,
         ),
     )
@@ -249,14 +257,15 @@ def pytest_pycollect_makeitem(collector, name, obj):
         if config.any_async:
             obj = _apply_maybe_async(obj)
 
-        ctor = getattr(pytest.Class, "from_parent", pytest.Class)
         return [
-            ctor(name=parametrize_cls.__name__, parent=collector)
+            pytest.Class.from_parent(
+                name=parametrize_cls.__name__, parent=collector
+            )
             for parametrize_cls in _parametrize_cls(collector.module, obj)
         ]
     elif (
         inspect.isfunction(obj)
-        and isinstance(collector, pytest.Instance)
+        and collector.cls is not None
         and plugin_base.want_method(collector.cls, obj)
     ):
         # None means, fall back to default logic, which includes
@@ -345,9 +354,6 @@ _current_class = None
 def pytest_runtest_setup(item):
     from sqlalchemy.testing import asyncio
 
-    if not isinstance(item, pytest.Function):
-        return
-
     # pytest_runtest_setup runs *before* pytest fixtures with scope="class".
     # plugin_base.start_test_class_outside_fixtures may opt to raise SkipTest
     # for the whole class and has to run things that are across all current
@@ -356,48 +362,66 @@ def pytest_runtest_setup(item):
 
     global _current_class
 
-    if _current_class is None:
+    if isinstance(item, pytest.Function) and _current_class is None:
         asyncio._maybe_async_provisioning(
             plugin_base.start_test_class_outside_fixtures,
-            item.parent.parent.cls,
+            item.cls,
         )
-        _current_class = item.parent.parent
+        _current_class = item.getparent(pytest.Class)
 
-        def finalize():
-            global _current_class, _current_report
-            _current_class = None
 
-            try:
-                asyncio._maybe_async_provisioning(
-                    plugin_base.stop_test_class_outside_fixtures,
-                    item.parent.parent.cls,
-                )
-            except Exception as e:
-                # in case of an exception during teardown attach the original
-                # error to the exception message, otherwise it will get lost
-                if _current_report.failed:
-                    if not e.args:
-                        e.args = (
-                            "__Original test failure__:\n"
-                            + _current_report.longreprtext,
-                        )
-                    elif e.args[-1] and isinstance(e.args[-1], str):
-                        args = list(e.args)
-                        args[-1] += (
-                            "\n__Original test failure__:\n"
-                            + _current_report.longreprtext
-                        )
-                        e.args = tuple(args)
-                    else:
-                        e.args += (
-                            "__Original test failure__",
-                            _current_report.longreprtext,
-                        )
-                raise
-            finally:
-                _current_report = None
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_teardown(item, nextitem):
+    # runs inside of pytest function fixture scope
+    # after test function runs
 
-        item.parent.parent.addfinalizer(finalize)
+    from sqlalchemy.testing import asyncio
+
+    asyncio._maybe_async(plugin_base.after_test, item)
+
+    yield
+    # this is now after all the fixture teardown have run, the class can be
+    # finalized. Since pytest v7 this finalizer can no longer be added in
+    # pytest_runtest_setup since the class has not yet been setup at that
+    # time.
+    # See https://github.com/pytest-dev/pytest/issues/9343
+    global _current_class, _current_report
+
+    if _current_class is not None and (
+        # last test or a new class
+        nextitem is None
+        or nextitem.getparent(pytest.Class) is not _current_class
+    ):
+        _current_class = None
+
+        try:
+            asyncio._maybe_async_provisioning(
+                plugin_base.stop_test_class_outside_fixtures, item.cls
+            )
+        except Exception as e:
+            # in case of an exception during teardown attach the original
+            # error to the exception message, otherwise it will get lost
+            if _current_report.failed:
+                if not e.args:
+                    e.args = (
+                        "__Original test failure__:\n"
+                        + _current_report.longreprtext,
+                    )
+                elif e.args[-1] and isinstance(e.args[-1], str):
+                    args = list(e.args)
+                    args[-1] += (
+                        "\n__Original test failure__:\n"
+                        + _current_report.longreprtext
+                    )
+                    e.args = tuple(args)
+                else:
+                    e.args += (
+                        "__Original test failure__",
+                        _current_report.longreprtext,
+                    )
+            raise
+        finally:
+            _current_report = None
 
 
 def pytest_runtest_call(item):
@@ -409,8 +433,8 @@ def pytest_runtest_call(item):
     asyncio._maybe_async(
         plugin_base.before_test,
         item,
-        item.parent.module.__name__,
-        item.parent.cls,
+        item.module.__name__,
+        item.cls,
         item.name,
     )
 
@@ -422,15 +446,6 @@ def pytest_runtest_logreport(report):
     global _current_report
     if report.when == "call":
         _current_report = report
-
-
-def pytest_runtest_teardown(item, nextitem):
-    # runs inside of pytest function fixture scope
-    # after test function runs
-
-    from sqlalchemy.testing import asyncio
-
-    asyncio._maybe_async(plugin_base.after_test, item)
 
 
 @pytest.fixture(scope="class")

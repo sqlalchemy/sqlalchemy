@@ -63,7 +63,6 @@ def _maybe_async_provisioning(fn, *args, **kwargs):
 
     """
     if not ENABLE_ASYNCIO:
-
         return fn(*args, **kwargs)
 
     if config.any_async:
