@@ -343,6 +343,10 @@ Other guidelines include:
       )
       addresses_filter = (await session.scalars(stmt)).all()
 
+  .. seealso::
+
+    :ref:`migration_20_dynamic_loaders` - notes on migration to 2.0 style
+
 .. _session_run_sync:
 
 Running Synchronous Methods and Functions under asyncio

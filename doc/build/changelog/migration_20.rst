@@ -260,12 +260,12 @@ the SQLAlchemy project itself, the approach taken is as follows:
 
         import warnings
         from sqlalchemy import exc
-        
+
         # for warnings not included in regex-based filter below, just log
         warnings.filterwarnings(
           "always", category=exc.RemovedIn20Warning
         )
-        
+
         # for warnings related to execute() / scalar(), raise
         for msg in [
             r"The (?:Executable|Engine)\.(?:execute|scalar)\(\) function",
@@ -1966,6 +1966,66 @@ the :func:`_orm.selectinload` strategy presents a collection-oriented
 eager loader that is superior in most respects to :func:`_orm.joinedload`
 and should be preferred.
 
+.. _migration_20_dynamic_loaders:
+
+Making use of "dynamic" relationship loads without using Query
+---------------------------------------------------------------
+
+**Synopsis**
+
+The ``lazy="dynamic"`` relationship loader strategy, discussed at
+:ref:`dynamic_relationship`, makes use of the :class:`_query.Query` object
+which is legacy in 2.0.
+
+
+**Migration to 2.0**
+
+This pattern is still under adjustment for SQLAlchemy 2.0, and it is expected
+that new APIs will be introduced.    In the interim, there are two ways
+to achieve 2.0 style querying that's in terms of a specific relationship:
+
+* Make use of the :attr:`_orm.Query.statement` attribute on an existing
+  ``lazy="dynamic"`` relationship.   We can use methods like
+  :meth:`_orm.Session.scalars` with the dynamic loader straight away as
+  follows::
+
+
+    class User(Base):
+        __tablename__ = 'user'
+
+        posts = relationship(Post, lazy="dynamic")
+
+    jack = session.get(User, 5)
+
+    # filter Jack's blog posts
+    posts = session.scalars(
+        jack.posts.statement.where(Post.headline == "this is a post")
+    )
+
+* Use the :func:`_orm.with_parent` function to construct a :func:`_sql.select`
+  construct directly::
+
+    from sqlalchemy.orm import with_parent
+
+    jack = session.get(User, 5)
+
+    posts = session.scalars(
+        select(Post).
+        where(with_parent(jack, User.posts)).
+        where(Post.headline == "this is a post")
+    )
+
+**Discussion**
+
+The original idea was that the :func:`_orm.with_parent` function should be
+sufficient, however continuing to make use of special attributes on the
+relationship itself remains appealing, and there's no reason a 2.0 style
+construct can't be made to work here as well.  There will likely be a new
+loader strategy name that sets up an API similar to the example above that
+uses the ``.statement`` attribute, such as
+``jack.posts.select().where(Post.headline == 'headline')``.
+
+.. _migration_20_session_autocommit:
 
 Autocommit mode removed from Session; autobegin support added
 -------------------------------------------------------------

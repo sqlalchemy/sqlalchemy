@@ -32,10 +32,10 @@ loading of child items both at load time as well as deletion time.
 Dynamic Relationship Loaders
 ----------------------------
 
-.. note:: This is a legacy feature.  Using the :func:`_orm.with_parent`
-   filter in conjunction with :func:`_sql.select` is the :term:`2.0 style`
-   method of use.  For relationships that shouldn't load, set
-   :paramref:`_orm.relationship.lazy` to ``noload``.
+.. note:: SQLAlchemy 2.0 will have a slightly altered pattern for "dynamic"
+   loaders that does not rely upon the :class:`_orm.Query` object, which
+   will be legacy in 2.0.   For current migration strategies,
+   see :ref:`migration_20_dynamic_loaders`.
 
 .. note:: This loader is in the general case not compatible with the :ref:`asyncio_toplevel` extension.
    It can be used with some limitations, as indicated in :ref:`Asyncio dynamic guidelines <dynamic_asyncio>`.
