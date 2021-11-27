@@ -1116,9 +1116,9 @@ Additional ORM API Constructs
 
 .. autofunction:: sqlalchemy.orm.with_loader_criteria
 
-.. autofunction:: join
+.. autofunction:: sqlalchemy.orm.join
 
-.. autofunction:: outerjoin
+.. autofunction:: sqlalchemy.orm.outerjoin
 
-.. autofunction:: with_parent
+.. autofunction:: sqlalchemy.orm.with_parent
 
