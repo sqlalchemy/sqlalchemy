@@ -101,7 +101,7 @@ def setup_options(make_option):
     make_option(
         "--dbdriver",
         action="append",
-        type="string",
+        type=str,
         dest="dbdriver",
         help="Additional database drivers to include in tests.  "
         "These are linked to the existing database URLs by the "

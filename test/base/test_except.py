@@ -538,7 +538,6 @@ class PickleException(fixtures.TestBase):
         for cls_list, callable_list in ALL_EXC:
             unroll.extend(product(cls_list, callable_list))
 
-        print(unroll)
         return combinations_list(unroll)
 
     @make_combinations()
