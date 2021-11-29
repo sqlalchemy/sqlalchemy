@@ -12,11 +12,10 @@ of the same test environment and standard suites available to
 SQLAlchemy/Alembic themselves without the need to ship/install a separate
 package outside of SQLAlchemy.
 
-NOTE:  copied/adapted from SQLAlchemy main for backwards compatibility;
-this should be removable when Alembic targets SQLAlchemy 1.0.0.
 
 """
 
+import importlib.util
 import os
 import sys
 
@@ -27,14 +26,12 @@ to_bootstrap = locals()["to_bootstrap"]
 
 def load_file_as_module(name):
     path = os.path.join(os.path.dirname(bootstrap_file), "%s.py" % name)
-    if sys.version_info >= (3, 3):
-        from importlib import machinery
 
-        mod = machinery.SourceFileLoader(name, path).load_module()
-    else:
-        import imp
-
-        mod = imp.load_source(name, path)
+    spec = importlib.util.spec_from_file_location(name, path)
+    assert spec is not None
+    assert spec.loader is not None
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
     return mod
 
 
