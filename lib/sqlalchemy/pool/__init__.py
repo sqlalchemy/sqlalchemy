@@ -18,10 +18,12 @@ SQLAlchemy connection pool.
 """
 
 from . import events
+from .base import _AdhocProxiedConnection
 from .base import _ConnectionFairy
 from .base import _ConnectionRecord
 from .base import _finalize_fairy
 from .base import Pool
+from .base import PoolProxiedConnection
 from .base import reset_commit
 from .base import reset_none
 from .base import reset_rollback
@@ -38,6 +40,7 @@ from .impl import StaticPool
 
 __all__ = [
     "Pool",
+    "PoolProxiedConnection",
     "reset_commit",
     "reset_none",
     "reset_rollback",

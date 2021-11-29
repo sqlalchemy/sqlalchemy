@@ -7,6 +7,10 @@
 
 import collections
 import re
+import typing
+from typing import Any
+from typing import Dict
+from typing import Optional
 import warnings
 import weakref
 
@@ -15,6 +19,13 @@ from .util import decorator
 from .util import gc_collect
 from .. import event
 from .. import pool
+from ..util.typing import Literal
+
+
+if typing.TYPE_CHECKING:
+    from ..engine import Engine
+    from ..engine.url import URL
+    from ..ext.asyncio import AsyncEngine
 
 
 class ConnectionKiller:
@@ -264,14 +275,32 @@ def reconnecting_engine(url=None, options=None):
     return engine
 
 
+@typing.overload
+def testing_engine(
+    url: Optional["URL"] = None,
+    options: Optional[Dict[str, Any]] = None,
+    asyncio: Literal[False] = False,
+    transfer_staticpool: bool = False,
+) -> "Engine":
+    ...
+
+
+@typing.overload
+def testing_engine(
+    url: Optional["URL"] = None,
+    options: Optional[Dict[str, Any]] = None,
+    asyncio: Literal[True] = True,
+    transfer_staticpool: bool = False,
+) -> "AsyncEngine":
+    ...
+
+
 def testing_engine(
     url=None,
     options=None,
     asyncio=False,
     transfer_staticpool=False,
 ):
-    """Produce an engine configured by --options with optional overrides."""
-
     if asyncio:
         from sqlalchemy.ext.asyncio import create_async_engine as create_engine
     else:

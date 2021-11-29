@@ -7,7 +7,7 @@
 
 from .base import Pool
 from .. import event
-from ..engine.base import Engine
+from .. import util
 
 
 class PoolEvents(event.Events):
@@ -42,8 +42,11 @@ class PoolEvents(event.Events):
     _target_class_doc = "SomeEngineOrPool"
     _dispatch_target = Pool
 
+    @util.preload_module("sqlalchemy.engine")
     @classmethod
     def _accept_with(cls, target):
+        Engine = util.preloaded.engine.Engine
+
         if isinstance(target, type):
             if issubclass(target, Engine):
                 return Pool

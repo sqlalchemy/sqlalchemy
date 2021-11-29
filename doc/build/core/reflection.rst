@@ -351,6 +351,43 @@ database is also available. This is known as the "Inspector"::
     :members:
     :undoc-members:
 
+.. autoclass:: sqlalchemy.engine.interfaces.ReflectedColumn
+    :members:
+    :inherited-members: dict
+
+.. autoclass:: sqlalchemy.engine.interfaces.ReflectedComputed
+    :members:
+    :inherited-members: dict
+
+.. autoclass:: sqlalchemy.engine.interfaces.ReflectedCheckConstraint
+    :members:
+    :inherited-members: dict
+
+.. autoclass:: sqlalchemy.engine.interfaces.ReflectedForeignKeyConstraint
+    :members:
+    :inherited-members: dict
+
+.. autoclass:: sqlalchemy.engine.interfaces.ReflectedIdentity
+    :members:
+    :inherited-members: dict
+
+.. autoclass:: sqlalchemy.engine.interfaces.ReflectedIndex
+    :members:
+    :inherited-members: dict
+
+.. autoclass:: sqlalchemy.engine.interfaces.ReflectedPrimaryKeyConstraint
+    :members:
+    :inherited-members: dict
+
+.. autoclass:: sqlalchemy.engine.interfaces.ReflectedUniqueConstraint
+    :members:
+    :inherited-members: dict
+
+.. autoclass:: sqlalchemy.engine.interfaces.ReflectedTableComment
+    :members:
+    :inherited-members: dict
+
+
 .. _metadata_reflection_dbagnostic_types:
 
 Reflecting with Database-Agnostic Types

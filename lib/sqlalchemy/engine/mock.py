@@ -7,12 +7,11 @@
 
 from operator import attrgetter
 
-from . import base
 from . import url as _url
 from .. import util
 
 
-class MockConnection(base.Connectable):
+class MockConnection:
     def __init__(self, dialect, execute):
         self._dialect = dialect
         self.execute = execute

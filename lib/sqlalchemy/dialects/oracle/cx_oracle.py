@@ -972,7 +972,7 @@ class OracleDialect_cx_oracle(OracleDialect):
         super(OracleDialect_cx_oracle, self).initialize(connection)
         self._detect_decimal_char(connection)
 
-    def get_isolation_level(self, connection):
+    def get_isolation_level(self, dbapi_connection):
         # sources:
 
         # general idea of transaction id, have to start one, etc.
@@ -984,7 +984,7 @@ class OracleDialect_cx_oracle(OracleDialect):
         # Oracle tuple comparison without using IN:
         # https://www.sql-workbench.eu/comparison/tuple_comparison.html
 
-        with connection.cursor() as cursor:
+        with dbapi_connection.cursor() as cursor:
             # this is the only way to ensure a transaction is started without
             # actually running DML.   There's no way to see the configured
             # isolation level without getting it from v$transaction which
@@ -1019,21 +1019,19 @@ class OracleDialect_cx_oracle(OracleDialect):
 
         return result
 
-    def get_isolation_level_values(self, dbapi_conn):
-        return super().get_isolation_level_values(dbapi_conn) + ["AUTOCOMMIT"]
+    def get_isolation_level_values(self, dbapi_connection):
+        return super().get_isolation_level_values(dbapi_connection) + [
+            "AUTOCOMMIT"
+        ]
 
-    def set_isolation_level(self, connection, level):
-        if hasattr(connection, "dbapi_connection"):
-            dbapi_connection = connection.dbapi_connection
-        else:
-            dbapi_connection = connection
+    def set_isolation_level(self, dbapi_connection, level):
         if level == "AUTOCOMMIT":
             dbapi_connection.autocommit = True
         else:
             dbapi_connection.autocommit = False
-            connection.rollback()
-            with connection.cursor() as cursor:
-                cursor.execute("ALTER SESSION SET ISOLATION_LEVEL=%s" % level)
+            dbapi_connection.rollback()
+            with dbapi_connection.cursor() as cursor:
+                cursor.execute(f"ALTER SESSION SET ISOLATION_LEVEL={level}")
 
     def _detect_decimal_char(self, connection):
         # we have the option to change this setting upon connect,

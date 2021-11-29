@@ -597,7 +597,8 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
         super(PGDialect_psycopg2, self).initialize(connection)
         self._has_native_hstore = (
             self.use_native_hstore
-            and self._hstore_oids(connection.connection) is not None
+            and self._hstore_oids(connection.connection.dbapi_connection)
+            is not None
         )
 
         # PGDialect.initialize() checks server version for <= 8.2 and sets
@@ -639,8 +640,8 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
             "SERIALIZABLE": extensions.ISOLATION_LEVEL_SERIALIZABLE,
         }
 
-    def set_isolation_level(self, connection, level):
-        connection.set_isolation_level(self._isolation_lookup[level])
+    def set_isolation_level(self, dbapi_connection, level):
+        dbapi_connection.set_isolation_level(self._isolation_lookup[level])
 
     def set_readonly(self, connection, value):
         connection.readonly = value
@@ -660,47 +661,47 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
         fns = []
         if self.client_encoding is not None:
 
-            def on_connect(conn):
-                conn.set_client_encoding(self.client_encoding)
+            def on_connect(dbapi_conn):
+                dbapi_conn.set_client_encoding(self.client_encoding)
 
             fns.append(on_connect)
 
         if self.dbapi and self.use_native_uuid:
 
-            def on_connect(conn):
-                extras.register_uuid(None, conn)
+            def on_connect(dbapi_conn):
+                extras.register_uuid(None, dbapi_conn)
 
             fns.append(on_connect)
 
         if self.dbapi and self.use_native_hstore:
 
-            def on_connect(conn):
-                hstore_oids = self._hstore_oids(conn)
+            def on_connect(dbapi_conn):
+                hstore_oids = self._hstore_oids(dbapi_conn)
                 if hstore_oids is not None:
                     oid, array_oid = hstore_oids
                     kw = {"oid": oid}
                     kw["array_oid"] = array_oid
-                    extras.register_hstore(conn, **kw)
+                    extras.register_hstore(dbapi_conn, **kw)
 
             fns.append(on_connect)
 
         if self.dbapi and self._json_deserializer:
 
-            def on_connect(conn):
+            def on_connect(dbapi_conn):
                 extras.register_default_json(
-                    conn, loads=self._json_deserializer
+                    dbapi_conn, loads=self._json_deserializer
                 )
                 extras.register_default_jsonb(
-                    conn, loads=self._json_deserializer
+                    dbapi_conn, loads=self._json_deserializer
                 )
 
             fns.append(on_connect)
 
         if fns:
 
-            def on_connect(conn):
+            def on_connect(dbapi_conn):
                 for fn in fns:
-                    fn(conn)
+                    fn(dbapi_conn)
 
             return on_connect
         else:
@@ -781,11 +782,10 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
         )
 
     @util.memoized_instancemethod
-    def _hstore_oids(self, conn):
+    def _hstore_oids(self, dbapi_connection):
+
         extras = self._psycopg2_extras
-        if hasattr(conn, "dbapi_connection"):
-            conn = conn.dbapi_connection
-        oids = extras.HstoreAdapter.get_oids(conn)
+        oids = extras.HstoreAdapter.get_oids(dbapi_connection)
         if oids is not None and oids[0]:
             return oids[0:2]
         else:

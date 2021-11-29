@@ -1,0 +1,16 @@
+.. change::
+    :tags: change, engine
+    :tickets: 7122
+
+    Some small API changes regarding engines and dialects:
+
+    * The :meth:`.Dialect.set_isolation_level`, :meth:`.Dialect.get_isolation_level`,
+      :meth:
+      dialect methods will always be passed the raw DBAPI connection
+
+    * The :class:`.Connection` and :class:`.Engine` classes no longer share a base
+      ``Connectable`` superclass, which has been removed.
+
+    * Added a new interface class :class:`.PoolProxiedConnection` - this is the
+      public facing interface for the familiar :class:`._ConnectionFairy`
+      class which is nonetheless a private class.

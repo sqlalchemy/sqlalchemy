@@ -222,9 +222,7 @@ class AsyncEngineTest(EngineFixture):
     @async_test
     async def test_engine_eq_ne(self, async_engine):
         e2 = _async_engine.AsyncEngine(async_engine.sync_engine)
-        e3 = testing.engines.testing_engine(
-            asyncio=True, transfer_staticpool=True
-        )
+        e3 = engines.testing_engine(asyncio=True, transfer_staticpool=True)
 
         eq_(async_engine, e2)
         ne_(async_engine, e3)
@@ -256,7 +254,7 @@ class AsyncEngineTest(EngineFixture):
                     result.all()
 
             try:
-                engine = testing_engine(
+                engine = engines.testing_engine(
                     asyncio=True, transfer_staticpool=False
                 )
 

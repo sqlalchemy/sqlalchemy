@@ -1915,18 +1915,18 @@ class SQLiteDialect(default.DefaultDialect):
         {"READ UNCOMMITTED": 1, "SERIALIZABLE": 0}
     )
 
-    def get_isolation_level_values(self, dbapi_conn):
+    def get_isolation_level_values(self, dbapi_connection):
         return list(self._isolation_lookup)
 
-    def set_isolation_level(self, connection, level):
+    def set_isolation_level(self, dbapi_connection, level):
         isolation_level = self._isolation_lookup[level]
 
-        cursor = connection.cursor()
-        cursor.execute("PRAGMA read_uncommitted = %d" % isolation_level)
+        cursor = dbapi_connection.cursor()
+        cursor.execute(f"PRAGMA read_uncommitted = {isolation_level}")
         cursor.close()
 
-    def get_isolation_level(self, connection):
-        cursor = connection.cursor()
+    def get_isolation_level(self, dbapi_connection):
+        cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA read_uncommitted")
         res = cursor.fetchone()
         if res:

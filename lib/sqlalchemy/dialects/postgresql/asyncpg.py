@@ -871,11 +871,11 @@ class PGDialect_asyncpg(PGDialect):
             "SERIALIZABLE": "serializable",
         }
 
-    def get_isolation_level_values(self, dbapi_conn):
+    def get_isolation_level_values(self, dbapi_connection):
         return list(self._isolation_lookup)
 
-    def set_isolation_level(self, connection, level):
-        connection.set_isolation_level(self._isolation_lookup[level])
+    def set_isolation_level(self, dbapi_connection, level):
+        dbapi_connection.set_isolation_level(self._isolation_lookup[level])
 
     def set_readonly(self, connection, value):
         connection.readonly = value

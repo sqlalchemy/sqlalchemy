@@ -6,9 +6,13 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 import contextlib
 import sys
+import typing
+from typing import Any
+from typing import Mapping
+from typing import Optional
+from typing import Union
 
 from .interfaces import BindTyping
-from .interfaces import Connectable
 from .interfaces import ConnectionEventsTarget
 from .interfaces import ExceptionContext
 from .util import _distill_params_20
@@ -20,6 +24,11 @@ from .. import util
 from ..sql import compiler
 from ..sql import util as sql_util
 
+if typing.TYPE_CHECKING:
+    from .interfaces import Dialect
+    from .url import URL
+    from ..pool import Pool
+    from ..pool import PoolProxiedConnection
 
 """Defines :class:`_engine.Connection` and :class:`_engine.Engine`.
 
@@ -29,7 +38,7 @@ _EMPTY_EXECUTION_OPTS = util.immutabledict()
 NO_OPTIONS = util.immutabledict()
 
 
-class Connection(Connectable):
+class Connection(ConnectionEventsTarget):
     """Provides high-level functionality for a wrapped DB-API connection.
 
     The :class:`_engine.Connection` object is procured by calling
@@ -364,7 +373,7 @@ class Connection(Connectable):
         return self._dbapi_connection is None and not self.closed
 
     @property
-    def connection(self):
+    def connection(self) -> "PoolProxiedConnection":
         """The underlying DB-API connection managed by this Connection.
 
         This is a SQLAlchemy connection-pool proxied connection
@@ -422,7 +431,9 @@ class Connection(Connectable):
 
         """
         try:
-            return self.dialect.get_isolation_level(self.connection)
+            return self.dialect.get_isolation_level(
+                self.connection.dbapi_connection
+            )
         except BaseException as e:
             self._handle_dbapi_exception(e, None, None, None, None)
 
@@ -2296,14 +2307,14 @@ class Engine(ConnectionEventsTarget, log.Identified):
 
     def __init__(
         self,
-        pool,
-        dialect,
-        url,
-        logging_name=None,
-        echo=None,
-        query_cache_size=500,
-        execution_options=None,
-        hide_parameters=False,
+        pool: "Pool",
+        dialect: "Dialect",
+        url: "URL",
+        logging_name: Optional[str] = None,
+        echo: Union[None, str, bool] = None,
+        query_cache_size: int = 500,
+        execution_options: Optional[Mapping[str, Any]] = None,
+        hide_parameters: bool = False,
     ):
         self.pool = pool
         self.url = url

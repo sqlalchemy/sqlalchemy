@@ -3251,17 +3251,17 @@ class PGDialect(default.DefaultDialect):
             "REPEATABLE READ",
         )
 
-    def set_isolation_level(self, connection, level):
-        cursor = connection.cursor()
+    def set_isolation_level(self, dbapi_connection, level):
+        cursor = dbapi_connection.cursor()
         cursor.execute(
             "SET SESSION CHARACTERISTICS AS TRANSACTION "
-            "ISOLATION LEVEL %s" % level
+            f"ISOLATION LEVEL {level}"
         )
         cursor.execute("COMMIT")
         cursor.close()
 
-    def get_isolation_level(self, connection):
-        cursor = connection.cursor()
+    def get_isolation_level(self, dbapi_connection):
+        cursor = dbapi_connection.cursor()
         cursor.execute("show transaction isolation level")
         val = cursor.fetchone()[0]
         cursor.close()
