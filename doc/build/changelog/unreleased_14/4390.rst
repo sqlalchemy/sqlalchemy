@@ -1,0 +1,9 @@
+.. change::
+    :tags: deprecated, orm
+    :tickets: 4390
+
+    Deprecated an undocumented loader option syntax ``".*"``, which appears to
+    be no different than passing a single asterisk, and will emit a deprecation
+    warning if used. This syntax may have been intended for something but there
+    is currently no need for it.
+

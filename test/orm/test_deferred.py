@@ -1563,14 +1563,11 @@ class InheritanceTest(_Polymorphic):
     def test_defer_on_wildcard_subclass(self):
         # pretty much the same as load_only except doesn't
         # exclude the primary key
-
-        # TODO: what is ".*"?  this is not documented anywhere, how did this
-        # get implemented without docs ?  see #4390
         s = fixture_session()
         q = (
             s.query(Manager)
             .order_by(Person.person_id)
-            .options(defer(".*"), undefer(Manager.status))
+            .options(defer("*"), undefer(Manager.status))
         )
         self.assert_compile(
             q,
