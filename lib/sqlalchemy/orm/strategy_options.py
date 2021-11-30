@@ -918,6 +918,15 @@ class _UnboundLoad(Load):
                     return (_DEFAULT_TOKEN,)
                 # coerce fooload(".*") into "wildcard on default entity"
                 elif key.startswith("." + _WILDCARD_TOKEN):
+                    util.warn_deprecated(
+                        "The undocumented `.{WILDCARD}` format is deprecated "
+                        "and will be removed in a future version as it is "
+                        "believed to be unused. "
+                        "If you have been using this functionality, please "
+                        "comment on Issue #4390 on the SQLAlchemy project "
+                        "tracker.",
+                        version="1.4",
+                    )
                     key = key[1:]
                 return key.split(".")
             else:

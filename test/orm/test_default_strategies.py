@@ -437,7 +437,7 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         def go():
             users[:] = (
                 sess.query(User)
-                .options(joinedload(".*"))
+                .options(joinedload("*"))
                 .options(defaultload(User.addresses).joinedload("*"))
                 .options(defaultload(User.orders).joinedload("*"))
                 .options(
@@ -548,7 +548,7 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         def go():
             users[:] = (
                 sess.query(User)
-                .options(subqueryload(".*"))
+                .options(subqueryload("*"))
                 .options(defaultload(User.addresses).subqueryload("*"))
                 .options(defaultload(User.orders).subqueryload("*"))
                 .options(

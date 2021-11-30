@@ -89,8 +89,14 @@ from .inheritance import _poly_fixtures
 from .inheritance._poly_fixtures import _Polymorphic
 from .inheritance._poly_fixtures import Company
 from .inheritance._poly_fixtures import Engineer
+from .inheritance._poly_fixtures import Manager
+from .inheritance._poly_fixtures import Person
 from .test_ac_relationships import PartitionByFixture
 from .test_bind import GetBindTest as _GetBindTest
+from .test_default_strategies import (
+    DefaultStrategyOptionsTest as _DefaultStrategyOptionsTest,
+)
+from .test_deferred import InheritanceTest as _deferred_InheritanceTest
 from .test_dynamic import _DynamicFixture
 from .test_events import _RemoveListeners
 from .test_options import PathTest as OptionsPathTest
@@ -154,6 +160,13 @@ with_polymorphic_dep = (
 
 merge_result_dep = (
     r"The merge_result\(\) function is considered legacy as of the 1.x series"
+)
+
+dep_exc_wildcard = (
+    r"The undocumented `.{WILDCARD}` format is deprecated and will be removed "
+    r"in a future version as it is believed to be unused. If you have been "
+    r"using this functionality, please comment on Issue #4390 on the "
+    r"SQLAlchemy project tracker."
 )
 
 
@@ -8695,3 +8708,83 @@ class MergeResultTest(_fixtures.FixtureTest):
             [(x and x.id or None, y and y.id or None) for x, y in it],
             [(u1.id, u2.id), (u1.id, None), (u2.id, u3.id)],
         )
+
+
+class DefaultStrategyOptionsTest(_DefaultStrategyOptionsTest):
+    def test_joined_path_wildcards(self):
+        sess = self._upgrade_fixture()
+        users = []
+
+        User, Order, Item = self.classes("User", "Order", "Item")
+
+        # test upgrade all to joined: 1 sql
+        def go():
+            users[:] = (
+                sess.query(User)
+                .options(joinedload(".*"))
+                .options(defaultload(User.addresses).joinedload("*"))
+                .options(defaultload(User.orders).joinedload("*"))
+                .options(
+                    defaultload(User.orders)
+                    .defaultload(Order.items)
+                    .joinedload("*")
+                )
+                .order_by(self.classes.User.id)
+                .all()
+            )
+
+        with assertions.expect_deprecated(dep_exc_wildcard):
+            self.assert_sql_count(testing.db, go, 1)
+            self._assert_fully_loaded(users)
+
+    def test_subquery_path_wildcards(self):
+        sess = self._upgrade_fixture()
+        users = []
+
+        User, Order = self.classes("User", "Order")
+
+        # test upgrade all to subquery: 1 sql + 4 relationships = 5
+        def go():
+            users[:] = (
+                sess.query(User)
+                .options(subqueryload(".*"))
+                .options(defaultload(User.addresses).subqueryload("*"))
+                .options(defaultload(User.orders).subqueryload("*"))
+                .options(
+                    defaultload(User.orders)
+                    .defaultload(Order.items)
+                    .subqueryload("*")
+                )
+                .order_by(User.id)
+                .all()
+            )
+
+        with assertions.expect_deprecated(dep_exc_wildcard):
+            self.assert_sql_count(testing.db, go, 5)
+
+            # verify everything loaded, with no additional sql needed
+            self._assert_fully_loaded(users)
+
+
+class Deferred_InheritanceTest(_deferred_InheritanceTest):
+    def test_defer_on_wildcard_subclass(self):
+        # pretty much the same as load_only except doesn't
+        # exclude the primary key
+
+        # what is ".*"?  this is not documented anywhere, how did this
+        # get implemented without docs ?  see #4390
+        s = fixture_session()
+        with assertions.expect_deprecated(dep_exc_wildcard):
+            q = (
+                s.query(Manager)
+                .order_by(Person.person_id)
+                .options(defer(".*"), undefer(Manager.status))
+            )
+        self.assert_compile(
+            q,
+            "SELECT managers.status AS managers_status "
+            "FROM people JOIN managers ON "
+            "people.person_id = managers.person_id ORDER BY people.person_id",
+        )
+        # note this doesn't apply to "bound" loaders since they don't seem
+        # to have this ".*" featue.
