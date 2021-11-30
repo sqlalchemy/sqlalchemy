@@ -125,11 +125,11 @@ class scoped_session(ScopedSessionMixin):
 
     See :ref:`unitofwork_contextual` for a tutorial.
 
-    ..warning::
+    .. note::
 
-       When using :ref:`asyncio_toplevel` the async
-       version :class:`_asyncio.async_scoped_session` should be
-       used instead.
+       When using :ref:`asyncio_toplevel`, the async-compatible
+       :class:`_asyncio.async_scoped_session` class should be
+       used in place of :class:`.scoped_session`.
 
     """
 
