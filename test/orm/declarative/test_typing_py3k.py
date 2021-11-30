@@ -1,10 +1,14 @@
-from typing import TypeVar, Generic, Type
-from sqlalchemy import Column, Integer
+from typing import Generic
+from typing import Type
+from typing import TypeVar
+
+from sqlalchemy import Column
+from sqlalchemy import Integer
 from sqlalchemy.orm import as_declarative
 
 
 def test_class_getitem():
-    T = TypeVar("T", bound="CommonBase")
+    T = TypeVar("T", bound="CommonBase")  # noqa
 
     class CommonBase(Generic[T]):
         @classmethod
