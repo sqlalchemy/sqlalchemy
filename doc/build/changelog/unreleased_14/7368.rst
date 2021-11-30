@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, orm, mypy
+    :tickets: 7368
+
+    Fixed 1.4 mypy plugin issue, where the automatic generated declarative base metaclass didn't
+    copy the `__class_getitem__` method which can lead to runtime issues with e.g. generics.
