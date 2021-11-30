@@ -809,7 +809,7 @@ class registry(object):
         class_dict["__abstract__"] = True
         if mapper:
             class_dict["__mapper_cls__"] = mapper
-        if cls.__class_getitem__:
+        if hasattr(cls, "__class_getitem__"):
             class_dict["__class_getitem__"] = cls.__class_getitem__
 
         return metaclass(name, bases, class_dict)
