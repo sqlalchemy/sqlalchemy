@@ -55,5 +55,4 @@ from .sql.schema import PrimaryKeyConstraint  # noqa
 from .sql.schema import SchemaItem  # noqa
 from .sql.schema import Sequence  # noqa
 from .sql.schema import Table  # noqa
-from .sql.schema import ThreadLocalMetaData  # noqa
 from .sql.schema import UniqueConstraint  # noqa

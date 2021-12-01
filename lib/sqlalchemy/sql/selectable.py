@@ -1392,20 +1392,6 @@ class Join(roles.DMLTableRole, FromClause):
             self, collist, **kwargs
         ).select_from(self)
 
-    @property
-    @util.deprecated_20(
-        ":attr:`.Executable.bind`",
-        alternative="Bound metadata is being removed as of SQLAlchemy 2.0.",
-        enable_warnings=False,
-    )
-    def bind(self):
-        """Return the bound engine associated with either the left or right
-        side of this :class:`_sql.Join`.
-
-        """
-
-        return self.left.bind or self.right.bind
-
     @util.preload_module("sqlalchemy.sql.util")
     def _anonymous_fromclause(self, name=None, flat=False):
         sqlutil = util.preloaded.sql_util
@@ -1654,10 +1640,6 @@ class AliasedReturnsRows(NoInit, FromClause):
     @property
     def _from_objects(self):
         return [self]
-
-    @property
-    def bind(self):
-        return self.element.bind
 
 
 class Alias(roles.DMLTableRole, AliasedReturnsRows):
@@ -3431,13 +3413,6 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
     _fetch_clause_options = None
     _for_update_arg = None
 
-    @util.deprecated_params(
-        bind=(
-            "2.0",
-            "The :paramref:`_sql.select.bind` argument is deprecated and "
-            "will be removed in SQLAlchemy 2.0.",
-        ),
-    )
     def __init__(
         self,
         _label_style=LABEL_STYLE_DEFAULT,
@@ -3446,7 +3421,6 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
         offset=None,
         order_by=None,
         group_by=None,
-        bind=None,
     ):
         if use_labels:
             if util.SQLALCHEMY_WARN_20:
@@ -3471,8 +3445,6 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
             self.order_by.non_generative(self, *util.to_list(order_by))
         if group_by is not None:
             self.group_by.non_generative(self, *util.to_list(group_by))
-
-        self._bind = bind
 
     @_generative
     def with_for_update(
@@ -4182,30 +4154,6 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
 
         """
         return self.selects[0].selected_columns
-
-    @property
-    @util.deprecated_20(
-        ":attr:`.Executable.bind`",
-        alternative="Bound metadata is being removed as of SQLAlchemy 2.0.",
-        enable_warnings=False,
-    )
-    def bind(self):
-        """Returns the :class:`_engine.Engine` or :class:`_engine.Connection`
-        to which this :class:`.Executable` is bound, or None if none found.
-
-        """
-        if self._bind:
-            return self._bind
-        for s in self.selects:
-            e = s.bind
-            if e:
-                return e
-        else:
-            return None
-
-    @bind.setter
-    def bind(self, bind):
-        self._bind = bind
 
 
 class DeprecatedSelectGenerations:
@@ -4972,15 +4920,6 @@ class Select(
             :meth:`_expression.Select.select_from`
             - full description of explicit
             FROM clause specification.
-
-        :param bind=None:
-          an :class:`_engine.Engine` or :class:`_engine.Connection` instance
-          to which the
-          resulting :class:`_expression.Select` object will be bound.  The
-          :class:`_expression.Select`
-          object will otherwise automatically bind to
-          whatever :class:`~.base.Connectable` instances can be located within
-          its contained :class:`_expression.ClauseElement` members.
 
         :param correlate=True:
           indicates that this :class:`_expression.Select`
@@ -6429,43 +6368,6 @@ class Select(
         """
         return CompoundSelect._create_intersect_all(self, *other, **kwargs)
 
-    @property
-    @util.deprecated_20(
-        ":attr:`.Executable.bind`",
-        alternative="Bound metadata is being removed as of SQLAlchemy 2.0.",
-        enable_warnings=False,
-    )
-    def bind(self):
-        """Returns the :class:`_engine.Engine` or :class:`_engine.Connection`
-        to which this :class:`.Executable` is bound, or None if none found.
-
-        """
-        if self._bind:
-            return self._bind
-
-        for item in self._iterate_from_elements():
-            if item._is_subquery and item.element is self:
-                raise exc.InvalidRequestError(
-                    "select() construct refers to itself as a FROM"
-                )
-
-            e = item.bind
-            if e:
-                self._bind = e
-                return e
-            else:
-                break
-
-        for c in self._raw_columns:
-            e = c.bind
-            if e:
-                self._bind = e
-                return e
-
-    @bind.setter
-    def bind(self, bind):
-        self._bind = bind
-
 
 class ScalarSelect(roles.InElementRole, Generative, Grouping):
     """Represent a scalar subquery.
@@ -6842,10 +6744,6 @@ class TextualSelect(SelectBase):
 
     def _ensure_disambiguated_names(self):
         return self
-
-    @property
-    def _bind(self):
-        return self.element._bind
 
     @_generative
     def bindparams(self, *binds, **bind_as_values):

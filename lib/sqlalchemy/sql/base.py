@@ -1008,34 +1008,6 @@ class Executable(roles.StatementRole, Generative):
         """
         return self._execution_options
 
-    @property
-    @util.deprecated_20(
-        ":attr:`.Executable.bind`",
-        alternative="Bound metadata is being removed as of SQLAlchemy 2.0.",
-        enable_warnings=False,
-    )
-    def bind(self):
-        """Returns the :class:`_engine.Engine` or :class:`_engine.Connection`
-        to
-        which this :class:`.Executable` is bound, or None if none found.
-
-        This is a traversal which checks locally, then
-        checks among the "from" clauses of associated objects
-        until a bound engine or connection is found.
-
-        """
-        if self._bind is not None:
-            return self._bind
-
-        for f in _from_objects(self):
-            if f is self:
-                continue
-            engine = f.bind
-            if engine is not None:
-                return engine
-        else:
-            return None
-
 
 class prefix_anon_map(dict):
     """A map that creates new keys for missing key access.
@@ -1659,32 +1631,6 @@ class ColumnSet(util.ordered_column_set):
 
     def __hash__(self):
         return hash(tuple(x for x in self))
-
-
-def _bind_or_error(schemaitem, msg=None):
-
-    util.warn_deprecated_20(
-        "The ``bind`` argument for schema methods that invoke SQL "
-        "against an engine or connection will be required in SQLAlchemy 2.0."
-    )
-    bind = schemaitem.bind
-    if not bind:
-        name = schemaitem.__class__.__name__
-        label = getattr(
-            schemaitem, "fullname", getattr(schemaitem, "name", None)
-        )
-        if label:
-            item = "%s object %r" % (name, label)
-        else:
-            item = "%s object" % name
-        if msg is None:
-            msg = (
-                "%s is not bound to an Engine or Connection.  "
-                "Execution can not proceed without a database to execute "
-                "against." % item
-            )
-        raise exc.UnboundExecutionError(msg)
-    return bind
 
 
 def _entity_namespace(entity):
