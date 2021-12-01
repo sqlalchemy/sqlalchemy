@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm, mypy
+    :tickets: 7368
+
+    Fixed issue where the :func:`_orm.as_declarative` decorator and similar
+    functions used to generate the declarative base class would not copy the
+    ``__class_getitem__()`` method from a given superclass, which prevented the
+    use of pep-484 generics in conjunction with the ``Base`` class. Pull
+    request courtesy Kai Mueller.
