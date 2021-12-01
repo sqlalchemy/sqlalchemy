@@ -1083,7 +1083,7 @@ class LoaderCriteriaOption(CriteriaOption):
          loaders such as lazy loaders.
 
 
-        .. seealso::
+         .. seealso::
 
             :ref:`examples_session_orm_events` - includes examples of using
             :func:`_orm.with_loader_criteria`.
