@@ -249,6 +249,15 @@ class InvalidRequestError(SQLAlchemyError):
     """
 
 
+class IllegalStateChangeError(InvalidRequestError):
+    """An object that tracks state encountered an illegal state change
+    of some kind.
+
+    .. versionadded:: 2.0
+
+    """
+
+
 class NoInspectionAvailable(InvalidRequestError):
     """A subject passed to :func:`sqlalchemy.inspection.inspect` produced
     no context for inspection."""

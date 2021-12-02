@@ -211,6 +211,75 @@ in order to provide backend-agnostic floor division.
 
 :ticket:`4926`
 
+.. _change_7433:
+
+Session raises proactively when illegal concurrent or reentrant access is detected
+----------------------------------------------------------------------------------
+
+The :class:`_orm.Session` can now trap more errors related to illegal concurrent
+state changes within multithreaded or other concurrent scenarios as well as for
+event hooks which perform unexpected state changes.
+
+One error that's been known to occur when a :class:`_orm.Session` is used in
+multiple threads simultaneously is
+``AttributeError: 'NoneType' object has no attribute 'twophase'``, which is
+completely cryptic. This error occurs when a thread calls
+:meth:`_orm.Session.commit` which internally invokes the
+:meth:`_orm.SessionTransaction.close` method to end the transactional context,
+at the same time that another thread is in progress running a query
+as from :meth:`_orm.Session.execute`.  Within :meth:`_orm.Session.execute`,
+the internal method that acquires a database connection for the current
+transaction first begins by asserting that the session is "active", but
+after this assertion passes, the concurrent call to :meth:`_orm.Session.close`
+interferes with this state which leads to the undefined condition above.
+
+The change applies guards to all state-changing methods surrounding the
+:class:`_orm.SessionTransaction` object so that in the above case, the
+:meth:`_orm.Session.commit` method will instead fail as it will seek to change
+the state to one that is disallowed for the duration of the already-in-progress
+method that wants to get the current connection to run a database query.
+
+Using the test script illustrated at :ticket:`7433`, the previous
+error case looks like::
+
+    Traceback (most recent call last):
+    File "/home/classic/dev/sqlalchemy/test3.py", line 30, in worker
+        sess.execute(select(A)).all()
+    File "/home/classic/tmp/sqlalchemy/lib/sqlalchemy/orm/session.py", line 1691, in execute
+        conn = self._connection_for_bind(bind)
+    File "/home/classic/tmp/sqlalchemy/lib/sqlalchemy/orm/session.py", line 1532, in _connection_for_bind
+        return self._transaction._connection_for_bind(
+    File "/home/classic/tmp/sqlalchemy/lib/sqlalchemy/orm/session.py", line 754, in _connection_for_bind
+        if self.session.twophase and self._parent is None:
+    AttributeError: 'NoneType' object has no attribute 'twophase'
+
+Where the ``_connection_for_bind()`` method isn't able to continue since
+concurrent access placed it into an invalid state.  Using the new approach, the
+originator of the state change throws the error instead::
+
+    File "/home/classic/dev/sqlalchemy/lib/sqlalchemy/orm/session.py", line 1785, in close
+       self._close_impl(invalidate=False)
+    File "/home/classic/dev/sqlalchemy/lib/sqlalchemy/orm/session.py", line 1827, in _close_impl
+       transaction.close(invalidate)
+    File "<string>", line 2, in close
+    File "/home/classic/dev/sqlalchemy/lib/sqlalchemy/orm/session.py", line 506, in _go
+       raise sa_exc.InvalidRequestError(
+    sqlalchemy.exc.InvalidRequestError: Method 'close()' can't be called here;
+    method '_connection_for_bind()' is already in progress and this would cause
+    an unexpected state change to symbol('CLOSED')
+
+The state transition checks intentionally don't use explicit locks to detect
+concurrent thread activity, instead relying upon simple attribute set / value
+test operations that inherently fail when unexpected concurrent changes occur.
+The rationale is that the approach can detect illegal state changes that occur
+entirely within a single thread, such as an event handler that runs on session
+transaction events calls a state-changing method that's not expected, or under
+asyncio if a particular :class:`_orm.Session` were shared among multiple
+asyncio tasks, as well as when using patching-style concurrency approaches
+such as gevent.
+
+:ticket:`7433`
+
 
 
 .. _migration_20_overview:

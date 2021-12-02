@@ -1,0 +1,18 @@
+.. change::
+    :tags: feature, orm
+    :tickets: 7433
+
+    The :class:`_orm.Session` (and by extension :class:`.AsyncSession`) now has
+    new state-tracking functionality that will proactively trap any unexpected
+    state changes which occur as a particular transactional method proceeds.
+    This is to allow situations where the :class:`_orm.Session` is being used
+    in a thread-unsafe manner, where event hooks or similar may be calling
+    unexpected methods within operations, as well as potentially under other
+    concurrency situations such as asyncio or gevent to raise an informative
+    message when the illegal access first occurs, rather than passing silently
+    leading to secondary failures due to the :class:`_orm.Session` being in an
+    invalid state.
+
+    .. seealso::
+
+        :ref:`change_7433`
