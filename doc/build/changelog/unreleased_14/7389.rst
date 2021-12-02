@@ -1,0 +1,8 @@
+.. change::
+    :tags: orm, bug
+    :tickets: 7389
+
+    Fixed issue where a list mapped with :func:`_orm.relationship` would go
+    into an endless loop if in-place added to itself, i.e. the ``+=`` operator
+    were used, as well as if ``.extend()`` were given the same list.
+
