@@ -9,6 +9,8 @@ from sqlalchemy.testing import fixtures
 
 
 class DeclarativeBaseTest(fixtures.TestBase):
+    __requires__ = ("python37",)
+
     def test_class_getitem(self):
         T = TypeVar("T", bound="CommonBase")  # noqa
 
