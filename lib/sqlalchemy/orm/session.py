@@ -940,6 +940,9 @@ class SessionTransaction(TransactionalContext):
     def _transaction_is_closed(self):
         return self._state is CLOSED
 
+    def _rollback_can_be_called(self):
+        return self._state not in (COMMITTED, CLOSED)
+
 
 class Session(_SessionClassMethods):
     """Manages persistence operations for ORM-mapped objects.

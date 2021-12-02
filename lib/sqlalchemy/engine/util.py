@@ -98,6 +98,23 @@ class TransactionalContext:
     def _transaction_is_closed(self):
         raise NotImplementedError()
 
+    def _rollback_can_be_called(self):
+        """indicates the object is in a state that is known to be acceptable
+        for rollback() to be called.
+
+        This does not necessarily mean rollback() will succeed or not raise
+        an error, just that there is currently no state detected that indicates
+        rollback() would fail or emit warnings.
+
+        It also does not mean that there's a transaction in progress, as
+        it is usually safe to call rollback() even if no transaction is
+        present.
+
+        .. versionadded:: 1.4.28
+
+        """
+        raise NotImplementedError()
+
     def _get_subject(self):
         raise NotImplementedError()
 
@@ -143,7 +160,8 @@ class TransactionalContext:
                 self.commit()
             except:
                 with util.safe_reraise():
-                    self.rollback()
+                    if self._rollback_can_be_called():
+                        self.rollback()
             finally:
                 if not out_of_band_exit:
                     subject._trans_context_manager = self._outer_trans_ctx
@@ -154,7 +172,8 @@ class TransactionalContext:
                     if not self._transaction_is_closed():
                         self.close()
                 else:
-                    self.rollback()
+                    if self._rollback_can_be_called():
+                        self.rollback()
             finally:
                 if not out_of_band_exit:
                     subject._trans_context_manager = self._outer_trans_ctx
