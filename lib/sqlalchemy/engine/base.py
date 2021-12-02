@@ -2371,6 +2371,13 @@ class Transaction(TransactionalContext):
     def _transaction_is_closed(self):
         return not self._deactivated_from_connection
 
+    def _rollback_can_be_called(self):
+        # for RootTransaction / NestedTransaction, it's safe to call
+        # rollback() even if the transaction is deactive and no warnings
+        # will be emitted.  tested in
+        # test_transaction.py -> test_no_rollback_in_deactive(?:_savepoint)?
+        return True
+
 
 class MarkerTransaction(Transaction):
     """A 'marker' transaction that is used for nested begin() calls.

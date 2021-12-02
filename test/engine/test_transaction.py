@@ -487,6 +487,36 @@ class TransactionTest(fixtures.TablesTest):
         result = connection.exec_driver_sql("select * from users")
         assert len(result.fetchall()) == 0
 
+    @testing.requires.independent_connections
+    def test_no_rollback_in_deactive(self, local_connection):
+        """test #7388"""
+
+        def fail(*arg, **kw):
+            raise BaseException("some base exception")
+
+        with mock.patch.object(testing.db.dialect, "do_commit", fail):
+            with expect_raises_message(BaseException, "some base exception"):
+                with local_connection.begin():
+                    pass
+
+    @testing.requires.independent_connections
+    @testing.requires.savepoints
+    def test_no_rollback_in_deactive_savepoint(self, local_connection):
+        """test #7388"""
+
+        def fail(*arg, **kw):
+            raise BaseException("some base exception")
+
+        with mock.patch.object(
+            testing.db.dialect, "do_release_savepoint", fail
+        ):
+            with local_connection.begin():
+                with expect_raises_message(
+                    BaseException, "some base exception"
+                ):
+                    with local_connection.begin_nested():
+                        pass
+
     @testing.requires.savepoints
     def test_nested_subtransaction_rollback(self, local_connection):
         connection = local_connection
