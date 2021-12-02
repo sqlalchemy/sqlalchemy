@@ -2500,6 +2500,19 @@ class CustomCollectionsTest(fixtures.MappedTest):
         assert control == p.children
         assert control == list(p.children)
 
+        # test #7389
+        if hasattr(p.children, "__iadd__"):
+            control += control
+            p.children += p.children
+            assert control == list(p.children)
+
+        control[:] = [o]
+        p.children[:] = [o]
+        if hasattr(p.children, "extend"):
+            control.extend(control)
+            p.children.extend(p.children)
+            assert control == list(p.children)
+
     def test_custom(self):
         someothertable, sometable = (
             self.tables.someothertable,
