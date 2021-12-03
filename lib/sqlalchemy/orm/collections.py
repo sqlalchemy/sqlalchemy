@@ -1252,7 +1252,7 @@ def _list_decorators():
 
     def extend(fn):
         def extend(self, iterable):
-            for value in iterable:
+            for value in list(iterable):
                 self.append(value)
 
         _tidy(extend)
@@ -1262,7 +1262,7 @@ def _list_decorators():
         def __iadd__(self, iterable):
             # list.__iadd__ takes any iterable and seems to let TypeError
             # raise as-is instead of returning NotImplemented
-            for value in iterable:
+            for value in list(iterable):
                 self.append(value)
             return self
 
