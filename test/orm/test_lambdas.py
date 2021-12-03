@@ -219,7 +219,7 @@ class LambdaTest(QueryTest, AssertsCompiledSQL):
 
         assert_raises_message(
             exc.ArgumentError,
-            "Cacheable Core or ORM object expected, got",
+            "ExecutionOption Core or ORM object expected, got",
             select(lambda: User).options,
             lambda: subqueryload(User.addresses),
         )

@@ -26,6 +26,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import synonym
 from sqlalchemy.orm import with_expression
 from sqlalchemy.orm import with_loader_criteria
 from sqlalchemy.orm import with_polymorphic
@@ -383,6 +384,35 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                 .query(Address, User)
                 .join(Address.dingaling)
                 .with_entities(Address.id),
+            ),
+            compare_values=True,
+        )
+
+    def test_synonyms(self, registry):
+        """test for issue discovered in #7394"""
+
+        @registry.mapped
+        class User2(object):
+            __table__ = self.tables.users
+
+            name_syn = synonym("name")
+
+        @registry.mapped
+        class Address2(object):
+            __table__ = self.tables.addresses
+
+            name_syn = synonym("email_address")
+
+        self._run_cache_key_fixture(
+            lambda: (
+                User2.id,
+                User2.name,
+                User2.name_syn,
+                Address2.name_syn,
+                Address2.email_address,
+                aliased(User2).name_syn,
+                aliased(User2, name="foo").name_syn,
+                aliased(User2, name="bar").name_syn,
             ),
             compare_values=True,
         )

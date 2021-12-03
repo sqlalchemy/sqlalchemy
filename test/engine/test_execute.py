@@ -3865,6 +3865,7 @@ class DialectDoesntSupportCachingTest(fixtures.TestBase):
 
         class MyDialect(SQLiteDialect_pysqlite):
             statement_compiler = MyCompiler
+            supports_statement_cache = False
 
         from sqlalchemy.dialects import registry
 

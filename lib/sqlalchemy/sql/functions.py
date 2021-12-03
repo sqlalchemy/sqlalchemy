@@ -917,6 +917,7 @@ class GenericFunction(Function, metaclass=_GenericMeta):
 
         class as_utc(GenericFunction):
             type = DateTime
+            inherit_cache = True
 
         print(select(func.as_utc()))
 
@@ -931,6 +932,7 @@ class GenericFunction(Function, metaclass=_GenericMeta):
         class as_utc(GenericFunction):
             type = DateTime
             package = "time"
+            inherit_cache = True
 
     The above function would be available from :data:`.func`
     using the package name ``time``::
@@ -948,6 +950,7 @@ class GenericFunction(Function, metaclass=_GenericMeta):
             package = "geo"
             name = "ST_Buffer"
             identifier = "buffer"
+            inherit_cache = True
 
     The above function will render as follows::
 
@@ -966,6 +969,7 @@ class GenericFunction(Function, metaclass=_GenericMeta):
             package = "geo"
             name = quoted_name("ST_Buffer", True)
             identifier = "buffer"
+            inherit_cache = True
 
     The above function will render as::
 

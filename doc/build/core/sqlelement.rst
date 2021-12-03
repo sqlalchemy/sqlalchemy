@@ -120,19 +120,11 @@ The classes here are generated using the constructors listed at
 .. autoclass:: BindParameter
    :members:
 
-.. autoclass:: CacheKey
-   :members:
-
 .. autoclass:: Case
    :members:
 
 .. autoclass:: Cast
    :members:
-
-.. autoclass:: ClauseElement
-   :members:
-   :inherited-members:
-
 
 .. autoclass:: ClauseList
    :members:
@@ -155,8 +147,6 @@ The classes here are generated using the constructors listed at
    :special-members:
    :inherited-members:
 
-.. autoclass:: sqlalchemy.sql.base.DialectKWArgs
-   :members:
 
 .. autoclass:: Extract
    :members:
@@ -170,9 +160,6 @@ The classes here are generated using the constructors listed at
 .. autoclass:: Label
    :members:
 
-.. autoclass:: LambdaElement
-   :members:
-
 .. autoclass:: Null
    :members:
 
@@ -181,9 +168,6 @@ The classes here are generated using the constructors listed at
    :special-members:
 
 .. autoclass:: Over
-   :members:
-
-.. autoclass:: StatementLambdaElement
    :members:
 
 .. autoclass:: TextClause

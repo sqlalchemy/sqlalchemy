@@ -2252,7 +2252,7 @@ class ColSubclassTest(
             id = Column(Integer, primary_key=True)
 
         class MySpecialColumn(Column):
-            pass
+            inherit_cache = True
 
         class B(A):
             __tablename__ = "b"

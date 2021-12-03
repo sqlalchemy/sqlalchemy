@@ -17,6 +17,7 @@ from sqlalchemy.sql import roles
 from sqlalchemy.sql import select
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
+from sqlalchemy.sql.base import ExecutableOption
 from sqlalchemy.sql.traversals import HasCacheKey
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -810,7 +811,10 @@ class LambdaElementTest(
 
         stmt = lambdas.lambda_stmt(lambda: select(column("x")))
 
-        opts = {column("x"), column("y")}
+        class MyUncacheable(ExecutableOption):
+            pass
+
+        opts = {MyUncacheable()}
 
         assert_raises_message(
             exc.InvalidRequestError,
@@ -942,11 +946,18 @@ class LambdaElementTest(
 
             return stmt
 
-        s1 = go([column("a"), column("b")])
+        class SomeOpt(HasCacheKey, ExecutableOption):
+            def __init__(self, x):
+                self.x = x
 
-        s2 = go([column("a"), column("b")])
+            def _gen_cache_key(self, anon_map, bindparams):
+                return (SomeOpt, self.x)
 
-        s3 = go([column("q"), column("b")])
+        s1 = go([SomeOpt("a"), SomeOpt("b")])
+
+        s2 = go([SomeOpt("a"), SomeOpt("b")])
+
+        s3 = go([SomeOpt("q"), SomeOpt("b")])
 
         s1key = s1._generate_cache_key()
         s2key = s2._generate_cache_key()
@@ -964,7 +975,7 @@ class LambdaElementTest(
 
             return stmt
 
-        class SomeOpt(HasCacheKey):
+        class SomeOpt(HasCacheKey, ExecutableOption):
             def _gen_cache_key(self, anon_map, bindparams):
                 return ("fixed_key",)
 
@@ -994,8 +1005,8 @@ class LambdaElementTest(
 
             return stmt
 
-        class SomeOpt(HasCacheKey):
-            pass
+        class SomeOpt(HasCacheKey, ExecutableOption):
+            inherit_cache = False
 
         # generates no key, will not be cached
         eq_(SomeOpt()._generate_cache_key(), None)

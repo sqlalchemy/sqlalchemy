@@ -81,6 +81,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
             # test generic function compile
             class fake_func(GenericFunction):
+                inherit_cache = True
                 __return_type__ = sqltypes.Integer
 
                 def __init__(self, arg, **kwargs):
@@ -107,6 +108,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         if use_custom:
 
             class MyFunc(FunctionElement):
+                inherit_cache = True
                 name = "myfunc"
                 type = Integer()
 
@@ -135,6 +137,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_use_labels_function_element(self):
         class max_(FunctionElement):
             name = "max"
+            inherit_cache = True
 
         @compiles(max_)
         def visit_max(element, compiler, **kw):
@@ -260,7 +263,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_custom_default_namespace(self):
         class myfunc(GenericFunction):
-            pass
+            inherit_cache = True
 
         assert isinstance(func.myfunc(), myfunc)
         self.assert_compile(func.myfunc(), "myfunc()")
@@ -268,6 +271,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_custom_type(self):
         class myfunc(GenericFunction):
             type = DateTime
+            inherit_cache = True
 
         assert isinstance(func.myfunc().type, DateTime)
         self.assert_compile(func.myfunc(), "myfunc()")
@@ -275,12 +279,14 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_custom_legacy_type(self):
         # in case someone was using this system
         class myfunc(GenericFunction):
+            inherit_cache = True
             __return_type__ = DateTime
 
         assert isinstance(func.myfunc().type, DateTime)
 
     def test_case_sensitive(self):
         class MYFUNC(GenericFunction):
+            inherit_cache = True
             type = DateTime
 
         assert isinstance(func.MYFUNC().type, DateTime)
@@ -336,6 +342,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_custom_w_custom_name(self):
         class myfunc(GenericFunction):
+            inherit_cache = True
             name = "notmyfunc"
 
         assert isinstance(func.notmyfunc(), myfunc)
@@ -343,6 +350,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_custom_w_quoted_name(self):
         class myfunc(GenericFunction):
+            inherit_cache = True
             name = quoted_name("NotMyFunc", quote=True)
             identifier = "myfunc"
 
@@ -350,6 +358,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_custom_w_quoted_name_no_identifier(self):
         class myfunc(GenericFunction):
+            inherit_cache = True
             name = quoted_name("NotMyFunc", quote=True)
 
         # note this requires that the quoted name be lower cased for
@@ -359,6 +368,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_custom_package_namespace(self):
         def cls1(pk_name):
             class myfunc(GenericFunction):
+                inherit_cache = True
                 package = pk_name
 
             return myfunc
@@ -372,6 +382,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_custom_name(self):
         class MyFunction(GenericFunction):
             name = "my_func"
+            inherit_cache = True
 
             def __init__(self, *args):
                 args = args + (3,)
@@ -387,20 +398,24 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             package = "geo"
             name = "BufferOne"
             identifier = "buf1"
+            inherit_cache = True
 
         class GeoBuffer2(GenericFunction):
             type = Integer
             name = "BufferTwo"
             identifier = "buf2"
+            inherit_cache = True
 
         class BufferThree(GenericFunction):
             type = Integer
             identifier = "buf3"
+            inherit_cache = True
 
         class GeoBufferFour(GenericFunction):
             type = Integer
             name = "BufferFour"
             identifier = "Buf4"
+            inherit_cache = True
 
         self.assert_compile(func.geo.buf1(), "BufferOne()")
         self.assert_compile(func.buf2(), "BufferTwo()")
@@ -413,7 +428,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_custom_args(self):
         class myfunc(GenericFunction):
-            pass
+            inherit_cache = True
 
         self.assert_compile(
             myfunc(1, 2, 3), "myfunc(:myfunc_1, :myfunc_2, :myfunc_3)"
@@ -1010,6 +1025,7 @@ class ExecuteTest(fixtures.TestBase):
         from sqlalchemy.ext.compiler import compiles
 
         class myfunc(FunctionElement):
+            inherit_cache = True
             type = Date()
 
         @compiles(myfunc)
