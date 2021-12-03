@@ -195,20 +195,20 @@ class CompilerElement(Traversible):
         dictionary of bind parameter names and values
         using the ``params`` accessor.
 
-        :param bind: An ``Engine`` or ``Connection`` from which a
-            ``Compiled`` will be acquired. This argument takes precedence over
-            this :class:`_expression.ClauseElement`'s bound engine, if any.
+        :param bind: An :class:`.Connection` or :class:`.Engine` which
+           can provide a :class:`.Dialect` in order to generate a
+           :class:`.Compiled` object.  If the ``bind`` and
+           ``dialect`` parameters are both omitted, a default SQL compiler
+           is used.
 
         :param column_keys: Used for INSERT and UPDATE statements, a list of
             column names which should be present in the VALUES clause of the
             compiled statement. If ``None``, all columns from the target table
             object are rendered.
 
-        :param dialect: A ``Dialect`` instance from which a ``Compiled``
-            will be acquired. This argument takes precedence over the `bind`
-            argument as well as this :class:`_expression.ClauseElement`
-            's bound engine,
-            if any.
+        :param dialect: A :class:`.Dialect` instance which can generate
+            a :class:`.Compiled` object.  This argument takes precedence over
+            the ``bind`` argument.
 
         :param compile_kwargs: optional dictionary of additional parameters
             that will be passed through to the compiler within all "visit"
@@ -235,8 +235,6 @@ class CompilerElement(Traversible):
         if not dialect:
             if bind:
                 dialect = bind.dialect
-            elif self.bind:
-                dialect = self.bind.dialect
             else:
                 if self.stringify_dialect == "default":
                     default = util.preloaded.engine_default
@@ -1794,8 +1792,7 @@ class TextClause(
 
     _allow_label_resolve = False
 
-    def __init__(self, text, bind=None):
-        self._bind = bind
+    def __init__(self, text):
         self._bindparams = {}
 
         def repl(m):
@@ -1808,14 +1805,7 @@ class TextClause(
 
     @classmethod
     @_document_text_coercion("text", ":func:`.text`", ":paramref:`.text.text`")
-    @util.deprecated_params(
-        bind=(
-            "2.0",
-            "The :paramref:`_sql.text.bind` argument is deprecated and "
-            "will be removed in SQLAlchemy 2.0.",
-        ),
-    )
-    def _create_text(cls, text, bind=None):
+    def _create_text(cls, text):
         r"""Construct a new :class:`_expression.TextClause` clause,
         representing
         a textual SQL string directly.
@@ -1884,16 +1874,13 @@ class TextClause(
           to specify bind parameters; they will be compiled to their
           engine-specific format.
 
-        :param bind:
-          an optional connection or engine to be used for this text query.
-
         .. seealso::
 
             :ref:`sqlexpression_text` - in the Core tutorial
 
 
         """
-        return TextClause(text, bind=bind)
+        return TextClause(text)
 
     @_generative
     def bindparams(self, *binds, **names_to_values):

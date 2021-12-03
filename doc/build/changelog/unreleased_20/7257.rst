@@ -22,4 +22,8 @@
       as well as related mechanisms to look for bytestrings in
       DBAPI ``cursor.description`` etc. have been removed.
 
+    * The ``.bind`` attribute and parameter from :class:`.MetaData`,
+      :class:`.Table`, and from all DDL/DML/DQL elements that previously could
+      refer to a "bound engine"
+
     * More are in progress as development continues

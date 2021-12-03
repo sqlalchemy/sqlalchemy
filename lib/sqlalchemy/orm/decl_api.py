@@ -358,7 +358,6 @@ def declarative_mixin(cls):
 
 
 def declarative_base(
-    bind=None,
     metadata=None,
     mapper=None,
     cls=object,
@@ -399,14 +398,6 @@ def declarative_base(
        :class:`_orm.registry` class.  The function also moves to the
        ``sqlalchemy.orm`` package from the ``declarative.ext`` package.
 
-
-    :param bind: An optional
-      :class:`~sqlalchemy.engine.Connectable`, will be assigned
-      the ``bind`` attribute on the :class:`~sqlalchemy.schema.MetaData`
-      instance.
-
-      .. deprecated:: 1.4  The "bind" argument to declarative_base is
-         deprecated and will be removed in SQLAlchemy 2.0.
 
     :param metadata:
       An optional :class:`~sqlalchemy.schema.MetaData` instance.  All
@@ -455,15 +446,7 @@ def declarative_base(
 
     """
 
-    if bind is not None:
-        # util.deprecated_params does not work
-        util.warn_deprecated_20(
-            "The ``bind`` argument to declarative_base is "
-            "deprecated and will be removed in SQLAlchemy 2.0.",
-        )
-
     return registry(
-        _bind=bind,
         metadata=metadata,
         class_registry=class_registry,
         constructor=constructor,
@@ -513,7 +496,6 @@ class registry:
         metadata=None,
         class_registry=None,
         constructor=_declarative_constructor,
-        _bind=None,
     ):
         r"""Construct a new :class:`_orm.registry`
 
@@ -541,8 +523,6 @@ class registry:
 
         """
         lcl_metadata = metadata or MetaData()
-        if _bind:
-            lcl_metadata.bind = _bind
 
         if class_registry is None:
             class_registry = weakref.WeakValueDictionary()
@@ -985,13 +965,6 @@ class registry:
 mapperlib._legacy_registry = registry()
 
 
-@util.deprecated_params(
-    bind=(
-        "2.0",
-        "The ``bind`` argument to as_declarative is "
-        "deprecated and will be removed in SQLAlchemy 2.0.",
-    )
-)
 def as_declarative(**kw):
     """
     Class decorator which will adapt a given class into a
@@ -1020,14 +993,13 @@ def as_declarative(**kw):
         :meth:`_orm.registry.as_declarative_base`
 
     """
-    bind, metadata, class_registry = (
-        kw.pop("bind", None),
+    metadata, class_registry = (
         kw.pop("metadata", None),
         kw.pop("class_registry", None),
     )
 
     return registry(
-        _bind=bind, metadata=metadata, class_registry=class_registry
+        metadata=metadata, class_registry=class_registry
     ).as_declarative_base(**kw)
 
 

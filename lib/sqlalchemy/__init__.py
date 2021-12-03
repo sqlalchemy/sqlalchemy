@@ -27,7 +27,6 @@ from .schema import MetaData
 from .schema import PrimaryKeyConstraint
 from .schema import Sequence
 from .schema import Table
-from .schema import ThreadLocalMetaData
 from .schema import UniqueConstraint
 from .sql import alias
 from .sql import all_

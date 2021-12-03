@@ -20,7 +20,6 @@ from . import elements
 from . import operators
 from . import roles
 from . import type_api
-from .base import _bind_or_error
 from .base import NO_ARG
 from .base import SchemaEventTarget
 from .elements import _NONE_NAME
@@ -917,27 +916,19 @@ class SchemaType(SchemaEventTarget):
             **kw
         )
 
-    @property
-    def bind(self):
-        return self.metadata and self.metadata.bind or None
-
-    def create(self, bind=None, checkfirst=False):
+    def create(self, bind, checkfirst=False):
         """Issue CREATE DDL for this type, if applicable."""
 
-        if bind is None:
-            bind = _bind_or_error(self)
         t = self.dialect_impl(bind.dialect)
         if t.__class__ is not self.__class__ and isinstance(t, SchemaType):
-            t.create(bind=bind, checkfirst=checkfirst)
+            t.create(bind, checkfirst=checkfirst)
 
-    def drop(self, bind=None, checkfirst=False):
+    def drop(self, bind, checkfirst=False):
         """Issue DROP DDL for this type, if applicable."""
 
-        if bind is None:
-            bind = _bind_or_error(self)
         t = self.dialect_impl(bind.dialect)
         if t.__class__ is not self.__class__ and isinstance(t, SchemaType):
-            t.drop(bind=bind, checkfirst=checkfirst)
+            t.drop(bind, checkfirst=checkfirst)
 
     def _on_table_create(self, target, bind, **kw):
         if not self._is_impl_for_variant(bind.dialect, kw):

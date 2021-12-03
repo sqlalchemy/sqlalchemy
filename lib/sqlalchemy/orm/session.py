@@ -1983,49 +1983,6 @@ class Session(_SessionClassMethods):
         if self.bind:
             return self.bind
 
-        # now we are in legacy territory.  looking for "bind" on tables
-        # that are via bound metadata.   this goes away in 2.0.
-
-        future_msg = ""
-        future_code = ""
-
-        if mapper and clause is None:
-            clause = mapper.persist_selectable
-
-        if clause is not None:
-            if clause.bind:
-                if self.future:
-                    future_msg = (
-                        " A bind was located via legacy bound metadata, but "
-                        "since future=True is set on this Session, this "
-                        "bind is ignored."
-                    )
-                else:
-                    util.warn_deprecated_20(
-                        "This Session located a target engine via bound "
-                        "metadata; as this functionality will be removed in "
-                        "SQLAlchemy 2.0, an Engine object should be passed "
-                        "to the Session() constructor directly."
-                    )
-                    return clause.bind
-
-        if mapper:
-            if mapper.persist_selectable.bind:
-                if self.future:
-                    future_msg = (
-                        " A bind was located via legacy bound metadata, but "
-                        "since future=True is set on this Session, this "
-                        "bind is ignored."
-                    )
-                else:
-                    util.warn_deprecated_20(
-                        "This Session located a target engine via bound "
-                        "metadata; as this functionality will be removed in "
-                        "SQLAlchemy 2.0, an Engine object should be passed "
-                        "to the Session() constructor directly."
-                    )
-                    return mapper.persist_selectable.bind
-
         context = []
         if mapper is not None:
             context.append("mapper %s" % mapper)
@@ -2033,9 +1990,8 @@ class Session(_SessionClassMethods):
             context.append("SQL expression")
 
         raise sa_exc.UnboundExecutionError(
-            "Could not locate a bind configured on %s or this Session.%s"
-            % (", ".join(context), future_msg),
-            code=future_code,
+            "Could not locate a bind configured on %s or this Session."
+            % (", ".join(context),),
         )
 
     def query(self, *entities, **kwargs):

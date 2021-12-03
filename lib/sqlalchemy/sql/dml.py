@@ -248,10 +248,6 @@ class UpdateBase(
                 "in SQLAlchemy 2.0.  Please refer to the "
                 ":meth:`%(classname)s.values` method."
             ),
-            bind=(
-                "The :paramref:`%(func)s.bind` parameter will be removed in "
-                "SQLAlchemy 2.0.  Please use explicit connection execution."
-            ),
             inline=(
                 "The :paramref:`%(func)s.inline` parameter will be "
                 "removed in "
@@ -339,18 +335,6 @@ class UpdateBase(
             % (self.__class__.__name__)
         )
         self._validate_dialect_kwargs(dialect_kw)
-
-    def bind(self):
-        """Return a 'bind' linked to this :class:`.UpdateBase`
-        or a :class:`_schema.Table` associated with it.
-
-        """
-        return self._bind or self.table.bind
-
-    def _set_bind(self, bind):
-        self._bind = bind
-
-    bind = property(bind, _set_bind)
 
     @_generative
     def returning(self, *cols):
@@ -840,7 +824,6 @@ class Insert(ValuesBase):
         [
             "values",
             "inline",
-            "bind",
             "prefixes",
             "returning",
             "return_defaults",
@@ -851,7 +834,6 @@ class Insert(ValuesBase):
         table,
         values=None,
         inline=False,
-        bind=None,
         prefixes=None,
         returning=None,
         return_defaults=False,
@@ -924,7 +906,6 @@ class Insert(ValuesBase):
 
         """
         super(Insert, self).__init__(table, values, prefixes)
-        self._bind = bind
         self._inline = inline
         if returning:
             self._returning = returning
@@ -1140,7 +1121,6 @@ class Update(DMLWhereBase, ValuesBase):
             "whereclause",
             "values",
             "inline",
-            "bind",
             "prefixes",
             "returning",
             "return_defaults",
@@ -1153,7 +1133,6 @@ class Update(DMLWhereBase, ValuesBase):
         whereclause=None,
         values=None,
         inline=False,
-        bind=None,
         prefixes=None,
         returning=None,
         return_defaults=False,
@@ -1270,7 +1249,6 @@ class Update(DMLWhereBase, ValuesBase):
         """
         self._preserve_parameter_order = preserve_parameter_order
         super(Update, self).__init__(table, values, prefixes)
-        self._bind = bind
         if returning:
             self._returning = returning
         if whereclause is not None:
@@ -1365,13 +1343,12 @@ class Delete(DMLWhereBase, UpdateBase):
     @ValuesBase._constructor_20_deprecations(
         "delete",
         "Delete",
-        ["whereclause", "values", "bind", "prefixes", "returning"],
+        ["whereclause", "values", "prefixes", "returning"],
     )
     def __init__(
         self,
         table,
         whereclause=None,
-        bind=None,
         returning=None,
         prefixes=None,
         **dialect_kw
@@ -1411,7 +1388,6 @@ class Delete(DMLWhereBase, UpdateBase):
             :ref:`deletes` - SQL Expression Tutorial
 
         """
-        self._bind = bind
         self.table = coercions.expect(
             roles.DMLTableRole, table, apply_propagate_attrs=self
         )

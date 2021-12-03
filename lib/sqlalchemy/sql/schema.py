@@ -30,13 +30,11 @@ as components in SQL expressions.
 """
 import collections
 
-import sqlalchemy
 from . import coercions
 from . import ddl
 from . import roles
 from . import type_api
 from . import visitors
-from .base import _bind_or_error
 from .base import DedupeColumnCollection
 from .base import DialectKWArgs
 from .base import Executable
@@ -206,7 +204,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         table.  The metadata is used as a point of association of this table
         with other tables which are referenced via foreign key.  It also
         may be used to associate this table with a particular
-        :class:`.Connectable`.
+        :class:`.Connection` or :class:`.Engine`.
 
     :param \*args: Additional positional arguments are used primarily
         to add the list of :class:`_schema.Column`
@@ -697,14 +695,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         resolve_fks=True,
         _extend_on=None,
     ):
-        if autoload_with is None:
-            autoload_with = _bind_or_error(
-                metadata,
-                msg="No engine is bound to this Table's MetaData. "
-                "Pass an engine to the Table via "
-                "autoload_with=<someengine_or_connection>",
-            )
-
         insp = inspection.inspect(autoload_with)
         with insp._inspection_context() as conn_insp:
             conn_insp.reflect_table(
@@ -839,12 +829,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
     def __str__(self):
         return _get_table_key(self.description, self.schema)
 
-    @property
-    def bind(self):
-        """Return the connectable associated with this Table."""
-
-        return self.metadata and self.metadata.bind or None
-
     def add_is_dependent_on(self, table):
         """Add a 'dependency' for this Table.
 
@@ -914,28 +898,11 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         metadata._add_table(self.name, self.schema, self)
         self.metadata = metadata
 
-    @util.deprecated(
-        "1.4",
-        "The :meth:`_schema.Table.exists` method is deprecated and will be "
-        "removed in a future release.  Please refer to "
-        ":meth:`_reflection.Inspector.has_table`.",
-    )
-    def exists(self, bind=None):
-        """Return True if this table exists."""
-
-        if bind is None:
-            bind = _bind_or_error(self)
-
-        insp = inspection.inspect(bind)
-        return insp.has_table(self.name, schema=self.schema)
-
-    def create(self, bind=None, checkfirst=False):
+    def create(self, bind, checkfirst=False):
         """Issue a ``CREATE`` statement for this
-        :class:`_schema.Table`, using the given :class:`.Connectable`
+        :class:`_schema.Table`, using the given
+        :class:`.Connection` or :class:`.Engine`
         for connectivity.
-
-        .. note:: the "bind" argument will be required in
-           SQLAlchemy 2.0.
 
         .. seealso::
 
@@ -943,25 +910,18 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
         """
 
-        if bind is None:
-            bind = _bind_or_error(self)
         bind._run_ddl_visitor(ddl.SchemaGenerator, self, checkfirst=checkfirst)
 
-    def drop(self, bind=None, checkfirst=False):
+    def drop(self, bind, checkfirst=False):
         """Issue a ``DROP`` statement for this
-        :class:`_schema.Table`, using the given :class:`.Connectable`
-        for connectivity.
-
-        .. note:: the "bind" argument will be required in
-           SQLAlchemy 2.0.
+        :class:`_schema.Table`, using the given
+        :class:`.Connection` or :class:`.Engine` for connectivity.
 
         .. seealso::
 
             :meth:`_schema.MetaData.drop_all`.
 
         """
-        if bind is None:
-            bind = _bind_or_error(self)
         bind._run_ddl_visitor(ddl.SchemaDropper, self, checkfirst=checkfirst)
 
     @util.deprecated(
@@ -2515,14 +2475,6 @@ class DefaultGenerator(Executable, SchemaItem):
             self, distilled_params, execution_options
         )
 
-    @property
-    def bind(self):
-        """Return the connectable associated with this default."""
-        if getattr(self, "column", None) is not None:
-            return self.column.table.bind
-        else:
-            return None
-
 
 class ColumnDefault(DefaultGenerator):
     """A plain default value on a column.
@@ -2930,12 +2882,7 @@ class Sequence(IdentityOptions, DefaultGenerator):
         for this :class:`.Sequence` within any SQL expression.
 
         """
-        if self.bind:
-            return util.preloaded.sql_functions.func.next_value(
-                self, bind=self.bind
-            )
-        else:
-            return util.preloaded.sql_functions.func.next_value(self)
+        return util.preloaded.sql_functions.func.next_value(self)
 
     def _set_parent(self, column, **kw):
         super(Sequence, self)._set_parent(column)
@@ -2948,35 +2895,14 @@ class Sequence(IdentityOptions, DefaultGenerator):
         self.metadata = metadata
         self.metadata._sequences[self._key] = self
 
-    @property
-    def bind(self):
-        if self.metadata:
-            return self.metadata.bind
-        else:
-            return None
+    def create(self, bind, checkfirst=True):
+        """Creates this sequence in the database."""
 
-    def create(self, bind=None, checkfirst=True):
-        """Creates this sequence in the database.
-
-        .. note:: the "bind" argument will be required in
-           SQLAlchemy 2.0.
-
-        """
-
-        if bind is None:
-            bind = _bind_or_error(self)
         bind._run_ddl_visitor(ddl.SchemaGenerator, self, checkfirst=checkfirst)
 
-    def drop(self, bind=None, checkfirst=True):
-        """Drops this sequence from the database.
+    def drop(self, bind, checkfirst=True):
+        """Drops this sequence from the database."""
 
-        .. note:: the "bind" argument will be required in
-           SQLAlchemy 2.0.
-
-        """
-
-        if bind is None:
-            bind = _bind_or_error(self)
         bind._run_ddl_visitor(ddl.SchemaDropper, self, checkfirst=checkfirst)
 
     def _not_a_column_expr(self):
@@ -4160,45 +4086,29 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
             for expr, colexpr in zip(expressions, col_expressions)
         ]
 
-    @property
-    def bind(self):
-        """Return the connectable associated with this Index."""
-
-        return self.table.bind
-
-    def create(self, bind=None, checkfirst=False):
+    def create(self, bind, checkfirst=False):
         """Issue a ``CREATE`` statement for this
-        :class:`.Index`, using the given :class:`.Connectable`
-        for connectivity.
-
-        .. note:: the "bind" argument will be required in
-           SQLAlchemy 2.0.
+        :class:`.Index`, using the given
+        :class:`.Connection` or :class:`.Engine`` for connectivity.
 
         .. seealso::
 
             :meth:`_schema.MetaData.create_all`.
 
         """
-        if bind is None:
-            bind = _bind_or_error(self)
         bind._run_ddl_visitor(ddl.SchemaGenerator, self, checkfirst=checkfirst)
         return self
 
-    def drop(self, bind=None, checkfirst=False):
+    def drop(self, bind, checkfirst=False):
         """Issue a ``DROP`` statement for this
-        :class:`.Index`, using the given :class:`.Connectable`
-        for connectivity.
-
-        .. note:: the "bind" argument will be required in
-           SQLAlchemy 2.0.
+        :class:`.Index`, using the given
+        :class:`.Connection` or :class:`.Engine` for connectivity.
 
         .. seealso::
 
             :meth:`_schema.MetaData.drop_all`.
 
         """
-        if bind is None:
-            bind = _bind_or_error(self)
         bind._run_ddl_visitor(ddl.SchemaDropper, self, checkfirst=checkfirst)
 
     def __repr__(self):
@@ -4241,28 +4151,14 @@ class MetaData(SchemaItem):
 
     __visit_name__ = "metadata"
 
-    @util.deprecated_params(
-        bind=(
-            "2.0",
-            "The :paramref:`_schema.MetaData.bind` argument is deprecated and "
-            "will be removed in SQLAlchemy 2.0.",
-        ),
-    )
     def __init__(
         self,
-        bind=None,
         schema=None,
         quote_schema=None,
         naming_convention=None,
         info=None,
     ):
         """Create a new MetaData object.
-
-        :param bind:
-          An Engine or Connection to bind to.  May also be a string or URL
-          instance, these are passed to :func:`_sa.create_engine` and
-          this :class:`_schema.MetaData` will
-          be bound to the resulting engine.
 
         :param schema:
            The default schema to use for the :class:`_schema.Table`,
@@ -4391,8 +4287,6 @@ class MetaData(SchemaItem):
         self._sequences = {}
         self._fk_memos = collections.defaultdict(list)
 
-        self.bind = bind
-
     tables = None
     """A dictionary of :class:`_schema.Table`
     objects keyed to their name or "table key".
@@ -4412,10 +4306,7 @@ class MetaData(SchemaItem):
     """
 
     def __repr__(self):
-        if self.bind:
-            return "MetaData(bind=%r)" % self.bind
-        else:
-            return "MetaData()"
+        return "MetaData()"
 
     def __contains__(self, table_or_key):
         if not isinstance(table_or_key, str):
@@ -4457,52 +4348,9 @@ class MetaData(SchemaItem):
         self.tables = state["tables"]
         self.schema = state["schema"]
         self.naming_convention = state["naming_convention"]
-        self._bind = None
         self._sequences = state["sequences"]
         self._schemas = state["schemas"]
         self._fk_memos = state["fk_memos"]
-
-    def is_bound(self):
-        """True if this MetaData is bound to an Engine or Connection."""
-
-        return self._bind is not None
-
-    def bind(self):
-        """An :class:`_engine.Engine` or :class:`_engine.Connection`
-        to which this
-        :class:`_schema.MetaData` is bound.
-
-        Typically, a :class:`_engine.Engine` is assigned to this attribute
-        so that "implicit execution" may be used, or alternatively
-        as a means of providing engine binding information to an
-        ORM :class:`.Session` object::
-
-            engine = create_engine("someurl://")
-            metadata.bind = engine
-
-        .. deprecated :: 1.4
-
-            The metadata.bind attribute, as part of the deprecated system
-            of "implicit execution", is itself deprecated and will be
-            removed in SQLAlchemy 2.0.
-
-        .. seealso::
-
-           :ref:`dbengine_implicit` - background on "bound metadata"
-
-        """
-        return self._bind
-
-    @util.preload_module("sqlalchemy.engine.url")
-    def _bind_to(self, bind):
-        """Bind this MetaData to an Engine, Connection, string or URL."""
-        url = util.preloaded.engine_url
-        if isinstance(bind, (str, url.URL)):
-            self._bind = sqlalchemy.create_engine(bind)
-        else:
-            self._bind = bind
-
-    bind = property(bind, _bind_to)
 
     def clear(self):
         """Clear all Table objects from this MetaData."""
@@ -4573,7 +4421,7 @@ class MetaData(SchemaItem):
 
     def reflect(
         self,
-        bind=None,
+        bind,
         schema=None,
         views=False,
         only=None,
@@ -4591,11 +4439,8 @@ class MetaData(SchemaItem):
         in this ``MetaData`` no longer exists in the database.
 
         :param bind:
-          A :class:`.Connectable` used to access the database; if None, uses
-          the existing bind on this ``MetaData``, if any.
-
-          .. note:: the "bind" argument will be required in
-             SQLAlchemy 2.0.
+          A :class:`.Connection` or :class:`.Engine` used to access the
+          database.
 
         :param schema:
           Optional, query and reflect tables from an alternate schema.
@@ -4667,8 +4512,6 @@ class MetaData(SchemaItem):
              objects reflected.
 
         """
-        if bind is None:
-            bind = _bind_or_error(self)
 
         with inspection.inspect(bind)._inspection_context() as insp:
             reflect_opts = {
@@ -4733,19 +4576,15 @@ class MetaData(SchemaItem):
                 except exc.UnreflectableTableError as uerr:
                     util.warn("Skipping table %s: %s" % (name, uerr))
 
-    def create_all(self, bind=None, tables=None, checkfirst=True):
+    def create_all(self, bind, tables=None, checkfirst=True):
         """Create all tables stored in this metadata.
 
         Conditional by default, will not attempt to recreate tables already
         present in the target database.
 
         :param bind:
-          A :class:`.Connectable` used to access the
-          database; if None, uses the existing bind on this ``MetaData``, if
-          any.
-
-          .. note:: the "bind" argument will be required in
-             SQLAlchemy 2.0.
+          A :class:`.Connection` or :class:`.Engine` used to access the
+          database.
 
         :param tables:
           Optional list of ``Table`` objects, which is a subset of the total
@@ -4756,25 +4595,19 @@ class MetaData(SchemaItem):
           in the target database.
 
         """
-        if bind is None:
-            bind = _bind_or_error(self)
         bind._run_ddl_visitor(
             ddl.SchemaGenerator, self, checkfirst=checkfirst, tables=tables
         )
 
-    def drop_all(self, bind=None, tables=None, checkfirst=True):
+    def drop_all(self, bind, tables=None, checkfirst=True):
         """Drop all tables stored in this metadata.
 
         Conditional by default, will not attempt to drop tables not present in
         the target database.
 
         :param bind:
-          A :class:`.Connectable` used to access the
-          database; if None, uses the existing bind on this ``MetaData``, if
-          any.
-
-          .. note:: the "bind" argument will be required in
-             SQLAlchemy 2.0.
+          A :class:`.Connection` or :class:`.Engine` used to access the
+          database.
 
         :param tables:
           Optional list of ``Table`` objects, which is a subset of the
@@ -4785,84 +4618,9 @@ class MetaData(SchemaItem):
           present in the target database.
 
         """
-        if bind is None:
-            bind = _bind_or_error(self)
         bind._run_ddl_visitor(
             ddl.SchemaDropper, self, checkfirst=checkfirst, tables=tables
         )
-
-
-@util.deprecated_cls(
-    "1.4",
-    ":class:`.ThreadLocalMetaData` is deprecated and will be removed "
-    "in a future release.",
-    constructor="__init__",
-)
-class ThreadLocalMetaData(MetaData):
-    """A MetaData variant that presents a different ``bind`` in every thread.
-
-    Makes the ``bind`` property of the MetaData a thread-local value, allowing
-    this collection of tables to be bound to different ``Engine``
-    implementations or connections in each thread.
-
-    The ThreadLocalMetaData starts off bound to None in each thread.  Binds
-    must be made explicitly by assigning to the ``bind`` property or using
-    ``connect()``.  You can also re-bind dynamically multiple times per
-    thread, just like a regular ``MetaData``.
-
-    """
-
-    __visit_name__ = "metadata"
-
-    def __init__(self):
-        """Construct a ThreadLocalMetaData."""
-
-        self.context = util.threading.local()
-        self.__engines = {}
-        super(ThreadLocalMetaData, self).__init__()
-
-    def bind(self):
-        """The bound Engine or Connection for this thread.
-
-        This property may be assigned an Engine or Connection, or assigned a
-        string or URL to automatically create a basic Engine for this bind
-        with ``create_engine()``."""
-
-        return getattr(self.context, "_engine", None)
-
-    @util.preload_module("sqlalchemy.engine.url")
-    def _bind_to(self, bind):
-        """Bind to a Connectable in the caller's thread."""
-        url = util.preloaded.engine_url
-        if isinstance(bind, (str, url.URL)):
-            try:
-                self.context._engine = self.__engines[bind]
-            except KeyError:
-                e = sqlalchemy.create_engine(bind)
-                self.__engines[bind] = e
-                self.context._engine = e
-        else:
-            # TODO: this is squirrely.  we shouldn't have to hold onto engines
-            # in a case like this
-            if bind not in self.__engines:
-                self.__engines[bind] = bind
-            self.context._engine = bind
-
-    bind = property(bind, _bind_to)
-
-    def is_bound(self):
-        """True if there is a bind for this thread."""
-        return (
-            hasattr(self.context, "_engine")
-            and self.context._engine is not None
-        )
-
-    def dispose(self):
-        """Dispose all bound engines, in all thread contexts."""
-
-        for e in self.__engines.values():
-            if hasattr(e, "dispose"):
-                e.dispose()
 
 
 class Computed(FetchedValue, SchemaItem):

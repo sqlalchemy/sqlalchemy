@@ -29,7 +29,6 @@ from sqlalchemy import true
 from sqlalchemy.engine import default
 from sqlalchemy.engine import result_tuple
 from sqlalchemy.orm import aliased
-from sqlalchemy.orm import as_declarative
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import clear_mappers
@@ -39,7 +38,6 @@ from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import contains_alias
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import declared_attr
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
@@ -92,10 +90,6 @@ from .inheritance._poly_fixtures import Engineer
 from .inheritance._poly_fixtures import Manager
 from .inheritance._poly_fixtures import Person
 from .test_ac_relationships import PartitionByFixture
-from .test_bind import GetBindTest as _GetBindTest
-from .test_default_strategies import (
-    DefaultStrategyOptionsTest as _DefaultStrategyOptionsTest,
-)
 from .test_deferred import InheritanceTest as _deferred_InheritanceTest
 from .test_dynamic import _DynamicFixture
 from .test_events import _RemoveListeners
@@ -106,6 +100,11 @@ from .test_query import QueryTest
 from .test_transaction import _LocalFixture
 from ..sql.test_compare import CacheKeyFixture
 
+if True:
+    # hack - zimports won't stop reformatting this to be too-long for now
+    from .test_default_strategies import (
+        DefaultStrategyOptionsTest as _DefaultStrategyOptionsTest,
+    )
 
 join_aliased_dep = (
     r"The ``aliased`` and ``from_joinpoint`` keyword arguments to "
@@ -4325,33 +4324,6 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         eq_(list(q2), [(True,), (False,), (False,), (False,)])
 
 
-class DeclarativeBind(fixtures.TestBase):
-    def test_declarative_base(self):
-        with testing.expect_deprecated_20(
-            "The ``bind`` argument to declarative_base is "
-            "deprecated and will be removed in SQLAlchemy 2.0.",
-        ):
-            Base = declarative_base(bind=testing.db)
-
-        is_true(Base.metadata.bind is testing.db)
-
-    def test_as_declarative(self):
-        with testing.expect_deprecated_20(
-            "The ``bind`` argument to as_declarative is "
-            "deprecated and will be removed in SQLAlchemy 2.0.",
-        ):
-
-            @as_declarative(bind=testing.db)
-            class Base:
-                @declared_attr
-                def __tablename__(cls):
-                    return cls.__name__.lower()
-
-                id = Column(Integer, primary_key=True)
-
-        is_true(Base.metadata.bind is testing.db)
-
-
 class JoinTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = "default"
 
@@ -6101,29 +6073,6 @@ class BindSensitiveStringifyTest(fixtures.MappedTest):
 
     def test_query_unbound_session(self):
         self._test(False, True, False)
-
-
-class GetBindTest(_GetBindTest):
-    @classmethod
-    def define_tables(cls, metadata):
-        super(GetBindTest, cls).define_tables(metadata)
-        metadata.bind = testing.db
-
-    def test_fallback_table_metadata(self):
-        session = self._fixture({})
-        with testing.expect_deprecated_20(
-            "This Session located a target engine via bound metadata"
-        ):
-            is_(session.get_bind(self.classes.BaseClass), testing.db)
-
-    def test_bind_base_table_concrete_sub_class(self):
-        base_class_bind = Mock()
-        session = self._fixture({self.tables.base_table: base_class_bind})
-
-        with testing.expect_deprecated_20(
-            "This Session located a target engine via bound metadata"
-        ):
-            is_(session.get_bind(self.classes.ConcreteSubClass), testing.db)
 
 
 class DeprecationScopedSessionTest(fixtures.MappedTest):

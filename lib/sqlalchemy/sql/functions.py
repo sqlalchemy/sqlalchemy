@@ -844,13 +844,6 @@ class Function(FunctionElement):
 
     """
 
-    @util.deprecated_params(
-        bind=(
-            "2.0",
-            "The :paramref:`_sql.text.bind` argument is deprecated and "
-            "will be removed in SQLAlchemy 2.0.",
-        ),
-    )
     def __init__(self, name, *clauses, **kw):
         """Construct a :class:`.Function`.
 
@@ -861,18 +854,9 @@ class Function(FunctionElement):
         self.packagenames = kw.pop("packagenames", None) or ()
         self.name = name
 
-        self._bind = self._get_bind(kw)
         self.type = sqltypes.to_instance(kw.get("type_", None))
 
         FunctionElement.__init__(self, *clauses, **kw)
-
-    def _get_bind(self, kw):
-        if "bind" in kw:
-            util.warn_deprecated_20(
-                "The Function.bind argument is deprecated and "
-                "will be removed in SQLAlchemy 2.0.",
-            )
-            return kw["bind"]
 
     def _bind_param(self, operator, obj, type_=None, **kw):
         return BindParameter(
@@ -1014,7 +998,6 @@ class GenericFunction(Function, metaclass=_GenericMeta):
             ]
         self._has_args = self._has_args or bool(parsed_args)
         self.packagenames = ()
-        self._bind = self._get_bind(kwargs)
         self.clause_expr = ClauseList(
             operator=operators.comma_op, group_contents=True, *parsed_args
         ).self_group()
@@ -1048,7 +1031,6 @@ class next_value(GenericFunction):
         assert isinstance(
             seq, schema.Sequence
         ), "next_value() accepts a Sequence object as input."
-        self._bind = self._get_bind(kw)
         self.sequence = seq
         self.type = sqltypes.to_instance(
             seq.data_type or getattr(self, "type", None)

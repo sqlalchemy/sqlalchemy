@@ -13,7 +13,6 @@ from sqlalchemy import exc
 from sqlalchemy import exists
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
-from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import join
 from sqlalchemy import literal_column
@@ -63,70 +62,6 @@ class ToMetaDataTest(fixtures.TestBase):
             m2 = MetaData()
             t2 = t1.tometadata(m2)
             eq_(t2.name, "t")
-
-
-class BoundMetadataTest(fixtures.TestBase):
-    def test_arg_deprecated(self):
-        with testing.expect_deprecated_20(
-            "The MetaData.bind argument is deprecated"
-        ):
-            m1 = MetaData(testing.db)
-
-        Table("t", m1, Column("q", Integer))
-
-        with testing.expect_deprecated_20(
-            "The ``bind`` argument for schema methods that invoke SQL "
-            "against an engine or connection will be required"
-        ):
-            m1.create_all()
-        try:
-            assert "t" in inspect(testing.db).get_table_names()
-        finally:
-            m1.drop_all(testing.db)
-
-        assert "t" not in inspect(testing.db).get_table_names()
-
-    def test_bind_arg_text(self):
-        with testing.expect_deprecated_20(
-            "The text.bind argument is deprecated and will be "
-            "removed in SQLAlchemy 2.0."
-        ):
-            t1 = text("ASdf", bind=testing.db)
-
-        # no warnings emitted
-        is_(t1.bind, testing.db)
-        eq_(str(t1), "ASdf")
-
-    def test_bind_arg_function(self):
-        with testing.expect_deprecated_20(
-            "The text.bind argument is deprecated and will be "
-            "removed in SQLAlchemy 2.0."
-        ):
-            f1 = func.foobar(bind=testing.db)
-
-        # no warnings emitted
-        is_(f1.bind, testing.db)
-        eq_(str(f1), "foobar()")
-
-    def test_bind_arg_select(self):
-        with testing.expect_deprecated_20(
-            "The select.bind argument is deprecated and will be "
-            "removed in SQLAlchemy 2.0."
-        ):
-            s1 = select([column("q")], bind=testing.db)
-
-        # no warnings emitted
-        is_(s1.bind, testing.db)
-        eq_(str(s1), "SELECT q")
-
-    def test_bind_attr_join_no_warning(self):
-        t1 = table("t1", column("a"))
-        t2 = table("t2", column("b"))
-        j1 = join(t1, t2, t1.c.a == t2.c.b)
-
-        # no warnings emitted
-        is_(j1.bind, None)
-        eq_(str(j1), "t1 JOIN t2 ON t1.a = t2.b")
 
 
 class DeprecationWarningsTest(fixtures.TestBase, AssertsCompiledSQL):
@@ -1726,35 +1661,6 @@ class LegacyOperatorTest(AssertsCompiledSQL, fixtures.TestBase):
         _op_modern = getattr(operators.ColumnOperators, _modern)
         _op_legacy = getattr(operators.ColumnOperators, _legacy)
         assert _op_modern == _op_legacy
-
-
-class DDLDeprecatedBindTest(fixtures.TestBase):
-    def teardown_test(self):
-        with testing.db.begin() as conn:
-            if inspect(conn).has_table("foo"):
-                conn.execute(schema.DropTable(table("foo")))
-
-    @testing.combinations(
-        (schema.AddConstraint,),
-        (schema.DropConstraint,),
-        (schema.CreateSequence,),
-        (schema.DropSequence,),
-        (schema.CreateSchema,),
-        (schema.DropSchema,),
-        (schema.SetTableComment,),
-        (schema.DropTableComment,),
-        (schema.SetColumnComment,),
-        (schema.DropColumnComment,),
-    )
-    def test_bind_other_constructs(self, const):
-        m1 = mock.Mock()
-
-        with testing.expect_deprecated_20(
-            "The DDLElement.bind argument is deprecated"
-        ):
-            c1 = const(m1, bind=testing.db)
-
-            is_(c1.bind, testing.db)
 
 
 class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):

@@ -2,9 +2,7 @@ import re
 from unittest.mock import Mock
 
 import sqlalchemy as tsa
-import sqlalchemy as sa
 from sqlalchemy import create_engine
-from sqlalchemy import engine
 from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
@@ -16,8 +14,6 @@ from sqlalchemy import pool
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
-from sqlalchemy import text
-from sqlalchemy import ThreadLocalMetaData
 from sqlalchemy.engine import BindTyping
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.base import Connection
@@ -32,9 +28,7 @@ from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
-from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_instance_of
-from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertions import expect_raises_message
@@ -60,185 +54,6 @@ class ConnectionlessDeprecationTest(fixtures.TestBase):
     def check_usage(self, inspector):
         with inspector._operation_context() as conn:
             is_instance_of(conn, Connection)
-
-    def test_bind_close_engine(self):
-        e = testing.db
-        with e.connect() as conn:
-            assert not conn.closed
-        assert conn.closed
-
-    def test_bind_create_drop_err_metadata(self):
-        metadata = MetaData()
-        Table("test_table", metadata, Column("foo", Integer))
-        for meth in [metadata.create_all, metadata.drop_all]:
-            with testing.expect_deprecated_20(
-                "The ``bind`` argument for schema methods that invoke SQL"
-            ):
-                assert_raises_message(
-                    exc.UnboundExecutionError,
-                    "MetaData object is not bound to an Engine or Connection.",
-                    meth,
-                )
-
-    def test_bind_create_drop_err_table(self):
-        metadata = MetaData()
-        table = Table("test_table", metadata, Column("foo", Integer))
-
-        for meth in [table.create, table.drop]:
-            with testing.expect_deprecated_20(
-                "The ``bind`` argument for schema methods that invoke SQL"
-            ):
-                assert_raises_message(
-                    exc.UnboundExecutionError,
-                    (
-                        "Table object 'test_table' is not bound to an "
-                        "Engine or Connection."
-                    ),
-                    meth,
-                )
-
-    def test_bind_create_drop_bound(self):
-
-        for meta in (MetaData, ThreadLocalMetaData):
-            for bind in (testing.db, testing.db.connect()):
-                if isinstance(bind, engine.Connection):
-                    bind.begin()
-
-                if meta is ThreadLocalMetaData:
-                    with testing.expect_deprecated(
-                        "ThreadLocalMetaData is deprecated"
-                    ):
-                        metadata = meta()
-                else:
-                    metadata = meta()
-                table = Table("test_table", metadata, Column("foo", Integer))
-                metadata.bind = bind
-                assert metadata.bind is table.bind is bind
-                with testing.expect_deprecated_20(
-                    "The ``bind`` argument for schema methods that invoke SQL"
-                ):
-                    metadata.create_all()
-
-                with testing.expect_deprecated(
-                    r"The Table.exists\(\) method is deprecated and will "
-                    "be removed in a future release."
-                ):
-                    assert table.exists()
-                with testing.expect_deprecated_20(
-                    "The ``bind`` argument for schema methods that invoke SQL"
-                ):
-                    metadata.drop_all()
-                with testing.expect_deprecated_20(
-                    "The ``bind`` argument for schema methods that invoke SQL"
-                ):
-                    table.create()
-                with testing.expect_deprecated_20(
-                    "The ``bind`` argument for schema methods that invoke SQL"
-                ):
-                    table.drop()
-                with testing.expect_deprecated(
-                    r"The Table.exists\(\) method is deprecated and will "
-                    "be removed in a future release."
-                ):
-                    assert not table.exists()
-
-                if meta is ThreadLocalMetaData:
-                    with testing.expect_deprecated(
-                        "ThreadLocalMetaData is deprecated"
-                    ):
-                        metadata = meta()
-                else:
-                    metadata = meta()
-
-                table = Table("test_table", metadata, Column("foo", Integer))
-
-                metadata.bind = bind
-
-                assert metadata.bind is table.bind is bind
-                with testing.expect_deprecated_20(
-                    "The ``bind`` argument for schema methods that invoke SQL"
-                ):
-                    metadata.create_all()
-                with testing.expect_deprecated(
-                    r"The Table.exists\(\) method is deprecated and will "
-                    "be removed in a future release."
-                ):
-                    assert table.exists()
-                with testing.expect_deprecated_20(
-                    "The ``bind`` argument for schema methods that invoke SQL"
-                ):
-                    metadata.drop_all()
-                with testing.expect_deprecated_20(
-                    "The ``bind`` argument for schema methods that invoke SQL"
-                ):
-                    table.create()
-                with testing.expect_deprecated_20(
-                    "The ``bind`` argument for schema methods that invoke SQL"
-                ):
-                    table.drop()
-                with testing.expect_deprecated(
-                    r"The Table.exists\(\) method is deprecated and will "
-                    "be removed in a future release."
-                ):
-                    assert not table.exists()
-                if isinstance(bind, engine.Connection):
-                    bind.close()
-
-    def test_bind_create_drop_constructor_bound(self):
-        for bind in (testing.db, testing.db.connect()):
-            if isinstance(bind, engine.Connection):
-                bind.begin()
-            try:
-                for args in (([bind], {}), ([], {"bind": bind})):
-                    with testing.expect_deprecated_20(
-                        "The MetaData.bind argument is deprecated "
-                    ):
-                        metadata = MetaData(*args[0], **args[1])
-                    table = Table(
-                        "test_table", metadata, Column("foo", Integer)
-                    )
-                    assert metadata.bind is table.bind is bind
-                    with testing.expect_deprecated_20(
-                        "The ``bind`` argument for schema methods "
-                        "that invoke SQL"
-                    ):
-                        metadata.create_all()
-                    is_true(inspect(bind).has_table(table.name))
-                    with testing.expect_deprecated_20(
-                        "The ``bind`` argument for schema methods "
-                        "that invoke SQL"
-                    ):
-                        metadata.drop_all()
-                    with testing.expect_deprecated_20(
-                        "The ``bind`` argument for schema methods "
-                        "that invoke SQL"
-                    ):
-                        table.create()
-                    with testing.expect_deprecated_20(
-                        "The ``bind`` argument for schema methods "
-                        "that invoke SQL"
-                    ):
-                        table.drop()
-                    is_false(inspect(bind).has_table(table.name))
-            finally:
-                if isinstance(bind, engine.Connection):
-                    bind.close()
-
-    def test_bind_clauseelement(self, metadata):
-        table = Table("test_table", metadata, Column("foo", Integer))
-        metadata.create_all(bind=testing.db)
-        for elem in [
-            table.select,
-            lambda **kwargs: sa.func.current_timestamp(**kwargs).select(),
-            # func.current_timestamp().select,
-            lambda **kwargs: text("select * from test_table", **kwargs),
-        ]:
-            with testing.db.connect() as bind:
-                with testing.expect_deprecated_20(
-                    "The .*bind argument is deprecated"
-                ):
-                    e = elem(bind=bind)
-                assert e.bind is bind
 
     def test_inspector_constructor_engine(self):
         with testing.expect_deprecated(

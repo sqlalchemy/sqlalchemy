@@ -820,7 +820,6 @@ class ToMetaDataTest(fixtures.TestBase, AssertsCompiledSQL, ComparesTables):
         def test_pickle():
             meta.bind = testing.db
             meta2 = pickle.loads(pickle.dumps(meta))
-            assert meta2.bind is None
             pickle.loads(pickle.dumps(meta2))
             return (
                 meta2.tables["mytable"],
@@ -836,7 +835,6 @@ class ToMetaDataTest(fixtures.TestBase, AssertsCompiledSQL, ComparesTables):
             Table("othertable", meta2, autoload_with=testing.db)
             Table("has_comments", meta2, autoload_with=testing.db)
             meta3 = pickle.loads(pickle.dumps(meta2))
-            assert meta3.bind is None
             assert meta3.tables["mytable"] is not t1
 
             return (
