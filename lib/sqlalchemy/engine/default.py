@@ -350,10 +350,23 @@ class DefaultDialect(interfaces.Dialect):
 
     @util.memoized_property
     def _supports_statement_cache(self):
-        return (
-            self.__class__.__dict__.get("supports_statement_cache", False)
-            is True
-        )
+        ssc = self.__class__.__dict__.get("supports_statement_cache", None)
+        if ssc is None:
+            util.warn(
+                "Dialect %s:%s will not make use of SQL compilation caching "
+                "as it does not set the 'supports_statement_cache' attribute "
+                "to ``True``.  This can have "
+                "significant performance implications including some "
+                "performance degradations in comparison to prior SQLAlchemy "
+                "versions.  Dialect maintainers should seek to set this "
+                "attribute to True after appropriate development and testing "
+                "for SQLAlchemy 1.4 caching support.   Alternatively, this "
+                "attribute may be set to False which will disable this "
+                "warning." % (self.name, self.driver),
+                code="cprf",
+            )
+
+        return bool(ssc)
 
     @util.memoized_property
     def _type_memos(self):

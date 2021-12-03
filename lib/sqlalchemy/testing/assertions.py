@@ -552,6 +552,15 @@ class AssertsCompiledSQL(object):
         # are the "self.statement" element
         c = CheckCompilerAccess(clause).compile(dialect=dialect, **kw)
 
+        if isinstance(clause, sqltypes.TypeEngine):
+            cache_key_no_warnings = clause._static_cache_key
+            if cache_key_no_warnings:
+                hash(cache_key_no_warnings)
+        else:
+            cache_key_no_warnings = clause._generate_cache_key()
+            if cache_key_no_warnings:
+                hash(cache_key_no_warnings[0])
+
         param_str = repr(getattr(c, "params", {}))
         if util.py3k:
             param_str = param_str.encode("utf-8").decode("ascii", "ignore")

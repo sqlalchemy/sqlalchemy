@@ -36,6 +36,11 @@ class HasCacheKeyRole(SQLRole):
     _role_name = "Cacheable Core or ORM object"
 
 
+class ExecutableOptionRole(SQLRole):
+    __slots__ = ()
+    _role_name = "ExecutionOption Core or ORM object"
+
+
 class LiteralValueRole(SQLRole):
     _role_name = "Literal Python value"
 

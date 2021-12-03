@@ -768,10 +768,12 @@ class CacheableOptions(Options, HasCacheKey):
         return HasCacheKey._generate_cache_key_for_object(self)
 
 
-class ExecutableOption(HasCopyInternals, HasCacheKey):
+class ExecutableOption(HasCopyInternals):
     _annotations = util.EMPTY_DICT
 
     __visit_name__ = "executable_option"
+
+    _is_has_cache_key = False
 
     def _clone(self, **kw):
         """Create a shallow copy of this ExecutableOption."""
@@ -846,7 +848,8 @@ class Executable(roles.StatementRole, Generative):
 
         """
         self._with_options += tuple(
-            coercions.expect(roles.HasCacheKeyRole, opt) for opt in options
+            coercions.expect(roles.ExecutableOptionRole, opt)
+            for opt in options
         )
 
     @_generative

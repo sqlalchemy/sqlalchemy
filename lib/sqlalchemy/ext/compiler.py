@@ -18,7 +18,7 @@ more callables defining its compilation::
     from sqlalchemy.sql.expression import ColumnClause
 
     class MyColumn(ColumnClause):
-        pass
+        inherit_cache = True
 
     @compiles(MyColumn)
     def compile_mycolumn(element, compiler, **kw):
@@ -47,6 +47,7 @@ invoked for the dialect in use::
     from sqlalchemy.schema import DDLElement
 
     class AlterColumn(DDLElement):
+        inherit_cache = False
 
         def __init__(self, column, cmd):
             self.column = column
@@ -64,6 +65,8 @@ invoked for the dialect in use::
 The second ``visit_alter_table`` will be invoked when any ``postgresql``
 dialect is used.
 
+.. _compilerext_compiling_subelements:
+
 Compiling sub-elements of a custom expression construct
 =======================================================
 
@@ -78,6 +81,8 @@ method which can be used for compilation of embedded attributes::
     from sqlalchemy.sql.expression import Executable, ClauseElement
 
     class InsertFromSelect(Executable, ClauseElement):
+        inherit_cache = False
+
         def __init__(self, table, select):
             self.table = table
             self.select = select
@@ -252,6 +257,7 @@ A synopsis is as follows:
 
       class timestamp(ColumnElement):
           type = TIMESTAMP()
+          inherit_cache = True
 
 * :class:`~sqlalchemy.sql.functions.FunctionElement` - This is a hybrid of a
   ``ColumnElement`` and a "from clause" like object, and represents a SQL
@@ -264,6 +270,7 @@ A synopsis is as follows:
 
       class coalesce(FunctionElement):
           name = 'coalesce'
+          inherit_cache = True
 
       @compiles(coalesce)
       def compile(element, compiler, **kw):
@@ -287,6 +294,95 @@ A synopsis is as follows:
   SQL statement that can be passed directly to an ``execute()`` method.  It
   is already implicit within ``DDLElement`` and ``FunctionElement``.
 
+Most of the above constructs also respond to SQL statement caching.   A
+subclassed construct will want to define the caching behavior for the object,
+which usually means setting the flag ``inherit_cache`` to the value of
+``False`` or ``True``.  See the next section :ref:`compilerext_caching`
+for background.
+
+
+.. _compilerext_caching:
+
+Enabling Caching Support for Custom Constructs
+==============================================
+
+SQLAlchemy as of version 1.4 includes a
+:ref:`SQL compilation caching facility <sql_caching>` which will allow
+equivalent SQL constructs to cache their stringified form, along with other
+structural information used to fetch results from the statement.
+
+For reasons discussed at :ref:`caching_caveats`, the implementation of this
+caching system takes a conservative approach towards including custom SQL
+constructs and/or subclasses within the caching system.   This includes that
+any user-defined SQL constructs, including all the examples for this
+extension, will not participate in caching by default unless they positively
+assert that they are able to do so.  The :attr:`.HasCacheKey.inherit_cache`
+attribute when set to ``True`` at the class level of a specific subclass
+will indicate that instances of this class may be safely cached, using the
+cache key generation scheme of the immediate superclass.  This applies
+for example to the "synopsis" example indicated previously::
+
+    class MyColumn(ColumnClause):
+        inherit_cache = True
+
+    @compiles(MyColumn)
+    def compile_mycolumn(element, compiler, **kw):
+        return "[%s]" % element.name
+
+Above, the ``MyColumn`` class does not include any new state that
+affects its SQL compilation; the cache key of ``MyColumn`` instances will
+make use of that of the ``ColumnClause`` superclass, meaning it will take
+into account the class of the object (``MyColumn``), the string name and
+datatype of the object::
+
+    >>> MyColumn("some_name", String())._generate_cache_key()
+    CacheKey(
+        key=('0', <class '__main__.MyColumn'>,
+        'name', 'some_name',
+        'type', (<class 'sqlalchemy.sql.sqltypes.String'>,
+                 ('length', None), ('collation', None))
+    ), bindparams=[])
+
+For objects that are likely to be **used liberally as components within many
+larger statements**, such as :class:`_schema.Column` subclasses and custom SQL
+datatypes, it's important that **caching be enabled as much as possible**, as
+this may otherwise negatively affect performance.
+
+An example of an object that **does** contain state which affects its SQL
+compilation is the one illustrated at :ref:`compilerext_compiling_subelements`;
+this is an "INSERT FROM SELECT" construct that combines together a
+:class:`_schema.Table` as well as a :class:`_sql.Select` construct, each of
+which independently affect the SQL string generation of the construct.  For
+this class, the example illustrates that it simply does not participate in
+caching::
+
+    class InsertFromSelect(Executable, ClauseElement):
+        inherit_cache = False
+
+        def __init__(self, table, select):
+            self.table = table
+            self.select = select
+
+    @compiles(InsertFromSelect)
+    def visit_insert_from_select(element, compiler, **kw):
+        return "INSERT INTO %s (%s)" % (
+            compiler.process(element.table, asfrom=True, **kw),
+            compiler.process(element.select, **kw)
+        )
+
+While it is also possible that the above ``InsertFromSelect`` could be made to
+produce a cache key that is composed of that of the :class:`_schema.Table` and
+:class:`_sql.Select` components together, the API for this is not at the moment
+fully public. However, for an "INSERT FROM SELECT" construct, which is only
+used by itself for specific operations, caching is not as critical as in the
+previous example.
+
+For objects that are **used in relative isolation and are generally
+standalone**, such as custom :term:`DML` constructs like an "INSERT FROM
+SELECT", **caching is generally less critical** as the lack of caching for such
+a construct will have only localized implications for that specific operation.
+
+
 Further Examples
 ================
 
@@ -309,6 +405,7 @@ For PostgreSQL and Microsoft SQL Server::
 
     class utcnow(expression.FunctionElement):
         type = DateTime()
+        inherit_cache = True
 
     @compiles(utcnow, 'postgresql')
     def pg_utcnow(element, compiler, **kw):
@@ -345,6 +442,7 @@ accommodates two arguments::
     class greatest(expression.FunctionElement):
         type = Numeric()
         name = 'greatest'
+        inherit_cache = True
 
     @compiles(greatest)
     def default_greatest(element, compiler, **kw):
@@ -376,7 +474,7 @@ don't have a "false" constant::
     from sqlalchemy.ext.compiler import compiles
 
     class sql_false(expression.ColumnElement):
-        pass
+        inherit_cache = True
 
     @compiles(sql_false)
     def default_false(element, compiler, **kw):

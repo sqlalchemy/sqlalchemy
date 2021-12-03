@@ -3425,6 +3425,8 @@ class AliasOption(interfaces.LoaderOption):
 
         """
 
+    inherit_cache = False
+
     def process_compile_state(self, compile_state):
         pass
 

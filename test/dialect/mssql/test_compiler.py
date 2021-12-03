@@ -181,7 +181,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             t.update()
             .where(t.c.somecolumn == "q")
             .values(somecolumn="x")
-            .with_hint("XYZ", "mysql"),
+            .with_hint("XYZ", dialect_name="mysql"),
             "UPDATE sometable SET somecolumn=:somecolumn "
             "WHERE sometable.somecolumn = :somecolumn_1",
         )

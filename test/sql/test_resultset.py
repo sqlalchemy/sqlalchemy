@@ -1798,6 +1798,7 @@ class KeyTargetingTest(fixtures.TablesTest):
     def test_keyed_targeting_no_label_at_all_one(self, connection):
         class not_named_max(expression.ColumnElement):
             name = "not_named_max"
+            inherit_cache = True
 
         @compiles(not_named_max)
         def visit_max(element, compiler, **kw):
@@ -1815,6 +1816,7 @@ class KeyTargetingTest(fixtures.TablesTest):
     def test_keyed_targeting_no_label_at_all_two(self, connection):
         class not_named_max(expression.ColumnElement):
             name = "not_named_max"
+            inherit_cache = True
 
         @compiles(not_named_max)
         def visit_max(element, compiler, **kw):

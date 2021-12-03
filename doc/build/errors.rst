@@ -172,6 +172,95 @@ In SQLAlchemy 1.4, this :term:`2.0 style` behavior is enabled when the
 :paramref:`_orm.Session.future` flag is set on :class:`_orm.sessionmaker`
 or :class:`_orm.Session`.
 
+.. _error_cprf:
+.. _caching_caveats:
+
+Object will not produce a cache key, Performance Implications
+--------------------------------------------------------------
+
+SQLAlchemy as of version 1.4 includes a
+:ref:`SQL compilation caching facility <sql_caching>` which will allow
+Core and ORM SQL constructs to cache their stringified form, along with other
+structural information used to fetch results from the statement, allowing the
+relatively expensive string compilation process to be skipped when another
+structurally equivalent construct is next used. This system
+relies upon functionality that is implemented for all SQL constructs, including
+objects such as  :class:`_schema.Column`,
+:func:`_sql.select`, and :class:`_types.TypeEngine` objects, to produce a
+**cache key** which fully represents their state to the degree that it affects
+the SQL compilation process.
+
+If the warnings in question refer to widely used objects such as
+:class:`_schema.Column` objects, and are shown to be affecting the majority of
+SQL constructs being emitted (using the estimation techniques described at
+:ref:`sql_caching_logging`) such that caching is generally not enabled for an
+application, this will negatively impact performance and can in some cases
+effectively produce a **performance degradation** compared to prior SQLAlchemy
+versions. The FAQ at :ref:`faq_new_caching` covers this in additional detail.
+
+Caching disables itself if there's any doubt
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Caching relies on being able to generate a cache key that accurately represents
+the **complete structure** of a statement in a **consistent** fashion. If a particular
+SQL construct (or type) does not have the appropriate directives in place which
+allow it to generate a proper cache key, then caching cannot be safely enabled:
+
+* The cache key must represent the **complete structure**: If the usage of two
+  separate instances of that construct may result in different SQL being
+  rendered, caching the SQL against the first instance of the element using a
+  cache key that does not capture the distinct differences between the first and
+  second elements will result in incorrect SQL being cached and rendered for the
+  second instance.
+
+* The cache key must be **consistent**: If a construct represents state that
+  changes every time, such as a literal value, producing unique SQL for every
+  instance of it, this construct is also not safe to cache, as repeated use of
+  the construct will quickly fill up the statement cache with unique SQL strings
+  that will likely not be used again, defeating the purpose of the cache.
+
+For the above two reasons, SQLAlchemy's caching system is **extremely
+conservative** about deciding to cache the SQL corresponding to an object.
+
+Assertion attributes for caching
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The warning is emitted based on the criteria below.  For further detail on
+each, see the section :ref:`faq_new_caching`.
+
+* The :class:`.Dialect` itself (i.e. the module that is specified by the
+  first part of the URL we pass to :func:`_sa.create_engine`, like
+  ``postgresql+psycopg2://``), must indicate it has been reviewed and tested
+  to support caching correctly, which is indicated by the
+  :attr:`.Dialect.supports_statement_cache` attribute being set to ``True``.
+  When using third party dialects, consult with the maintainers of the dialect
+  so that they may follow the :ref:`steps to ensure caching may be enabled
+  <engine_thirdparty_caching>` in their dialect and publish a new release.
+
+* Third party or user defined types that inherit from either
+  :class:`.TypeDecorator` or :class:`.UserDefinedType` must include the
+  :attr:`.ExternalType.cache_ok` attribute in their definition, including for
+  all derived subclasses, following the guidelines described in the docstring
+  for :attr:`.ExternalType.cache_ok`. As before, if these datatypes are
+  imported from third party libraries, consult with the maintainers of that
+  library so that they may provide the necessary changes to their library and
+  publish a new release.
+
+* Third party or user defined SQL constructs that subclass from classes such
+  as :class:`.ClauseElement`, :class:`_schema.Column`, :class:`_dml.Insert`
+  etc, including simple subclasses as well as those which are designed to
+  work with the :ref:`sqlalchemy.ext.compiler_toplevel`, should normally
+  include the :attr:`.HasCacheKey.inherit_cache` attribute set to ``True``
+  or ``False`` based on the design of the construct, following the guidelines
+  described at :ref:`compilerext_caching`.
+
+.. seealso::
+
+    :ref:`sql_caching_logging` - background on observing cache behavior
+    and efficiency
+
+    :ref:`faq_new_caching` - in the :ref:`faq_toplevel` section
+
 .. _error_s9r1:
 
 Object is being merged into a Session along the backref cascade
