@@ -1222,6 +1222,14 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             "SELECT NOT (NOT (EXISTS (SELECT 1))) AS anon_1",
         )
 
+        self.assert_compile(
+            exists(42)
+            .select_from(table1)
+            .where(table1.c.name == "foo", table1.c.description == "bar"),
+            "EXISTS (SELECT 42 FROM mytable WHERE mytable.name = :name_1 "
+            "AND mytable.description = :description_1)",
+        )
+
     def test_exists_method(self):
         subq = (
             select(func.count(table2.c.otherid))
