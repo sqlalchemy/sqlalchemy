@@ -6490,6 +6490,9 @@ class Exists(UnaryExpression):
 
     See :func:`_sql.exists` for a description of usage.
 
+    An ``EXISTS`` clase can also be construed from a :func:`_sql.select`
+    instance by calling :meth:`_sql.SelectBase.exists`.
+
     """
 
     _from_objects = []
@@ -6527,6 +6530,9 @@ class Exists(UnaryExpression):
         .. seealso::
 
             :ref:`tutorial_exists` - in the :term:`2.0 style` tutorial.
+
+            :meth:`_sql.SelectBase.exists` - method to transform a ``SELECT`` to an
+            ``EXISTS`` clause.
 
         """  # noqa E501
         if args and isinstance(args[0], (SelectBase, ScalarSelect)):
@@ -6642,7 +6648,7 @@ class Exists(UnaryExpression):
         e.element = self._regroup(lambda element: element.select_from(*froms))
         return e
 
-    def where(self, clause):
+    def where(self, *clause):
         """Return a new :func:`_expression.exists` construct with the
         given expression added to
         its WHERE clause, joined to the existing clause via AND, if any.
@@ -6655,7 +6661,7 @@ class Exists(UnaryExpression):
 
         """
         e = self._clone()
-        e.element = self._regroup(lambda element: element.where(clause))
+        e.element = self._regroup(lambda element: element.where(*clause))
         return e
 
 
