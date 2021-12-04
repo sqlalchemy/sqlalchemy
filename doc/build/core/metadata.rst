@@ -588,9 +588,3 @@ Column, Table, MetaData API
 .. autoclass:: Table
     :members:
     :inherited-members:
-
-
-.. autoclass:: ThreadLocalMetaData
-    :members:
-
-
