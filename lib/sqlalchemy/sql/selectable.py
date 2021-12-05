@@ -6490,7 +6490,7 @@ class Exists(UnaryExpression):
 
     See :func:`_sql.exists` for a description of usage.
 
-    An ``EXISTS`` clase can also be construed from a :func:`_sql.select`
+    An ``EXISTS`` clase can also be constructed from a :func:`_sql.select`
     instance by calling :meth:`_sql.SelectBase.exists`.
 
     """
