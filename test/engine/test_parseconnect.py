@@ -1,3 +1,4 @@
+import copy
 from unittest.mock import call
 from unittest.mock import MagicMock
 from unittest.mock import Mock
@@ -18,6 +19,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
+from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
@@ -196,6 +198,25 @@ class URLTest(fixtures.TestBase):
         is_true(url1 != url3)
         is_false(url1 == url3)
 
+    def test_copy(self):
+        url1 = url.make_url(
+            "dialect://user:pass@host/db?arg1%3D=param1&arg2=param+2"
+        )
+        url2 = copy.copy(url1)
+        eq_(url1, url2)
+        is_not(url1, url2)
+
+    def test_deepcopy(self):
+        url1 = url.make_url(
+            "dialect://user:pass@host/db?arg1%3D=param1&arg2=param+2"
+        )
+        url2 = copy.deepcopy(url1)
+        eq_(url1, url2)
+        is_not(url1, url2)
+        is_not(url1.query, url2.query)  # immutabledict of immutable k/v,
+        # but it copies it on constructor
+        # in any case if params are present
+
     @testing.combinations(
         "drivername",
         "username",
@@ -241,6 +262,17 @@ class URLTest(fixtures.TestBase):
             ),
             url.make_url("drivername:///?%s" % expected),
         )
+
+    @testing.combinations(
+        "drivername://",
+        "drivername://?foo=bar",
+        "drivername://?foo=bar&foo=bat",
+    )
+    def test_query_dict_immutable(self, urlstr):
+        url_obj = url.make_url(urlstr)
+
+        with expect_raises_message(TypeError, ".*immutable"):
+            url_obj.query["foo"] = "hoho"
 
     @testing.combinations(
         (

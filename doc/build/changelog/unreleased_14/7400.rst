@@ -1,0 +1,6 @@
+.. change::
+    :tags: usecase, engine
+    :tickets: 7400
+
+    Added support for ``copy()`` and ``deepcopy()`` to the :class:`_url.URL`
+    class. Pull request courtesy Tom Ritchford.
