@@ -1,6 +1,8 @@
 from unittest.mock import call
 from unittest.mock import MagicMock
 from unittest.mock import Mock
+import copy
+import warnings
 
 import sqlalchemy as tsa
 from sqlalchemy import create_engine
@@ -195,6 +197,18 @@ class URLTest(fixtures.TestBase):
         is_false(url1 != url2)
         is_true(url1 != url3)
         is_false(url1 == url3)
+
+    def test_warnings(self):
+        assert_raises(
+            exc.SADeprecationWarning,
+            url.URL,
+            "dbtype"
+        )
+        url1 = url.URL.create("dbtype")
+        url2 = copy.copy(url1)
+        url3 = copy.deepcopy(url2)
+        is_true(url1 == url2)
+        is_true(url2 == url3)
 
     @testing.combinations(
         "drivername",
