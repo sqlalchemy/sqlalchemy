@@ -338,7 +338,9 @@ in the same way, such as SQLite's positional form::
 
 .. warning::
 
-    Remember, all of the above code recipes are **only to be used when**:
+    Remember, **all** of the above code recipes which stringify literal
+    values, bypassing the use of bound parameters when sending statements
+    to the database, are **only to be used when**:
 
     1. the use is **debugging purposes only**
 
@@ -346,7 +348,7 @@ in the same way, such as SQLite's positional form::
 
     3. only with **local, trusted input**
 
-    The above recipes for stringification of parameters are **not secure in
+    The above recipes for stringification of literal values are **not secure in
     any way and should never be used against production databases**.
 
 .. _faq_sql_expression_percent_signs:
