@@ -560,6 +560,22 @@ class URL(
     def __repr__(self):
         return self.render_as_string()
 
+    def __copy__(self):
+        return self.__class__.create(
+            self.drivername,
+            self.username,
+            self.password,
+            self.host,
+            self.port,
+            self.database,
+            # note this is an immutabledict of str-> str / tuple of str,
+            # also fully immutable.  does not require deepcopy
+            self.query,
+        )
+
+    def __deepcopy__(self, memo):
+        return self.__copy__()
+
     def __hash__(self):
         return hash(str(self))
 
