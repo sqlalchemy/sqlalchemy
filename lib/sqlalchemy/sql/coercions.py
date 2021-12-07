@@ -11,6 +11,7 @@ import re
 from . import operators
 from . import roles
 from . import visitors
+from .base import ExecutableOption
 from .base import Options
 from .traversals import HasCacheKey
 from .visitors import Visitable
@@ -450,6 +451,21 @@ class HasCacheKeyImpl(RoleImpl):
         self, original_element, resolved, argname=None, **kw
     ):
         if isinstance(original_element, traversals.HasCacheKey):
+            return original_element
+        else:
+            self._raise_for_expected(original_element, argname, resolved)
+
+    def _literal_coercion(self, element, **kw):
+        return element
+
+
+class ExecutableOptionImpl(RoleImpl):
+    __slots__ = ()
+
+    def _implicit_coercions(
+        self, original_element, resolved, argname=None, **kw
+    ):
+        if isinstance(original_element, ExecutableOption):
             return original_element
         else:
             self._raise_for_expected(original_element, argname, resolved)

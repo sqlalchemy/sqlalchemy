@@ -3654,6 +3654,8 @@ class CollectionAggregate(UnaryExpression):
 
     """
 
+    inherit_cache = True
+
     @classmethod
     def _create_any(cls, expr):
         """Produce an ANY expression.
@@ -3961,7 +3963,7 @@ class IndexExpression(BinaryExpression):
     """Represent the class of expressions that are like an "index"
     operation."""
 
-    pass
+    inherit_cache = True
 
 
 class GroupedElement(ClauseElement):
@@ -5054,14 +5056,17 @@ class _IdentifiedClause(Executable, ClauseElement):
 
 class SavepointClause(_IdentifiedClause):
     __visit_name__ = "savepoint"
+    inherit_cache = False
 
 
 class RollbackToSavepointClause(_IdentifiedClause):
     __visit_name__ = "rollback_to_savepoint"
+    inherit_cache = False
 
 
 class ReleaseSavepointClause(_IdentifiedClause):
     __visit_name__ = "release_savepoint"
+    inherit_cache = False
 
 
 class quoted_name(util.MemoizedSlots, util.text_type):

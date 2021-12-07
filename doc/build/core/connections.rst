@@ -1026,6 +1026,8 @@ what the cache is doing, engine logging will include details about the
 cache's behavior, described in the next section.
 
 
+.. _sql_caching_logging:
+
 Estimating Cache Performance Using Logging
 ------------------------------------------
 
@@ -1293,28 +1295,35 @@ The cache can also be disabled with this argument by sending a value of
 Caching for Third Party Dialects
 ---------------------------------
 
-The caching feature requires that the dialect's compiler produces a SQL
-construct that is generically reusable given a particular cache key.  This means
+The caching feature requires that the dialect's compiler produces SQL
+strings that are safe to reuse for many statement invocations, given
+a particular cache key that is keyed to that SQL string.  This means
 that any literal values in a statement, such as the LIMIT/OFFSET values for
 a SELECT, can not be hardcoded in the dialect's compilation scheme, as
 the compiled string will not be re-usable.   SQLAlchemy supports rendered
 bound parameters using the :meth:`_sql.BindParameter.render_literal_execute`
 method which can be applied to the existing ``Select._limit_clause`` and
-``Select._offset_clause`` attributes by a custom compiler.
+``Select._offset_clause`` attributes by a custom compiler, which
+are illustrated later in this section.
 
-As there are many third party dialects, many of which may be generating
-literal values from SQL statements without the benefit of the newer "literal execute"
-feature, SQLAlchemy as of version 1.4.5 has added a flag to dialects known as
-:attr:`_engine.Dialect.supports_statement_cache`.  This flag is tested to be present
-directly on a dialect class, and not any superclasses, so that even a third
-party dialect that subclasses an existing cacheable SQLAlchemy dialect such
-as ``sqlalchemy.dialects.postgresql.PGDialect`` must still specify this flag,
+As there are many third party dialects, many of which may be generating literal
+values from SQL statements without the benefit of the newer "literal execute"
+feature, SQLAlchemy as of version 1.4.5 has added an attribute to dialects
+known as :attr:`_engine.Dialect.supports_statement_cache`. This attribute is
+checked at runtime for its presence directly on a particular dialect's class,
+even if it's already present on a superclass, so that even a third party
+dialect that subclasses an existing cacheable SQLAlchemy dialect such as
+``sqlalchemy.dialects.postgresql.PGDialect`` must still explicitly include this
+attribute for caching to be enabled. The attribute should **only** be enabled
 once the dialect has been altered as needed and tested for reusability of
 compiled SQL statements with differing parameters.
 
-For all third party dialects that don't support this flag, the logging for
-such a dialect will indicate ``dialect does not support caching``.   Dialect
-authors can apply the flag as follows::
+For all third party dialects that don't support this attribute, the logging for
+such a dialect will indicate ``dialect does not support caching``.
+
+When a dialect has been tested against caching, and in particular the SQL
+compiler has been updated to not render any literal LIMIT / OFFSET within
+a SQL string directly, dialect authors can apply the attribute as follows::
 
     from sqlalchemy.engine.default import DefaultDialect
 
@@ -1328,6 +1337,96 @@ The flag needs to be applied to all subclasses of the dialect as well::
 
 .. versionadded:: 1.4.5
 
+    Added the :attr:`.Dialect.supports_statement_cache` attribute.
+
+The typical case for dialect modification follows.
+
+Example: Rendering LIMIT / OFFSET with post compile parameters
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+As an example, suppose a dialect overrides the :meth:`.SQLCompiler.limit_clause`
+method, which produces the "LIMIT / OFFSET" clause for a SQL statement,
+like this::
+
+    # pre 1.4 style code
+    def limit_clause(self, select, **kw):
+        text = ""
+        if select._limit is not None:
+            text += " \n LIMIT %d" % (select._limit, )
+        if select._offset is not None:
+            text += " \n OFFSET %d" % (select._offset, )
+        return text
+
+The above routine renders the :attr:`.Select._limit` and
+:attr:`.Select._offset` integer values as literal integers embedded in the SQL
+statement. This is a common requirement for databases that do not support using
+a bound parameter within the LIMIT/OFFSET clauses of a SELECT statement.
+However, rendering the integer value within the initial compilation stage is
+directly **incompatible** with caching as the limit and offset integer values
+of a :class:`.Select` object are not part of the cache key, so that many
+:class:`.Select` statements with different limit/offset values would not render
+with the correct value.
+
+The correction for the above code is to move the literal integer into
+SQLAlchemy's :ref:`post-compile <change_4808>` facility, which will render the
+literal integer outside of the initial compilation stage, but instead at
+execution time before the statement is sent to the DBAPI.  This is accessed
+within the compilation stage using the :meth:`_sql.BindParameter.render_literal_execute`
+method, in conjunction with using the :attr:`.Select._limit_clause` and
+:attr:`.Select._offset_clause` attributes, which represent the LIMIT/OFFSET
+as a complete SQL expression, as follows::
+
+    # 1.4 cache-compatible code
+    def limit_clause(self, select, **kw):
+        text = ""
+
+        limit_clause = select._limit_clause
+        offset_clause = select._offset_clause
+
+        if select._simple_int_clause(limit_clause):
+            text += " \n LIMIT %s" % (
+                self.process(limit_clause.render_literal_execute(), **kw)
+            )
+        elif limit_clause is not None:
+            # assuming the DB doesn't support SQL expressions for LIMIT.
+            # Otherwise render here normally
+            raise exc.CompileError(
+                "dialect 'mydialect' can only render simple integers for LIMIT"
+            )
+        if select._simple_int_clause(offset_clause):
+            text += " \n OFFSET %s" % (
+                self.process(offset_clause.render_literal_execute(), **kw)
+            )
+        elif offset_clause is not None:
+            # assuming the DB doesn't support SQL expressions for OFFSET.
+            # Otherwise render here normally
+            raise exc.CompileError(
+                "dialect 'mydialect' can only render simple integers for OFFSET"
+            )
+
+        return text
+
+The approach above will generate a compiled SELECT statement that looks like::
+
+    SELECT x FROM y
+    LIMIT __[POSTCOMPILE_param_1]
+    OFFSET __[POSTCOMPILE_param_2]
+
+Where above, the ``__[POSTCOMPILE_param_1]`` and ``__[POSTCOMPILE_param_2]``
+indicators will be populated with their corresponding integer values at
+statement execution time, after the SQL string has been retrieved from the
+cache.
+
+After changes like the above have been made as appropriate, the
+:attr:`.Dialect.supports_statement_cache` flag should be set to ``True``.
+It is strongly recommended that third party dialects make use of the
+`dialect third party test suite <https://github.com/sqlalchemy/sqlalchemy/blob/main/README.dialects.rst>`_
+which will assert that operations like
+SELECTs with LIMIT/OFFSET are correctly rendered and cached.
+
+.. seealso::
+
+    :ref:`faq_new_caching` - in the :ref:`faq_toplevel` section
 
 .. _engine_lambda_caching:
 

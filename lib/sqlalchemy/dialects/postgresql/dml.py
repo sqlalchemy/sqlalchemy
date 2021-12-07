@@ -35,6 +35,7 @@ class Insert(StandardInsert):
     """
 
     stringify_dialect = "postgresql"
+    inherit_cache = False
 
     @util.memoized_property
     def excluded(self):

@@ -22,6 +22,9 @@ from ..util import topological
 
 
 class _DDLCompiles(ClauseElement):
+    _hierarchy_supports_caching = False
+    """disable cache warnings for all _DDLCompiles subclasses. """
+
     def _compiler(self, dialect, **kw):
         """Return a compiler appropriate for this ClauseElement, given a
         Dialect."""

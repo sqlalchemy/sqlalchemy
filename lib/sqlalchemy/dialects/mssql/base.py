@@ -1354,6 +1354,7 @@ class TryCast(sql.elements.Cast):
     __visit_name__ = "try_cast"
 
     stringify_dialect = "mssql"
+    inherit_cache = True
 
     def __init__(self, *arg, **kw):
         """Create a TRY_CAST expression.

@@ -526,6 +526,11 @@ def create_proxied_attribute(descriptor):
 
         _is_internal_proxy = True
 
+        _cache_key_traversal = [
+            ("key", visitors.ExtendedInternalTraversal.dp_string),
+            ("_parententity", visitors.ExtendedInternalTraversal.dp_multi),
+        ]
+
         @property
         def _impl_uses_objects(self):
             return (

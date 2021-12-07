@@ -87,6 +87,7 @@ class array(expression.ClauseList, expression.ColumnElement):
     __visit_name__ = "array"
 
     stringify_dialect = "postgresql"
+    inherit_cache = True
 
     def __init__(self, clauses, **kw):
         clauses = [

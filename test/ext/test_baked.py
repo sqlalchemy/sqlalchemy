@@ -1043,6 +1043,7 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
         from sqlalchemy.orm.interfaces import UserDefinedOption
 
         class RelationshipCache(UserDefinedOption):
+            inherit_cache = True
 
             propagate_to_loaders = True
 
