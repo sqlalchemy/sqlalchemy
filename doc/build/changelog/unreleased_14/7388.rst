@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 7388
+
+    Fixed issue where if an exception occurred when the :class:`_orm.Session`
+    were to close the connection within the :meth:`_orm.Session.commit` method,
+    when using a context manager for :meth:`_orm.Session.begin` , it would
+    attempt a rollback which would not be possible as the :class:`_orm.Session`
+    was in between where the transaction is committed and the connection is
+    then to be returned to the pool, raising the exception "this
+    sessiontransaction is in the committed state". This exception can occur
+    mostly in an asyncio context where CancelledError can be raised.
+
