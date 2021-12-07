@@ -513,6 +513,46 @@ class SessionTransactionTest(fixtures.RemovesEvents, FixtureTest):
         assert conn.closed
         assert not fairy.is_valid
 
+    @testing.requires.independent_connections
+    def test_no_rollback_in_committed_state(self):
+        """test #7388
+
+        Prior to the fix, using the session.begin() context manager
+        would produce the error "This session is in 'committed' state; no
+        further SQL can be emitted ", when it attempted to call .rollback()
+        if the connection.close() operation failed inside of session.commit().
+
+        While the real exception was chained inside, this still proved to
+        be misleading so we now skip the rollback() in this specific case
+        and allow the original error to be raised.
+
+        """
+
+        sess = fixture_session()
+
+        def fail(*arg, **kw):
+            raise BaseException("some base exception")
+
+        with mock.patch.object(
+            testing.db.dialect, "do_rollback", side_effect=fail
+        ) as fail_mock, mock.patch.object(
+            testing.db.dialect,
+            "do_commit",
+            side_effect=testing.db.dialect.do_commit,
+        ) as succeed_mock:
+
+            # sess.begin() -> commit().  why would do_rollback() be called?
+            # because of connection pool finalize_fairy *after* the commit.
+            # this will cause the conn.close() in session.commit() to fail,
+            # but after the DB commit succeeded.
+            with expect_raises_message(BaseException, "some base exception"):
+                with sess.begin():
+                    conn = sess.connection()
+                    fairy_conn = conn.connection
+
+        eq_(succeed_mock.mock_calls, [mock.call(fairy_conn)])
+        eq_(fail_mock.mock_calls, [mock.call(fairy_conn)])
+
     def test_continue_flushing_on_commit(self):
         """test that post-flush actions get flushed also if
         we're in commit()"""
