@@ -25,6 +25,7 @@ class Insert(StandardInsert):
     """
 
     stringify_dialect = "mysql"
+    inherit_cache = False
 
     @property
     def inserted(self):

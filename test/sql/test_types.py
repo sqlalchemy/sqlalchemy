@@ -1497,6 +1497,8 @@ class VariantTest(fixtures.TestBase, AssertsCompiledSQL):
                 return process
 
         class UTypeThree(types.UserDefinedType):
+            cache_ok = True
+
             def get_col_spec(self):
                 return "UTYPETHREE"
 

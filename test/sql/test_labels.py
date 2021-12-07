@@ -805,6 +805,8 @@ class ColExprLabelTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def _fixture(self):
         class SomeColThing(WrapsColumnExpression, ColumnElement):
+            inherit_cache = False
+
             def __init__(self, expression):
                 self.clause = coercions.expect(
                     roles.ExpressionElementRole, expression

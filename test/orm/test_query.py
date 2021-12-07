@@ -2112,6 +2112,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
         class max_(expression.FunctionElement):
             name = "max"
+            inherit_cache = True
 
         @compiles(max_)
         def visit_max(element, compiler, **kw):
@@ -2126,6 +2127,7 @@ class ExpressionTest(QueryTest, AssertsCompiledSQL):
 
         class not_named_max(expression.ColumnElement):
             name = "not_named_max"
+            inherit_cache = True
 
         @compiles(not_named_max)
         def visit_max(element, compiler, **kw):

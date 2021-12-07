@@ -979,18 +979,23 @@ class ExternalType:
 
     @property
     def _static_cache_key(self):
-        if self.cache_ok is None:
+        cache_ok = self.__class__.__dict__.get("cache_ok", None)
+
+        if cache_ok is None:
             subtype_idx = self.__class__.__mro__.index(ExternalType)
             subtype = self.__class__.__mro__[max(subtype_idx - 1, 0)]
 
             util.warn(
                 "%s %r will not produce a cache key because "
-                "the ``cache_ok`` flag is not set to True.  "
-                "Set this flag to True if this type object's "
+                "the ``cache_ok`` attribute is not set to True.  This can "
+                "have significant performance implications including some "
+                "performance degradations in comparison to prior SQLAlchemy "
+                "versions.  Set this attribute to True if this type object's "
                 "state is safe to use in a cache key, or False to "
-                "disable this warning." % (subtype.__name__, self)
+                "disable this warning." % (subtype.__name__, self),
+                code="cprf",
             )
-        elif self.cache_ok is True:
+        elif cache_ok is True:
             return super(ExternalType, self)._static_cache_key
 
         return NO_CACHE

@@ -656,6 +656,8 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_contains(self):
         class MyType(UserDefinedType):
+            cache_ok = True
+
             class comparator_factory(UserDefinedType.Comparator):
                 def contains(self, other, **kw):
                     return self.op("->")(other)
@@ -664,6 +666,8 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_getitem(self):
         class MyType(UserDefinedType):
+            cache_ok = True
+
             class comparator_factory(UserDefinedType.Comparator):
                 def __getitem__(self, index):
                     return self.op("->")(index)
@@ -682,6 +686,8 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_lshift(self):
         class MyType(UserDefinedType):
+            cache_ok = True
+
             class comparator_factory(UserDefinedType.Comparator):
                 def __lshift__(self, other):
                     return self.op("->")(other)
@@ -690,6 +696,8 @@ class ExtensionOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
     def test_rshift(self):
         class MyType(UserDefinedType):
+            cache_ok = True
+
             class comparator_factory(UserDefinedType.Comparator):
                 def __rshift__(self, other):
                     return self.op("->")(other)

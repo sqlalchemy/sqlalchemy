@@ -16,6 +16,7 @@ from sqlalchemy import Integer
 from sqlalchemy import literal_column
 from sqlalchemy import MetaData
 from sqlalchemy import or_
+from sqlalchemy import PickleType
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import Table
@@ -1264,13 +1265,20 @@ class CacheKeyTest(CacheKeyFixture, CoreFixtures, fixtures.TestBase):
         # the None for cache key will prevent objects
         # which contain these elements from being cached.
         f1 = Foobar1()
-        eq_(f1._generate_cache_key(), None)
+        with expect_warnings(
+            "Class Foobar1 will not make use of SQL compilation caching"
+        ):
+            eq_(f1._generate_cache_key(), None)
 
         f2 = Foobar2()
-        eq_(f2._generate_cache_key(), None)
+        with expect_warnings(
+            "Class Foobar2 will not make use of SQL compilation caching"
+        ):
+            eq_(f2._generate_cache_key(), None)
 
         s1 = select(column("q"), Foobar2())
 
+        # warning is memoized, won't happen the second time
         eq_(s1._generate_cache_key(), None)
 
     def test_get_children_no_method(self):
@@ -1355,6 +1363,7 @@ class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):
             and (
                 "__init__" in cls.__dict__
                 or issubclass(cls, AliasedReturnsRows)
+                or "inherit_cache" not in cls.__dict__
             )
             and not issubclass(cls, (Annotated))
             and "orm" not in cls.__module__
@@ -1819,3 +1828,69 @@ class TypesTest(fixtures.TestBase):
         eq_(c1, c2)
         ne_(c1, c3)
         eq_(c1, c4)
+
+    def test_thirdparty_sub_subclass_no_cache(self):
+        class MyType(PickleType):
+            pass
+
+        expr = column("q", MyType()) == 1
+
+        with expect_warnings(
+            r"TypeDecorator MyType\(\) will not produce a cache key"
+        ):
+            is_(expr._generate_cache_key(), None)
+
+    def test_userdefined_sub_subclass_no_cache(self):
+        class MyType(UserDefinedType):
+            cache_ok = True
+
+        class MySubType(MyType):
+            pass
+
+        expr = column("q", MySubType()) == 1
+
+        with expect_warnings(
+            r"UserDefinedType MySubType\(\) will not produce a cache key"
+        ):
+            is_(expr._generate_cache_key(), None)
+
+    def test_userdefined_sub_subclass_cache_ok(self):
+        class MyType(UserDefinedType):
+            cache_ok = True
+
+        class MySubType(MyType):
+            cache_ok = True
+
+        def go1():
+            expr = column("q", MySubType()) == 1
+            return expr
+
+        def go2():
+            expr = column("p", MySubType()) == 1
+            return expr
+
+        c1 = go1()._generate_cache_key()[0]
+        c2 = go1()._generate_cache_key()[0]
+        c3 = go2()._generate_cache_key()[0]
+
+        eq_(c1, c2)
+        ne_(c1, c3)
+
+    def test_thirdparty_sub_subclass_cache_ok(self):
+        class MyType(PickleType):
+            cache_ok = True
+
+        def go1():
+            expr = column("q", MyType()) == 1
+            return expr
+
+        def go2():
+            expr = column("p", MyType()) == 1
+            return expr
+
+        c1 = go1()._generate_cache_key()[0]
+        c2 = go1()._generate_cache_key()[0]
+        c3 = go2()._generate_cache_key()[0]
+
+        eq_(c1, c2)
+        ne_(c1, c3)
