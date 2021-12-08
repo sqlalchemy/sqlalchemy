@@ -34,6 +34,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from test.orm import _fixtures
@@ -1699,6 +1700,52 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "Join target Address.user_id does not refer to a mapped entity",
             stmt.compile,
         )
+
+    def test_no_strings_for_single_onclause_legacy_query(self):
+        User = self.classes.User
+
+        sess = fixture_session()
+
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            "Join target, typically a FROM expression, or ORM relationship "
+            "attribute expected, got 'addresses'",
+        ):
+            sess.query(User).join("addresses")
+
+    def test_no_strings_for_single_onclause_newstyle(self):
+        User = self.classes.User
+
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            "Join target, typically a FROM expression, or ORM relationship "
+            "attribute expected, got 'addresses'",
+        ):
+            select(User).join("addresses")
+
+    def test_no_strings_for_dual_onclause_legacy_query(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        sess = fixture_session()
+
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            "Join target, typically a FROM expression, or ORM relationship "
+            "attribute expected, got 'addresses'",
+        ):
+            sess.query(User).join(Address, "addresses")
+
+    def test_no_strings_for_dual_onclause_newstyle(self):
+        User = self.classes.User
+        Address = self.classes.Address
+
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            r"Textual SQL expression 'addresses' should be explicitly "
+            r"declared as text\('addresses'\)",
+        ):
+            select(User).join(Address, "addresses")
 
     def test_select_from(self):
         """Test that the left edge of the join can be set reliably with

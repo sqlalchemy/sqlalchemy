@@ -1856,12 +1856,9 @@ def with_parent(instance, prop, from_entity=None):
       An instance which has some :func:`_orm.relationship`.
 
     :param property:
-      String property name, or class-bound attribute, which indicates
+      Class-bound attribute, which indicates
       what relationship from the instance should be used to reconcile the
       parent/child relationship.
-
-      .. deprecated:: 1.4 Using strings is deprecated and will be removed
-         in SQLAlchemy 2.0.  Please use the class-bound attribute directly.
 
     :param from_entity:
       Entity in which to consider as the left side.  This defaults to the
@@ -1871,13 +1868,9 @@ def with_parent(instance, prop, from_entity=None):
 
     """
     if isinstance(prop, str):
-        util.warn_deprecated_20(
-            "Using strings to indicate relationship names in the ORM "
-            "with_parent() function is deprecated and will be removed "
-            "SQLAlchemy 2.0.  Please use the class-bound attribute directly."
+        raise sa_exc.ArgumentError(
+            "with_parent() accepts class-bound mapped attributes, not strings"
         )
-        mapper = object_mapper(instance)
-        prop = getattr(mapper.class_, prop).property
     elif isinstance(prop, attributes.QueryableAttribute):
         if prop._of_type:
             from_entity = prop._of_type

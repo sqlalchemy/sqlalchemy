@@ -15,7 +15,6 @@ from .base import _is_aliased_class
 from .base import _is_mapped_class
 from .base import InspectionAttr
 from .interfaces import LoaderOption
-from .interfaces import MapperProperty
 from .interfaces import PropComparator
 from .path_registry import _DEFAULT_TOKEN
 from .path_registry import _WILDCARD_TOKEN
@@ -304,7 +303,6 @@ class Load(Generative, LoaderOption):
         if isinstance(attr, str):
 
             default_token = attr.endswith(_DEFAULT_TOKEN)
-            attr_str_name = attr
             if attr.endswith(_WILDCARD_TOKEN) or default_token:
                 if default_token:
                     self.propagate_to_loaders = False
@@ -321,137 +319,97 @@ class Load(Generative, LoaderOption):
                 self.path = path
                 return path
 
-            if existing_of_type:
-                ent = inspect(existing_of_type)
-            else:
-                ent = path.entity
-
-            util.warn_deprecated_20(
-                "Using strings to indicate column or "
-                "relationship paths in loader options is deprecated "
-                "and will be removed in SQLAlchemy 2.0.  Please use "
-                "the class-bound attribute directly.",
+            raise sa_exc.ArgumentError(
+                "Strings are not accepted for attribute names in loader "
+                "options; please use class-bound attributes directly."
             )
-            try:
-                # use getattr on the class to work around
-                # synonyms, hybrids, etc.
-                attr = getattr(ent.class_, attr)
-            except AttributeError as err:
+
+        insp = inspect(attr)
+
+        if insp.is_mapper or insp.is_aliased_class:
+            # TODO: this does not appear to be a valid codepath.  "attr"
+            # would never be a mapper.  This block is present in 1.2
+            # as well however does not seem to be accessed in any tests.
+            if not orm_util._entity_corresponds_to_use_path_impl(
+                attr.parent, path[-1]
+            ):
                 if raiseerr:
-                    util.raise_(
-                        sa_exc.ArgumentError(
-                            'Can\'t find property named "%s" on '
-                            "%s in this Query." % (attr, ent)
-                        ),
-                        replace_context=err,
+                    raise sa_exc.ArgumentError(
+                        "Attribute '%s' does not "
+                        "link from element '%s'" % (attr, path.entity)
                     )
                 else:
                     return None
-            else:
-                try:
-                    attr = found_property = attr.property
-                except AttributeError as ae:
-                    if not isinstance(attr, MapperProperty):
-                        util.raise_(
-                            sa_exc.ArgumentError(
-                                'Expected attribute "%s" on %s to be a '
-                                "mapped attribute; "
-                                "instead got %s object."
-                                % (attr_str_name, ent, type(attr))
+        elif insp.is_property:
+            prop = found_property = attr
+            path = path[prop]
+        elif insp.is_attribute:
+            prop = found_property = attr.property
+
+            if not orm_util._entity_corresponds_to_use_path_impl(
+                attr.parent, path[-1]
+            ):
+                if raiseerr:
+                    raise sa_exc.ArgumentError(
+                        'Attribute "%s" does not '
+                        'link from element "%s".%s'
+                        % (
+                            attr,
+                            path.entity,
+                            (
+                                "  Did you mean to use "
+                                "%s.of_type(%s)?"
+                                % (path[-2], attr.class_.__name__)
+                                if len(path) > 1
+                                and path.entity.is_mapper
+                                and attr.parent.is_aliased_class
+                                else ""
                             ),
-                            replace_context=ae,
                         )
-                    else:
-                        raise
-
-            path = path[attr]
-        else:
-            insp = inspect(attr)
-
-            if insp.is_mapper or insp.is_aliased_class:
-                # TODO: this does not appear to be a valid codepath.  "attr"
-                # would never be a mapper.  This block is present in 1.2
-                # as well however does not seem to be accessed in any tests.
-                if not orm_util._entity_corresponds_to_use_path_impl(
-                    attr.parent, path[-1]
-                ):
-                    if raiseerr:
-                        raise sa_exc.ArgumentError(
-                            "Attribute '%s' does not "
-                            "link from element '%s'" % (attr, path.entity)
-                        )
-                    else:
-                        return None
-            elif insp.is_property:
-                prop = found_property = attr
-                path = path[prop]
-            elif insp.is_attribute:
-                prop = found_property = attr.property
-
-                if not orm_util._entity_corresponds_to_use_path_impl(
-                    attr.parent, path[-1]
-                ):
-                    if raiseerr:
-                        raise sa_exc.ArgumentError(
-                            'Attribute "%s" does not '
-                            'link from element "%s".%s'
-                            % (
-                                attr,
-                                path.entity,
-                                (
-                                    "  Did you mean to use "
-                                    "%s.of_type(%s)?"
-                                    % (path[-2], attr.class_.__name__)
-                                    if len(path) > 1
-                                    and path.entity.is_mapper
-                                    and attr.parent.is_aliased_class
-                                    else ""
-                                ),
-                            )
-                        )
-                    else:
-                        return None
-
-                if attr._extra_criteria and not self._extra_criteria:
-                    # in most cases, the process that brings us here will have
-                    # already established _extra_criteria.  however if not,
-                    # and it's present on the attribute, then use that.
-                    self._extra_criteria = attr._extra_criteria
-
-                if getattr(attr, "_of_type", None):
-                    ac = attr._of_type
-                    ext_info = of_type_info = inspect(ac)
-
-                    if polymorphic_entity_context is None:
-                        polymorphic_entity_context = self.context
-
-                    existing = path.entity_path[prop].get(
-                        polymorphic_entity_context, "path_with_polymorphic"
                     )
-
-                    if not ext_info.is_aliased_class:
-                        ac = orm_util.with_polymorphic(
-                            ext_info.mapper.base_mapper,
-                            ext_info.mapper,
-                            aliased=True,
-                            _use_mapper_path=True,
-                            _existing_alias=inspect(existing)
-                            if existing is not None
-                            else None,
-                        )
-
-                        ext_info = inspect(ac)
-
-                    path.entity_path[prop].set(
-                        polymorphic_entity_context, "path_with_polymorphic", ac
-                    )
-
-                    path = path[prop][ext_info]
-
-                    self._of_type = of_type_info
-
                 else:
-                    path = path[prop]
+                    return None
+
+            if attr._extra_criteria and not self._extra_criteria:
+                # in most cases, the process that brings us here will have
+                # already established _extra_criteria.  however if not,
+                # and it's present on the attribute, then use that.
+                self._extra_criteria = attr._extra_criteria
+
+            if getattr(attr, "_of_type", None):
+                ac = attr._of_type
+                ext_info = of_type_info = inspect(ac)
+
+                if polymorphic_entity_context is None:
+                    polymorphic_entity_context = self.context
+
+                existing = path.entity_path[prop].get(
+                    polymorphic_entity_context, "path_with_polymorphic"
+                )
+
+                if not ext_info.is_aliased_class:
+                    ac = orm_util.with_polymorphic(
+                        ext_info.mapper.base_mapper,
+                        ext_info.mapper,
+                        aliased=True,
+                        _use_mapper_path=True,
+                        _existing_alias=inspect(existing)
+                        if existing is not None
+                        else None,
+                    )
+
+                    ext_info = inspect(ac)
+
+                path.entity_path[prop].set(
+                    polymorphic_entity_context, "path_with_polymorphic", ac
+                )
+
+                path = path[prop][ext_info]
+
+                self._of_type = of_type_info
+
+            else:
+                path = path[prop]
 
         if for_strategy is not None:
             found_property._get_strategy(for_strategy)

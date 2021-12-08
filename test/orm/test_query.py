@@ -6358,6 +6358,21 @@ class TextErrorTest(QueryTest, AssertsCompiledSQL):
 class ParentTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = "default"
 
+    def test_no_strings(self):
+        User = self.classes.User
+
+        sess = fixture_session()
+        q = sess.query(User)
+
+        u1 = q.filter_by(name="jack").one()
+
+        with expect_raises_message(
+            sa_exc.ArgumentError,
+            r"with_parent\(\) accepts class-bound mapped "
+            "attributes, not strings",
+        ):
+            with_parent(u1, "orders")
+
     def test_o2m(self):
         User, Order = (
             self.classes.User,

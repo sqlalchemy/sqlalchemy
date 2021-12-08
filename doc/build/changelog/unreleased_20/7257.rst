@@ -26,4 +26,12 @@
       :class:`.Table`, and from all DDL/DML/DQL elements that previously could
       refer to a "bound engine"
 
+    * The :meth:`_orm.Query.join` method no longer accepts strings for
+      relationship names; the long-documented approach of using
+      ``Class.attrname`` for join targets is now standard.
+
+    * Loader options no longer accept strings for attribute names.  The
+      long-documented approach of using ``Class.attrname`` for loader option
+      targets is now standard.
+
     * More are in progress as development continues

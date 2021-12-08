@@ -396,7 +396,10 @@ class DeferOptionsTest(NoCache, fixtures.MappedTest):
         A = self.classes.A
         s = fixture_session()
         s.query(A).options(
-            *[defer(letter) for letter in ["x", "y", "z", "p", "q", "r"]]
+            *[
+                defer(getattr(A, letter))
+                for letter in ["x", "y", "z", "p", "q", "r"]
+            ]
         ).all()
 
 

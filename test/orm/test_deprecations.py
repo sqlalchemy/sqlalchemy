@@ -1,5 +1,4 @@
 from contextlib import nullcontext
-import pickle
 from unittest.mock import call
 from unittest.mock import Mock
 
@@ -46,13 +45,10 @@ from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import foreign
 from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import Load
-from sqlalchemy.orm import load_only
 from sqlalchemy.orm import mapper
 from sqlalchemy.orm import relation
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import scoped_session
-from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import strategy_options
@@ -65,7 +61,6 @@ from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.orm.collections import collection
 from sqlalchemy.orm.util import polymorphic_union
-from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assertions
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -84,12 +79,8 @@ from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.util import resolve_lambda
 from . import _fixtures
 from .inheritance import _poly_fixtures
-from .inheritance._poly_fixtures import _Polymorphic
-from .inheritance._poly_fixtures import Company
-from .inheritance._poly_fixtures import Engineer
 from .inheritance._poly_fixtures import Manager
 from .inheritance._poly_fixtures import Person
-from .test_ac_relationships import PartitionByFixture
 from .test_deferred import InheritanceTest as _deferred_InheritanceTest
 from .test_dynamic import _DynamicFixture
 from .test_events import _RemoveListeners
@@ -125,21 +116,11 @@ undefer_needs_chaining = (
     "Please use method chaining"
 )
 
-join_strings_dep = "Using strings to indicate relationship names in Query.join"
 join_tuple_form = (
     r"Query.join\(\) will no longer accept tuples as "
     "arguments in SQLAlchemy 2.0."
 )
 
-opt_strings_dep = (
-    "Using strings to indicate column or relationship "
-    "paths in loader options"
-)
-
-wparent_strings_dep = (
-    r"Using strings to indicate relationship names "
-    r"in the ORM with_parent\(\) function"
-)
 
 query_wparent_dep = (
     r"The Query.with_parent\(\) method is considered legacy as of the 1.x"
@@ -284,89 +265,6 @@ class GetTest(QueryTest):
                 q.get(5)
 
 
-class CustomJoinTest(QueryTest):
-    run_setup_mappers = None
-
-    def test_double_same_mappers_flag_alias(self):
-        """test aliasing of joins with a custom join condition"""
-
-        (
-            addresses,
-            items,
-            order_items,
-            orders,
-            Item,
-            User,
-            Address,
-            Order,
-            users,
-        ) = (
-            self.tables.addresses,
-            self.tables.items,
-            self.tables.order_items,
-            self.tables.orders,
-            self.classes.Item,
-            self.classes.User,
-            self.classes.Address,
-            self.classes.Order,
-            self.tables.users,
-        )
-
-        self.mapper_registry.map_imperatively(Address, addresses)
-        self.mapper_registry.map_imperatively(
-            Order,
-            orders,
-            properties={
-                "items": relationship(
-                    Item,
-                    secondary=order_items,
-                    lazy="select",
-                    order_by=items.c.id,
-                )
-            },
-        )
-        self.mapper_registry.map_imperatively(Item, items)
-        self.mapper_registry.map_imperatively(
-            User,
-            users,
-            properties=dict(
-                addresses=relationship(Address, lazy="select"),
-                open_orders=relationship(
-                    Order,
-                    primaryjoin=and_(
-                        orders.c.isopen == 1, users.c.id == orders.c.user_id
-                    ),
-                    lazy="select",
-                    viewonly=True,
-                ),
-                closed_orders=relationship(
-                    Order,
-                    primaryjoin=and_(
-                        orders.c.isopen == 0, users.c.id == orders.c.user_id
-                    ),
-                    lazy="select",
-                    viewonly=True,
-                ),
-            ),
-        )
-        q = fixture_session().query(User)
-
-        with assertions.expect_deprecated_20(
-            join_aliased_dep,
-            join_strings_dep,
-            join_chain_dep,
-            raise_on_any_unexpected=True,
-        ):
-            eq_(
-                q.join("open_orders", "items", aliased=True)
-                .filter(Item.id == 4)
-                .join("closed_orders", "items", aliased=True)
-                .filter(Item.id == 3)
-                .all(),
-                [User(id=7)],
-            )
-
-
 class PickleTest(fixtures.MappedTest):
     @classmethod
     def define_tables(cls, metadata):
@@ -446,73 +344,6 @@ class PickleTest(fixtures.MappedTest):
         sess.expunge_all()
         return sess, User, Address, Dingaling
 
-    def test_became_bound_options(self):
-        sess, User, Address, Dingaling = self._option_test_fixture()
-
-        for opt in [
-            sa.orm.joinedload("addresses"),
-            sa.orm.defer("name"),
-            sa.orm.joinedload("addresses").joinedload(Address.dingaling),
-        ]:
-            with assertions.expect_deprecated_20(opt_strings_dep):
-                context = sess.query(User).options(opt)._compile_context()
-            opt = [
-                v
-                for v in context.attributes.values()
-                if isinstance(v, sa.orm.Load)
-            ][0]
-
-            opt2 = pickle.loads(pickle.dumps(opt))
-            eq_(opt.path, opt2.path)
-            eq_(opt.local_opts, opt2.local_opts)
-
-        u1 = sess.query(User).options(opt).first()
-        pickle.loads(pickle.dumps(u1))
-
-    @testing.combinations(
-        lambda: sa.orm.joinedload("addresses"),
-        lambda: sa.orm.defer("name"),
-        lambda Address: sa.orm.joinedload("addresses").joinedload(
-            Address.dingaling
-        ),
-        lambda: sa.orm.joinedload("addresses").raiseload("*"),
-    )
-    def test_unbound_options(self, test_case):
-        sess, User, Address, Dingaling = self._option_test_fixture()
-
-        opt = testing.resolve_lambda(test_case, User=User, Address=Address)
-        opt2 = pickle.loads(pickle.dumps(opt))
-        eq_(opt.path, opt2.path)
-
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            u1 = sess.query(User).options(opt).first()
-        pickle.loads(pickle.dumps(u1))
-
-    @testing.combinations(
-        lambda User: sa.orm.Load(User).joinedload("addresses"),
-        lambda User: sa.orm.Load(User).joinedload("addresses").raiseload("*"),
-        lambda User: sa.orm.Load(User).defer("name"),
-        lambda User, Address: sa.orm.Load(User)
-        .joinedload("addresses")
-        .joinedload(Address.dingaling),
-        lambda User, Address: sa.orm.Load(User)
-        .joinedload("addresses", innerjoin=True)
-        .joinedload(Address.dingaling),
-    )
-    def test_bound_options(self, test_case):
-        sess, User, Address, Dingaling = self._option_test_fixture()
-
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            opt = testing.resolve_lambda(test_case, User=User, Address=Address)
-
-        opt2 = pickle.loads(pickle.dumps(opt))
-        eq_(opt.path, opt2.path)
-        eq_(opt.context.keys(), opt2.context.keys())
-        eq_(opt.local_opts, opt2.local_opts)
-
-        u1 = sess.query(User).options(opt).first()
-        pickle.loads(pickle.dumps(u1))
-
 
 class SynonymTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = "default"
@@ -580,36 +411,6 @@ class SynonymTest(QueryTest, AssertsCompiledSQL):
             },
         )
         cls.mapper_registry.map_imperatively(Keyword, keywords)
-
-    def test_options_syn_of_syn_string(self):
-        User, Order = self.classes.User, self.classes.Order
-
-        s = fixture_session()
-
-        def go():
-            with testing.expect_deprecated_20(opt_strings_dep):
-                result = (
-                    s.query(User)
-                    .filter_by(name="jack")
-                    .options(joinedload("orders_syn_2"))
-                    .all()
-                )
-            eq_(
-                result,
-                [
-                    User(
-                        id=7,
-                        name="jack",
-                        orders=[
-                            Order(description="order 1"),
-                            Order(description="order 3"),
-                            Order(description="order 5"),
-                        ],
-                    )
-                ],
-            )
-
-        self.assert_sql_count(testing.db, go, 1)
 
 
 class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
@@ -785,111 +586,6 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             "JOIN dingalings ON addresses.id = dingalings.address_id",
         )
 
-    def test_str_join_target(self):
-        User = self.classes.User
-
-        s = fixture_session()
-
-        with testing.expect_deprecated_20(join_strings_dep):
-            q1 = s.query(User).join("addresses")
-
-        self.assert_compile(
-            q1,
-            "SELECT users.id AS users_id, users.name AS "
-            "users_name FROM users JOIN addresses "
-            "ON users.id = addresses.user_id",
-        )
-
-    def test_str_rel_loader_opt(self):
-        User = self.classes.User
-
-        s = fixture_session()
-
-        q1 = s.query(User).options(joinedload("addresses"))
-
-        with testing.expect_deprecated_20(opt_strings_dep):
-            self.assert_compile(
-                q1,
-                "SELECT users.id AS users_id, users.name AS users_name, "
-                "addresses_1.id AS addresses_1_id, addresses_1.user_id "
-                "AS addresses_1_user_id, addresses_1.email_address AS "
-                "addresses_1_email_address FROM users LEFT OUTER JOIN "
-                "addresses AS addresses_1 ON users.id = addresses_1.user_id "
-                "ORDER BY addresses_1.id",
-            )
-
-    def test_dotted_options(self):
-        User = self.classes.User
-
-        sess = fixture_session()
-
-        with testing.expect_deprecated_20(
-            "Using strings to indicate column or relationship "
-            "paths in loader options"
-        ):
-            q2 = (
-                sess.query(User)
-                .order_by(User.id)
-                .options(sa.orm.joinedload("orders"))
-                .options(sa.orm.joinedload("orders.items"))
-                .options(sa.orm.joinedload("orders.items.keywords"))
-            )
-            u = q2.all()
-
-        def go():
-            u[0].orders[1].items[0].keywords[1]
-
-        self.sql_count_(0, go)
-
-    def test_str_col_loader_opt(self):
-        User = self.classes.User
-
-        s = fixture_session()
-
-        q1 = s.query(User).options(defer("name"))
-
-        with testing.expect_deprecated_20(
-            "Using strings to indicate column or relationship "
-            "paths in loader options"
-        ):
-            self.assert_compile(q1, "SELECT users.id AS users_id FROM users")
-
-    def test_str_with_parent(self):
-        User = self.classes.User
-        Address = self.classes.Address
-
-        s = fixture_session()
-
-        u1 = User(id=1)
-
-        with testing.expect_deprecated_20(
-            r"Using strings to indicate relationship names in the ORM "
-            r"with_parent\(\)",
-        ):
-            q1 = s.query(Address).filter(with_parent(u1, "addresses"))
-
-        self.assert_compile(
-            q1,
-            "SELECT addresses.id AS addresses_id, addresses.user_id "
-            "AS addresses_user_id, addresses.email_address "
-            "AS addresses_email_address FROM addresses "
-            "WHERE :param_1 = addresses.user_id",
-        )
-
-        with testing.expect_deprecated_20(
-            r"Using strings to indicate relationship names in the ORM "
-            r"with_parent\(\)",
-        ):
-            q1 = s.query(Address).with_parent(u1, "addresses")
-
-        self.assert_compile(
-            q1,
-            "SELECT addresses.id AS addresses_id, addresses.user_id "
-            "AS addresses_user_id, addresses.email_address "
-            "AS addresses_email_address FROM addresses "
-            "WHERE :param_1 = addresses.user_id",
-        )
-
     def test_invalid_column(self):
         User = self.classes.User
 
@@ -1035,7 +731,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 result = (
                     sess.query(User)
                     .select_entity_from(query)
-                    .options(contains_eager("addresses"))
+                    .options(contains_eager(User.addresses))
                     .all()
                 )
             assert self.static.user_address_result == result
@@ -1070,7 +766,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 result = (
                     sess.query(User)
                     .select_entity_from(query)
-                    .options(contains_eager("addresses", alias=adalias))
+                    .options(contains_eager(User.addresses, alias=adalias))
                     .all()
                 )
             assert self.static.user_address_result == result
@@ -1140,7 +836,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             result = (
                 sess.query(User)
                 .select_entity_from(sel)
-                .join("addresses")
+                .join(User.addresses)
                 .add_entity(Address)
                 .order_by(User.id)
                 .order_by(Address.id)
@@ -1174,7 +870,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             result = (
                 sess.query(User)
                 .select_entity_from(sel)
-                .join(adalias, "addresses")
+                .join(adalias, User.addresses)
                 .add_entity(adalias)
                 .order_by(User.id)
                 .order_by(adalias.id)
@@ -1208,6 +904,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             self.classes.Keyword,
             self.classes.User,
         )
+        Order, Item = self.classes("Order", "Item")
 
         sess = fixture_session()
         sel = users.select().where(users.c.id.in_([7, 8]))
@@ -1216,7 +913,9 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             eq_(
                 sess.query(User)
                 .select_entity_from(sel)
-                .join("orders", "items", "keywords")
+                .join(User.orders)
+                .join(Order.items)
+                .join(Item.keywords)
                 .filter(Keyword.name.in_(["red", "big", "round"]))
                 .all(),
                 [User(name="jack", id=7)],
@@ -1226,7 +925,9 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             eq_(
                 sess.query(User)
                 .select_entity_from(sel)
-                .join("orders", "items", "keywords", aliased=True)
+                .join(User.orders, aliased=True)
+                .join(Order.items, aliased=True)
+                .join(Item.keywords, aliased=True)
                 .filter(Keyword.name.in_(["red", "big", "round"]))
                 .all(),
                 [User(name="jack", id=7)],
@@ -1258,7 +959,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             with self._expect_implicit_subquery():
                 eq_(
                     sess.query(User)
-                    .options(joinedload("addresses"))
+                    .options(joinedload(User.addresses))
                     .select_entity_from(sel)
                     .order_by(User.id)
                     .all(),
@@ -1282,7 +983,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             with self._expect_implicit_subquery():
                 eq_(
                     sess.query(User)
-                    .options(joinedload("addresses"))
+                    .options(joinedload(User.addresses))
                     .select_entity_from(sel)
                     .filter(User.id == 8)
                     .order_by(User.id)
@@ -1306,7 +1007,7 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             with self._expect_implicit_subquery():
                 eq_(
                     sess.query(User)
-                    .options(joinedload("addresses"))
+                    .options(joinedload(User.addresses))
                     .select_entity_from(sel)
                     .order_by(User.id)[1],
                     User(
@@ -1565,47 +1266,6 @@ class SelfReferentialEagerTest(fixtures.MappedTest):
             Column("data", String(30)),
         )
 
-    def test_eager_loading_with_deferred(self):
-        nodes = self.tables.nodes
-
-        class Node(fixtures.ComparableEntity):
-            def append(self, node):
-                self.children.append(node)
-
-        self.mapper_registry.map_imperatively(
-            Node,
-            nodes,
-            properties={
-                "children": relationship(
-                    Node, lazy="joined", join_depth=3, order_by=nodes.c.id
-                ),
-                "data": deferred(nodes.c.data),
-            },
-        )
-        sess = fixture_session()
-        n1 = Node(data="n1")
-        n1.append(Node(data="n11"))
-        n1.append(Node(data="n12"))
-        sess.add(n1)
-        sess.flush()
-        sess.expunge_all()
-
-        def go():
-            with assertions.expect_deprecated_20(
-                "Using strings to indicate column or relationship paths"
-            ):
-                eq_(
-                    Node(
-                        data="n1",
-                        children=[Node(data="n11"), Node(data="n12")],
-                    ),
-                    sess.query(Node)
-                    .options(undefer("data"), undefer("children.data"))
-                    .first(),
-                )
-
-        self.assert_sql_count(testing.db, go, 1)
-
 
 class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
     """test for [ticket:3963]"""
@@ -1645,38 +1305,6 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
                     b.cs
 
         self.assert_sql_count(testing.db, go, expected)
-
-    def test_string_options_aliased_whatever(self):
-        A, B, C = self.classes("A", "B", "C")
-        s = fixture_session()
-        aa = aliased(A)
-        q = (
-            s.query(aa, A)
-            .filter(aa.id == 1)
-            .filter(A.id == 2)
-            .filter(aa.id != A.id)
-            .options(joinedload("bs").joinedload("cs"))
-        )
-        with assertions.expect_deprecated_20(
-            "Using strings to indicate column or relationship paths"
-        ):
-            self._run_tests(q, 1)
-
-    def test_string_options_unaliased_whatever(self):
-        A, B, C = self.classes("A", "B", "C")
-        s = fixture_session()
-        aa = aliased(A)
-        q = (
-            s.query(A, aa)
-            .filter(aa.id == 2)
-            .filter(A.id == 1)
-            .filter(aa.id != A.id)
-            .options(joinedload("bs").joinedload("cs"))
-        )
-        with assertions.expect_deprecated_20(
-            "Using strings to indicate column or relationship paths"
-        ):
-            self._run_tests(q, 1)
 
 
 class DynamicTest(_DynamicFixture, _fixtures.FixtureTest):
@@ -1799,7 +1427,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
         with self._from_self_deprecated():
             q = (
                 sess.query(User, Address.email_address)
-                .join("addresses")
+                .join(User.addresses)
                 .distinct()
                 .from_self(User)
                 .order_by(desc(Address.email_address))
@@ -2399,7 +2027,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
                 .query(User)
                 .filter(User.id.in_([8, 9]))
                 .from_self()
-                .join("addresses")
+                .join(User.addresses)
                 .add_entity(Address)
                 .order_by(User.id, Address.id)
                 .all(),
@@ -2541,7 +2169,7 @@ class FromSelfTest(QueryTest, AssertsCompiledSQL):
                 .filter(User.id == Address.user_id)
                 .filter(Address.id.in_([2, 5]))
                 .from_self()
-                .options(joinedload("addresses"))
+                .options(joinedload(User.addresses))
                 .first(),
                 (
                     User(id=8, addresses=[Address(), Address(), Address()]),
@@ -3461,22 +3089,20 @@ class NonPrimaryRelationshipLoaderTest(_fixtures.FixtureTest):
 
         closed_mapper = User.closed_orders.entity
         open_mapper = User.open_orders.entity
-        with testing.expect_deprecated_20(wparent_strings_dep):
-            eq_(
-                [Order(id=1), Order(id=5)],
-                fixture_session()
-                .query(closed_mapper)
-                .with_parent(user, property="closed_orders")
-                .all(),
-            )
-        with testing.expect_deprecated_20(wparent_strings_dep):
-            eq_(
-                [Order(id=3)],
-                fixture_session()
-                .query(open_mapper)
-                .with_parent(user, property="open_orders")
-                .all(),
-            )
+        eq_(
+            [Order(id=1), Order(id=5)],
+            fixture_session()
+            .query(closed_mapper)
+            .filter(with_parent(user, User.closed_orders))
+            .all(),
+        )
+        eq_(
+            [Order(id=3)],
+            fixture_session()
+            .query(open_mapper)
+            .filter(with_parent(user, User.open_orders))
+            .all(),
+        )
 
 
 class ViewonlyFlagWarningTest(fixtures.MappedTest):
@@ -3766,7 +3392,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             ):
                 result = (
                     q.options(
-                        contains_alias("ulist"), contains_eager("addresses")
+                        contains_alias("ulist"), contains_eager(User.addresses)
                     )
                     .from_statement(query)
                     .all()
@@ -3797,7 +3423,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
                 r"Using the Query.instances\(\) method without a context"
             ):
                 result = list(
-                    q.options(contains_eager("addresses")).instances(
+                    q.options(contains_eager(User.addresses)).instances(
                         sess.execute(selectquery)
                     )
                 )
@@ -3845,7 +3471,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             ):
                 result = list(
                     q.options(
-                        contains_eager("addresses", alias=adalias)
+                        contains_eager(User.addresses, alias=adalias)
                     ).instances(sess.connection().execute(selectquery))
                 )
             assert self.static.user_address_result == result
@@ -3860,6 +3486,8 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             self.tables.order_items,
             self.classes.User,
         )
+
+        Order = self.classes.Order
 
         sess = fixture_session()
         q = sess.query(User)
@@ -3887,8 +3515,10 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             ):
                 result = list(
                     q.options(
-                        contains_eager("orders", alias=oalias),
-                        contains_eager("orders.items", alias=ialias),
+                        contains_eager(User.orders, alias=oalias),
+                        defaultload(User.orders).contains_eager(
+                            Order.items, alias=ialias
+                        ),
                     ).instances(sess.connection().execute(query))
                 )
             assert self.static.user_order_result == result
@@ -3927,38 +3557,6 @@ class TestDeprecation20(fixtures.TestBase):
 
 class DistinctOrderByImplicitTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = "default"
-
-    def test_columns_augmented_roundtrip_one(self):
-        User, Address = self.classes.User, self.classes.Address
-
-        sess = fixture_session()
-        with testing.expect_deprecated_20(join_strings_dep):
-            q = (
-                sess.query(User)
-                .join("addresses")
-                .distinct()
-                .order_by(desc(Address.email_address))
-            )
-        with testing.expect_deprecated(
-            "ORDER BY columns added implicitly due to "
-        ):
-            eq_([User(id=7), User(id=9), User(id=8)], q.all())
-
-    def test_columns_augmented_roundtrip_two(self):
-        User, Address = self.classes.User, self.classes.Address
-
-        sess = fixture_session()
-        with testing.expect_deprecated_20(join_strings_dep):
-            q = (
-                sess.query(User)
-                .join("addresses")
-                .distinct()
-                .order_by(desc(Address.email_address).label("foo"))
-            )
-        with testing.expect_deprecated(
-            "ORDER BY columns added implicitly due to "
-        ):
-            eq_([User(id=7), User(id=9), User(id=8)], q.all())
 
     def test_columns_augmented_roundtrip_three(self):
         User, Address = self.classes.User, self.classes.Address
@@ -4173,7 +3771,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
 
         with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
             q2 = (
-                q.join("addresses")
+                q.join(User.addresses)
                 .filter(User.name.like("%e%"))
                 .order_by(User.id, Address.id)
                 .values(User.name, Address.email_address)
@@ -4190,7 +3788,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
 
         with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
             q2 = (
-                q.join("addresses")
+                q.join(User.addresses)
                 .filter(User.name.like("%e%"))
                 .order_by(desc(Address.email_address))
                 .slice(1, 3)
@@ -4201,7 +3799,7 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
         adalias = aliased(Address)
         with testing.expect_deprecated(r"Query.values?\(\) is deprecated"):
             q2 = (
-                q.join(adalias, "addresses")
+                q.join(adalias, User.addresses)
                 .filter(User.name.like("%e%"))
                 .order_by(adalias.email_address)
                 .values(User.name, adalias.email_address)
@@ -4327,130 +3925,6 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
 class JoinTest(QueryTest, AssertsCompiledSQL):
     __dialect__ = "default"
 
-    @testing.combinations(
-        "string_relationship",
-        "string_relationship_only",
-    )
-    def test_filter_by_from_join(self, onclause_type):
-        User, Address = self.classes("User", "Address")
-        (address_table,) = self.tables("addresses")
-        (user_table,) = self.tables("users")
-
-        sess = fixture_session()
-        q = sess.query(User)
-
-        with assertions.expect_deprecated_20(join_strings_dep):
-            if onclause_type == "string_relationship":
-                q = q.join(Address, "addresses")
-            elif onclause_type == "string_relationship_only":
-                q = q.join("addresses")
-            else:
-                assert False
-
-        q2 = q.filter_by(email_address="foo")
-
-        self.assert_compile(
-            q2,
-            "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users JOIN addresses ON users.id = addresses.user_id "
-            "WHERE addresses.email_address = :email_address_1",
-        )
-
-        q2 = q.reset_joinpoint().filter_by(name="user")
-        self.assert_compile(
-            q2,
-            "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users JOIN addresses ON users.id = addresses.user_id "
-            "WHERE users.name = :name_1",
-        )
-
-    def test_implicit_joins_from_aliases(self):
-        Item, User, Order = (
-            self.classes.Item,
-            self.classes.User,
-            self.classes.Order,
-        )
-
-        sess = fixture_session()
-        OrderAlias = aliased(Order)
-
-        with testing.expect_deprecated_20(join_strings_dep):
-            eq_(
-                sess.query(OrderAlias)
-                .join("items")
-                .filter_by(description="item 3")
-                .order_by(OrderAlias.id)
-                .all(),
-                [
-                    Order(
-                        address_id=1,
-                        description="order 1",
-                        isopen=0,
-                        user_id=7,
-                        id=1,
-                    ),
-                    Order(
-                        address_id=4,
-                        description="order 2",
-                        isopen=0,
-                        user_id=9,
-                        id=2,
-                    ),
-                    Order(
-                        address_id=1,
-                        description="order 3",
-                        isopen=1,
-                        user_id=7,
-                        id=3,
-                    ),
-                ],
-            )
-
-        with testing.expect_deprecated_20(join_strings_dep, join_aliased_dep):
-            eq_(
-                sess.query(User, OrderAlias, Item.description)
-                .join(OrderAlias, "orders")
-                .join("items", from_joinpoint=True)
-                .filter_by(description="item 3")
-                .order_by(User.id, OrderAlias.id)
-                .all(),
-                [
-                    (
-                        User(name="jack", id=7),
-                        Order(
-                            address_id=1,
-                            description="order 1",
-                            isopen=0,
-                            user_id=7,
-                            id=1,
-                        ),
-                        "item 3",
-                    ),
-                    (
-                        User(name="jack", id=7),
-                        Order(
-                            address_id=1,
-                            description="order 3",
-                            isopen=1,
-                            user_id=7,
-                            id=3,
-                        ),
-                        "item 3",
-                    ),
-                    (
-                        User(name="fred", id=9),
-                        Order(
-                            address_id=4,
-                            description="order 2",
-                            isopen=0,
-                            user_id=9,
-                            id=2,
-                        ),
-                        "item 3",
-                    ),
-                ],
-            )
-
     def test_orderby_arg_bug(self):
         User, users, Order = (
             self.classes.User,
@@ -4463,105 +3937,12 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         with testing.expect_deprecated_20(join_aliased_dep):
             (
                 sess.query(User)
-                .join("orders", aliased=True)
+                .join(User.orders, aliased=True)
                 .order_by(Order.id)
                 .reset_joinpoint()
                 .order_by(users.c.id)
                 .all()
             )
-
-    def test_aliased(self):
-        """test automatic generation of aliased joins."""
-
-        Item, Order, User, Address = (
-            self.classes.Item,
-            self.classes.Order,
-            self.classes.User,
-            self.classes.Address,
-        )
-
-        sess = fixture_session()
-
-        # test a basic aliasized path
-        with testing.expect_deprecated(join_aliased_dep, join_strings_dep):
-            q = (
-                sess.query(User)
-                .join("addresses", aliased=True)
-                .filter_by(email_address="jack@bean.com")
-            )
-        assert [User(id=7)] == q.all()
-
-        with testing.expect_deprecated(join_aliased_dep, join_strings_dep):
-            q = (
-                sess.query(User)
-                .join("addresses", aliased=True)
-                .filter(Address.email_address == "jack@bean.com")
-            )
-        assert [User(id=7)] == q.all()
-
-        with testing.expect_deprecated(join_aliased_dep, join_strings_dep):
-            q = (
-                sess.query(User)
-                .join("addresses", aliased=True)
-                .filter(
-                    or_(
-                        Address.email_address == "jack@bean.com",
-                        Address.email_address == "fred@fred.com",
-                    )
-                )
-            )
-        assert [User(id=7), User(id=9)] == q.all()
-
-        # test two aliasized paths, one to 'orders' and the other to
-        # 'orders','items'. one row is returned because user 7 has order 3 and
-        # also has order 1 which has item 1
-        # this tests a o2m join and a m2m join.
-        with testing.expect_deprecated(
-            join_aliased_dep, join_strings_dep, join_chain_dep
-        ):
-            q = (
-                sess.query(User)
-                .join("orders", aliased=True)
-                .filter(Order.description == "order 3")
-                .join("orders", "items", aliased=True)
-                .filter(Item.description == "item 1")
-            )
-        assert q.count() == 1
-        assert [User(id=7)] == q.all()
-
-        with testing.expect_deprecated(join_strings_dep, join_chain_dep):
-            # test the control version - same joins but not aliased. rows are
-            # not returned because order 3 does not have item 1
-            q = (
-                sess.query(User)
-                .join("orders")
-                .filter(Order.description == "order 3")
-                .join("orders", "items")
-                .filter(Item.description == "item 1")
-            )
-        assert [] == q.all()
-        assert q.count() == 0
-
-        # the left half of the join condition of the any() is aliased.
-        with testing.expect_deprecated(join_aliased_dep, join_strings_dep):
-            q = (
-                sess.query(User)
-                .join("orders", aliased=True)
-                .filter(Order.items.any(Item.description == "item 4"))
-            )
-        assert [User(id=7)] == q.all()
-
-        # test that aliasing gets reset when join() is called
-        with testing.expect_deprecated(join_aliased_dep, join_strings_dep):
-            q = (
-                sess.query(User)
-                .join("orders", aliased=True)
-                .filter(Order.description == "order 3")
-                .join("orders", aliased=True)
-                .filter(Order.description == "order 5")
-            )
-        assert q.count() == 1
-        assert [User(id=7)] == q.all()
 
     def test_does_filter_aliasing_work(self):
         User, Address = self.classes("User", "Address")
@@ -4583,135 +3964,6 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "ON users.id = addresses_1.user_id "
             "WHERE addresses_1.email_address = :email_address_1",
         )
-
-    def test_overlapping_paths_two(self):
-        User = self.classes.User
-
-        sess = fixture_session()
-
-        # test overlapping paths.   User->orders is used by both joins, but
-        # rendered once.
-        with testing.expect_deprecated_20(join_strings_dep, join_chain_dep):
-            self.assert_compile(
-                sess.query(User)
-                .join("orders", "items")
-                .join("orders", "address"),
-                "SELECT users.id AS users_id, users.name AS users_name "
-                "FROM users "
-                "JOIN orders "
-                "ON users.id = orders.user_id "
-                "JOIN order_items AS order_items_1 "
-                "ON orders.id = order_items_1.order_id "
-                "JOIN items ON items.id = order_items_1.item_id JOIN "
-                "addresses "
-                "ON addresses.id = orders.address_id",
-            )
-
-    def test_overlapping_paths_three(self):
-        User = self.classes.User
-
-        for aliased_ in (True, False):
-            # load a user who has an order that contains item id 3 and address
-            # id 1 (order 3, owned by jack)
-
-            warnings = (join_strings_dep, join_chain_dep)
-            if aliased_:
-                warnings += (join_aliased_dep,)
-
-            with testing.expect_deprecated_20(*warnings):
-                result = (
-                    fixture_session()
-                    .query(User)
-                    .join("orders", "items", aliased=aliased_)
-                    .filter_by(id=3)
-                    .join("orders", "address", aliased=aliased_)
-                    .filter_by(id=1)
-                    .all()
-                )
-            assert [User(id=7, name="jack")] == result
-
-    def test_overlapping_paths_multilevel(self):
-        User = self.classes.User
-
-        s = fixture_session()
-
-        with testing.expect_deprecated_20(join_strings_dep, join_chain_dep):
-            q = (
-                s.query(User)
-                .join("orders")
-                .join("addresses")
-                .join("orders", "items")
-                .join("addresses", "dingaling")
-            )
-        self.assert_compile(
-            q,
-            "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users JOIN orders ON users.id = orders.user_id "
-            "JOIN addresses ON users.id = addresses.user_id "
-            "JOIN order_items AS order_items_1 ON orders.id = "
-            "order_items_1.order_id "
-            "JOIN items ON items.id = order_items_1.item_id "
-            "JOIN dingalings ON addresses.id = dingalings.address_id",
-        )
-
-    def test_from_joinpoint(self):
-        Item, User, Order = (
-            self.classes.Item,
-            self.classes.User,
-            self.classes.Order,
-        )
-
-        sess = fixture_session()
-
-        for oalias, ialias in [
-            (True, True),
-            (False, False),
-            (True, False),
-            (False, True),
-        ]:
-            with testing.expect_deprecated(join_aliased_dep, join_strings_dep):
-                eq_(
-                    sess.query(User)
-                    .join("orders", aliased=oalias)
-                    .join("items", from_joinpoint=True, aliased=ialias)
-                    .filter(Item.description == "item 4")
-                    .all(),
-                    [User(name="jack")],
-                )
-
-            # use middle criterion
-            with testing.expect_deprecated(join_aliased_dep, join_strings_dep):
-                eq_(
-                    sess.query(User)
-                    .join("orders", aliased=oalias)
-                    .filter(Order.user_id == 9)
-                    .join("items", from_joinpoint=True, aliased=ialias)
-                    .filter(Item.description == "item 4")
-                    .all(),
-                    [],
-                )
-
-        orderalias = aliased(Order)
-        itemalias = aliased(Item)
-        with testing.expect_deprecated(join_aliased_dep, join_strings_dep):
-            eq_(
-                sess.query(User)
-                .join(orderalias, "orders")
-                .join(itemalias, "items", from_joinpoint=True)
-                .filter(itemalias.description == "item 4")
-                .all(),
-                [User(name="jack")],
-            )
-        with testing.expect_deprecated(join_aliased_dep, join_strings_dep):
-            eq_(
-                sess.query(User)
-                .join(orderalias, "orders")
-                .join(itemalias, "items", from_joinpoint=True)
-                .filter(orderalias.user_id == 9)
-                .filter(itemalias.description == "item 4")
-                .all(),
-                [],
-            )
 
     def test_multi_tuple_form_legacy_one(self):
         """test the 'tuple' form of join, now superseded
@@ -4769,138 +4021,6 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             "order_items_1.order_id JOIN items ON items.id = "
             "order_items_1.item_id WHERE items.description = :description_1",
         )
-
-    def test_multi_tuple_form_legacy_three(self):
-        """test the 'tuple' form of join, now superseded
-        by the two-element join() form.
-
-
-        """
-
-        Order, User = (
-            self.classes.Order,
-            self.classes.User,
-        )
-
-        sess = fixture_session()
-
-        # the old "backwards" form
-        with testing.expect_deprecated_20(join_tuple_form, join_strings_dep):
-            q = (
-                sess.query(User)
-                .join(("orders", Order))
-                .filter_by(description="foo")
-            )
-        self.assert_compile(
-            q,
-            "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users JOIN orders ON users.id = orders.user_id "
-            "WHERE orders.description = :description_1",
-        )
-
-    def test_multi_tuple_form_legacy_three_point_five(self):
-        """test the 'tuple' form of join, now superseded
-        by the two-element join() form.
-
-
-        """
-
-        Order, User = (
-            self.classes.Order,
-            self.classes.User,
-        )
-
-        sess = fixture_session()
-
-        with testing.expect_deprecated_20(join_strings_dep):
-            q = (
-                sess.query(User)
-                .join(Order, "orders")
-                .filter_by(description="foo")
-            )
-        self.assert_compile(
-            q,
-            "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users JOIN orders ON users.id = orders.user_id "
-            "WHERE orders.description = :description_1",
-        )
-
-    def test_multi_tuple_form_legacy_four(self):
-        User, Order, Item, Keyword = self.classes(
-            "User", "Order", "Item", "Keyword"
-        )
-
-        sess = fixture_session()
-
-        # ensure when the tokens are broken up that from_joinpoint
-        # is set between them
-
-        expected = (
-            "SELECT users.id AS users_id, users.name AS users_name "
-            "FROM users JOIN orders ON users.id = orders.user_id "
-            "JOIN order_items AS order_items_1 ON orders.id = "
-            "order_items_1.order_id JOIN items ON items.id = "
-            "order_items_1.item_id JOIN item_keywords AS item_keywords_1 "
-            "ON items.id = item_keywords_1.item_id "
-            "JOIN keywords ON keywords.id = item_keywords_1.keyword_id"
-        )
-
-        with testing.expect_deprecated_20(join_tuple_form, join_strings_dep):
-            q = sess.query(User).join(
-                (Order, "orders"), (Item, "items"), (Keyword, "keywords")
-            )
-        self.assert_compile(q, expected)
-
-        with testing.expect_deprecated_20(join_strings_dep):
-            q = sess.query(User).join("orders", "items", "keywords")
-        self.assert_compile(q, expected)
-
-    def test_single_name(self):
-        User = self.classes.User
-
-        sess = fixture_session()
-
-        with testing.expect_deprecated_20(join_strings_dep):
-            self.assert_compile(
-                sess.query(User).join("orders"),
-                "SELECT users.id AS users_id, users.name AS users_name "
-                "FROM users JOIN orders ON users.id = orders.user_id",
-            )
-
-        with testing.expect_deprecated_20(join_strings_dep):
-            assert_raises(
-                sa_exc.InvalidRequestError,
-                sess.query(User).join("user")._compile_context,
-            )
-
-        with testing.expect_deprecated_20(join_strings_dep, join_chain_dep):
-            self.assert_compile(
-                sess.query(User).join("orders", "items"),
-                "SELECT users.id AS users_id, users.name AS users_name "
-                "FROM users "
-                "JOIN orders ON users.id = orders.user_id "
-                "JOIN order_items AS order_items_1 "
-                "ON orders.id = order_items_1.order_id JOIN items "
-                "ON items.id = order_items_1.item_id",
-            )
-
-        # test overlapping paths.   User->orders is used by both joins, but
-        # rendered once.
-        with testing.expect_deprecated_20(join_strings_dep, join_chain_dep):
-            self.assert_compile(
-                sess.query(User)
-                .join("orders", "items")
-                .join("orders", "address"),
-                "SELECT users.id AS users_id, users.name AS users_name "
-                "FROM users "
-                "JOIN orders "
-                "ON users.id = orders.user_id "
-                "JOIN order_items AS order_items_1 "
-                "ON orders.id = order_items_1.order_id "
-                "JOIN items ON items.id = order_items_1.item_id JOIN "
-                "addresses "
-                "ON addresses.id = orders.address_id",
-            )
 
     def test_single_prop_5(self):
         (
@@ -5088,99 +4208,6 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         # or: query.join(path_to_some_joined_table_mapper).join(target,
         # sql_expression)
 
-    def test_overlap_with_aliases(self):
-        orders, User, users = (
-            self.tables.orders,
-            self.classes.User,
-            self.tables.users,
-        )
-
-        oalias = orders.alias("oalias")
-
-        with testing.expect_deprecated_20(join_strings_dep, join_chain_dep):
-            result = (
-                fixture_session()
-                .query(User)
-                .select_from(users.join(oalias))
-                .filter(
-                    oalias.c.description.in_(["order 1", "order 2", "order 3"])
-                )
-                .join("orders", "items")
-                .order_by(User.id)
-                .all()
-            )
-        assert [User(id=7, name="jack"), User(id=9, name="fred")] == result
-
-        with testing.expect_deprecated_20(join_strings_dep, join_chain_dep):
-            result = (
-                fixture_session()
-                .query(User)
-                .select_from(users.join(oalias))
-                .filter(
-                    oalias.c.description.in_(["order 1", "order 2", "order 3"])
-                )
-                .join("orders", "items")
-                .filter_by(id=4)
-                .all()
-            )
-        assert [User(id=7, name="jack")] == result
-
-    def test_reset_joinpoint(self):
-        User = self.classes.User
-
-        for aliased_ in (True, False):
-            warnings = (
-                join_strings_dep,
-                join_chain_dep,
-            )
-            if aliased_:
-                warnings += (join_aliased_dep,)
-            # load a user who has an order that contains item id 3 and address
-            # id 1 (order 3, owned by jack)
-
-            with fixture_session() as sess:
-                with testing.expect_deprecated_20(*warnings):
-                    result = (
-                        sess.query(User)
-                        .join("orders", "items", aliased=aliased_)
-                        .filter_by(id=3)
-                        .reset_joinpoint()
-                        .join("orders", "address", aliased=aliased_)
-                        .filter_by(id=1)
-                        .all()
-                    )
-                assert [User(id=7, name="jack")] == result
-
-            with fixture_session() as sess:
-                with testing.expect_deprecated_20(*warnings):
-                    result = (
-                        sess.query(User)
-                        .join(
-                            "orders", "items", aliased=aliased_, isouter=True
-                        )
-                        .filter_by(id=3)
-                        .reset_joinpoint()
-                        .join(
-                            "orders", "address", aliased=aliased_, isouter=True
-                        )
-                        .filter_by(id=1)
-                        .all()
-                    )
-                assert [User(id=7, name="jack")] == result
-
-            with fixture_session() as sess:
-                with testing.expect_deprecated_20(*warnings):
-                    result = (
-                        sess.query(User)
-                        .outerjoin("orders", "items", aliased=aliased_)
-                        .filter_by(id=3)
-                        .reset_joinpoint()
-                        .outerjoin("orders", "address", aliased=aliased_)
-                        .filter_by(id=1)
-                        .all()
-                    )
-                assert [User(id=7, name="jack")] == result
-
 
 class AliasFromCorrectLeftTest(
     fixtures.DeclarativeMappedTest, AssertsCompiledSQL
@@ -5236,29 +4263,6 @@ class AliasFromCorrectLeftTest(
 
             obj_id = Column(Integer, ForeignKey("object.id"))
             obj = relationship("Object", backref="x_list")
-
-    def test_join_prop_to_string(self):
-        A, B, X = self.classes("A", "B", "X")
-
-        s = fixture_session()
-
-        with testing.expect_deprecated_20(join_strings_dep):
-            q = s.query(B).join(B.a_list, "x_list").filter(X.name == "x1")
-
-        with _aliased_join_warning():
-            self.assert_compile(
-                q,
-                "SELECT object.type AS object_type, b.id AS b_id, "
-                "object.id AS object_id, object.name AS object_name "
-                "FROM object JOIN b ON object.id = b.id "
-                "JOIN a_b_association AS a_b_association_1 "
-                "ON b.id = a_b_association_1.b_id "
-                "JOIN ("
-                "object AS object_1 "
-                "JOIN a AS a_1 ON object_1.id = a_1.id"
-                ") ON a_1.id = a_b_association_1.a_id "
-                "JOIN x ON object_1.id = x.obj_id WHERE x.name = :name_1",
-            )
 
     def test_join_prop_to_prop(self):
         A, B, X = self.classes("A", "B", "X")
@@ -5343,19 +4347,6 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         sess.flush()
         sess.close()
 
-    def test_join_1(self):
-        Node = self.classes.Node
-        sess = fixture_session()
-
-        with testing.expect_deprecated_20(join_strings_dep, join_aliased_dep):
-            node = (
-                sess.query(Node)
-                .join("children", aliased=True)
-                .filter_by(data="n122")
-                .first()
-            )
-        assert node.data == "n12"
-
     def test_join_2(self):
         Node = self.classes.Node
         sess = fixture_session()
@@ -5368,203 +4359,6 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
             )
         assert ret == [("n12",)]
 
-    def test_join_3_filter_by(self):
-        Node = self.classes.Node
-        sess = fixture_session()
-        with testing.expect_deprecated_20(
-            join_strings_dep, join_aliased_dep, join_chain_dep
-        ):
-            q = (
-                sess.query(Node)
-                .join("children", "children", aliased=True)
-                .filter_by(data="n122")
-            )
-        self.assert_compile(
-            q,
-            "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, "
-            "nodes.data AS nodes_data FROM nodes JOIN nodes AS nodes_1 "
-            "ON nodes.id = nodes_1.parent_id JOIN nodes AS nodes_2 "
-            "ON nodes_1.id = nodes_2.parent_id WHERE nodes_2.data = :data_1",
-            checkparams={"data_1": "n122"},
-        )
-        node = q.first()
-        eq_(node.data, "n1")
-
-    def test_join_3_filter(self):
-        Node = self.classes.Node
-        sess = fixture_session()
-        with testing.expect_deprecated_20(
-            join_strings_dep, join_aliased_dep, join_chain_dep
-        ):
-            q = (
-                sess.query(Node)
-                .join("children", "children", aliased=True)
-                .filter(Node.data == "n122")
-            )
-        self.assert_compile(
-            q,
-            "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, "
-            "nodes.data AS nodes_data FROM nodes JOIN nodes AS nodes_1 "
-            "ON nodes.id = nodes_1.parent_id JOIN nodes AS nodes_2 "
-            "ON nodes_1.id = nodes_2.parent_id WHERE nodes_2.data = :data_1",
-            checkparams={"data_1": "n122"},
-        )
-        node = q.first()
-        eq_(node.data, "n1")
-
-    def test_join_4_filter_by(self):
-        Node = self.classes.Node
-        sess = fixture_session()
-
-        with testing.expect_deprecated_20(join_strings_dep, join_aliased_dep):
-            q = (
-                sess.query(Node)
-                .filter_by(data="n122")
-                .join("parent", aliased=True)
-                .filter_by(data="n12")
-                .join("parent", aliased=True, from_joinpoint=True)
-                .filter_by(data="n1")
-            )
-
-        self.assert_compile(
-            q,
-            "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, "
-            "nodes.data AS nodes_data FROM nodes JOIN nodes AS nodes_1 "
-            "ON nodes_1.id = nodes.parent_id JOIN nodes AS nodes_2 "
-            "ON nodes_2.id = nodes_1.parent_id WHERE nodes.data = :data_1 "
-            "AND nodes_1.data = :data_2 AND nodes_2.data = :data_3",
-            checkparams={"data_1": "n122", "data_2": "n12", "data_3": "n1"},
-        )
-
-        node = q.first()
-        eq_(node.data, "n122")
-
-    def test_join_4_filter(self):
-        Node = self.classes.Node
-        sess = fixture_session()
-
-        with testing.expect_deprecated_20(join_strings_dep, join_aliased_dep):
-            q = (
-                sess.query(Node)
-                .filter(Node.data == "n122")
-                .join("parent", aliased=True)
-                .filter(Node.data == "n12")
-                .join("parent", aliased=True, from_joinpoint=True)
-                .filter(Node.data == "n1")
-            )
-
-        self.assert_compile(
-            q,
-            "SELECT nodes.id AS nodes_id, nodes.parent_id AS nodes_parent_id, "
-            "nodes.data AS nodes_data FROM nodes JOIN nodes AS nodes_1 "
-            "ON nodes_1.id = nodes.parent_id JOIN nodes AS nodes_2 "
-            "ON nodes_2.id = nodes_1.parent_id WHERE nodes.data = :data_1 "
-            "AND nodes_1.data = :data_2 AND nodes_2.data = :data_3",
-            checkparams={"data_1": "n122", "data_2": "n12", "data_3": "n1"},
-        )
-
-        node = q.first()
-        eq_(node.data, "n122")
-
-    def test_string_or_prop_aliased_one(self):
-        """test that join('foo') behaves the same as join(Cls.foo) in a self
-        referential scenario.
-
-        """
-
-        Node = self.classes.Node
-
-        sess = fixture_session()
-        nalias = aliased(
-            Node, sess.query(Node).filter_by(data="n1").subquery()
-        )
-
-        with testing.expect_deprecated_20(join_aliased_dep):
-            q1 = (
-                sess.query(nalias)
-                .join(nalias.children, aliased=True)
-                .join(Node.children, from_joinpoint=True)
-                .filter(Node.data == "n1")
-            )
-
-        with testing.expect_deprecated_20(join_aliased_dep, join_strings_dep):
-            q2 = (
-                sess.query(nalias)
-                .join(nalias.children, aliased=True)
-                .join("children", from_joinpoint=True)
-                .filter(Node.data == "n1")
-            )
-
-        for q in (q1, q2):
-            self.assert_compile(
-                q,
-                "SELECT anon_1.id AS anon_1_id, anon_1.parent_id AS "
-                "anon_1_parent_id, anon_1.data AS anon_1_data FROM "
-                "(SELECT nodes.id AS id, nodes.parent_id AS parent_id, "
-                "nodes.data AS data FROM nodes WHERE nodes.data = :data_1) "
-                "AS anon_1 JOIN nodes AS nodes_1 ON anon_1.id = "
-                "nodes_1.parent_id JOIN nodes "
-                "ON nodes_1.id = nodes.parent_id "
-                "WHERE nodes_1.data = :data_2",
-                use_default_dialect=True,
-                checkparams={"data_1": "n1", "data_2": "n1"},
-            )
-
-    def test_string_or_prop_aliased_two(self):
-        Node = self.classes.Node
-
-        sess = fixture_session()
-        nalias = aliased(
-            Node, sess.query(Node).filter_by(data="n1").subquery()
-        )
-
-        with testing.expect_deprecated_20(join_aliased_dep):
-            q1 = (
-                sess.query(Node)
-                .filter(Node.data == "n1")
-                .join(nalias.children, aliased=True)
-                .filter(nalias.data == "n2")
-                .join(Node.children, aliased=True, from_joinpoint=True)
-                .filter(Node.data == "n3")
-                .join(Node.children, from_joinpoint=True)
-                .filter(Node.data == "n4")
-            )
-
-        with testing.expect_deprecated_20(join_aliased_dep, join_strings_dep):
-            q2 = (
-                sess.query(Node)
-                .filter(Node.data == "n1")
-                .join(nalias.children, aliased=True)
-                .filter(nalias.data == "n2")
-                .join("children", aliased=True, from_joinpoint=True)
-                .filter(Node.data == "n3")
-                .join("children", from_joinpoint=True)
-                .filter(Node.data == "n4")
-            )
-
-        for q in (q1, q2):
-            self.assert_compile(
-                q,
-                "SELECT nodes.id AS nodes_id, nodes.parent_id "
-                "AS nodes_parent_id, nodes.data AS nodes_data "
-                "FROM (SELECT nodes.id AS id, nodes.parent_id AS parent_id, "
-                "nodes.data AS data FROM nodes WHERE nodes.data = :data_1) "
-                "AS anon_1 JOIN nodes AS nodes_1 "
-                "ON anon_1.id = nodes_1.parent_id JOIN nodes AS nodes_2 "
-                "ON nodes_1.id = nodes_2.parent_id JOIN nodes "
-                "ON nodes_2.id = nodes.parent_id WHERE nodes.data = :data_2 "
-                "AND anon_1.data = :data_3 AND nodes_2.data = :data_4 "
-                "AND nodes_2.data = :data_5",
-                use_default_dialect=True,
-                checkparams={
-                    "data_1": "n1",
-                    "data_2": "n1",
-                    "data_3": "n2",
-                    "data_4": "n3",
-                    "data_5": "n4",
-                },
-            )
-
 
 class InheritedJoinTest(
     fixtures.NoCache,
@@ -5574,74 +4368,6 @@ class InheritedJoinTest(
 ):
     run_setup_mappers = "once"
     __dialect__ = "default"
-
-    def test_load_only_alias_subclass(self):
-        Manager = self.classes.Manager
-
-        s = fixture_session()
-        m1 = aliased(Manager, flat=True)
-        q = (
-            s.query(m1)
-            .order_by(m1.person_id)
-            .options(load_only("status", "manager_name"))
-        )
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self.assert_compile(
-                q,
-                "SELECT managers_1.person_id AS managers_1_person_id, "
-                "people_1.person_id AS people_1_person_id, "
-                "people_1.type AS people_1_type, "
-                "managers_1.status AS managers_1_status, "
-                "managers_1.manager_name AS managers_1_manager_name "
-                "FROM people AS people_1 JOIN managers AS "
-                "managers_1 ON people_1.person_id = managers_1.person_id "
-                "ORDER BY managers_1.person_id",
-            )
-
-    def test_load_only_alias_subclass_bound(self):
-        Manager = self.classes.Manager
-
-        s = fixture_session()
-        m1 = aliased(Manager, flat=True)
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            q = (
-                s.query(m1)
-                .order_by(m1.person_id)
-                .options(Load(m1).load_only("status", "manager_name"))
-            )
-        self.assert_compile(
-            q,
-            "SELECT managers_1.person_id AS managers_1_person_id, "
-            "people_1.person_id AS people_1_person_id, "
-            "people_1.type AS people_1_type, "
-            "managers_1.status AS managers_1_status, "
-            "managers_1.manager_name AS managers_1_manager_name "
-            "FROM people AS people_1 JOIN managers AS "
-            "managers_1 ON people_1.person_id = managers_1.person_id "
-            "ORDER BY managers_1.person_id",
-        )
-
-    def test_load_only_of_type_with_polymorphic(self):
-        Company, Person, Manager = self.classes("Company", "Person", "Manager")
-        s = fixture_session()
-
-        wp = with_polymorphic(Person, [Manager], flat=True)
-
-        # needs to be explicit, we don't currently dig onto all the
-        # sub-entities in the wp
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            assert_raises_message(
-                sa.exc.ArgumentError,
-                r'Can\'t find property named "status" on '
-                r"with_polymorphic\(Person, \[Manager\]\) in this Query.",
-                s.query(Company)
-                .options(
-                    joinedload(Company.employees.of_type(wp)).load_only(
-                        "status"
-                    )
-                )
-                ._compile_context,
-            )
 
     def test_join_to_selectable(self):
         people, Company, engineers, Engineer = (
@@ -5708,71 +4434,6 @@ class InheritedJoinTest(
                 use_default_dialect=True,
             )
 
-    def test_prop_with_polymorphic_1(self):
-        Person, Manager, Paperwork = (
-            self.classes.Person,
-            self.classes.Manager,
-            self.classes.Paperwork,
-        )
-
-        sess = fixture_session()
-
-        with testing.expect_deprecated_20(join_strings_dep, w_polymorphic_dep):
-            self.assert_compile(
-                sess.query(Person)
-                .with_polymorphic(Manager)
-                .order_by(Person.person_id)
-                .join("paperwork")
-                .filter(Paperwork.description.like("%review%")),
-                "SELECT people.person_id AS people_person_id, "
-                "people.company_id AS"
-                " people_company_id, "
-                "people.name AS people_name, people.type AS people_type, "
-                "managers.person_id AS managers_person_id, "
-                "managers.status AS managers_status, managers.manager_name AS "
-                "managers_manager_name FROM people "
-                "LEFT OUTER JOIN managers "
-                "ON people.person_id = managers.person_id "
-                "JOIN paperwork "
-                "ON people.person_id = paperwork.person_id "
-                "WHERE paperwork.description LIKE :description_1 "
-                "ORDER BY people.person_id",
-                use_default_dialect=True,
-            )
-
-    def test_prop_with_polymorphic_2(self):
-        Person, Manager, Paperwork = (
-            self.classes.Person,
-            self.classes.Manager,
-            self.classes.Paperwork,
-        )
-
-        sess = fixture_session()
-
-        with testing.expect_deprecated_20(
-            join_strings_dep, w_polymorphic_dep, join_aliased_dep
-        ):
-            self.assert_compile(
-                sess.query(Person)
-                .with_polymorphic(Manager)
-                .order_by(Person.person_id)
-                .join("paperwork", aliased=True)
-                .filter(Paperwork.description.like("%review%")),
-                "SELECT people.person_id AS people_person_id, "
-                "people.company_id AS people_company_id, "
-                "people.name AS people_name, people.type AS people_type, "
-                "managers.person_id AS managers_person_id, "
-                "managers.status AS managers_status, "
-                "managers.manager_name AS managers_manager_name "
-                "FROM people LEFT OUTER JOIN managers "
-                "ON people.person_id = managers.person_id "
-                "JOIN paperwork AS paperwork_1 "
-                "ON people.person_id = paperwork_1.person_id "
-                "WHERE paperwork_1.description "
-                "LIKE :description_1 ORDER BY people.person_id",
-                use_default_dialect=True,
-            )
-
     def test_with_poly_loader_criteria_warning(self):
         Person, Manager = (
             self.classes.Person,
@@ -5803,7 +4464,7 @@ class InheritedJoinTest(
         with _aliased_join_deprecation():
             eq_(
                 sess.query(Company)
-                .join(people.join(engineers), "employees")
+                .join(people.join(engineers), Company.employees)
                 .filter(Engineer.primary_language == "java")
                 .all(),
                 [self.c1],
@@ -5828,7 +4489,7 @@ class InheritedJoinTest(
         with _aliased_join_deprecation():
             eq_(
                 sess.query(Company)
-                .join(people.join(engineers), "employees")
+                .join(people.join(engineers), Company.employees)
                 .filter(Engineer.primary_language == "java")
                 .all(),
                 [self.c1],
@@ -5843,7 +4504,7 @@ class InheritedJoinTest(
         with _aliased_join_deprecation():
             eq_(
                 sess.query(Company)
-                .join(people.join(engineers), "employees")
+                .join(people.join(engineers), Company.employees)
                 .join(Engineer.machines)
                 .all(),
                 [self.c1, self.c2],
@@ -5858,7 +4519,7 @@ class InheritedJoinTest(
         with _aliased_join_deprecation():
             eq_(
                 sess.query(Company)
-                .join(people.join(engineers), "employees")
+                .join(people.join(engineers), Company.employees)
                 .join(Engineer.machines)
                 .filter(Engineer.name == "dilbert")
                 .all(),
@@ -5876,7 +4537,7 @@ class InheritedJoinTest(
         with _aliased_join_deprecation():
             eq_(
                 sess.query(Company)
-                .join(people.join(engineers), "employees")
+                .join(people.join(engineers), Company.employees)
                 .join(Engineer.machines)
                 .filter(Machine.name.ilike("%thinkpad%"))
                 .all(),
@@ -5968,50 +4629,6 @@ class MultiplePathTest(fixtures.MappedTest, AssertsCompiledSQL):
             metadata,
             Column("t1id", Integer, ForeignKey("t1.id")),
             Column("t2id", Integer, ForeignKey("t2.id")),
-        )
-
-    def test_basic(self):
-        t2, t1t2_1, t1t2_2, t1 = (
-            self.tables.t2,
-            self.tables.t1t2_1,
-            self.tables.t1t2_2,
-            self.tables.t1,
-        )
-
-        class T1:
-            pass
-
-        class T2:
-            pass
-
-        self.mapper_registry.map_imperatively(
-            T1,
-            t1,
-            properties={
-                "t2s_1": relationship(T2, secondary=t1t2_1),
-                "t2s_2": relationship(T2, secondary=t1t2_2),
-            },
-        )
-        self.mapper_registry.map_imperatively(T2, t2)
-
-        with testing.expect_deprecated_20(join_strings_dep):
-            q = (
-                fixture_session()
-                .query(T1)
-                .join("t2s_1")
-                .filter(t2.c.id == 5)
-                .reset_joinpoint()
-                .join("t2s_2")
-            )
-        self.assert_compile(
-            q,
-            "SELECT t1.id AS t1_id, t1.data AS t1_data FROM t1 "
-            "JOIN t1t2_1 AS t1t2_1_1 "
-            "ON t1.id = t1t2_1_1.t1id JOIN t2 ON t2.id = t1t2_1_1.t2id "
-            "JOIN t1t2_2 AS t1t2_2_1 "
-            "ON t1.id = t1t2_2_1.t1id JOIN t2 ON t2.id = t1t2_2_1.t2id "
-            "WHERE t2.id = :id_1",
-            use_default_dialect=True,
         )
 
 
@@ -6274,27 +4891,6 @@ class RequirementsTest(fixtures.MappedTest):
 class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
     __dialect__ = "default"
 
-    def test_load_only_synonym(self):
-        orders, Order = self.tables.orders, self.classes.Order
-
-        self.mapper_registry.map_imperatively(
-            Order,
-            orders,
-            properties={"desc": synonym("description")},
-        )
-
-        opt = load_only("isopen", "desc")
-
-        sess = fixture_session()
-        q = sess.query(Order).options(opt)
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self.assert_compile(
-                q,
-                "SELECT orders.id AS orders_id, orders.description "
-                "AS orders_description, orders.isopen AS orders_isopen "
-                "FROM orders",
-            )
-
     def test_deep_options(self):
         users, items, order_items, Order, Item, User, orders = (
             self.tables.users,
@@ -6353,51 +4949,6 @@ class OptionsTest(PathTest, OptionsQueryTest):
             strategy_options._UnboundLoad.joinedload, arg, True, {}
         )
 
-    def test_chained(self):
-        User = self.classes.User
-        Order = self.classes.Order
-        sess = fixture_session()
-        q = sess.query(User)
-        opt = self._option_fixture(User.orders).joinedload("items")
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self._assert_path_result(
-                opt, q, [(User, "orders"), (User, "orders", Order, "items")]
-            )
-
-    def test_chained_plus_dotted(self):
-        User = self.classes.User
-        Order = self.classes.Order
-        Item = self.classes.Item
-        sess = fixture_session()
-        q = sess.query(User)
-        opt = self._option_fixture("orders.items").joinedload("keywords")
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self._assert_path_result(
-                opt,
-                q,
-                [
-                    (User, "orders"),
-                    (User, "orders", Order, "items"),
-                    (User, "orders", Order, "items", Item, "keywords"),
-                ],
-            )
-
-    def test_with_current_matching_string(self):
-        Item, User, Order = (
-            self.classes.Item,
-            self.classes.User,
-            self.classes.Order,
-        )
-
-        sess = fixture_session()
-        q = sess.query(Item)._with_current_path(
-            self._make_path_registry([User, "orders", Order, "items"])
-        )
-
-        opt = self._option_fixture("orders.items.keywords")
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self._assert_path_result(opt, q, [(Item, "keywords")])
-
     def test_with_current_nonmatching_string(self):
         Item, User, Order = (
             self.classes.Item,
@@ -6415,76 +4966,6 @@ class OptionsTest(PathTest, OptionsQueryTest):
 
         opt = self._option_fixture("items.keywords")
         self._assert_path_result(opt, q, [])
-
-    def test_path_multilevel_string(self):
-        Item, User, Order = (
-            self.classes.Item,
-            self.classes.User,
-            self.classes.Order,
-        )
-
-        sess = fixture_session()
-        q = sess.query(User)
-
-        opt = self._option_fixture("orders.items.keywords")
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self._assert_path_result(
-                opt,
-                q,
-                [
-                    (User, "orders"),
-                    (User, "orders", Order, "items"),
-                    (User, "orders", Order, "items", Item, "keywords"),
-                ],
-            )
-
-    def test_chained_plus_multi(self):
-        User = self.classes.User
-        Order = self.classes.Order
-        Item = self.classes.Item
-        sess = fixture_session()
-        q = sess.query(User)
-        opt = self._option_fixture(User.orders, Order.items).joinedload(
-            "keywords"
-        )
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self._assert_path_result(
-                opt,
-                q,
-                [
-                    (User, "orders"),
-                    (User, "orders", Order, "items"),
-                    (User, "orders", Order, "items", Item, "keywords"),
-                ],
-            )
-
-    def test_multi_entity_opt_on_string(self):
-        Item = self.classes.Item
-        Order = self.classes.Order
-        opt = self._option_fixture("items")
-        sess = fixture_session()
-        q = sess.query(Item, Order)
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self._assert_path_result(opt, q, [])
-
-    def test_get_path_one_level_string(self):
-        User = self.classes.User
-
-        sess = fixture_session()
-        q = sess.query(User)
-
-        opt = self._option_fixture("addresses")
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self._assert_path_result(opt, q, [(User, "addresses")])
-
-    def test_get_path_one_level_with_unrelated(self):
-        Order = self.classes.Order
-
-        sess = fixture_session()
-        q = sess.query(Order)
-        opt = self._option_fixture("addresses")
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self._assert_path_result(opt, q, [])
 
 
 class SubOptionsTest(PathTest, OptionsQueryTest):
@@ -6539,70 +5020,6 @@ class SubOptionsTest(PathTest, OptionsQueryTest):
             {path: strat_as_tuple(load) for path, load in attr_b.items()},
         )
 
-    def test_invalid_two(self):
-        User, Address, Order, Item, SubItem = self.classes(
-            "User", "Address", "Order", "Item", "SubItem"
-        )
-
-        # these options are "invalid", in that User.orders -> Item.keywords
-        # is not a path.  However, the "normal" option is not generating
-        # an error for now, which is bad, but we're testing here only that
-        # it works the same way, so there you go.   If and when we make this
-        # case raise, then both cases should raise in the same way.
-        sub_opt = joinedload("orders").options(
-            joinedload("keywords"), joinedload("items")
-        )
-        non_sub_opts = [
-            joinedload(User.orders).joinedload(Item.keywords),
-            defaultload(User.orders).joinedload(Order.items),
-        ]
-        sess = fixture_session()
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
-
-    def test_four_strings(self):
-        User, Address, Order, Item, SubItem, Keyword = self.classes(
-            "User", "Address", "Order", "Item", "SubItem", "Keyword"
-        )
-        sub_opt = joinedload("orders").options(
-            defer("description"),
-            joinedload("items").options(
-                joinedload("keywords").options(defer("name")),
-                defer("description"),
-            ),
-        )
-        non_sub_opts = [
-            joinedload(User.orders),
-            defaultload(User.orders).defer(Order.description),
-            defaultload(User.orders).joinedload(Order.items),
-            defaultload(User.orders)
-            .defaultload(Order.items)
-            .joinedload(Item.keywords),
-            defaultload(User.orders)
-            .defaultload(Order.items)
-            .defer(Item.description),
-            defaultload(User.orders)
-            .defaultload(Order.items)
-            .defaultload(Item.keywords)
-            .defer(Keyword.name),
-        ]
-        sess = fixture_session()
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
-
-    def test_five_strings(self):
-        User, Address, Order, Item, SubItem, Keyword = self.classes(
-            "User", "Address", "Order", "Item", "SubItem", "Keyword"
-        )
-        sub_opt = joinedload("orders").options(load_only("description"))
-        non_sub_opts = [
-            joinedload(User.orders),
-            defaultload(User.orders).load_only(Order.description),
-        ]
-        sess = fixture_session()
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
-
 
 class OptionsNoPropTest(_fixtures.FixtureTest):
     """test the error messages emitted when using property
@@ -6625,36 +5042,6 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         self._assert_eager_with_just_column_exception(
             Item.id, "keywords", message
         )
-
-    def test_option_against_nonexistent_basestring(self):
-        Item = self.classes.Item
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self._assert_eager_with_entity_exception(
-                [Item],
-                (joinedload("foo"),),
-                'Can\'t find property named "foo" on mapped class '
-                "Item->items in this Query.",
-            )
-
-    def test_option_against_nonexistent_twolevel_basestring(self):
-        Item = self.classes.Item
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self._assert_eager_with_entity_exception(
-                [Item],
-                (joinedload("keywords.foo"),),
-                'Can\'t find property named "foo" on mapped class '
-                "Keyword->keywords in this Query.",
-            )
-
-    def test_option_against_nonexistent_twolevel_chained(self):
-        Item = self.classes.Item
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self._assert_eager_with_entity_exception(
-                [Item],
-                (joinedload("keywords").joinedload("foo"),),
-                'Can\'t find property named "foo" on mapped class '
-                "Keyword->keywords in this Query.",
-            )
 
     @testing.fails_if(
         lambda: True,
@@ -6684,54 +5071,6 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
             "does not refer to a mapped entity",
         )
 
-    def test_option_against_wrong_entity_type_basestring(self):
-        Item = self.classes.Item
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self._assert_loader_strategy_exception(
-                [Item],
-                (joinedload("id").joinedload("keywords"),),
-                'Can\'t apply "joined loader" strategy to property "Item.id", '
-                'which is a "column property"; this loader strategy is '
-                'intended to be used with a "relationship property".',
-            )
-
-    def test_col_option_against_relationship_basestring(self):
-        Item = self.classes.Item
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self._assert_loader_strategy_exception(
-                [Item],
-                (load_only("keywords"),),
-                'Can\'t apply "column loader" strategy to property '
-                '"Item.keywords", which is a "relationship property"; this '
-                "loader strategy is intended to be used with a "
-                '"column property".',
-            )
-
-    def test_option_against_multi_non_relation_twolevel_basestring(self):
-        Item = self.classes.Item
-        Keyword = self.classes.Keyword
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self._assert_loader_strategy_exception(
-                [Keyword, Item],
-                (joinedload("id").joinedload("keywords"),),
-                'Can\'t apply "joined loader" strategy to property '
-                '"Keyword.id", '
-                'which is a "column property"; this loader strategy is '
-                "intended "
-                'to be used with a "relationship property".',
-            )
-
-    def test_option_against_multi_nonexistent_basestring(self):
-        Item = self.classes.Item
-        Keyword = self.classes.Keyword
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self._assert_eager_with_entity_exception(
-                [Keyword, Item],
-                (joinedload("description"),),
-                'Can\'t find property named "description" on mapped class '
-                "Keyword->keywords in this Query.",
-            )
-
     def test_option_against_multi_no_entities_basestring(self):
         Item = self.classes.Item
         Keyword = self.classes.Keyword
@@ -6741,24 +5080,6 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
             r"Query has only expression-based entities - can't find property "
             'named "keywords".',
         )
-
-    def test_option_with_mapper_then_column_basestring(self):
-        Item = self.classes.Item
-
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self._assert_option([Item, Item.id], "keywords")
-
-    def test_option_with_mapper_basestring(self):
-        Item = self.classes.Item
-
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self._assert_option([Item], "keywords")
-
-    def test_option_with_column_then_mapper_basestring(self):
-        Item = self.classes.Item
-
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self._assert_option([Item.id, Item], "keywords")
 
     @classmethod
     def setup_mappers(cls):
@@ -6858,226 +5179,6 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         )
 
 
-class OptionsNoPropTestInh(_Polymorphic):
-    def test_missing_str_attr_of_type_subclass(self):
-        s = fixture_session()
-
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            assert_raises_message(
-                sa.exc.ArgumentError,
-                r'Can\'t find property named "manager_name" on '
-                r"mapped class Engineer->engineers in this Query.$",
-                s.query(Company)
-                .options(
-                    joinedload(Company.employees.of_type(Engineer)).load_only(
-                        "manager_name"
-                    )
-                )
-                ._compile_state,
-            )
-
-
-class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
-    """In these tests we've moved / adapted all the tests from
-    test_cache_key that make use of string options or string join().  Because
-    we are ensuring cache keys are distinct we still keep a lot of the
-    non-deprecated cases in the lists that we are testing.
-
-    """
-
-    run_setup_mappers = "once"
-    run_inserts = None
-    run_deletes = None
-
-    @classmethod
-    def setup_mappers(cls):
-        cls._setup_stock_mapping()
-
-    def _stmt_20(self, *elements):
-        return tuple(
-            elem._statement_20() if isinstance(elem, sa.orm.Query) else elem
-            for elem in elements
-        )
-
-    def _deprecated_opt(self, fn):
-        with assertions.expect_deprecated_20(
-            opt_strings_dep, raise_on_any_unexpected=True
-        ):
-            return fn()
-
-    def _deprecated_join(self, fn):
-        with assertions.expect_deprecated_20(
-            join_strings_dep, raise_on_any_unexpected=True
-        ):
-            return fn()
-
-    def _deprecated_join_w_aliased(self, fn):
-        with assertions.expect_deprecated_20(
-            join_strings_dep, join_aliased_dep, raise_on_any_unexpected=True
-        ):
-            return fn()
-
-    def test_bound_options(self):
-        User, Address, Keyword, Order, Item = self.classes(
-            "User", "Address", "Keyword", "Order", "Item"
-        )
-
-        self._run_cache_key_fixture(
-            lambda: (
-                Load(User).joinedload(User.addresses),
-                Load(User).joinedload(
-                    User.addresses.of_type(aliased(Address))
-                ),
-                Load(User).joinedload(User.orders),
-                self._deprecated_opt(
-                    lambda: Load(User).subqueryload("addresses")
-                ),
-                self._deprecated_opt(lambda: Load(Address).defer("id")),
-                Load(Address).defer("*"),
-                self._deprecated_opt(
-                    lambda: Load(aliased(Address)).defer("id")
-                ),
-                Load(User).joinedload(User.addresses).defer(Address.id),
-                Load(User).joinedload(User.orders).joinedload(Order.items),
-                Load(User).joinedload(User.orders).subqueryload(Order.items),
-                Load(User).subqueryload(User.orders).subqueryload(Order.items),
-                Load(Address).raiseload("*"),
-                self._deprecated_opt(lambda: Load(Address).raiseload("user")),
-            ),
-            compare_values=True,
-        )
-
-    def test_bound_options_equiv_on_strname(self):
-        """Bound loader options resolve on string name so test that the cache
-        key for the string version matches the resolved version.
-
-        """
-        User, Address, Keyword, Order, Item = self.classes(
-            "User", "Address", "Keyword", "Order", "Item"
-        )
-
-        for left, right in [
-            (
-                Load(User).defer(User.id),
-                self._deprecated_opt(lambda: Load(User).defer("id")),
-            ),
-            (
-                Load(User).joinedload(User.addresses),
-                self._deprecated_opt(
-                    lambda: Load(User).joinedload("addresses")
-                ),
-            ),
-            (
-                Load(User).joinedload(User.orders).joinedload(Order.items),
-                self._deprecated_opt(
-                    lambda: Load(User).joinedload("orders").joinedload("items")
-                ),
-            ),
-        ]:
-            eq_(left._generate_cache_key(), right._generate_cache_key())
-
-    def test_orm_query_w_orm_joins(self):
-
-        User, Address, Keyword, Order, Item = self.classes(
-            "User", "Address", "Keyword", "Order", "Item"
-        )
-
-        a1 = aliased(Address)
-
-        self._run_cache_key_fixture(
-            lambda: self._stmt_20(
-                fixture_session().query(User).join(User.addresses),
-                fixture_session().query(User).join(User.orders),
-                fixture_session()
-                .query(User)
-                .join(User.addresses)
-                .join(User.orders),
-                self._deprecated_join_w_aliased(
-                    lambda: fixture_session()
-                    .query(User)
-                    .join("addresses")
-                    .join("dingalings", from_joinpoint=True)
-                ),
-                self._deprecated_join(
-                    lambda: fixture_session().query(User).join("addresses")
-                ),
-                self._deprecated_join(
-                    lambda: fixture_session().query(User).join("orders")
-                ),
-                self._deprecated_join(
-                    lambda: fixture_session()
-                    .query(User)
-                    .join("addresses")
-                    .join("orders")
-                ),
-                fixture_session().query(User).join(Address, User.addresses),
-                self._deprecated_join(
-                    lambda: fixture_session().query(User).join(a1, "addresses")
-                ),
-                self._deprecated_join_w_aliased(
-                    lambda: fixture_session()
-                    .query(User)
-                    .join(a1, "addresses", aliased=True)
-                ),
-                fixture_session().query(User).join(User.addresses.of_type(a1)),
-            ),
-            compare_values=True,
-        )
-
-    def test_unbound_options(self):
-        User, Address, Keyword, Order, Item = self.classes(
-            "User", "Address", "Keyword", "Order", "Item"
-        )
-
-        # unbound options dont emit a deprecation warning during cache
-        # key generation
-        self._run_cache_key_fixture(
-            lambda: (
-                joinedload(User.addresses),
-                joinedload(User.addresses.of_type(aliased(Address))),
-                joinedload("addresses"),
-                joinedload(User.orders),
-                joinedload(User.orders.and_(Order.id != 5)),
-                joinedload(User.orders).selectinload("items"),
-                joinedload(User.orders).selectinload(Order.items),
-                defer(User.id),
-                defer("id"),
-                defer("*"),
-                defer(Address.id),
-                joinedload(User.addresses).defer(Address.id),
-                joinedload(User.addresses).defer("id"),
-                subqueryload(User.orders)
-                .subqueryload(Order.items)
-                .defer(Item.description),
-                defaultload(User.orders).defaultload(Order.items),
-                defaultload(User.orders),
-            ),
-            compare_values=True,
-        )
-
-    def test_unbound_sub_options(self):
-        """test #6869"""
-
-        User, Address, Keyword, Order, Item = self.classes(
-            "User", "Address", "Keyword", "Order", "Item"
-        )
-
-        self._run_cache_key_fixture(
-            lambda: (
-                joinedload(User.addresses).options(
-                    joinedload(Address.dingaling)
-                ),
-                joinedload(User.addresses).options(
-                    joinedload(Address.dingaling).options(load_only("name"))
-                ),
-                joinedload(User.orders).options(
-                    joinedload(Order.items).options(joinedload(Item.keywords))
-                ),
-            ),
-            compare_values=True,
-        )
-
-
 class PolyCacheKeyTest(CacheKeyFixture, _poly_fixtures._Polymorphic):
     run_setup_mappers = "once"
     run_inserts = None
@@ -7159,30 +5260,6 @@ class PolyCacheKeyTest(CacheKeyFixture, _poly_fixtures._Polymorphic):
             ),
             compare_values=True,
         )
-
-
-class AliasedClassRelationshipTest(
-    PartitionByFixture, testing.AssertsCompiledSQL
-):
-    __requires__ = ("window_functions",)
-    __dialect__ = "default"
-
-    def test_selectinload_w_joinedload_after(self):
-        """test has been enhanced to also test #7224"""
-
-        A, B, C = self.classes("A", "B", "C")
-
-        s = Session(testing.db)
-
-        opt = selectinload(A.partitioned_bs).joinedload("cs")
-
-        def go():
-            for a1 in s.query(A).options(opt):
-                for b in a1.partitioned_bs:
-                    eq_(len(b.cs), 2)
-
-        with assertions.expect_deprecated_20(opt_strings_dep):
-            self.assert_sql_count(testing.db, go, 2)
 
 
 class ColumnAccessTest(QueryTest, AssertsCompiledSQL):
@@ -7317,7 +5394,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             eq_(
                 sess.query(User)
                 .select_entity_from(sel.subquery())
-                .join("addresses")
+                .join(User.addresses)
                 .add_entity(Address)
                 .order_by(User.id)
                 .order_by(Address.id)
@@ -7351,7 +5428,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             eq_(
                 sess.query(User)
                 .select_entity_from(sel.subquery())
-                .join(adalias, "addresses")
+                .join(adalias, User.addresses)
                 .add_entity(adalias)
                 .order_by(User.id)
                 .order_by(adalias.id)
@@ -7504,9 +5581,9 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
                     sess.query(User)
                     .select_entity_from(sel.subquery())
                     .options(
-                        joinedload("orders")
-                        .joinedload("items")
-                        .joinedload("keywords")
+                        joinedload(User.orders)
+                        .joinedload(Order.items)
+                        .joinedload(Item.keywords)
                     )
                     .join(User.orders, Order.items, Item.keywords)
                     .filter(Keyword.name.in_(["red", "big", "round"]))
@@ -7621,7 +5698,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             with assertions.expect_deprecated_20(sef_dep):
                 eq_(
                     sess.query(User)
-                    .options(joinedload("addresses"))
+                    .options(joinedload(User.addresses))
                     .select_entity_from(sel.subquery())
                     .order_by(User.id)
                     .all(),
@@ -7645,7 +5722,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             with assertions.expect_deprecated_20(sef_dep):
                 eq_(
                     sess.query(User)
-                    .options(joinedload("addresses"))
+                    .options(joinedload(User.addresses))
                     .select_entity_from(sel.subquery())
                     .filter(User.id == 8)
                     .order_by(User.id)
@@ -7669,7 +5746,7 @@ class SelectFromTest(QueryTest, AssertsCompiledSQL):
             with assertions.expect_deprecated_20(sef_dep):
                 eq_(
                     sess.query(User)
-                    .options(joinedload("addresses"))
+                    .options(joinedload(User.addresses))
                     .select_entity_from(sel.subquery())
                     .order_by(User.id)[1],
                     User(

@@ -2186,25 +2186,6 @@ class Query(
         in the 1.4 series for the following features:
 
 
-        * Joining on relationship names rather than attributes::
-
-            session.query(User).join("addresses")
-
-          **Why it's legacy**: the string name does not provide enough context
-          for :meth:`_query.Query.join` to always know what is desired,
-          notably in that there is no indication of what the left side
-          of the join should be.  This gives rise to flags like
-          ``from_joinpoint`` as well as the ability to place several
-          join clauses in a single :meth:`_query.Query.join` call
-          which don't solve the problem fully while also
-          adding new calling styles that are unnecessary and expensive to
-          accommodate internally.
-
-          **Modern calling pattern**:  Use the actual relationship,
-          e.g. ``User.addresses`` in the above case::
-
-              session.query(User).join(User.addresses)
-
         * Automatic aliasing with the ``aliased=True`` flag::
 
             session.query(Node).join(Node.children, aliased=True).\
@@ -2337,7 +2318,6 @@ class Query(
                 onclause,
                 (
                     elements.ColumnElement,
-                    str,
                     interfaces.PropComparator,
                     types.FunctionType,
                 ),
@@ -2361,7 +2341,7 @@ class Query(
 
                     # this checks for an extremely ancient calling form of
                     # reversed tuples.
-                    if isinstance(prop[0], (str, interfaces.PropComparator)):
+                    if isinstance(prop[0], interfaces.PropComparator):
                         prop = (prop[1], prop[0])
 
                     _props.append(prop)
@@ -2400,11 +2380,7 @@ class Query(
                     legacy=True,
                     apply_propagate_attrs=self,
                 ),
-                (
-                    coercions.expect(roles.OnClauseRole, prop[1], legacy=True)
-                    #                    if not isinstance(prop[1], str)
-                    #                    else prop[1]
-                )
+                (coercions.expect(roles.OnClauseRole, prop[1], legacy=True))
                 if len(prop) == 2
                 else None,
                 None,
