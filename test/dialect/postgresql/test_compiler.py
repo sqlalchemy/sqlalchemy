@@ -779,7 +779,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         m = MetaData()
         tbl = Table("testtbl", m, Column("x", Integer), Column("y", Integer))
 
-        idx1 = Index("test_idx1", 5 / (tbl.c.x + tbl.c.y))
+        idx1 = Index("test_idx1", 5 // (tbl.c.x + tbl.c.y))
         self.assert_compile(
             schema.CreateIndex(idx1),
             "CREATE INDEX test_idx1 ON testtbl ((5 / (x + y)))",

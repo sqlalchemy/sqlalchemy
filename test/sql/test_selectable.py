@@ -660,8 +660,8 @@ class SelectableTest(
         assert isinstance(subq2.c.foo.type, MyType)
 
     def test_type_coerce_selfgroup(self):
-        no_group = column("a") / type_coerce(column("x"), Integer)
-        group = column("b") / type_coerce(column("y") * column("w"), Integer)
+        no_group = column("a") // type_coerce(column("x"), Integer)
+        group = column("b") // type_coerce(column("y") * column("w"), Integer)
 
         self.assert_compile(no_group, "a / x")
         self.assert_compile(group, "b / (y * w)")

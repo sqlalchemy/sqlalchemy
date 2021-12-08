@@ -17,6 +17,7 @@ from sqlalchemy import FLOAT
 from sqlalchemy import Float
 from sqlalchemy import Integer
 from sqlalchemy import LargeBinary
+from sqlalchemy import literal
 from sqlalchemy import MetaData
 from sqlalchemy import NCHAR
 from sqlalchemy import Numeric
@@ -254,6 +255,12 @@ class TypesTest(fixtures.TestBase):
             x = conn.execute(t1.select()).scalar()
             assert x == 5
             assert isinstance(x, int)
+
+    def test_integer_truediv(self, connection):
+        """test #4926"""
+
+        stmt = select(literal(1, Integer) / literal(2, Integer))
+        eq_(connection.scalar(stmt), decimal.Decimal("0.5"))
 
     def test_rowid(self, metadata, connection):
         t = Table("t1", metadata, Column("x", Integer))

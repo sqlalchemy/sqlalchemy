@@ -26,6 +26,7 @@ from ... import Float
 from ... import Integer
 from ... import JSON
 from ... import literal
+from ... import literal_column
 from ... import MetaData
 from ... import null
 from ... import Numeric
@@ -503,6 +504,90 @@ class CastTypeDecoratorTest(_LiteralRoundTripFixture, fixtures.TestBase):
             row[0] for row in connection.execute(t.select().where(t.c.x == 2))
         }
         eq_(result, {2})
+
+
+class TrueDivTest(fixtures.TestBase):
+    @testing.combinations(
+        ("15", "10", 1.5),
+        ("-15", "10", -1.5),
+        argnames="left, right, expected",
+    )
+    def test_truediv_integer(self, connection, left, right, expected):
+        """test #4926"""
+
+        eq_(
+            connection.scalar(
+                select(
+                    literal_column(left, type_=Integer())
+                    / literal_column(right, type_=Integer())
+                )
+            ),
+            expected,
+        )
+
+    @testing.combinations(
+        ("15", "10", 1), ("-15", "5", -3), argnames="left, right, expected"
+    )
+    def test_floordiv_integer(self, connection, left, right, expected):
+        """test #4926"""
+
+        eq_(
+            connection.scalar(
+                select(
+                    literal_column(left, type_=Integer())
+                    // literal_column(right, type_=Integer())
+                )
+            ),
+            expected,
+        )
+
+    @testing.combinations(
+        ("5.52", "2.4", "2.3"), argnames="left, right, expected"
+    )
+    def test_truediv_numeric(self, connection, left, right, expected):
+        """test #4926"""
+
+        eq_(
+            connection.scalar(
+                select(
+                    literal_column(left, type_=Numeric())
+                    / literal_column(right, type_=Numeric())
+                )
+            ),
+            decimal.Decimal(expected),
+        )
+
+    @testing.combinations(
+        ("5.52", "2.4", "2.0"), argnames="left, right, expected"
+    )
+    def test_floordiv_numeric(self, connection, left, right, expected):
+        """test #4926"""
+
+        eq_(
+            connection.scalar(
+                select(
+                    literal_column(left, type_=Numeric())
+                    // literal_column(right, type_=Numeric())
+                )
+            ),
+            decimal.Decimal(expected),
+        )
+
+    def test_truediv_integer_bound(self, connection):
+        """test #4926"""
+
+        eq_(
+            connection.scalar(select(literal(15) / literal(10))),
+            1.5,
+        )
+
+    def test_floordiv_integer_bound(self, connection):
+        """test #4926"""
+
+        eq_(
+            connection.scalar(select(literal(15) // literal(10))),
+            1,
+        )
 
 
 class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
@@ -1439,6 +1524,7 @@ __all__ = (
     "TimeMicrosecondsTest",
     "TimestampMicrosecondsTest",
     "TimeTest",
+    "TrueDivTest",
     "DateTimeMicrosecondsTest",
     "DateHistoricTest",
     "StringTest",

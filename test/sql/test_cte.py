@@ -55,7 +55,7 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             .where(
                 regional_sales.c.total_sales
                 > select(
-                    func.sum(regional_sales.c.total_sales) / 10
+                    func.sum(regional_sales.c.total_sales) // 10
                 ).scalar_subquery()
             )
             .cte("top_regions")

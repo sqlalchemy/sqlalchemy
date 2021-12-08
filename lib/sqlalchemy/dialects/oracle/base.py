@@ -1441,6 +1441,8 @@ class OracleDialect(default.DefaultDialect):
 
     implicit_returning = True
 
+    div_is_floordiv = False
+
     supports_simple_order_by_label = False
     cte_follows_insert = True
 

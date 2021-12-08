@@ -310,8 +310,6 @@ class Integer(_LookupExpressionAdapter, TypeEngine):
 
     @util.memoized_property
     def _expression_adaptations(self):
-        # TODO: need a dictionary object that will
-        # handle operators generically here, this is incomplete
         return {
             operators.add: {
                 Date: Date,
@@ -323,7 +321,8 @@ class Integer(_LookupExpressionAdapter, TypeEngine):
                 Integer: self.__class__,
                 Numeric: Numeric,
             },
-            operators.truediv: {Integer: self.__class__, Numeric: Numeric},
+            operators.truediv: {Integer: Numeric, Numeric: Numeric},
+            operators.floordiv: {Integer: self.__class__, Numeric: Numeric},
             operators.sub: {Integer: self.__class__, Numeric: Numeric},
         }
 

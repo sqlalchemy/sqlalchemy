@@ -310,6 +310,7 @@ operator_lookup = {
     "div": (_binary_operate,),
     "mod": (_binary_operate,),
     "truediv": (_binary_operate,),
+    "floordiv": (_binary_operate,),
     "custom_op": (_custom_op_operate,),
     "json_path_getitem_op": (_binary_operate,),
     "json_getitem_op": (_binary_operate,),

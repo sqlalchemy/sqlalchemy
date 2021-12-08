@@ -1621,66 +1621,87 @@ class OperatorAssociativityTest(fixtures.TestBase, testing.AssertsCompiledSQL):
     def test_associativity_7(self):
         f = column("f")
         # because - less precedent than /
-        self.assert_compile(f / (f - f), "f / (f - f)")
+        self.assert_compile(f / (f - f), "f / CAST((f - f) AS NUMERIC)")
 
     def test_associativity_8(self):
         f = column("f")
-        self.assert_compile(f / (f - f).label("foo"), "f / (f - f)")
+        self.assert_compile(
+            f / (f - f).label("foo"), "f / CAST((f - f) AS NUMERIC)"
+        )
 
     def test_associativity_9(self):
         f = column("f")
-        self.assert_compile(f / f - f, "f / f - f")
+        self.assert_compile(f / f - f, "f / CAST(f AS NUMERIC) - f")
 
     def test_associativity_10(self):
         f = column("f")
-        self.assert_compile((f / f) - f, "f / f - f")
+        self.assert_compile((f / f) - f, "f / CAST(f AS NUMERIC) - f")
 
     def test_associativity_11(self):
         f = column("f")
-        self.assert_compile((f / f).label("foo") - f, "f / f - f")
+        self.assert_compile(
+            (f / f).label("foo") - f, "f / CAST(f AS NUMERIC) - f"
+        )
 
     def test_associativity_12(self):
         f = column("f")
         # because / more precedent than -
-        self.assert_compile(f - (f / f), "f - f / f")
+        self.assert_compile(f - (f / f), "f - f / CAST(f AS NUMERIC)")
 
     def test_associativity_13(self):
         f = column("f")
-        self.assert_compile(f - (f / f).label("foo"), "f - f / f")
+        self.assert_compile(
+            f - (f / f).label("foo"), "f - f / CAST(f AS NUMERIC)"
+        )
 
     def test_associativity_14(self):
         f = column("f")
-        self.assert_compile(f - f / f, "f - f / f")
+        self.assert_compile(f - f / f, "f - f / CAST(f AS NUMERIC)")
 
     def test_associativity_15(self):
         f = column("f")
-        self.assert_compile((f - f) / f, "(f - f) / f")
+        self.assert_compile((f - f) / f, "(f - f) / CAST(f AS NUMERIC)")
 
     def test_associativity_16(self):
         f = column("f")
-        self.assert_compile(((f - f) / f) - f, "(f - f) / f - f")
+        self.assert_compile(
+            ((f - f) / f) - f, "(f - f) / CAST(f AS NUMERIC) - f"
+        )
 
     def test_associativity_17(self):
         f = column("f")
         # - lower precedence than /
-        self.assert_compile((f - f) / (f - f), "(f - f) / (f - f)")
+        self.assert_compile(
+            (f - f) / (f - f), "(f - f) / CAST((f - f) AS NUMERIC)"
+        )
 
     def test_associativity_18(self):
         f = column("f")
         # / higher precedence than -
-        self.assert_compile((f / f) - (f / f), "f / f - f / f")
+        self.assert_compile(
+            (f / f) - (f / f),
+            "f / CAST(f AS NUMERIC) - f / CAST(f AS NUMERIC)",
+        )
 
     def test_associativity_19(self):
         f = column("f")
-        self.assert_compile((f / f) - (f - f), "f / f - (f - f)")
+        self.assert_compile(
+            (f / f) - (f - f), "f / CAST(f AS NUMERIC) - (f - f)"
+        )
 
     def test_associativity_20(self):
         f = column("f")
-        self.assert_compile((f / f) / (f - f), "(f / f) / (f - f)")
+        self.assert_compile(
+            (f / f) / (f - f),
+            "(f / CAST(f AS NUMERIC)) / CAST((f - f) AS NUMERIC)",
+        )
 
     def test_associativity_21(self):
         f = column("f")
-        self.assert_compile(f / (f / (f - f)), "f / (f / (f - f))")
+        self.assert_compile(
+            f / (f / (f - f)),
+            "f / CAST((f / CAST((f - f) AS NUMERIC)) AS NUMERIC)",
+        )
 
     def test_associativity_22(self):
         f = column("f")
@@ -2195,7 +2216,6 @@ class MathOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         ("add", operator.add, "+"),
         ("mul", operator.mul, "*"),
         ("sub", operator.sub, "-"),
-        ("div", operator.truediv, "/"),
         ("mod", operator.mod, "%"),
         id_="iaa",
     )
@@ -2216,6 +2236,17 @@ class MathOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         ):
             self.assert_compile(py_op(lhs, rhs), res % sql_op)
 
+    def test_truediv_op_integer(self):
+        self.assert_compile(
+            5 / literal(5), ":param_1 / CAST(:param_2 AS NUMERIC)"
+        )
+
+    def test_floordiv_op_integer(self):
+        self.assert_compile(5 // literal(5), ":param_1 / :param_2")
+
+    def test_floordiv_op_numeric(self):
+        self.assert_compile(5.10 // literal(5.5), "FLOOR(:param_1 / :param_2)")
+
     @testing.combinations(
         ("format", "mytable.myid %% %s"),
         ("qmark", "mytable.myid % ?"),
@@ -2230,6 +2261,36 @@ class MathOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             expected,
             dialect=default.DefaultDialect(paramstyle=paramstyle),
         )
+
+    @testing.combinations(
+        (operator.add,),
+        (operator.mul,),
+        (operator.sub,),
+        (operator.floordiv),
+    )
+    def test_integer_integer_coercion_to_integer(self, op):
+        expr = op(column("bar", Integer()), column("foo", Integer()))
+        assert isinstance(expr.type, Integer)
+
+    @testing.combinations(
+        (operator.add,),
+        (operator.mul,),
+        (operator.sub,),
+        (operator.truediv,),
+    )
+    def test_integer_numeric_coercion_to_numeric(self, op):
+        expr = op(column("bar", Integer()), column("foo", Numeric(10, 2)))
+        assert isinstance(expr.type, Numeric)
+        expr = op(column("foo", Numeric(10, 2)), column("bar", Integer()))
+        assert isinstance(expr.type, Numeric)
+
+    def test_integer_truediv(self):
+        expr = column("bar", Integer()) / column("foo", Integer)
+        assert isinstance(expr.type, Numeric)
+
+    def test_integer_floordiv(self):
+        expr = column("bar", Integer()) // column("foo", Integer)
+        assert isinstance(expr.type, Integer)
 
 
 class ComparisonOperatorTest(fixtures.TestBase, testing.AssertsCompiledSQL):

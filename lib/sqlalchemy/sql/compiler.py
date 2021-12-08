@@ -177,7 +177,6 @@ OPERATORS = {
     operators.mul: " * ",
     operators.sub: " - ",
     operators.mod: " % ",
-    operators.truediv: " / ",
     operators.neg: "-",
     operators.lt: " < ",
     operators.le: " <= ",
@@ -1921,6 +1920,41 @@ class SQLCompiler(Compiled):
         else:
             raise exc.CompileError(
                 "Unary expression has no operator or modifier"
+            )
+
+    def visit_truediv_binary(self, binary, operator, **kw):
+        if self.dialect.div_is_floordiv:
+            return (
+                self.process(binary.left, **kw)
+                + " / "
+                # TODO: would need a fast cast again here,
+                # unless we want to use an implicit cast like "+ 0.0"
+                + self.process(
+                    elements.Cast(binary.right, sqltypes.Numeric()), **kw
+                )
+            )
+        else:
+            return (
+                self.process(binary.left, **kw)
+                + " / "
+                + self.process(binary.right, **kw)
+            )
+
+    def visit_floordiv_binary(self, binary, operator, **kw):
+        if (
+            self.dialect.div_is_floordiv
+            and binary.right.type._type_affinity is sqltypes.Integer
+        ):
+            return (
+                self.process(binary.left, **kw)
+                + " / "
+                + self.process(binary.right, **kw)
+            )
+        else:
+            return "FLOOR(%s)" % (
+                self.process(binary.left, **kw)
+                + " / "
+                + self.process(binary.right, **kw)
             )
 
     def visit_is_true_unary_operator(self, element, operator, **kw):
