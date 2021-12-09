@@ -533,30 +533,8 @@ class PickleTest(fixtures.MappedTest):
 
         opt2 = pickle.loads(pickle.dumps(opt))
         eq_(opt.path, opt2.path)
-        eq_(opt.context.keys(), opt2.context.keys())
-        eq_(opt.local_opts, opt2.local_opts)
-
-        u1 = sess.query(User).options(opt).first()
-        pickle.loads(pickle.dumps(u1))
-
-    def test_became_bound_options(self):
-        sess, User, Address, Dingaling = self._option_test_fixture()
-
-        for opt in [
-            sa.orm.joinedload(User.addresses),
-            sa.orm.defer(User.name),
-            sa.orm.joinedload(User.addresses).joinedload(Address.dingaling),
-        ]:
-            context = sess.query(User).options(opt)._compile_context()
-            opt = [
-                v
-                for v in context.attributes.values()
-                if isinstance(v, sa.orm.Load)
-            ][0]
-
-            opt2 = pickle.loads(pickle.dumps(opt))
-            eq_(opt.path, opt2.path)
-            eq_(opt.local_opts, opt2.local_opts)
+        for v1, v2 in zip(opt.context, opt2.context):
+            eq_(v1.local_opts, v2.local_opts)
 
         u1 = sess.query(User).options(opt).first()
         pickle.loads(pickle.dumps(u1))
@@ -694,19 +672,25 @@ class OptionsTest(_Polymorphic):
     def test_options_of_type(self):
 
         with_poly = with_polymorphic(Person, [Engineer, Manager], flat=True)
-        for opt, serialized in [
+        for opt, serialized_path, serialized_of_type in [
             (
                 sa.orm.joinedload(Company.employees.of_type(Engineer)),
-                [(Company, "employees", Engineer)],
+                [(Company, "employees"), (Engineer, None)],
+                Engineer,
             ),
             (
                 sa.orm.joinedload(Company.employees.of_type(with_poly)),
-                [(Company, "employees", None)],
+                [(Company, "employees"), (Person, None)],
+                None,
             ),
         ]:
             opt2 = pickle.loads(pickle.dumps(opt))
-            eq_(opt.__getstate__()["path"], serialized)
-            eq_(opt2.__getstate__()["path"], serialized)
+            eq_(opt.__getstate__()["path"], serialized_path)
+            eq_(opt2.__getstate__()["path"], serialized_path)
+
+            for v1, v2 in zip(opt.context, opt2.context):
+                eq_(v1.__getstate__()["_of_type"], serialized_of_type)
+                eq_(v2.__getstate__()["_of_type"], serialized_of_type)
 
     def test_load(self):
         s = fixture_session()

@@ -167,9 +167,9 @@ class InheritedJoinTest(InheritedTest, AssertsCompiledSQL):
 
         with testing.expect_warnings(
             "An alias is being generated automatically against joined entity "
-            "mapped class Manager->managers due to overlapping",
+            r"Mapper\[Manager\(managers\)\] due to overlapping",
             "An alias is being generated automatically against joined entity "
-            "mapped class Boss->boss due to overlapping",
+            r"Mapper\[Boss\(boss\)\] due to overlapping",
             raise_on_any_unexpected=True,
         ):
             self.assert_compile(
@@ -2470,8 +2470,8 @@ class SelfReferentialTest(fixtures.MappedTest, AssertsCompiledSQL):
         s = fixture_session()
         assert_raises_message(
             sa.exc.InvalidRequestError,
-            "Can't construct a join from mapped class Node->nodes to mapped "
-            "class Node->nodes, they are the same entity",
+            r"Can't construct a join from Mapper\[Node\(nodes\)\] to "
+            r"Mapper\[Node\(nodes\)\], they are the same entity",
             s.query(Node).join(Node.children)._compile_context,
         )
 

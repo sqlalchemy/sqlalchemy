@@ -646,7 +646,7 @@ class GetBindTest(fixtures.MappedTest):
         session = self._fixture({})
         assert_raises_message(
             sa.exc.UnboundExecutionError,
-            "Could not locate a bind configured on mapper mapped class",
+            "Could not locate a bind configured on mapper ",
             session.get_bind,
             self.classes.BaseClass,
         )
@@ -657,7 +657,7 @@ class GetBindTest(fixtures.MappedTest):
 
         assert_raises_message(
             sa.exc.UnboundExecutionError,
-            "Could not locate a bind configured on mapper mapped class",
+            "Could not locate a bind configured on mapper ",
             session.get_bind,
             self.classes.ConcreteSubClass,
         )

@@ -2389,6 +2389,9 @@ class _Py3KFixtures:
     def _kw_opt_fixture(self, a, *, b, c="c"):
         pass
 
+    def _ret_annotation_fixture(self, a, b) -> int:
+        return 1
+
 
 py3k_fixtures = _Py3KFixtures()
 
@@ -2398,7 +2401,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
         (
             lambda: None,
             {
-                "args": "()",
+                "grouped_args": "()",
                 "self_arg": None,
                 "apply_kw": "()",
                 "apply_pos": "()",
@@ -2410,7 +2413,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
         (
             lambda: None,
             {
-                "args": "",
+                "grouped_args": "()",
                 "self_arg": None,
                 "apply_kw": "",
                 "apply_pos": "",
@@ -2422,7 +2425,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
         (
             lambda self: None,
             {
-                "args": "(self)",
+                "grouped_args": "(self)",
                 "self_arg": "self",
                 "apply_kw": "(self)",
                 "apply_pos": "(self)",
@@ -2434,7 +2437,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
         (
             lambda self: None,
             {
-                "args": "self",
+                "grouped_args": "(self)",
                 "self_arg": "self",
                 "apply_kw": "self",
                 "apply_pos": "self",
@@ -2446,7 +2449,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
         (
             lambda *a: None,
             {
-                "args": "(*a)",
+                "grouped_args": "(*a)",
                 "self_arg": "a[0]",
                 "apply_kw": "(*a)",
                 "apply_pos": "(*a)",
@@ -2458,7 +2461,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
         (
             lambda **kw: None,
             {
-                "args": "(**kw)",
+                "grouped_args": "(**kw)",
                 "self_arg": None,
                 "apply_kw": "(**kw)",
                 "apply_pos": "(**kw)",
@@ -2470,7 +2473,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
         (
             lambda *a, **kw: None,
             {
-                "args": "(*a, **kw)",
+                "grouped_args": "(*a, **kw)",
                 "self_arg": "a[0]",
                 "apply_kw": "(*a, **kw)",
                 "apply_pos": "(*a, **kw)",
@@ -2482,7 +2485,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
         (
             lambda a, *b: None,
             {
-                "args": "(a, *b)",
+                "grouped_args": "(a, *b)",
                 "self_arg": "a",
                 "apply_kw": "(a, *b)",
                 "apply_pos": "(a, *b)",
@@ -2494,7 +2497,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
         (
             lambda a, **b: None,
             {
-                "args": "(a, **b)",
+                "grouped_args": "(a, **b)",
                 "self_arg": "a",
                 "apply_kw": "(a, **b)",
                 "apply_pos": "(a, **b)",
@@ -2506,7 +2509,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
         (
             lambda a, *b, **c: None,
             {
-                "args": "(a, *b, **c)",
+                "grouped_args": "(a, *b, **c)",
                 "self_arg": "a",
                 "apply_kw": "(a, *b, **c)",
                 "apply_pos": "(a, *b, **c)",
@@ -2518,7 +2521,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
         (
             lambda a, b=1, **c: None,
             {
-                "args": "(a, b=1, **c)",
+                "grouped_args": "(a, b=1, **c)",
                 "self_arg": "a",
                 "apply_kw": "(a, b=b, **c)",
                 "apply_pos": "(a, b, **c)",
@@ -2530,7 +2533,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
         (
             lambda a=1, b=2: None,
             {
-                "args": "(a=1, b=2)",
+                "grouped_args": "(a=1, b=2)",
                 "self_arg": "a",
                 "apply_kw": "(a=a, b=b)",
                 "apply_pos": "(a, b)",
@@ -2542,7 +2545,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
         (
             lambda a=1, b=2: None,
             {
-                "args": "a=1, b=2",
+                "grouped_args": "(a=1, b=2)",
                 "self_arg": "a",
                 "apply_kw": "a=a, b=b",
                 "apply_pos": "a, b",
@@ -2552,9 +2555,21 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
             False,
         ),
         (
+            py3k_fixtures._ret_annotation_fixture,
+            {
+                "grouped_args": "(self, a, b) -> 'int'",
+                "self_arg": "self",
+                "apply_pos": "self, a, b",
+                "apply_kw": "self, a, b",
+                "apply_pos_proxied": "a, b",
+                "apply_kw_proxied": "a, b",
+            },
+            False,
+        ),
+        (
             py3k_fixtures._kw_only_fixture,
             {
-                "args": "self, a, *, b, c",
+                "grouped_args": "(self, a, *, b, c)",
                 "self_arg": "self",
                 "apply_pos": "self, a, *, b, c",
                 "apply_kw": "self, a, b=b, c=c",
@@ -2566,7 +2581,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
         (
             py3k_fixtures._kw_plus_posn_fixture,
             {
-                "args": "self, a, *args, b, c",
+                "grouped_args": "(self, a, *args, b, c)",
                 "self_arg": "self",
                 "apply_pos": "self, a, *args, b, c",
                 "apply_kw": "self, a, b=b, c=c, *args",
@@ -2578,7 +2593,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
         (
             py3k_fixtures._kw_opt_fixture,
             {
-                "args": "self, a, *, b, c='c'",
+                "grouped_args": "(self, a, *, b, c='c')",
                 "self_arg": "self",
                 "apply_pos": "self, a, *, b, c",
                 "apply_kw": "self, a, b=b, c=c",
@@ -2609,7 +2624,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
     @testing.requires.cpython
     def test_init_grouped(self):
         object_spec = {
-            "args": "(self)",
+            "grouped_args": "(self)",
             "self_arg": "self",
             "apply_pos": "(self)",
             "apply_kw": "(self)",
@@ -2617,7 +2632,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
             "apply_kw_proxied": "()",
         }
         wrapper_spec = {
-            "args": "(self, *args, **kwargs)",
+            "grouped_args": "(self, *args, **kwargs)",
             "self_arg": "self",
             "apply_pos": "(self, *args, **kwargs)",
             "apply_kw": "(self, *args, **kwargs)",
@@ -2625,7 +2640,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
             "apply_kw_proxied": "(*args, **kwargs)",
         }
         custom_spec = {
-            "args": "(slef, a=123)",
+            "grouped_args": "(slef, a=123)",
             "self_arg": "slef",  # yes, slef
             "apply_pos": "(slef, a)",
             "apply_pos_proxied": "(a)",
@@ -2639,7 +2654,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
     @testing.requires.cpython
     def test_init_bare(self):
         object_spec = {
-            "args": "self",
+            "grouped_args": "(self)",
             "self_arg": "self",
             "apply_pos": "self",
             "apply_kw": "self",
@@ -2647,7 +2662,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
             "apply_kw_proxied": "",
         }
         wrapper_spec = {
-            "args": "self, *args, **kwargs",
+            "grouped_args": "(self, *args, **kwargs)",
             "self_arg": "self",
             "apply_pos": "self, *args, **kwargs",
             "apply_kw": "self, *args, **kwargs",
@@ -2655,7 +2670,7 @@ class TestFormatArgspec(_Py3KFixtures, fixtures.TestBase):
             "apply_kw_proxied": "*args, **kwargs",
         }
         custom_spec = {
-            "args": "slef, a=123",
+            "grouped_args": "(slef, a=123)",
             "self_arg": "slef",  # yes, slef
             "apply_pos": "slef, a",
             "apply_kw": "slef, a=a",

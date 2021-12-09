@@ -347,7 +347,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             # the display of the attribute here is not consistent vs.
             # the straight aliased class, should improve this.
             r"explicit from clause .*User.* does not match left side .*"
-            r"of relationship attribute AliasedClass_User.addresses",
+            r"of relationship attribute aliased\(User\).addresses",
             stmt.compile,
         )
 

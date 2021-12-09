@@ -3002,17 +3002,22 @@ class SelfRefInheritanceAliasedTest(
     def test_twolevel_selectin_w_polymorphic(self):
         Foo, Bar = self.classes("Foo", "Bar")
 
-        for count in range(3):
+        for count in range(1):
             r = with_polymorphic(Foo, "*", aliased=True)
             attr1 = Foo.foo.of_type(r)
             attr2 = r.foo
 
             s = fixture_session()
-            q = (
-                s.query(Foo)
-                .filter(Foo.id == 2)
-                .options(selectinload(attr1).selectinload(attr2))
-            )
+
+            from sqlalchemy.orm import Load
+
+            opt1 = selectinload(attr1).selectinload(attr2)  # noqa
+            opt2 = Load(Foo).selectinload(attr1).selectinload(attr2)  # noqa
+
+            q = s.query(Foo).filter(Foo.id == 2).options(opt2)
+            # q.all()
+            # return
+
             results = self.assert_sql_execution(
                 testing.db,
                 q.all,

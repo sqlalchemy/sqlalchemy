@@ -1,5 +1,6 @@
 from contextlib import nullcontext
 
+from sqlalchemy import exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
@@ -21,6 +22,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -57,8 +59,9 @@ class Paperwork(fixtures.ComparableEntity):
 
 def _aliased_join_warning(arg):
     return testing.expect_warnings(
-        "An alias is being generated automatically against joined entity "
-        "mapped class %s due to overlapping tables" % (arg,)
+        r"An alias is being generated automatically against joined entity "
+        r"Mapper\[%s\] due to overlapping tables" % (arg,),
+        raise_on_any_unexpected=True,
     )
 
 
@@ -297,7 +300,7 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
 
         if autoalias:
             # filter aliasing applied to Engineer doesn't whack Manager
-            with _aliased_join_warning("Engineer->engineers"):
+            with _aliased_join_warning(r"Engineer\(engineers\)"):
                 eq_(
                     sess.query(Manager)
                     .join(Manager.engineers)
@@ -306,7 +309,7 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
                     [m1],
                 )
 
-            with _aliased_join_warning("Engineer->engineers"):
+            with _aliased_join_warning(r"Engineer\(engineers\)"):
                 eq_(
                     sess.query(Manager)
                     .join(Manager.engineers)
@@ -315,7 +318,7 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
                     [m2],
                 )
 
-            with _aliased_join_warning("Engineer->engineers"):
+            with _aliased_join_warning(r"Engineer\(engineers\)"):
                 eq_(
                     sess.query(Manager, Engineer)
                     .join(Manager.engineers)
@@ -367,7 +370,7 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
         sess.expunge_all()
 
         if autoalias:
-            with _aliased_join_warning("Engineer->engineers"):
+            with _aliased_join_warning(r"Engineer\(engineers\)"):
                 eq_(
                     sess.query(Manager)
                     .join(Manager.engineers)
@@ -376,7 +379,7 @@ class SelfReferentialJ2JTest(fixtures.MappedTest):
                     [],
                 )
 
-            with _aliased_join_warning("Engineer->engineers"):
+            with _aliased_join_warning(r"Engineer\(engineers\)"):
                 eq_(
                     sess.query(Manager)
                     .join(Manager.engineers)
@@ -795,13 +798,13 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         stmt = select(Child1).join(Child1.left_child2)
 
-        with _aliased_join_warning("Child2->child2"):
+        with _aliased_join_warning(r"Child2\(child2\)"):
             eq_(
                 set(sess.execute(stmt).scalars().unique()),
                 set([c11, c12, c13]),
             )
 
-        with _aliased_join_warning("Child2->child2"):
+        with _aliased_join_warning(r"Child2\(child2\)"):
             eq_(
                 set(sess.query(Child1, Child2).join(Child1.left_child2)),
                 set([(c11, c22), (c12, c22), (c13, c23)]),
@@ -829,7 +832,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
             .join(Child2.right_children)
             .where(Child1.left_child2 == c22)
         )
-        with _aliased_join_warning("Child1->child1"):
+        with _aliased_join_warning(r"Child1\(child1\)"):
             eq_(
                 set(sess.execute(stmt).scalars().unique()),
                 set([c22]),
@@ -848,7 +851,7 @@ class SelfReferentialM2MTest(fixtures.MappedTest, AssertsCompiledSQL):
         )
 
         # test the same again
-        with _aliased_join_warning("Child1->child1"):
+        with _aliased_join_warning(r"Child1\(child1\)"):
             self.assert_compile(
                 sess.query(Child2)
                 .join(Child2.right_children)
@@ -2380,9 +2383,43 @@ class JoinedloadOverWPolyAliased(
         Link = self.classes.Link
 
         session = fixture_session()
-        q = session.query(cls).options(
-            joinedload(cls.links).joinedload(Link.child).joinedload(cls.links)
-        )
+
+        if (
+            cls is self.classes.Sub1
+            and Link.child.entity.class_ is self.classes.Parent
+        ):
+            # in 1.x we werent checking for this:
+            # query(Sub1).options(
+            #   joinedload(Sub1.links).joinedload(Link.child).joinedload(Sub1.links)
+            # )
+            #
+            # where Link.child points to Parent.  the above is illegal because
+            # Link.child will return Parent instances that are not Sub1,
+            # so we cannot assume we will have Sub1.links available.  this now
+            # raises
+
+            with expect_raises_message(
+                exc.ArgumentError,
+                r'ORM mapped attribute "Sub1.links" does not link from '
+                r'relationship "Link.child".  Did you mean to use '
+                r'"Link.child.of_type\(Sub1\)"\?',
+            ):
+                session.query(cls).options(
+                    joinedload(cls.links)
+                    .joinedload(Link.child)
+                    .joinedload(cls.links)
+                )
+            q = session.query(cls).options(
+                joinedload(cls.links)
+                .joinedload(Link.child.of_type(cls))
+                .joinedload(cls.links)
+            )
+        else:
+            q = session.query(cls).options(
+                joinedload(cls.links)
+                .joinedload(Link.child)
+                .joinedload(cls.links)
+            )
         if cls is self.classes.Sub1:
             extra = " WHERE parent.type IN (__[POSTCOMPILE_type_1])"
         else:
@@ -2740,7 +2777,9 @@ class MultipleAdaptUsesEntityOverTableTest(
     def test_two_joins_adaption(self):
         a, c, d = self.tables.a, self.tables.c, self.tables.d
 
-        with _aliased_join_warning("C->c"), _aliased_join_warning("D->d"):
+        with _aliased_join_warning(r"C\(c\)"), _aliased_join_warning(
+            r"D\(d\)"
+        ):
             q = self._two_join_fixture()._compile_state()
 
         btoc = q.from_clauses[0].left
@@ -2771,7 +2810,9 @@ class MultipleAdaptUsesEntityOverTableTest(
     def test_two_joins_sql(self):
         q = self._two_join_fixture()
 
-        with _aliased_join_warning("C->c"), _aliased_join_warning("D->d"):
+        with _aliased_join_warning(r"C\(c\)"), _aliased_join_warning(
+            r"D\(d\)"
+        ):
             self.assert_compile(
                 q,
                 "SELECT a.name AS a_name, a_1.name AS a_1_name, "
@@ -2922,7 +2963,7 @@ class BetweenSubclassJoinWExtraJoinedLoad(
             q = sess.query(Engineer, m1).join(Engineer.manager.of_type(m1))
 
         with _aliased_join_warning(
-            "Manager->managers"
+            r"Manager\(managers\)"
         ) if autoalias else nullcontext():
             self.assert_compile(
                 q,

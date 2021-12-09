@@ -18,6 +18,7 @@ import re
 import weakref
 
 from . import attributes
+from . import strategy_options
 from .base import _is_mapped_class
 from .base import state_str
 from .interfaces import MANYTOMANY
@@ -100,7 +101,7 @@ class RelationshipProperty(StrategizedProperty):
 
     """
 
-    strategy_wildcard_key = "relationship"
+    strategy_wildcard_key = strategy_options._RELATIONSHIP_TOKEN
     inherit_cache = True
 
     _links_to_entity = True

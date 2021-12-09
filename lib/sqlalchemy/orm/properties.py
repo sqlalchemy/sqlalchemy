@@ -13,6 +13,7 @@ mapped attributes.
 """
 
 from . import attributes
+from . import strategy_options
 from .descriptor_props import CompositeProperty
 from .descriptor_props import ConcreteInheritedProperty
 from .descriptor_props import SynonymProperty
@@ -43,7 +44,7 @@ class ColumnProperty(StrategizedProperty):
 
     """
 
-    strategy_wildcard_key = "column"
+    strategy_wildcard_key = strategy_options._COLUMN_TOKEN
     inherit_cache = True
     _links_to_entity = False
 

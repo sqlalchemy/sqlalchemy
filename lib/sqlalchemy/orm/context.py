@@ -458,7 +458,7 @@ class ORMFromStatementCompileState(ORMCompileState):
         self.current_path = statement_container._compile_options._current_path
 
         if toplevel and statement_container._with_options:
-            self.attributes = {"_unbound_load_dedupes": set()}
+            self.attributes = {}
             self.global_attributes = compiler._global_attributes
 
             for opt in statement_container._with_options:
@@ -648,7 +648,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             select_statement._with_options
             or select_statement._memoized_select_entities
         ):
-            self.attributes = {"_unbound_load_dedupes": set()}
+            self.attributes = {}
 
             for (
                 memoized_entities
@@ -669,8 +669,13 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             for opt in self.select_statement._with_options:
                 if opt._is_compile_state:
                     opt.process_compile_state(self)
+
         else:
             self.attributes = {}
+
+        # uncomment to print out the context.attributes structure
+        # after it's been set up above
+        # self._dump_option_struct()
 
         if select_statement._with_context_options:
             for fn, key in select_statement._with_context_options:
@@ -702,6 +707,18 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         SelectState.__init__(self, self.statement, compiler, **kw)
 
         return self
+
+    def _dump_option_struct(self):
+        print("\n---------------------------------------------------\n")
+        print(f"current path: {self.current_path}")
+        for key in self.attributes:
+            if isinstance(key, tuple) and key[0] == "loader":
+                print(f"\nLoader:           {PathRegistry.coerce(key[1])}")
+                print(f"    {self.attributes[key]}")
+                print(f"    {self.attributes[key].__dict__}")
+            elif isinstance(key, tuple) and key[0] == "path_with_polymorphic":
+                print(f"\nWith Polymorphic: {PathRegistry.coerce(key[1])}")
+                print(f"    {self.attributes[key]}")
 
     def _setup_for_generate(self):
         query = self.select_statement

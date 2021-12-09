@@ -263,7 +263,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 sa.exc.InvalidRequestError,
                 "One or more mappers failed to initialize - can't "
                 "proceed with initialization of other mappers. "
-                "Triggering mapper: 'mapped class Address->addresses'. "
+                r"Triggering mapper: 'Mapper\[Address\(addresses\)\]'. "
                 "Original exception was: Class 'test.orm._fixtures.User' "
                 "is not mapped",
                 configure_mappers,
@@ -825,7 +825,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
 
             with testing.expect_warnings(
                 "An alias is being generated automatically against joined "
-                "entity mapped class SubUser"
+                r"entity Mapper\[SubUser"
             ):
                 self.assert_compile(
                     q,
@@ -3149,7 +3149,9 @@ class ConfigureOrNotConfigureTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             stmt = select(User).options(
                 load_only(User.name),
             )
-            is_false(um.configured)
+            # all options are "bound" Load objects now,
+            # so this operation configures mappers
+            is_true(um.configured)
 
         self.assert_compile(
             stmt,

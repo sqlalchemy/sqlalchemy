@@ -2399,7 +2399,8 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             "ON orders_1.id = order_items_1.order_id",
         )
 
-    def test_inner_join_nested_chaining_negative_options(self):
+    @testing.fixture
+    def _inner_join_nested_fixture(self):
         users, items, order_items, Order, Item, User, orders = (
             self.tables.users,
             self.tables.items,
@@ -2434,6 +2435,12 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         )
         self.mapper_registry.map_imperatively(Item, items)
 
+        return User, Order, Item
+
+    def test_inner_join_nested_chaining_negative_options_one(
+        self, _inner_join_nested_fixture
+    ):
+        User, Order, Item = _inner_join_nested_fixture
         sess = fixture_session()
         self.assert_compile(
             sess.query(User),
@@ -2453,6 +2460,11 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             "order_items_1.item_id ORDER BY orders_1.id, items_1.id",
         )
 
+    def test_inner_join_nested_chaining_negative_options_two(
+        self, _inner_join_nested_fixture
+    ):
+        User, Order, Item = _inner_join_nested_fixture
+        sess = fixture_session()
         q = sess.query(User).options(joinedload(User.orders, innerjoin=False))
         self.assert_compile(
             q,
@@ -2501,6 +2513,11 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             q.order_by(User.id).all(),
         )
 
+    def test_inner_join_nested_chaining_negative_options_three(
+        self, _inner_join_nested_fixture
+    ):
+        User, Order, Item = _inner_join_nested_fixture
+        sess = fixture_session()
         self.assert_compile(
             sess.query(User).options(
                 joinedload(User.orders, Order.items, innerjoin=False)
@@ -6098,7 +6115,8 @@ class EntityViaMultiplePathTestTwo(fixtures.DeclarativeMappedTest):
         lz_test = (
             s.query(LDA)
             .join(LDA.ld)
-            .options(contains_eager(LDA.ld))
+            # this conflicts in 2.0
+            #             .options(contains_eager(LDA.ld))
             .join(LDA.a)
             .join(LDA.ld.of_type(l_ac))
             .join(l_ac.user.of_type(u_ac))
@@ -6257,7 +6275,6 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
                 .filter(aa.id != A.id)
                 .options(defaultload(aa.bs).joinedload(B.cs))
             )
-
             self._run_tests(q, 2)
 
     def test_joinedload_aliased_abs_bcs(self):
@@ -6500,8 +6517,7 @@ class DeepOptionsTest(_fixtures.FixtureTest):
         self.sql_count_(0, go)
 
     def test_deep_options_4(self):
-        Item, User, Order = (
-            self.classes.Item,
+        User, Order = (
             self.classes.User,
             self.classes.Order,
         )
@@ -6510,14 +6526,24 @@ class DeepOptionsTest(_fixtures.FixtureTest):
 
         assert_raises_message(
             sa.exc.ArgumentError,
-            'Mapped attribute "Order.items" does not apply to any of the '
-            "root entities in this query, e.g. mapped class User->users. "
+            r"Mapped class Mapper\[Order\(orders\)\] does not apply to any of "
+            "the "
+            r"root entities in this query, e.g. Mapper\[User\(users\)\]. "
             "Please specify the full path from one of the root entities "
             "to the target attribute.",
             sess.query(User)
             .options(sa.orm.joinedload(Order.items))
             ._compile_context,
         )
+
+    def test_deep_options_5(self):
+        Item, User, Order = (
+            self.classes.Item,
+            self.classes.User,
+            self.classes.Order,
+        )
+
+        sess = fixture_session()
 
         # joinedload "keywords" on items.  it will lazy load "orders", then
         # lazy load the "items" on the order, but on "items" it will eager
@@ -6538,11 +6564,23 @@ class DeepOptionsTest(_fixtures.FixtureTest):
 
         self.sql_count_(2, go)
 
+    def test_deep_options_6(self):
+        Item, User, Order = (
+            self.classes.Item,
+            self.classes.User,
+            self.classes.Order,
+        )
+
         sess = fixture_session()
         q3 = (
             sess.query(User)
             .order_by(User.id)
             .options(
+                # this syntax means:
+                # defautload(User.orders).defaultload(Order.items).
+                # joinedload(Item.keywords)
+                #
+                # intuitive right ? :)
                 sa.orm.joinedload(User.orders, Order.items, Item.keywords)
             )
         )

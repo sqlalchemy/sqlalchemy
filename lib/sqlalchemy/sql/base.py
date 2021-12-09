@@ -109,7 +109,9 @@ def _generative(fn):
 
         self = self._generate()
         x = fn(self, *args, **kw)
-        assert x is None, "generative methods must have no return value"
+        assert (
+            x is None or x is self
+        ), "generative methods must return None or self"
         return self
 
     decorated = _generative(fn)
@@ -835,7 +837,7 @@ class Executable(roles.StatementRole, Generative):
         For background on specific kinds of options for specific kinds of
         statements, refer to the documentation for those option objects.
 
-        .. versionchanged:: 1.4 - added :meth:`.Generative.options` to
+        .. versionchanged:: 1.4 - added :meth:`.Executable.options` to
            Core statement objects towards the goal of allowing unified
            Core / ORM querying capabilities.
 

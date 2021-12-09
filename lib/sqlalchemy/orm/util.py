@@ -385,6 +385,9 @@ class ORMAdapter(sql_util.ColumnAdapter):
 
     """
 
+    is_aliased_class = False
+    aliased_insp = None
+
     def __init__(
         self,
         entity,
@@ -397,11 +400,9 @@ class ORMAdapter(sql_util.ColumnAdapter):
 
         self.mapper = info.mapper
         selectable = info.selectable
-        is_aliased_class = info.is_aliased_class
-        if is_aliased_class:
-            self.aliased_class = entity
-        else:
-            self.aliased_class = None
+        if info.is_aliased_class:
+            self.is_aliased_class = True
+            self.aliased_insp = info
 
         sql_util.ColumnAdapter.__init__(
             self,
@@ -517,12 +518,12 @@ class AliasedClass:
             represents_outer_join,
         )
 
-        self.__name__ = "AliasedClass_%s" % mapper.class_.__name__
+        self.__name__ = f"aliased({mapper.class_.__name__})"
 
     @classmethod
     def _reconstitute_from_aliased_insp(cls, aliased_insp):
         obj = cls.__new__(cls)
-        obj.__name__ = "AliasedClass_%s" % aliased_insp.mapper.class_.__name__
+        obj.__name__ = f"aliased({aliased_insp.mapper.class_.__name__})"
         obj._aliased_insp = aliased_insp
 
         if aliased_insp._is_with_polymorphic:
@@ -754,7 +755,7 @@ class AliasedInsp(
         return self.mapper.class_
 
     @property
-    def _path_registry(self):
+    def _path_registry(self) -> PathRegistry:
         if self._use_mapper_path:
             return self.mapper._path_registry
         else:
@@ -786,6 +787,37 @@ class AliasedInsp(
             state["use_mapper_path"],
             state["adapt_on_names"],
             state["represents_outer_join"],
+        )
+
+    def _merge_with(self, other):
+        # assert self._is_with_polymorphic
+        # assert other._is_with_polymorphic
+
+        primary_mapper = other.mapper
+
+        assert self.mapper is primary_mapper
+
+        our_classes = util.to_set(
+            mp.class_ for mp in self.with_polymorphic_mappers
+        )
+        new_classes = set([mp.class_ for mp in other.with_polymorphic_mappers])
+        if our_classes == new_classes:
+            return other
+        else:
+            classes = our_classes.union(new_classes)
+
+        mappers, selectable = primary_mapper._with_polymorphic_args(
+            classes, None, innerjoin=not other.represents_outer_join
+        )
+        selectable = selectable._anonymous_fromclause(flat=True)
+
+        return AliasedClass(
+            primary_mapper,
+            selectable,
+            with_polymorphic_mappers=mappers,
+            with_polymorphic_discriminator=other.polymorphic_on,
+            use_mapper_path=other._use_mapper_path,
+            represents_outer_join=other.represents_outer_join,
         )
 
     def _adapt_element(self, elem, key=None):
@@ -1101,6 +1133,7 @@ class LoaderCriteriaOption(CriteriaOption):
          .. versionadded:: 1.4.0b2
 
         """
+
         entity = inspection.inspect(entity_or_base, False)
         if entity is None:
             self.root_entity = entity_or_base
@@ -1326,7 +1359,6 @@ def with_polymorphic(
     aliased=False,
     innerjoin=False,
     _use_mapper_path=False,
-    _existing_alias=None,
 ):
     """Produce an :class:`.AliasedClass` construct which specifies
     columns for descendant mappers of the given base.
@@ -1397,16 +1429,6 @@ def with_polymorphic(
             "simultaneously to with_polymorphic()"
         )
 
-    if _existing_alias:
-        assert _existing_alias.mapper is primary_mapper
-        classes = util.to_set(classes)
-        new_classes = set(
-            [mp.class_ for mp in _existing_alias.with_polymorphic_mappers]
-        )
-        if classes == new_classes:
-            return _existing_alias
-        else:
-            classes = classes.union(new_classes)
     mappers, selectable = primary_mapper._with_polymorphic_args(
         classes, selectable, innerjoin=innerjoin
     )
@@ -1969,10 +1991,10 @@ def _entity_corresponds_to_use_path_impl(given, entity):
         return (
             entity.is_aliased_class
             and not entity._use_mapper_path
-            and (given is entity or given in entity._with_polymorphic_entities)
+            and (given is entity or entity in given._with_polymorphic_entities)
         )
     elif not entity.is_aliased_class:
-        return given.common_parent(entity.mapper)
+        return given.isa(entity.mapper)
     else:
         return (
             entity._use_mapper_path

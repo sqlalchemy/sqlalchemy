@@ -5,8 +5,8 @@ from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import subqueryload
-from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
 
@@ -255,14 +255,27 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         self._assert_addresses_loaded(users)
 
     def test_star_must_be_alone(self):
-        sess = self._downgrade_fixture()
+        self._downgrade_fixture()
         User = self.classes.User
-        opt = subqueryload("*", User.addresses)
-        assert_raises_message(
+
+        with expect_raises_message(
             sa.exc.ArgumentError,
             "Wildcard token cannot be followed by another entity",
-            sess.query(User).options(opt)._compile_context,
-        )
+        ):
+            subqueryload("*", User.addresses)
+
+    def test_star_cant_be_followed(self):
+        self._downgrade_fixture()
+        User = self.classes.User
+        Order = self.classes.Order
+
+        with expect_raises_message(
+            sa.exc.ArgumentError,
+            "Wildcard token cannot be followed by another entity",
+        ):
+            subqueryload(User.addresses).joinedload("*").selectinload(
+                Order.items
+            )
 
     def test_global_star_ignored_no_entities_unbound(self):
         sess = self._downgrade_fixture()
@@ -337,6 +350,8 @@ class DefaultStrategyOptionsTest(_fixtures.FixtureTest):
         # Verify lazyload('*') prevented orders.items load
         # users[0].orders[0] has 3 items, each with keywords: 2 sql
         # ('items' and 'items.keywords' subquery)
+        # but!  the subqueryload for further sub-items *does* load.
+        # so at the moment the wildcard load is shut off for this load
         def go():
             for i in users[0].orders[0].items:
                 i.keywords

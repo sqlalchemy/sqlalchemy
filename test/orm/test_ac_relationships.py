@@ -180,19 +180,20 @@ class AliasedClassRelationshipTest(
         s = Session(testing.db)
         partitioned_b = self.partitioned_b
 
-        if use_of_type:
-            opt = selectinload(
-                A.partitioned_bs.of_type(partitioned_b)
-            ).joinedload(B.cs)
-        else:
-            opt = selectinload(A.partitioned_bs).joinedload(B.cs)
-
-        q = s.query(A).options(opt)
-
         with expect_raises_message(
             exc.ArgumentError,
-            r'Attribute "B.cs" does not link from element "aliased\(B\)"',
+            r'ORM mapped attribute "B.cs" does not link from '
+            r'relationship "A.partitioned_bs.of_type\(aliased\(B\)\)"',
         ):
+            if use_of_type:
+                opt = selectinload(
+                    A.partitioned_bs.of_type(partitioned_b)
+                ).joinedload(B.cs)
+            else:
+                opt = selectinload(A.partitioned_bs).joinedload(B.cs)
+
+            q = s.query(A).options(opt)
+
             q._compile_context()
 
 
