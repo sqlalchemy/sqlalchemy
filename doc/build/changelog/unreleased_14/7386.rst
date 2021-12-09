@@ -3,5 +3,5 @@
     :tickets: 7386
 
     Support multiple clause elements in the :meth:`_sql.Exists.where` method,
-    unifying the api with the on presented by a normal :func:`_sql.select`
+    unifying the api with the one presented by a normal :func:`_sql.select`
     construct.
