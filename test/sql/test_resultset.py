@@ -746,6 +746,80 @@ class CursorResultTest(fixtures.TablesTest):
         eq_(r._mapping[users.c.user_name], "john")
         eq_(r.user_name, "john")
 
+    @testing.fixture
+    def _ab_row_fixture(self, connection):
+        r = connection.execute(
+            select(literal(1).label("a"), literal(2).label("b"))
+        ).first()
+        return r
+
+    def test_named_tuple_access(self, _ab_row_fixture):
+        r = _ab_row_fixture
+        eq_(r.a, 1)
+        eq_(r.b, 2)
+
+    def test_named_tuple_missing_attr(self, _ab_row_fixture):
+        r = _ab_row_fixture
+        with expect_raises_message(
+            AttributeError, "Could not locate column in row for column 'c'"
+        ):
+            r.c
+
+    def test_named_tuple_no_delete_present(self, _ab_row_fixture):
+        r = _ab_row_fixture
+        with expect_raises_message(AttributeError, "can't delete attribute"):
+            del r.a
+
+    def test_named_tuple_no_delete_missing(self, _ab_row_fixture):
+        r = _ab_row_fixture
+        # including for non-existent attributes
+        with expect_raises_message(AttributeError, "can't delete attribute"):
+            del r.c
+
+    def test_named_tuple_no_assign_present(self, _ab_row_fixture):
+        r = _ab_row_fixture
+        with expect_raises_message(AttributeError, "can't set attribute"):
+            r.a = 5
+
+        with expect_raises_message(AttributeError, "can't set attribute"):
+            r.a += 5
+
+    def test_named_tuple_no_assign_missing(self, _ab_row_fixture):
+        r = _ab_row_fixture
+        # including for non-existent attributes
+        with expect_raises_message(AttributeError, "can't set attribute"):
+            r.c = 5
+
+    def test_named_tuple_no_self_assign_missing(self, _ab_row_fixture):
+        r = _ab_row_fixture
+        with expect_raises_message(
+            AttributeError, "Could not locate column in row for column 'c'"
+        ):
+            r.c += 5
+
+    def test_mapping_tuple_readonly_errors(self, connection):
+        r = connection.execute(
+            select(literal(1).label("a"), literal(2).label("b"))
+        ).first()
+        r = r._mapping
+        eq_(r["a"], 1)
+        eq_(r["b"], 2)
+
+        with expect_raises_message(
+            KeyError, "Could not locate column in row for column 'c'"
+        ):
+            r["c"]
+
+        with expect_raises_message(
+            TypeError, "'RowMapping' object does not support item assignment"
+        ):
+            r["a"] = 5
+
+        with expect_raises_message(
+            TypeError, "'RowMapping' object does not support item assignment"
+        ):
+            r["a"] += 5
+
     def test_column_accessor_err(self, connection):
         r = connection.execute(select(1)).first()
         assert_raises_message(
