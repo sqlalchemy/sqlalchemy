@@ -1206,9 +1206,12 @@ following the table, and may include additional notes not summarized here.
           session.execute(
               select(User)
           ).scalars().all()
+          # or
+          session.scalars(select(User)).all()
 
       - :ref:`migration_20_unify_select`
 
+        :meth:`_orm.Session.scalars`
         :meth:`_engine.Result.scalars`
 
     * - ::
@@ -1235,11 +1238,11 @@ following the table, and may include additional notes not summarized here.
 
       - ::
 
-          session.execute(
+          session.scalars(
             select(User).
             filter_by(name="some user").
             limit(1)
-          ).scalars().first()
+          ).first()
 
       - :ref:`migration_20_unify_select`
 
@@ -1253,7 +1256,7 @@ following the table, and may include additional notes not summarized here.
 
       - ::
 
-            session.execute(
+            session.scalars(
                 select(User).
                 options(
                   joinedload(User.addresses)
@@ -1289,12 +1292,12 @@ following the table, and may include additional notes not summarized here.
 
       - ::
 
-          session.execute(
+          session.scalars(
               select(User).
               from_statement(
                   text("select * from users")
               )
-          ).scalars().all()
+          ).all()
 
       - :ref:`orm_queryguide_selecting_text`
 
