@@ -2564,6 +2564,7 @@ class Session(_SessionClassMethods):
         populate_existing=False,
         with_for_update=None,
         identity_token=None,
+        execution_options=None,
     ):
         """Return an instance based on the given primary key identifier,
         or ``None`` if not found.
@@ -2644,6 +2645,19 @@ class Session(_SessionClassMethods):
           :meth:`_query.Query.with_for_update`.
           Supersedes the :paramref:`.Session.refresh.lockmode` parameter.
 
+        :param execution_options: optional dictionary of execution options,
+         which will be associated with the query execution if one is emitted.
+         This dictionary can provide a subset of the options that are
+         accepted by :meth:`_engine.Connection.execution_options`, and may
+         also provide additional options understood only in an ORM context.
+
+         .. versionadded:: 1.4.29
+
+         .. seealso::
+
+            :ref:`orm_queryguide_execution_options` - ORM-specific execution
+            options
+
         :return: The object instance, or ``None``.
 
         """
@@ -2655,6 +2669,7 @@ class Session(_SessionClassMethods):
             populate_existing=populate_existing,
             with_for_update=with_for_update,
             identity_token=identity_token,
+            execution_options=execution_options,
         )
 
     def _get_impl(

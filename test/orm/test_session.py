@@ -461,6 +461,24 @@ class SessionUtilTest(_fixtures.FixtureTest):
             u1,
         )
 
+    def test_get_execution_option(self):
+        users, User = self.tables.users, self.classes.User
+
+        self.mapper_registry.map_imperatively(User, users)
+        sess = fixture_session()
+        called = False
+
+        @event.listens_for(sess, "do_orm_execute")
+        def check(ctx):
+            nonlocal called
+            called = True
+            eq_(ctx.execution_options["foo"], "bar")
+
+        sess.get(User, 42, execution_options={"foo": "bar"})
+        sess.close()
+
+        is_true(called)
+
 
 class SessionStateTest(_fixtures.FixtureTest):
     run_inserts = None
