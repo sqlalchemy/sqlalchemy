@@ -15,7 +15,220 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.28
-    :include_notes_from: unreleased_14
+    :released: December 9, 2021
+
+    .. change::
+        :tags: bug, mypy
+        :tickets: 7321
+
+        Fixed Mypy crash which would occur when using Mypy plugin against code
+        which made use of :class:`_orm.declared_attr` methods for non-mapped names
+        like ``__mapper_args__``, ``__table_args__``, or other dunder names, as the
+        plugin would try to interpret these as mapped attributes which would then
+        be later mis-handled. As part of this change, the decorated function is
+        still converted by the plugin into a generic assignment statement (e.g.
+        ``__mapper_args__: Any``) so that the argument signature can continue to be
+        annotated in the same way one would for any other ``@classmethod`` without
+        Mypy complaining about the wrong argument type for a method that isn't
+        explicitly ``@classmethod``.
+
+
+
+    .. change::
+        :tags: bug, orm, ext
+        :tickets: 7425
+
+        Fixed issue where the internal cloning used by the
+        :meth:`_orm.PropComparator.any` method on a :func:`_orm.relationship` in
+        the case where the related class also makes use of ORM polymorphic loading,
+        would fail if a hybrid property on the related, polymorphic class were used
+        within the criteria for the ``any()`` operation.
+
+    .. change::
+        :tags: bug, platform
+        :tickets: 7311
+
+        Python 3.10 has deprecated "distutils" in favor of explicit use of
+        "setuptools" in :pep:`632`; SQLAlchemy's setup.py has replaced imports
+        accordingly. However, since setuptools itself only recently added the
+        replacement symbols mentioned in pep-632 as of November of 2021 in version
+        59.0.1, ``setup.py`` still has fallback imports to distutils, as SQLAlchemy
+        1.4 does not have a hard setuptools versioning requirement at this time.
+        SQLAlchemy 2.0 is expected to use a full :pep:`517` installation layout
+        which will indicate appropriate setuptools versioning up front.
+
+    .. change::
+        :tags: bug, sql, regression
+        :tickets: 7319
+
+        Extended the :attr:`.TypeDecorator.cache_ok` attribute and corresponding
+        warning message if this flag is not defined, a behavior first established
+        for :class:`.TypeDecorator` as part of :ticket:`6436`, to also take place
+        for :class:`.UserDefinedType`, by generalizing the flag and associated
+        caching logic to a new common base for these two types,
+        :class:`.ExternalType` to create :attr:`.UserDefinedType.cache_ok`.
+
+        The change means any current :class:`.UserDefinedType` will now cause SQL
+        statement caching to no longer take place for statements which make use of
+        the datatype, along with a warning being emitted, unless the class defines
+        the :attr:`.UserDefinedType.cache_ok` flag as True. If the datatype cannot
+        form a deterministic, hashable cache key derived from its arguments,
+        the attribute may be set to False which will continue to keep caching disabled but will suppress the
+        warning. In particular, custom datatypes currently used in packages such as
+        SQLAlchemy-utils will need to implement this flag. The issue was observed
+        as a result of a SQLAlchemy-utils datatype that is not currently cacheable.
+
+        .. seealso::
+
+            :attr:`.ExternalType.cache_ok`
+
+    .. change::
+        :tags: deprecated, orm
+        :tickets: 4390
+
+        Deprecated an undocumented loader option syntax ``".*"``, which appears to
+        be no different than passing a single asterisk, and will emit a deprecation
+        warning if used. This syntax may have been intended for something but there
+        is currently no need for it.
+
+
+    .. change::
+        :tags: bug, orm, mypy
+        :tickets: 7368
+
+        Fixed issue where the :func:`_orm.as_declarative` decorator and similar
+        functions used to generate the declarative base class would not copy the
+        ``__class_getitem__()`` method from a given superclass, which prevented the
+        use of pep-484 generics in conjunction with the ``Base`` class. Pull
+        request courtesy Kai Mueller.
+
+    .. change::
+        :tags: usecase, engine
+        :tickets: 7400
+
+        Added support for ``copy()`` and ``deepcopy()`` to the :class:`_url.URL`
+        class. Pull request courtesy Tom Ritchford.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 7318
+
+        Fixed ORM regression where the new behavior of "eager loaders run on
+        unexpire" added in :ticket:`1763` would lead to loader option errors being
+        raised inappropriately for the case where a single :class:`_orm.Query` or
+        :class:`_sql.Select` were used to load multiple kinds of entities, along
+        with loader options that apply to just one of those kinds of entity like a
+        :func:`_orm.joinedload`, and later the objects would be refreshed from
+        expiration, where the loader options would attempt to be applied to the
+        mismatched object type and then raise an exception. The check for this
+        mismatch now bypasses raising an error for this case.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 7394
+
+        Custom SQL elements, third party dialects, custom or third party datatypes
+        will all generate consistent warnings when they do not clearly opt in or
+        out of SQL statement caching, which is achieved by setting the appropriate
+        attributes on each type of class. The warning links to documentation
+        sections which indicate the appropriate approach for each type of object in
+        order for caching to be enabled.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 7394
+
+        Fixed missing caching directives for a few lesser used classes in SQL Core
+        which would cause ``[no key]`` to be logged for elements which made use of
+        these.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 7394
+
+        Fixed missing caching directives for :class:`_postgresql.hstore` and
+        :class:`_postgresql.array` constructs which would cause ``[no key]``
+        to be logged for these elements.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7394
+
+        User defined ORM options, such as those illustrated in the dogpile.caching
+        example which subclass :class:`_orm.UserDefinedOption`, by definition are
+        handled on every statement execution and do not need to be considered as
+        part of the cache key for the statement. Caching of the base
+        :class:`.ExecutableOption` class has been modified so that it is no longer
+        a :class:`.HasCacheKey` subclass directly, so that the presence of user
+        defined option objects will not have the unwanted side effect of disabling
+        statement caching. Only ORM specific loader and criteria options, which are
+        all internal to SQLAlchemy, now participate within the caching system.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7394
+
+        Fixed issue where mappings that made use of :func:`_orm.synonym` and
+        potentially other kinds of "proxy" attributes would not in all cases
+        successfully generate a cache key for their SQL statements, leading to
+        degraded performance for those statements.
+
+    .. change::
+        :tags: sql, usecase
+        :tickets: 7259
+
+        "Compound select" methods like :meth:`_sql.Select.union`,
+        :meth:`_sql.Select.intersect_all` etc. now accept ``*other`` as an argument
+        rather than ``other`` to allow for multiple additional SELECTs to be
+        compounded with the parent statement at once. In particular, the change as
+        applied to :meth:`_sql.CTE.union` and :meth:`_sql.CTE.union_all` now allow
+        for a so-called "non-linear CTE" to be created with the :class:`_sql.CTE`
+        construct, whereas previously there was no way to have more than two CTE
+        sub-elements in a UNION together while still correctly calling upon the CTE
+        in recursive fashion. Pull request courtesy Eric Masseran.
+
+    .. change::
+        :tags: bug, tests
+
+        Implemented support for the test suite to run correctly under Pytest 7.
+        Previously, only Pytest 6.x was supported for Python 3, however the version
+        was not pinned on the upper bound in tox.ini. Pytest is not pinned in
+        tox.ini to be lower than version 8 so that SQLAlchemy versions released
+        with the current codebase will be able to be tested under tox without
+        changes to the environment.   Much thanks to the Pytest developers for
+        their help with this issue.
+
+
+    .. change::
+        :tags: orm, bug
+        :tickets: 7389
+
+        Fixed issue where a list mapped with :func:`_orm.relationship` would go
+        into an endless loop if in-place added to itself, i.e. the ``+=`` operator
+        were used, as well as if ``.extend()`` were given the same list.
+
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 7386
+
+        Support multiple clause elements in the :meth:`_sql.Exists.where` method,
+        unifying the api with the one presented by a normal :func:`_sql.select`
+        construct.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7388
+
+        Fixed issue where if an exception occurred when the :class:`_orm.Session`
+        were to close the connection within the :meth:`_orm.Session.commit` method,
+        when using a context manager for :meth:`_orm.Session.begin` , it would
+        attempt a rollback which would not be possible as the :class:`_orm.Session`
+        was in between where the transaction is committed and the connection is
+        then to be returned to the pool, raising the exception "this
+        sessiontransaction is in the committed state". This exception can occur
+        mostly in an asyncio context where CancelledError can be raised.
+
 
 .. changelog::
     :version: 1.4.27

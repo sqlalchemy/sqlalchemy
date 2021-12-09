@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, orm, ext
-    :tickets: 7425
-
-    Fixed issue where the internal cloning used by the
-    :meth:`_orm.PropComparator.any` method on a :func:`_orm.relationship` in
-    the case where the related class also makes use of ORM polymorphic loading,
-    would fail if a hybrid property on the related, polymorphic class were used
-    within the criteria for the ``any()`` operation.
