@@ -8,12 +8,13 @@
 from . import compat
 
 have_greenlet = False
+greenlet_error = None
 
 if compat.py3k:
     try:
         import greenlet  # noqa F401
-    except ImportError:
-        pass
+    except ImportError as e:
+        greenlet_error = str(e)
     else:
         have_greenlet = True
         from ._concurrency_py3k import await_only
@@ -45,6 +46,9 @@ if not have_greenlet:
         else:
             raise ValueError(
                 "the greenlet library is required to use this function."
+                " %s" % greenlet_error
+                if greenlet_error
+                else ""
             )
 
     def is_exit_exception(e):  # noqa F811
