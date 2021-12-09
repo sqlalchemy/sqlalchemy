@@ -1,5 +1,5 @@
 .. change::
-    :tags: bug, types, regression
+    :tags: bug, sql, regression
     :tickets: 7319
 
     Extended the :attr:`.TypeDecorator.cache_ok` attribute and corresponding

@@ -70,6 +70,7 @@ changelog_sections = [
     "sqlite",
     "mssql",
     "oracle",
+    "tests",
 ]
 # tags to sort on inside of sections
 changelog_inner_tag_sort = [
