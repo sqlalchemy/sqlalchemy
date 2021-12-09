@@ -246,6 +246,67 @@ class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):
         return A, B
 
     @testing.fixture
+    def _related_polymorphic_attr_fixture(self):
+        """test for #7425"""
+
+        Base = declarative_base()
+
+        class A(Base):
+            __tablename__ = "a"
+            id = Column(Integer, primary_key=True)
+
+            bs = relationship("B", back_populates="a", lazy="joined")
+
+        class B(Base):
+            __tablename__ = "poly"
+            __mapper_args__ = {
+                "polymorphic_on": "type",
+                # if with_polymorphic is removed, issue does not occur
+                "with_polymorphic": "*",
+            }
+            name = Column(String, primary_key=True)
+            type = Column(String)
+            a_id = Column(ForeignKey(A.id))
+
+            a = relationship(A, back_populates="bs")
+
+            @hybrid.hybrid_property
+            def is_foo(self):
+                return self.name == "foo"
+
+        return A, B
+
+    def test_cloning_in_polymorphic_any(
+        self, _related_polymorphic_attr_fixture
+    ):
+        A, B = _related_polymorphic_attr_fixture
+
+        session = fixture_session()
+
+        # in the polymorphic case, A.bs.any() does a traverse() / clone()
+        # on the expression.  so the proxedattribute coming from the hybrid
+        # has to support this.
+
+        self.assert_compile(
+            session.query(A).filter(A.bs.any(B.name == "foo")),
+            "SELECT a.id AS a_id, poly_1.name AS poly_1_name, poly_1.type "
+            "AS poly_1_type, poly_1.a_id AS poly_1_a_id FROM a "
+            "LEFT OUTER JOIN poly AS poly_1 ON a.id = poly_1.a_id "
+            "WHERE EXISTS (SELECT 1 FROM poly WHERE a.id = poly.a_id "
+            "AND poly.name = :name_1)",
+        )
+
+        # SQL should be identical
+        self.assert_compile(
+            session.query(A).filter(A.bs.any(B.is_foo)),
+            "SELECT a.id AS a_id, poly_1.name AS poly_1_name, poly_1.type "
+            "AS poly_1_type, poly_1.a_id AS poly_1_a_id FROM a "
+            "LEFT OUTER JOIN poly AS poly_1 ON a.id = poly_1.a_id "
+            "WHERE EXISTS (SELECT 1 FROM poly WHERE a.id = poly.a_id "
+            "AND poly.name = :name_1)",
+        )
+
+    @testing.fixture
     def _unnamed_expr_fixture(self):
         Base = declarative_base()
 

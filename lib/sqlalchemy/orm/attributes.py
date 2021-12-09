@@ -571,6 +571,16 @@ def create_proxied_attribute(descriptor):
                 adapt_to_entity,
             )
 
+        def _clone(self, **kw):
+            return self.__class__(
+                self.class_,
+                self.key,
+                self.descriptor,
+                self._comparator,
+                adapt_to_entity=self._adapt_to_entity,
+                original_property=self.original_property,
+            )
+
         def __get__(self, instance, owner):
             retval = self.descriptor.__get__(instance, owner)
             # detect if this is a plain Python @property, which just returns
