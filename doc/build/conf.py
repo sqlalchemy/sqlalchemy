@@ -71,6 +71,7 @@ changelog_sections = [
     "mssql",
     "oracle",
     "firebird",
+    "tests",
 ]
 # tags to sort on inside of sections
 changelog_inner_tag_sort = [
