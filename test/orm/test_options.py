@@ -27,6 +27,7 @@ from sqlalchemy.testing.assertions import assert_raises_message
 from sqlalchemy.testing.assertions import AssertsCompiledSQL
 from sqlalchemy.testing.assertions import emits_warning
 from sqlalchemy.testing.assertions import eq_
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.fixtures import fixture_session
 from test.orm import _fixtures
 from .inheritance._poly_fixtures import _Polymorphic
@@ -34,10 +35,6 @@ from .inheritance._poly_fixtures import Company
 from .inheritance._poly_fixtures import Engineer
 from .inheritance._poly_fixtures import Manager
 from .inheritance._poly_fixtures import Person
-
-
-def _deprecated_strings():
-    return testing.expect_deprecated_20("Using strings to indicate")
 
 
 class QueryTest(_fixtures.FixtureTest):
@@ -153,34 +150,6 @@ class LoadTest(PathTest, QueryTest):
             self._make_path_registry([User, "name"]),
         )
 
-    def test_gen_path_string_entity(self):
-        User = self.classes.User
-        Address = self.classes.Address
-
-        result = Load(User)
-        with _deprecated_strings():
-            eq_(
-                result._generate_path(
-                    inspect(User)._path_registry,
-                    "addresses",
-                    None,
-                    "relationship",
-                ),
-                self._make_path_registry([User, "addresses", Address]),
-            )
-
-    def test_gen_path_string_column(self):
-        User = self.classes.User
-
-        result = Load(User)
-        with _deprecated_strings():
-            eq_(
-                result._generate_path(
-                    inspect(User)._path_registry, "name", None, "column"
-                ),
-                self._make_path_registry([User, "name"]),
-            )
-
     def test_gen_path_invalid_from_col(self):
         User = self.classes.User
 
@@ -213,21 +182,6 @@ class LoadTest(PathTest, QueryTest):
             None,
             "relationship",
         )
-
-    def test_gen_path_attr_str_not_mapped(self):
-        OrderWProp = self.classes.OrderWProp
-
-        sess = fixture_session()
-        q = sess.query(OrderWProp).options(defer("some_attr"))
-
-        with _deprecated_strings():
-            assert_raises_message(
-                sa.exc.ArgumentError,
-                r"Expected attribute \"some_attr\" on mapped class "
-                "OrderWProp->orders to be a mapped attribute; instead "
-                "got .*property.* object.",
-                q._compile_state,
-            )
 
     def test_gen_path_attr_entity_invalid_noraiseerr(self):
         User = self.classes.User
@@ -321,38 +275,6 @@ class OfTypePathingTest(PathTest, QueryTest):
         )
 
     @emits_warning("This declarative base already contains a class")
-    def test_oftype_only_col_attr_string_unbound(self):
-        User, Address, SubAddr = self._fixture()
-
-        l1 = defaultload(User.addresses.of_type(SubAddr)).defer("sub_attr")
-
-        sess = fixture_session()
-        q = sess.query(User)
-        self._assert_path_result(
-            l1,
-            q,
-            [(User, "addresses"), (User, "addresses", SubAddr, "sub_attr")],
-        )
-
-    @emits_warning("This declarative base already contains a class")
-    def test_oftype_only_col_attr_string_bound(self):
-        User, Address, SubAddr = self._fixture()
-
-        l1 = (
-            Load(User)
-            .defaultload(User.addresses.of_type(SubAddr))
-            .defer("sub_attr")
-        )
-
-        sess = fixture_session()
-        q = sess.query(User)
-        self._assert_path_result(
-            l1,
-            q,
-            [(User, "addresses"), (User, "addresses", SubAddr, "sub_attr")],
-        )
-
-    @emits_warning("This declarative base already contains a class")
     def test_oftype_only_rel_attr_unbound(self):
         User, Address, SubAddr = self._fixture()
 
@@ -380,36 +302,6 @@ class OfTypePathingTest(PathTest, QueryTest):
         q = sess.query(User)
         self._assert_path_result(
             l1, q, [(User, "addresses"), (User, "addresses", SubAddr, "dings")]
-        )
-
-    @emits_warning("This declarative base already contains a class")
-    def test_oftype_only_rel_attr_string_unbound(self):
-        User, Address, SubAddr = self._fixture()
-
-        l1 = defaultload(User.addresses.of_type(SubAddr)).joinedload("dings")
-
-        sess = fixture_session()
-        q = sess.query(User)
-        self._assert_path_result(
-            l1, q, [(User, "addresses"), (User, "addresses", SubAddr, "dings")]
-        )
-
-    @emits_warning("This declarative base already contains a class")
-    def test_oftype_only_rel_attr_string_bound(self):
-        User, Address, SubAddr = self._fixture()
-
-        l1 = (
-            Load(User)
-            .defaultload(User.addresses.of_type(SubAddr))
-            .defer("sub_attr")
-        )
-
-        sess = fixture_session()
-        q = sess.query(User)
-        self._assert_path_result(
-            l1,
-            q,
-            [(User, "addresses"), (User, "addresses", SubAddr, "sub_attr")],
         )
 
 
@@ -508,6 +400,58 @@ class OptionsTest(PathTest, QueryTest):
         return strategy_options._UnboundLoad._from_keys(
             strategy_options._UnboundLoad.joinedload, arg, True, {}
         )
+
+    @testing.combinations(
+        lambda: joinedload("addresses"),
+        lambda: defer("name"),
+        lambda Address: joinedload("addresses").joinedload(Address.dingaling),
+        lambda: joinedload("addresses"),
+    )
+    def test_error_for_string_names_unbound(self, test_case):
+        User, Address = self.classes("User", "Address")
+
+        query = fixture_session().query(User)
+
+        with expect_raises_message(
+            sa.exc.ArgumentError,
+            "Strings are not accepted for attribute names in loader "
+            "options; please use class-bound attributes directly.",
+        ):
+            unbound_opt = testing.resolve_lambda(
+                test_case, User=User, Address=Address
+            )
+
+            # TODO: the strings above should raise immediately, we should
+            # not have to bind_loader for this to occur.
+            attr = {}
+            for opt in unbound_opt._to_bind:
+                opt._bind_loader(
+                    [
+                        ent.entity_zero
+                        for ent in query._compile_state()._lead_mapper_entities
+                    ],
+                    query._compile_options._current_path,
+                    attr,
+                    False,
+                )
+
+    @testing.combinations(
+        lambda User: Load(User).joinedload("addresses"),
+        lambda User: Load(User).defer("name"),
+        lambda User, Address: Load(User)
+        .joinedload("addresses")
+        .joinedload(Address.dingaling),
+        lambda User: Load(User).joinedload("addresses"),
+    )
+    def test_error_for_string_names_bound(self, test_case):
+        User, Address = self.classes("User", "Address")
+
+        with expect_raises_message(
+            sa.exc.ArgumentError,
+            "Strings are not accepted for attribute names in loader "
+            "options; please use class-bound attributes directly.",
+        ):
+            testing.resolve_lambda(test_case, User=User, Address=Address)
 
     def test_get_path_one_level_attribute(self):
         User = self.classes.User
@@ -724,36 +668,6 @@ class OptionsTest(PathTest, QueryTest):
         opt = self._option_fixture(
             User.addresses.of_type(SubAddr), SubAddr.user
         )
-
-        u_mapper = inspect(User)
-        a_mapper = inspect(Address)
-        self._assert_path_result(
-            opt,
-            q,
-            [
-                (u_mapper, u_mapper.attrs.addresses),
-                (
-                    u_mapper,
-                    u_mapper.attrs.addresses,
-                    a_mapper,
-                    a_mapper.attrs.user,
-                ),
-            ],
-        )
-
-    @emits_warning("This declarative base already contains a class")
-    def test_of_type_string_attr(self):
-        User, Address = self.classes.User, self.classes.Address
-
-        sess = fixture_session()
-
-        class SubAddr(Address):
-            pass
-
-        self.mapper_registry.map_imperatively(SubAddr, inherits=Address)
-
-        q = sess.query(User)
-        opt = self._option_fixture(User.addresses.of_type(SubAddr), "user")
 
         u_mapper = inspect(User)
         a_mapper = inspect(Address)

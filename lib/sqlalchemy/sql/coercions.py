@@ -610,20 +610,6 @@ class OnClauseImpl(_CoerceLiterals, _ColumnCoercions, RoleImpl):
 
     _coerce_consts = True
 
-    def _implicit_coercions(
-        self, original_element, resolved, argname=None, legacy=False, **kw
-    ):
-        if legacy and isinstance(resolved, str):
-            return resolved
-        else:
-            return super(OnClauseImpl, self)._implicit_coercions(
-                original_element,
-                resolved,
-                argname=argname,
-                legacy=legacy,
-                **kw
-            )
-
     def _text_coercion(self, element, argname=None, legacy=False):
         if legacy and isinstance(element, str):
             util.warn_deprecated_20(
@@ -925,9 +911,8 @@ class JoinTargetImpl(RoleImpl):
 
     _skip_clauseelement_for_target_match = True
 
-    def _literal_coercion(self, element, legacy=False, **kw):
-        if isinstance(element, str):
-            return element
+    def _literal_coercion(self, element, argname=None, **kw):
+        self._raise_for_expected(element, argname)
 
     def _implicit_coercions(
         self, original_element, resolved, argname=None, legacy=False, **kw
@@ -937,14 +922,6 @@ class JoinTargetImpl(RoleImpl):
             # #6550, unless JoinTargetImpl._skip_clauseelement_for_target_match
             # were set to False.
             return original_element
-        elif legacy and isinstance(resolved, str):
-            util.warn_deprecated_20(
-                "Using strings to indicate relationship names in "
-                "Query.join() is deprecated and will be removed in "
-                "SQLAlchemy 2.0.  Please use the class-bound attribute "
-                "directly."
-            )
-            return resolved
         elif legacy and isinstance(resolved, roles.WhereHavingRole):
             return resolved
         elif legacy and resolved._is_select_statement:

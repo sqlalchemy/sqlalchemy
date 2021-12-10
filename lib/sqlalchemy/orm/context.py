@@ -1457,7 +1457,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             # legacy ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
             if (
-                isinstance(right, (interfaces.PropComparator, str))
+                isinstance(right, interfaces.PropComparator)
                 and onclause is None
             ):
                 onclause = right
@@ -1478,11 +1478,9 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                 of_type = None
 
             if isinstance(onclause, str):
-                # string given, e.g. query(Foo).join("bar").
-                # we look to the left entity or what we last joined
-                # towards
-                onclause = _entity_namespace_key(
-                    inspect(self._joinpoint_zero()), onclause
+                raise sa_exc.ArgumentError(
+                    "ORM mapped attributes as join targets must be "
+                    "stated the attribute itself, not string name"
                 )
 
             # legacy vvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -1495,7 +1493,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             # to work with the aliased=True flag, which is also something
             # that probably shouldn't exist on join() due to its high
             # complexity/usefulness ratio
-            elif from_joinpoint and isinstance(
+            if from_joinpoint and isinstance(
                 onclause, interfaces.PropComparator
             ):
                 jp0 = self._joinpoint_zero()
