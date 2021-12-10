@@ -367,10 +367,11 @@ class ARRAY(sqltypes.ARRAY):
 
         if self._against_native_enum:
             super_rp = process
+            pattern = re.compile(r"^{(.*)}$")
 
             def handle_raw_string(value):
-                inner = re.match(r"^{(.*)}$", value).group(1)
-                return inner.split(",") if inner else []
+                inner = pattern.match(value).group(1)
+                return _split_enum_values(inner)
 
             def process(value):
                 if value is None:
@@ -385,3 +386,27 @@ class ARRAY(sqltypes.ARRAY):
                 )
 
         return process
+
+
+def _split_enum_values(array_string):
+    if '"' not in array_string:
+        # no escape char is present so it can just split on the comma
+        return array_string.split(",")
+
+    # handles quoted strings from:
+    # r'abc,"quoted","also\\\\quoted", "quoted, comma", "esc \" quot", qpr'
+    # returns
+    # ['abc', 'quoted', 'also\\quoted', 'quoted, comma', 'esc " quot', 'qpr']
+    text = array_string.replace(r"\"", "_$ESC_QUOTE$_")
+    text = text.replace(r"\\", "\\")
+    result = []
+    on_quotes = re.split(r'(")', text)
+    in_quotes = False
+    for tok in on_quotes:
+        if tok == '"':
+            in_quotes = not in_quotes
+        elif in_quotes:
+            result.append(tok.replace("_$ESC_QUOTE$_", '"'))
+        else:
+            result.extend(re.findall(r"([^\s,]+),?", tok))
+    return result
