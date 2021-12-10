@@ -1892,7 +1892,7 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 "REFERENCES implicit_referred_comp)"
             )
 
-            # worst case - FK that refers to nonexistent table so we cant
+            # worst case - FK that refers to nonexistent table so we can't
             # get pks.  requires FK pragma is turned off
             conn.exec_driver_sql(
                 "CREATE TABLE implicit_referrer_comp_fake "

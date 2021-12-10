@@ -792,7 +792,7 @@ class PoolProxiedConnection:
     pool.
 
     :class:`.PoolProxiedConnection` is basically the public-facing interface
-    for the :class:`._ConnectionFairy` implemenatation object, users familiar
+    for the :class:`._ConnectionFairy` implementation object, users familiar
     with :class:`._ConnectionFairy` can consider this object to be
     equivalent.
 

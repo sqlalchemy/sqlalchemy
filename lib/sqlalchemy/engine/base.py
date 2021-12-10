@@ -187,7 +187,7 @@ class Connection(ConnectionEventsTarget):
         keeping the effect of such an option localized to a "sub" connection.
 
         .. versionchanged:: 2.0  The :meth:`_engine.Connection.execution_options`
-           method, in constrast to other objects with this method, modifies
+           method, in contrast to other objects with this method, modifies
            the connection in-place without creating copy of it.
 
         As discussed elsewhere, the :meth:`_engine.Connection.execution_options`

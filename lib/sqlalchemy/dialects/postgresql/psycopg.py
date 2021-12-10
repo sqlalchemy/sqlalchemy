@@ -43,7 +43,7 @@ The asyncio version of the dialect may also be specified explicitly using the
     asyncio_engine = create_async_engine("postgresql+psycopg_async://scott:tiger@localhost/test")
 
 The ``psycopg`` dialect has the same API features as that of ``psycopg2``,
-with the exeption of the "fast executemany" helpers.   The "fast executemany"
+with the exception of the "fast executemany" helpers.   The "fast executemany"
 helpers are expected to be generalized and ported to ``psycopg`` before the final
 release of SQLAlchemy 2.0, however.
 

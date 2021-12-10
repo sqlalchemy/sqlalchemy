@@ -245,7 +245,7 @@ as in the example below that builds upon the example stated in
     which will be introduced later in this tutorial.
     The RETURNING feature is generally [1]_ only
     supported for statement executions that use a single set of bound
-    parameters; that is, it wont work with the "executemany" form introduced
+    parameters; that is, it won't work with the "executemany" form introduced
     at :ref:`tutorial_multiple_parameters`.    Additionally, some dialects
     such as the Oracle dialect only allow RETURNING to return a single row
     overall, meaning it won't work with "INSERT..FROM SELECT" nor will it

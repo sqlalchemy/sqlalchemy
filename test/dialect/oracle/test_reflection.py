@@ -74,7 +74,7 @@ class MultiSchemaTest(fixtures.TestBase, AssertsCompiledSQL):
 
     -- can't make a ref from local schema to the
     -- remote schema's table without this,
-    -- *and* cant give yourself a grant !
+    -- *and* can't give yourself a grant !
     -- so we give it to public.  ideas welcome.
     grant references on %(test_schema)s.parent to public;
     grant references on %(test_schema)s.child to public;

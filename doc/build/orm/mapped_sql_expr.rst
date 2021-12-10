@@ -356,7 +356,7 @@ The :func:`.query_expression` mapping has these caveats:
   query, such as the WHERE clause, the ORDER BY clause, and make use of the
   ad-hoc expression; that is, this won't work::
 
-    # wont work
+    # won't work
     q = session.query(A).options(
         with_expression(A.expr, A.x + A.y)
     ).filter(A.expr > 5).order_by(A.expr)

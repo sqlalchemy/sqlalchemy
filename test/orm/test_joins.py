@@ -834,7 +834,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
             use_default_dialect=True,
         )
 
-        # this fails (and we cant quite fix right now).
+        # this fails (and we can't quite fix right now).
         if False:
             self.assert_compile(
                 sess.query(User, ualias)

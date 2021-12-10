@@ -311,7 +311,7 @@ schema names on a per-connection or per-statement basis.
     can be any number of "schemas" which then contain the actual table objects.
 
     A table within a specific schema is referred towards explicitly using the
-    syntax "<schemaname>.<tablename>".  Constrast this to an architecture such
+    syntax "<schemaname>.<tablename>".  Contrast this to an architecture such
     as that of MySQL, where there are only "databases", however SQL statements
     can refer to multiple databases at once, using the same syntax except it
     is "<database>.<tablename>".  On Oracle, this syntax refers to yet another

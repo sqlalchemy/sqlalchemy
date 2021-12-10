@@ -2700,7 +2700,7 @@ class MatchTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
     def test_boolean_inversion_mysql(self):
-        # because mysql doesnt have native boolean
+        # because mysql doesn't have native boolean
         self.assert_compile(
             ~self.table1.c.myid.match("somstr"),
             "NOT MATCH (mytable.myid) AGAINST (%s IN BOOLEAN MODE)",
@@ -2708,7 +2708,7 @@ class MatchTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         )
 
     def test_boolean_inversion_mssql(self):
-        # because mssql doesnt have native boolean
+        # because mssql doesn't have native boolean
         self.assert_compile(
             ~self.table1.c.myid.match("somstr"),
             "NOT CONTAINS (mytable.myid, :myid_1)",

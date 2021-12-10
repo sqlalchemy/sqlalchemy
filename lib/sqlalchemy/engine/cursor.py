@@ -331,7 +331,7 @@ class CursorResultMetaData(ResultMetaData):
         as with textual non-ordered columns.
 
         The name-matched system of merging is the same as that used by
-        SQLAlchemy for all cases up through te 0.9 series.   Positional
+        SQLAlchemy for all cases up through the 0.9 series.   Positional
         matching for compiled SQL expressions was introduced in 1.0 as a
         major performance feature, and positional matching for textual
         :class:`_expression.TextualSelect` objects in 1.1.

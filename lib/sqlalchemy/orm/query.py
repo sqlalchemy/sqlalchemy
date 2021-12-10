@@ -378,7 +378,7 @@ class Query(
         # it to provide a real expression object.
         #
         # from there, it starts to look much like Query itself won't be
-        # passed into the execute process and wont generate its own cache
+        # passed into the execute process and won't generate its own cache
         # key; this will all occur in terms of the ORM-enabled Select.
         if (
             not self._compile_options._set_base_alias

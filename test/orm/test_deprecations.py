@@ -6633,4 +6633,4 @@ class Deferred_InheritanceTest(_deferred_InheritanceTest):
             "people.person_id = managers.person_id ORDER BY people.person_id",
         )
         # note this doesn't apply to "bound" loaders since they don't seem
-        # to have this ".*" featue.
+        # to have this ".*" feature.

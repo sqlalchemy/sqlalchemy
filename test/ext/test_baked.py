@@ -280,12 +280,12 @@ class LikeQueryTest(BakedTest):
         # calling with *args
         eq_(bq(sess).params(uname="fred").count(), 1)
         # with multiple params, the **kwargs will be used
-        bq += lambda q: q.filter(User.id == bindparam("anid"))
-        eq_(bq(sess).params(uname="fred", anid=9).count(), 1)
+        bq += lambda q: q.filter(User.id == bindparam("an_id"))
+        eq_(bq(sess).params(uname="fred", an_id=9).count(), 1)
 
         eq_(
             # wrong id, so 0 results:
-            bq(sess).params(uname="fred", anid=8).count(),
+            bq(sess).params(uname="fred", an_id=8).count(),
             0,
         )
 

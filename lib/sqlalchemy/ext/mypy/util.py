@@ -245,7 +245,7 @@ def unbound_to_instance(
 
     # TODO: figure out a more robust way to check this.  The node is some
     # kind of _SpecialForm, there's a typing.Optional that's _SpecialForm,
-    # but I cant figure out how to get them to match up
+    # but I can't figure out how to get them to match up
     if typ.name == "Optional":
         # convert from "Optional?" to the more familiar
         # UnionType[..., NoneType()]

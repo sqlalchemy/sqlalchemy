@@ -770,7 +770,7 @@
         :tickets: 
 
       supports_sane_rowcount() set to False due to ticket #370.
-      versioned_id_col feature wont work in FB.
+      versioned_id_col feature won't work in FB.
 
     .. change::
         :tags: firebird
@@ -1211,7 +1211,7 @@
         :tags: sql
         :tickets: 
 
-      use_labels flag on select() wont auto-create labels for literal text
+      use_labels flag on select() won't auto-create labels for literal text
       column elements, since we can make no assumptions about the text. to
       create labels for literal columns, you can say "somecol AS
       somelabel", or use literal_column("somecol").label("somelabel")
@@ -1220,7 +1220,7 @@
         :tags: sql
         :tickets: 
 
-      quoting wont occur for literal columns when they are "proxied" into
+      quoting won't occur for literal columns when they are "proxied" into
       the column collection for their selectable (is_literal flag is
       propagated). literal columns are specified via
       literal_column("somestring").
@@ -1340,7 +1340,7 @@
       placed in the select statement by something other than the eager
       loader itself, to fix possibility of dupe columns as illustrated in. however, this means you have to be more careful with
       the columns placed in the "order by" of Query.select(), that you
-      have explicitly named them in your criterion (i.e. you cant rely on
+      have explicitly named them in your criterion (i.e. you can't rely on
       the eager loader adding them in for you)
 
     .. change::
@@ -1589,7 +1589,7 @@
         :tags: oracle
         :tickets: 363
 
-      issues a log warning when a related table cant be reflected due to
+      issues a log warning when a related table can't be reflected due to
       certain permission errors
 
     .. change::
@@ -1733,7 +1733,7 @@
         :tags: orm, bugs
         :tickets: 
 
-      eager relation to an inheriting mapper wont fail if no rows returned for
+      eager relation to an inheriting mapper won't fail if no rows returned for
       the relationship.
 
     .. change::
@@ -2877,7 +2877,7 @@
         :tags: orm
         :tickets: 346
 
-      session.flush() wont close a connection it opened
+      session.flush() won't close a connection it opened
 
     .. change::
         :tags: orm

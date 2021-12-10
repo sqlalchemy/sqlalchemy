@@ -597,8 +597,8 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
         ra = aliased(Report, subq)
 
         # this test previously used select_entity_from().  the standard
-        # conversion to use aliased() neds to be adjusted to be against
-        # Employee, not Manger, otherwise the ORM will add the manager single
+        # conversion to use aliased() needs to be adjusted to be against
+        # Employee, not Manager, otherwise the ORM will add the manager single
         # inh criteria to the outside which will break the outer join
         ma = aliased(Employee, subq)
 

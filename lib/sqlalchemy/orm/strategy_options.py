@@ -802,7 +802,7 @@ class _AbstractLoad(Generative, LoaderOption):
                         # scenario which should only be occurring in a loader
                         # that is against a non-aliased lead element with
                         # single path.  otherwise the
-                        # "B" wont match into the B(B, B2).
+                        # "B" won't match into the B(B, B2).
                         #
                         # i>=2 prevents this check from proceeding for
                         # the first path element.

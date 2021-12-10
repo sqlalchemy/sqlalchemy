@@ -446,8 +446,8 @@ as all methods are proxied through::
    attribute is also added which will always refer to the real driver-level
    connection regardless of what API it presents.
 
-Accessing the underlying connnection for an asyncio driver
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Accessing the underlying connection for an asyncio driver
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 When an asyncio driver is in use, there are two changes to the above
 scheme.  The first is that when using an :class:`_asyncio.AsyncConnection`,

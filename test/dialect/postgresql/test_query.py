@@ -1649,7 +1649,7 @@ class TableValuedRoundTripTest(fixtures.TestBase):
         if cast_fn:
             value = cast_fn(value, JSON)
 
-        # why wont this work?!?!?
+        # why won't this work?!?!?
         # should be exactly json_to_recordset(to_json('string'::text))
         #
         fn = (

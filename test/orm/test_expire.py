@@ -1007,7 +1007,7 @@ class ExpireTest(_fixtures.FixtureTest):
         assert u.uname == "jack2"
         assert "name" in u.__dict__
 
-        # this wont work unless we add API hooks through the attr. system to
+        # this won't work unless we add API hooks through the attr. system to
         # provide "expire" behavior on a synonym
         #    sess.expire(u, ['uname'])
         #    users.update(users.c.id==7).execute(name='jack3')

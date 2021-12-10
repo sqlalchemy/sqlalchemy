@@ -254,7 +254,7 @@ class ConcreteInhTest(
                 "concrete": True,
             }
 
-        # didnt call configure_mappers() again
+        # didn't call configure_mappers() again
         assert_raises_message(
             orm_exc.UnmappedClassError,
             ".*and has a mapping pending",
