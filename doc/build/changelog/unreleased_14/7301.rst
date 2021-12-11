@@ -1,6 +1,6 @@
 .. change::
     :tags: usecase, asyncio
-    :tickets: 7425
+    :tickets: 7301
 
     Added :func:`_asyncio.async_engine_config` function to create
     an async engine from a configuration dict.  This otherwise
