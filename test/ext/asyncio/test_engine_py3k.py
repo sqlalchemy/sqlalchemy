@@ -14,6 +14,7 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import union_all
+from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.ext.asyncio import engine as _async_engine
 from sqlalchemy.ext.asyncio import exc as asyncio_exc
@@ -590,6 +591,16 @@ class AsyncEngineTest(EngineFixture):
             testing.db.url,
             server_side_cursors=True,
         )
+
+    def test_async_engine_from_config(self):
+        config = {
+            "sqlalchemy.url": str(testing.db.url),
+            "sqlalchemy.echo": "true",
+        }
+        engine = async_engine_from_config(config)
+        assert engine.url == testing.db.url
+        assert engine.echo is True
+        assert engine.dialect.is_async is True
 
 
 class AsyncEventTest(EngineFixture):
