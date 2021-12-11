@@ -306,36 +306,6 @@ above table will look like:
 
    INSERT INTO my_table DEFAULT VALUES RETURNING my_table.id, my_table.timestamp, my_table.special_identifier
 
-Usage with server-generated ``onupdate`` values
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-If you are using the :paramref:`.orm.mapper.eager_defaults` flag on a table
-definition with any columns marked with :paramref:`_schema.Column.onupdate`
-that use a server-side function to generate the column's value,
-you should mark the column with ``server_default=FetchedValue()``.
-
-Doing so ensures that SQLAlchemy includes these columns in the RETURNING clause
-on dialects that support RETURNING.
-
-This is especially useful for columns that track the "updated" time of a row
-using server-side generated timestamps, like the following example:
-
-    class MyModel(Base):
-        __tablename__ = 'my_table'
-
-        id = Column(Integer, primary_key=True)
-        created = Column(DateTime(), server_default=func.now())
-
-        # Use the dialect-appropriate ``now()`` function to generate an updated
-        # time and include the "updated" column in the RETURNING clause.
-        updated = Column(DateTime(), onupdate=func.now(), server_default=FetchedValue())
-
-        __mapper_args__ = {"eager_defaults": True}
-
-Without ``server_default=FetchedValue()``, SQLAlchemy will make a SELECT after
-an INSERT or UPDATE to get the server-generated value for the column even if
-the dialect supports RETURNING.
-
 
 Case 2: non primary key, RETURNING or equivalent is not supported or not needed
 --------------------------------------------------------------------------------
@@ -530,6 +500,37 @@ The above mapping upon INSERT will look like:
 
 
 .. _orm_dml_returning_objects:
+
+Case 6: Usage with server-generated ``onupdate`` values
+-------------------------------------------------------
+
+If you are using the :paramref:`.orm.mapper.eager_defaults` flag on a table
+definition with any columns marked with :paramref:`_schema.Column.onupdate`
+that use a server-side function to generate the column's value,
+you should mark the column with ``server_onupdate=FetchedValue()``.
+
+Doing so ensures that SQLAlchemy includes these columns in the RETURNING clause
+on dialects that support RETURNING.
+
+This is especially useful for columns that track the "updated" time of a row
+using server-side generated timestamps, like the following example:
+
+    class MyModel(Base):
+        __tablename__ = 'my_table'
+
+        id = Column(Integer, primary_key=True)
+        created = Column(DateTime(), server_default=func.now())
+
+        # Use the dialect-appropriate ``now()`` function to generate an updated
+        # time and include the "updated" column in the RETURNING clause.
+        updated = Column(DateTime(), onupdate=func.now(), server_onupdate=FetchedValue())
+
+        __mapper_args__ = {"eager_defaults": True}
+
+Without ``server_onupdate=FetchedValue()``, SQLAlchemy will make a SELECT after
+an INSERT or UPDATE to get the server-generated value for the column even if
+the dialect supports RETURNING.
+
 
 Using INSERT, UPDATE and ON CONFLICT (i.e. upsert) to return ORM Objects
 ==========================================================================
