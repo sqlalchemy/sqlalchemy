@@ -6,6 +6,7 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import exc
 from sqlalchemy import pool
 from sqlalchemy import testing
+from sqlalchemy import util
 from sqlalchemy.dialects import plugins
 from sqlalchemy.dialects import registry
 from sqlalchemy.engine.default import DefaultDialect
@@ -180,6 +181,17 @@ class URLTest(fixtures.TestBase):
         u = url.make_url(test_url)
         eq_(u.query, {"arg1=": "param1", "arg2": "param 2"})
         eq_(str(u), test_url)
+
+    def test_query_string_py2_unicode(self):
+        url_str = u"dialect://user:pass@host/?arg1=param1&arg2=param2"
+        if util.py2k:
+            # just to make sure linters / formatters etc. don't erase the
+            # 'u' above
+            assert isinstance(url_str, unicode)  # noqa
+        u = url.make_url(url_str)
+        eq_(u.query, {"arg1": "param1", "arg2": "param2"})
+        eq_(u.database, "")
+        eq_(str(u), "dialect://user:pass@host/?arg1=param1&arg2=param2")
 
     def test_comparison(self):
         common_url = (
