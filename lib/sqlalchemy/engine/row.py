@@ -59,21 +59,25 @@ except ImportError:
         def __init__(self, parent, processors, keymap, key_style, data):
             """Row objects are constructed by CursorResult objects."""
 
-            self._parent = parent
+            object.__setattr__(self, "_parent", parent)
 
             if processors:
-                self._data = tuple(
-                    [
-                        proc(value) if proc else value
-                        for proc, value in zip(processors, data)
-                    ]
+                object.__setattr__(
+                    self,
+                    "_data",
+                    tuple(
+                        [
+                            proc(value) if proc else value
+                            for proc, value in zip(processors, data)
+                        ]
+                    ),
                 )
             else:
-                self._data = tuple(data)
+                object.__setattr__(self, "_data", tuple(data))
 
-            self._keymap = keymap
+            object.__setattr__(self, "_keymap", keymap)
 
-            self._key_style = key_style
+            object.__setattr__(self, "_key_style", key_style)
 
         def __reduce__(self):
             return (
@@ -178,6 +182,12 @@ class Row(BaseRow, collections_abc.Sequence):
 
     _default_key_style = KEY_INTEGER_ONLY
 
+    def __setattr__(self, name, value):
+        raise AttributeError("can't set attribute")
+
+    def __delattr__(self, name):
+        raise AttributeError("can't delete attribute")
+
     @property
     def _mapping(self):
         """Return a :class:`.RowMapping` for this :class:`.Row`.
@@ -233,10 +243,11 @@ class Row(BaseRow, collections_abc.Sequence):
         }
 
     def __setstate__(self, state):
-        self._parent = parent = state["_parent"]
-        self._data = state["_data"]
-        self._keymap = parent._keymap
-        self._key_style = state["_key_style"]
+        parent = state["_parent"]
+        object.__setattr__(self, "_parent", parent)
+        object.__setattr__(self, "_data", state["_data"])
+        object.__setattr__(self, "_keymap", parent._keymap)
+        object.__setattr__(self, "_key_style", state["_key_style"])
 
     def _op(self, other, op):
         return (
