@@ -106,7 +106,27 @@ class QueryContext:
         self.params = params
 
         self.propagated_loader_options = {
-            o for o in statement._with_options if o.propagate_to_loaders
+            # issue 7447.
+            # propagated loader options will be present on loaded InstanceState
+            # objects under state.load_options and are typically used by
+            # LazyLoader to apply options to the SELECT statement it emits.
+            # For compile state options (i.e. loader strategy options), these
+            # need to line up with the ".load_path" attribute which in
+            # loader.py is pulled from context.compile_state.current_path.
+            # so, this means these options have to be the ones from the
+            # *cached* statement that's travelling with compile_state, not the
+            # *current* statement which won't match up for an ad-hoc
+            # AliasedClass
+            cached_o
+            for cached_o in compile_state.select_statement._with_options
+            if cached_o.propagate_to_loaders and cached_o._is_compile_state
+        } | {
+            # for user defined loader options that are not "compile state",
+            # those just need to be present as they are
+            uncached_o
+            for uncached_o in statement._with_options
+            if uncached_o.propagate_to_loaders
+            and not uncached_o._is_compile_state
         }
 
         self.attributes = dict(compile_state.attributes)

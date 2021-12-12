@@ -6068,153 +6068,179 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
 
     def test_lazyload_aliased_abs_bcs_one(self):
         A, B, C = self.classes("A", "B", "C")
-        s = fixture_session()
-        aa = aliased(A)
-        q = (
-            s.query(aa, A)
-            .filter(aa.id == 1)
-            .filter(A.id == 2)
-            .filter(aa.id != A.id)
-            .options(joinedload(A.bs).joinedload(B.cs))
-        )
-        self._run_tests(q, 3)
+
+        for i in range(2):
+            s = fixture_session()
+            aa = aliased(A)
+            q = (
+                s.query(aa, A)
+                .filter(aa.id == 1)
+                .filter(A.id == 2)
+                .filter(aa.id != A.id)
+                .options(joinedload(A.bs).joinedload(B.cs))
+            )
+            self._run_tests(q, 3)
 
     def test_lazyload_aliased_abs_bcs_two(self):
         A, B, C = self.classes("A", "B", "C")
-        s = fixture_session()
-        aa = aliased(A)
-        q = (
-            s.query(aa, A)
-            .filter(aa.id == 1)
-            .filter(A.id == 2)
-            .filter(aa.id != A.id)
-            .options(defaultload(A.bs).joinedload(B.cs))
-        )
-        self._run_tests(q, 3)
+
+        for i in range(2):
+            s = fixture_session()
+            aa = aliased(A)
+            q = (
+                s.query(aa, A)
+                .filter(aa.id == 1)
+                .filter(A.id == 2)
+                .filter(aa.id != A.id)
+                .options(defaultload(A.bs).joinedload(B.cs))
+            )
+            self._run_tests(q, 3)
 
     def test_pathed_lazyload_aliased_abs_bcs(self):
         A, B, C = self.classes("A", "B", "C")
-        s = fixture_session()
-        aa = aliased(A)
-        opt = Load(A).joinedload(A.bs).joinedload(B.cs)
 
-        q = (
-            s.query(aa, A)
-            .filter(aa.id == 1)
-            .filter(A.id == 2)
-            .filter(aa.id != A.id)
-            .options(opt)
-        )
-        self._run_tests(q, 3)
+        for i in range(2):
+            s = fixture_session()
+            aa = aliased(A)
+            opt = Load(A).joinedload(A.bs).joinedload(B.cs)
+
+            q = (
+                s.query(aa, A)
+                .filter(aa.id == 1)
+                .filter(A.id == 2)
+                .filter(aa.id != A.id)
+                .options(opt)
+            )
+            self._run_tests(q, 3)
 
     def test_pathed_lazyload_plus_joined_aliased_abs_bcs(self):
         A, B, C = self.classes("A", "B", "C")
-        s = fixture_session()
-        aa = aliased(A)
-        opt = Load(aa).defaultload(aa.bs).joinedload(B.cs)
 
-        q = (
-            s.query(aa, A)
-            .filter(aa.id == 1)
-            .filter(A.id == 2)
-            .filter(aa.id != A.id)
-            .options(opt)
-        )
-        self._run_tests(q, 2)
+        for i in range(2):
+            s = fixture_session()
+            aa = aliased(A)
+            opt = Load(aa).defaultload(aa.bs).joinedload(B.cs)
+
+            q = (
+                s.query(aa, A)
+                .filter(aa.id == 1)
+                .filter(A.id == 2)
+                .filter(aa.id != A.id)
+                .options(opt)
+            )
+            self._run_tests(q, 2)
 
     def test_pathed_joinedload_aliased_abs_bcs(self):
         A, B, C = self.classes("A", "B", "C")
-        s = fixture_session()
-        aa = aliased(A)
-        opt = Load(aa).joinedload(aa.bs).joinedload(B.cs)
 
-        q = (
-            s.query(aa, A)
-            .filter(aa.id == 1)
-            .filter(A.id == 2)
-            .filter(aa.id != A.id)
-            .options(opt)
-        )
-        self._run_tests(q, 1)
+        for i in range(2):
+            s = fixture_session()
+            aa = aliased(A)
+            opt = Load(aa).joinedload(aa.bs).joinedload(B.cs)
+
+            q = (
+                s.query(aa, A)
+                .filter(aa.id == 1)
+                .filter(A.id == 2)
+                .filter(aa.id != A.id)
+                .options(opt)
+            )
+            self._run_tests(q, 1)
 
     def test_lazyload_plus_joined_aliased_abs_bcs(self):
+        """by running the test twice, this test includes a test
+        for #7447 to ensure cached queries apply the cached option objects
+        to the InstanceState which line up with the cached current_path."""
+
         A, B, C = self.classes("A", "B", "C")
 
-        s = fixture_session()
-        aa = aliased(A)
-        q = (
-            s.query(aa, A)
-            .filter(aa.id == 1)
-            .filter(A.id == 2)
-            .filter(aa.id != A.id)
-            .options(defaultload(aa.bs).joinedload(B.cs))
-        )
-        self._run_tests(q, 2)
+        for i in range(2):
+            s = fixture_session()
+            aa = aliased(A)
+            q = (
+                s.query(aa, A)
+                .filter(aa.id == 1)
+                .filter(A.id == 2)
+                .filter(aa.id != A.id)
+                .options(defaultload(aa.bs).joinedload(B.cs))
+            )
+
+            self._run_tests(q, 2)
 
     def test_joinedload_aliased_abs_bcs(self):
         A, B, C = self.classes("A", "B", "C")
-        s = fixture_session()
-        aa = aliased(A)
-        q = (
-            s.query(aa, A)
-            .filter(aa.id == 1)
-            .filter(A.id == 2)
-            .filter(aa.id != A.id)
-            .options(joinedload(aa.bs).joinedload(B.cs))
-        )
-        self._run_tests(q, 1)
+
+        for i in range(2):
+            s = fixture_session()
+            aa = aliased(A)
+            q = (
+                s.query(aa, A)
+                .filter(aa.id == 1)
+                .filter(A.id == 2)
+                .filter(aa.id != A.id)
+                .options(joinedload(aa.bs).joinedload(B.cs))
+            )
+            self._run_tests(q, 1)
 
     def test_lazyload_unaliased_abs_bcs_one(self):
         A, B, C = self.classes("A", "B", "C")
-        s = fixture_session()
-        aa = aliased(A)
-        q = (
-            s.query(A, aa)
-            .filter(aa.id == 2)
-            .filter(A.id == 1)
-            .filter(aa.id != A.id)
-            .options(joinedload(aa.bs).joinedload(B.cs))
-        )
-        self._run_tests(q, 3)
+
+        for i in range(2):
+            s = fixture_session()
+            aa = aliased(A)
+            q = (
+                s.query(A, aa)
+                .filter(aa.id == 2)
+                .filter(A.id == 1)
+                .filter(aa.id != A.id)
+                .options(joinedload(aa.bs).joinedload(B.cs))
+            )
+            self._run_tests(q, 3)
 
     def test_lazyload_unaliased_abs_bcs_two(self):
         A, B, C = self.classes("A", "B", "C")
-        s = fixture_session()
-        aa = aliased(A)
-        q = (
-            s.query(A, aa)
-            .filter(aa.id == 2)
-            .filter(A.id == 1)
-            .filter(aa.id != A.id)
-            .options(defaultload(aa.bs).joinedload(B.cs))
-        )
-        self._run_tests(q, 3)
+
+        for i in range(2):
+            s = fixture_session()
+            aa = aliased(A)
+            q = (
+                s.query(A, aa)
+                .filter(aa.id == 2)
+                .filter(A.id == 1)
+                .filter(aa.id != A.id)
+                .options(defaultload(aa.bs).joinedload(B.cs))
+            )
+            self._run_tests(q, 3)
 
     def test_lazyload_plus_joined_unaliased_abs_bcs(self):
         A, B, C = self.classes("A", "B", "C")
-        s = fixture_session()
-        aa = aliased(A)
-        q = (
-            s.query(A, aa)
-            .filter(aa.id == 2)
-            .filter(A.id == 1)
-            .filter(aa.id != A.id)
-            .options(defaultload(A.bs).joinedload(B.cs))
-        )
-        self._run_tests(q, 2)
+
+        for i in range(2):
+            s = fixture_session()
+            aa = aliased(A)
+            q = (
+                s.query(A, aa)
+                .filter(aa.id == 2)
+                .filter(A.id == 1)
+                .filter(aa.id != A.id)
+                .options(defaultload(A.bs).joinedload(B.cs))
+            )
+            self._run_tests(q, 2)
 
     def test_joinedload_unaliased_abs_bcs(self):
         A, B, C = self.classes("A", "B", "C")
-        s = fixture_session()
-        aa = aliased(A)
-        q = (
-            s.query(A, aa)
-            .filter(aa.id == 2)
-            .filter(A.id == 1)
-            .filter(aa.id != A.id)
-            .options(joinedload(A.bs).joinedload(B.cs))
-        )
-        self._run_tests(q, 1)
+
+        for i in range(2):
+            s = fixture_session()
+            aa = aliased(A)
+            q = (
+                s.query(A, aa)
+                .filter(aa.id == 2)
+                .filter(A.id == 1)
+                .filter(aa.id != A.id)
+                .options(joinedload(A.bs).joinedload(B.cs))
+            )
+            self._run_tests(q, 1)
 
 
 class EntityViaMultiplePathTestThree(fixtures.DeclarativeMappedTest):
