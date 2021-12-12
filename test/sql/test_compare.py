@@ -1356,6 +1356,10 @@ class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):
         ]
 
     def test_all_present(self):
+        """test for elements that are in SQLAlchemy Core, that they are
+        also included in the fixtures above.
+
+        """
         need = set(
             cls
             for cls in class_hierarchy(ClauseElement)
@@ -1363,9 +1367,9 @@ class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):
             and (
                 "__init__" in cls.__dict__
                 or issubclass(cls, AliasedReturnsRows)
-                or "inherit_cache" not in cls.__dict__
             )
             and not issubclass(cls, (Annotated))
+            and cls.__module__.startswith("sqlalchemy.")
             and "orm" not in cls.__module__
             and "compiler" not in cls.__module__
             and "crud" not in cls.__module__
