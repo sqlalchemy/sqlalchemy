@@ -1366,6 +1366,7 @@ class CompareAndCopyTest(CoreFixtures, fixtures.TestBase):
                 or "inherit_cache" not in cls.__dict__
             )
             and not issubclass(cls, (Annotated))
+            and cls.__module__.startswith("sqlalchemy.")
             and "orm" not in cls.__module__
             and "compiler" not in cls.__module__
             and "crud" not in cls.__module__
