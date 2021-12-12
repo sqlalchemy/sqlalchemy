@@ -182,7 +182,7 @@ class URL(
             return util.EMPTY_DICT
 
         def _assert_value(val):
-            if isinstance(val, str):
+            if isinstance(val, compat.string_types):
                 return val
             elif isinstance(val, collections_abc.Sequence):
                 return tuple(_assert_value(elem) for elem in val)
