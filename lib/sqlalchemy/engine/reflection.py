@@ -999,6 +999,13 @@ class Inspector:
         ("nulls_last", operators.nulls_last_op),
     ]
 
+    def _column_name_to_column(self, col_name, table, cols_by_orig_name):
+        return (
+            cols_by_orig_name[col_name]
+            if col_name in cols_by_orig_name
+            else table.c[col_name]
+        )
+
     def _reflect_indexes(
         self,
         table_name,
@@ -1031,20 +1038,16 @@ class Inspector:
             # look for columns by orig name in cols_by_orig_name,
             # but support columns that are in-Python only as fallback
             idx_cols = []
-            for c in columns:
+            for i, c in enumerate(columns):
                 try:
-                    idx_col = (
-                        cols_by_orig_name[c]
-                        if c in cols_by_orig_name
-                        else table.c[c]
-                    )
+                    idx_col = self._column_name_to_column(c, table, cols_by_orig_name)
                 except KeyError:
                     util.warn(
                         "%s key '%s' was not located in "
                         "columns for table '%s'" % (flavor, c, table_name)
                     )
                     continue
-                c_sorting = column_sorting.get(c, ())
+                c_sorting = column_sorting.get(i, ())
                 for k, op in self._index_sort_exprs:
                     if k in c_sorting:
                         idx_col = op(idx_col)

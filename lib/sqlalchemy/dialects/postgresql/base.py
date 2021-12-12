@@ -1375,14 +1375,19 @@ E.g.::
 
 from collections import defaultdict
 import datetime as dt
+import decimal
 import re
 from uuid import UUID as _python_UUID
+
+import psqlparse
 
 from . import array as _array
 from . import hstore as _hstore
 from . import json as _json
 from . import ranges as _ranges
+from ... import cast
 from ... import exc
+from ... import func
 from ... import schema
 from ... import sql
 from ... import util
@@ -3021,6 +3026,15 @@ class PGInspector(reflection.Inspector):
                 conn, schema, info_cache=self.info_cache, include=include
             )
 
+    def _column_name_to_column(self, c, table, cols_by_orig_name):
+        if isinstance(c, str):
+            return super(PGInspector, self)._column_name_to_column(c, table, cols_by_orig_name)
+
+        def columnref_to_column(c):
+            return super(PGInspector, self)._column_name_to_column(c, table, cols_by_orig_name)
+
+        return _unparse_expr(c['val'], columnref_to_column=columnref_to_column)
+
 
 class CreateEnumType(schema._CreateDropBase):
     __visit_name__ = "create_enum_type"
@@ -4057,6 +4071,177 @@ class PGDialect(default.DefaultDialect):
         else:
             return "%s = ANY(%s)" % (col, compare_to)
 
+    def _get_indexes_new(self, connection, table_oid, schema, **kw):
+        assert self.server_version_info >= (8, 5)
+
+        IDX_SQL = """
+          SELECT
+              i.relname as relname,
+              ix.indisunique,
+              ix.indexprs,
+              pg_get_expr(ix.indexprs, ix.indrelid) as index_expr_text,
+              c.conrelid,
+              attnames.attnames,
+              ix.indkey::varchar as column_indexes,
+              ix.indoption::varchar as column_options,
+              i.reloptions,
+              am.amname as access_method,
+              pg_get_expr(ix.indpred, ix.indrelid),
+              %s as indnkeyatts
+          FROM
+              pg_class t
+                    join pg_index ix on t.oid = ix.indrelid
+                    join pg_class i on i.oid = ix.indexrelid
+                    cross join lateral (
+                       select array_agg(a.attname) as attnames
+                       from unnest(ix.indkey) as t1(one_indkey)
+                       left outer join pg_attribute a on (
+                         t.oid = a.attrelid
+                         and a.attnum = t1.one_indkey
+                       )
+                    ) as attnames
+                    left outer join
+                        pg_constraint c
+                        on (ix.indrelid = c.conrelid and
+                            ix.indexrelid = c.conindid and
+                            c.contype in ('p', 'u', 'x'))
+                    left outer join
+                        pg_am am
+                        on i.relam = am.oid
+          WHERE
+              t.relkind IN ('r', 'v', 'f', 'm', 'p')
+              and t.oid = :table_oid
+              and ix.indisprimary = 'f'
+          ORDER BY
+              t.relname,
+              i.relname
+        """ % (
+            "ix.indnkeyatts"
+            if self.server_version_info >= (11, 0)
+            else "NULL",
+        )
+
+        t = sql.text(IDX_SQL).columns(
+            relname=sqltypes.Unicode, attname=sqltypes.Unicode
+        )
+        c = connection.execute(t, dict(table_oid=table_oid))
+
+        indexes = defaultdict(lambda: defaultdict(dict))
+
+        for row in c.fetchall():
+            (
+                idx_name,
+                unique,
+                expr,
+                expr_text,
+                conrelid,
+                attnames,
+                attindexes,
+                attoptions,
+                options,
+                amname,
+                filter_definition,
+                indnkeyatts,
+            ) = row
+
+            attindexes = [int(i) for i in attindexes.split()]
+            attoptions = [int(i) for i in attoptions.split()]
+            index = indexes[idx_name]
+
+            if expr_text:
+                # It is not strictly necessary to parse the expr here, it could
+                # be passed as a string-based expression, but it needs to be
+                # split by commas, so it is easier to parse it to some
+                # intermediate representation.
+                expr = _parse_expr(expr_text)
+            else:
+                expr = None
+
+            # "The number of key columns in the index, not counting any
+            # included columns, which are merely stored and do not
+            # participate in the index semantics"
+            if indnkeyatts and attindexes[indnkeyatts:]:
+                # this is a "covering index" which has INCLUDE columns
+                # as well as regular index columns
+                inc_keys = attindexes[indnkeyatts:]
+                attindexes = attindexes[:indnkeyatts]
+            else:
+                inc_keys = []
+
+            index["key"] = attindexes
+            index["inc"] = inc_keys
+
+            expr_idx = 0
+
+            for col_idx, col, col_flags in zip(attindexes, attnames, attoptions):
+                if col_idx == 0:
+                    col = expr[expr_idx]
+                    expr_idx += 1
+                index['cols'][col_idx] = col
+                col_sorting = ()
+                # try to set flags only if they differ from PG defaults...
+                # (new in pg 8.3)
+                # "pg_index.indoption" is list of ints, one per column/expr.
+                # int acts as bitmask: 0x01=DESC, 0x02=NULLSFIRST
+                if col_flags & 0x01:
+                    col_sorting += ("desc",)
+                    if not (col_flags & 0x02):
+                        col_sorting += ("nulls_last",)
+                else:
+                    if col_flags & 0x02:
+                        col_sorting += ("nulls_first",)
+                if col_sorting:
+                    index['sorting'][col_idx] = col_sorting
+
+            index["unique"] = unique
+            if conrelid is not None:
+                index["duplicates_constraint"] = idx_name
+            if options:
+                index["options"] = dict(
+                    [option.split("=") for option in options]
+                )
+
+            # it *might* be nice to include that this is 'btree' in the
+            # reflection info.  But we don't want an Index object
+            # to have a ``postgresql_using`` in it that is just the
+            # default, so for the moment leaving this out.
+            if amname and amname != "btree":
+                index["amname"] = amname
+
+            if filter_definition:
+                index["postgresql_where"] = filter_definition
+
+        result = []
+        for name, idx in indexes.items():
+            entry = {
+                "name": name,
+                "unique": idx["unique"],
+                "column_names": [idx["cols"][i] for i in idx["key"]],
+            }
+            if self.server_version_info >= (11, 0):
+                entry["include_columns"] = [idx["cols"][i] for i in idx["inc"]]
+            if "duplicates_constraint" in idx:
+                entry["duplicates_constraint"] = idx["duplicates_constraint"]
+            if "sorting" in idx:
+                entry["column_sorting"] = dict(
+                    (idx["cols"][idx["key"][i]], value)
+                    for i, value in idx["sorting"].items()
+                )
+            if "options" in idx:
+                entry.setdefault("dialect_options", {})[
+                    "postgresql_with"
+                ] = idx["options"]
+            if "amname" in idx:
+                entry.setdefault("dialect_options", {})[
+                    "postgresql_using"
+                ] = idx["amname"]
+            if "postgresql_where" in idx:
+                entry.setdefault("dialect_options", {})[
+                    "postgresql_where"
+                ] = idx["postgresql_where"]
+            result.append(entry)
+        return result
+
     @reflection.cache
     def get_indexes(self, connection, table_name, schema, **kw):
         table_oid = self.get_table_oid(
@@ -4066,81 +4251,45 @@ class PGDialect(default.DefaultDialect):
         # cast indkey as varchar since it's an int2vector,
         # returned as a list by some drivers such as pypostgresql
 
-        if self.server_version_info < (8, 5):
-            IDX_SQL = """
-              SELECT
-                  i.relname as relname,
-                  ix.indisunique, ix.indexprs, ix.indpred,
-                  a.attname, a.attnum, NULL, ix.indkey%s,
-                  %s, %s, am.amname,
-                  NULL as indnkeyatts
-              FROM
-                  pg_class t
-                        join pg_index ix on t.oid = ix.indrelid
-                        join pg_class i on i.oid = ix.indexrelid
-                        left outer join
-                            pg_attribute a
-                            on t.oid = a.attrelid and %s
-                        left outer join
-                            pg_am am
-                            on i.relam = am.oid
-              WHERE
-                  t.relkind IN ('r', 'v', 'f', 'm')
-                  and t.oid = :table_oid
-                  and ix.indisprimary = 'f'
-              ORDER BY
-                  t.relname,
-                  i.relname
-            """ % (
-                # version 8.3 here was based on observing the
-                # cast does not work in PG 8.2.4, does work in 8.3.0.
-                # nothing in PG changelogs regarding this.
-                "::varchar" if self.server_version_info >= (8, 3) else "",
-                "ix.indoption::varchar"
-                if self.server_version_info >= (8, 3)
-                else "NULL",
-                "i.reloptions"
-                if self.server_version_info >= (8, 2)
-                else "NULL",
-                self._pg_index_any("a.attnum", "ix.indkey"),
-            )
-        else:
-            IDX_SQL = """
-              SELECT
-                  i.relname as relname,
-                  ix.indisunique, ix.indexprs,
-                  a.attname, a.attnum, c.conrelid, ix.indkey::varchar,
-                  ix.indoption::varchar, i.reloptions, am.amname,
-                  pg_get_expr(ix.indpred, ix.indrelid),
-                  %s as indnkeyatts
-              FROM
-                  pg_class t
-                        join pg_index ix on t.oid = ix.indrelid
-                        join pg_class i on i.oid = ix.indexrelid
-                        left outer join
-                            pg_attribute a
-                            on t.oid = a.attrelid and a.attnum = ANY(ix.indkey)
-                        left outer join
-                            pg_constraint c
-                            on (ix.indrelid = c.conrelid and
-                                ix.indexrelid = c.conindid and
-                                c.contype in ('p', 'u', 'x'))
-                        left outer join
-                            pg_am am
-                            on i.relam = am.oid
-              WHERE
-                  t.relkind IN ('r', 'v', 'f', 'm', 'p')
-                  and t.oid = :table_oid
-                  and ix.indisprimary = 'f'
-              ORDER BY
-                  t.relname,
-                  i.relname
-            """ % (
-                "ix.indnkeyatts"
-                if self.server_version_info >= (11, 0)
-                else "NULL",
-            )
-
+        if self.server_version_info >= (8, 5):
+            return self._get_indexes_new(connection, table_oid, schema, **kw)
+        IDX_SQL = """
+          SELECT
+              i.relname as relname,
+              ix.indisunique, ix.indexprs, ix.indpred,
+              a.attname, a.attnum, NULL, ix.indkey%s,
+              %s, %s, am.amname,
+              NULL as indnkeyatts
+          FROM
+              pg_class t
+                    join pg_index ix on t.oid = ix.indrelid
+                    join pg_class i on i.oid = ix.indexrelid
+                    left outer join
+                        pg_attribute a
+                        on t.oid = a.attrelid and %s
+                    left outer join
+                        pg_am am
+                        on i.relam = am.oid
+          WHERE
+              t.relkind IN ('r', 'v', 'f', 'm')
+              and t.oid = :table_oid
+              and ix.indisprimary = 'f'
+          ORDER BY
+              t.relname,
+              i.relname
+        """ % (
+            # version 8.3 here was based on observing the
+            # cast does not work in PG 8.2.4, does work in 8.3.0.
+            # nothing in PG changelogs regarding this.
+            "::varchar" if self.server_version_info >= (8, 3) else "",
+            "ix.indoption::varchar"
+            if self.server_version_info >= (8, 3)
+            else "NULL",
+            "i.reloptions"
+            if self.server_version_info >= (8, 2)
+            else "NULL",
+            self._pg_index_any("a.attnum", "ix.indkey"),
+        )
         t = sql.text(IDX_SQL).columns(
             relname=sqltypes.Unicode, attname=sqltypes.Unicode
         )
@@ -4459,3 +4608,66 @@ class PGDialect(default.DefaultDialect):
             }
 
         return domains
+
+
+def _parse_expr(expr: str):
+    parsed = psqlparse.parse('SELECT ' + expr)
+    return parsed[0].target_list.targets
+
+
+def _unparse_expr(parsed_expr, columnref_to_column):
+    def recurse(x):
+        return _unparse_expr(x, columnref_to_column)
+
+    if parsed_expr.get('String'):
+        return parsed_expr['String']['str']
+    if parsed_expr.get('Integer'):
+        return parsed_expr['Integer']['ival']
+    if parsed_expr.get('Float'):
+        return decimal.Decimal(parsed_expr['Float']['str'])
+    if parsed_expr.get('A_ArrayExpr'):
+        return [
+            recurse(elt)
+            for elt in parsed_expr['A_ArrayExpr']['elements']
+        ]
+    if parsed_expr.get('A_Const'):
+        return recurse(parsed_expr['A_Const']['val'])
+
+    if parsed_expr.get('TypeCast'):
+        arg = recurse(parsed_expr.get('TypeCast')['arg'])
+        cast_type = recurse(parsed_expr.get('TypeCast')['typeName'])
+        return cast(arg, cast_type)
+
+    if parsed_expr.get('TypeName'):
+        names = [recurse(n) for n in parsed_expr.get('TypeName')['names']]
+        if len(names) == 1:
+            return ischema_names[names[0]]
+        raise NotImplementedError
+
+    if parsed_expr.get('FuncCall'):
+        funcall = parsed_expr.get('FuncCall')
+        funcname_components = [recurse(n) for n in funcall['funcname']]
+        args = [recurse(a) for a in funcall['args']]
+
+        fn = getattr(func, funcname_components[0])
+        for component in funcname_components[1:]:
+            fn = getattr(fn, component)
+        return fn(*args)
+
+    if parsed_expr.get('ColumnRef'):
+        fields = [recurse(f) for f in parsed_expr.get('ColumnRef')['fields']]
+        if len(fields) == 1:
+            return columnref_to_column(fields[0])
+        raise NotImplementedError
+
+    if parsed_expr.get('A_Expr'):
+        # A_Expr kind: https://doxygen.postgresql.org/parsenodes_8h.html#a41cee9367d9d92ec6b4ee0bbc0df09fd
+        # kind = 0 -> normal binary operator
+        if parsed_expr['A_Expr']['kind'] == 0:
+            name = [recurse(n) for n in parsed_expr['A_Expr']['name']]
+            lexpr = recurse(parsed_expr['A_Expr']['lexpr'])
+            rexpr = recurse(parsed_expr['A_Expr']['rexpr'])
+            if len(name) == 1:
+                return lexpr.op(name[0])(rexpr)
+
+    raise NotImplementedError

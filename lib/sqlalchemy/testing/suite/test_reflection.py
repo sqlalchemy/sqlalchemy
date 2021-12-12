@@ -1210,8 +1210,38 @@ class ComponentReflectionTestExtra(fixtures.TestBase):
             ],
         )
 
-    @testing.requires.indexes_with_expressions
+    @testing.requires.reflected_indexes_with_expressions
     def test_reflect_expression_based_indexes(self, metadata, connection):
+        t = Table(
+            "t",
+            metadata,
+            Column("x", String(30)),
+            Column("y", String(30)),
+        )
+
+        Index("t_idx", func.lower(t.c.x).concat(func.lower(t.c.y)))
+
+        Index("t_idx_2", t.c.x)
+
+        metadata.create_all(connection)
+
+        insp = inspect(connection)
+
+        new_metadata = sa.MetaData()
+        new_t = Table("t", new_metadata)
+        insp.reflect_table(new_t, None)
+
+        compiled_indexes = {
+            i.name: str(sa.schema.CreateIndex(i).compile()) for i in new_t.indexes
+        }
+        expected = {
+            't_idx': 'CREATE INDEX t_idx ON t (lower(CAST(x AS TEXT)) || lower(CAST(y AS TEXT)))',
+            't_idx_2': 'CREATE INDEX t_idx_2 ON t (x)',
+        }
+        assert expected == compiled_indexes
+
+    @testing.requires.nonreflected_indexes_with_expressions
+    def test_skip_reflecting_expression_based_indexes(self, metadata, connection):
         t = Table(
             "t",
             metadata,
