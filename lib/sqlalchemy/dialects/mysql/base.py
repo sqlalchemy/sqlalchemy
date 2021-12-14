@@ -2578,16 +2578,21 @@ class MySQLDialect(default.DefaultDialect):
 
     def is_disconnect(self, e, connection, cursor):
         if isinstance(
-            e, (self.dbapi.OperationalError, self.dbapi.ProgrammingError)
+            e,
+            (
+                self.dbapi.OperationalError,
+                self.dbapi.ProgrammingError,
+                self.dbapi.InterfaceError,
+            ),
+        ) and self._extract_error_code(e) in (
+            1927,
+            2006,
+            2013,
+            2014,
+            2045,
+            2055,
         ):
-            return self._extract_error_code(e) in (
-                1927,
-                2006,
-                2013,
-                2014,
-                2045,
-                2055,
-            )
+            return True
         elif isinstance(
             e, (self.dbapi.InterfaceError, self.dbapi.InternalError)
         ):
