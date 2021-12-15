@@ -24,6 +24,7 @@ from . import util as orm_util
 from .base import _DEFER_FOR_STATE
 from .base import _RAISE_FOR_STATE
 from .base import _SET_DEFERRED_EXPIRED
+from .base import PASSIVE_OFF
 from .context import _column_descriptions
 from .context import ORMCompileState
 from .context import QueryContext
@@ -512,19 +513,9 @@ class DeferredColumnLoader(LoaderStrategy):
         if self.raiseload:
             self._invoke_raise_load(state, passive, "raise")
 
-        if (
-            loading.load_on_ident(
-                session,
-                sql.select(localparent).set_label_style(
-                    LABEL_STYLE_TABLENAME_PLUS_COL
-                ),
-                state.key,
-                only_load_props=group,
-                refresh_state=state,
-            )
-            is None
-        ):
-            raise orm_exc.ObjectDeletedError(state)
+        loading.load_scalar_attributes(
+            state.mapper, state, set(group), PASSIVE_OFF
+        )
 
         return attributes.ATTR_WAS_SET
 

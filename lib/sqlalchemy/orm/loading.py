@@ -16,7 +16,6 @@ as well as some of the attribute loading strategies.
 from . import attributes
 from . import exc as orm_exc
 from . import path_registry
-from . import strategy_options
 from .base import _DEFER_FOR_STATE
 from .base import _RAISE_FOR_STATE
 from .base import _SET_DEFERRED_EXPIRED
@@ -1386,25 +1385,14 @@ def load_scalar_attributes(mapper, state, attribute_names, passive):
         attribute_names = attribute_names.intersection(mapper.attrs.keys())
 
     if mapper.inherits and not mapper.concrete:
-        # because we are using Core to produce a select() that we
-        # pass to the Query, we aren't calling setup() for mapped
-        # attributes; in 1.0 this means deferred attrs won't get loaded
-        # by default
         statement = mapper._optimized_get_statement(state, attribute_names)
         if statement is not None:
-            # this was previously aliased(mapper, statement), however,
-            # statement is a select() and Query's coercion now raises for this
-            # since you can't "select" from a "SELECT" statement.  only
-            # from_statement() allows this.
-            # note: using from_statement() here means there is an adaption
-            # with adapt_on_names set up.  the other option is to make the
-            # aliased() against a subquery which affects the SQL.
 
             from .query import FromStatement
 
-            stmt = FromStatement(mapper, statement).options(
-                strategy_options.Load(mapper).undefer("*")
-            )
+            # undefer() isn't needed here because statement has the
+            # columns needed already, this implicitly undefers that column
+            stmt = FromStatement(mapper, statement)
 
             result = load_on_ident(
                 session,

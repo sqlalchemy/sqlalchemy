@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 7463
+
+    Fixed performance regression which appeared at least in version 1.3 if not
+    earlier (sometime after 1.0) where the loading of deferred columns, those
+    explicitly mapped with :func:`_orm.defer` as opposed to non-deferred
+    columns that were expired, from a joined inheritance subclass would not use
+    the "optimized" query which only queried the immediate table that contains
+    the unloaded columns, instead running a full ORM query which would emit a
+    JOIN for all base tables, which is not necessary when only loading columns
+    from the subclass.
+
