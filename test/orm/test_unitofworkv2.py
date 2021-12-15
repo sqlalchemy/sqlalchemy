@@ -1928,7 +1928,6 @@ class BasicStaleChecksTest(fixtures.MappedTest):
         )
 
     @testing.requires.sane_multi_rowcount
-    @testing.skip_if("+psycopg", "unknown regression as of psycopg 3.0.6")
     def test_delete_multi_missing_warning(self):
         Parent, Child = self._fixture()
         sess = fixture_session()
