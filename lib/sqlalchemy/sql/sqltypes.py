@@ -748,8 +748,11 @@ class _Binary(TypeEngine):
     def result_processor(self, dialect, coltype):
         def process(value):
             if value is not None:
-                value = bytes(value)
-            return value
+                    if isinstance(value, str):
+                        value = bytes(value, 'utf8')
+                    else:
+                        value = bytes(value)
+                return value
 
         return process
 
