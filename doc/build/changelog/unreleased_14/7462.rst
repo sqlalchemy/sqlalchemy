@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, orm, mypy
+    :tickets: 7368
+
+    Fixed issue where the ``__class_getitem__()`` method of the generated declarative base class by
+    :func:`_orm.as_declarative` lead to inaccessible class attributes such as ``__table__``.
+    Pull request courtesy Kai Mueller.

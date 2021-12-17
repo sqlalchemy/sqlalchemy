@@ -19,7 +19,12 @@ class DeclarativeBaseTest(fixtures.TestBase):
 
         @as_declarative()
         class Base(CommonBase[T]):
-            pass
+            foo = 1
 
         class Tab(Base["Tab"]):
+            __tablename__ = "foo"
             a = Column(Integer, primary_key=True)
+
+        assert Tab.foo == 1
+        assert Tab.__table__ is not None
+        assert Tab.boring() == Tab

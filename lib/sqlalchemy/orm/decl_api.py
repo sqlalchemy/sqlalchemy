@@ -788,7 +788,7 @@ class registry:
         if mapper:
             class_dict["__mapper_cls__"] = mapper
         if hasattr(cls, "__class_getitem__"):
-            class_dict["__class_getitem__"] = cls.__class_getitem__
+            class_dict["__class_getitem__"] = lambda cls, _: cls
 
         return metaclass(name, bases, class_dict)
 
