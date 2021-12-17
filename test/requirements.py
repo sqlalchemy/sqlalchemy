@@ -510,6 +510,9 @@ class DefaultRequirements(SuiteRequirements):
 
         basically, PostgreSQL.
 
+        TODO: what does this mean?  all the backends have a "default"
+        schema
+
         """
         return only_on(["postgresql"])
 

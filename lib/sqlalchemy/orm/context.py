@@ -683,7 +683,6 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         self._setup_for_generate()
 
         SelectState.__init__(self, self.statement, compiler, **kw)
-
         return self
 
     def _dump_option_struct(self):

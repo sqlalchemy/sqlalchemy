@@ -2484,6 +2484,8 @@ class TableClause(roles.DMLTableRole, Immutable, FromClause):
 
     named_with_column = True
 
+    _is_table = True
+
     implicit_returning = False
     """:class:`_expression.TableClause`
     doesn't support having a primary key or column
@@ -3980,6 +3982,8 @@ class SelectState(util.MemoizedSlots, CompileState):
         return go
 
     def _get_froms(self, statement):
+        self._ambiguous_table_name_map = ambiguous_table_name_map = {}
+
         return self._normalize_froms(
             itertools.chain(
                 itertools.chain.from_iterable(
@@ -3997,10 +4001,16 @@ class SelectState(util.MemoizedSlots, CompileState):
                 self.from_clauses,
             ),
             check_statement=statement,
+            ambiguous_table_name_map=ambiguous_table_name_map,
         )
 
     @classmethod
-    def _normalize_froms(cls, iterable_of_froms, check_statement=None):
+    def _normalize_froms(
+        cls,
+        iterable_of_froms,
+        check_statement=None,
+        ambiguous_table_name_map=None,
+    ):
         """given an iterable of things to select FROM, reduce them to what
         would actually render in the FROM clause of a SELECT.
 
@@ -4013,6 +4023,7 @@ class SelectState(util.MemoizedSlots, CompileState):
         froms = []
 
         for item in iterable_of_froms:
+
             if item._is_subquery and item.element is check_statement:
                 raise exc.InvalidRequestError(
                     "select() construct refers to itself as a FROM"
@@ -4032,6 +4043,21 @@ class SelectState(util.MemoizedSlots, CompileState):
                 # filter out to FROM clauses not in the list,
                 # using a list to maintain ordering
                 froms = [f for f in froms if f not in toremove]
+
+            if ambiguous_table_name_map is not None:
+                ambiguous_table_name_map.update(
+                    (
+                        fr.name,
+                        _anonymous_label.safe_construct(
+                            hash(fr.name), fr.name
+                        ),
+                    )
+                    for item in froms
+                    for fr in item._from_objects
+                    if fr._is_table
+                    and fr.schema
+                    and fr.name not in ambiguous_table_name_map
+                )
 
         return froms
 
