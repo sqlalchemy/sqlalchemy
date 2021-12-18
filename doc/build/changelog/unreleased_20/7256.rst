@@ -1,0 +1,27 @@
+.. change::
+    :tags: feature, platform
+    :tickets: 7256
+
+    The SQLAlchemy C extensions have been replaced with all new implementations
+    written in Cython.  Like the C extensions before, pre-built wheel files
+    for a wide range of platforms are available on pypi so that building
+    is not an issue for common platforms.  For custom builds, ``python setup.py build_ext``
+    works as before, needing only the additional Cython install.  ``pyproject.toml``
+    is also part of the source now which will establish the proper build dependencies
+    when using pip.
+
+
+    .. seealso::
+
+        :ref:`change_7256`
+
+.. change::
+    :tags: change, platform
+    :tickets: 7311
+
+    SQLAlchemy's source build and installation now includes a ``pyproject.toml`` file
+    for full :pep:`517` support.
+
+    .. seealso::
+
+        :ref:`change_7311`

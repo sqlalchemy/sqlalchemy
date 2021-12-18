@@ -109,6 +109,55 @@ This section covers behavioral changes made in SQLAlchemy 2.0 which are
 not otherwise part of the major 1.4->2.0 migration path; changes here are
 not expected to have significant effects on backwards compatibility.
 
+.. _change_7311:
+
+Installation is now fully pep-517 enabled
+------------------------------------------
+
+The source distribution now includes a ``pyproject.toml`` file to allow for
+complete :pep:`517` support. In particular this allows a local source build
+using ``pip`` to automatically install the Cython_ optional dependency.
+
+:ticket:`7311`
+
+.. _change_7256:
+
+C Extensions now ported to Cython
+---------------------------------
+
+The SQLAlchemy C extensions have been replaced with all new extensions written
+in Cython_.  The move to Cython provides dramatic new advantages with
+literally no downsides:
+
+* The Cython extensions that replace specific C extensions have all benchmarked
+  as **faster** than literally **all** the C code that SQLAlchemy previously
+  included. While this seems amazing, it appears to be a product of how highly
+  optimized Cython's routines are compared to a naive C implementation of a
+  function.
+
+* Cython extensions are much easier to write, maintain and debug compared to
+  raw C code, and in most cases are line-per-line equivalent to the Python
+  code.   It is expected that many more elements of SQLAlchemy will be
+  ported to Cython in the coming releases which should open many new doors
+  to performance improvements that were previously out of reach.
+
+* Cython is very mature and widely used, including being the basis of some
+  of the prominent database drivers supported by SQLAlchemy including
+  ``asyncpg``, ``psycopg3`` and ``asyncmy``.
+
+Like the previous C extensions, the Cython extensions are pre-built within
+SQLAlchemy's wheel distributions which are automatically available to ``pip``
+from PyPi.  Manual build instructions are also unchanged with the exception
+of the Cython requirement.
+
+.. seealso::
+
+    :ref:`c_extensions`
+
+
+:ticket:`7256`
+
+.. _Cython: https://cython.org/
 
 .. _migration_20_overview:
 
