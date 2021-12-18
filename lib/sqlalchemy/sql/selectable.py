@@ -3606,13 +3606,10 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
         try:
             value = clause._limit_offset_value
         except AttributeError as err:
-            util.raise_(
-                exc.CompileError(
-                    "This SELECT structure does not use a simple "
-                    "integer value for %s" % attrname
-                ),
-                replace_context=err,
-            )
+            raise exc.CompileError(
+                "This SELECT structure does not use a simple "
+                "integer value for %s" % attrname
+            ) from err
         else:
             return util.asint(value)
 
@@ -5053,15 +5050,12 @@ class Select(
         try:
             cols_present = bool(columns)
         except TypeError as err:
-            util.raise_(
-                exc.ArgumentError(
-                    "select() construct created in legacy mode, i.e. with "
-                    "keyword arguments, must provide the columns argument as "
-                    "a Python list or other iterable.",
-                    code="c9ae",
-                ),
-                from_=err,
-            )
+            raise exc.ArgumentError(
+                "select() construct created in legacy mode, i.e. with "
+                "keyword arguments, must provide the columns argument as "
+                "a Python list or other iterable.",
+                code="c9ae",
+            ) from err
 
         if cols_present:
             self._raw_columns = [

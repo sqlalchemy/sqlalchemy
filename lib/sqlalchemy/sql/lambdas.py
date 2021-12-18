@@ -901,24 +901,21 @@ class AnalyzedCode:
     def _raise_for_uncacheable_closure_variable(
         self, variable_name, fn, from_=None
     ):
-        util.raise_(
-            exc.InvalidRequestError(
-                "Closure variable named '%s' inside of lambda callable %s "
-                "does not refer to a cacheable SQL element, and also does not "
-                "appear to be serving as a SQL literal bound value based on "
-                "the default "
-                "SQL expression returned by the function.   This variable "
-                "needs to remain outside the scope of a SQL-generating lambda "
-                "so that a proper cache key may be generated from the "
-                "lambda's state.  Evaluate this variable outside of the "
-                "lambda, set track_on=[<elements>] to explicitly select "
-                "closure elements to track, or set "
-                "track_closure_variables=False to exclude "
-                "closure variables from being part of the cache key."
-                % (variable_name, fn.__code__),
-            ),
-            from_=from_,
-        )
+        raise exc.InvalidRequestError(
+            "Closure variable named '%s' inside of lambda callable %s "
+            "does not refer to a cacheable SQL element, and also does not "
+            "appear to be serving as a SQL literal bound value based on "
+            "the default "
+            "SQL expression returned by the function.   This variable "
+            "needs to remain outside the scope of a SQL-generating lambda "
+            "so that a proper cache key may be generated from the "
+            "lambda's state.  Evaluate this variable outside of the "
+            "lambda, set track_on=[<elements>] to explicitly select "
+            "closure elements to track, or set "
+            "track_closure_variables=False to exclude "
+            "closure variables from being part of the cache key."
+            % (variable_name, fn.__code__),
+        ) from from_
 
     def _cache_key_getter_tracked_literal(self, fn, pytracker):
         """Return a getter that will extend a cache key with new entries

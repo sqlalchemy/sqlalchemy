@@ -587,21 +587,15 @@ class CursorResultMetaData(ResultMetaData):
 
         if raiseerr:
             if self._unpickled and isinstance(key, elements.ColumnElement):
-                util.raise_(
-                    exc.NoSuchColumnError(
-                        "Row was unpickled; lookup by ColumnElement "
-                        "is unsupported"
-                    ),
-                    replace_context=err,
-                )
+                raise exc.NoSuchColumnError(
+                    "Row was unpickled; lookup by ColumnElement "
+                    "is unsupported"
+                ) from err
             else:
-                util.raise_(
-                    exc.NoSuchColumnError(
-                        "Could not locate column in row for column '%s'"
-                        % util.string_or_unprintable(key)
-                    ),
-                    replace_context=err,
-                )
+                raise exc.NoSuchColumnError(
+                    "Could not locate column in row for column '%s'"
+                    % util.string_or_unprintable(key)
+                ) from err
         else:
             return None
 
@@ -763,10 +757,9 @@ class NoCursorDQLFetchStrategy(NoCursorFetchStrategy):
 
     def _non_result(self, result, default, err=None):
         if result.closed:
-            util.raise_(
-                exc.ResourceClosedError("This result object is closed."),
-                replace_context=err,
-            )
+            raise exc.ResourceClosedError(
+                "This result object is closed."
+            ) from err
         else:
             return default
 
@@ -1058,13 +1051,10 @@ class _NoResultMetaData(ResultMetaData):
     returns_rows = False
 
     def _we_dont_return_rows(self, err=None):
-        util.raise_(
-            exc.ResourceClosedError(
-                "This result object does not return rows. "
-                "It has been closed automatically."
-            ),
-            replace_context=err,
-        )
+        raise exc.ResourceClosedError(
+            "This result object does not return rows. "
+            "It has been closed automatically."
+        ) from err
 
     def _index_for_key(self, keys, raiseerr):
         self._we_dont_return_rows()

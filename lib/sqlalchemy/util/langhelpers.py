@@ -76,13 +76,10 @@ class safe_reraise:
             exc_type, exc_value, exc_tb = self._exc_info
             self._exc_info = None  # remove potential circular references
             if not self.warn_only:
-                compat.raise_(
-                    exc_value,
-                    with_traceback=exc_tb,
-                )
+                raise exc_value.with_traceback(exc_tb)
         else:
             self._exc_info = None  # remove potential circular references
-            compat.raise_(value, with_traceback=traceback)
+            raise value.with_traceback(traceback)
 
 
 def walk_subclasses(cls):

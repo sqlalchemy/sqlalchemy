@@ -362,13 +362,10 @@ class AssociationProxyInstance:
 
         # this was never asserted before but this should be made clear.
         if not isinstance(prop, orm.RelationshipProperty):
-            util.raise_(
-                NotImplementedError(
-                    "association proxy to a non-relationship "
-                    "intermediary is not supported"
-                ),
-                replace_context=None,
-            )
+            raise NotImplementedError(
+                "association proxy to a non-relationship "
+                "intermediary is not supported"
+            ) from None
 
         target_class = prop.mapper.class_
 
@@ -1327,13 +1324,10 @@ class _AssociationDict(_AssociationCollection):
                     for k, v in seq_or_map:
                         self[k] = v
                 except ValueError as err:
-                    util.raise_(
-                        ValueError(
-                            "dictionary update sequence "
-                            "requires 2-element tuples"
-                        ),
-                        replace_context=err,
-                    )
+                    raise ValueError(
+                        "dictionary update sequence "
+                        "requires 2-element tuples"
+                    ) from err
 
         for key, value in kw:
             self[key] = value

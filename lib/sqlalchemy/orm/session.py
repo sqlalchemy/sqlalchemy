@@ -898,7 +898,7 @@ class SessionTransaction(TransactionalContext):
             self._parent._rollback_exception = sys.exc_info()[1]
 
         if rollback_err:
-            util.raise_(rollback_err[1], with_traceback=rollback_err[2])
+            raise rollback_err[1].with_traceback(rollback_err[2])
 
         sess.dispatch.after_soft_rollback(sess, self)
 
@@ -1762,12 +1762,9 @@ class Session(_SessionClassMethods):
             insp = inspect(key)
         except sa_exc.NoInspectionAvailable as err:
             if not isinstance(key, type):
-                util.raise_(
-                    sa_exc.ArgumentError(
-                        "Not an acceptable bind target: %s" % key
-                    ),
-                    replace_context=err,
-                )
+                raise sa_exc.ArgumentError(
+                    "Not an acceptable bind target: %s" % key
+                ) from err
             else:
                 self.__binds[key] = bind
         else:
@@ -1949,10 +1946,7 @@ class Session(_SessionClassMethods):
                 mapper = inspect(mapper)
             except sa_exc.NoInspectionAvailable as err:
                 if isinstance(mapper, type):
-                    util.raise_(
-                        exc.UnmappedClassError(mapper),
-                        replace_context=err,
-                    )
+                    raise exc.UnmappedClassError(mapper) from err
                 else:
                     raise
 
@@ -2113,7 +2107,7 @@ class Session(_SessionClassMethods):
                     "consider using a session.no_autoflush block if this "
                     "flush is occurring prematurely"
                 )
-                util.raise_(e, with_traceback=sys.exc_info()[2])
+                raise e.with_traceback(sys.exc_info()[2])
 
     def refresh(self, instance, attribute_names=None, with_for_update=None):
         """Expire and refresh attributes on the given instance.
@@ -2176,10 +2170,7 @@ class Session(_SessionClassMethods):
         try:
             state = attributes.instance_state(instance)
         except exc.NO_STATE as err:
-            util.raise_(
-                exc.UnmappedInstanceError(instance),
-                replace_context=err,
-            )
+            raise exc.UnmappedInstanceError(instance) from err
 
         self._expire_state(state, attribute_names)
 
@@ -2283,10 +2274,7 @@ class Session(_SessionClassMethods):
         try:
             state = attributes.instance_state(instance)
         except exc.NO_STATE as err:
-            util.raise_(
-                exc.UnmappedInstanceError(instance),
-                replace_context=err,
-            )
+            raise exc.UnmappedInstanceError(instance) from err
         self._expire_state(state, attribute_names)
 
     def _expire_state(self, state, attribute_names):
@@ -2322,10 +2310,7 @@ class Session(_SessionClassMethods):
         try:
             state = attributes.instance_state(instance)
         except exc.NO_STATE as err:
-            util.raise_(
-                exc.UnmappedInstanceError(instance),
-                replace_context=err,
-            )
+            raise exc.UnmappedInstanceError(instance) from err
         if state.session_id is not self.hash_key:
             raise sa_exc.InvalidRequestError(
                 "Instance %s is not present in this Session" % state_str(state)
@@ -2477,10 +2462,7 @@ class Session(_SessionClassMethods):
         try:
             state = attributes.instance_state(instance)
         except exc.NO_STATE as err:
-            util.raise_(
-                exc.UnmappedInstanceError(instance),
-                replace_context=err,
-            )
+            raise exc.UnmappedInstanceError(instance) from err
 
         self._save_or_update_state(state)
 
@@ -2515,10 +2497,7 @@ class Session(_SessionClassMethods):
         try:
             state = attributes.instance_state(instance)
         except exc.NO_STATE as err:
-            util.raise_(
-                exc.UnmappedInstanceError(instance),
-                replace_context=err,
-            )
+            raise exc.UnmappedInstanceError(instance) from err
 
         self._delete_impl(state, instance, head=True)
 
@@ -2716,18 +2695,15 @@ class Session(_SessionClassMethods):
                 )
 
             except KeyError as err:
-                util.raise_(
-                    sa_exc.InvalidRequestError(
-                        "Incorrect names of values in identifier to formulate "
-                        "primary key for session.get(); primary key attribute "
-                        "names are %s"
-                        % ",".join(
-                            "'%s'" % prop.key
-                            for prop in mapper._identity_key_props
-                        )
-                    ),
-                    replace_context=err,
-                )
+                raise sa_exc.InvalidRequestError(
+                    "Incorrect names of values in identifier to formulate "
+                    "primary key for session.get(); primary key attribute "
+                    "names are %s"
+                    % ",".join(
+                        "'%s'" % prop.key
+                        for prop in mapper._identity_key_props
+                    )
+                ) from err
 
         if (
             not populate_existing
@@ -3139,10 +3115,7 @@ class Session(_SessionClassMethods):
         try:
             state = attributes.instance_state(obj)
         except exc.NO_STATE as err:
-            util.raise_(
-                exc.UnmappedInstanceError(obj),
-                replace_context=err,
-            )
+            raise exc.UnmappedInstanceError(obj) from err
 
         to_attach = self._before_attach(state, obj)
         state._load_pending = True
@@ -3187,10 +3160,7 @@ class Session(_SessionClassMethods):
         try:
             state = attributes.instance_state(instance)
         except exc.NO_STATE as err:
-            util.raise_(
-                exc.UnmappedInstanceError(instance),
-                replace_context=err,
-            )
+            raise exc.UnmappedInstanceError(instance) from err
         return self._contains_state(state)
 
     def __iter__(self):
@@ -3283,10 +3253,7 @@ class Session(_SessionClassMethods):
                     state = attributes.instance_state(o)
 
                 except exc.NO_STATE as err:
-                    util.raise_(
-                        exc.UnmappedInstanceError(o),
-                        replace_context=err,
-                    )
+                    raise exc.UnmappedInstanceError(o) from err
                 objset.add(state)
         else:
             objset = None
@@ -4211,10 +4178,7 @@ def object_session(instance):
     try:
         state = attributes.instance_state(instance)
     except exc.NO_STATE as err:
-        util.raise_(
-            exc.UnmappedInstanceError(instance),
-            replace_context=err,
-        )
+        raise exc.UnmappedInstanceError(instance) from err
     else:
         return _state_session(state)
 

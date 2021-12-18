@@ -855,26 +855,19 @@ class SchemaDropper(DDLBase):
                 )
                 collection = [(t, ()) for t in unsorted_tables]
             else:
-                util.raise_(
-                    exc.CircularDependencyError(
-                        err2.args[0],
-                        err2.cycles,
-                        err2.edges,
-                        msg="Can't sort tables for DROP; an "
-                        "unresolvable foreign key "
-                        "dependency exists between tables: %s.  Please ensure "
-                        "that the ForeignKey and ForeignKeyConstraint objects "
-                        "involved in the cycle have "
-                        "names so that they can be dropped using "
-                        "DROP CONSTRAINT."
-                        % (
-                            ", ".join(
-                                sorted([t.fullname for t in err2.cycles])
-                            )
-                        ),
-                    ),
-                    from_=err2,
-                )
+                raise exc.CircularDependencyError(
+                    err2.args[0],
+                    err2.cycles,
+                    err2.edges,
+                    msg="Can't sort tables for DROP; an "
+                    "unresolvable foreign key "
+                    "dependency exists between tables: %s.  Please ensure "
+                    "that the ForeignKey and ForeignKeyConstraint objects "
+                    "involved in the cycle have "
+                    "names so that they can be dropped using "
+                    "DROP CONSTRAINT."
+                    % (", ".join(sorted([t.fullname for t in err2.cycles]))),
+                ) from err2
 
         seq_coll = [
             s

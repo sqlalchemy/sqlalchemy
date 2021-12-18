@@ -467,10 +467,7 @@ class Compiled:
             raise exc.ObjectNotExecutableError(self.statement)
 
     def visit_unsupported_compilation(self, element, err):
-        util.raise_(
-            exc.UnsupportedCompilationError(self, type(element)),
-            replace_context=err,
-        )
+        raise exc.UnsupportedCompilationError(self, type(element)) from err
 
     @property
     def sql_compiler(self):
@@ -518,10 +515,7 @@ class TypeCompiler(metaclass=util.EnsureKWArgType):
         return type_._compiler_dispatch(self, **kw)
 
     def visit_unsupported_compilation(self, element, err, **kw):
-        util.raise_(
-            exc.UnsupportedCompilationError(self, element),
-            replace_context=err,
-        )
+        raise exc.UnsupportedCompilationError(self, element) from err
 
 
 # this was a Visitable, but to allow accurate detection of
@@ -830,10 +824,7 @@ class SQLCompiler(Compiled):
         try:
             return self.stack[-1]["selectable"]
         except IndexError as ie:
-            util.raise_(
-                IndexError("Compiler does not have a stack entry"),
-                replace_context=ie,
-            )
+            raise IndexError("Compiler does not have a stack entry") from ie
 
     @property
     def prefetch(self):
@@ -943,13 +934,10 @@ class SQLCompiler(Compiled):
             try:
                 orig_extracted = self.cache_key[1]
             except TypeError as err:
-                util.raise_(
-                    exc.CompileError(
-                        "This compiled object has no original cache key; "
-                        "can't pass extracted_parameters to construct_params"
-                    ),
-                    replace_context=err,
-                )
+                raise exc.CompileError(
+                    "This compiled object has no original cache key; "
+                    "can't pass extracted_parameters to construct_params"
+                ) from err
 
             ckbm = self._cache_key_bind_match
             resolved_extracted = {
@@ -2176,10 +2164,7 @@ class SQLCompiler(Compiled):
             try:
                 opstring = OPERATORS[operator_]
             except KeyError as err:
-                util.raise_(
-                    exc.UnsupportedCompilationError(self, operator_),
-                    replace_context=err,
-                )
+                raise exc.UnsupportedCompilationError(self, operator_) from err
             else:
                 return self._generate_generic_binary(
                     binary,
@@ -4393,13 +4378,10 @@ class DDLCompiler(Compiled):
                 if column.primary_key:
                     first_pk = True
             except exc.CompileError as ce:
-                util.raise_(
-                    exc.CompileError(
-                        "(in table '%s', column '%s'): %s"
-                        % (table.description, column.name, ce.args[0])
-                    ),
-                    from_=ce,
-                )
+                raise exc.CompileError(
+                    "(in table '%s', column '%s'): %s"
+                    % (table.description, column.name, ce.args[0])
+                ) from ce
 
         const = self.create_table_constraints(
             table,

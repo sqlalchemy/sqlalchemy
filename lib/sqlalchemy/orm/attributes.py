@@ -238,14 +238,11 @@ class QueryableAttribute(
         try:
             anno = ce._annotate
         except AttributeError as ae:
-            util.raise_(
-                exc.InvalidRequestError(
-                    'When interpreting attribute "%s" as a SQL expression, '
-                    "expected __clause_element__() to return "
-                    "a ClauseElement object, got: %r" % (self, ce)
-                ),
-                from_=ae,
-            )
+            raise exc.InvalidRequestError(
+                'When interpreting attribute "%s" as a SQL expression, '
+                "expected __clause_element__() to return "
+                "a ClauseElement object, got: %r" % (self, ce)
+            ) from ae
         else:
             return anno(annotations)
 
@@ -328,19 +325,16 @@ class QueryableAttribute(
         try:
             return getattr(self.comparator, key)
         except AttributeError as err:
-            util.raise_(
-                AttributeError(
-                    "Neither %r object nor %r object associated with %s "
-                    "has an attribute %r"
-                    % (
-                        type(self).__name__,
-                        type(self.comparator).__name__,
-                        self,
-                        key,
-                    )
-                ),
-                replace_context=err,
-            )
+            raise AttributeError(
+                "Neither %r object nor %r object associated with %s "
+                "has an attribute %r"
+                % (
+                    type(self).__name__,
+                    type(self.comparator).__name__,
+                    self,
+                    key,
+                )
+            ) from err
 
     def __str__(self):
         return "%s.%s" % (self.class_.__name__, self.key)
@@ -471,10 +465,7 @@ class InstrumentedAttribute(Mapped):
             try:
                 state = instance_state(instance)
             except AttributeError as err:
-                util.raise_(
-                    orm_exc.UnmappedInstanceError(instance),
-                    replace_context=err,
-                )
+                raise orm_exc.UnmappedInstanceError(instance) from err
             return self.impl.get(state, dict_)
 
 
@@ -601,38 +592,30 @@ def create_proxied_attribute(descriptor):
                 return getattr(descriptor, attribute)
             except AttributeError as err:
                 if attribute == "comparator":
-                    util.raise_(
-                        AttributeError("comparator"), replace_context=err
-                    )
+                    raise AttributeError("comparator") from err
                 try:
                     # comparator itself might be unreachable
                     comparator = self.comparator
                 except AttributeError as err2:
-                    util.raise_(
-                        AttributeError(
-                            "Neither %r object nor unconfigured comparator "
-                            "object associated with %s has an attribute %r"
-                            % (type(descriptor).__name__, self, attribute)
-                        ),
-                        replace_context=err2,
-                    )
+                    raise AttributeError(
+                        "Neither %r object nor unconfigured comparator "
+                        "object associated with %s has an attribute %r"
+                        % (type(descriptor).__name__, self, attribute)
+                    ) from err2
                 else:
                     try:
                         return getattr(comparator, attribute)
                     except AttributeError as err3:
-                        util.raise_(
-                            AttributeError(
-                                "Neither %r object nor %r object "
-                                "associated with %s has an attribute %r"
-                                % (
-                                    type(descriptor).__name__,
-                                    type(comparator).__name__,
-                                    self,
-                                    attribute,
-                                )
-                            ),
-                            replace_context=err3,
-                        )
+                        raise AttributeError(
+                            "Neither %r object nor %r object "
+                            "associated with %s has an attribute %r"
+                            % (
+                                type(descriptor).__name__,
+                                type(comparator).__name__,
+                                self,
+                                attribute,
+                            )
+                        ) from err3
 
     Proxy.__name__ = type(descriptor).__name__ + "Proxy"
 
@@ -944,14 +927,11 @@ class AttributeImpl:
                         return dict_[key]
                     except KeyError as err:
                         # TODO: no test coverage here.
-                        util.raise_(
-                            KeyError(
-                                "Deferred loader for attribute "
-                                "%r failed to populate "
-                                "correctly" % key
-                            ),
-                            replace_context=err,
-                        )
+                        raise KeyError(
+                            "Deferred loader for attribute "
+                            "%r failed to populate "
+                            "correctly" % key
+                        ) from err
                 elif value is not ATTR_EMPTY:
                     return self.set_committed_value(state, dict_, value)
 

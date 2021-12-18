@@ -2988,66 +2988,6 @@ class TestClassHierarchy(fixtures.TestBase):
         eq_(set(util.class_hierarchy(B)), set((A, B, C, object)))
 
 
-class ReraiseTest(fixtures.TestBase):
-    def test_raise_from_cause_same_cause(self):
-        class MyException(Exception):
-            pass
-
-        def go():
-            try:
-                raise MyException("exc one")
-            except Exception as err:
-                util.raise_from_cause(err)
-
-        try:
-            go()
-            assert False
-        except MyException as err:
-            is_(err.__cause__, None)
-
-    def test_raise_from_cause_legacy(self):
-        class MyException(Exception):
-            pass
-
-        class MyOtherException(Exception):
-            pass
-
-        me = MyException("exc on")
-
-        def go():
-            try:
-                raise me
-            except Exception:
-                util.raise_from_cause(MyOtherException("exc two"))
-
-        try:
-            go()
-            assert False
-        except MyOtherException as moe:
-            is_(moe.__cause__, me)
-
-    def test_raise_from(self):
-        class MyException(Exception):
-            pass
-
-        class MyOtherException(Exception):
-            pass
-
-        me = MyException("exc on")
-
-        def go():
-            try:
-                raise me
-            except Exception as err:
-                util.raise_(MyOtherException("exc two"), from_=err)
-
-        try:
-            go()
-            assert False
-        except MyOtherException as moe:
-            is_(moe.__cause__, me)
-
-
 class TestClassProperty(fixtures.TestBase):
     def test_simple(self):
         class A:

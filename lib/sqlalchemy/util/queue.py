@@ -21,7 +21,6 @@ condition.
 from collections import deque
 from time import time as _time
 
-from . import compat
 from .compat import threading
 from .concurrency import asyncio
 from .concurrency import await_fallback
@@ -238,10 +237,7 @@ class AsyncAdaptedQueue:
         try:
             return self._queue.put_nowait(item)
         except asyncio.QueueFull as err:
-            compat.raise_(
-                Full(),
-                replace_context=err,
-            )
+            raise Full() from err
 
     def put(self, item, block=True, timeout=None):
         if not block:
@@ -255,19 +251,13 @@ class AsyncAdaptedQueue:
             else:
                 return self.await_(self._queue.put(item))
         except (asyncio.QueueFull, asyncio.TimeoutError) as err:
-            compat.raise_(
-                Full(),
-                replace_context=err,
-            )
+            raise Full() from err
 
     def get_nowait(self):
         try:
             return self._queue.get_nowait()
         except asyncio.QueueEmpty as err:
-            compat.raise_(
-                Empty(),
-                replace_context=err,
-            )
+            raise Empty() from err
 
     def get(self, block=True, timeout=None):
         if not block:
@@ -281,10 +271,7 @@ class AsyncAdaptedQueue:
             else:
                 return self.await_(self._queue.get())
         except (asyncio.QueueEmpty, asyncio.TimeoutError) as err:
-            compat.raise_(
-                Empty(),
-                replace_context=err,
-            )
+            raise Empty() from err
 
 
 class FallbackAsyncAdaptedQueue(AsyncAdaptedQueue):

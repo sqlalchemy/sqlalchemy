@@ -2056,12 +2056,9 @@ def _parse_attr_argument(attr):
     try:
         insp = inspect(attr)
     except sa_exc.NoInspectionAvailable as err:
-        util.raise_(
-            sa_exc.ArgumentError(
-                "expected ORM mapped attribute for loader strategy argument"
-            ),
-            from_=err,
-        )
+        raise sa_exc.ArgumentError(
+            "expected ORM mapped attribute for loader strategy argument"
+        ) from err
 
     if insp.is_property:
         lead_entity = insp.parent

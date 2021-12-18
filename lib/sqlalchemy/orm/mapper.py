@@ -1018,45 +1018,39 @@ class Mapper(
                         except sa_exc.NoForeignKeysError as nfe:
                             assert self.inherits.local_table is not None
                             assert self.local_table is not None
-                            util.raise_(
-                                sa_exc.NoForeignKeysError(
-                                    "Can't determine the inherit condition "
-                                    "between inherited table '%s' and "
-                                    "inheriting "
-                                    "table '%s'; tables have no "
-                                    "foreign key relationships established.  "
-                                    "Please ensure the inheriting table has "
-                                    "a foreign key relationship to the "
-                                    "inherited "
-                                    "table, or provide an "
-                                    "'on clause' using "
-                                    "the 'inherit_condition' mapper argument."
-                                    % (
-                                        self.inherits.local_table.description,
-                                        self.local_table.description,
-                                    )
-                                ),
-                                replace_context=nfe,
-                            )
+                            raise sa_exc.NoForeignKeysError(
+                                "Can't determine the inherit condition "
+                                "between inherited table '%s' and "
+                                "inheriting "
+                                "table '%s'; tables have no "
+                                "foreign key relationships established.  "
+                                "Please ensure the inheriting table has "
+                                "a foreign key relationship to the "
+                                "inherited "
+                                "table, or provide an "
+                                "'on clause' using "
+                                "the 'inherit_condition' mapper argument."
+                                % (
+                                    self.inherits.local_table.description,
+                                    self.local_table.description,
+                                )
+                            ) from nfe
                         except sa_exc.AmbiguousForeignKeysError as afe:
                             assert self.inherits.local_table is not None
                             assert self.local_table is not None
-                            util.raise_(
-                                sa_exc.AmbiguousForeignKeysError(
-                                    "Can't determine the inherit condition "
-                                    "between inherited table '%s' and "
-                                    "inheriting "
-                                    "table '%s'; tables have more than one "
-                                    "foreign key relationship established.  "
-                                    "Please specify the 'on clause' using "
-                                    "the 'inherit_condition' mapper argument."
-                                    % (
-                                        self.inherits.local_table.description,
-                                        self.local_table.description,
-                                    )
-                                ),
-                                replace_context=afe,
-                            )
+                            raise sa_exc.AmbiguousForeignKeysError(
+                                "Can't determine the inherit condition "
+                                "between inherited table '%s' and "
+                                "inheriting "
+                                "table '%s'; tables have more than one "
+                                "foreign key relationship established.  "
+                                "Please specify the 'on clause' using "
+                                "the 'inherit_condition' mapper argument."
+                                % (
+                                    self.inherits.local_table.description,
+                                    self.local_table.description,
+                                )
+                            ) from afe
                     self.persist_selectable = sql.join(
                         self.inherits.persist_selectable,
                         self.local_table,
@@ -1504,14 +1498,11 @@ class Mapper(
                 try:
                     self.polymorphic_on = self._props[self.polymorphic_on]
                 except KeyError as err:
-                    util.raise_(
-                        sa_exc.ArgumentError(
-                            "Can't determine polymorphic_on "
-                            "value '%s' - no attribute is "
-                            "mapped to this name." % self.polymorphic_on
-                        ),
-                        replace_context=err,
-                    )
+                    raise sa_exc.ArgumentError(
+                        "Can't determine polymorphic_on "
+                        "value '%s' - no attribute is "
+                        "mapped to this name." % self.polymorphic_on
+                    ) from err
 
             if self.polymorphic_on in self._columntoproperty:
                 # polymorphic_on is a column that is already mapped
@@ -2025,12 +2016,9 @@ class Mapper(
         try:
             return self._props[key]
         except KeyError as err:
-            util.raise_(
-                sa_exc.InvalidRequestError(
-                    "Mapper '%s' has no property '%s'" % (self, key)
-                ),
-                replace_context=err,
-            )
+            raise sa_exc.InvalidRequestError(
+                "Mapper '%s' has no property '%s'" % (self, key)
+            ) from err
 
     def get_property_by_column(self, column):
         """Given a :class:`_schema.Column` object, return the

@@ -1325,18 +1325,15 @@ class Enum(Emulated, String, SchemaType):
             if not self.validate_strings and isinstance(elem, str):
                 return elem
             else:
-                util.raise_(
-                    LookupError(
-                        "'%s' is not among the defined enum values. "
-                        "Enum name: %s. Possible values: %s"
-                        % (
-                            elem,
-                            self.name,
-                            langhelpers.repr_tuple_names(self.enums),
-                        )
-                    ),
-                    replace_context=err,
-                )
+                raise LookupError(
+                    "'%s' is not among the defined enum values. "
+                    "Enum name: %s. Possible values: %s"
+                    % (
+                        elem,
+                        self.name,
+                        langhelpers.repr_tuple_names(self.enums),
+                    )
+                ) from err
 
     class Comparator(String.Comparator):
         def _adapt_expression(self, op, other_comparator):
@@ -1353,18 +1350,15 @@ class Enum(Emulated, String, SchemaType):
         try:
             return self._object_lookup[elem]
         except KeyError as err:
-            util.raise_(
-                LookupError(
-                    "'%s' is not among the defined enum values. "
-                    "Enum name: %s. Possible values: %s"
-                    % (
-                        elem,
-                        self.name,
-                        langhelpers.repr_tuple_names(self.enums),
-                    )
-                ),
-                replace_context=err,
-            )
+            raise LookupError(
+                "'%s' is not among the defined enum values. "
+                "Enum name: %s. Possible values: %s"
+                % (
+                    elem,
+                    self.name,
+                    langhelpers.repr_tuple_names(self.enums),
+                )
+            ) from err
 
     def __repr__(self):
         return util.generic_repr(

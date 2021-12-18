@@ -372,16 +372,13 @@ class _class_resolver:
         return self.fallback[key]
 
     def _raise_for_name(self, name, err):
-        util.raise_(
-            exc.InvalidRequestError(
-                "When initializing mapper %s, expression %r failed to "
-                "locate a name (%r). If this is a class name, consider "
-                "adding this relationship() to the %r class after "
-                "both dependent classes have been defined."
-                % (self.prop.parent, self.arg, name, self.cls)
-            ),
-            from_=err,
-        )
+        raise exc.InvalidRequestError(
+            "When initializing mapper %s, expression %r failed to "
+            "locate a name (%r). If this is a class name, consider "
+            "adding this relationship() to the %r class after "
+            "both dependent classes have been defined."
+            % (self.prop.parent, self.arg, name, self.cls)
+        ) from err
 
     def _resolve_name(self):
         name = self.arg

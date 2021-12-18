@@ -16,8 +16,6 @@ They all share one common characteristic: None is passed through unchanged.
 import datetime
 import re
 
-from .. import util
-
 
 def str_to_datetime_processor_factory(regexp, type_):
     rmatch = regexp.match
@@ -32,13 +30,10 @@ def str_to_datetime_processor_factory(regexp, type_):
             try:
                 m = rmatch(value)
             except TypeError as err:
-                util.raise_(
-                    ValueError(
-                        "Couldn't parse %s string '%r' "
-                        "- value is not a string." % (type_.__name__, value)
-                    ),
-                    from_=err,
-                )
+                raise ValueError(
+                    "Couldn't parse %s string '%r' "
+                    "- value is not a string." % (type_.__name__, value)
+                ) from err
             if m is None:
                 raise ValueError(
                     "Couldn't parse %s string: "
