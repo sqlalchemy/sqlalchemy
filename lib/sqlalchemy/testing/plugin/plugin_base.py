@@ -16,6 +16,7 @@ is pytest.
 import abc
 import configparser
 import logging
+import os
 import re
 import sys
 
@@ -367,6 +368,20 @@ def _monkeypatch_cdecimal(options, file_config):
         import cdecimal
 
         sys.modules["decimal"] = cdecimal
+
+
+@post
+def __ensure_cext(opt, file_config):
+    if os.environ.get("REQUIRE_SQLALCHEMY_CEXT", "0") == "1":
+        from sqlalchemy.util import has_compiled_ext
+
+        try:
+            has_compiled_ext(raise_=True)
+        except ImportError as err:
+            raise AssertionError(
+                "REQUIRE_SQLALCHEMY_CEXT is set but can't import the "
+                "cython extensions"
+            ) from err
 
 
 @post

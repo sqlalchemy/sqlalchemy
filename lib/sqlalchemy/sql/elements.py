@@ -1659,14 +1659,9 @@ class BindParameter(roles.InElementRole, ColumnElement):
                 anon_map[NO_CACHE] = True
             return None
 
-        idself = id(self)
-        if idself in anon_map:
-            return (anon_map[idself], self.__class__)
-        else:
-            # inline of
-            # id_ = anon_map[idself]
-            anon_map[idself] = id_ = str(anon_map.index)
-            anon_map.index += 1
+        id_, found = anon_map.get_anon(self)
+        if found:
+            return (id_, self.__class__)
 
         if bindparams is not None:
             bindparams.append(self)

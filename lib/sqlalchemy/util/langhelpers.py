@@ -1897,7 +1897,7 @@ def repr_tuple_names(names):
         return "%s, ..., %s" % (", ".join(res[0:3]), res[-1])
 
 
-def has_compiled_ext():
+def has_compiled_ext(raise_=False):
     try:
         from sqlalchemy.cyextension import collections  # noqa F401
         from sqlalchemy.cyextension import immutabledict  # noqa F401
@@ -1907,4 +1907,6 @@ def has_compiled_ext():
 
         return True
     except ImportError:
+        if raise_:
+            raise
         return False
