@@ -1777,7 +1777,19 @@ class PassiveDeletesTest(fixtures.MappedTest):
 
 
 class OptimizedGetOnDeferredTest(fixtures.MappedTest):
-    """test that the 'optimized get' path accommodates deferred columns."""
+    """test that the 'optimized get' path accommodates deferred columns.
+
+    Original issue tested is #3468, where loading of a deferred column
+    in an inherited subclass would fail.
+
+    At some point, the logic tested was no longer used and a less efficient
+    query was used to load these columns, but the test here did not inspect
+    the SQL such that this would be detected.
+
+    Test was then revised to more carefully test and now targets
+    #7463 as well.
+
+    """
 
     @classmethod
     def define_tables(cls, metadata):
@@ -1787,6 +1799,7 @@ class OptimizedGetOnDeferredTest(fixtures.MappedTest):
             Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
+            Column("type", String(10)),
         )
         Table(
             "b",
@@ -1808,11 +1821,12 @@ class OptimizedGetOnDeferredTest(fixtures.MappedTest):
         A, B = cls.classes("A", "B")
         a, b = cls.tables("a", "b")
 
-        cls.mapper_registry.map_imperatively(A, a)
+        cls.mapper_registry.map_imperatively(A, a, polymorphic_on=a.c.type)
         cls.mapper_registry.map_imperatively(
             B,
             b,
             inherits=A,
+            polymorphic_identity="b",
             properties={
                 "data": deferred(b.c.data),
                 "expr": column_property(b.c.data + "q", deferred=True),
@@ -1825,8 +1839,17 @@ class OptimizedGetOnDeferredTest(fixtures.MappedTest):
         b1 = B(data="x")
         sess.add(b1)
         sess.flush()
+        b_id = b1.id
 
-        eq_(b1.expr, "xq")
+        with self.sql_execution_asserter(testing.db) as asserter:
+            eq_(b1.expr, "xq")
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT b.data || :data_1 AS anon_1 "
+                "FROM b WHERE :param_1 = b.id",
+                [{"param_1": b_id, "data_1": "q"}],
+            )
+        )
 
     def test_expired_column(self):
         A, B = self.classes("A", "B")
@@ -1834,9 +1857,74 @@ class OptimizedGetOnDeferredTest(fixtures.MappedTest):
         b1 = B(data="x")
         sess.add(b1)
         sess.flush()
+        b_id = b1.id
         sess.expire(b1, ["data"])
 
+        with self.sql_execution_asserter(testing.db) as asserter:
+            eq_(b1.data, "x")
+        # uses efficient statement w/o JOIN to a
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT b.data AS b_data FROM b WHERE :param_1 = b.id",
+                [{"param_1": b_id}],
+            )
+        )
+
+    def test_load_from_unloaded_subclass(self):
+        A, B = self.classes("A", "B")
+        sess = fixture_session()
+        b1 = B(data="x")
+        sess.add(b1)
+        sess.commit()
+        b_id = b1.id
+        sess.close()
+
+        # load polymorphically in terms of A, so that B needs another
+        # SELECT
+        b1 = sess.execute(select(A)).scalar()
+
+        # it's not loaded
+        assert "data" not in b1.__dict__
+
+        # but it loads successfully when requested
+        with self.sql_execution_asserter(testing.db) as asserter:
+            eq_(b1.data, "x")
+
+        # uses efficient statement w/o JOIN to a
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT b.data AS b_data FROM b WHERE :param_1 = b.id",
+                [{"param_1": b_id}],
+            )
+        )
+
+    def test_load_from_expired_subclass(self):
+        A, B = self.classes("A", "B")
+        sess = fixture_session()
+        b1 = B(data="x")
+        sess.add(b1)
+        sess.commit()
+        b_id = b1.id
+        sess.close()
+
+        b1 = sess.execute(select(A)).scalar()
+
+        # it's not loaded
+        assert "data" not in b1.__dict__
+
         eq_(b1.data, "x")
+        sess.expire(b1, ["data"])
+
+        with self.sql_execution_asserter(testing.db) as asserter:
+            eq_(b1.data, "x")
+
+        # uses efficient statement w/o JOIN to a
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT b.data AS b_data FROM b WHERE :param_1 = b.id",
+                [{"param_1": b_id}],
+            )
+        )
 
 
 class JoinedNoFKSortingTest(fixtures.MappedTest):

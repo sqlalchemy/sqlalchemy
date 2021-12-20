@@ -846,10 +846,10 @@ class IgnoreOptionsOnSubclassAttrLoad(fixtures.DeclarativeMappedTest):
             # call to the deferred load put a deferred loader on the attribute
             expected.append(
                 CompiledSQL(
-                    "SELECT sub_entity.name AS sub_entity_name FROM entity "
-                    "JOIN sub_entity ON entity.id = sub_entity.id "
-                    "WHERE entity.id = :pk_1",
-                    [{"pk_1": entity_id}],
+                    "SELECT sub_entity.name AS sub_entity_name "
+                    "FROM sub_entity "
+                    "WHERE :param_1 = sub_entity.id",
+                    [{"param_1": entity_id}],
                 )
             )
 
