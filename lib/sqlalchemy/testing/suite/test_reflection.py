@@ -1206,6 +1206,9 @@ class ComponentReflectionTestExtra(fixtures.TestBase):
         ]
         if testing.requires.index_reflects_included_columns.enabled:
             expected[0]["include_columns"] = []
+            expected[0]["dialect_options"] = {
+                "%s_include" % connection.engine.name: []
+            }
 
         with expect_warnings(
             "Skipped unsupported reflection of expression-based index t_idx"
@@ -1238,8 +1241,19 @@ class ComponentReflectionTestExtra(fixtures.TestBase):
                     "column_names": ["x"],
                     "include_columns": ["y"],
                     "unique": False,
+                    "dialect_options": {
+                        "%s_include" % connection.engine.name: ["y"]
+                    },
                 }
             ],
+        )
+
+        t2 = Table("t", MetaData(), autoload_with=connection)
+        eq_(
+            list(t2.indexes)[0].dialect_options[connection.engine.name][
+                "include"
+            ],
+            ["y"],
         )
 
     def _type_round_trip(self, connection, metadata, *types):
