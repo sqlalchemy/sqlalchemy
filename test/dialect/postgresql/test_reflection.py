@@ -183,6 +183,7 @@ class PartitionedReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
                     "unique": False,
                     "column_names": ["q"],
                     "include_columns": [],
+                    "dialect_options": {"postgresql_include": []},
                 }
             ],
         )
@@ -198,6 +199,7 @@ class PartitionedReflectionTest(fixtures.TablesTest, AssertsExecutionResults):
                 {
                     "column_names": ["q"],
                     "include_columns": [],
+                    "dialect_options": {"postgresql_include": []},
                     "name": mock.ANY,
                     "unique": False,
                 }
@@ -1131,6 +1133,7 @@ class ReflectionTest(
         expected = [{"name": "idx1", "unique": False, "column_names": ["y"]}]
         if testing.requires.index_reflects_included_columns.enabled:
             expected[0]["include_columns"] = []
+            expected[0]["dialect_options"] = {"postgresql_include": []}
 
         eq_(ind, expected)
 
@@ -1163,6 +1166,7 @@ class ReflectionTest(
         ]
         if testing.requires.index_reflects_included_columns.enabled:
             expected[0]["include_columns"] = []
+            expected[0]["dialect_options"]["postgresql_include"] = []
         eq_(ind, expected)
 
         m = MetaData()
@@ -1195,6 +1199,7 @@ class ReflectionTest(
         ]
         if testing.requires.index_reflects_included_columns.enabled:
             expected[0]["include_columns"] = []
+            expected[0]["dialect_options"]["postgresql_include"] = []
         eq_(ind, expected)
         m = MetaData()
         t1 = Table("t", m, autoload_with=connection)
@@ -1229,6 +1234,7 @@ class ReflectionTest(
                     "unique": False,
                     "column_names": ["x"],
                     "include_columns": ["name"],
+                    "dialect_options": {"postgresql_include": ["name"]},
                     "name": "idx1",
                 }
             ],
@@ -1604,6 +1610,7 @@ class ReflectionTest(
         ]
         if testing.requires.index_reflects_included_columns.enabled:
             expected[0]["include_columns"] = []
+            expected[0]["dialect_options"]["postgresql_include"] = []
 
         eq_(insp.get_indexes("t"), expected)
 

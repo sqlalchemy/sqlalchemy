@@ -3050,6 +3050,12 @@ class MSDialect(default.DefaultDialect):
                     indexes[row["index_id"]]["column_names"].append(
                         row["name"]
                     )
+        for index_info in indexes.values():
+            # NOTE: "root level" include_columns is legacy, now part of
+            #       dialect_options (issue #7382)
+            index_info.setdefault("dialect_options", {})[
+                "mssql_include"
+            ] = index_info["include_columns"]
 
         return list(indexes.values())
 

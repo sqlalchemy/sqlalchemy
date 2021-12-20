@@ -4242,6 +4242,8 @@ class PGDialect(default.DefaultDialect):
                 "column_names": [idx["cols"][i] for i in idx["key"]],
             }
             if self.server_version_info >= (11, 0):
+                # NOTE: this is legacy, this is part of dialect_options now
+                # as of #7382
                 entry["include_columns"] = [idx["cols"][i] for i in idx["inc"]]
             if "duplicates_constraint" in idx:
                 entry["duplicates_constraint"] = idx["duplicates_constraint"]
@@ -4250,6 +4252,10 @@ class PGDialect(default.DefaultDialect):
                     (idx["cols"][idx["key"][i]], value)
                     for i, value in idx["sorting"].items()
                 )
+            if "include_columns" in entry:
+                entry.setdefault("dialect_options", {})[
+                    "postgresql_include"
+                ] = entry["include_columns"]
             if "options" in idx:
                 entry.setdefault("dialect_options", {})[
                     "postgresql_with"
