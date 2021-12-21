@@ -827,6 +827,48 @@ class ClauseTest(fixtures.TestBase, AssertsCompiledSQL):
             sel._generate_cache_key()[1],
         )
 
+    def test_params_on_expr_against_subquery(self):
+        """test #7489"""
+
+        meta = MetaData()
+
+        b = Table("b", meta, Column("id", Integer), Column("data", String))
+
+        subq = select(b.c.id).where(b.c.data == "some data").subquery()
+        criteria = b.c.id == subq.c.id
+
+        stmt = select(b).where(criteria)
+        param_key = stmt._generate_cache_key()[1][0].key
+
+        self.assert_compile(
+            stmt,
+            "SELECT b.id, b.data FROM b, (SELECT b.id AS id "
+            "FROM b WHERE b.data = :data_1) AS anon_1 WHERE b.id = anon_1.id",
+            checkparams={"data_1": "some data"},
+        )
+        eq_(
+            [
+                eq_clause_element(bindparam(param_key, value="some data")),
+            ],
+            stmt._generate_cache_key()[1],
+        )
+
+        stmt = select(b).where(criteria.params({param_key: "some other data"}))
+        self.assert_compile(
+            stmt,
+            "SELECT b.id, b.data FROM b, (SELECT b.id AS id "
+            "FROM b WHERE b.data = :data_1) AS anon_1 WHERE b.id = anon_1.id",
+            checkparams={"data_1": "some other data"},
+        )
+        eq_(
+            [
+                eq_clause_element(
+                    bindparam(param_key, value="some other data")
+                ),
+            ],
+            stmt._generate_cache_key()[1],
+        )
+
     def test_params_subqueries_in_joins_one(self):
         """test #7055"""
 

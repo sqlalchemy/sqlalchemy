@@ -772,7 +772,7 @@ def cloned_traverse(obj, opts, visitors):
                         cloned[id(elem)] = newelem
                         return newelem
 
-                cloned[id(elem)] = newelem = elem._clone(**kw)
+                cloned[id(elem)] = newelem = elem._clone(clone=clone, **kw)
                 newelem._copy_internals(clone=clone, **kw)
                 meth = visitors.get(newelem.__visit_name__, None)
                 if meth:

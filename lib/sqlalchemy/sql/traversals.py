@@ -271,7 +271,6 @@ class HasCacheKey(object):
                         result += meth(
                             attrname, obj, self, anon_map, bindparams
                         )
-
         return result
 
     def _generate_cache_key(self):

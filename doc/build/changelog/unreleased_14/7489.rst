@@ -1,0 +1,13 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 7489
+
+    Fixed issue in new "loader criteria" method
+    :meth:`_orm.PropComparator.and_` where usage with a loader strategy like
+    :func:`_orm.selectinload` against a column that was a member of the ``.c.``
+    collection of a subquery object, where the subquery would be dynamically
+    added to the FROM clause of the statement, would be subject to stale
+    parameter values within the subquery in the SQL statement cache, as the
+    process used by the loader strategy to replace the parameters at execution
+    time would fail to accommodate the subquery when received in this form.
+

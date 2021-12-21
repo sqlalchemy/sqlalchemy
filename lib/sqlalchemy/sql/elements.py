@@ -358,6 +358,7 @@ class ClauseElement(
         return self._replace_params(False, optionaldict, kwargs)
 
     def _replace_params(self, unique, optionaldict, kwargs):
+
         if len(optionaldict) == 1:
             kwargs.update(optionaldict[0])
         elif len(optionaldict) > 1:
@@ -373,7 +374,9 @@ class ClauseElement(
                 bind._convert_to_unique()
 
         return cloned_traverse(
-            self, {"maintain_key": True}, {"bindparam": visit_bindparam}
+            self,
+            {"maintain_key": True, "detect_subquery_cols": True},
+            {"bindparam": visit_bindparam},
         )
 
     def compare(self, other, **kw):
@@ -4879,6 +4882,19 @@ class ColumnClause(
             return self.table.entity_namespace
         else:
             return super(ColumnClause, self).entity_namespace
+
+    def _clone(self, detect_subquery_cols=False, **kw):
+        if (
+            detect_subquery_cols
+            and self.table is not None
+            and self.table._is_subquery
+        ):
+            clone = kw.pop("clone")
+            table = clone(self.table, **kw)
+            new = table.c.corresponding_column(self)
+            return new
+
+        return super(ColumnClause, self)._clone(**kw)
 
     @HasMemoized.memoized_attribute
     def _from_objects(self):

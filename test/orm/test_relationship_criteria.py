@@ -1240,6 +1240,66 @@ class RelationshipCriteriaTest(_Fixtures, testing.AssertsCompiledSQL):
                 ),
             )
 
+    def test_selectinload_local_criteria_subquery(self, user_address_fixture):
+        """test #7489"""
+        User, Address = user_address_fixture
+
+        s = Session(testing.db, future=True)
+
+        def go(value):
+            a1 = aliased(Address)
+            subq = select(a1.id).where(a1.email_address != value).subquery()
+            stmt = (
+                select(User)
+                .options(
+                    selectinload(User.addresses.and_(Address.id == subq.c.id)),
+                )
+                .order_by(User.id)
+            )
+            result = s.execute(stmt)
+            return result
+
+        for value in (
+            "ed@wood.com",
+            "ed@lala.com",
+            "ed@wood.com",
+            "ed@lala.com",
+        ):
+            s.close()
+            with self.sql_execution_asserter() as asserter:
+                result = go(value)
+
+                eq_(
+                    result.scalars().unique().all(),
+                    self._user_minus_edwood(*user_address_fixture)
+                    if value == "ed@wood.com"
+                    else self._user_minus_edlala(*user_address_fixture),
+                )
+
+            asserter.assert_(
+                CompiledSQL(
+                    "SELECT users.id, users.name FROM users ORDER BY users.id"
+                ),
+                CompiledSQL(
+                    "SELECT addresses.user_id AS addresses_user_id, "
+                    "addresses.id AS addresses_id, "
+                    "addresses.email_address AS addresses_email_address "
+                    # note the comma-separated FROM clause
+                    "FROM addresses, (SELECT addresses_1.id AS id FROM "
+                    "addresses AS addresses_1 "
+                    "WHERE addresses_1.email_address != :email_address_1) "
+                    "AS anon_1 WHERE addresses.user_id "
+                    "IN (__[POSTCOMPILE_primary_keys]) "
+                    "AND addresses.id = anon_1.id ORDER BY addresses.id",
+                    [
+                        {
+                            "primary_keys": [7, 8, 9, 10],
+                            "email_address_1": value,
+                        }
+                    ],
+                ),
+            )
+
     @testing.combinations((True,), (False,), argnames="use_compiled_cache")
     def test_selectinload_nested_criteria(
         self, user_order_item_fixture, use_compiled_cache
