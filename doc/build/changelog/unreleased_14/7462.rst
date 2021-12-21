@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, orm, mypy
+    :tickets: 7462, 7368
+
+    Fixed issue where the ``__class_getitem__()`` method of the generated
+    declarative base class by :func:`_orm.as_declarative` would lead to
+    inaccessible class attributes such as ``__table__``, for cases where a
+    ``Generic[T]`` style typing declaration were used in the class hierarchy.
+    This is in continuation from the basic addition of ``__class_getitem__()``
+    in :ticket:`7368`. Pull request courtesy Kai Mueller.
