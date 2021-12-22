@@ -1149,11 +1149,24 @@ class LoaderCriteriaOption(CriteriaOption):
                 else:
                     stack.extend(subclass.__subclasses__())
 
+    def _should_include(self, compile_state):
+        if (
+            compile_state.select_statement._annotations.get(
+                "for_loader_criteria", None
+            )
+            is self
+        ):
+            return False
+        return True
+
     def _resolve_where_criteria(self, ext_info):
         if self.deferred_where_criteria:
-            return self.where_criteria._resolve_with_args(ext_info.entity)
+            crit = self.where_criteria._resolve_with_args(ext_info.entity)
         else:
-            return self.where_criteria
+            crit = self.where_criteria
+        return sql_util._deep_annotate(
+            crit, {"for_loader_criteria": self}, detect_subquery_cols=True
+        )
 
     def process_compile_state_replaced_entities(
         self, compile_state, mapper_entities
