@@ -7,11 +7,11 @@
 
 """Define generic result set constructs."""
 
-
 import collections.abc as collections_abc
 import functools
 import itertools
 import operator
+import typing
 
 from .row import Row
 from .. import exc
@@ -256,6 +256,10 @@ def result_tuple(fields, extra=None):
 # "no row is returned".  We can't use None for those cases where a scalar
 # filter is applied to rows.
 _NO_ROW = util.symbol("NO_ROW")
+
+SelfResultInternal = typing.TypeVar(
+    "SelfResultInternal", bound="ResultInternal"
+)
 
 
 class ResultInternal(InPlaceGenerative):
@@ -614,7 +618,9 @@ class ResultInternal(InPlaceGenerative):
             return row
 
     @_generative
-    def _column_slices(self, indexes):
+    def _column_slices(
+        self: SelfResultInternal, indexes
+    ) -> SelfResultInternal:
         real_result = self._real_result if self._real_result else self
 
         if real_result._source_supports_scalars and len(indexes) == 1:
@@ -622,6 +628,8 @@ class ResultInternal(InPlaceGenerative):
         else:
             self._generate_rows = True
             self._metadata = self._metadata._reduce(indexes)
+
+        return self
 
     @HasMemoized.memoized_attribute
     def _unique_strategy(self):
@@ -666,6 +674,9 @@ class _WithKeys:
 
         """
         return self._metadata.keys
+
+
+SelfResult = typing.TypeVar("SelfResult", bound="Result")
 
 
 class Result(_WithKeys, ResultInternal):
@@ -732,7 +743,7 @@ class Result(_WithKeys, ResultInternal):
         self._soft_close(hard=True)
 
     @_generative
-    def yield_per(self, num):
+    def yield_per(self: SelfResult, num) -> SelfResult:
         """Configure the row-fetching strategy to fetch num rows at a time.
 
         This impacts the underlying behavior of the result when iterating over
@@ -766,9 +777,10 @@ class Result(_WithKeys, ResultInternal):
 
         """
         self._yield_per = num
+        return self
 
     @_generative
-    def unique(self, strategy=None):
+    def unique(self: SelfResult, strategy=None) -> SelfResult:
         """Apply unique filtering to the objects returned by this
         :class:`_engine.Result`.
 
@@ -806,8 +818,11 @@ class Result(_WithKeys, ResultInternal):
 
         """
         self._unique_filter_state = (set(), strategy)
+        return self
 
-    def columns(self, *col_expressions):
+    def columns(
+        self: SelfResultInternal, *col_expressions
+    ) -> SelfResultInternal:
         r"""Establish the columns that should be returned in each row.
 
         This method may be used to limit the columns returned as well
@@ -845,7 +860,7 @@ class Result(_WithKeys, ResultInternal):
         """
         return self._column_slices(col_expressions)
 
-    def scalars(self, index=0):
+    def scalars(self, index=0) -> "ScalarResult":
         """Return a :class:`_result.ScalarResult` filtering object which
         will return single elements rather than :class:`_row.Row` objects.
 
@@ -892,7 +907,7 @@ class Result(_WithKeys, ResultInternal):
             )
         return self._metadata._row_as_tuple_getter(keys)
 
-    def mappings(self):
+    def mappings(self) -> "MappingResult":
         """Apply a mappings filter to returned rows, returning an instance of
         :class:`_result.MappingResult`.
 
@@ -1653,6 +1668,11 @@ def null_result():
     return IteratorResult(SimpleResultMetaData([]), iter([]))
 
 
+SelfChunkedIteratorResult = typing.TypeVar(
+    "SelfChunkedIteratorResult", bound="ChunkedIteratorResult"
+)
+
+
 class ChunkedIteratorResult(IteratorResult):
     """An :class:`.IteratorResult` that works from an iterator-producing callable.
 
@@ -1684,7 +1704,9 @@ class ChunkedIteratorResult(IteratorResult):
         self.dynamic_yield_per = dynamic_yield_per
 
     @_generative
-    def yield_per(self, num):
+    def yield_per(
+        self: SelfChunkedIteratorResult, num
+    ) -> SelfChunkedIteratorResult:
         # TODO: this throws away the iterator which may be holding
         # onto a chunk.   the yield_per cannot be changed once any
         # rows have been fetched.   either find a way to enforce this,
@@ -1693,6 +1715,7 @@ class ChunkedIteratorResult(IteratorResult):
 
         self._yield_per = num
         self.iterator = itertools.chain.from_iterable(self.chunks(num))
+        return self
 
     def _soft_close(self, **kw):
         super(ChunkedIteratorResult, self)._soft_close(**kw)

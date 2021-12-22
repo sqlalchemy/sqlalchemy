@@ -1702,6 +1702,7 @@ class CursorResult(BaseCursorResult, Result):
     def yield_per(self, num):
         self._yield_per = num
         self.cursor_strategy.yield_per(self, self.cursor, num)
+        return self
 
 
 ResultProxy = CursorResult

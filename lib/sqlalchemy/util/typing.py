@@ -1,4 +1,5 @@
 from typing import Any
+from typing import Callable  # noqa
 from typing import Generic
 from typing import overload
 from typing import Type
@@ -15,6 +16,12 @@ else:
     from typing_extensions import Protocol  # noqa
     from typing_extensions import TypedDict  # noqa
 
+if compat.py310:
+    from typing import Concatenate
+    from typing import ParamSpec
+else:
+    from typing_extensions import Concatenate  # noqa
+    from typing_extensions import ParamSpec  # noqa
 
 if compat.py311:
     from typing import NotRequired  # noqa

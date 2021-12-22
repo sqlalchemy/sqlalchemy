@@ -88,6 +88,8 @@ __all__ = [
 ]
 
 
+from typing import Callable
+
 from .base import _from_objects
 from .base import _select_iterables
 from .base import ColumnCollection
@@ -175,10 +177,8 @@ from .traversals import CacheKey
 from .visitors import Visitable
 from ..util.langhelpers import public_factory
 
-# factory functions - these pull class-bound constructors and classmethods
-# from SQL elements and selectables into public functions.  This allows
-# the functions to be available in the sqlalchemy.sql.* namespace and
-# to be auto-cross-documenting from the function to the class itself.
+# TODO: proposal is to remove public_factory and replace with traditional
+# functions exported here.
 
 all_ = public_factory(CollectionAggregate._create_all, ".sql.expression.all_")
 any_ = public_factory(CollectionAggregate._create_any, ".sql.expression.any_")

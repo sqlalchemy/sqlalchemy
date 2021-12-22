@@ -13,6 +13,7 @@
 import itertools
 import operator
 import re
+import typing
 
 from . import coercions
 from . import operators
@@ -1719,6 +1720,9 @@ class TypeClause(ClauseElement):
         self.type = type_
 
 
+SelfTextClause = typing.TypeVar("SelfTextClause", bound="TextClause")
+
+
 class TextClause(
     roles.DDLConstraintColumnRole,
     roles.DDLExpressionRole,
@@ -1875,7 +1879,9 @@ class TextClause(
         return TextClause(text)
 
     @_generative
-    def bindparams(self, *binds, **names_to_values):
+    def bindparams(
+        self: SelfTextClause, *binds, **names_to_values
+    ) -> SelfTextClause:
         """Establish the values and/or types of bound parameters within
         this :class:`_expression.TextClause` construct.
 
@@ -2000,6 +2006,7 @@ class TextClause(
                 ) from err
             else:
                 new_params[key] = existing._with_value(value, required=False)
+        return self
 
     @util.preload_module("sqlalchemy.sql.selectable")
     def columns(self, *cols, **types):

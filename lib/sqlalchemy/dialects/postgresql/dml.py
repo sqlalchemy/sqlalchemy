@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+import typing
 
 from . import ext
 from ... import util
@@ -20,6 +21,8 @@ from ...util.langhelpers import public_factory
 
 
 __all__ = ("Insert", "insert")
+
+SelfInsert = typing.TypeVar("SelfInsert", bound="Insert")
 
 
 class Insert(StandardInsert):
@@ -75,13 +78,13 @@ class Insert(StandardInsert):
     @_generative
     @_on_conflict_exclusive
     def on_conflict_do_update(
-        self,
+        self: SelfInsert,
         constraint=None,
         index_elements=None,
         index_where=None,
         set_=None,
         where=None,
-    ):
+    ) -> SelfInsert:
         r"""
         Specifies a DO UPDATE SET action for ON CONFLICT clause.
 
@@ -138,12 +141,16 @@ class Insert(StandardInsert):
         self._post_values_clause = OnConflictDoUpdate(
             constraint, index_elements, index_where, set_, where
         )
+        return self
 
     @_generative
     @_on_conflict_exclusive
     def on_conflict_do_nothing(
-        self, constraint=None, index_elements=None, index_where=None
-    ):
+        self: SelfInsert,
+        constraint=None,
+        index_elements=None,
+        index_where=None,
+    ) -> SelfInsert:
         """
         Specifies a DO NOTHING action for ON CONFLICT clause.
 
@@ -173,6 +180,7 @@ class Insert(StandardInsert):
         self._post_values_clause = OnConflictDoNothing(
             constraint, index_elements, index_where
         )
+        return self
 
 
 insert = public_factory(

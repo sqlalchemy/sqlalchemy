@@ -13,8 +13,11 @@ import inspect
 import operator
 import platform
 import sys
+import typing
+
 
 py311 = sys.version_info >= (3, 11)
+py310 = sys.version_info >= (3, 10)
 py39 = sys.version_info >= (3, 9)
 py38 = sys.version_info >= (3, 8)
 pypy = platform.python_implementation() == "PyPy"
@@ -137,11 +140,13 @@ def _formatannotation(annotation, base_module=None):
     """vendored from python 3.7"""
 
     if getattr(annotation, "__module__", None) == "typing":
-        return repr(annotation).replace("typing.", "")
+        return f'"{repr(annotation).replace("typing.", "")}"'
     if isinstance(annotation, type):
         if annotation.__module__ in ("builtins", base_module):
             return repr(annotation.__qualname__)
         return annotation.__module__ + "." + annotation.__qualname__
+    elif isinstance(annotation, typing.TypeVar):
+        return f'"{annotation}"'
     return repr(annotation)
 
 

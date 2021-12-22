@@ -22,6 +22,7 @@ import collections.abc as collections_abc
 import itertools
 import operator
 import types
+import typing
 
 from . import exc as orm_exc
 from . import interfaces
@@ -71,6 +72,8 @@ from ..sql.selectable import SelectStatementGrouping
 from ..sql.visitors import InternalTraversal
 
 __all__ = ["Query", "QueryContext", "aliased"]
+
+SelfQuery = typing.TypeVar("SelfQuery", bound="Query")
 
 
 @inspection._self_inspects
@@ -239,8 +242,9 @@ class Query(
         self._from_obj = tuple(fa)
 
     @_generative
-    def _set_lazyload_from(self, state):
+    def _set_lazyload_from(self: SelfQuery, state) -> SelfQuery:
         self.load_options += {"_lazy_loaded_from": state}
+        return self
 
     def _get_condition(self):
         return self._no_criterion_condition(
@@ -617,7 +621,7 @@ class Query(
         )
 
     @_generative
-    def only_return_tuples(self, value):
+    def only_return_tuples(self: SelfQuery, value) -> SelfQuery:
         """When set to True, the query results will always be a tuple.
 
         This is specifically for single element queries. The default is False.
@@ -630,6 +634,7 @@ class Query(
 
         """
         self.load_options += dict(_only_return_tuples=value)
+        return self
 
     @property
     def is_single_entity(self):
@@ -658,7 +663,7 @@ class Query(
         )
 
     @_generative
-    def enable_eagerloads(self, value):
+    def enable_eagerloads(self: SelfQuery, value) -> SelfQuery:
         """Control whether or not eager joins and subqueries are
         rendered.
 
@@ -674,10 +679,12 @@ class Query(
 
         """
         self._compile_options += {"_enable_eagerloads": value}
+        return self
 
     @_generative
-    def _with_compile_options(self, **opt):
+    def _with_compile_options(self: SelfQuery, **opt) -> SelfQuery:
         self._compile_options += opt
+        return self
 
     @util.deprecated_20(
         ":meth:`_orm.Query.with_labels` and :meth:`_orm.Query.apply_labels`",
@@ -735,7 +742,7 @@ class Query(
         return self
 
     @_generative
-    def enable_assertions(self, value):
+    def enable_assertions(self: SelfQuery, value) -> SelfQuery:
         """Control whether assertions are generated.
 
         When set to False, the returned Query will
@@ -755,6 +762,7 @@ class Query(
 
         """
         self._enable_assertions = value
+        return self
 
     @property
     def whereclause(self):
@@ -770,7 +778,7 @@ class Query(
         )
 
     @_generative
-    def _with_current_path(self, path):
+    def _with_current_path(self: SelfQuery, path) -> SelfQuery:
         """indicate that this query applies to objects loaded
         within a certain path.
 
@@ -780,6 +788,7 @@ class Query(
 
         """
         self._compile_options += {"_current_path": path}
+        return self
 
     @_generative
     @_assertions(_no_clauseelement_condition)
@@ -788,8 +797,8 @@ class Query(
         alternative="Use the orm.with_polymorphic() standalone function",
     )
     def with_polymorphic(
-        self, cls_or_mappers, selectable=None, polymorphic_on=None
-    ):
+        self: SelfQuery, cls_or_mappers, selectable=None, polymorphic_on=None
+    ) -> SelfQuery:
         """Load columns for inheriting classes.
 
         This is a legacy method which is replaced by the
@@ -828,9 +837,10 @@ class Query(
         self._compile_options = self._compile_options.add_to_element(
             "_with_polymorphic_adapt_map", ((entity, inspect(wp)),)
         )
+        return self
 
     @_generative
-    def yield_per(self, count):
+    def yield_per(self: SelfQuery, count) -> SelfQuery:
         r"""Yield only ``count`` rows at a time.
 
         The purpose of this method is when fetching very large result sets
@@ -849,6 +859,7 @@ class Query(
 
         """
         self.load_options += {"_yield_per": count}
+        return self
 
     @util.deprecated_20(
         ":meth:`_orm.Query.get`",
@@ -974,7 +985,7 @@ class Query(
         return self._compile_options._current_path
 
     @_generative
-    def correlate(self, *fromclauses):
+    def correlate(self: SelfQuery, *fromclauses) -> SelfQuery:
         """Return a :class:`.Query` construct which will correlate the given
         FROM clauses to that of an enclosing :class:`.Query` or
         :func:`~.expression.select`.
@@ -1002,9 +1013,10 @@ class Query(
             self._correlate = set(self._correlate).union(
                 coercions.expect(roles.FromClauseRole, f) for f in fromclauses
             )
+        return self
 
     @_generative
-    def autoflush(self, setting):
+    def autoflush(self: SelfQuery, setting) -> SelfQuery:
         """Return a Query with a specific 'autoflush' setting.
 
         As of SQLAlchemy 1.4, the :meth:`_orm.Query.autoflush` method
@@ -1014,9 +1026,10 @@ class Query(
 
         """
         self.load_options += {"_autoflush": setting}
+        return self
 
     @_generative
-    def populate_existing(self):
+    def populate_existing(self: SelfQuery) -> SelfQuery:
         """Return a :class:`_query.Query`
         that will expire and refresh all instances
         as they are loaded, or reused from the current :class:`.Session`.
@@ -1028,9 +1041,10 @@ class Query(
 
         """
         self.load_options += {"_populate_existing": True}
+        return self
 
     @_generative
-    def _with_invoke_all_eagers(self, value):
+    def _with_invoke_all_eagers(self: SelfQuery, value) -> SelfQuery:
         """Set the 'invoke all eagers' flag which causes joined- and
         subquery loaders to traverse into already-loaded related objects
         and collections.
@@ -1039,6 +1053,7 @@ class Query(
 
         """
         self.load_options += {"_invoke_all_eagers": value}
+        return self
 
     @util.deprecated_20(
         ":meth:`_orm.Query.with_parent`",
@@ -1103,7 +1118,7 @@ class Query(
         return self.filter(with_parent(instance, property, entity_zero.entity))
 
     @_generative
-    def add_entity(self, entity, alias=None):
+    def add_entity(self: SelfQuery, entity, alias=None) -> SelfQuery:
         """add a mapped entity to the list of result columns
         to be returned."""
 
@@ -1118,9 +1133,10 @@ class Query(
                 roles.ColumnsClauseRole, entity, apply_propagate_attrs=self
             )
         )
+        return self
 
     @_generative
-    def with_session(self, session):
+    def with_session(self: SelfQuery, session) -> SelfQuery:
         """Return a :class:`_query.Query` that will use the given
         :class:`.Session`.
 
@@ -1144,6 +1160,7 @@ class Query(
         """
 
         self.session = session
+        return self
 
     @util.deprecated_20(
         ":meth:`_query.Query.from_self`",
@@ -1344,11 +1361,14 @@ class Query(
         return q
 
     @_generative
-    def _set_enable_single_crit(self, val):
+    def _set_enable_single_crit(self: SelfQuery, val) -> SelfQuery:
         self._compile_options += {"_enable_single_crit": val}
+        return self
 
     @_generative
-    def _from_selectable(self, fromclause, set_entity_from=True):
+    def _from_selectable(
+        self: SelfQuery, fromclause, set_entity_from=True
+    ) -> SelfQuery:
         for attr in (
             "_where_criteria",
             "_order_by_clauses",
@@ -1376,6 +1396,7 @@ class Query(
         # "oldstyle" tests that rely on this and the corresponding
         # "newtyle" that do not.
         self._compile_options += {"_orm_only_from_obj_alias": False}
+        return self
 
     @util.deprecated(
         "1.4",
@@ -1417,7 +1438,7 @@ class Query(
             return None
 
     @_generative
-    def with_entities(self, *entities):
+    def with_entities(self: SelfQuery, *entities) -> SelfQuery:
         r"""Return a new :class:`_query.Query`
         replacing the SELECT list with the
         given entities.
@@ -1443,9 +1464,10 @@ class Query(
         """
         _MemoizedSelectEntities._generate_for_statement(self)
         self._set_entities(entities)
+        return self
 
     @_generative
-    def add_columns(self, *column):
+    def add_columns(self: SelfQuery, *column) -> SelfQuery:
         """Add one or more column expressions to the list
         of result columns to be returned."""
 
@@ -1460,6 +1482,7 @@ class Query(
             )
             for c in column
         )
+        return self
 
     @util.deprecated(
         "1.4",
@@ -1475,7 +1498,7 @@ class Query(
         return self.add_columns(column)
 
     @_generative
-    def options(self, *args):
+    def options(self: SelfQuery, *args) -> SelfQuery:
         """Return a new :class:`_query.Query` object,
         applying the given list of
         mapper options.
@@ -1502,6 +1525,7 @@ class Query(
                     opt.process_query(self)
 
         self._with_options += opts
+        return self
 
     def with_transformation(self, fn):
         """Return a new :class:`_query.Query` object transformed by
@@ -1534,7 +1558,7 @@ class Query(
         return self._execution_options
 
     @_generative
-    def execution_options(self, **kwargs):
+    def execution_options(self: SelfQuery, **kwargs) -> SelfQuery:
         """Set non-SQL options which take effect during execution.
 
         Options allowed here include all of those accepted by
@@ -1569,16 +1593,17 @@ class Query(
 
         """
         self._execution_options = self._execution_options.union(kwargs)
+        return self
 
     @_generative
     def with_for_update(
-        self,
+        self: SelfQuery,
         read=False,
         nowait=False,
         of=None,
         skip_locked=False,
         key_share=False,
-    ):
+    ) -> SelfQuery:
         """return a new :class:`_query.Query`
         with the specified options for the
         ``FOR UPDATE`` clause.
@@ -1633,9 +1658,10 @@ class Query(
             skip_locked=skip_locked,
             key_share=key_share,
         )
+        return self
 
     @_generative
-    def params(self, *args, **kwargs):
+    def params(self: SelfQuery, *args, **kwargs) -> SelfQuery:
         r"""Add values for bind parameters which may have been
         specified in filter().
 
@@ -1653,8 +1679,9 @@ class Query(
                 "which is a dictionary."
             )
         self._params = self._params.union(kwargs)
+        return self
 
-    def where(self, *criterion):
+    def where(self: SelfQuery, *criterion) -> SelfQuery:
         """A synonym for :meth:`.Query.filter`.
 
         .. versionadded:: 1.4
@@ -1664,7 +1691,7 @@ class Query(
 
     @_generative
     @_assertions(_no_statement_condition, _no_limit_offset)
-    def filter(self, *criterion):
+    def filter(self: SelfQuery, *criterion) -> SelfQuery:
         r"""Apply the given filtering criterion to a copy
         of this :class:`_query.Query`, using SQL expressions.
 
@@ -1702,6 +1729,7 @@ class Query(
             # legacy ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
             self._where_criteria += (criterion,)
+        return self
 
     @util.memoized_property
     def _last_joined_entity(self):
@@ -1795,7 +1823,7 @@ class Query(
 
     @_generative
     @_assertions(_no_statement_condition, _no_limit_offset)
-    def order_by(self, *clauses):
+    def order_by(self: SelfQuery, *clauses) -> SelfQuery:
         """Apply one or more ORDER BY criteria to the query and return
         the newly resulting :class:`_query.Query`.
 
@@ -1841,10 +1869,11 @@ class Query(
             # legacy ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
             self._order_by_clauses += criterion
+        return self
 
     @_generative
     @_assertions(_no_statement_condition, _no_limit_offset)
-    def group_by(self, *clauses):
+    def group_by(self: SelfQuery, *clauses) -> SelfQuery:
         """Apply one or more GROUP BY criterion to the query and return
         the newly resulting :class:`_query.Query`.
 
@@ -1884,10 +1913,11 @@ class Query(
             # legacy ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
             self._group_by_clauses += criterion
+        return self
 
     @_generative
     @_assertions(_no_statement_condition, _no_limit_offset)
-    def having(self, criterion):
+    def having(self: SelfQuery, criterion) -> SelfQuery:
         r"""Apply a HAVING criterion to the query and return the
         newly resulting :class:`_query.Query`.
 
@@ -1909,6 +1939,7 @@ class Query(
                 roles.WhereHavingRole, criterion, apply_propagate_attrs=self
             ),
         )
+        return self
 
     def _set_op(self, expr_fn, *q):
         return self._from_selectable(expr_fn(*([self] + list(q))).subquery())
@@ -2005,7 +2036,7 @@ class Query(
 
     @_generative
     @_assertions(_no_statement_condition, _no_limit_offset)
-    def join(self, target, *props, **kwargs):
+    def join(self: SelfQuery, target, *props, **kwargs) -> SelfQuery:
         r"""Create a SQL JOIN against this :class:`_query.Query`
         object's criterion
         and apply generatively, returning the newly resulting
@@ -2405,6 +2436,7 @@ class Query(
         self._legacy_setup_joins += joins_to_add
 
         self.__dict__.pop("_last_joined_entity", None)
+        return self
 
     def outerjoin(self, target, *props, **kwargs):
         """Create a left outer join against this ``Query`` object's criterion
@@ -2418,7 +2450,7 @@ class Query(
 
     @_generative
     @_assertions(_no_statement_condition)
-    def reset_joinpoint(self):
+    def reset_joinpoint(self: SelfQuery) -> SelfQuery:
         """Return a new :class:`.Query`, where the "join point" has
         been reset back to the base FROM entities of the query.
 
@@ -2430,10 +2462,11 @@ class Query(
         """
         self._last_joined_entity = None
         self._aliased_generation = None
+        return self
 
     @_generative
     @_assertions(_no_clauseelement_condition)
-    def select_from(self, *from_obj):
+    def select_from(self: SelfQuery, *from_obj) -> SelfQuery:
         r"""Set the FROM clause of this :class:`.Query` explicitly.
 
         :meth:`.Query.select_from` is often used in conjunction with
@@ -2479,6 +2512,7 @@ class Query(
         """
 
         self._set_select_from(from_obj, False)
+        return self
 
     @util.deprecated_20(
         ":meth:`_orm.Query.select_entity_from`",
@@ -2486,7 +2520,7 @@ class Query(
     )
     @_generative
     @_assertions(_no_clauseelement_condition)
-    def select_entity_from(self, from_obj):
+    def select_entity_from(self: SelfQuery, from_obj) -> SelfQuery:
         r"""Set the FROM clause of this :class:`_query.Query` to a
         core selectable, applying it as a replacement FROM clause
         for corresponding mapped entities.
@@ -2600,6 +2634,7 @@ class Query(
 
         self._set_select_from([from_obj], True)
         self._compile_options += {"_enable_single_crit": False}
+        return self
 
     def __getitem__(self, item):
         return orm_util._getitem(
@@ -2610,7 +2645,7 @@ class Query(
 
     @_generative
     @_assertions(_no_statement_condition)
-    def slice(self, start, stop):
+    def slice(self: SelfQuery, start, stop) -> SelfQuery:
         """Computes the "slice" of the :class:`_query.Query` represented by
         the given indices and returns the resulting :class:`_query.Query`.
 
@@ -2644,28 +2679,31 @@ class Query(
         self._limit_clause, self._offset_clause = sql_util._make_slice(
             self._limit_clause, self._offset_clause, start, stop
         )
+        return self
 
     @_generative
     @_assertions(_no_statement_condition)
-    def limit(self, limit):
+    def limit(self: SelfQuery, limit) -> SelfQuery:
         """Apply a ``LIMIT`` to the query and return the newly resulting
         ``Query``.
 
         """
         self._limit_clause = sql_util._offset_or_limit_clause(limit)
+        return self
 
     @_generative
     @_assertions(_no_statement_condition)
-    def offset(self, offset):
+    def offset(self: SelfQuery, offset) -> SelfQuery:
         """Apply an ``OFFSET`` to the query and return the newly resulting
         ``Query``.
 
         """
         self._offset_clause = sql_util._offset_or_limit_clause(offset)
+        return self
 
     @_generative
     @_assertions(_no_statement_condition)
-    def distinct(self, *expr):
+    def distinct(self: SelfQuery, *expr) -> SelfQuery:
         r"""Apply a ``DISTINCT`` to the query and return the newly resulting
         ``Query``.
 
@@ -2701,6 +2739,7 @@ class Query(
             )
         else:
             self._distinct = True
+        return self
 
     def all(self):
         """Return the results represented by this :class:`_query.Query`
@@ -2722,7 +2761,7 @@ class Query(
 
     @_generative
     @_assertions(_no_clauseelement_condition)
-    def from_statement(self, statement):
+    def from_statement(self: SelfQuery, statement) -> SelfQuery:
         """Execute the given SELECT statement and return results.
 
         This method bypasses all internal statement compilation, and the
@@ -2739,6 +2778,7 @@ class Query(
             roles.SelectStatementRole, statement, apply_propagate_attrs=self
         )
         self._statement = statement
+        return self
 
     def first(self):
         """Return the first result of this ``Query`` or

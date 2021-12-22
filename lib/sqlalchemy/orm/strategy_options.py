@@ -12,6 +12,7 @@ import typing
 from typing import Any
 from typing import cast
 from typing import Mapping
+from typing import NoReturn
 from typing import Tuple
 from typing import Union
 
@@ -40,6 +41,8 @@ _COLUMN_TOKEN = "column"
 
 if typing.TYPE_CHECKING:
     from .mapper import Mapper
+
+Self_AbstractLoad = typing.TypeVar("Self_AbstractLoad", bound="_AbstractLoad")
 
 
 class _AbstractLoad(Generative, LoaderOption):
@@ -658,13 +661,13 @@ class _AbstractLoad(Generative, LoaderOption):
 
     @_generative
     def _set_relationship_strategy(
-        self,
+        self: Self_AbstractLoad,
         attr,
         strategy,
         propagate_to_loaders=True,
         opts=None,
         _reconcile_to_other=None,
-    ) -> "_AbstractLoad":
+    ) -> Self_AbstractLoad:
         strategy = self._coerce_strat(strategy)
 
         self._clone_for_bind_strategy(
@@ -679,8 +682,8 @@ class _AbstractLoad(Generative, LoaderOption):
 
     @_generative
     def _set_column_strategy(
-        self, attrs, strategy, opts=None
-    ) -> "_AbstractLoad":
+        self: Self_AbstractLoad, attrs, strategy, opts=None
+    ) -> Self_AbstractLoad:
         strategy = self._coerce_strat(strategy)
 
         self._clone_for_bind_strategy(
@@ -694,8 +697,8 @@ class _AbstractLoad(Generative, LoaderOption):
 
     @_generative
     def _set_generic_strategy(
-        self, attrs, strategy, _reconcile_to_other=None
-    ) -> "_AbstractLoad":
+        self: Self_AbstractLoad, attrs, strategy, _reconcile_to_other=None
+    ) -> Self_AbstractLoad:
         strategy = self._coerce_strat(strategy)
         self._clone_for_bind_strategy(
             attrs,
@@ -707,7 +710,9 @@ class _AbstractLoad(Generative, LoaderOption):
         return self
 
     @_generative
-    def _set_class_strategy(self, strategy, opts) -> "_AbstractLoad":
+    def _set_class_strategy(
+        self: Self_AbstractLoad, strategy, opts
+    ) -> Self_AbstractLoad:
         strategy = self._coerce_strat(strategy)
 
         self._clone_for_bind_strategy(None, strategy, None, opts=opts)
@@ -722,7 +727,7 @@ class _AbstractLoad(Generative, LoaderOption):
         """
         raise NotImplementedError()
 
-    def options(self, *opts) -> "_AbstractLoad":
+    def options(self: Self_AbstractLoad, *opts) -> NoReturn:
         r"""Apply a series of options as sub-options to this
         :class:`_orm._AbstractLoad` object.
 
@@ -829,6 +834,9 @@ class _AbstractLoad(Generative, LoaderOption):
             else:
                 return None
         return to_chop[i + 1 :]
+
+
+SelfLoad = typing.TypeVar("SelfLoad", bound="Load")
 
 
 class Load(_AbstractLoad):
@@ -1003,7 +1011,7 @@ class Load(_AbstractLoad):
             parent.context += cloned.context
 
     @_generative
-    def options(self, *opts) -> "_AbstractLoad":
+    def options(self: SelfLoad, *opts) -> SelfLoad:
         r"""Apply a series of options as sub-options to this
         :class:`_orm.Load`
         object.
@@ -1129,6 +1137,9 @@ class Load(_AbstractLoad):
         self.path = PathRegistry.deserialize(self.path)
 
 
+SelfWildcardLoad = typing.TypeVar("SelfWildcardLoad", bound="_WildcardLoad")
+
+
 class _WildcardLoad(_AbstractLoad):
     """represent a standalone '*' load operation"""
 
@@ -1177,7 +1188,7 @@ class _WildcardLoad(_AbstractLoad):
         if opts:
             self.local_opts = util.immutabledict(opts)
 
-    def options(self, *opts) -> "_AbstractLoad":
+    def options(self: SelfWildcardLoad, *opts) -> SelfWildcardLoad:
         raise NotImplementedError("Star option does not support sub-options")
 
     def _apply_to_parent(self, parent):
@@ -1986,7 +1997,7 @@ class _ClassStrategyLoad(_LoadElement):
         return [("loader", cast(PathRegistry, effective_path).natural_path)]
 
 
-def _generate_from_keys(meth, keys, chained, kw):
+def _generate_from_keys(meth, keys, chained, kw) -> _AbstractLoad:
 
     lead_element = None
 
@@ -2041,6 +2052,7 @@ def _generate_from_keys(meth, keys, chained, kw):
                 else:
                     lead_element = meth(lead_element, attr, **kw)
 
+    assert lead_element
     return lead_element
 
 
@@ -2097,12 +2109,12 @@ See :func:`_orm.{fn.__name__}` for usage examples.
 
 
 @loader_unbound_fn
-def contains_eager(*keys, **kw):
+def contains_eager(*keys, **kw) -> _AbstractLoad:
     return _generate_from_keys(Load.contains_eager, keys, True, kw)
 
 
 @loader_unbound_fn
-def load_only(*attrs):
+def load_only(*attrs) -> _AbstractLoad:
     # TODO: attrs against different classes.  we likely have to
     # add some extra state to Load of some kind
     _, lead_element, _ = _parse_attr_argument(attrs[0])
@@ -2110,47 +2122,47 @@ def load_only(*attrs):
 
 
 @loader_unbound_fn
-def joinedload(*keys, **kw):
+def joinedload(*keys, **kw) -> _AbstractLoad:
     return _generate_from_keys(Load.joinedload, keys, False, kw)
 
 
 @loader_unbound_fn
-def subqueryload(*keys):
+def subqueryload(*keys) -> _AbstractLoad:
     return _generate_from_keys(Load.subqueryload, keys, False, {})
 
 
 @loader_unbound_fn
-def selectinload(*keys):
+def selectinload(*keys) -> _AbstractLoad:
     return _generate_from_keys(Load.selectinload, keys, False, {})
 
 
 @loader_unbound_fn
-def lazyload(*keys):
+def lazyload(*keys) -> _AbstractLoad:
     return _generate_from_keys(Load.lazyload, keys, False, {})
 
 
 @loader_unbound_fn
-def immediateload(*keys):
+def immediateload(*keys) -> _AbstractLoad:
     return _generate_from_keys(Load.immediateload, keys, False, {})
 
 
 @loader_unbound_fn
-def noload(*keys):
+def noload(*keys) -> _AbstractLoad:
     return _generate_from_keys(Load.noload, keys, False, {})
 
 
 @loader_unbound_fn
-def raiseload(*keys, **kw):
+def raiseload(*keys, **kw) -> _AbstractLoad:
     return _generate_from_keys(Load.raiseload, keys, False, kw)
 
 
 @loader_unbound_fn
-def defaultload(*keys):
+def defaultload(*keys) -> _AbstractLoad:
     return _generate_from_keys(Load.defaultload, keys, False, {})
 
 
 @loader_unbound_fn
-def defer(key, *addl_attrs, **kw):
+def defer(key, *addl_attrs, **kw) -> _AbstractLoad:
     if addl_attrs:
         util.warn_deprecated(
             "The *addl_attrs on orm.defer is deprecated.  Please use "
@@ -2162,7 +2174,7 @@ def defer(key, *addl_attrs, **kw):
 
 
 @loader_unbound_fn
-def undefer(key, *addl_attrs):
+def undefer(key, *addl_attrs) -> _AbstractLoad:
     if addl_attrs:
         util.warn_deprecated(
             "The *addl_attrs on orm.undefer is deprecated.  Please use "
@@ -2174,19 +2186,19 @@ def undefer(key, *addl_attrs):
 
 
 @loader_unbound_fn
-def undefer_group(name):
+def undefer_group(name) -> _AbstractLoad:
     element = _WildcardLoad()
     return element.undefer_group(name)
 
 
 @loader_unbound_fn
-def with_expression(key, expression):
+def with_expression(key, expression) -> _AbstractLoad:
     return _generate_from_keys(
         Load.with_expression, (key,), False, {"expression": expression}
     )
 
 
 @loader_unbound_fn
-def selectin_polymorphic(base_cls, classes):
+def selectin_polymorphic(base_cls, classes) -> _AbstractLoad:
     ul = Load(base_cls)
     return ul.selectin_polymorphic(classes)

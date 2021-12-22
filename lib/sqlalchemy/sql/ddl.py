@@ -9,6 +9,7 @@ Provides the hierarchy of DDL-defining schema items as well as routines
 to invoke them for a create/drop call.
 
 """
+import typing
 
 from . import roles
 from .base import _generative
@@ -32,6 +33,9 @@ class _DDLCompiles(ClauseElement):
 
     def _compile_w_cache(self, *arg, **kw):
         raise NotImplementedError()
+
+
+SelfDDLElement = typing.TypeVar("SelfDDLElement", bound="DDLElement")
 
 
 class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
@@ -77,7 +81,7 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
         )
 
     @_generative
-    def against(self, target):
+    def against(self: SelfDDLElement, target) -> SelfDDLElement:
         """Return a copy of this :class:`_schema.DDLElement` which will include
         the given target.
 
@@ -111,9 +115,12 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
         """
 
         self.target = target
+        return self
 
     @_generative
-    def execute_if(self, dialect=None, callable_=None, state=None):
+    def execute_if(
+        self: SelfDDLElement, dialect=None, callable_=None, state=None
+    ) -> SelfDDLElement:
         r"""Return a callable that will execute this
         :class:`_ddl.DDLElement` conditionally within an event handler.
 
@@ -181,6 +188,7 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
         self.dialect = dialect
         self.callable_ = callable_
         self.state = state
+        return self
 
     def _should_execute(self, target, bind, **kw):
         if isinstance(self.dialect, str):

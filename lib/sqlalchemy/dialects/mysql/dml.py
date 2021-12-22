@@ -1,3 +1,11 @@
+# Copyright (C) 2005-2021 the SQLAlchemy authors and contributors
+# <see AUTHORS file>
+#
+# This module is part of SQLAlchemy and is released under
+# the MIT License: https://www.opensource.org/licenses/mit-license.php
+
+import typing
+
 from ... import exc
 from ... import util
 from ...sql.base import _exclusive_against
@@ -10,6 +18,9 @@ from ...util.langhelpers import public_factory
 
 
 __all__ = ("Insert", "insert")
+
+
+SelfInsert = typing.TypeVar("SelfInsert", bound="Insert")
 
 
 class Insert(StandardInsert):
@@ -70,7 +81,7 @@ class Insert(StandardInsert):
             "has an ON DUPLICATE KEY clause present"
         },
     )
-    def on_duplicate_key_update(self, *args, **kw):
+    def on_duplicate_key_update(self: SelfInsert, *args, **kw) -> SelfInsert:
         r"""
         Specifies the ON DUPLICATE KEY UPDATE clause.
 
@@ -131,6 +142,7 @@ class Insert(StandardInsert):
 
         inserted_alias = getattr(self, "inserted_alias", None)
         self._post_values_clause = OnDuplicateClause(inserted_alias, values)
+        return self
 
 
 insert = public_factory(

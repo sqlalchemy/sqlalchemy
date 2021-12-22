@@ -10,8 +10,8 @@ Provide :class:`_expression.Insert`, :class:`_expression.Update` and
 
 """
 import collections.abc as collections_abc
+import typing
 
-from sqlalchemy.types import NullType
 from . import coercions
 from . import roles
 from . import util as sql_util
@@ -30,6 +30,7 @@ from .elements import Null
 from .selectable import HasCTE
 from .selectable import HasPrefixes
 from .selectable import ReturnsRows
+from .sqltypes import NullType
 from .visitors import InternalTraversal
 from .. import exc
 from .. import util
@@ -210,6 +211,9 @@ class DeleteDMLState(DMLState):
         self._extra_froms = self._make_extra_froms(statement)
 
 
+SelfUpdateBase = typing.TypeVar("SelfUpdateBase", bound="UpdateBase")
+
+
 class UpdateBase(
     roles.DMLRole,
     HasCTE,
@@ -313,7 +317,7 @@ class UpdateBase(
         )
 
     @_generative
-    def with_dialect_options(self, **opt):
+    def with_dialect_options(self: SelfUpdateBase, **opt) -> SelfUpdateBase:
         """Add dialect options to this INSERT/UPDATE/DELETE object.
 
         e.g.::
@@ -326,6 +330,7 @@ class UpdateBase(
 
         """
         self._validate_dialect_kwargs(opt)
+        return self
 
     def _validate_dialect_kwargs_deprecated(self, dialect_kw):
         util.warn_deprecated_20(
@@ -337,7 +342,7 @@ class UpdateBase(
         self._validate_dialect_kwargs(dialect_kw)
 
     @_generative
-    def returning(self, *cols):
+    def returning(self: SelfUpdateBase, *cols) -> SelfUpdateBase:
         r"""Add a :term:`RETURNING` or equivalent clause to this statement.
 
         e.g.:
@@ -414,6 +419,7 @@ class UpdateBase(
         self._returning += tuple(
             coercions.expect(roles.ColumnsClauseRole, c) for c in cols
         )
+        return self
 
     @property
     def _all_selected_columns(self):
@@ -433,7 +439,9 @@ class UpdateBase(
         ).as_immutable()
 
     @_generative
-    def with_hint(self, text, selectable=None, dialect_name="*"):
+    def with_hint(
+        self: SelfUpdateBase, text, selectable=None, dialect_name="*"
+    ) -> SelfUpdateBase:
         """Add a table hint for a single table to this
         INSERT/UPDATE/DELETE statement.
 
@@ -467,6 +475,10 @@ class UpdateBase(
             selectable = self.table
 
         self._hints = self._hints.union({(selectable, dialect_name): text})
+        return self
+
+
+SelfValuesBase = typing.TypeVar("SelfValuesBase", bound="ValuesBase")
 
 
 class ValuesBase(UpdateBase):
@@ -506,7 +518,7 @@ class ValuesBase(UpdateBase):
             "values present",
         },
     )
-    def values(self, *args, **kwargs):
+    def values(self: SelfValuesBase, *args, **kwargs) -> SelfValuesBase:
         r"""Specify a fixed VALUES clause for an INSERT statement, or the SET
         clause for an UPDATE.
 
@@ -643,7 +655,7 @@ class ValuesBase(UpdateBase):
 
                 if arg and isinstance(arg[0], (list, dict, tuple)):
                     self._multi_values += (arg,)
-                    return
+                    return self
 
                 # tuple values
                 arg = {c.key: value for c, value in zip(self.table.c, arg)}
@@ -681,6 +693,7 @@ class ValuesBase(UpdateBase):
                 self._values = self._values.union(arg)
             else:
                 self._values = util.immutabledict(arg)
+        return self
 
     @_generative
     @_exclusive_against(
@@ -690,7 +703,7 @@ class ValuesBase(UpdateBase):
         },
         defaults={"_returning": _returning},
     )
-    def return_defaults(self, *cols):
+    def return_defaults(self: SelfValuesBase, *cols) -> SelfValuesBase:
         """Make use of a :term:`RETURNING` clause for the purpose
         of fetching server-side expressions and defaults.
 
@@ -776,6 +789,10 @@ class ValuesBase(UpdateBase):
         """
         self._return_defaults = True
         self._return_defaults_columns = cols
+        return self
+
+
+SelfInsert = typing.TypeVar("SelfInsert", bound="Insert")
 
 
 class Insert(ValuesBase):
@@ -918,7 +935,7 @@ class Insert(ValuesBase):
                 self._return_defaults_columns = return_defaults
 
     @_generative
-    def inline(self):
+    def inline(self: SelfInsert) -> SelfInsert:
         """Make this :class:`_expression.Insert` construct "inline" .
 
         When set, no attempt will be made to retrieve the
@@ -936,9 +953,12 @@ class Insert(ValuesBase):
 
         """
         self._inline = True
+        return self
 
     @_generative
-    def from_select(self, names, select, include_defaults=True):
+    def from_select(
+        self: SelfInsert, names, select, include_defaults=True
+    ) -> SelfInsert:
         """Return a new :class:`_expression.Insert` construct which represents
         an ``INSERT...FROM SELECT`` statement.
 
@@ -997,13 +1017,17 @@ class Insert(ValuesBase):
         self._inline = True
         self.include_insert_from_select_defaults = include_defaults
         self.select = coercions.expect(roles.DMLSelectRole, select)
+        return self
+
+
+SelfDMLWhereBase = typing.TypeVar("SelfDMLWhereBase", bound="DMLWhereBase")
 
 
 class DMLWhereBase:
     _where_criteria = ()
 
     @_generative
-    def where(self, *whereclause):
+    def where(self: SelfDMLWhereBase, *whereclause) -> SelfDMLWhereBase:
         """Return a new construct with the given expression(s) added to
         its WHERE clause, joined to the existing clause via AND, if any.
 
@@ -1037,8 +1061,9 @@ class DMLWhereBase:
         for criterion in whereclause:
             where_criteria = coercions.expect(roles.WhereHavingRole, criterion)
             self._where_criteria += (where_criteria,)
+        return self
 
-    def filter(self, *criteria):
+    def filter(self: SelfDMLWhereBase, *criteria) -> SelfDMLWhereBase:
         """A synonym for the :meth:`_dml.DMLWhereBase.where` method.
 
         .. versionadded:: 1.4
@@ -1050,7 +1075,7 @@ class DMLWhereBase:
     def _filter_by_zero(self):
         return self.table
 
-    def filter_by(self, **kwargs):
+    def filter_by(self: SelfDMLWhereBase, **kwargs) -> SelfDMLWhereBase:
         r"""apply the given filtering criterion as a WHERE clause
         to this select.
 
@@ -1079,6 +1104,9 @@ class DMLWhereBase:
         return BooleanClauseList._construct_for_whereclause(
             self._where_criteria
         )
+
+
+SelfUpdate = typing.TypeVar("SelfUpdate", bound="Update")
 
 
 class Update(DMLWhereBase, ValuesBase):
@@ -1261,7 +1289,7 @@ class Update(DMLWhereBase, ValuesBase):
         self._return_defaults = return_defaults
 
     @_generative
-    def ordered_values(self, *args):
+    def ordered_values(self: SelfUpdate, *args) -> SelfUpdate:
         """Specify the VALUES clause of this UPDATE statement with an explicit
         parameter ordering that will be maintained in the SET clause of the
         resulting UPDATE statement.
@@ -1295,9 +1323,10 @@ class Update(DMLWhereBase, ValuesBase):
 
         kv_generator = DMLState.get_plugin_class(self)._get_crud_kv_pairs
         self._ordered_values = kv_generator(self, args)
+        return self
 
     @_generative
-    def inline(self):
+    def inline(self: SelfUpdate) -> SelfUpdate:
         """Make this :class:`_expression.Update` construct "inline" .
 
         When set, SQL defaults present on :class:`_schema.Column`
@@ -1313,6 +1342,10 @@ class Update(DMLWhereBase, ValuesBase):
 
         """
         self._inline = True
+        return self
+
+
+SelfDelete = typing.TypeVar("SelfDelete", bound="Delete")
 
 
 class Delete(DMLWhereBase, UpdateBase):
