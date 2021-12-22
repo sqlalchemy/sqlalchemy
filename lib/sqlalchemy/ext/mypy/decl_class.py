@@ -327,7 +327,7 @@ def _scan_declarative_decorator_stmt(
         )
 
     left_node.node.type = api.named_type(
-        "__sa_Mapped", [left_hand_explicit_type]
+        names.NAMED_TYPE_SQLA_MAPPED, [left_hand_explicit_type]
     )
 
     # this will ignore the rvalue entirely

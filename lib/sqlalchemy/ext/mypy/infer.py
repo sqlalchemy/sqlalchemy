@@ -147,7 +147,7 @@ def _infer_type_from_relationship(
         type_is_a_collection = True
         if python_type_for_type is not None:
             python_type_for_type = api.named_type(
-                "__builtins__.list", [python_type_for_type]
+                names.NAMED_TYPE_BUILTINS_LIST, [python_type_for_type]
             )
     elif (
         uselist_arg is None or api.parse_bool(uselist_arg) is True
@@ -438,7 +438,7 @@ def _infer_type_from_left_and_inferred_right(
 
     if not is_subtype(left_hand_explicit_type, python_type_for_type):
         effective_type = api.named_type(
-            "__sa_Mapped", [orig_python_type_for_type]
+            names.NAMED_TYPE_SQLA_MAPPED, [orig_python_type_for_type]
         )
 
         msg = (
@@ -507,7 +507,9 @@ def infer_type_from_left_hand_type_only(
         )
         util.fail(api, msg.format(node.name), node)
 
-        return api.named_type("__sa_Mapped", [AnyType(TypeOfAny.special_form)])
+        return api.named_type(
+            names.NAMED_TYPE_SQLA_MAPPED, [AnyType(TypeOfAny.special_form)]
+        )
 
     else:
         # use type from the left hand side
@@ -529,7 +531,7 @@ def extract_python_type_from_typeengine(
                     return Instance(first_arg.node, [])
             # TODO: support other pep-435 types here
         else:
-            return api.named_type("__builtins__.str", [])
+            return api.named_type(names.NAMED_TYPE_BUILTINS_STR, [])
 
     assert node.has_base("sqlalchemy.sql.type_api.TypeEngine"), (
         "could not extract Python type from node: %s" % node
