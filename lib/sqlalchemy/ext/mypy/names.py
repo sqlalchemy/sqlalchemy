@@ -47,6 +47,12 @@ AS_DECLARATIVE_BASE: int = util.symbol("AS_DECLARATIVE_BASE")  # type: ignore
 DECLARATIVE_MIXIN: int = util.symbol("DECLARATIVE_MIXIN")  # type: ignore
 QUERY_EXPRESSION: int = util.symbol("QUERY_EXPRESSION")  # type: ignore
 
+# names that must succeed with mypy.api.named_type
+NAMED_TYPE_BUILTINS_OBJECT = "builtins.object"
+NAMED_TYPE_BUILTINS_STR = "builtins.str"
+NAMED_TYPE_BUILTINS_LIST = "builtins.list"
+NAMED_TYPE_SQLA_MAPPED = "sqlalchemy.orm.attributes.Mapped"
+
 _lookup: Dict[str, Tuple[int, Set[str]]] = {
     "Column": (
         COLUMN,

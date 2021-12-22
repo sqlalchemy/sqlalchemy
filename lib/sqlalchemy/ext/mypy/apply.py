@@ -36,6 +36,7 @@ from mypy.types import UnionType
 
 from . import infer
 from . import util
+from .names import NAMED_TYPE_SQLA_MAPPED
 
 
 def apply_mypy_mapped_attr(
@@ -134,7 +135,7 @@ def re_apply_declarative_assignments(
                     and isinstance(stmt.rvalue.callee.expr, NameExpr)
                     and stmt.rvalue.callee.expr.node is not None
                     and stmt.rvalue.callee.expr.node.fullname
-                    == "sqlalchemy.orm.attributes.Mapped"
+                    == NAMED_TYPE_SQLA_MAPPED
                     and stmt.rvalue.callee.name == "_empty_constructor"
                     and isinstance(stmt.rvalue.args[0], CallExpr)
                     and isinstance(stmt.rvalue.args[0].callee, RefExpr)
@@ -165,7 +166,7 @@ def re_apply_declarative_assignments(
 
             if python_type_for_type is not None:
                 left_node.type = api.named_type(
-                    "__sa_Mapped", [python_type_for_type]
+                    NAMED_TYPE_SQLA_MAPPED, [python_type_for_type]
                 )
 
     if update_cls_metadata:
@@ -202,12 +203,12 @@ def apply_type_to_mapped_statement(
 
     if left_hand_explicit_type is not None:
         left_node.type = api.named_type(
-            "__sa_Mapped", [left_hand_explicit_type]
+            NAMED_TYPE_SQLA_MAPPED, [left_hand_explicit_type]
         )
     else:
         lvalue.is_inferred_def = False
         left_node.type = api.named_type(
-            "__sa_Mapped",
+            NAMED_TYPE_SQLA_MAPPED,
             [] if python_type_for_type is None else [python_type_for_type],
         )
 

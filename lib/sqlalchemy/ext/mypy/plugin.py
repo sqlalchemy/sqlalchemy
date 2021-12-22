@@ -142,7 +142,7 @@ def _dynamic_class_hook(ctx: DynamicClassDefContext) -> None:
         )
         info.bases = [Instance(cls_arg.node, [])]
     else:
-        obj = ctx.api.named_type("__builtins__.object")
+        obj = ctx.api.named_type(names.NAMED_TYPE_BUILTINS_OBJECT)
 
         info.bases = [obj]
 
@@ -152,7 +152,7 @@ def _dynamic_class_hook(ctx: DynamicClassDefContext) -> None:
         util.fail(
             ctx.api, "Not able to calculate MRO for declarative base", ctx.call
         )
-        obj = ctx.api.named_type("__builtins__.object")
+        obj = ctx.api.named_type(names.NAMED_TYPE_BUILTINS_OBJECT)
         info.bases = [obj]
         info.fallback_to_any = True
 
