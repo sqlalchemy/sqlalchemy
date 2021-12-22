@@ -2143,7 +2143,8 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                 for ae in self.global_attributes[
                     ("additional_entity_criteria", ext_info.mapper)
                 ]
-                if ae.include_aliases or ae.entity is ext_info
+                if (ae.include_aliases or ae.entity is ext_info)
+                and ae._should_include(self)
             )
         else:
             return ()
