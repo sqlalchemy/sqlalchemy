@@ -717,18 +717,22 @@ class DialectTest(
         assert e.pool.__class__ is pool.SingletonThreadPool
 
         e = create_engine("sqlite+pysqlite:///foo.db")
-        assert e.pool.__class__ is pool.NullPool
+        # changed as of 2.0 #7490
+        assert e.pool.__class__ is pool.QueuePool
 
     @combinations(
         (
             "sqlite:///foo.db",  # file path is absolute
-            ([os.path.abspath("foo.db")], {}),
+            ([os.path.abspath("foo.db")], {"check_same_thread": False}),
         ),
         (
             "sqlite:////abs/path/to/foo.db",
-            ([os.path.abspath("/abs/path/to/foo.db")], {}),
+            (
+                [os.path.abspath("/abs/path/to/foo.db")],
+                {"check_same_thread": False},
+            ),
         ),
-        ("sqlite://", ([":memory:"], {})),
+        ("sqlite://", ([":memory:"], {"check_same_thread": True})),
         (
             "sqlite:///?check_same_thread=true",
             ([":memory:"], {"check_same_thread": True}),
@@ -743,11 +747,17 @@ class DialectTest(
         ),
         (
             "sqlite:///file:path/to/database?" "mode=ro&uri=true",
-            (["file:path/to/database?mode=ro"], {"uri": True}),
+            (
+                ["file:path/to/database?mode=ro"],
+                {"uri": True, "check_same_thread": False},
+            ),
         ),
         (
             "sqlite:///file:path/to/database?uri=true",
-            (["file:path/to/database"], {"uri": True}),
+            (
+                ["file:path/to/database"],
+                {"uri": True, "check_same_thread": False},
+            ),
         ),
     )
     def test_connect_args(self, url, expected):

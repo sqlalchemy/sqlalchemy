@@ -317,6 +317,25 @@ such as gevent.
 :ticket:`7433`
 
 
+.. _change_7490:
+
+The SQLite dialect uses QueuePool for file-based databases
+------------------------------------------------------------
+
+The SQLite dialect now defaults to :class:`_pool.QueuePool` when a file
+based database is used. This is set along with setting the
+``check_same_thread`` parameter to ``False``. It has been observed that the
+previous approach of defaulting to :class:`_pool.NullPool`, which does not
+hold onto database connections after they are released, did in fact have a
+measurable negative performance impact. As always, the pool class is always
+customizable via the :paramref:`_sa.create_engine.poolclass` parameter.
+
+.. seealso::
+
+    :ref:`pysqlite_threading_pooling`
+
+
+:ticket:`7490`
 
 .. _migration_20_overview:
 
