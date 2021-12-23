@@ -67,6 +67,7 @@ changelog_sections = [
     "asyncio",
     "postgresql",
     "mysql",
+    "mariadb",
     "sqlite",
     "mssql",
     "oracle",
