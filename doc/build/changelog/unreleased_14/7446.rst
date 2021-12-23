@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, engine, regression
-    :tickets: 7446
-
-    Fixed regression in the :func:`_engine.make_url` function used to parse URL
-    strings where the query string parsing would go into a recursion overflow
-    if a Python 2 ``u''`` string were used.

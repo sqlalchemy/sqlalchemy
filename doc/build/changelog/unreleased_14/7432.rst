@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, engine
-    :tickets: 7432
-
-    Corrected the error message for the ``AttributeError`` that's raised when
-    attempting to write to an attribute on the :class:`_result.Row` class,
-    which is immutable. The previous message claimed the column didn't exist
-    which is misleading.
