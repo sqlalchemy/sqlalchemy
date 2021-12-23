@@ -15,7 +15,122 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.29
-    :include_notes_from: unreleased_14
+    :released: December 22, 2021
+
+    .. change::
+        :tags: usecase, asyncio
+        :tickets: 7301
+
+        Added :func:`_asyncio.async_engine_config` function to create
+        an async engine from a configuration dict.  This otherwise
+        behaves the same as :func:`_sa.engine_from_config`.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7489
+
+        Fixed issue in new "loader criteria" method
+        :meth:`_orm.PropComparator.and_` where usage with a loader strategy like
+        :func:`_orm.selectinload` against a column that was a member of the ``.c.``
+        collection of a subquery object, where the subquery would be dynamically
+        added to the FROM clause of the statement, would be subject to stale
+        parameter values within the subquery in the SQL statement cache, as the
+        process used by the loader strategy to replace the parameters at execution
+        time would fail to accommodate the subquery when received in this form.
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7491
+
+        Fixed recursion overflow which could occur within ORM statement compilation
+        when using either the :func:`_orm.with_loader_criteria` feature or the the
+        :meth:`_orm.PropComparator.and_` method within a loader strategy in
+        conjunction with a subquery which referred to the same entity being altered
+        by the criteria option, or loaded by the loader strategy.  A check for
+        coming across the same loader criteria option in a recursive fashion has
+        been added to accommodate for this scenario.
+
+
+    .. change::
+        :tags: bug, orm, mypy
+        :tickets: 7462, 7368
+
+        Fixed issue where the ``__class_getitem__()`` method of the generated
+        declarative base class by :func:`_orm.as_declarative` would lead to
+        inaccessible class attributes such as ``__table__``, for cases where a
+        ``Generic[T]`` style typing declaration were used in the class hierarchy.
+        This is in continuation from the basic addition of ``__class_getitem__()``
+        in :ticket:`7368`. Pull request courtesy Kai Mueller.
+
+    .. change::
+        :tags: bug, mypy
+        :tickets: 7496
+
+        Fixed mypy regression where the release of mypy 0.930 added additional
+        internal checks to the format of "named types", requiring that they be
+        fully qualified and locatable. This broke the mypy plugin for SQLAlchemy,
+        raising an assertion error, as there was use of symbols such as
+        ``__builtins__`` and other un-locatable or unqualified names that
+        previously had not raised any assertions.
+
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 7432
+
+        Corrected the error message for the ``AttributeError`` that's raised when
+        attempting to write to an attribute on the :class:`_result.Row` class,
+        which is immutable. The previous message claimed the column didn't exist
+        which is misleading.
+
+    .. change::
+        :tags: bug, mariadb
+        :tickets: 7457
+
+        Corrected the error classes inspected for the "is_disconnect" check for the
+        ``mariadbconnector`` dialect, which was failing for disconnects that
+        occurred due to common MySQL/MariaDB error codes such as 2006; the DBAPI
+        appears to currently use the ``mariadb.InterfaceError`` exception class for
+        disconnect errors such as error code 2006, which has been added to the list
+        of classes checked.
+
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 7447
+
+        Fixed caching-related issue where the use of a loader option of the form
+        ``lazyload(aliased(A).bs).joinedload(B.cs)`` would fail to result in the
+        joinedload being invoked for runs subsequent to the query being cached, due
+        to a mismatch for the options / object path applied to the objects loaded
+        for a query with a lead entity that used ``aliased()``.
+
+
+    .. change::
+        :tags: bug, tests, regression
+        :tickets: 7450
+
+        Fixed a regression in the test suite where the test called
+        ``CompareAndCopyTest::test_all_present`` would fail on some platforms due
+        to additional testing artifacts being detected. Pull request courtesy Nils
+        Philippsen.
+
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 7410
+
+        Added :paramref:`_orm.Session.get.execution_options` parameter which was
+        previously missing from the :meth:`_orm.Session.get` method.
+
+    .. change::
+        :tags: bug, engine, regression
+        :tickets: 7446
+
+        Fixed regression in the :func:`_engine.make_url` function used to parse URL
+        strings where the query string parsing would go into a recursion overflow
+        if a Python 2 ``u''`` string were used.
 
 .. changelog::
     :version: 1.4.28

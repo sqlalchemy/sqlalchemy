@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, tests, regression
-    :tickets: 7450
-
-    Fixed a regression in the test suite where the test called
-    ``CompareAndCopyTest::test_all_present`` would fail on some platforms due
-    to additional testing artifacts being detected. Pull request courtesy Nils
-    Philippsen.
-

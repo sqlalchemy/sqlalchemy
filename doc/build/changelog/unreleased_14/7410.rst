@@ -1,6 +1,0 @@
-.. change::
-    :tags: usecase, orm
-    :tickets: 7410
-
-    Added :paramref:`_orm.Session.get.execution_options` parameter which was
-    previously missing from the :meth:`_orm.Session.get` method.
