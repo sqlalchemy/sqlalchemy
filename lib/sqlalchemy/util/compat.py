@@ -94,6 +94,17 @@ else:
     import importlib_metadata  # noqa
 
 
+if py39:
+    # pep 584 dict union
+    dict_union = operator.or_  # noqa
+else:
+
+    def dict_union(a: dict, b: dict) -> dict:
+        a = a.copy()
+        a.update(b)
+        return a
+
+
 def importlib_metadata_get(group):
     ep = importlib_metadata.entry_points()
     if hasattr(ep, "select"):

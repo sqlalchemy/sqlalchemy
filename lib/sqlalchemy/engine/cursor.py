@@ -27,6 +27,7 @@ from ..sql.compiler import RM_NAME
 from ..sql.compiler import RM_OBJECTS
 from ..sql.compiler import RM_RENDERED_NAME
 from ..sql.compiler import RM_TYPE
+from ..util import compat
 
 _UNPICKLED = util.symbol("unpickled")
 
@@ -87,21 +88,16 @@ class CursorResultMetaData(ResultMetaData):
         new_metadata._tuplefilter = tup
         new_metadata._translated_indexes = indexes
 
-        new_recs = [
-            (index,) + rec[1:]
-            for index, rec in enumerate(self._metadata_for_keys(keys))
-        ]
+        new_recs = [(index,) + rec[1:] for index, rec in enumerate(recs)]
         new_metadata._keymap = {rec[MD_LOOKUP_KEY]: rec for rec in new_recs}
 
         # TODO: need unit test for:
         # result = connection.execute("raw sql, no columns").scalars()
         # without the "or ()" it's failing because MD_OBJECTS is None
         new_metadata._keymap.update(
-            {
-                e: new_rec
-                for new_rec in new_recs
-                for e in new_rec[MD_OBJECTS] or ()
-            }
+            (e, new_rec)
+            for new_rec in new_recs
+            for e in new_rec[MD_OBJECTS] or ()
         )
 
         return new_metadata
@@ -124,23 +120,35 @@ class CursorResultMetaData(ResultMetaData):
         if compiled_statement is invoked_statement:
             return self
 
+        # this is the most common path for Core statements when
+        # caching is used.  In ORM use, this codepath is not really used
+        # as the _result_disable_adapt_to_context execution option is
+        # set by the ORM.
+
         # make a copy and add the columns from the invoked statement
         # to the result map.
         md = self.__class__.__new__(self.__class__)
 
-        md._keymap = dict(self._keymap)
-
         keymap_by_position = self._keymap_by_result_column_idx
 
-        for idx, new in enumerate(invoked_statement._all_selected_columns):
-            try:
-                rec = keymap_by_position[idx]
-            except KeyError:
-                # this can happen when there are bogus column entries
-                # in a TextualSelect
-                pass
-            else:
-                md._keymap[new] = rec
+        if keymap_by_position is None:
+            # first retrival from cache, this map will not be set up yet,
+            # initialize lazily
+            keymap_by_position = self._keymap_by_result_column_idx = {
+                metadata_entry[MD_RESULT_MAP_INDEX]: metadata_entry
+                for metadata_entry in self._keymap.values()
+            }
+
+        md._keymap = compat.dict_union(
+            self._keymap,
+            {
+                new: keymap_by_position[idx]
+                for idx, new in enumerate(
+                    invoked_statement._all_selected_columns
+                )
+                if idx in keymap_by_position
+            },
+        )
 
         md._unpickled = self._unpickled
         md._processors = self._processors
@@ -185,38 +193,37 @@ class CursorResultMetaData(ResultMetaData):
             loose_column_name_matching,
         )
 
-        self._keymap = {}
-
-        # processors in key order for certain per-row
-        # views like __iter__ and slices
+        # processors in key order which are used when building up
+        # a row
         self._processors = [
             metadata_entry[MD_PROCESSOR] for metadata_entry in raw
         ]
 
-        if context.compiled:
-            self._keymap_by_result_column_idx = {
-                metadata_entry[MD_RESULT_MAP_INDEX]: metadata_entry
-                for metadata_entry in raw
-            }
-
-        # keymap by primary string...
-        by_key = dict(
-            [
-                (metadata_entry[MD_LOOKUP_KEY], metadata_entry)
-                for metadata_entry in raw
-            ]
-        )
+        # this is used when using this ResultMetaData in a Core-only cache
+        # retrieval context.  it's initialized on first cache retrieval
+        # when the _result_disable_adapt_to_context execution option
+        # (which the ORM generally sets) is not set.
+        self._keymap_by_result_column_idx = None
 
         # for compiled SQL constructs, copy additional lookup keys into
         # the key lookup map, such as Column objects, labels,
         # column keys and other names
         if num_ctx_cols:
+            # keymap by primary string...
+            by_key = {
+                metadata_entry[MD_LOOKUP_KEY]: metadata_entry
+                for metadata_entry in raw
+            }
 
-            # if by-primary-string dictionary smaller (or bigger?!) than
-            # number of columns, assume we have dupes, rewrite
-            # dupe records with "None" for index which results in
-            # ambiguous column exception when accessed.
             if len(by_key) != num_ctx_cols:
+                # if by-primary-string dictionary smaller (or bigger?!) than
+                # number of columns, assume we have dupes, rewrite
+                # dupe records with "None" for index which results in
+                # ambiguous column exception when accessed.
+                #
+                # this is considered to be the less common case as it is not
+                # common to have dupe column keys in a SELECT statement.
+                #
                 # new in 1.4: get the complete set of all possible keys,
                 # strings, objects, whatever, that are dupes across two
                 # different records, first.
@@ -234,47 +241,57 @@ class CursorResultMetaData(ResultMetaData):
 
                 # then put everything we have into the keymap excluding only
                 # those keys that are dupes.
-                self._keymap.update(
-                    [
-                        (obj_elem, metadata_entry)
-                        for metadata_entry in raw
-                        if metadata_entry[MD_OBJECTS]
-                        for obj_elem in metadata_entry[MD_OBJECTS]
-                        if obj_elem not in dupes
-                    ]
-                )
+                self._keymap = {
+                    obj_elem: metadata_entry
+                    for metadata_entry in raw
+                    if metadata_entry[MD_OBJECTS]
+                    for obj_elem in metadata_entry[MD_OBJECTS]
+                    if obj_elem not in dupes
+                }
 
                 # then for the dupe keys, put the "ambiguous column"
                 # record into by_key.
                 by_key.update({key: (None, None, (), key) for key in dupes})
 
             else:
+
                 # no dupes - copy secondary elements from compiled
-                # columns into self._keymap
-                self._keymap.update(
-                    [
-                        (obj_elem, metadata_entry)
-                        for metadata_entry in raw
-                        if metadata_entry[MD_OBJECTS]
-                        for obj_elem in metadata_entry[MD_OBJECTS]
-                    ]
-                )
+                # columns into self._keymap.  this is the most common
+                # codepath for Core / ORM statement executions before the
+                # result metadata is cached
+                self._keymap = {
+                    obj_elem: metadata_entry
+                    for metadata_entry in raw
+                    if metadata_entry[MD_OBJECTS]
+                    for obj_elem in metadata_entry[MD_OBJECTS]
+                }
+            # update keymap with primary string names taking
+            # precedence
+            self._keymap.update(by_key)
+        else:
+            # no compiled objects to map, just create keymap by primary string
+            self._keymap = {
+                metadata_entry[MD_LOOKUP_KEY]: metadata_entry
+                for metadata_entry in raw
+            }
 
-        # update keymap with primary string names taking
-        # precedence
-        self._keymap.update(by_key)
-
-        # update keymap with "translated" names (sqlite-only thing)
+        # update keymap with "translated" names.  In SQLAlchemy this is a
+        # sqlite only thing, and in fact impacting only extremely old SQLite
+        # versions unlikely to be present in modern Python versions.
+        # however, the pyhive third party dialect is
+        # also using this hook, which means others still might use it as well.
+        # I dislike having this awkward hook here but as long as we need
+        # to use names in cursor.description in some cases we need to have
+        # some hook to accomplish this.
         if not num_ctx_cols and context._translate_colname:
             self._keymap.update(
-                [
-                    (
-                        metadata_entry[MD_UNTRANSLATED],
-                        self._keymap[metadata_entry[MD_LOOKUP_KEY]],
-                    )
+                {
+                    metadata_entry[MD_UNTRANSLATED]: self._keymap[
+                        metadata_entry[MD_LOOKUP_KEY]
+                    ]
                     for metadata_entry in raw
                     if metadata_entry[MD_UNTRANSLATED]
-                ]
+                }
             )
 
     def _merge_cursor_description(
@@ -351,6 +368,8 @@ class CursorResultMetaData(ResultMetaData):
             self._keys = [elem[0] for elem in result_columns]
             # pure positional 1-1 case; doesn't need to read
             # the names from cursor.description
+
+            # most common case for Core and ORM
 
             # this metadata is safe to cache because we are guaranteed
             # to have the columns in the same order for new executions
@@ -672,9 +691,7 @@ class CursorResultMetaData(ResultMetaData):
         self._processors = [None for _ in range(len(state["_keys"]))]
         self._keymap = state["_keymap"]
 
-        self._keymap_by_result_column_idx = {
-            rec[MD_RESULT_MAP_INDEX]: rec for rec in self._keymap.values()
-        }
+        self._keymap_by_result_column_idx = None
         self._keys = state["_keys"]
         self._unpickled = True
         if state["_translated_indexes"]:
@@ -1147,12 +1164,14 @@ class BaseCursorResult:
     def _init_metadata(self, context, cursor_description):
 
         if context.compiled:
-            if context.compiled._cached_metadata:
-                metadata = self.context.compiled._cached_metadata
+            compiled = context.compiled
+
+            if compiled._cached_metadata:
+                metadata = compiled._cached_metadata
             else:
                 metadata = self._cursor_metadata(self, cursor_description)
                 if metadata._safe_for_cache:
-                    context.compiled._cached_metadata = metadata
+                    compiled._cached_metadata = metadata
 
             # result rewrite/ adapt step.  this is to suit the case
             # when we are invoked against a cached Compiled object, we want
@@ -1168,14 +1187,12 @@ class BaseCursorResult:
             # Basically this step suits the use case where the end user
             # is using Core SQL expressions and is accessing columns in the
             # result row using row._mapping[table.c.column].
-            compiled = context.compiled
             if (
-                compiled
-                and compiled._result_columns
-                and context.cache_hit is context.dialect.CACHE_HIT
-                and not context.execution_options.get(
+                not context.execution_options.get(
                     "_result_disable_adapt_to_context", False
                 )
+                and compiled._result_columns
+                and context.cache_hit is context.dialect.CACHE_HIT
                 and compiled.statement is not context.invoked_statement
             ):
                 metadata = metadata._adapt_to_context(context)
