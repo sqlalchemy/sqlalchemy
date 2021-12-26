@@ -3022,23 +3022,28 @@ class Mapper(
 
         allconds = []
 
+        start = False
+
+        # as of #7507, from the lowest base table on upwards,
+        # we include all intermediary tables.
+
+        for mapper in reversed(list(self.iterate_to_root())):
+            if mapper.local_table in tables:
+                start = True
+            elif not isinstance(mapper.local_table, expression.TableClause):
+                return None
+            if start and not mapper.single:
+                allconds.append(mapper.inherit_condition)
+                tables.add(mapper.local_table)
+
+        # only the bottom table needs its criteria to be altered to fit
+        # the primary key ident - the rest of the tables upwards to the
+        # descendant-most class should all be present and joined to each
+        # other.
         try:
-            start = False
-            for mapper in reversed(list(self.iterate_to_root())):
-                if mapper.local_table in tables:
-                    start = True
-                elif not isinstance(
-                    mapper.local_table, expression.TableClause
-                ):
-                    return None
-                if start and not mapper.single:
-                    allconds.append(
-                        visitors.cloned_traverse(
-                            mapper.inherit_condition,
-                            {},
-                            {"binary": visit_binary},
-                        )
-                    )
+            allconds[0] = visitors.cloned_traverse(
+                allconds[0], {}, {"binary": visit_binary}
+            )
         except _OptGetColumnsNotAvailable:
             return None
 
