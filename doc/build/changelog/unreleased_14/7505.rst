@@ -1,0 +1,14 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 7505
+
+    Fixed regression from 1.3 where the "subqueryload" loader strategy would
+    fail with a stack trace if used against a query that made use of
+    :meth:`_orm.Query.from_statement` or :meth:`_sql.Select.from_statement`. As
+    subqueryload requires modifying the original statement, it's not compatible
+    with the "from_statement" use case, especially for statements made against
+    the :func:`_sql.text` construct. The behavior now is equivalent to that of
+    1.3 and previously, which is that the loader strategy silently degrades to
+    not be used for such statements, typically falling back to using the
+    lazyload strategy.
+

@@ -28,6 +28,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing.assertsql import CompiledSQL
+from sqlalchemy.testing.assertsql import Or
 from sqlalchemy.testing.entities import ComparableEntity
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -88,6 +89,71 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
             eq_(self.static.user_address_result, q.order_by(User.id).all())
 
         self.assert_sql_count(testing.db, go, 2)
+
+    @testing.combinations(True, False)
+    def test_from_statement(self, legacy):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    self.mapper_registry.map_imperatively(Address, addresses),
+                    order_by=Address.id,
+                )
+            },
+        )
+        sess = fixture_session()
+
+        stmt = select(User).where(User.id == 7)
+
+        with self.sql_execution_asserter(testing.db) as asserter:
+            if legacy:
+                ret = (
+                    sess.query(User)
+                    # .where(User.id == 7)
+                    .from_statement(stmt)
+                    .options(subqueryload(User.addresses))
+                    .all()
+                )
+            else:
+                ret = sess.scalars(
+                    select(User)
+                    .from_statement(stmt)
+                    .options(subqueryload(User.addresses))
+                ).all()
+
+            eq_(self.static.user_address_result[0:1], ret)
+
+        asserter.assert_(
+            Or(
+                CompiledSQL(
+                    "SELECT users.id AS users_id, users.name AS users_name "
+                    "FROM users WHERE users.id = :id_1",
+                    [{"id_1": 7}],
+                ),
+                CompiledSQL(
+                    "SELECT users.id, users.name "
+                    "FROM users WHERE users.id = :id_1",
+                    [{"id_1": 7}],
+                ),
+            ),
+            # issue 7505
+            # subqueryload degrades for a from_statement.  this is a lazyload
+            CompiledSQL(
+                "SELECT addresses.id AS addresses_id, addresses.user_id AS "
+                "addresses_user_id, addresses.email_address AS "
+                "addresses_email_address FROM addresses "
+                "WHERE :param_1 = addresses.user_id ORDER BY addresses.id",
+                [{"param_1": 7}],
+            ),
+        )
 
     def test_params_arent_cached(self):
         users, Address, addresses, User = (

@@ -5976,12 +5976,11 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         (
             False,
             subqueryload,
-            # sqlite seems happy to interpret the broken SQL and give you the
-            # correct result somehow, this is a bug in SQLite so don't rely
-            # upon it doing that
-            testing.fails("not working yet") + testing.skip_if("sqlite"),
         ),
-        (True, subqueryload, testing.fails("not sure about implementation")),
+        (
+            True,
+            subqueryload,
+        ),
         (False, selectinload),
         (True, selectinload),
     )
@@ -6009,7 +6008,12 @@ class TextTest(QueryTest, AssertsCompiledSQL):
         def go():
             eq_(set(q.all()), set(self.static.user_address_result))
 
-        self.assert_sql_count(testing.db, go, 2)
+        if loader_option is subqueryload:
+            # subqueryload necessarily degrades to lazy loads for a text
+            # statement.
+            self.assert_sql_count(testing.db, go, 5)
+        else:
+            self.assert_sql_count(testing.db, go, 2)
 
     def test_whereclause(self):
         User = self.classes.User
