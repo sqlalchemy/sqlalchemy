@@ -86,6 +86,99 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         )
         eq_(self.static.user_address_result, q.order_by(User.id).all())
 
+    @testing.combinations(True, False)
+    def test_from_statement(self, legacy):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    self.mapper_registry.map_imperatively(Address, addresses),
+                    order_by=Address.id,
+                )
+            },
+        )
+
+        sess = fixture_session()
+
+        stmt = select(User).where(User.id == 7)
+
+        def go():
+            if legacy:
+                ret = (
+                    sess.query(User)
+                    .from_statement(stmt)
+                    .options(joinedload(User.addresses))
+                    .all()
+                )
+            else:
+                ret = sess.scalars(
+                    select(User)
+                    .from_statement(stmt)
+                    .options(joinedload(User.addresses))
+                ).all()
+
+            eq_(self.static.user_address_result[0:1], ret)
+
+        # joinedload can't be applied here so this necessarily
+        # has to lazy load the addresses
+        self.assert_sql_count(testing.db, go, 2)
+
+    @testing.combinations(True, False)
+    def test_from_statement_contains_eager(self, legacy):
+        users, Address, addresses, User = (
+            self.tables.users,
+            self.classes.Address,
+            self.tables.addresses,
+            self.classes.User,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties={
+                "addresses": relationship(
+                    self.mapper_registry.map_imperatively(Address, addresses),
+                    order_by=Address.id,
+                )
+            },
+        )
+
+        sess = fixture_session()
+
+        # for contains_eager, Address.id is enough for it to be picked up
+        stmt = (
+            select(User, Address.id).where(User.id == 7).join(User.addresses)
+        )
+
+        def go():
+            if legacy:
+                ret = (
+                    sess.query(User)
+                    .from_statement(stmt)
+                    .options(contains_eager(User.addresses))
+                    .all()
+                )
+            else:
+                ret = sess.scalars(
+                    select(User)
+                    .from_statement(stmt)
+                    .options(contains_eager(User.addresses))
+                ).all()
+
+            eq_(self.static.user_address_result[0:1], ret)
+
+        # joinedload can't be applied here so this necessarily
+        # has to lazy load the addresses
+        self.assert_sql_count(testing.db, go, 1)
+
     def test_no_render_in_subquery(self):
         """test #6378"""
 

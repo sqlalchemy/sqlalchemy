@@ -382,6 +382,12 @@ class ORMCompileState(CompileState):
             for m in m2.iterate_to_root():  # TODO: redundant ?
                 self._polymorphic_adapters[m.local_table] = adapter
 
+    @classmethod
+    def _create_entities_collection(cls, query, legacy):
+        raise NotImplementedError(
+            "this method only works for ORMSelectCompileState"
+        )
+
 
 @sql.base.CompileState.plugin_for("orm", "orm_from_statement")
 class ORMFromStatementCompileState(ORMCompileState):

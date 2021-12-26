@@ -27,6 +27,7 @@ from .base import _SET_DEFERRED_EXPIRED
 from .base import PASSIVE_OFF
 from .context import _column_descriptions
 from .context import ORMCompileState
+from .context import ORMSelectCompileState
 from .context import QueryContext
 from .interfaces import LoaderStrategy
 from .interfaces import StrategizedProperty
@@ -1790,6 +1791,11 @@ class SubqueryLoader(PostLoader):
         # the subqueryloader does a similar check in setup_query() unlike
         # the other post loaders, however we have this here for consistency
         elif self._check_recursive_postload(context, path, self.join_depth):
+            return
+        elif not isinstance(context.compile_state, ORMSelectCompileState):
+            # issue 7505 - subqueryload() in 1.3 and previous would silently
+            # degrade for from_statement() without warning. this behavior
+            # is restored here
             return
 
         if not self.parent.class_manager[self.key].impl.supports_population:
