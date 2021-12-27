@@ -90,14 +90,14 @@ class CacheKeyTest(fixtures.TestBase):
         )
         registry.map_imperatively(Child, child)
 
+        registry.configure()
+
         yield Parent, Child
 
         registry.dispose()
 
     @testing.fixture(scope="function")
     def stmt_fixture_one(self, mapping_fixture):
-        # note that by using ORM elements we will have annotations in these
-        # items also which is part of the performance hit
         Parent, Child = mapping_fixture
 
         return [
@@ -120,13 +120,29 @@ class CacheKeyTest(fixtures.TestBase):
             else:
                 current_key = key
 
-    @profiling.function_call_count(variance=0.15, warmup=0)
-    def test_statement_key_is_not_cached(self, stmt_fixture_one):
-        current_key = None
-        for stmt in stmt_fixture_one:
-            key = stmt._generate_cache_key()
-            assert key is not None
-            if current_key:
-                eq_(key, current_key)
-            else:
-                current_key = key
+    def test_statement_key_is_not_cached(
+        self, stmt_fixture_one, mapping_fixture
+    ):
+        Parent, Child = mapping_fixture
+
+        # run a totally different statement so that everything cache
+        # related not specific to the statement is warmed up
+        some_other_statement = (
+            select(Parent.id, Child.id)
+            .join_from(Parent, Child, Parent.children)
+            .where(Parent.id == 5)
+        )
+        some_other_statement._generate_cache_key()
+
+        @profiling.function_call_count(variance=0.15, warmup=0)
+        def go():
+            current_key = None
+            for stmt in stmt_fixture_one:
+                key = stmt._generate_cache_key()
+                assert key is not None
+                if current_key:
+                    eq_(key, current_key)
+                else:
+                    current_key = key
+
+        go()

@@ -41,3 +41,45 @@ def _distill_raw_params(object params):
         return [params]
     else:
         raise exc.ArgumentError("mapping or sequence expected for parameters")
+
+cdef class prefix_anon_map(dict):
+    def __missing__(self, str key):
+        cdef str derived
+        cdef int anonymous_counter
+        cdef dict self_dict = self
+
+        derived = key.split(" ", 1)[1]
+
+        anonymous_counter = self_dict.get(derived, 1)
+        self_dict[derived] = anonymous_counter + 1
+        value = f"{derived}_{anonymous_counter}"
+        self_dict[key] = value
+        return value
+
+
+cdef class cache_anon_map(dict):
+    cdef int _index
+
+    def __init__(self):
+        self._index = 0
+
+    def get_anon(self, obj):
+        cdef long idself
+        cdef str id_
+        cdef dict self_dict = self
+
+        idself = id(obj)
+        if idself in self_dict:
+            return self_dict[idself], True
+        else:
+            id_ = self.__missing__(idself)
+            return id_, False
+
+    def __missing__(self, key):
+        cdef str val
+        cdef dict self_dict = self
+
+        self_dict[key] = val = str(self._index)
+        self._index += 1
+        return val
+

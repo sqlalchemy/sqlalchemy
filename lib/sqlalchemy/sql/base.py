@@ -30,6 +30,12 @@ from .. import util
 from ..util import HasMemoized
 from ..util import hybridmethod
 
+try:
+    from sqlalchemy.cyextension.util import prefix_anon_map  # noqa
+except ImportError:
+    from ._py_util import prefix_anon_map  # noqa
+
+
 coercions = None
 elements = None
 type_api = None
@@ -1010,27 +1016,6 @@ class Executable(roles.StatementRole, Generative):
             :meth:`.Executable.execution_options`
         """
         return self._execution_options
-
-
-class prefix_anon_map(dict):
-    """A map that creates new keys for missing key access.
-
-    Considers keys of the form "<ident> <name>" to produce
-    new symbols "<name>_<index>", where "index" is an incrementing integer
-    corresponding to <name>.
-
-    Inlines the approach taken by :class:`sqlalchemy.util.PopulateDict` which
-    is otherwise usually used for this type of operation.
-
-    """
-
-    def __missing__(self, key):
-        (ident, derived) = key.split(" ", 1)
-        anonymous_counter = self.get(derived, 1)
-        self[derived] = anonymous_counter + 1
-        value = derived + "_" + str(anonymous_counter)
-        self[key] = value
-        return value
 
 
 class SchemaEventTarget:

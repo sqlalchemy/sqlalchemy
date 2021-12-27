@@ -994,6 +994,96 @@ class BaseRow(Case):
         self.row_long.y
 
 
+class CacheAnonMap(Case):
+    @staticmethod
+    def python():
+        from sqlalchemy.sql._py_util import cache_anon_map
+
+        return cache_anon_map
+
+    @staticmethod
+    def cython():
+        from sqlalchemy.cyextension.util import cache_anon_map
+
+        return cache_anon_map
+
+    IMPLEMENTATIONS = {"python": python.__func__, "cython": cython.__func__}
+
+    NUMBER = 1000000
+
+    def init_objects(self):
+        from sqlalchemy import column, bindparam
+
+        self.object_1 = column("x")
+        self.object_2 = bindparam("y")
+
+        self.impl_w_non_present = self.impl()
+        self.impl_w_present = iwp = self.impl()
+        iwp.get_anon(self.object_1)
+        iwp.get_anon(self.object_2)
+
+    @classmethod
+    def update_results(cls, results):
+        cls._divide_results(results, "cython", "python", "cy / py")
+
+    @test_case
+    def test_get_anon_non_present(self):
+        self.impl_w_non_present.get_anon(self.object_1)
+
+    @test_case
+    def test_get_anon_present(self):
+        self.impl_w_present.get_anon(self.object_1)
+
+    @test_case
+    def test_has_key_non_present(self):
+        id(self.object_1) in self.impl_w_non_present
+
+    @test_case
+    def test_has_key_present(self):
+        id(self.object_1) in self.impl_w_present
+
+
+class PrefixAnonMap(Case):
+    @staticmethod
+    def python():
+        from sqlalchemy.sql._py_util import prefix_anon_map
+
+        return prefix_anon_map
+
+    @staticmethod
+    def cython():
+        from sqlalchemy.cyextension.util import prefix_anon_map
+
+        return prefix_anon_map
+
+    IMPLEMENTATIONS = {"python": python.__func__, "cython": cython.__func__}
+
+    NUMBER = 1000000
+
+    def init_objects(self):
+        from sqlalchemy.sql.elements import _anonymous_label
+
+        self.name = _anonymous_label.safe_construct(58243, "some_column_name")
+
+        self.impl_w_non_present = self.impl()
+        self.impl_w_present = iwp = self.impl()
+        self.name.apply_map(iwp)
+
+    @classmethod
+    def update_results(cls, results):
+        cls._divide_results(results, "cython", "python", "cy / py")
+
+    @test_case
+    def test_apply_non_present(self):
+
+        self.name.apply_map(self.impl_w_non_present)
+
+    @test_case
+    def test_apply_present(self):
+
+        self.name.apply_map(self.impl_w_present)
+
+
 def tabulate(results, inverse):
     dim = 11
     header = "{:<20}|" + (" {:<%s} |" % dim) * len(results)

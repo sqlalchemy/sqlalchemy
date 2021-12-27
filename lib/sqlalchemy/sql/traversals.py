@@ -12,6 +12,12 @@ from .. import util
 from ..inspection import inspect
 from ..util import HasMemoized
 
+try:
+    from sqlalchemy.cyextension.util import cache_anon_map as anon_map  # noqa
+except ImportError:
+    from ._py_util import cache_anon_map as anon_map  # noqa
+
+
 SKIP_TRAVERSE = util.symbol("skip_traverse")
 COMPARE_FAILED = False
 COMPARE_SUCCEEDED = True
@@ -177,16 +183,11 @@ class HasCacheKey:
 
         """
 
-        idself = id(self)
         cls = self.__class__
 
-        if idself in anon_map:
-            return (anon_map[idself], cls)
-        else:
-            # inline of
-            # id_ = anon_map[idself]
-            anon_map[idself] = id_ = str(anon_map.index)
-            anon_map.index += 1
+        id_, found = anon_map.get_anon(self)
+        if found:
+            return (id_, cls)
 
         try:
             dispatcher = cls.__dict__["_generated_cache_key_traversal"]
@@ -1027,27 +1028,6 @@ def _resolve_name_for_compare(element, name, anon_map, **kw):
         name = name.apply_map(anon_map)
 
     return name
-
-
-class anon_map(dict):
-    """A map that creates new keys for missing key access.
-
-    Produces an incrementing sequence given a series of unique keys.
-
-    This is similar to the compiler prefix_anon_map class although simpler.
-
-    Inlines the approach taken by :class:`sqlalchemy.util.PopulateDict` which
-    is otherwise usually used for this type of operation.
-
-    """
-
-    def __init__(self):
-        self.index = 0
-
-    def __missing__(self, key):
-        self[key] = val = str(self.index)
-        self.index += 1
-        return val
 
 
 class TraversalComparatorStrategy(InternalTraversal, util.MemoizedSlots):
