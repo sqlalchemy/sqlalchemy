@@ -14,6 +14,7 @@ from operator import add
 from operator import and_
 from operator import contains
 from operator import eq
+from operator import floordiv
 from operator import ge
 from operator import getitem
 from operator import gt
@@ -1220,7 +1221,12 @@ class ColumnOperators(Operators):
     def __truediv__(self, other):
         """Implement the ``/`` operator.
 
-        In a column context, produces the clause ``a / b``.
+        In a column context, produces the clause ``a / b``, and
+        considers the result type to be numeric.
+
+        .. versionchanged:: 2.0  The truediv operator against two integers
+           is now considered to return a numeric value.    Behavior on specific
+           backends may vary.
 
         """
         return self.operate(truediv, other)
@@ -1232,6 +1238,26 @@ class ColumnOperators(Operators):
 
         """
         return self.reverse_operate(truediv, other)
+
+    def __floordiv__(self, other):
+        """Implement the ``//`` operator.
+
+        In a column context, produces the clause ``a / b``,
+        which is the same as "truediv", but considers the result
+        type to be integer.
+
+        .. versionadded:: 2.0
+
+        """
+        return self.operate(floordiv, other)
+
+    def __rfloordiv__(self, other):
+        """Implement the ``//`` operator in reverse.
+
+        See :meth:`.ColumnOperators.__floordiv__`.
+
+        """
+        return self.reverse_operate(floordiv, other)
 
 
 _commutative = {eq, ne, add, mul}
@@ -1588,6 +1614,7 @@ _PRECEDENCE = {
     json_path_getitem_op: 15,
     mul: 8,
     truediv: 8,
+    floordiv: 8,
     mod: 8,
     neg: 8,
     add: 7,

@@ -2327,6 +2327,8 @@ class MySQLDialect(default.DefaultDialect):
     max_index_name_length = 64
     max_constraint_name_length = 64
 
+    div_is_floordiv = False
+
     supports_native_enum = True
 
     supports_sequences = False  # default for MySQL ...

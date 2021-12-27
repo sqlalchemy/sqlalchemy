@@ -55,6 +55,8 @@ class DefaultDialect(interfaces.Dialect):
     inline_comments = False
     supports_statement_cache = True
 
+    div_is_floordiv = True
+
     bind_typing = interfaces.BindTyping.NONE
 
     include_set_input_sizes = None

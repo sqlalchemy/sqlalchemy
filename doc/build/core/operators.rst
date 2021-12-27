@@ -6,7 +6,7 @@ Operator Reference
     >>> from sqlalchemy import column, select
     >>> from sqlalchemy import create_engine
     >>> engine = create_engine("sqlite+pysqlite:///:memory:", echo=True, future=True)
-    >>> from sqlalchemy import MetaData, Table, Column, Integer, String
+    >>> from sqlalchemy import MetaData, Table, Column, Integer, String, Numeric
     >>> metadata_obj = MetaData()
     >>> user_table = Table(
     ...     "user_account",
@@ -526,12 +526,37 @@ Arithmetic Operators
 
   ..
 
-* :meth:`_sql.ColumnOperators.__div__`, :meth:`_sql.ColumnOperators.__rdiv__` (Python "``/``" operator)::
+* :meth:`_sql.ColumnOperators.__truediv__`, :meth:`_sql.ColumnOperators.__rtruediv__` (Python "``/``" operator).
+  This is the Python ``truediv`` operator, which will ensure integer true division occurs::
 
     >>> print(column('x') / 5)
-    x / :x_1
+    x / CAST(:x_1 AS NUMERIC)
     >>> print(5 / column('x'))
+    :x_1 / CAST(x AS NUMERIC)
+
+  .. versionchanged:: 2.0  The Python ``/`` operator now ensures integer true division takes place
+
+  ..
+
+* :meth:`_sql.ColumnOperators.__floordiv__`, :meth:`_sql.ColumnOperators.__rfloordiv__` (Python "``//``" operator).
+  This is the Python ``floordiv`` operator, which will ensure floor division occurs.
+  For the default backend as well as backends such as PostgreSQL, the SQL ``/`` operator normally
+  behaves this way for integer values::
+
+    >>> print(column('x') // 5)
+    x / :x_1
+    >>> print(5 // column('x', Integer))
     :x_1 / x
+
+  For backends that don't use floor division by default, or when used with numeric values,
+  the FLOOR() function is used to ensure floor division::
+
+    >>> print(column('x') // 5.5)
+    FLOOR(x / :x_1)
+    >>> print(5 // column('x', Numeric))
+    FLOOR(:x_1 / x)
+
+  .. versionadded:: 2.0  Support for FLOOR division
 
   ..
 

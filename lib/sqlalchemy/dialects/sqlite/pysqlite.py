@@ -402,6 +402,7 @@ by adding the desired locking mode to our ``"BEGIN"``::
 
 """  # noqa
 
+import math
 import os
 import re
 
@@ -505,14 +506,23 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
                 return None
             return re.search(a, b) is not None
 
+        create_func_kw = {"deterministic": True} if util.py38 else {}
+
         def set_regexp(dbapi_connection):
             dbapi_connection.create_function(
-                "regexp",
-                2,
-                regexp,
+                "regexp", 2, regexp, **create_func_kw
             )
 
-        fns = [set_regexp]
+        def floor_func(dbapi_connection):
+            # NOTE: floor is optionally present in sqlite 3.35+ , however
+            # as it is normally non-present we deliver floor() unconditionally
+            # for now.
+            # https://www.sqlite.org/lang_mathfunc.html
+            dbapi_connection.create_function(
+                "floor", 1, math.floor, **create_func_kw
+            )
+
+        fns = [set_regexp, floor_func]
 
         def connect(conn):
             for fn in fns:

@@ -159,6 +159,60 @@ of the Cython requirement.
 
 .. _Cython: https://cython.org/
 
+.. _change_4926:
+
+Python division operator performs true division for all backends; added floor division
+---------------------------------------------------------------------------------------
+
+The Core expression language now supports both "true division" (i.e. the ``/``
+Python operator) and "floor division" (i.e. the ``//`` Python operator)
+including backend-specific behaviors to normalize different databases in this
+regard.
+
+Given a "true division" operation against two integer values::
+
+    expr = literal(5, Integer) / literal(10, Integer)
+
+The SQL division operator on PostgreSQL for example normally acts as "floor division"
+when used against integers, meaning the above result would return the integer
+"0".  For this and similar backends, SQLAlchemy now renders the SQL using
+a form which is equivalent towards::
+
+    %(param_1)s / CAST(%(param_2)s AS NUMERIC)
+
+With param_1=5, param_2=10, so that the return expression will be of type
+NUMERIC, typically as the Python value ``decimal.Decimal("0.5")``.
+
+Given a "floor division" operation against two integer values::
+
+    expr = literal(5, Integer) // literal(10, Integer)
+
+The SQL division operator on MySQL and Oracle for example normally acts
+as "true division" when used against integers, meaning the above result
+would return the floating point value "0.5".  For these and similar backends,
+SQLAlchemy now renders the SQL using a form which is equivalent towards::
+
+    FLOOR(%(param_1)s / %(param_2)s)
+
+With param_1=5, param_2=10, so that the return expression will be of type
+INTEGER, as the Python value ``0``.
+
+The backwards-incompatible change here would be if an application using
+PostgreSQL, SQL Server, or SQLite which relied on the Python "truediv" operator
+to return an integer value in all cases.  Applications which rely upon this
+behavior should instead use the Python "floor division" operator ``//``
+for these operations, or for forwards compatibility when using a previous
+SQLAlchemy version, the floor function::
+
+    expr = func.floor(literal(5, Integer) / literal(10, Integer))
+
+The above form would be needed on any SQLAlchemy version prior to 2.0
+in order to provide backend-agnostic floor division.
+
+:ticket:`4926`
+
+
+
 .. _migration_20_overview:
 
 1.x -> 2.x Migration Overview
