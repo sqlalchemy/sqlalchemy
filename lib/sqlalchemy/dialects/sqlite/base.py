@@ -1894,6 +1894,8 @@ class SQLiteDialect(default.DefaultDialect):
                     % (self.dbapi.sqlite_version_info,)
                 )
 
+            # NOTE: python 3.7 on fedora for me has SQLite 3.34.1.  These
+            # version checks are getting very stale.
             self._broken_dotted_colnames = self.dbapi.sqlite_version_info < (
                 3,
                 10,
