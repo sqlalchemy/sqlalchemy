@@ -439,6 +439,7 @@ ALL_EXC = [
             sa_exceptions.InvalidatePoolError,
             sa_exceptions.TimeoutError,
             sa_exceptions.InvalidRequestError,
+            sa_exceptions.IllegalStateChangeError,
             sa_exceptions.NoInspectionAvailable,
             sa_exceptions.PendingRollbackError,
             sa_exceptions.ResourceClosedError,
