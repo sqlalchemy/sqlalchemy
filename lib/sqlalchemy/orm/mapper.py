@@ -966,7 +966,7 @@ class Mapper(
         return self.persist_selectable
 
     @util.memoized_property
-    def _path_registry(self):
+    def _path_registry(self) -> PathRegistry:
         return PathRegistry.per_mapper(self)
 
     def _configure_inheritance(self):
@@ -1985,7 +1985,7 @@ class Mapper(
         return "<Mapper at 0x%x; %s>" % (id(self), self.class_.__name__)
 
     def __str__(self):
-        return "mapped class %s%s->%s" % (
+        return "Mapper[%s%s(%s)]" % (
             self.class_.__name__,
             self.non_primary and " (non-primary)" or "",
             self.local_table.description
@@ -3113,21 +3113,23 @@ class Mapper(
             if prop.parent is self or prop in keep_props:
                 # "enable" options, to turn on the properties that we want to
                 # load by default (subject to options from the query)
-                enable_opt.set_generic_strategy(
+                enable_opt = enable_opt._set_generic_strategy(
                     # convert string name to an attribute before passing
                     # to loader strategy
                     (getattr(entity.entity_namespace, prop.key),),
                     dict(prop.strategy_key),
+                    _reconcile_to_other=True,
                 )
             else:
                 # "disable" options, to turn off the properties from the
                 # superclass that we *don't* want to load, applied after
                 # the options from the query to override them
-                disable_opt.set_generic_strategy(
+                disable_opt = disable_opt._set_generic_strategy(
                     # convert string name to an attribute before passing
                     # to loader strategy
                     (getattr(entity.entity_namespace, prop.key),),
                     {"do_nothing": True},
+                    _reconcile_to_other=False,
                 )
 
         primary_key = [

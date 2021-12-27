@@ -32,7 +32,7 @@ from sqlalchemy.testing.schema import Table
 def _aliased_join_warning(arg):
     return testing.expect_warnings(
         "An alias is being generated automatically against joined entity "
-        "mapped class %s due to overlapping tables" % (arg,)
+        "%s due to overlapping tables" % (arg,)
     )
 
 
@@ -1826,7 +1826,7 @@ class SingleFromPolySelectableTest(
             q = s.query(Boss).join(e1, e1.manager_id == Boss.id)
 
         with _aliased_join_warning(
-            "Engineer->engineer"
+            r"Mapper\[Engineer\(engineer\)\]"
         ) if autoalias else nullcontext():
             self.assert_compile(
                 q,
@@ -1891,7 +1891,7 @@ class SingleFromPolySelectableTest(
             q = s.query(Engineer).join(b1, Engineer.manager_id == b1.id)
 
         with _aliased_join_warning(
-            "Boss->manager"
+            r"Mapper\[Boss\(manager\)\]"
         ) if autoalias else nullcontext():
             self.assert_compile(
                 q,

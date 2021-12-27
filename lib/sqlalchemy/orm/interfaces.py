@@ -590,17 +590,13 @@ class StrategizedProperty(MapperProperty):
 
     def _memoized_attr__wildcard_token(self):
         return (
-            "%s:%s"
-            % (self.strategy_wildcard_key, path_registry._WILDCARD_TOKEN),
+            f"{self.strategy_wildcard_key}:{path_registry._WILDCARD_TOKEN}",
         )
 
     def _memoized_attr__default_path_loader_key(self):
         return (
             "loader",
-            (
-                "%s:%s"
-                % (self.strategy_wildcard_key, path_registry._DEFAULT_TOKEN),
-            ),
+            (f"{self.strategy_wildcard_key}:{path_registry._DEFAULT_TOKEN}",),
         )
 
     def _get_context_loader(self, context, path):
@@ -618,6 +614,13 @@ class StrategizedProperty(MapperProperty):
             if path_key in context.attributes:
                 load = context.attributes[path_key]
                 break
+
+                # note that if strategy_options.Load is placing non-actionable
+                # objects in the context like defaultload(), we would
+                # need to continue the loop here if we got such an
+                # option as below.
+                # if load.strategy or load.local_opts:
+                #    break
 
         return load
 
@@ -780,7 +783,13 @@ class CompileStateOption(HasCacheKey, ORMOption):
     _is_compile_state = True
 
     def process_compile_state(self, compile_state):
-        """Apply a modification to a given :class:`.CompileState`."""
+        """Apply a modification to a given :class:`.CompileState`.
+
+        This method is part of the implementation of a particular
+        :class:`.CompileStateOption` and is only invoked internally
+        when an ORM query is compiled.
+
+        """
 
     def process_compile_state_replaced_entities(
         self, compile_state, mapper_entities
@@ -788,6 +797,10 @@ class CompileStateOption(HasCacheKey, ORMOption):
         """Apply a modification to a given :class:`.CompileState`,
         given entities that were replaced by with_only_columns() or
         with_entities().
+
+        This method is part of the implementation of a particular
+        :class:`.CompileStateOption` and is only invoked internally
+        when an ORM query is compiled.
 
         .. versionadded:: 1.4.19
 
@@ -804,17 +817,7 @@ class LoaderOption(CompileStateOption):
     def process_compile_state_replaced_entities(
         self, compile_state, mapper_entities
     ):
-        """Apply a modification to a given :class:`.CompileState`,
-        given entities that were replaced by with_only_columns() or
-        with_entities().
-
-        .. versionadded:: 1.4.19
-
-        """
         self.process_compile_state(compile_state)
-
-    def process_compile_state(self, compile_state):
-        """Apply a modification to a given :class:`.CompileState`."""
 
 
 class CriteriaOption(CompileStateOption):
@@ -826,9 +829,6 @@ class CriteriaOption(CompileStateOption):
     """
 
     _is_criteria_option = True
-
-    def process_compile_state(self, compile_state):
-        """Apply a modification to a given :class:`.CompileState`."""
 
     def get_global_criteria(self, attributes):
         """update additional entity criteria options in the given

@@ -122,6 +122,12 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                 with_expression(User.name, null()),
                 with_expression(User.name, func.foobar()),
                 with_expression(User.name, User.name == "test"),
+            ),
+            compare_values=True,
+        )
+
+        self._run_cache_key_fixture(
+            lambda: (
                 Load(User).with_expression(User.name, true()),
                 Load(User).with_expression(User.name, null()),
                 Load(User).with_expression(User.name, func.foobar()),
@@ -195,22 +201,18 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
             lambda: (
                 joinedload(User.addresses),
                 joinedload(User.addresses.of_type(aliased(Address))),
-                joinedload("addresses"),
                 joinedload(User.orders),
                 joinedload(User.orders.and_(Order.id != 5)),
                 joinedload(User.orders.and_(Order.id == 5)),
                 joinedload(User.orders.and_(Order.description != "somename")),
-                joinedload(User.orders).selectinload("items"),
                 joinedload(User.orders).selectinload(Order.items),
                 defer(User.id),
-                defer("id"),
                 defer("*"),
                 defer(Address.id),
                 subqueryload(User.orders),
                 selectinload(User.orders),
                 joinedload(User.addresses).defer(Address.id),
                 joinedload(aliased(User).addresses).defer(Address.id),
-                joinedload(User.addresses).defer("id"),
                 joinedload(User.orders).joinedload(Order.items),
                 joinedload(User.orders).subqueryload(Order.items),
                 subqueryload(User.orders).subqueryload(Order.items),
@@ -229,6 +231,7 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
         User, Address, Keyword, Order, Item = self.classes(
             "User", "Address", "Keyword", "Order", "Item"
         )
+        Dingaling = self.classes.Dingaling
 
         self._run_cache_key_fixture(
             lambda: (
@@ -236,7 +239,9 @@ class CacheKeyTest(CacheKeyFixture, _fixtures.FixtureTest):
                     joinedload(Address.dingaling)
                 ),
                 joinedload(User.addresses).options(
-                    joinedload(Address.dingaling).options(load_only("name"))
+                    joinedload(Address.dingaling).options(
+                        load_only(Dingaling.id)
+                    )
                 ),
                 joinedload(User.orders).options(
                     joinedload(Order.items).options(joinedload(Item.keywords))

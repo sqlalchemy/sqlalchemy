@@ -2233,7 +2233,7 @@ class DistinctPKTest(fixtures.MappedTest):
         )
         assert_raises_message(
             sa_exc.SAWarning,
-            r"On mapper mapped class Employee->employees, "
+            r"On mapper Mapper\[Employee\(employees\)\], "
             "primary key column 'persons.id' is being "
             "combined with distinct primary key column 'employees.eid' "
             "in attribute 'id'. Use explicit properties to give "
@@ -3842,8 +3842,9 @@ class UnexpectedPolymorphicIdentityTest(fixtures.DeclarativeMappedTest):
             sa_exc.InvalidRequestError,
             r"Row with identity key \(.*ASingle.*\) can't be loaded into an "
             r"object; the polymorphic discriminator column '.*.type' refers "
-            r"to mapped class ASingleSubB->asingle, which is not a "
-            r"sub-mapper of the requested mapped class ASingleSubA->asingle",
+            r"to Mapper\[ASingleSubB\(asingle\)\], which is not a "
+            r"sub-mapper of the requested "
+            r"Mapper\[ASingleSubA\(asingle\)\]",
             q.all,
         )
 
@@ -3858,9 +3859,10 @@ class UnexpectedPolymorphicIdentityTest(fixtures.DeclarativeMappedTest):
             sa_exc.InvalidRequestError,
             r"Row with identity key \(.*AJoined.*\) can't be loaded into an "
             r"object; the polymorphic discriminator column '.*.type' refers "
-            r"to mapped class AJoinedSubB->ajoinedsubb, which is not a "
-            r"sub-mapper of the requested mapped class "
-            r"AJoinedSubA->ajoinedsuba",
+            r"to Mapper\[AJoinedSubB\(ajoinedsubb\)\], which is "
+            "not a "
+            r"sub-mapper of the requested "
+            r"Mapper\[AJoinedSubA\(ajoinedsuba\)\]",
             q.all,
         )
 

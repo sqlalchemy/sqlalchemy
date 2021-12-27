@@ -38,6 +38,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertsql import assert_engine
 from sqlalchemy.testing.assertsql import CompiledSQL
@@ -2377,7 +2378,7 @@ class ManualBackrefTest(_fixtures.FixtureTest):
             r"User.addresses references "
             r"relationship Address.dingaling, "
             r"which does not "
-            r"reference mapper mapped class User->users",
+            r"reference mapper Mapper\[User\(users\)\]",
             configure_mappers,
         )
 
@@ -6207,6 +6208,42 @@ class RaiseLoadTest(_fixtures.FixtureTest):
                 "'Address.user' is not available due to lazy='raise_on_sql'",
                 lambda: a1.user,
             )
+
+    def test_raiseload_from_eager_load(self):
+        Address, addresses, users, User = (
+            self.classes.Address,
+            self.tables.addresses,
+            self.tables.users,
+            self.classes.User,
+        )
+        Dingaling, dingalings = self.classes.Dingaling, self.tables.dingalings
+        self.mapper_registry.map_imperatively(Dingaling, dingalings)
+
+        self.mapper_registry.map_imperatively(
+            Address,
+            addresses,
+            properties=dict(dingaling=relationship(Dingaling)),
+        )
+
+        self.mapper_registry.map_imperatively(
+            User,
+            users,
+            properties=dict(addresses=relationship(Address)),
+        )
+
+        q = (
+            fixture_session()
+            .query(User)
+            .options(joinedload(User.addresses).raiseload("*"))
+            .filter_by(id=7)
+        )
+        u1 = q.first()
+        assert "addresses" in u1.__dict__
+        with expect_raises_message(
+            sa.exc.InvalidRequestError,
+            "'Address.dingaling' is not available due to lazy='raise'",
+        ):
+            u1.addresses[0].dingaling
 
     def test_raiseload_wildcard_all_classes_option(self):
         Address, addresses, users, User = (

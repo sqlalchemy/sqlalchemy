@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 6986
+
+    The internals for the :class:`_orm.Load` object and related loader strategy
+    patterns have been mostly rewritten, to take advantage of the fact that
+    only attribute-bound paths, not strings, are now supported. The rewrite
+    hopes to make it more straightforward to address new use cases and subtle
+    issues within the loader strategy system going forward.

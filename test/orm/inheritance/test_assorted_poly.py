@@ -2266,7 +2266,7 @@ class ColSubclassTest(
         s = fixture_session()
         with testing.expect_warnings(
             "An alias is being generated automatically "
-            "against joined entity mapped class B->b due to overlapping"
+            r"against joined entity Mapper\[B\(b\)\] due to overlapping"
         ):
             self.assert_compile(
                 s.query(A).join(B).filter(B.x == "test"),

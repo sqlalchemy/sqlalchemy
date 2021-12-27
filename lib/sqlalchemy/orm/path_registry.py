@@ -11,6 +11,9 @@
 from functools import reduce
 from itertools import chain
 import logging
+from typing import Any
+from typing import Tuple
+from typing import Union
 
 from . import base as orm_base
 from .. import exc
@@ -60,7 +63,13 @@ class PathRegistry(HasCacheKey):
 
     is_token = False
     is_root = False
+    has_entity = False
 
+    path: Tuple
+    natural_path: Tuple
+    parent: Union["PathRegistry", None]
+
+    root: "PathRegistry"
     _cache_key_traversal = [
         ("path", visitors.ExtendedInternalTraversal.dp_has_cache_key_list)
     ]
@@ -109,6 +118,9 @@ class PathRegistry(HasCacheKey):
 
     def __hash__(self):
         return id(self)
+
+    def __getitem__(self, key: Any) -> "PathRegistry":
+        raise NotImplementedError()
 
     @property
     def length(self):
@@ -184,32 +196,13 @@ class PathRegistry(HasCacheKey):
             p = p[0:-1]
         return p
 
-    @classmethod
-    def serialize_context_dict(cls, dict_, tokens):
-        return [
-            ((key, cls._serialize_path(path)), value)
-            for (key, path), value in [
-                (k, v)
-                for k, v in dict_.items()
-                if isinstance(k, tuple) and k[0] in tokens
-            ]
-        ]
-
-    @classmethod
-    def deserialize_context_dict(cls, serialized):
-        return util.OrderedDict(
-            ((key, tuple(cls._deserialize_path(path))), value)
-            for (key, path), value in serialized
-        )
-
     def serialize(self):
         path = self.path
         return self._serialize_path(path)
 
     @classmethod
-    def deserialize(cls, path):
-        if path is None:
-            return None
+    def deserialize(cls, path: Tuple) -> "PathRegistry":
+        assert path is not None
         p = cls._deserialize_path(path)
         return cls.coerce(p)
 
@@ -225,18 +218,21 @@ class PathRegistry(HasCacheKey):
         return reduce(lambda prev, next: prev[next], raw, cls.root)
 
     def token(self, token):
-        if token.endswith(":" + _WILDCARD_TOKEN):
+        if token.endswith(f":{_WILDCARD_TOKEN}"):
             return TokenRegistry(self, token)
-        elif token.endswith(":" + _DEFAULT_TOKEN):
+        elif token.endswith(f":{_DEFAULT_TOKEN}"):
             return TokenRegistry(self.root, token)
         else:
-            raise exc.ArgumentError("invalid token: %s" % token)
+            raise exc.ArgumentError(f"invalid token: {token}")
 
     def __add__(self, other):
         return reduce(lambda prev, next: prev[next], other.path, self)
 
+    def __str__(self):
+        return f"ORM Path[{' -> '.join(str(elem) for elem in self.path)}]"
+
     def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.path)
+        return f"{self.__class__.__name__}({self.path!r})"
 
 
 class RootRegistry(PathRegistry):
@@ -254,9 +250,9 @@ class RootRegistry(PathRegistry):
 
     def __getitem__(self, entity):
         if entity in PathToken._intern:
-            return PathToken._intern[entity]
+            return TokenRegistry(self, PathToken._intern[entity])
         else:
-            return entity._path_registry
+            return inspection.inspect(entity)._path_registry
 
 
 PathRegistry.root = RootRegistry()
@@ -315,7 +311,10 @@ class TokenRegistry(PathRegistry):
             yield self
 
     def __getitem__(self, entity):
-        raise NotImplementedError()
+        try:
+            return self.path[entity]
+        except TypeError as te:
+            raise IndexError(f"{entity}") from te
 
 
 class PropRegistry(PathRegistry):
@@ -393,9 +392,6 @@ class PropRegistry(PathRegistry):
         )
         self._default_path_loader_key = self.prop._default_path_loader_key
         self._loader_key = ("loader", self.natural_path)
-
-    def __str__(self):
-        return " -> ".join(str(elem) for elem in self.path)
 
     @util.memoized_property
     def has_entity(self):
@@ -511,6 +507,8 @@ class CachingEntityRegistry(AbstractEntityRegistry, dict):
     def __getitem__(self, entity):
         if isinstance(entity, (int, slice)):
             return self.path[entity]
+        elif isinstance(entity, PathToken):
+            return TokenRegistry(self, entity)
         else:
             return dict.__getitem__(self, entity)
 

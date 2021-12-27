@@ -1269,8 +1269,9 @@ Relationship Loader API
 
 .. autofunction:: lazyload
 
-.. autoclass:: Load
+.. autoclass:: sqlalchemy.orm.Load
     :members:
+    :inherited-members: Generative
 
 .. autofunction:: noload
 

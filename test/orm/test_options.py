@@ -10,6 +10,7 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.orm import column_property
+from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import exc as orm_exc
@@ -20,6 +21,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import strategy_options
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import synonym
+from sqlalchemy.orm import undefer
 from sqlalchemy.orm import util as orm_util
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import fixtures
@@ -91,21 +93,9 @@ class PathTest:
     def _assert_path_result(self, opt, q, paths):
         attr = {}
 
-        if isinstance(opt, strategy_options._UnboundLoad):
-            for val in opt._to_bind:
-                val._bind_loader(
-                    [
-                        ent.entity_zero
-                        for ent in q._compile_state()._lead_mapper_entities
-                    ],
-                    q._compile_options._current_path,
-                    attr,
-                    False,
-                )
-        else:
-            compile_state = q._compile_state()
-            compile_state.attributes = attr = {}
-            opt._process(compile_state, [], True)
+        compile_state = q._compile_state()
+        compile_state.attributes = attr = {}
+        opt.process_compile_state(compile_state)
 
         assert_paths = [k[1] for k in attr]
         eq_(
@@ -118,35 +108,48 @@ class LoadTest(PathTest, QueryTest):
     def test_str(self):
         User = self.classes.User
         result = Load(User)
-        result.strategy = (("deferred", False), ("instrument", True))
         eq_(
             str(result),
-            "Load(strategy=(('deferred', False), ('instrument', True)))",
+            "Load(Mapper[User(users)])",
+        )
+
+        result = Load(aliased(User))
+        eq_(
+            str(result),
+            "Load(aliased(User))",
         )
 
     def test_gen_path_attr_entity(self):
         User = self.classes.User
         Address = self.classes.Address
 
-        result = Load(User)
+        ll = Load(User)
+
         eq_(
-            result._generate_path(
-                inspect(User)._path_registry,
+            strategy_options._AttributeStrategyLoad.create(
+                ll.path,
                 User.addresses,
-                None,
+                ("strategy", True),
                 "relationship",
-            ),
+                {},
+                True,
+            ).path,
             self._make_path_registry([User, "addresses", Address]),
         )
 
     def test_gen_path_attr_column(self):
         User = self.classes.User
 
-        result = Load(User)
+        ll = Load(User)
         eq_(
-            result._generate_path(
-                inspect(User)._path_registry, User.name, None, "column"
-            ),
+            strategy_options._AttributeStrategyLoad.create(
+                ll.path,
+                User.name,
+                ("strategy", True),
+                "column",
+                {},
+                True,
+            ).path,
             self._make_path_registry([User, "name"]),
         )
 
@@ -159,9 +162,8 @@ class LoadTest(PathTest, QueryTest):
             sa.exc.ArgumentError,
             "Attribute 'name' of entity 'Mapper|User|users' does "
             "not refer to a mapped entity",
-            result._generate_path,
-            result.path,
-            User.addresses,
+            result._clone_for_bind_strategy,
+            (User.addresses,),
             None,
             "relationship",
         )
@@ -176,9 +178,8 @@ class LoadTest(PathTest, QueryTest):
             sa.exc.ArgumentError,
             "Attribute 'Order.items' does not link from element "
             "'Mapper|User|users'",
-            result._generate_path,
-            inspect(User)._path_registry,
-            Order.items,
+            result._clone_for_bind_strategy,
+            (Order.items,),
             None,
             "relationship",
         )
@@ -187,15 +188,17 @@ class LoadTest(PathTest, QueryTest):
         User = self.classes.User
         Order = self.classes.Order
 
-        result = Load(User)
+        ll = Load(User)
 
         eq_(
-            result._generate_path(
-                inspect(User)._path_registry,
+            strategy_options._AttributeStrategyLoad.create(
+                ll.path,
                 Order.items,
-                None,
+                ("strategy", True),
                 "relationship",
-                False,
+                {},
+                True,
+                raiseerr=False,
             ),
             None,
         )
@@ -205,10 +208,14 @@ class LoadTest(PathTest, QueryTest):
 
         l1 = Load(User)
         l2 = l1.joinedload(User.addresses)
-        to_bind = list(l2.context.values())[0]
+
+        s = fixture_session()
+        q1 = s.query(User).options(l2)
+        attr = q1._compile_context().attributes
+
         eq_(
-            l1.context,
-            {("loader", self._make_path([User, "addresses"])): to_bind},
+            attr[("loader", self._make_path([User, "addresses"]))],
+            l2.context[0],
         )
 
     def test_set_strat_col(self):
@@ -216,8 +223,11 @@ class LoadTest(PathTest, QueryTest):
 
         l1 = Load(User)
         l2 = l1.defer(User.name)
-        l3 = list(l2.context.values())[0]
-        eq_(l1.context, {("loader", self._make_path([User, "name"])): l3})
+        s = fixture_session()
+        q1 = s.query(User).options(l2)
+        attr = q1._compile_context().attributes
+
+        eq_(attr[("loader", self._make_path([User, "name"]))], l2.context[0])
 
 
 class OfTypePathingTest(PathTest, QueryTest):
@@ -397,8 +407,14 @@ class WithEntitiesTest(QueryTest, AssertsCompiledSQL):
 
 class OptionsTest(PathTest, QueryTest):
     def _option_fixture(self, *arg):
-        return strategy_options._UnboundLoad._from_keys(
-            strategy_options._UnboundLoad.joinedload, arg, True, {}
+        # note contains_eager() passes chained=True to _from_keys,
+        # which means an expression like contains_eager(a, b, c)
+        # is expected to produce
+        # contains_eager(a).contains_eager(b).contains_eager(c).  no other
+        # loader option works this way right now; the rest all use
+        # defaultload() for the "chain" elements
+        return strategy_options._generate_from_keys(
+            strategy_options.Load.contains_eager, arg, True, {}
         )
 
     @testing.combinations(
@@ -410,30 +426,12 @@ class OptionsTest(PathTest, QueryTest):
     def test_error_for_string_names_unbound(self, test_case):
         User, Address = self.classes("User", "Address")
 
-        query = fixture_session().query(User)
-
         with expect_raises_message(
             sa.exc.ArgumentError,
             "Strings are not accepted for attribute names in loader "
             "options; please use class-bound attributes directly.",
         ):
-            unbound_opt = testing.resolve_lambda(
-                test_case, User=User, Address=Address
-            )
-
-            # TODO: the strings above should raise immediately, we should
-            # not have to bind_loader for this to occur.
-            attr = {}
-            for opt in unbound_opt._to_bind:
-                opt._bind_loader(
-                    [
-                        ent.entity_zero
-                        for ent in query._compile_state()._lead_mapper_entities
-                    ],
-                    query._compile_options._current_path,
-                    attr,
-                    False,
-                )
+            testing.resolve_lambda(test_case, User=User, Address=Address)
 
     @testing.combinations(
         lambda User: Load(User).joinedload("addresses"),
@@ -462,22 +460,6 @@ class OptionsTest(PathTest, QueryTest):
         opt = self._option_fixture(User.addresses)
         self._assert_path_result(opt, q, [(User, "addresses")])
 
-    def test_path_on_entity_but_doesnt_match_currentpath(self):
-        User, Address = self.classes.User, self.classes.Address
-
-        # ensure "current path" is fully consumed before
-        # matching against current entities.
-        # see [ticket:2098]
-        sess = fixture_session()
-        q = sess.query(User)
-        opt = self._option_fixture("email_address", "id")
-        q = sess.query(Address)._with_current_path(
-            orm_util.PathRegistry.coerce(
-                [inspect(User), inspect(User).attrs.addresses]
-            )
-        )
-        self._assert_path_result(opt, q, [])
-
     def test_get_path_one_level_with_unrelated(self):
         Order = self.classes.Order
         User = self.classes.User
@@ -485,7 +467,13 @@ class OptionsTest(PathTest, QueryTest):
         sess = fixture_session()
         q = sess.query(Order)
         opt = self._option_fixture(User.addresses)
-        self._assert_path_result(opt, q, [])
+
+        with expect_raises_message(
+            sa.exc.ArgumentError,
+            r"Mapped class Mapper\[User\(users\)\] does not apply to any "
+            "of the root entities in this query",
+        ):
+            self._assert_path_result(opt, q, [])
 
     def test_path_multilevel_attribute(self):
         Item, User, Order = (
@@ -739,10 +727,12 @@ class OptionsTest(PathTest, QueryTest):
 
         sess = fixture_session()
         ualias = aliased(User)
-        q = sess.query(ualias)._with_current_path(
+        q = sess.query(Address)._with_current_path(
             self._make_path_registry([Address, "user"])
         )
-        opt = self._option_fixture(Address.user, ualias.addresses)
+        opt = self._option_fixture(
+            Address.user.of_type(ualias), ualias.addresses
+        )
         self._assert_path_result(opt, q, [(inspect(ualias), "addresses")])
 
     def test_with_current_aliased_single_nonmatching_option(self):
@@ -751,9 +741,11 @@ class OptionsTest(PathTest, QueryTest):
         sess = fixture_session()
         ualias = aliased(User)
         q = sess.query(User)._with_current_path(
-            self._make_path_registry([Address, "user"])
+            self._make_path_registry([User, "addresses", Address, "user"])
         )
-        opt = self._option_fixture(Address.user, ualias.addresses)
+        opt = self._option_fixture(
+            Address.user.of_type(ualias), ualias.addresses
+        )
         self._assert_path_result(opt, q, [])
 
     def test_with_current_aliased_single_nonmatching_entity(self):
@@ -762,7 +754,12 @@ class OptionsTest(PathTest, QueryTest):
         sess = fixture_session()
         ualias = aliased(User)
         q = sess.query(ualias)._with_current_path(
-            self._make_path_registry([Address, "user"])
+            # this was:
+            # self._make_path_registry([Address, "user"])
+            # .. which seems like an impossible "current_path"
+            #
+            # this one makes a little more sense
+            self._make_path_registry([ualias, "addresses", Address, "user"])
         )
         opt = self._option_fixture(Address.user, User.addresses)
         self._assert_path_result(opt, q, [])
@@ -774,14 +771,6 @@ class OptionsTest(PathTest, QueryTest):
         sess = fixture_session()
         q = sess.query(Item, Order)
         self._assert_path_result(opt, q, [(Order, "items")])
-
-    def test_multi_entity_no_mapped_entities(self):
-        Item = self.classes.Item
-        Order = self.classes.Order
-        opt = self._option_fixture("items")
-        sess = fixture_session()
-        q = sess.query(Item.id, Order.id)
-        self._assert_path_result(opt, q, [])
 
     def test_path_exhausted(self):
         User = self.classes.User
@@ -813,6 +802,7 @@ class OptionsTest(PathTest, QueryTest):
         opt = self._option_fixture(User.orders, Order.items).joinedload(
             Item.keywords
         )
+
         self._assert_path_result(
             opt,
             q,
@@ -903,8 +893,8 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         self._assert_eager_with_just_column_exception(
             Item.id,
             Item.keywords,
-            "Query has only expression-based entities, which do not apply "
-            'to relationship property "Item.keywords"',
+            r"Query has only expression-based entities; attribute loader "
+            r"options for Mapper\[Item\(items\)\] can't be applied here.",
         )
 
     def test_option_against_nonexistent_PropComparator(self):
@@ -913,9 +903,10 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         self._assert_eager_with_entity_exception(
             [Keyword],
             (joinedload(Item.keywords),),
-            'Mapped attribute "Item.keywords" does not apply to any of the '
-            "root entities in this query, e.g. mapped class "
-            "Keyword->keywords. Please specify the full path from one of "
+            r"Mapped class Mapper\[Item\(items\)\] does not apply to any of "
+            "the root entities in this query, e.g. "
+            r"Mapper\[Keyword\(keywords\)\]. "
+            "Please specify the full path from one of "
             "the root entities to the target attribute. ",
         )
 
@@ -924,20 +915,17 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         Item = self.classes.Item
         self._assert_eager_with_entity_exception(
             [User, Item],
-            (load_only(User.id, Item.id),),
+            lambda: (load_only(User.id, Item.id),),
             r"Can't apply wildcard \('\*'\) or load_only\(\) loader option "
-            "to multiple entities mapped class User->users, mapped class "
-            "Item->items. Specify loader options for each entity "
-            "individually, such as "
-            r"Load\(mapped class User->users\).some_option\('\*'\), "
-            r"Load\(mapped class Item->items\).some_option\('\*'\).",
+            r"to multiple entities in the same option. Use separate options "
+            "per entity.",
         )
 
     def test_col_option_against_relationship_attr(self):
         Item = self.classes.Item
         self._assert_loader_strategy_exception(
             [Item],
-            (load_only(Item.keywords),),
+            lambda: (load_only(Item.keywords),),
             'Can\'t apply "column loader" strategy to property '
             '"Item.keywords", which is a "relationship property"; this '
             'loader strategy is intended to be used with a "column property".',
@@ -948,7 +936,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         Keyword = self.classes.Keyword
         self._assert_loader_strategy_exception(
             [Keyword, Item],
-            (joinedload(Keyword.id).joinedload(Item.keywords),),
+            lambda: (joinedload(Keyword.id).joinedload(Item.keywords),),
             'Can\'t apply "joined loader" strategy to property "Keyword.id", '
             'which is a "column property"; this loader strategy is intended '
             'to be used with a "relationship property".',
@@ -959,7 +947,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         Keyword = self.classes.Keyword
         self._assert_loader_strategy_exception(
             [Keyword, Item],
-            (joinedload(Keyword.keywords).joinedload(Item.keywords),),
+            lambda: (joinedload(Keyword.keywords).joinedload(Item.keywords),),
             'Can\'t apply "joined loader" strategy to property '
             '"Keyword.keywords", which is a "column property"; this loader '
             'strategy is intended to be used with a "relationship property".',
@@ -970,36 +958,57 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         Keyword = self.classes.Keyword
         self._assert_eager_with_entity_exception(
             [Keyword.id, Item.id],
-            (joinedload(Keyword.keywords).joinedload(Item.keywords),),
-            "Query has only expression-based entities, which do not apply to "
-            'column property "Keyword.keywords"',
+            lambda: (joinedload(Keyword.keywords),),
+            r"Query has only expression-based entities; attribute loader "
+            r"options for Mapper\[Keyword\(keywords\)\] can't be applied "
+            "here.",
         )
 
-    def test_wrong_type_in_option_cls(self):
+    @testing.combinations(True, False, argnames="first_element")
+    def test_wrong_type_in_option_cls(self, first_element):
         Item = self.classes.Item
         Keyword = self.classes.Keyword
         self._assert_eager_with_entity_exception(
             [Item],
-            (joinedload(Keyword),),
-            r"mapper option expects string key or list of attributes",
+            lambda: (joinedload(Keyword),)
+            if first_element
+            else (Load(Item).joinedload(Keyword),),
+            "expected ORM mapped attribute for loader " "strategy argument",
         )
 
-    def test_wrong_type_in_option_descriptor(self):
+    @testing.combinations(
+        (15,), (object(),), (type,), ({"foo": "bar"},), argnames="rando"
+    )
+    @testing.combinations(True, False, argnames="first_element")
+    def test_wrong_type_in_option_any_random_type(self, rando, first_element):
+        Item = self.classes.Item
+        self._assert_eager_with_entity_exception(
+            [Item],
+            lambda: (joinedload(rando),)
+            if first_element
+            else (Load(Item).joinedload(rando)),
+            "expected ORM mapped attribute for loader strategy argument",
+        )
+
+    @testing.combinations(True, False, argnames="first_element")
+    def test_wrong_type_in_option_descriptor(self, first_element):
         OrderWProp = self.classes.OrderWProp
 
         self._assert_eager_with_entity_exception(
             [OrderWProp],
-            (joinedload(OrderWProp.some_attr),),
-            r"mapper option expects string key or list of attributes",
+            lambda: (joinedload(OrderWProp.some_attr),)
+            if first_element
+            else (Load(OrderWProp).joinedload(OrderWProp.some_attr),),
+            "expected ORM mapped attribute for loader strategy argument",
         )
 
     def test_non_contiguous_all_option(self):
         User = self.classes.User
         self._assert_eager_with_entity_exception(
             [User],
-            (joinedload(User.addresses).joinedload(User.orders),),
-            r"Attribute 'User.orders' does not link "
-            "from element 'Mapper|Address|addresses'",
+            lambda: (joinedload(User.addresses).joinedload(User.orders),),
+            r'ORM mapped attribute "User.orders" does not link '
+            r'from relationship "User.addresses"',
         )
 
     def test_non_contiguous_all_option_of_type(self):
@@ -1007,13 +1016,13 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         Order = self.classes.Order
         self._assert_eager_with_entity_exception(
             [User],
-            (
+            lambda: (
                 joinedload(User.addresses).joinedload(
                     User.orders.of_type(Order)
                 ),
             ),
-            r"Attribute 'User.orders' does not link "
-            "from element 'Mapper|Address|addresses'",
+            r'ORM mapped attribute "User.orders" does not link '
+            r'from relationship "User.addresses"',
         )
 
     @classmethod
@@ -1080,26 +1089,30 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
         assert key in context.attributes
 
     def _assert_loader_strategy_exception(self, entity_list, options, message):
-        assert_raises_message(
-            orm_exc.LoaderStrategyException,
-            message,
-            fixture_session()
-            .query(*entity_list)
-            .options(*options)
-            ._compile_state,
-        )
+        sess = fixture_session()
+        with expect_raises_message(orm_exc.LoaderStrategyException, message):
+            # accommodate Load() objects that will raise
+            # on construction
+            if callable(options):
+                options = options()
+
+            # accommodate UnboundLoad objects that will raise
+            # only when compile state is set up
+            sess.query(*entity_list).options(*options)._compile_state()
 
     def _assert_eager_with_entity_exception(
         self, entity_list, options, message
     ):
-        assert_raises_message(
-            sa.exc.ArgumentError,
-            message,
-            fixture_session()
-            .query(*entity_list)
-            .options(*options)
-            ._compile_state,
-        )
+        sess = fixture_session()
+        with expect_raises_message(sa.exc.ArgumentError, message):
+            # accommodate Load() objects that will raise
+            # on construction
+            if callable(options):
+                options = options()
+
+            # accommodate UnboundLoad objects that will raise
+            # only when compile state is set up
+            sess.query(*entity_list).options(*options)._compile_state()
 
     def _assert_eager_with_just_column_exception(
         self, column, eager_option, message
@@ -1122,26 +1135,46 @@ class OptionsNoPropTestInh(_Polymorphic):
 
         assert_raises_message(
             sa.exc.ArgumentError,
-            r'Mapped attribute "Manager.status" does not apply to any of '
+            r"Mapped class Mapper\[Manager\(managers\)\] does not apply to "
+            "any of "
             r"the root entities in this query, e.g. "
             r"with_polymorphic\(Person, \[Manager\]\).",
             s.query(wp).options(load_only(Manager.status))._compile_state,
         )
 
-    def test_missing_attr_of_type_subclass(self):
+    def test_missing_attr_of_type_subclass_one(self):
+        s = fixture_session()
+
+        e1 = with_polymorphic(Person, [Engineer])
+        assert_raises_message(
+            sa.exc.ArgumentError,
+            r'ORM mapped attribute "Manager.manager_name" does not link from '
+            r'relationship "Company.employees.'
+            r'of_type\(with_polymorphic\(Person, \[Engineer\]\)\)".$',
+            lambda: s.query(Company)
+            .options(
+                joinedload(Company.employees.of_type(e1)).load_only(
+                    Manager.manager_name
+                )
+            )
+            ._compile_state(),
+        )
+
+    def test_missing_attr_of_type_subclass_two(self):
         s = fixture_session()
 
         assert_raises_message(
             sa.exc.ArgumentError,
-            r'Attribute "Manager.manager_name" does not link from element '
-            r'"with_polymorphic\(Person, \[Engineer\]\)".$',
-            s.query(Company)
+            r'ORM mapped attribute "Manager.manager_name" does not link from '
+            r'relationship "Company.employees.'
+            r'of_type\(Mapper\[Engineer\(engineers\)\]\)".$',
+            lambda: s.query(Company)
             .options(
                 joinedload(Company.employees.of_type(Engineer)).load_only(
                     Manager.manager_name
                 )
             )
-            ._compile_state,
+            ._compile_state(),
         )
 
     def test_missing_attr_of_type_subclass_name_matches(self):
@@ -1151,15 +1184,16 @@ class OptionsNoPropTestInh(_Polymorphic):
         # that doesn't get mixed up here
         assert_raises_message(
             sa.exc.ArgumentError,
-            r'Attribute "Manager.status" does not link from element '
-            r'"with_polymorphic\(Person, \[Engineer\]\)".$',
-            s.query(Company)
+            r'ORM mapped attribute "Manager.status" does not link from '
+            r'relationship "Company.employees.'
+            r'of_type\(Mapper\[Engineer\(engineers\)\]\)".$',
+            lambda: s.query(Company)
             .options(
                 joinedload(Company.employees.of_type(Engineer)).load_only(
                     Manager.status
                 )
             )
-            ._compile_state,
+            ._compile_state(),
         )
 
     def test_missing_attr_of_type_wpoly_subclass(self):
@@ -1169,15 +1203,16 @@ class OptionsNoPropTestInh(_Polymorphic):
 
         assert_raises_message(
             sa.exc.ArgumentError,
-            r'Attribute "Manager.manager_name" does not link from '
-            r'element "with_polymorphic\(Person, \[Manager\]\)".$',
-            s.query(Company)
+            r'ORM mapped attribute "Manager.manager_name" does not link from '
+            r'relationship "Company.employees.'
+            r'of_type\(with_polymorphic\(Person, \[Manager\]\)\)".$',
+            lambda: s.query(Company)
             .options(
                 joinedload(Company.employees.of_type(wp)).load_only(
                     Manager.manager_name
                 )
             )
-            ._compile_state,
+            ._compile_state(),
         )
 
     def test_missing_attr_is_missing_of_type_for_alias(self):
@@ -1187,12 +1222,12 @@ class OptionsNoPropTestInh(_Polymorphic):
 
         assert_raises_message(
             sa.exc.ArgumentError,
-            r'Attribute "AliasedClass_Person.name" does not link from '
-            r'element "mapped class Person->people".  Did you mean to use '
-            r"Company.employees.of_type\(AliasedClass_Person\)\?",
-            s.query(Company)
+            r'ORM mapped attribute "aliased\(Person\).name" does not link '
+            r'from relationship "Company.employees".  Did you mean to use '
+            r'"Company.employees.of_type\(aliased\(Person\)\)\"?',
+            lambda: s.query(Company)
             .options(joinedload(Company.employees).load_only(pa.name))
-            ._compile_state,
+            ._compile_state(),
         )
 
         q = s.query(Company).options(
@@ -1208,153 +1243,54 @@ class OptionsNoPropTestInh(_Polymorphic):
 
 class PickleTest(PathTest, QueryTest):
     def _option_fixture(self, *arg):
-        return strategy_options._UnboundLoad._from_keys(
-            strategy_options._UnboundLoad.joinedload, arg, True, {}
+        return strategy_options._generate_from_keys(
+            strategy_options.Load.joinedload, arg, True, {}
         )
 
     def test_modern_opt_getstate(self):
         User = self.classes.User
 
         opt = self._option_fixture(User.addresses)
-        to_bind = list(opt._to_bind)
-        eq_(
-            opt.__getstate__(),
-            {
-                "_is_chain_link": False,
-                "local_opts": {},
-                "is_class_strategy": False,
-                "path": [(User, "addresses", None)],
-                "propagate_to_loaders": True,
-                "_of_type": None,
-                "_to_bind": to_bind,
-                "_extra_criteria": (),
-            },
-        )
 
-    def test_modern_opt_setstate(self):
-        User = self.classes.User
+        q1 = fixture_session().query(User).options(opt)
+        c1 = q1._compile_context()
 
-        inner_opt = strategy_options._UnboundLoad.__new__(
-            strategy_options._UnboundLoad
-        )
-        inner_state = {
-            "_is_chain_link": False,
-            "local_opts": {},
-            "is_class_strategy": False,
-            "path": [(User, "addresses", None)],
-            "propagate_to_loaders": True,
-            "_to_bind": None,
-            "strategy": (("lazy", "joined"),),
-        }
-        inner_opt.__setstate__(inner_state)
+        state = opt.__getstate__()
 
-        opt = strategy_options._UnboundLoad.__new__(
-            strategy_options._UnboundLoad
-        )
-        state = {
-            "_is_chain_link": False,
-            "local_opts": {},
-            "is_class_strategy": False,
-            "path": [(User, "addresses", None)],
-            "propagate_to_loaders": True,
-            "_to_bind": [inner_opt],
-        }
+        opt2 = Load.__new__(Load)
+        opt2.__setstate__(state)
 
-        opt.__setstate__(state)
+        eq_(opt.__dict__, opt2.__dict__)
 
-        query = fixture_session().query(User)
-        attr = {}
-        load = opt._bind_loader(
-            [
-                ent.entity_zero
-                for ent in query._compile_state()._lead_mapper_entities
-            ],
-            query._compile_options._current_path,
-            attr,
-            False,
-        )
+        q2 = fixture_session().query(User).options(opt2)
+        c2 = q2._compile_context()
 
-        eq_(
-            load.path,
-            inspect(User)._path_registry[User.addresses.property][
-                inspect(self.classes.Address)
-            ],
-        )
-
-    def test_legacy_opt_setstate(self):
-        User = self.classes.User
-
-        opt = strategy_options._UnboundLoad.__new__(
-            strategy_options._UnboundLoad
-        )
-        state = {
-            "_is_chain_link": False,
-            "local_opts": {},
-            "is_class_strategy": False,
-            "path": [(User, "addresses")],
-            "propagate_to_loaders": True,
-            "_to_bind": [opt],
-            "strategy": (("lazy", "joined"),),
-        }
-
-        opt.__setstate__(state)
-
-        query = fixture_session().query(User)
-        attr = {}
-        load = opt._bind_loader(
-            [
-                ent.entity_zero
-                for ent in query._compile_state()._lead_mapper_entities
-            ],
-            query._compile_options._current_path,
-            attr,
-            False,
-        )
-
-        eq_(
-            load.path,
-            inspect(User)._path_registry[User.addresses.property][
-                inspect(self.classes.Address)
-            ],
-        )
+        eq_(c1.attributes, c2.attributes)
 
 
 class LocalOptsTest(PathTest, QueryTest):
     @classmethod
     def setup_test_class(cls):
-        @strategy_options.loader_option()
-        def some_col_opt_only(loadopt, key, opts):
-            return loadopt.set_column_strategy(
-                (key,), None, opts, opts_only=True
-            )
+        def some_col_opt_only(self, key, opts):
+            return self._set_column_strategy((key,), None, opts)
 
-        @strategy_options.loader_option()
+        strategy_options._AbstractLoad.some_col_opt_only = some_col_opt_only
+
         def some_col_opt_strategy(loadopt, key, opts):
-            return loadopt.set_column_strategy(
+            return loadopt._set_column_strategy(
                 (key,), {"deferred": True, "instrument": True}, opts
             )
 
-        cls.some_col_opt_only = some_col_opt_only
-        cls.some_col_opt_strategy = some_col_opt_strategy
+        strategy_options._AbstractLoad.some_col_opt_strategy = (
+            some_col_opt_strategy
+        )
 
     def _assert_attrs(self, opts, expected):
         User = self.classes.User
 
-        query = fixture_session().query(User)
-        attr = {}
-
-        for opt in opts:
-            if isinstance(opt, strategy_options._UnboundLoad):
-                ctx = query._compile_state()
-                for tb in opt._to_bind:
-                    tb._bind_loader(
-                        [ent.entity_zero for ent in ctx._lead_mapper_entities],
-                        query._compile_options._current_path,
-                        attr,
-                        False,
-                    )
-            else:
-                attr.update(opt.context)
+        s = fixture_session()
+        q1 = s.query(User).options(*opts)
+        attr = q1._compile_context().attributes
 
         key = (
             "loader",
@@ -1365,22 +1301,10 @@ class LocalOptsTest(PathTest, QueryTest):
     def test_single_opt_only(self):
         User = self.classes.User
 
-        opt = strategy_options._UnboundLoad().some_col_opt_only(
+        opt = strategy_options.Load(User).some_col_opt_only(
             User.name, {"foo": "bar"}
         )
         self._assert_attrs([opt], {"foo": "bar"})
-
-    def test_unbound_multiple_opt_only(self):
-        User = self.classes.User
-        opts = [
-            strategy_options._UnboundLoad().some_col_opt_only(
-                User.name, {"foo": "bar"}
-            ),
-            strategy_options._UnboundLoad().some_col_opt_only(
-                User.name, {"bat": "hoho"}
-            ),
-        ]
-        self._assert_attrs(opts, {"foo": "bar", "bat": "hoho"})
 
     def test_bound_multiple_opt_only(self):
         User = self.classes.User
@@ -1397,30 +1321,6 @@ class LocalOptsTest(PathTest, QueryTest):
             Load(User)
             .some_col_opt_only(User.name, {"foo": "bar"})
             .some_col_opt_strategy(User.name, {"bat": "hoho"})
-        ]
-        self._assert_attrs(opts, {"foo": "bar", "bat": "hoho"})
-
-    def test_unbound_strat_opt_recvs_from_optonly(self):
-        User = self.classes.User
-        opts = [
-            strategy_options._UnboundLoad().some_col_opt_only(
-                User.name, {"foo": "bar"}
-            ),
-            strategy_options._UnboundLoad().some_col_opt_strategy(
-                User.name, {"bat": "hoho"}
-            ),
-        ]
-        self._assert_attrs(opts, {"foo": "bar", "bat": "hoho"})
-
-    def test_unbound_opt_only_adds_to_strat(self):
-        User = self.classes.User
-        opts = [
-            strategy_options._UnboundLoad().some_col_opt_strategy(
-                User.name, {"bat": "hoho"}
-            ),
-            strategy_options._UnboundLoad().some_col_opt_only(
-                User.name, {"foo": "bar"}
-            ),
         ]
         self._assert_attrs(opts, {"foo": "bar", "bat": "hoho"})
 
@@ -1442,41 +1342,25 @@ class SubOptionsTest(PathTest, QueryTest):
     def _assert_opts(self, q, sub_opt, non_sub_opts):
         attr_a = {}
 
-        for val in sub_opt._to_bind:
-            val._bind_loader(
-                [
-                    ent.entity_zero
-                    for ent in q._compile_state()._lead_mapper_entities
-                ],
-                q._compile_options._current_path,
-                attr_a,
-                False,
-            )
+        q1 = q.options(sub_opt)._compile_context()
+        q2 = q.options(*non_sub_opts)._compile_context()
 
-        attr_b = {}
-
-        for opt in non_sub_opts:
-            for val in opt._to_bind:
-                val._bind_loader(
-                    [
-                        ent.entity_zero
-                        for ent in q._compile_state()._lead_mapper_entities
-                    ],
-                    q._compile_options._current_path,
-                    attr_b,
-                    False,
-                )
-
-        for k, l in attr_b.items():
-            if not l.strategy:
-                del attr_b[k]
+        attr_a = {
+            k: v
+            for k, v in q1.attributes.items()
+            if isinstance(k, tuple) and k[0] == "loader"
+        }
+        attr_b = {
+            k: v
+            for k, v in q2.attributes.items()
+            if isinstance(k, tuple) and k[0] == "loader"
+        }
 
         def strat_as_tuple(strat):
             return (
                 strat.strategy,
                 strat.local_opts,
-                strat.propagate_to_loaders,
-                strat._of_type,
+                getattr(strat, "_of_type", None),
                 strat.is_class_strategy,
                 strat.is_opts_only,
             )
@@ -1509,6 +1393,7 @@ class SubOptionsTest(PathTest, QueryTest):
         User, Address, Order, Item, SubItem = self.classes(
             "User", "Address", "Order", "Item", "SubItem"
         )
+
         sub_opt = defaultload(User.orders).options(
             joinedload(Order.items),
             defaultload(Order.items).options(subqueryload(Item.keywords)),
@@ -1579,46 +1464,23 @@ class SubOptionsTest(PathTest, QueryTest):
             "User", "Address", "Order", "Item", "SubItem"
         )
 
-        # these options are "invalid", in that User.orders -> Item.keywords
-        # is not a path.  However, the "normal" option is not generating
-        # an error for now, which is bad, but we're testing here only that
-        # it works the same way, so there you go.   If and when we make this
-        # case raise, then both cases should raise in the same way.
-        sub_opt = joinedload(User.orders).options(
-            joinedload(Item.keywords), joinedload(Order.items)
-        )
-        non_sub_opts = [
-            joinedload(User.orders).joinedload(Item.keywords),
-            defaultload(User.orders).joinedload(Order.items),
-        ]
-        sess = fixture_session()
-        self._assert_opts(sess.query(User), sub_opt, non_sub_opts)
-
-    def test_not_implemented_fromload(self):
-        User, Address, Order, Item, SubItem = self.classes(
-            "User", "Address", "Order", "Item", "SubItem"
-        )
-
-        assert_raises_message(
-            NotImplementedError,
-            r"The options\(\) method is currently only supported "
-            "for 'unbound' loader options",
-            Load(User).joinedload(User.orders).options,
-            joinedload(Order.items),
-        )
-
-    def test_not_implemented_toload(self):
-        User, Address, Order, Item, SubItem = self.classes(
-            "User", "Address", "Order", "Item", "SubItem"
-        )
-
-        assert_raises_message(
-            NotImplementedError,
-            r"Only 'unbound' loader options may be used with the "
-            r"Load.options\(\) method",
-            joinedload(User.orders).options,
-            Load(Order).joinedload(Order.items),
-        )
+        with expect_raises_message(
+            sa.exc.ArgumentError,
+            r'ORM mapped attribute "Item.keywords" does not link from '
+            r'relationship "User.orders"',
+        ):
+            [
+                joinedload(User.orders).joinedload(Item.keywords),
+                defaultload(User.orders).joinedload(Order.items),
+            ]
+        with expect_raises_message(
+            sa.exc.ArgumentError,
+            r'Attribute "Item.keywords" does not link from '
+            r'element "Mapper\[Order\(orders\)\]"',
+        ):
+            joinedload(User.orders).options(
+                joinedload(Item.keywords), joinedload(Order.items)
+            )
 
 
 class MapperOptionsTest(_fixtures.FixtureTest):
@@ -1962,8 +1824,26 @@ class MapperOptionsTest(_fixtures.FixtureTest):
         sess = fixture_session()
 
         oalias = aliased(Order)
+
+        # this one is *really weird*
+        # here's what the test originally had.  note two different strategies
+        # for Order.items
+        #
+        # opt1 = sa.orm.joinedload(User.orders, Order.items)
+        # opt2 = sa.orm.contains_eager(User.orders, Order.items, alias=oalias)
+
+        # here's how it would translate.  note that the second
+        # contains_eager() for Order.items just got cancelled out,
+        # I guess the joinedload() would somehow overrule the contains_eager
+        #
+        # opt1 = Load(User).defaultload(User.orders).joinedload(Order.items)
+        # opt2 = Load(User).contains_eager(User.orders, alias=oalias)
+
+        # setting up the options more specifically works however with
+        # both the old way and the new way
         opt1 = sa.orm.joinedload(User.orders, Order.items)
-        opt2 = sa.orm.contains_eager(User.orders, Order.items, alias=oalias)
+        opt2 = sa.orm.contains_eager(User.orders, alias=oalias)
+
         u1 = (
             sess.query(User)
             .join(oalias, User.orders)
@@ -1973,3 +1853,74 @@ class MapperOptionsTest(_fixtures.FixtureTest):
         ustate = attributes.instance_state(u1)
         assert opt1 in ustate.load_options
         assert opt2 not in ustate.load_options
+
+    @testing.combinations(
+        (
+            lambda User, Order: (
+                joinedload(User.orders),
+                contains_eager(User.orders),
+            ),
+            r"Loader strategies for ORM Path\[Mapper\[User\(users\)\] -> "
+            r"User.orders -> Mapper\[Order\(orders\)\]\] conflict",
+        ),
+        (
+            lambda User, Order: (
+                joinedload(User.orders),
+                joinedload(User.orders).joinedload(Order.items),
+            ),
+            None,
+        ),
+        (
+            lambda User, Order: (
+                joinedload(User.orders),
+                joinedload(User.orders, innerjoin=True).joinedload(
+                    Order.items
+                ),
+            ),
+            r"Loader strategies for ORM Path\[Mapper\[User\(users\)\] -> "
+            r"User.orders -> Mapper\[Order\(orders\)\]\] conflict",
+        ),
+        (
+            lambda User: (defer(User.name), undefer(User.name)),
+            r"Loader strategies for ORM Path\[Mapper\[User\(users\)\] -> "
+            r"User.name\] conflict",
+        ),
+    )
+    def test_conflicts(self, make_opt, errmsg):
+        """introduce a new error for conflicting options in SQLAlchemy 2.0.
+
+        This case seems to be fairly difficult to come up with randomly
+        so let's see if we can refuse to guess for this case.
+
+        """
+        users, items, order_items, Order, Item, User, orders = (
+            self.tables.users,
+            self.tables.items,
+            self.tables.order_items,
+            self.classes.Order,
+            self.classes.Item,
+            self.classes.User,
+            self.tables.orders,
+        )
+
+        self.mapper_registry.map_imperatively(
+            User, users, properties=dict(orders=relationship(Order))
+        )
+        self.mapper_registry.map_imperatively(
+            Order,
+            orders,
+            properties=dict(items=relationship(Item, secondary=order_items)),
+        )
+        self.mapper_registry.map_imperatively(Item, items)
+
+        sess = fixture_session()
+
+        opt = testing.resolve_lambda(
+            make_opt, User=User, Order=Order, Item=Item
+        )
+
+        if errmsg:
+            with expect_raises_message(sa.exc.InvalidRequestError, errmsg):
+                sess.query(User).options(opt)._compile_context()
+        else:
+            sess.query(User).options(opt)._compile_context()

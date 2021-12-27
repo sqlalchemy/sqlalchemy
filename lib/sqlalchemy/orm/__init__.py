@@ -70,7 +70,22 @@ from .session import sessionmaker
 from .session import SessionTransaction
 from .state import AttributeState
 from .state import InstanceState
+from .strategy_options import contains_eager
+from .strategy_options import defaultload
+from .strategy_options import defer
+from .strategy_options import immediateload
+from .strategy_options import joinedload
+from .strategy_options import lazyload
 from .strategy_options import Load
+from .strategy_options import load_only
+from .strategy_options import noload
+from .strategy_options import raiseload
+from .strategy_options import selectin_polymorphic
+from .strategy_options import selectinload
+from .strategy_options import subqueryload
+from .strategy_options import undefer
+from .strategy_options import undefer_group
+from .strategy_options import with_expression
 from .unitofwork import UOWTransaction
 from .util import aliased
 from .util import Bundle
@@ -267,23 +282,6 @@ def clear_mappers():
     """
 
     mapperlib._dispose_registries(mapperlib._all_registries(), False)
-
-
-joinedload = strategy_options.joinedload._unbound_fn
-contains_eager = strategy_options.contains_eager._unbound_fn
-defer = strategy_options.defer._unbound_fn
-undefer = strategy_options.undefer._unbound_fn
-undefer_group = strategy_options.undefer_group._unbound_fn
-with_expression = strategy_options.with_expression._unbound_fn
-load_only = strategy_options.load_only._unbound_fn
-lazyload = strategy_options.lazyload._unbound_fn
-subqueryload = strategy_options.subqueryload._unbound_fn
-selectinload = strategy_options.selectinload._unbound_fn
-immediateload = strategy_options.immediateload._unbound_fn
-noload = strategy_options.noload._unbound_fn
-raiseload = strategy_options.raiseload._unbound_fn
-defaultload = strategy_options.defaultload._unbound_fn
-selectin_polymorphic = strategy_options.selectin_polymorphic._unbound_fn
 
 
 @_sa_util.deprecated_20("eagerload", "Please use :func:`_orm.joinedload`.")

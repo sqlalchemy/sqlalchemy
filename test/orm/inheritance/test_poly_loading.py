@@ -191,6 +191,7 @@ class LoadBaseAndSubWEagerRelMapped(
 class FixtureLoadTest(_Polymorphic, testing.AssertsExecutionResults):
     def test_person_selectin_subclasses(self):
         s = fixture_session()
+
         q = s.query(Person).options(
             selectin_polymorphic(Person, [Engineer, Manager])
         )
@@ -786,12 +787,14 @@ class IgnoreOptionsOnSubclassAttrLoad(fixtures.DeclarativeMappedTest):
 
         will_lazyload = first_option in (defaultload, lazyload)
 
-        opt = first_option(Parent.entity)
-
         if second_argument == "name":
             second_argument = SubEntity.name
+            opt = first_option(Parent.entity.of_type(SubEntity))
         elif second_argument == "id":
+            opt = first_option(Parent.entity)
             second_argument = Entity.id
+        else:
+            opt = first_option(Parent.entity)
 
         if second_option is None:
             sub_opt = opt
@@ -831,7 +834,10 @@ class IgnoreOptionsOnSubclassAttrLoad(fixtures.DeclarativeMappedTest):
                 )
             )
 
-        if second_option in ("undefer", "load_only", None):
+        if second_option in ("load_only", None) or (
+            second_option == "undefer"
+            and first_option in (defaultload, lazyload)
+        ):
             # load will be a mapper optimized load for the name alone
             expected.append(
                 CompiledSQL(

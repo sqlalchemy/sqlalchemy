@@ -29,6 +29,7 @@ from sqlalchemy.sql import literal
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
@@ -395,9 +396,28 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         )
         sess.expunge_all()
 
+        # hypothetical for 2.0 - don't overwrite conflicting user-defined
+        # options, raise instead.
+
+        # not sure if this behavior will fly with the userbase.  however,
+        # it at least gives us a clear place to affirmatively resolve
+        # conflicts like this if we see that we need to re-enable overwriting
+        # of conflicting options.
         q2 = q.options(undefer(Order.user_id))
+        with expect_raises_message(
+            sa.exc.InvalidRequestError,
+            r"Loader strategies for ORM Path\[Mapper\[Order\(orders\)\] -> "
+            r"Order.user_id\] conflict",
+        ):
+            q2.all()
+
+        q3 = (
+            sess.query(Order)
+            .order_by(Order.id)
+            .options(undefer(Order.user_id))
+        )
         self.sql_eq_(
-            q2.all,
+            q3.all,
             [
                 (
                     "SELECT orders.id AS orders_id, "
@@ -1612,6 +1632,8 @@ class InheritanceTest(_Polymorphic):
         q = s.query(Company).options(
             joinedload(Company.employees.of_type(Manager)).defer("*")
         )
+        # TODO: this is wrong!  there's no employee columns!!
+        # see https://github.com/sqlalchemy/sqlalchemy/issues/7495
         self.assert_compile(
             q,
             "SELECT companies.company_id AS companies_company_id, "
@@ -1667,18 +1689,23 @@ class InheritanceTest(_Polymorphic):
             "ORDER BY people.person_id",
         )
 
-    def test_load_only_from_with_polymorphic(self):
+    def test_load_only_from_with_polymorphic_mismatch(self):
         s = fixture_session()
 
         wp = with_polymorphic(Person, [Manager], flat=True)
 
         assert_raises_message(
             sa.exc.ArgumentError,
-            'Mapped attribute "Manager.status" does not apply to any of the '
-            "root entities in this query, e.g. "
+            r"Mapped class Mapper\[Manager\(managers\)\] does not apply to "
+            "any of the root entities in this query, e.g. "
             r"with_polymorphic\(Person, \[Manager\]\).",
             s.query(wp).options(load_only(Manager.status))._compile_context,
         )
+
+    def test_load_only_from_with_polymorphic_applied(self):
+        s = fixture_session()
+
+        wp = with_polymorphic(Person, [Manager], flat=True)
 
         q = s.query(wp).options(load_only(wp.Manager.status))
         self.assert_compile(
@@ -1697,18 +1724,17 @@ class InheritanceTest(_Polymorphic):
 
         wp = with_polymorphic(Person, [Manager], flat=True)
 
-        assert_raises_message(
+        with expect_raises_message(
             sa.exc.ArgumentError,
-            'Attribute "Manager.status" does not link from element '
-            r'"with_polymorphic\(Person, \[Manager\]\)"',
-            s.query(Company)
-            .options(
+            'ORM mapped attribute "Manager.status" does not link from '
+            r'relationship "Company.employees.'
+            r'of_type\(with_polymorphic\(Person, \[Manager\]\)\)".',
+        ):
+            s.query(Company).options(
                 joinedload(Company.employees.of_type(wp)).load_only(
                     Manager.status
                 )
-            )
-            ._compile_context,
-        )
+            )._compile_context()
 
         self.assert_compile(
             s.query(Company).options(

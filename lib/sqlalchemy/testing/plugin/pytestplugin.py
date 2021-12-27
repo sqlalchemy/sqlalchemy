@@ -557,7 +557,7 @@ def _pytest_fn_decorator(target):
         metadata.update(format_argspec_plus(spec, grouped=False))
         code = (
             """\
-def %(name)s(%(args)s):
+def %(name)s%(grouped_args)s:
     return %(__target_fn)s(%(__orig_fn)s, %(apply_kw)s)
 """
             % metadata

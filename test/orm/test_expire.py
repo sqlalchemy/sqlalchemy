@@ -882,7 +882,7 @@ class ExpireTest(_fixtures.FixtureTest):
             # for up front
             with expect_raises_message(
                 sa.exc.ArgumentError,
-                'Mapped attribute "User.addresses" does not apply to '
+                r"Mapped class Mapper\[User\(users\)\] does not apply to "
                 "any of the root entities in this query",
             ):
                 row = sess.execute(

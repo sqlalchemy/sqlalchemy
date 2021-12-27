@@ -1000,7 +1000,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
                     and rev._use_get
                     and not isinstance(rev.strategy, LazyLoader)
                 ):
-                    strategy_options.Load.for_existing_path(
+                    strategy_options.Load._construct_for_existing_path(
                         compile_context.compile_options._current_path[
                             rev.parent
                         ]
@@ -2168,7 +2168,7 @@ class JoinedLoader(AbstractRelationshipLoader):
             anonymize_labels=True,
         )
 
-        assert clauses.aliased_class is not None
+        assert clauses.is_aliased_class
 
         innerjoin = (
             loadopt.local_opts.get("innerjoin", self.parent_property.innerjoin)
@@ -2265,12 +2265,12 @@ class JoinedLoader(AbstractRelationshipLoader):
         )
 
         if adapter:
-            if getattr(adapter, "aliased_class", None):
+            if getattr(adapter, "is_aliased_class", False):
                 # joining from an adapted entity.  The adapted entity
                 # might be a "with_polymorphic", so resolve that to our
                 # specific mapper's entity before looking for our attribute
                 # name on it.
-                efm = inspect(adapter.aliased_class)._entity_for_mapper(
+                efm = adapter.aliased_insp._entity_for_mapper(
                     localparent
                     if localparent.isa(self.parent)
                     else self.parent
@@ -2291,7 +2291,7 @@ class JoinedLoader(AbstractRelationshipLoader):
         else:
             onclause = self.parent_property
 
-        assert clauses.aliased_class is not None
+        assert clauses.is_aliased_class
 
         attach_on_outside = (
             not chained_from_outerjoin
@@ -2315,7 +2315,7 @@ class JoinedLoader(AbstractRelationshipLoader):
             # this is the "classic" eager join case.
             eagerjoin = orm_util._ORMJoin(
                 towrap,
-                clauses.aliased_class,
+                clauses.aliased_insp,
                 onclause,
                 isouter=not innerjoin
                 or query_entity.entity_zero.represents_outer_join
@@ -2381,7 +2381,7 @@ class JoinedLoader(AbstractRelationshipLoader):
             if path[-2] is splicing:
                 return orm_util._ORMJoin(
                     join_obj,
-                    clauses.aliased_class,
+                    clauses.aliased_insp,
                     onclause,
                     isouter=False,
                     _left_memo=splicing,

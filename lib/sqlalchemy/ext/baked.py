@@ -19,7 +19,6 @@ import logging
 from .. import exc as sa_exc
 from .. import util
 from ..orm import exc as orm_exc
-from ..orm import strategy_options
 from ..orm.query import Query
 from ..orm.session import Session
 from ..sql import func
@@ -578,71 +577,5 @@ class Result:
         else:
             return None
 
-
-@util.deprecated(
-    "1.2", "Baked lazy loading is now the default implementation."
-)
-def bake_lazy_loaders():
-    """Enable the use of baked queries for all lazyloaders systemwide.
-
-    The "baked" implementation of lazy loading is now the sole implementation
-    for the base lazy loader; this method has no effect except for a warning.
-
-    """
-    pass
-
-
-@util.deprecated(
-    "1.2", "Baked lazy loading is now the default implementation."
-)
-def unbake_lazy_loaders():
-    """Disable the use of baked queries for all lazyloaders systemwide.
-
-    This method now raises NotImplementedError() as the "baked" implementation
-    is the only lazy load implementation.  The
-    :paramref:`_orm.relationship.bake_queries` flag may be used to disable
-    the caching of queries on a per-relationship basis.
-
-    """
-    raise NotImplementedError(
-        "Baked lazy loading is now the default implementation"
-    )
-
-
-@strategy_options.loader_option()
-def baked_lazyload(loadopt, attr):
-    """Indicate that the given attribute should be loaded using "lazy"
-    loading with a "baked" query used in the load.
-
-    """
-    return loadopt.set_relationship_strategy(attr, {"lazy": "baked_select"})
-
-
-@baked_lazyload._add_unbound_fn
-@util.deprecated(
-    "1.2",
-    "Baked lazy loading is now the default "
-    "implementation for lazy loading.",
-)
-def baked_lazyload(*keys):
-    return strategy_options._UnboundLoad._from_keys(
-        strategy_options._UnboundLoad.baked_lazyload, keys, False, {}
-    )
-
-
-@baked_lazyload._add_unbound_all_fn
-@util.deprecated(
-    "1.2",
-    "Baked lazy loading is now the default "
-    "implementation for lazy loading.",
-)
-def baked_lazyload_all(*keys):
-    return strategy_options._UnboundLoad._from_keys(
-        strategy_options._UnboundLoad.baked_lazyload, keys, True, {}
-    )
-
-
-baked_lazyload = baked_lazyload._unbound_fn
-baked_lazyload_all = baked_lazyload_all._unbound_all_fn
 
 bakery = BakedQuery.bakery

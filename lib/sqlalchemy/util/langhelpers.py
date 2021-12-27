@@ -20,11 +20,21 @@ import re
 import sys
 import textwrap
 import types
+from typing import Any
+from typing import Callable
+from typing import Generic
+from typing import Optional
+from typing import overload
+from typing import TypeVar
+from typing import Union
 import warnings
 
 from . import _collections
 from . import compat
 from .. import exc
+
+_T = TypeVar("_T")
+_MP = TypeVar("_MP", bound="memoized_property[Any]")
 
 
 def md5_hex(x):
@@ -179,7 +189,7 @@ def decorator(target):
         metadata["name"] = fn.__name__
         code = (
             """\
-def %(name)s(%(args)s):
+def %(name)s%(grouped_args)s:
     return %(target)s(%(fn)s, %(apply_kw)s)
 """
             % metadata
@@ -255,7 +265,7 @@ def public_factory(target, location, class_location=None):
     metadata["name"] = location_name
     code = (
         """\
-def %(name)s(%(args)s):
+def %(name)s%(grouped_args)s:
     return cls(%(apply_kw)s)
 """
         % metadata
@@ -501,7 +511,7 @@ def format_argspec_plus(fn, grouped=True):
     Example::
 
       >>> format_argspec_plus(lambda self, a, b, c=3, **d: 123)
-      {'args': '(self, a, b, c=3, **d)',
+      {'grouped_args': '(self, a, b, c=3, **d)',
        'self_arg': 'self',
        'apply_kw': '(self, a, b, c=c, **d)',
        'apply_pos': '(self, a, b, c, **d)'}
@@ -567,7 +577,7 @@ def format_argspec_plus(fn, grouped=True):
 
     if grouped:
         return dict(
-            args=args,
+            grouped_args=args,
             self_arg=self_arg,
             apply_pos=apply_pos,
             apply_kw=apply_kw,
@@ -576,7 +586,7 @@ def format_argspec_plus(fn, grouped=True):
         )
     else:
         return dict(
-            args=args[1:-1],
+            grouped_args=args,
             self_arg=self_arg,
             apply_pos=apply_pos[1:-1],
             apply_kw=apply_kw[1:-1],
@@ -596,21 +606,19 @@ def format_argspec_init(method, grouped=True):
 
     """
     if method is object.__init__:
+        grouped_args = "(self)"
         args = "(self)" if grouped else "self"
         proxied = "()" if grouped else ""
     else:
         try:
             return format_argspec_plus(method, grouped=grouped)
         except TypeError:
-            args = (
-                "(self, *args, **kwargs)"
-                if grouped
-                else "self, *args, **kwargs"
-            )
+            grouped_args = "(self, *args, **kwargs)"
+            args = grouped_args if grouped else "self, *args, **kwargs"
             proxied = "(*args, **kwargs)" if grouped else "*args, **kwargs"
     return dict(
         self_arg="self",
-        args=args,
+        grouped_args=grouped_args,
         apply_pos=args,
         apply_kw=args,
         apply_pos_proxied=proxied,
@@ -645,20 +653,20 @@ def create_proxy_methods(
                 "name": fn.__name__,
                 "apply_pos_proxied": caller_argspec["apply_pos_proxied"],
                 "apply_kw_proxied": caller_argspec["apply_kw_proxied"],
-                "args": caller_argspec["args"],
+                "grouped_args": caller_argspec["grouped_args"],
                 "self_arg": caller_argspec["self_arg"],
             }
 
             if clslevel:
                 code = (
-                    "def %(name)s(%(args)s):\n"
+                    "def %(name)s%(grouped_args)s:\n"
                     "    return target_cls.%(name)s(%(apply_kw_proxied)s)"
                     % metadata
                 )
                 env["target_cls"] = target_cls
             else:
                 code = (
-                    "def %(name)s(%(args)s):\n"
+                    "def %(name)s%(grouped_args)s:\n"
                     "    return %(self_arg)s._proxied.%(name)s(%(apply_kw_proxied)s)"  # noqa E501
                     % metadata
                 )
@@ -1072,15 +1080,27 @@ def as_interface(obj, cls=None, methods=None, required=None):
     )
 
 
-class memoized_property:
+class memoized_property(Generic[_T]):
     """A read-only @property that is only evaluated once."""
 
-    def __init__(self, fget, doc=None):
+    fget: Callable[..., _T]
+    __doc__: Optional[str]
+    __name__: str
+
+    def __init__(self, fget: Callable[..., _T], doc: Optional[str] = None):
         self.fget = fget
         self.__doc__ = doc or fget.__doc__
         self.__name__ = fget.__name__
 
-    def __get__(self, obj, cls):
+    @overload
+    def __get__(self: _MP, obj: None, cls: Any) -> _MP:
+        ...
+
+    @overload
+    def __get__(self, obj: Any, cls: Any) -> _T:
+        ...
+
+    def __get__(self: _MP, obj: Any, cls: Any) -> Union[_MP, _T]:
         if obj is None:
             return self
         obj.__dict__[self.__name__] = result = self.fget(obj)
@@ -1090,7 +1110,7 @@ class memoized_property:
         memoized_property.reset(obj, self.__name__)
 
     @classmethod
-    def reset(cls, obj, name):
+    def reset(cls, obj: Any, name: str) -> None:
         obj.__dict__.pop(name, None)
 
 

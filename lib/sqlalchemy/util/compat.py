@@ -165,7 +165,7 @@ def _formatannotation(annotation, base_module=None):
         return repr(annotation).replace("typing.", "")
     if isinstance(annotation, type):
         if annotation.__module__ in ("builtins", base_module):
-            return annotation.__qualname__
+            return repr(annotation.__qualname__)
         return annotation.__module__ + "." + annotation.__qualname__
     return repr(annotation)
 

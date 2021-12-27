@@ -11,7 +11,6 @@ from sqlalchemy import event
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
-from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import join
 from sqlalchemy import LABEL_STYLE_TABLENAME_PLUS_COL
@@ -41,7 +40,6 @@ from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
 from sqlalchemy.orm import eagerload
-from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import foreign
 from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import joinedload
@@ -51,7 +49,6 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.orm import strategy_options
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm import undefer
@@ -153,14 +150,14 @@ dep_exc_wildcard = (
 def _aliased_join_warning(arg=None):
     return testing.expect_warnings(
         "An alias is being generated automatically against joined entity "
-        "mapped class " + (arg if arg else "")
+        "Mapper" + (arg if arg else "")
     )
 
 
 def _aliased_join_deprecation(arg=None):
     return testing.expect_deprecated(
         "An alias is being generated automatically against joined entity "
-        "mapped class " + (arg if arg else "")
+        "Mapper" + (arg if arg else "")
     )
 
 
@@ -2480,7 +2477,7 @@ class DeprecatedInhTest(_poly_fixtures._Polymorphic):
 
         # note python 2 does not allow parens here; reformat in py3 only
         with DeprecatedQueryTest._expect_implicit_subquery(), _aliased_join_warning(  # noqa E501
-            "Person->people"
+            r"\[Person\(people\)\]"
         ):
             self.assert_compile(
                 sess.query(Company)
@@ -2722,10 +2719,14 @@ class DeprecatedOptionAllTest(OptionsPathTest, _fixtures.FixtureTest):
         sess = fixture_session()
 
         with testing.expect_deprecated(undefer_needs_chaining):
-            sess.query(User).options(defer("addresses", "email_address"))
+            sess.query(User).options(
+                defer(User.addresses, Address.email_address)
+            )
 
         with testing.expect_deprecated(undefer_needs_chaining):
-            sess.query(User).options(undefer("addresses", "email_address"))
+            sess.query(User).options(
+                undefer(User.addresses, Address.email_address)
+            )
 
 
 class InstrumentationTest(fixtures.ORMTest):
@@ -3545,14 +3546,16 @@ class TextTest(QueryTest):
             )
 
 
-class TestDeprecation20(fixtures.TestBase):
+class TestDeprecation20(QueryTest):
     def test_relation(self):
+        User = self.classes.User
         with testing.expect_deprecated_20(".*relationship"):
-            relation("foo")
+            relation(User.addresses)
 
     def test_eagerloading(self):
+        User = self.classes.User
         with testing.expect_deprecated_20(".*joinedload"):
-            eagerload("foo")
+            eagerload(User.addresses)
 
 
 class DistinctOrderByImplicitTest(QueryTest, AssertsCompiledSQL):
@@ -4943,31 +4946,6 @@ class DeferredOptionsTest(AssertsCompiledSQL, _fixtures.FixtureTest):
         eq_(item.description, "item 4")
 
 
-class OptionsTest(PathTest, OptionsQueryTest):
-    def _option_fixture(self, *arg):
-        return strategy_options._UnboundLoad._from_keys(
-            strategy_options._UnboundLoad.joinedload, arg, True, {}
-        )
-
-    def test_with_current_nonmatching_string(self):
-        Item, User, Order = (
-            self.classes.Item,
-            self.classes.User,
-            self.classes.Order,
-        )
-
-        sess = fixture_session()
-        q = sess.query(Item)._with_current_path(
-            self._make_path_registry([User, "orders", Order, "items"])
-        )
-
-        opt = self._option_fixture("keywords")
-        self._assert_path_result(opt, q, [])
-
-        opt = self._option_fixture("items.keywords")
-        self._assert_path_result(opt, q, [])
-
-
 class SubOptionsTest(PathTest, OptionsQueryTest):
     run_create_tables = False
     run_inserts = None
@@ -5018,164 +4996,6 @@ class SubOptionsTest(PathTest, OptionsQueryTest):
         eq_(
             {path: strat_as_tuple(load) for path, load in attr_a.items()},
             {path: strat_as_tuple(load) for path, load in attr_b.items()},
-        )
-
-
-class OptionsNoPropTest(_fixtures.FixtureTest):
-    """test the error messages emitted when using property
-    options in conjunction with column-only entities, or
-    for not existing options
-
-    """
-
-    run_create_tables = False
-    run_inserts = None
-    run_deletes = None
-
-    def test_option_with_column_basestring(self):
-        Item = self.classes.Item
-
-        message = (
-            "Query has only expression-based entities - can't "
-            'find property named "keywords".'
-        )
-        self._assert_eager_with_just_column_exception(
-            Item.id, "keywords", message
-        )
-
-    @testing.fails_if(
-        lambda: True,
-        "PropertyOption doesn't yet check for relation/column on end result",
-    )
-    def test_option_against_non_relation_basestring(self):
-        Item = self.classes.Item
-        Keyword = self.classes.Keyword
-        self._assert_eager_with_entity_exception(
-            [Keyword, Item],
-            (joinedload("keywords"),),
-            r"Attribute 'keywords' of entity 'Mapper\|Keyword\|keywords' "
-            "does not refer to a mapped entity",
-        )
-
-    @testing.fails_if(
-        lambda: True,
-        "PropertyOption doesn't yet check for relation/column on end result",
-    )
-    def test_option_against_multi_non_relation_basestring(self):
-        Item = self.classes.Item
-        Keyword = self.classes.Keyword
-        self._assert_eager_with_entity_exception(
-            [Keyword, Item],
-            (joinedload("keywords"),),
-            r"Attribute 'keywords' of entity 'Mapper\|Keyword\|keywords' "
-            "does not refer to a mapped entity",
-        )
-
-    def test_option_against_multi_no_entities_basestring(self):
-        Item = self.classes.Item
-        Keyword = self.classes.Keyword
-        self._assert_eager_with_entity_exception(
-            [Keyword.id, Item.id],
-            (joinedload("keywords"),),
-            r"Query has only expression-based entities - can't find property "
-            'named "keywords".',
-        )
-
-    @classmethod
-    def setup_mappers(cls):
-        users, User, addresses, Address, orders, Order = (
-            cls.tables.users,
-            cls.classes.User,
-            cls.tables.addresses,
-            cls.classes.Address,
-            cls.tables.orders,
-            cls.classes.Order,
-        )
-        cls.mapper_registry.map_imperatively(
-            User,
-            users,
-            properties={
-                "addresses": relationship(Address),
-                "orders": relationship(Order),
-            },
-        )
-        cls.mapper_registry.map_imperatively(Address, addresses)
-        cls.mapper_registry.map_imperatively(Order, orders)
-        keywords, items, item_keywords, Keyword, Item = (
-            cls.tables.keywords,
-            cls.tables.items,
-            cls.tables.item_keywords,
-            cls.classes.Keyword,
-            cls.classes.Item,
-        )
-        cls.mapper_registry.map_imperatively(
-            Keyword,
-            keywords,
-            properties={
-                "keywords": column_property(keywords.c.name + "some keyword")
-            },
-        )
-        cls.mapper_registry.map_imperatively(
-            Item,
-            items,
-            properties=dict(
-                keywords=relationship(Keyword, secondary=item_keywords)
-            ),
-        )
-
-        class OrderWProp(cls.classes.Order):
-            @property
-            def some_attr(self):
-                return "hi"
-
-        cls.mapper_registry.map_imperatively(
-            OrderWProp, None, inherits=cls.classes.Order
-        )
-
-    def _assert_option(self, entity_list, option):
-        Item = self.classes.Item
-
-        context = (
-            fixture_session()
-            .query(*entity_list)
-            .options(joinedload(option))
-            ._compile_state()
-        )
-        key = ("loader", (inspect(Item), inspect(Item).attrs.keywords))
-        assert key in context.attributes
-
-    def _assert_loader_strategy_exception(self, entity_list, options, message):
-        assert_raises_message(
-            orm_exc.LoaderStrategyException,
-            message,
-            fixture_session()
-            .query(*entity_list)
-            .options(*options)
-            ._compile_state,
-        )
-
-    def _assert_eager_with_entity_exception(
-        self, entity_list, options, message
-    ):
-        assert_raises_message(
-            sa.exc.ArgumentError,
-            message,
-            fixture_session()
-            .query(*entity_list)
-            .options(*options)
-            ._compile_state,
-        )
-
-    def _assert_eager_with_just_column_exception(
-        self, column, eager_option, message
-    ):
-        assert_raises_message(
-            sa.exc.ArgumentError,
-            message,
-            fixture_session()
-            .query(column)
-            .options(joinedload(eager_option))
-            ._compile_state,
         )
 
 
