@@ -2784,6 +2784,70 @@ class OptimizedLoadTest(fixtures.MappedTest):
 
             eq_(s1.sub, "s1sub")
 
+    def test_optimized_get_blank_intermediary(self, registry, connection):
+        """test #7507"""
+
+        Base = registry.generate_base()
+
+        class A(Base):
+            __tablename__ = "a"
+
+            id = Column(Integer, primary_key=True)
+            a = Column(String(20), nullable=False)
+            type_ = Column(String(20))
+            __mapper_args__ = {
+                "polymorphic_on": type_,
+                "polymorphic_identity": "a",
+            }
+
+        class B(A):
+            __tablename__ = "b"
+            __mapper_args__ = {"polymorphic_identity": "b"}
+
+            id = Column(Integer, ForeignKey("a.id"), primary_key=True)
+            b = Column(String(20), nullable=False)
+
+        class C(B):
+            __tablename__ = "c"
+            __mapper_args__ = {"polymorphic_identity": "c"}
+
+            id = Column(Integer, ForeignKey("b.id"), primary_key=True)
+
+        class D(C):
+            __tablename__ = "d"
+            __mapper_args__ = {"polymorphic_identity": "d"}
+
+            id = Column(Integer, ForeignKey("c.id"), primary_key=True)
+            c = Column(String(20), nullable=False)
+
+        Base.metadata.create_all(connection)
+
+        session = Session(connection)
+        session.add(D(a="x", b="y", c="z"))
+        session.commit()
+
+        with self.sql_execution_asserter(connection) as asserter:
+            d = session.query(A).one()
+            eq_(d.c, "z")
+        asserter.assert_(
+            CompiledSQL(
+                "SELECT a.id AS a_id, a.a AS a_a, a.type_ AS a_type_ FROM a",
+                [],
+            ),
+            Or(
+                CompiledSQL(
+                    "SELECT d.c AS d_c, b.b AS b_b FROM d, b, c WHERE "
+                    ":param_1 = b.id AND b.id = c.id AND c.id = d.id",
+                    [{"param_1": 1}],
+                ),
+                CompiledSQL(
+                    "SELECT b.b AS b_b, d.c AS d_c FROM b, d, c WHERE "
+                    ":param_1 = b.id AND b.id = c.id AND c.id = d.id",
+                    [{"param_1": 1}],
+                ),
+            ),
+        )
+
     def test_optimized_passes(self):
         """ "test that the 'optimized load' routine doesn't crash when
         a column in the join condition is not available."""
