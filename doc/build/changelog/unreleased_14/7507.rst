@@ -1,0 +1,15 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 7507
+
+    Fixed issue in joined-inheritance load of additional attributes
+    functionality in deep multi-level inheritance where an intermediary table
+    that contained no columns would not be included in the tables joined,
+    instead linking those tables to their primary key identifiers. While this
+    works fine, it nonetheless in 1.4 began producing the cartesian product
+    compiler warning. The logic has been changed so that these intermediary
+    tables are included regardless. While this does include additional tables
+    in the query that are not technically necessary, this only occurs for the
+    highly unusual case of deep 3+ level inheritance with intermediary tables
+    that have no non primary key columns, potential performance impact is
+    therefore expected to be negligible.
