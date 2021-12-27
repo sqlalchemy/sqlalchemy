@@ -444,7 +444,6 @@ Example usage::
 
 """
 from .. import exc
-from .. import util
 from ..sql import sqltypes
 
 
@@ -469,15 +468,12 @@ def compiles(class_, *specs):
                     try:
                         return existing_dispatch(element, compiler, **kw)
                     except exc.UnsupportedCompilationError as uce:
-                        util.raise_(
-                            exc.UnsupportedCompilationError(
-                                compiler,
-                                type(element),
-                                message="%s construct has no default "
-                                "compilation handler." % type(element),
-                            ),
-                            from_=uce,
-                        )
+                        raise exc.UnsupportedCompilationError(
+                            compiler,
+                            type(element),
+                            message="%s construct has no default "
+                            "compilation handler." % type(element),
+                        ) from uce
 
                 existing.specs["default"] = _wrap_existing_dispatch
 
@@ -522,15 +518,12 @@ class _dispatcher:
             try:
                 fn = self.specs["default"]
             except KeyError as ke:
-                util.raise_(
-                    exc.UnsupportedCompilationError(
-                        compiler,
-                        type(element),
-                        message="%s construct has no default "
-                        "compilation handler." % type(element),
-                    ),
-                    replace_context=ke,
-                )
+                raise exc.UnsupportedCompilationError(
+                    compiler,
+                    type(element),
+                    message="%s construct has no default "
+                    "compilation handler." % type(element),
+                ) from ke
 
         # if compilation includes add_to_result_map, collect add_to_result_map
         # arguments from the user-defined callable, which are probably none

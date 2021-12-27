@@ -320,13 +320,10 @@ class dispatcher:
         try:
             obj.__dict__["dispatch"] = disp
         except AttributeError as ae:
-            util.raise_(
-                TypeError(
-                    "target %r doesn't have __dict__, should it be "
-                    "defining _slots_dispatch?" % (obj,)
-                ),
-                replace_context=ae,
-            )
+            raise TypeError(
+                "target %r doesn't have __dict__, should it be "
+                "defining _slots_dispatch?" % (obj,)
+            ) from ae
         return disp
 
 

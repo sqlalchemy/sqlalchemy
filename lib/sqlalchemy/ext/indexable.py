@@ -222,7 +222,6 @@ The above query will render::
 
 """  # noqa
 from .. import inspect
-from .. import util
 from ..ext.hybrid import hybrid_property
 from ..orm.attributes import flag_modified
 
@@ -302,7 +301,7 @@ class index_property(hybrid_property):  # noqa
 
     def _fget_default(self, err=None):
         if self.default == self._NO_DEFAULT_ARGUMENT:
-            util.raise_(AttributeError(self.attr_name), replace_context=err)
+            raise AttributeError(self.attr_name) from err
         else:
             return self.default
 
@@ -337,7 +336,7 @@ class index_property(hybrid_property):  # noqa
         try:
             del column_value[self.index]
         except KeyError as err:
-            util.raise_(AttributeError(self.attr_name), replace_context=err)
+            raise AttributeError(self.attr_name) from err
         else:
             setattr(instance, attr_name, column_value)
             flag_modified(instance, attr_name)

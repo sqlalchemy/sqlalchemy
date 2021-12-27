@@ -221,10 +221,9 @@ class AsyncAdapt_aiosqlite_connection(AdaptedConnection):
             isinstance(error, ValueError)
             and error.args[0] == "no active connection"
         ):
-            util.raise_(
-                self.dbapi.sqlite.OperationalError("no active connection"),
-                from_=error,
-            )
+            raise self.dbapi.sqlite.OperationalError(
+                "no active connection"
+            ) from error
         else:
             raise error
 

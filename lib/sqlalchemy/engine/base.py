@@ -1115,9 +1115,7 @@ class Connection(ConnectionEventsTarget):
         try:
             meth = statement._execute_on_connection
         except AttributeError as err:
-            util.raise_(
-                exc.ObjectNotExecutableError(statement), replace_context=err
-            )
+            raise exc.ObjectNotExecutableError(statement) from err
         else:
             return meth(
                 self,
@@ -1670,21 +1668,15 @@ class Connection(ConnectionEventsTarget):
         invalidate_pool_on_disconnect = not is_exit_exception
 
         if self._reentrant_error:
-            util.raise_(
-                exc.DBAPIError.instance(
-                    statement,
-                    parameters,
-                    e,
-                    self.dialect.dbapi.Error,
-                    hide_parameters=self.engine.hide_parameters,
-                    dialect=self.dialect,
-                    ismulti=context.executemany
-                    if context is not None
-                    else None,
-                ),
-                with_traceback=exc_info[2],
-                from_=e,
-            )
+            raise exc.DBAPIError.instance(
+                statement,
+                parameters,
+                e,
+                self.dialect.dbapi.Error,
+                hide_parameters=self.engine.hide_parameters,
+                dialect=self.dialect,
+                ismulti=context.executemany if context is not None else None,
+            ).with_traceback(exc_info[2]) from e
         self._reentrant_error = True
         try:
             # non-DBAPI error - if we already got a context,
@@ -1773,14 +1765,11 @@ class Connection(ConnectionEventsTarget):
                         self._rollback_impl()
 
             if newraise:
-                util.raise_(newraise, with_traceback=exc_info[2], from_=e)
+                raise newraise.with_traceback(exc_info[2]) from e
             elif should_wrap:
-                util.raise_(
-                    sqlalchemy_exception, with_traceback=exc_info[2], from_=e
-                )
+                raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
             else:
-                util.raise_(exc_info[1], with_traceback=exc_info[2])
-
+                raise exc_info[1].with_traceback(exc_info[2])
         finally:
             del self._reentrant_error
             if self._is_disconnect:
@@ -1844,13 +1833,11 @@ class Connection(ConnectionEventsTarget):
                 ) = ctx.is_disconnect
 
         if newraise:
-            util.raise_(newraise, with_traceback=exc_info[2], from_=e)
+            raise newraise.with_traceback(exc_info[2]) from e
         elif should_wrap:
-            util.raise_(
-                sqlalchemy_exception, with_traceback=exc_info[2], from_=e
-            )
+            raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
         else:
-            util.raise_(exc_info[1], with_traceback=exc_info[2])
+            raise exc_info[1].with_traceback(exc_info[2])
 
     def _run_ddl_visitor(self, visitorcallable, element, **kwargs):
         """run a DDL visitor.

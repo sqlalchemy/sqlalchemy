@@ -1730,13 +1730,10 @@ def _sort_states(mapper, states):
             persistent, key=mapper._persistent_sortkey_fn
         )
     except TypeError as err:
-        util.raise_(
-            sa_exc.InvalidRequestError(
-                "Could not sort objects by primary key; primary key "
-                "values must be sortable in Python (was: %s)" % err
-            ),
-            replace_context=err,
-        )
+        raise sa_exc.InvalidRequestError(
+            "Could not sort objects by primary key; primary key "
+            "values must be sortable in Python (was: %s)" % err
+        ) from err
     return (
         sorted(pending, key=operator.attrgetter("insert_order"))
         + persistent_sorted
@@ -1942,14 +1939,11 @@ class BulkUDCompileState(CompileState):
                     return True
 
         except evaluator.UnevaluatableError as err:
-            util.raise_(
-                sa_exc.InvalidRequestError(
-                    'Could not evaluate current criteria in Python: "%s". '
-                    "Specify 'fetch' or False for the "
-                    "synchronize_session execution option." % err
-                ),
-                from_=err,
-            )
+            raise sa_exc.InvalidRequestError(
+                'Could not evaluate current criteria in Python: "%s". '
+                "Specify 'fetch' or False for the "
+                "synchronize_session execution option." % err
+            ) from err
 
         if statement.__visit_name__ == "lambda_element":
             # ._resolved is called on every LambdaElement in order to

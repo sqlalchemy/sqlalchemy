@@ -47,7 +47,7 @@ class ResultMetaData:
 
     def _key_fallback(self, key, err, raiseerr=True):
         assert raiseerr
-        util.raise_(KeyError(key), replace_context=err)
+        raise KeyError(key) from err
 
     def _raise_for_nonint(self, key):
         raise TypeError(

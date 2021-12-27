@@ -147,7 +147,7 @@ class compound:
                 )
                 break
         else:
-            util.raise_(ex, with_traceback=sys.exc_info()[2])
+            raise ex.with_traceback(sys.exc_info()[2])
 
     def _expect_success(self, config, name="block"):
         if not self.fails:

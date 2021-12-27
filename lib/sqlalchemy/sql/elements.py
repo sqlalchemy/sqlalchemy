@@ -848,13 +848,10 @@ class ColumnElement(
         try:
             comparator_factory = self.type.comparator_factory
         except AttributeError as err:
-            util.raise_(
-                TypeError(
-                    "Object %r associated with '.type' attribute "
-                    "is not a TypeEngine class or object" % self.type
-                ),
-                replace_context=err,
-            )
+            raise TypeError(
+                "Object %r associated with '.type' attribute "
+                "is not a TypeEngine class or object" % self.type
+            ) from err
         else:
             return comparator_factory(self)
 
@@ -862,17 +859,14 @@ class ColumnElement(
         try:
             return getattr(self.comparator, key)
         except AttributeError as err:
-            util.raise_(
-                AttributeError(
-                    "Neither %r object nor %r object has an attribute %r"
-                    % (
-                        type(self).__name__,
-                        type(self.comparator).__name__,
-                        key,
-                    )
-                ),
-                replace_context=err,
-            )
+            raise AttributeError(
+                "Neither %r object nor %r object has an attribute %r"
+                % (
+                    type(self).__name__,
+                    type(self.comparator).__name__,
+                    key,
+                )
+            ) from err
 
     def operate(self, op, *other, **kwargs):
         return op(self.comparator, *other, **kwargs)
@@ -1989,13 +1983,10 @@ class TextClause(
                 # so that a text() construct can support unique parameters
                 existing = new_params[bind._orig_key]
             except KeyError as err:
-                util.raise_(
-                    exc.ArgumentError(
-                        "This text() construct doesn't define a "
-                        "bound parameter named %r" % bind._orig_key
-                    ),
-                    replace_context=err,
-                )
+                raise exc.ArgumentError(
+                    "This text() construct doesn't define a "
+                    "bound parameter named %r" % bind._orig_key
+                ) from err
             else:
                 new_params[existing._orig_key] = bind
 
@@ -2003,13 +1994,10 @@ class TextClause(
             try:
                 existing = new_params[key]
             except KeyError as err:
-                util.raise_(
-                    exc.ArgumentError(
-                        "This text() construct doesn't define a "
-                        "bound parameter named %r" % key
-                    ),
-                    replace_context=err,
-                )
+                raise exc.ArgumentError(
+                    "This text() construct doesn't define a "
+                    "bound parameter named %r" % key
+                ) from err
             else:
                 new_params[key] = existing._with_value(value, required=False)
 
@@ -4175,12 +4163,9 @@ class Over(ColumnElement):
             try:
                 lower = int(range_[0])
             except ValueError as err:
-                util.raise_(
-                    exc.ArgumentError(
-                        "Integer or None expected for range value"
-                    ),
-                    replace_context=err,
-                )
+                raise exc.ArgumentError(
+                    "Integer or None expected for range value"
+                ) from err
             else:
                 if lower == 0:
                     lower = RANGE_CURRENT
@@ -4191,12 +4176,9 @@ class Over(ColumnElement):
             try:
                 upper = int(range_[1])
             except ValueError as err:
-                util.raise_(
-                    exc.ArgumentError(
-                        "Integer or None expected for range value"
-                    ),
-                    replace_context=err,
-                )
+                raise exc.ArgumentError(
+                    "Integer or None expected for range value"
+                ) from err
             else:
                 if upper == 0:
                     upper = RANGE_CURRENT

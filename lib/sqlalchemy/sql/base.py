@@ -199,7 +199,7 @@ class _DialectArgView(collections_abc.MutableMapping):
         try:
             dialect, value_key = key.split("_", 1)
         except ValueError as err:
-            util.raise_(KeyError(key), replace_context=err)
+            raise KeyError(key) from err
         else:
             return dialect, value_key
 
@@ -209,7 +209,7 @@ class _DialectArgView(collections_abc.MutableMapping):
         try:
             opt = self.obj.dialect_options[dialect]
         except exc.NoSuchModuleError as err:
-            util.raise_(KeyError(key), replace_context=err)
+            raise KeyError(key) from err
         else:
             return opt[value_key]
 
@@ -217,12 +217,9 @@ class _DialectArgView(collections_abc.MutableMapping):
         try:
             dialect, value_key = self._key(key)
         except KeyError as err:
-            util.raise_(
-                exc.ArgumentError(
-                    "Keys must be of the form <dialectname>_<argname>"
-                ),
-                replace_context=err,
-            )
+            raise exc.ArgumentError(
+                "Keys must be of the form <dialectname>_<argname>"
+            ) from err
         else:
             self.obj.dialect_options[dialect][value_key] = value
 
@@ -1203,7 +1200,7 @@ class ColumnCollection:
             return self._index[key]
         except KeyError as err:
             if isinstance(key, int):
-                util.raise_(IndexError(key), replace_context=err)
+                raise IndexError(key) from err
             else:
                 raise
 
@@ -1211,7 +1208,7 @@ class ColumnCollection:
         try:
             return self._index[key]
         except KeyError as err:
-            util.raise_(AttributeError(key), replace_context=err)
+            raise AttributeError(key) from err
 
     def __contains__(self, key):
         if key not in self._index:
@@ -1656,10 +1653,6 @@ def _entity_namespace_key(entity, key, default=NO_ARG):
         else:
             return getattr(ns, key)
     except AttributeError as err:
-        util.raise_(
-            exc.InvalidRequestError(
-                'Entity namespace for "%s" has no property "%s"'
-                % (entity, key)
-            ),
-            replace_context=err,
-        )
+        raise exc.InvalidRequestError(
+            'Entity namespace for "%s" has no property "%s"' % (entity, key)
+        ) from err

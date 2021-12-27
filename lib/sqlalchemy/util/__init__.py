@@ -63,9 +63,6 @@ from .compat import osx
 from .compat import py38
 from .compat import py39
 from .compat import pypy
-from .compat import raise_
-from .compat import raise_from_cause
-from .compat import reraise
 from .compat import threading
 from .compat import win32
 from .concurrency import asyncio

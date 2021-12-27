@@ -1403,13 +1403,10 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                         try:
                             right = right.entity
                         except AttributeError as err:
-                            util.raise_(
-                                sa_exc.ArgumentError(
-                                    "Join target %s does not refer to a "
-                                    "mapped entity" % right
-                                ),
-                                replace_context=err,
-                            )
+                            raise sa_exc.ArgumentError(
+                                "Join target %s does not refer to a "
+                                "mapped entity" % right
+                            ) from err
 
                 left = onclause._parententity
 
@@ -1558,13 +1555,10 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                         try:
                             right = right.entity
                         except AttributeError as err:
-                            util.raise_(
-                                sa_exc.ArgumentError(
-                                    "Join target %s does not refer to a "
-                                    "mapped entity" % right
-                                ),
-                                replace_context=err,
-                            )
+                            raise sa_exc.ArgumentError(
+                                "Join target %s does not refer to a "
+                                "mapped entity" % right
+                            ) from err
 
                 left = onclause._parententity
 

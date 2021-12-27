@@ -280,7 +280,7 @@ class RoleImpl:
         if advice:
             msg += " " + advice
 
-        util.raise_(exc.ArgumentError(msg, code=code), replace_context=err)
+        raise exc.ArgumentError(msg, code=code) from err
 
 
 class _Deannotate:
@@ -345,18 +345,15 @@ class _ColumnCoercions:
 def _no_text_coercion(
     element, argname=None, exc_cls=exc.ArgumentError, extra=None, err=None
 ):
-    util.raise_(
-        exc_cls(
-            "%(extra)sTextual SQL expression %(expr)r %(argname)sshould be "
-            "explicitly declared as text(%(expr)r)"
-            % {
-                "expr": util.ellipses_string(element),
-                "argname": "for argument %s" % (argname,) if argname else "",
-                "extra": "%s " % extra if extra else "",
-            }
-        ),
-        replace_context=err,
-    )
+    raise exc_cls(
+        "%(extra)sTextual SQL expression %(expr)r %(argname)sshould be "
+        "explicitly declared as text(%(expr)r)"
+        % {
+            "expr": util.ellipses_string(element),
+            "argname": "for argument %s" % (argname,) if argname else "",
+            "extra": "%s " % extra if extra else "",
+        }
+    ) from err
 
 
 class _NoTextCoercion:

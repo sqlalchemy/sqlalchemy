@@ -3101,22 +3101,16 @@ class MSDialect(default.DefaultDialect):
                 {"p1": self._temp_table_name_like_pattern(tablename)},
             ).one()
         except exc.MultipleResultsFound as me:
-            util.raise_(
-                exc.UnreflectableTableError(
-                    "Found more than one temporary table named '%s' in tempdb "
-                    "at this time. Cannot reliably resolve that name to its "
-                    "internal table name." % tablename
-                ),
-                replace_context=me,
-            )
+            raise exc.UnreflectableTableError(
+                "Found more than one temporary table named '%s' in tempdb "
+                "at this time. Cannot reliably resolve that name to its "
+                "internal table name." % tablename
+            ) from me
         except exc.NoResultFound as ne:
-            util.raise_(
-                exc.NoSuchTableError(
-                    "Unable to find a temporary table named '%s' in tempdb."
-                    % tablename
-                ),
-                replace_context=ne,
-            )
+            raise exc.NoSuchTableError(
+                "Unable to find a temporary table named '%s' in tempdb."
+                % tablename
+            ) from ne
 
     @reflection.cache
     @_db_plus_owner

@@ -1250,12 +1250,9 @@ class SQLiteCompiler(compiler.SQLCompiler):
                 self.process(extract.expr, **kw),
             )
         except KeyError as err:
-            util.raise_(
-                exc.CompileError(
-                    "%s is not a valid extract argument." % extract.field
-                ),
-                replace_context=err,
-            )
+            raise exc.CompileError(
+                "%s is not a valid extract argument." % extract.field
+            ) from err
 
     def limit_clause(self, select, **kw):
         text = ""
