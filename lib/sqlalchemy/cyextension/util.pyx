@@ -64,7 +64,7 @@ cdef class cache_anon_map(dict):
         self._index = 0
 
     def get_anon(self, obj):
-        cdef long idself
+        cdef long long idself
         cdef str id_
         cdef dict self_dict = self
 
