@@ -418,9 +418,13 @@ class LiteralValueImpl(RoleImpl):
 class _SelectIsNotFrom:
     __slots__ = ()
 
-    def _raise_for_expected(self, element, argname=None, resolved=None, **kw):
-        if isinstance(element, roles.SelectStatementRole) or isinstance(
-            resolved, roles.SelectStatementRole
+    def _raise_for_expected(
+        self, element, argname=None, resolved=None, advice=None, **kw
+    ):
+        if (
+            not advice
+            and isinstance(element, roles.SelectStatementRole)
+            or isinstance(resolved, roles.SelectStatementRole)
         ):
             advice = (
                 "To create a "
@@ -429,7 +433,7 @@ class _SelectIsNotFrom:
             )
             code = "89ve"
         else:
-            advice = code = None
+            code = None
 
         return super(_SelectIsNotFrom, self)._raise_for_expected(
             element,
@@ -814,6 +818,19 @@ class ColumnsClauseImpl(_SelectIsNotFrom, _CoerceLiterals, RoleImpl):
     _coerce_star = True
 
     _guess_straight_column = re.compile(r"^\w\S*$", re.I)
+
+    def _raise_for_expected(
+        self, element, argname=None, resolved=None, advice=None, **kw
+    ):
+        if not advice and isinstance(element, list):
+            advice = (
+                f"Did you mean to say select("
+                f"{', '.join(repr(e) for e in element)})?"
+            )
+
+        return super(ColumnsClauseImpl, self)._raise_for_expected(
+            element, argname=argname, resolved=resolved, advice=advice, **kw
+        )
 
     def _text_coercion(self, element, argname=None):
         element = str(element)

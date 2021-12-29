@@ -10,7 +10,6 @@ from sqlalchemy import case
 from sqlalchemy import CHAR
 from sqlalchemy import column
 from sqlalchemy import exc
-from sqlalchemy import exists
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
 from sqlalchemy import Integer
@@ -36,7 +35,6 @@ from sqlalchemy.sql import quoted_name
 from sqlalchemy.sql import roles
 from sqlalchemy.sql import update
 from sqlalchemy.sql import visitors
-from sqlalchemy.sql.selectable import LABEL_STYLE_NONE
 from sqlalchemy.sql.selectable import SelectStatementGrouping
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assertions
@@ -314,156 +312,6 @@ class SelectableTest(fixtures.TestBase, AssertsCompiledSQL):
             r"Select.get_final_froms\(\) method."
         ):
             eq_(stmt.froms, [t1])
-
-    def test_select_list_argument(self):
-
-        with testing.expect_deprecated_20(
-            r"The legacy calling style of select\(\) is deprecated "
-            "and will be removed in SQLAlchemy 2.0"
-        ):
-            stmt = select([column("q")])
-        self.assert_compile(stmt, "SELECT q")
-
-    def test_select_column_collection_argument(self):
-        t1 = table("t1", column("q"))
-
-        with testing.expect_deprecated_20(
-            r"The legacy calling style of select\(\) is deprecated "
-            "and will be removed in SQLAlchemy 2.0"
-        ):
-            stmt = select(t1.c)
-        self.assert_compile(stmt, "SELECT t1.q FROM t1")
-
-    def test_select_kw_argument(self):
-
-        with testing.expect_deprecated_20(
-            r"The legacy calling style of select\(\) is deprecated "
-            "and will be removed in SQLAlchemy 2.0"
-        ):
-            stmt = select(whereclause=column("q") == 5).add_columns(
-                column("q")
-            )
-        self.assert_compile(stmt, "SELECT q WHERE q = :q_1")
-
-    @testing.combinations(
-        (
-            lambda table1: table1.select(table1.c.col1 == 5),
-            "FromClause",
-            "whereclause",
-            "SELECT table1.col1, table1.col2, table1.col3, table1.colx "
-            "FROM table1 WHERE table1.col1 = :col1_1",
-        ),
-        (
-            lambda table1: table1.select(whereclause=table1.c.col1 == 5),
-            "FromClause",
-            "whereclause",
-            "SELECT table1.col1, table1.col2, table1.col3, table1.colx "
-            "FROM table1 WHERE table1.col1 = :col1_1",
-        ),
-        (
-            lambda table1: table1.select(order_by=table1.c.col1),
-            "FromClause",
-            "kwargs",
-            "SELECT table1.col1, table1.col2, table1.col3, table1.colx "
-            "FROM table1 ORDER BY table1.col1",
-        ),
-        (
-            lambda table1: exists().select(table1.c.col1 == 5),
-            "Exists",
-            "whereclause",
-            "SELECT EXISTS (SELECT *) AS anon_1 FROM table1 "
-            "WHERE table1.col1 = :col1_1",
-        ),
-        (
-            lambda table1: exists().select(whereclause=table1.c.col1 == 5),
-            "Exists",
-            "whereclause",
-            "SELECT EXISTS (SELECT *) AS anon_1 FROM table1 "
-            "WHERE table1.col1 = :col1_1",
-        ),
-        (
-            lambda table1: exists().select(
-                order_by=table1.c.col1, from_obj=table1
-            ),
-            "Exists",
-            "kwargs",
-            "SELECT EXISTS (SELECT *) AS anon_1 FROM table1 "
-            "ORDER BY table1.col1",
-        ),
-        (
-            lambda table1, table2: table1.join(table2)
-            .select(table1.c.col1 == 5)
-            .set_label_style(LABEL_STYLE_NONE),
-            "Join",
-            "whereclause",
-            "SELECT table1.col1, table1.col2, table1.col3, table1.colx, "
-            "table2.col1, table2.col2, table2.col3, table2.coly FROM table1 "
-            "JOIN table2 ON table1.col1 = table2.col2 "
-            "WHERE table1.col1 = :col1_1",
-        ),
-        (
-            lambda table1, table2: table1.join(table2)
-            .select(whereclause=table1.c.col1 == 5)
-            .set_label_style(LABEL_STYLE_NONE),
-            "Join",
-            "whereclause",
-            "SELECT table1.col1, table1.col2, table1.col3, table1.colx, "
-            "table2.col1, table2.col2, table2.col3, table2.coly FROM table1 "
-            "JOIN table2 ON table1.col1 = table2.col2 "
-            "WHERE table1.col1 = :col1_1",
-        ),
-        (
-            lambda table1, table2: table1.join(table2)
-            .select(order_by=table1.c.col1)
-            .set_label_style(LABEL_STYLE_NONE),
-            "Join",
-            "kwargs",
-            "SELECT table1.col1, table1.col2, table1.col3, table1.colx, "
-            "table2.col1, table2.col2, table2.col3, table2.coly FROM table1 "
-            "JOIN table2 ON table1.col1 = table2.col2 "
-            "ORDER BY table1.col1",
-        ),
-    )
-    def test_select_method_parameters(
-        self, stmt, clsname, paramname, expected_sql
-    ):
-        if paramname == "whereclause":
-            warning_txt = (
-                r"The %s.select\(\).whereclause parameter is deprecated "
-                "and will be removed in version 2.0" % clsname
-            )
-        else:
-            warning_txt = (
-                r"The %s.select\(\) method will no longer accept "
-                "keyword arguments in version 2.0. " % clsname
-            )
-        with testing.expect_deprecated_20(
-            warning_txt,
-            r"The legacy calling style of select\(\) is deprecated "
-            "and will be removed in SQLAlchemy 2.0",
-        ):
-            stmt = testing.resolve_lambda(
-                stmt, table1=self.table1, table2=self.table2
-            )
-
-        self.assert_compile(stmt, expected_sql)
-
-    def test_deprecated_subquery_standalone(self):
-        from sqlalchemy import subquery
-
-        with testing.expect_deprecated(
-            r"The standalone subquery\(\) function is deprecated"
-        ):
-            stmt = subquery(
-                None,
-                [literal_column("1").label("a")],
-                order_by=literal_column("1"),
-            )
-
-        self.assert_compile(
-            select(stmt),
-            "SELECT anon_1.a FROM (SELECT 1 AS a ORDER BY 1) AS anon_1",
-        )
 
     def test_case_list_legacy(self):
         t1 = table("t", column("q"))
@@ -1681,64 +1529,3 @@ class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
             column("othername", String),
         )
         return table1, table2
-
-    def test_legacy_calling_style_kw_only(self, table_fixture):
-        table1, table2 = table_fixture
-        with testing.expect_deprecated_20(
-            "The legacy calling style of select"
-        ):
-            stmt = select(
-                whereclause=table1.c.myid == table2.c.otherid
-            ).add_columns(table1.c.myid)
-
-            self.assert_compile(
-                stmt,
-                "SELECT mytable.myid FROM mytable, myothertable "
-                "WHERE mytable.myid = myothertable.otherid",
-            )
-
-    def test_legacy_calling_style_col_seq_only(self, table_fixture):
-        table1, table2 = table_fixture
-        with testing.expect_deprecated_20(
-            "The legacy calling style of select"
-        ):
-            # keep [] here
-            stmt = select([table1.c.myid]).where(
-                table1.c.myid == table2.c.otherid
-            )
-
-            self.assert_compile(
-                stmt,
-                "SELECT mytable.myid FROM mytable, myothertable "
-                "WHERE mytable.myid = myothertable.otherid",
-            )
-
-    def test_new_calling_style_thing_ok_actually_use_iter(self, table_fixture):
-        table1, table2 = table_fixture
-
-        class Thing:
-            def __iter__(self):
-                return iter([table1.c.name, table1.c.description])
-
-        with testing.expect_deprecated_20(
-            "The legacy calling style of select"
-        ):
-            stmt = select(Thing())
-            self.assert_compile(
-                stmt,
-                "SELECT mytable.name, mytable.description FROM mytable",
-            )
-
-    def test_kw_triggers_old_style(self, table_fixture):
-        table1, table2 = table_fixture
-        with testing.expect_deprecated_20(
-            "The legacy calling style of select"
-        ):
-            assert_raises_message(
-                exc.ArgumentError,
-                r"select\(\) construct created in legacy mode, "
-                "i.e. with keyword arguments",
-                select,
-                table1.c.myid,
-                whereclause=table1.c.myid == table2.c.otherid,
-            )

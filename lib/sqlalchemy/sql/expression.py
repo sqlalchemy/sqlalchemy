@@ -7,10 +7,6 @@
 
 """Defines the public namespace for SQL expression constructs.
 
-Prior to version 0.9, this module contained all of "elements", "dml",
-"default_comparator" and "selectable".   The module was broken up
-and most "factory" functions were moved to be grouped with their associated
-class.
 
 """
 
@@ -169,7 +165,6 @@ from .selectable import Select
 from .selectable import Selectable
 from .selectable import SelectBase
 from .selectable import Subquery
-from .selectable import subquery
 from .selectable import TableClause
 from .selectable import TableSample
 from .selectable import TableValuedAlias

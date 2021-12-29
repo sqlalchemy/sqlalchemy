@@ -34,4 +34,8 @@
       long-documented approach of using ``Class.attrname`` for loader option
       targets is now standard.
 
+    * Legacy forms of :func:`_sql.select` removed, including
+      ``select([cols])``, the "whereclause" and keyword parameters of
+      ``some_table.select()``.
+
     * More are in progress as development continues

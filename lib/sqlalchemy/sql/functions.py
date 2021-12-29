@@ -8,6 +8,7 @@
 """SQL function API, factories, and built-in functions.
 
 """
+
 from . import annotation
 from . import coercions
 from . import operators
@@ -557,7 +558,7 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
             self, name, table_value_type=self.type
         )
 
-    def select(self):
+    def select(self) -> "Select":
         """Produce a :func:`_expression.select` construct
         against this :class:`.FunctionElement`.
 
@@ -566,7 +567,7 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
             s = select(function_element)
 
         """
-        s = Select._create_select(self)
+        s = Select._create(self)
         if self._execution_options:
             s = s.execution_options(**self._execution_options)
         return s
