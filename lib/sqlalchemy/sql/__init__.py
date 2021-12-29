@@ -73,7 +73,6 @@ from .expression import select
 from .expression import Selectable
 from .expression import StatementLambdaElement
 from .expression import Subquery
-from .expression import subquery
 from .expression import table
 from .expression import TableClause
 from .expression import TableSample

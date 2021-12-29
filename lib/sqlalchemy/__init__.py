@@ -73,7 +73,6 @@ from .sql import outerjoin
 from .sql import outparam
 from .sql import over
 from .sql import select
-from .sql import subquery
 from .sql import table
 from .sql import tablesample
 from .sql import text

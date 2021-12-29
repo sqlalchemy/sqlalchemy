@@ -16,6 +16,7 @@ from sqlalchemy.sql import literal
 from sqlalchemy.sql import table
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 
 table1 = table(
@@ -54,8 +55,16 @@ grandchild = Table(
 )
 
 
-class FutureSelectTest(fixtures.TestBase, AssertsCompiledSQL):
+class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
+
+    def test_old_bracket_style_fail(self):
+        with expect_raises_message(
+            exc.ArgumentError,
+            r"Column expression or FROM clause expected, "
+            r".*Did you mean to say",
+        ):
+            select([table1.c.myid])
 
     def test_new_calling_style(self):
         stmt = select(table1.c.myid).where(table1.c.myid == table2.c.otherid)

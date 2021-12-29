@@ -15,4 +15,4 @@ from ..sql.selectable import Select
 from ..util.langhelpers import public_factory
 
 
-select = public_factory(Select._create_future_select, ".future.select")
+select = public_factory(Select._create, ".future.select")
