@@ -60,7 +60,7 @@ class BackendDialectTest(
         engine = engines.testing_engine()
 
         def my_execute(self, statement, *args, **kw):
-            if statement.startswith("SHOW VARIABLES"):
+            if statement.startswith("SELECT @@"):
                 statement = "SELECT 1 FROM DUAL WHERE 1=0"
             return real_exec(self, statement, *args, **kw)
 
