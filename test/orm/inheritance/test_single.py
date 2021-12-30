@@ -6,7 +6,6 @@ from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import literal
-from sqlalchemy import literal_column
 from sqlalchemy import null
 from sqlalchemy import select
 from sqlalchemy import String
@@ -306,35 +305,6 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             [e2id],
         )
 
-    def test_from_self_legacy(self):
-        Engineer = self.classes.Engineer
-
-        sess = fixture_session()
-        with testing.expect_deprecated(r"The Query.from_self\(\) method"):
-            self.assert_compile(
-                sess.query(Engineer).from_self(),
-                "SELECT anon_1.employees_employee_id AS "
-                "anon_1_employees_employee_id, "
-                "anon_1.employees_name AS "
-                "anon_1_employees_name, "
-                "anon_1.employees_manager_data AS "
-                "anon_1_employees_manager_data, "
-                "anon_1.employees_engineer_info AS "
-                "anon_1_employees_engineer_info, "
-                "anon_1.employees_type AS "
-                "anon_1_employees_type FROM (SELECT "
-                "employees.employee_id AS "
-                "employees_employee_id, employees.name AS "
-                "employees_name, employees.manager_data AS "
-                "employees_manager_data, "
-                "employees.engineer_info AS "
-                "employees_engineer_info, employees.type "
-                "AS employees_type FROM employees WHERE "
-                "employees.type IN (__[POSTCOMPILE_type_1])) AS "
-                "anon_1",
-                use_default_dialect=True,
-            )
-
     def test_from_subq(self):
         Engineer = self.classes.Engineer
 
@@ -500,21 +470,6 @@ class SingleInheritanceTest(testing.AssertsCompiledSQL, fixtures.MappedTest):
             "FROM employees WHERE employees.type IN (__[POSTCOMPILE_type_1]) "
             "GROUP BY employees.employee_id HAVING employees.name = :name_1",
         )
-
-    def test_from_self_count(self):
-        Engineer = self.classes.Engineer
-
-        sess = fixture_session()
-        col = func.count(literal_column("*"))
-        with testing.expect_deprecated(r"The Query.from_self\(\) method"):
-            self.assert_compile(
-                sess.query(Engineer.employee_id).from_self(col),
-                "SELECT count(*) AS count_1 "
-                "FROM (SELECT employees.employee_id AS employees_employee_id "
-                "FROM employees "
-                "WHERE employees.type IN (__[POSTCOMPILE_type_1])) AS anon_1",
-                use_default_dialect=True,
-            )
 
     def test_select_from_count(self):
         Manager, Engineer = (self.classes.Manager, self.classes.Engineer)

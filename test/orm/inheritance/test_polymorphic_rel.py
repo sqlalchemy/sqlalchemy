@@ -1481,44 +1481,6 @@ class _PolymorphicTestBase(fixtures.NoCache):
             expected,
         )
 
-    def test_self_referential_two(self):
-
-        sess = fixture_session()
-        palias = aliased(Person)
-        expected = [(m1, e1), (m1, e2), (m1, b1)]
-
-        with testing.expect_deprecated(r"The Query.from_self\(\) method"):
-            eq_(
-                sess.query(Person, palias)
-                .filter(Person.company_id == palias.company_id)
-                .filter(Person.name == "dogbert")
-                .filter(Person.person_id > palias.person_id)
-                .from_self()
-                .order_by(Person.person_id, palias.person_id)
-                .all(),
-                expected,
-            )
-
-    def test_self_referential_two_point_five(self):
-        """Using two aliases, the above case works."""
-        sess = fixture_session()
-        palias = aliased(Person)
-        palias2 = aliased(Person)
-
-        expected = [(m1, e1), (m1, e2), (m1, b1)]
-
-        with testing.expect_deprecated(r"The Query.from_self\(\) method"):
-            eq_(
-                sess.query(palias, palias2)
-                .filter(palias.company_id == palias2.company_id)
-                .filter(palias.name == "dogbert")
-                .filter(palias.person_id > palias2.person_id)
-                .from_self()
-                .order_by(palias.person_id, palias2.person_id)
-                .all(),
-                expected,
-            )
-
     def test_self_referential_two_future(self):
         # TODO: this is the SECOND test *EVER* of an aliased class of
         # an aliased class.

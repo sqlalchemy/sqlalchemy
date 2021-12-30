@@ -1449,10 +1449,6 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
 
         q.enable_assertions(False).select_from(users)
 
-        with testing.expect_deprecated("The Query.from_self"):
-            # this is fine, however
-            q.from_self()
-
     def test_invalid_select_from(self):
         User = self.classes.User
 
@@ -1503,7 +1499,6 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
             q.from_statement,
             text("select * from table"),
         )
-        assert_raises(sa_exc.InvalidRequestError, q.with_polymorphic, User)
 
     def test_order_by(self):
         """test that an order_by() call is not valid before 'clauseelement'
@@ -1519,7 +1514,6 @@ class InvalidGenerationsTest(QueryTest, AssertsCompiledSQL):
             q.from_statement,
             text("select * from table"),
         )
-        assert_raises(sa_exc.InvalidRequestError, q.with_polymorphic, User)
 
     def test_entity_or_mapper_zero_from_context(self):
         User, Address = self.classes.User, self.classes.Address

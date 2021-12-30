@@ -4636,7 +4636,7 @@ class SelectState(util.MemoizedSlots, CompileState):
 class _SelectFromElements:
     def _iterate_from_elements(self):
         # note this does not include elements
-        # in _setup_joins or _legacy_setup_joins
+        # in _setup_joins
 
         seen = set()
         for element in self._raw_columns:
@@ -4666,7 +4666,6 @@ class _MemoizedSelectEntities(
     _traverse_internals = [
         ("_raw_columns", InternalTraversal.dp_clauseelement_list),
         ("_setup_joins", InternalTraversal.dp_setup_join_tuple),
-        ("_legacy_setup_joins", InternalTraversal.dp_setup_join_tuple),
         ("_with_options", InternalTraversal.dp_executable_options),
     ]
 
@@ -4680,22 +4679,15 @@ class _MemoizedSelectEntities(
 
     @classmethod
     def _generate_for_statement(cls, select_stmt):
-        if (
-            select_stmt._setup_joins
-            or select_stmt._legacy_setup_joins
-            or select_stmt._with_options
-        ):
+        if select_stmt._setup_joins or select_stmt._with_options:
             self = _MemoizedSelectEntities()
             self._raw_columns = select_stmt._raw_columns
             self._setup_joins = select_stmt._setup_joins
-            self._legacy_setup_joins = select_stmt._legacy_setup_joins
             self._with_options = select_stmt._with_options
 
             select_stmt._memoized_select_entities += (self,)
             select_stmt._raw_columns = (
                 select_stmt._setup_joins
-            ) = (
-                select_stmt._legacy_setup_joins
             ) = select_stmt._with_options = ()
 
 
@@ -4730,7 +4722,6 @@ class Select(
     __visit_name__ = "select"
 
     _setup_joins = ()
-    _legacy_setup_joins = ()
     _memoized_select_entities = ()
 
     _distinct = False
@@ -4757,7 +4748,6 @@ class Select(
             ("_order_by_clauses", InternalTraversal.dp_clauseelement_tuple),
             ("_group_by_clauses", InternalTraversal.dp_clauseelement_tuple),
             ("_setup_joins", InternalTraversal.dp_setup_join_tuple),
-            ("_legacy_setup_joins", InternalTraversal.dp_setup_join_tuple),
             ("_correlate", InternalTraversal.dp_clauseelement_tuple),
             ("_correlate_except", InternalTraversal.dp_clauseelement_tuple),
             ("_limit_clause", InternalTraversal.dp_clauseelement),
@@ -4921,7 +4911,7 @@ class Select(
 
     @_generative
     def join(
-        self: SelfSelect, target, onclause=None, isouter=False, full=False
+        self: SelfSelect, target, onclause=None, *, isouter=False, full=False
     ) -> SelfSelect:
         r"""Create a SQL JOIN against this :class:`_expression.Select`
         object's criterion
@@ -4990,7 +4980,7 @@ class Select(
         )
         return self
 
-    def outerjoin_from(self, from_, target, onclause=None, full=False):
+    def outerjoin_from(self, from_, target, onclause=None, *, full=False):
         r"""Create a SQL LEFT OUTER JOIN against this :class:`_expression.Select`
         object's criterion
         and apply generatively, returning the newly resulting
@@ -5009,8 +4999,9 @@ class Select(
         from_,
         target,
         onclause=None,
+        *,
         isouter=False,
-        full=False,
+        full=False
     ) -> SelfSelect:
         r"""Create a SQL JOIN against this :class:`_expression.Select`
         object's criterion
@@ -5071,7 +5062,7 @@ class Select(
         )
         return self
 
-    def outerjoin(self, target, onclause=None, full=False):
+    def outerjoin(self, target, onclause=None, *, full=False):
         """Create a left outer join.
 
         Parameters are the same as that of :meth:`_expression.Select.join`.

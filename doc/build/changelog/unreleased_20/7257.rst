@@ -30,6 +30,15 @@
       relationship names; the long-documented approach of using
       ``Class.attrname`` for join targets is now standard.
 
+    * :meth:`_orm.Query.join` no longer accepts the "aliased" and
+      "from_joinpoint" arguments
+
+    * :meth:`_orm.Query.join` no longer accepts chains of multiple join
+      targets in one method call.
+
+    * ``Query.from_self()``, ``Query.select_entity_from()`` and
+      ``Query.with_polymorphic()`` are removed.
+
     * Loader options no longer accept strings for attribute names.  The
       long-documented approach of using ``Class.attrname`` for loader option
       targets is now standard.

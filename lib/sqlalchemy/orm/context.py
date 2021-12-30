@@ -27,7 +27,6 @@ from ..sql import expression
 from ..sql import roles
 from ..sql import util as sql_util
 from ..sql import visitors
-from ..sql.base import _entity_namespace_key
 from ..sql.base import _select_iterables
 from ..sql.base import CacheableOptions
 from ..sql.base import CompileState
@@ -36,7 +35,6 @@ from ..sql.selectable import LABEL_STYLE_DISAMBIGUATE_ONLY
 from ..sql.selectable import LABEL_STYLE_NONE
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..sql.selectable import SelectState
-from ..sql.visitors import ExtendedInternalTraversal
 from ..sql.visitors import InternalTraversal
 
 _path_registry = PathRegistry.root
@@ -156,23 +154,14 @@ _orm_load_exec_options = util.immutabledict(
 
 
 class ORMCompileState(CompileState):
-    # note this is a dictionary, but the
-    # default_compile_options._with_polymorphic_adapt_map is a tuple
-    _with_polymorphic_adapt_map = _EMPTY_DICT
-
     class default_compile_options(CacheableOptions):
         _cache_key_traversal = [
             ("_use_legacy_query_style", InternalTraversal.dp_boolean),
             ("_for_statement", InternalTraversal.dp_boolean),
             ("_bake_ok", InternalTraversal.dp_boolean),
-            (
-                "_with_polymorphic_adapt_map",
-                ExtendedInternalTraversal.dp_has_cache_key_tuples,
-            ),
             ("_current_path", InternalTraversal.dp_has_cache_key),
             ("_enable_single_crit", InternalTraversal.dp_boolean),
             ("_enable_eagerloads", InternalTraversal.dp_boolean),
-            ("_orm_only_from_obj_alias", InternalTraversal.dp_boolean),
             ("_only_load_props", InternalTraversal.dp_plain_obj),
             ("_set_base_alias", InternalTraversal.dp_boolean),
             ("_for_refresh_state", InternalTraversal.dp_boolean),
@@ -192,11 +181,9 @@ class ORMCompileState(CompileState):
         _for_statement = False
 
         _bake_ok = True
-        _with_polymorphic_adapt_map = ()
         _current_path = _path_registry
         _enable_single_crit = True
         _enable_eagerloads = True
-        _orm_only_from_obj_alias = True
         _only_load_props = None
         _set_base_alias = False
         _for_refresh_state = False
@@ -391,7 +378,6 @@ class ORMCompileState(CompileState):
 
 @sql.base.CompileState.plugin_for("orm", "orm_from_statement")
 class ORMFromStatementCompileState(ORMCompileState):
-    _aliased_generations = util.immutabledict()
     _from_obj_alias = None
     _has_mapper_entities = False
 
@@ -524,7 +510,7 @@ class ORMFromStatementCompileState(ORMCompileState):
 
 @sql.base.CompileState.plugin_for("orm", "select")
 class ORMSelectCompileState(ORMCompileState, SelectState):
-    _joinpath = _joinpoint = _EMPTY_DICT
+    _already_joined_edges = ()
 
     _memoized_entities = _EMPTY_DICT
 
@@ -580,16 +566,8 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         self._entities = []
         self._primary_entity = None
-        self._aliased_generations = {}
         self._polymorphic_adapters = {}
         self._no_yield_pers = set()
-
-        # legacy: only for query.with_polymorphic()
-        if select_statement._compile_options._with_polymorphic_adapt_map:
-            self._with_polymorphic_adapt_map = dict(
-                select_statement._compile_options._with_polymorphic_adapt_map
-            )
-            self._setup_with_polymorphics()
 
         self.compile_options = select_statement._compile_options
 
@@ -735,17 +713,9 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                     memoized_entities._setup_joins,
                     self._memoized_entities[memoized_entities],
                 )
-            if memoized_entities._legacy_setup_joins:
-                self._legacy_join(
-                    memoized_entities._legacy_setup_joins,
-                    self._memoized_entities[memoized_entities],
-                )
 
         if query._setup_joins:
             self._join(query._setup_joins, self._entities)
-
-        if query._legacy_setup_joins:
-            self._legacy_join(query._legacy_setup_joins, self._entities)
 
         current_adapter = self._get_current_adapter()
 
@@ -876,18 +846,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         self._entities = []
         self._primary_entity = None
-        self._aliased_generations = {}
         self._polymorphic_adapters = {}
-
-        compile_options = cls.default_compile_options.safe_merge(
-            query._compile_options
-        )
-        # legacy: only for query.with_polymorphic()
-        if compile_options._with_polymorphic_adapt_map:
-            self._with_polymorphic_adapt_map = dict(
-                compile_options._with_polymorphic_adapt_map
-            )
-            self._setup_with_polymorphics()
 
         self._label_convention = self._column_naming_convention(
             query._label_style, legacy
@@ -904,15 +863,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
     def determine_last_joined_entity(cls, statement):
         setup_joins = statement._setup_joins
 
-        if not setup_joins:
-            return None
-
-        (target, onclause, from_, flags) = setup_joins[-1]
-
-        if isinstance(target, interfaces.PropComparator):
-            return target.entity
-        else:
-            return target
+        return _determine_last_joined_entity(setup_joins, None)
 
     @classmethod
     def all_selected_columns(cls, statement):
@@ -965,11 +916,6 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             _propagate_attrs=statement._propagate_attrs,
         )
         return stmt
-
-    def _setup_with_polymorphics(self):
-        # legacy: only for query.with_polymorphic()
-        for ext_info, wp in self._with_polymorphic_adapt_map.items():
-            self._mapper_loads_polymorphically_with(ext_info, wp._adapter)
 
     def _set_select_from_alias(self):
 
@@ -1271,19 +1217,6 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         if alias:
             return alias.adapt_clause(element)
 
-    def _adapt_aliased_generation(self, element):
-        # this is crazy logic that I look forward to blowing away
-        # when aliased=True is gone :)
-        if "aliased_generation" in element._annotations:
-            for adapter in self._aliased_generations.get(
-                element._annotations["aliased_generation"], ()
-            ):
-                replaced_elem = adapter.replace(element)
-                if replaced_elem is not None:
-                    return replaced_elem
-
-        return None
-
     def _adapt_col_list(self, cols, current_adapter):
         if current_adapter:
             return [current_adapter(o, True) for o in cols]
@@ -1306,18 +1239,10 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             # to all SQL constructs.
             adapters.append(
                 (
-                    False
-                    if self.compile_options._orm_only_from_obj_alias
-                    else True,
+                    True,
                     self._from_obj_alias.replace,
                 )
             )
-
-        # vvvvvvvvvvvvvvv legacy vvvvvvvvvvvvvvvvvv
-        # this can totally go away when we remove join(..., aliased=True)
-        if self._aliased_generations:
-            adapters.append((False, self._adapt_aliased_generation))
-        # ^^^^^^^^^^^^^ legacy ^^^^^^^^^^^^^^^^^^^^^
 
         # this was *hopefully* the only adapter we were going to need
         # going forward...however, we unfortunately need _from_obj_alias
@@ -1351,29 +1276,18 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         for (right, onclause, from_, flags) in args:
             isouter = flags["isouter"]
             full = flags["full"]
-            # maybe?
-            self._reset_joinpoint()
 
             right = inspect(right)
             if onclause is not None:
                 onclause = inspect(onclause)
 
-            if onclause is None and isinstance(
-                right, interfaces.PropComparator
-            ):
-                # determine onclause/right_entity.  still need to think
-                # about how to best organize this since we are getting:
-                #
-                #
-                # q.join(Entity, Parent.property)
-                # q.join(Parent.property)
-                # q.join(Parent.property.of_type(Entity))
-                # q.join(some_table)
-                # q.join(some_table, some_parent.c.id==some_table.c.parent_id)
-                #
-                # is this still too many choices?  how do we handle this
-                # when sometimes "right" is implied and sometimes not?
-                #
+            if isinstance(right, interfaces.PropComparator):
+                if onclause is not None:
+                    raise sa_exc.InvalidRequestError(
+                        "No 'on clause' argument may be passed when joining "
+                        "to a relationship path as a target"
+                    )
+
                 onclause = right
                 right = None
             elif "parententity" in right._annotations:
@@ -1421,8 +1335,10 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                 if not isinstance(onclause, attributes.QueryableAttribute):
                     onclause = prop
 
-                # TODO: this is where "check for path already present"
-                # would occur. see if this still applies?
+                # check for this path already present.  don't render in that
+                # case.
+                if (left, right, prop.key) in self._already_joined_edges:
+                    continue
 
                 if from_ is not None:
                     if (
@@ -1454,164 +1370,9 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                 right,
                 onclause,
                 prop,
-                False,
-                False,
                 isouter,
                 full,
             )
-
-    def _legacy_join(self, args, entities_collection):
-        """consumes arguments from join() or outerjoin(), places them into a
-        consistent format with which to form the actual JOIN constructs.
-
-        """
-        for (right, onclause, left, flags) in args:
-
-            outerjoin = flags["isouter"]
-            create_aliases = flags["aliased"]
-            from_joinpoint = flags["from_joinpoint"]
-            full = flags["full"]
-            aliased_generation = flags["aliased_generation"]
-
-            # do a quick inspect to accommodate for a lambda
-            if right is not None and not isinstance(right, str):
-                right = inspect(right)
-            if onclause is not None and not isinstance(onclause, str):
-                onclause = inspect(onclause)
-
-            # legacy vvvvvvvvvvvvvvvvvvvvvvvvvv
-            if not from_joinpoint:
-                self._reset_joinpoint()
-            else:
-                prev_aliased_generation = self._joinpoint.get(
-                    "aliased_generation", None
-                )
-                if not aliased_generation:
-                    aliased_generation = prev_aliased_generation
-                elif prev_aliased_generation:
-                    self._aliased_generations[
-                        aliased_generation
-                    ] = self._aliased_generations.get(
-                        prev_aliased_generation, ()
-                    )
-            # legacy ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-            if (
-                isinstance(right, interfaces.PropComparator)
-                and onclause is None
-            ):
-                onclause = right
-                right = None
-            elif "parententity" in right._annotations:
-                right = right._annotations["parententity"]
-
-            if onclause is None:
-                if not right.is_selectable and not hasattr(right, "mapper"):
-                    raise sa_exc.ArgumentError(
-                        "Expected mapped entity or "
-                        "selectable/table as join target"
-                    )
-
-            if isinstance(onclause, interfaces.PropComparator):
-                of_type = getattr(onclause, "_of_type", None)
-            else:
-                of_type = None
-
-            if isinstance(onclause, str):
-                raise sa_exc.ArgumentError(
-                    "ORM mapped attributes as join targets must be "
-                    "stated the attribute itself, not string name"
-                )
-
-            # legacy vvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
-            # check for q.join(Class.propname, from_joinpoint=True)
-            # and Class corresponds at the mapper level to the current
-            # joinpoint.  this match intentionally looks for a non-aliased
-            # class-bound descriptor as the onclause and if it matches the
-            # current joinpoint at the mapper level, it's used.  This
-            # is a very old use case that is intended to make it easier
-            # to work with the aliased=True flag, which is also something
-            # that probably shouldn't exist on join() due to its high
-            # complexity/usefulness ratio
-            if from_joinpoint and isinstance(
-                onclause, interfaces.PropComparator
-            ):
-                jp0 = self._joinpoint_zero()
-                info = inspect(jp0)
-
-                if getattr(info, "mapper", None) is onclause._parententity:
-                    onclause = _entity_namespace_key(info, onclause.key)
-            # legacy ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-            if isinstance(onclause, interfaces.PropComparator):
-                # descriptor/property given (or determined); this tells us
-                # explicitly what the expected "left" side of the join is.
-                if right is None:
-                    if of_type:
-                        right = of_type
-                    else:
-                        right = onclause.property
-
-                        try:
-                            right = right.entity
-                        except AttributeError as err:
-                            raise sa_exc.ArgumentError(
-                                "Join target %s does not refer to a "
-                                "mapped entity" % right
-                            ) from err
-
-                left = onclause._parententity
-
-                alias = self._polymorphic_adapters.get(left, None)
-
-                # could be None or could be ColumnAdapter also
-                if isinstance(alias, ORMAdapter) and alias.mapper.isa(left):
-                    left = alias.aliased_class
-                    onclause = getattr(left, onclause.key)
-
-                prop = onclause.property
-                if not isinstance(onclause, attributes.QueryableAttribute):
-                    onclause = prop
-
-                if not create_aliases:
-                    # check for this path already present.
-                    # don't render in that case.
-                    edge = (left, right, prop.key)
-                    if edge in self._joinpoint:
-                        # The child's prev reference might be stale --
-                        # it could point to a parent older than the
-                        # current joinpoint.  If this is the case,
-                        # then we need to update it and then fix the
-                        # tree's spine with _update_joinpoint.  Copy
-                        # and then mutate the child, which might be
-                        # shared by a different query object.
-                        jp = self._joinpoint[edge].copy()
-                        jp["prev"] = (edge, self._joinpoint)
-                        self._update_joinpoint(jp)
-
-                        continue
-
-            else:
-                # no descriptor/property given; we will need to figure out
-                # what the effective "left" side is
-                prop = left = None
-
-            # figure out the final "left" and "right" sides and create an
-            # ORMJoin to add to our _from_obj tuple
-            self._join_left_to_right(
-                entities_collection,
-                left,
-                right,
-                onclause,
-                prop,
-                create_aliases,
-                aliased_generation,
-                outerjoin,
-                full,
-            )
-
-    def _joinpoint_zero(self):
-        return self._joinpoint.get("_joinpoint_entity", self._entity_zero())
 
     def _join_left_to_right(
         self,
@@ -1620,8 +1381,6 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         right,
         onclause,
         prop,
-        create_aliases,
-        aliased_generation,
         outerjoin,
         full,
     ):
@@ -1653,7 +1412,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                 use_entity_index,
             ) = self._join_place_explicit_left_side(entities_collection, left)
 
-        if left is right and not create_aliases:
+        if left is right:
             raise sa_exc.InvalidRequestError(
                 "Can't construct a join from %s to %s, they "
                 "are the same entity" % (left, right)
@@ -1663,7 +1422,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         # a lot of things can be wrong with it.  handle all that and
         # get back the new effective "right" side
         r_info, right, onclause = self._join_check_and_adapt_right_side(
-            left, right, onclause, prop, create_aliases, aliased_generation
+            left, right, onclause, prop
         )
 
         if not r_info.is_selectable:
@@ -1886,9 +1645,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         return replace_from_obj_index, use_entity_index
 
-    def _join_check_and_adapt_right_side(
-        self, left, right, onclause, prop, create_aliases, aliased_generation
-    ):
+    def _join_check_and_adapt_right_side(self, left, right, onclause, prop):
         """transform the "right" side of the join as well as the onclause
         according to polymorphic mapping translations, aliasing on the query
         or on the join, special cases where the right and left side have
@@ -1900,26 +1657,24 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         r_info = inspect(right)
 
         overlap = False
-        if not create_aliases:
-            right_mapper = getattr(r_info, "mapper", None)
-            # if the target is a joined inheritance mapping,
-            # be more liberal about auto-aliasing.
-            if right_mapper and (
-                right_mapper.with_polymorphic
-                or isinstance(right_mapper.persist_selectable, expression.Join)
-            ):
-                for from_obj in self.from_clauses or [l_info.selectable]:
-                    if sql_util.selectables_overlap(
-                        l_info.selectable, from_obj
-                    ) and sql_util.selectables_overlap(
-                        from_obj, r_info.selectable
-                    ):
-                        overlap = True
-                        break
 
-        if (
-            overlap or not create_aliases
-        ) and l_info.selectable is r_info.selectable:
+        right_mapper = getattr(r_info, "mapper", None)
+        # if the target is a joined inheritance mapping,
+        # be more liberal about auto-aliasing.
+        if right_mapper and (
+            right_mapper.with_polymorphic
+            or isinstance(right_mapper.persist_selectable, expression.Join)
+        ):
+            for from_obj in self.from_clauses or [l_info.selectable]:
+                if sql_util.selectables_overlap(
+                    l_info.selectable, from_obj
+                ) and sql_util.selectables_overlap(
+                    from_obj, r_info.selectable
+                ):
+                    overlap = True
+                    break
+
+        if overlap and l_info.selectable is r_info.selectable:
             raise sa_exc.InvalidRequestError(
                 "Can't join table/selectable '%s' to itself"
                 % l_info.selectable
@@ -2002,21 +1757,12 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                     code="xaj1",
                 )
 
-            elif create_aliases:
-                # it *could* work, but it doesn't right now and I'd rather
-                # get rid of aliased=True completely
-                raise sa_exc.InvalidRequestError(
-                    "The aliased=True parameter on query.join() only works "
-                    "with an ORM entity, not a plain selectable, as the "
-                    "target."
-                )
-
         # test for overlap:
         # orm/inheritance/relationships.py
         # SelfReferentialM2MTest
         aliased_entity = right_mapper and not right_is_aliased and overlap
 
-        if not need_adapter and (create_aliases or aliased_entity):
+        if not need_adapter and aliased_entity:
             # there are a few places in the ORM that automatic aliasing
             # is still desirable, and can't be automatic with a Core
             # only approach.  For illustrations of "overlaps" see
@@ -2026,17 +1772,15 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             right = aliased(right, flat=True)
             need_adapter = True
 
-            if not create_aliases:
-                util.warn(
-                    "An alias is being generated automatically against "
-                    "joined entity %s due to overlapping tables.  This is a "
-                    "legacy pattern which may be "
-                    "deprecated in a later release.  Use the "
-                    "aliased(<entity>, flat=True) "
-                    "construct explicitly, see the linked example."
-                    % right_mapper,
-                    code="xaj2",
-                )
+            util.warn(
+                "An alias is being generated automatically against "
+                "joined entity %s due to overlapping tables.  This is a "
+                "legacy pattern which may be "
+                "deprecated in a later release.  Use the "
+                "aliased(<entity>, flat=True) "
+                "construct explicitly, see the linked example." % right_mapper,
+                code="xaj2",
+            )
 
         if need_adapter:
             assert right_mapper
@@ -2049,13 +1793,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             # which is intended to wrap a the right side in a subquery,
             # ensure that columns retrieved from this target in the result
             # set are also adapted.
-            if not create_aliases:
-                self._mapper_loads_polymorphically_with(right_mapper, adapter)
-            elif aliased_generation:
-                adapter._debug = True
-                self._aliased_generations[aliased_generation] = (
-                    adapter,
-                ) + self._aliased_generations.get(aliased_generation, ())
+            self._mapper_loads_polymorphically_with(right_mapper, adapter)
         elif (
             not r_info.is_clause_element
             and not right_is_aliased
@@ -2090,36 +1828,10 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         # if joining on a MapperProperty path,
         # track the path to prevent redundant joins
-        if not create_aliases and prop:
-            self._update_joinpoint(
-                {
-                    "_joinpoint_entity": right,
-                    "prev": ((left, right, prop.key), self._joinpoint),
-                    "aliased_generation": aliased_generation,
-                }
-            )
-        else:
-            self._joinpoint = {
-                "_joinpoint_entity": right,
-                "aliased_generation": aliased_generation,
-            }
+        if prop:
+            self._already_joined_edges += ((left, right, prop.key),)
 
         return inspect(right), right, onclause
-
-    def _update_joinpoint(self, jp):
-        self._joinpoint = jp
-        # copy backwards to the root of the _joinpath
-        # dict, so that no existing dict in the path is mutated
-        while "prev" in jp:
-            f, prev = jp["prev"]
-            prev = dict(prev)
-            prev[f] = jp.copy()
-            jp["prev"] = (f, prev)
-            jp = prev
-        self._joinpath = jp
-
-    def _reset_joinpoint(self):
-        self._joinpoint = self._joinpath
 
     @property
     def _select_args(self):
@@ -2249,7 +1961,7 @@ def _column_descriptions(
 
 def _legacy_filter_by_entity_zero(query_or_augmented_select):
     self = query_or_augmented_select
-    if self._legacy_setup_joins:
+    if self._setup_joins:
         _last_joined_entity = self._last_joined_entity
         if _last_joined_entity is not None:
             return _last_joined_entity
@@ -2277,71 +1989,16 @@ def _entity_from_pre_ent_zero(query_or_augmented_select):
         return ent
 
 
-def _legacy_determine_last_joined_entity(setup_joins, entity_zero):
-    """given the legacy_setup_joins collection at a point in time,
-    figure out what the "filter by entity" would be in terms
-    of those joins.
-
-    in 2.0 this logic should hopefully be much simpler as there will
-    be far fewer ways to specify joins with the ORM
-
-    """
-
+def _determine_last_joined_entity(setup_joins, entity_zero=None):
     if not setup_joins:
-        return entity_zero
+        return None
 
-    # CAN BE REMOVED IN 2.0:
-    # 1. from_joinpoint
-    # 2. aliased_generation
-    # 3. aliased
-    # 4. any treating of prop as str
-    # 5. tuple madness
-    # 6. won't need recursive call anymore without #4
-    # 7. therefore can pass in just the last setup_joins record,
-    #    don't need entity_zero
+    (target, onclause, from_, flags) = setup_joins[-1]
 
-    (right, onclause, left_, flags) = setup_joins[-1]
-
-    from_joinpoint = flags["from_joinpoint"]
-
-    if onclause is None and isinstance(
-        right, (str, interfaces.PropComparator)
-    ):
-        onclause = right
-        right = None
-
-    if right is not None and "parententity" in right._annotations:
-        right = right._annotations["parententity"].entity
-
-    if right is not None:
-        last_entity = right
-        insp = inspect(last_entity)
-        if insp.is_clause_element or insp.is_aliased_class or insp.is_mapper:
-            return insp
-
-    last_entity = onclause
-    if isinstance(last_entity, interfaces.PropComparator):
-        return last_entity.entity
-
-    # legacy vvvvvvvvvvvvvvvvvvvvvvvvvvv
-    if isinstance(onclause, str):
-        if from_joinpoint:
-            prev = _legacy_determine_last_joined_entity(
-                setup_joins[0:-1], entity_zero
-            )
-        else:
-            prev = entity_zero
-
-        if prev is None:
-            return None
-
-        prev = inspect(prev)
-        attr = getattr(prev.entity, onclause, None)
-        if attr is not None:
-            return attr.property.entity
-    # legacy ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-    return None
+    if isinstance(target, interfaces.PropComparator):
+        return target.entity
+    else:
+        return target
 
 
 class _QueryEntity:
@@ -2455,42 +2112,21 @@ class _MapperEntity(_QueryEntity):
         self.is_aliased_class = ext_info.is_aliased_class
         self.path = ext_info._path_registry
 
-        if ext_info in compile_state._with_polymorphic_adapt_map:
-            # this codepath occurs only if query.with_polymorphic() were
-            # used
+        self.selectable = ext_info.selectable
+        self._with_polymorphic_mappers = ext_info.with_polymorphic_mappers
+        self._polymorphic_discriminator = ext_info.polymorphic_on
 
-            wp = inspect(compile_state._with_polymorphic_adapt_map[ext_info])
-
-            if self.is_aliased_class:
-                # TODO: invalidrequest ?
-                raise NotImplementedError(
-                    "Can't use with_polymorphic() against an Aliased object"
-                )
-
-            mappers, from_obj = mapper._with_polymorphic_args(
-                wp.with_polymorphic_mappers, wp.selectable
+        if (
+            mapper.with_polymorphic
+            # controversy - only if inheriting mapper is also
+            # polymorphic?
+            # or (mapper.inherits and mapper.inherits.with_polymorphic)
+            or mapper.inherits
+            or mapper._requires_row_aliasing
+        ):
+            compile_state._create_with_polymorphic_adapter(
+                ext_info, self.selectable
             )
-
-            self._with_polymorphic_mappers = mappers
-            self.selectable = from_obj
-            self._polymorphic_discriminator = wp.polymorphic_on
-
-        else:
-            self.selectable = ext_info.selectable
-            self._with_polymorphic_mappers = ext_info.with_polymorphic_mappers
-            self._polymorphic_discriminator = ext_info.polymorphic_on
-
-            if (
-                mapper.with_polymorphic
-                # controversy - only if inheriting mapper is also
-                # polymorphic?
-                # or (mapper.inherits and mapper.inherits.with_polymorphic)
-                or mapper.inherits
-                or mapper._requires_row_aliasing
-            ):
-                compile_state._create_with_polymorphic_adapter(
-                    ext_info, self.selectable
-                )
 
     supports_single_entity = True
 

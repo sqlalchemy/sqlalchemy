@@ -20,7 +20,7 @@ class WarnDeprecatedLimitedTest(fixtures.TestBase):
 
         actually just verifying that _hash_limit_string works as expected
         """
-        occurrences = 100
+        occurrences = 500
         cap = 10
 
         printouts = set()

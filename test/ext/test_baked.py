@@ -647,7 +647,9 @@ class ResultTest(BakedTest):
 
         bq = self.bakery(lambda s: s.query(User.id, User.name))
 
-        bq += lambda q: q._from_self().with_entities(func.count(User.id))
+        bq += lambda q: q._legacy_from_self().with_entities(
+            func.count(User.id)
+        )
 
         for i in range(3):
             session = fixture_session()
@@ -682,7 +684,7 @@ class ResultTest(BakedTest):
                     bq += lambda q: q.filter(User.name == "jack")
 
                 if cond4:
-                    bq += lambda q: q._from_self().with_entities(
+                    bq += lambda q: q._legacy_from_self().with_entities(
                         func.count(User.id)
                     )
                 sess = fixture_session()

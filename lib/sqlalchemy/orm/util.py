@@ -1212,13 +1212,6 @@ class LoaderCriteriaOption(CriteriaOption):
         # if options to limit the criteria to immediate query only,
         # use compile_state.attributes instead
 
-        if compile_state.compile_options._with_polymorphic_adapt_map:
-            util.warn(
-                "The with_loader_criteria() function may not work "
-                "correctly with the legacy Query.with_polymorphic() feature.  "
-                "Please migrate code to use the with_polymorphic() standalone "
-                "function before using with_loader_criteria()."
-            )
         if not compile_state.compile_options._for_refresh_state:
             self.get_global_criteria(compile_state.global_attributes)
 

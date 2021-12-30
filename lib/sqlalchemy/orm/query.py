@@ -21,7 +21,6 @@ database to return iterable result sets.
 import collections.abc as collections_abc
 import itertools
 import operator
-import types
 import typing
 
 from . import exc as orm_exc
@@ -30,7 +29,7 @@ from . import loading
 from . import util as orm_util
 from .base import _assertions
 from .context import _column_descriptions
-from .context import _legacy_determine_last_joined_entity
+from .context import _determine_last_joined_entity
 from .context import _legacy_filter_by_entity_zero
 from .context import LABEL_STYLE_LEGACY_ORM
 from .context import ORMCompileState
@@ -38,10 +37,8 @@ from .context import ORMFromStatementCompileState
 from .context import QueryContext
 from .interfaces import ORMColumnsClauseRole
 from .util import aliased
-from .util import AliasedClass
 from .util import object_mapper
 from .util import with_parent
-from .util import with_polymorphic
 from .. import exc as sa_exc
 from .. import inspect
 from .. import inspection
@@ -49,7 +46,6 @@ from .. import log
 from .. import sql
 from .. import util
 from ..sql import coercions
-from ..sql import elements
 from ..sql import expression
 from ..sql import roles
 from ..sql import Select
@@ -123,7 +119,6 @@ class Query(
     _auto_correlate = True
     _from_obj = ()
     _setup_joins = ()
-    _legacy_setup_joins = ()
     _label_style = LABEL_STYLE_LEGACY_ORM
 
     _memoized_select_entities = ()
@@ -138,7 +133,6 @@ class Query(
 
     # local Query builder state, not needed for
     # compilation or execution
-    _aliased_generation = None
     _enable_assertions = True
     _last_joined_entity = None
     _statement = None
@@ -261,7 +255,7 @@ class Query(
             self._where_criteria
             or self._statement is not None
             or self._from_obj
-            or self._legacy_setup_joins
+            or self._setup_joins
             or self._limit_clause is not None
             or self._offset_clause is not None
             or self._group_by_clauses
@@ -276,7 +270,7 @@ class Query(
     def _no_criterion_condition(self, meth, order_by=True, distinct=True):
         self._no_criterion_assertion(meth, order_by, distinct)
 
-        self._from_obj = self._legacy_setup_joins = ()
+        self._from_obj = self._setup_joins = ()
         if self._statement is not None:
             self._compile_options += {"_statement": None}
         self._where_criteria = ()
@@ -384,10 +378,7 @@ class Query(
         # from there, it starts to look much like Query itself won't be
         # passed into the execute process and wont generate its own cache
         # key; this will all occur in terms of the ORM-enabled Select.
-        if (
-            not self._compile_options._set_base_alias
-            and not self._compile_options._with_polymorphic_adapt_map
-        ):
+        if not self._compile_options._set_base_alias:
             # if we don't have legacy top level aliasing features in use
             # then convert to a future select() directly
             stmt = self._statement_20(for_statement=True)
@@ -791,55 +782,6 @@ class Query(
         return self
 
     @_generative
-    @_assertions(_no_clauseelement_condition)
-    @util.deprecated_20(
-        ":meth:`_orm.Query.with_polymorphic`",
-        alternative="Use the orm.with_polymorphic() standalone function",
-    )
-    def with_polymorphic(
-        self: SelfQuery, cls_or_mappers, selectable=None, polymorphic_on=None
-    ) -> SelfQuery:
-        """Load columns for inheriting classes.
-
-        This is a legacy method which is replaced by the
-        :func:`_orm.with_polymorphic` function.
-
-        .. warning:: The :meth:`_orm.Query.with_polymorphic` method does
-           **not** support 1.4/2.0 style features including
-           :func:`_orm.with_loader_criteria`.  Please migrate code
-           to use :func:`_orm.with_polymorphic`.
-
-        :meth:`_query.Query.with_polymorphic` applies transformations
-        to the "main" mapped class represented by this :class:`_query.Query`.
-        The "main" mapped class here means the :class:`_query.Query`
-        object's first argument is a full class, i.e.
-        ``session.query(SomeClass)``. These transformations allow additional
-        tables to be present in the FROM clause so that columns for a
-        joined-inheritance subclass are available in the query, both for the
-        purposes of load-time efficiency as well as the ability to use
-        these columns at query time.
-
-        .. seealso::
-
-            :ref:`with_polymorphic` - illustrates current patterns
-
-        """
-
-        entity = _legacy_filter_by_entity_zero(self)
-
-        wp = with_polymorphic(
-            entity,
-            cls_or_mappers,
-            selectable=selectable,
-            polymorphic_on=polymorphic_on,
-        )
-
-        self._compile_options = self._compile_options.add_to_element(
-            "_with_polymorphic_adapt_map", ((entity, inspect(wp)),)
-        )
-        return self
-
-    @_generative
     def yield_per(self: SelfQuery, count) -> SelfQuery:
         r"""Yield only ``count`` rows at a time.
 
@@ -1162,191 +1104,10 @@ class Query(
         self.session = session
         return self
 
-    @util.deprecated_20(
-        ":meth:`_query.Query.from_self`",
-        alternative="The new approach is to use the :func:`.orm.aliased` "
-        "construct in conjunction with a subquery.  See the section "
-        ":ref:`Selecting from the query itself as a subquery "
-        "<migration_20_query_from_self>` in the 2.0 migration notes for an "
-        "example.",
-    )
-    def from_self(self, *entities):
-        r"""return a Query that selects from this Query's
-        SELECT statement.
+    def _legacy_from_self(self, *entities):
+        # used for query.count() as well as for the same
+        # function in BakedQuery, as well as some old tests in test_baked.py.
 
-        :meth:`_query.Query.from_self` essentially turns the SELECT statement
-        into a SELECT of itself.  Given a query such as::
-
-            q = session.query(User).filter(User.name.like('e%'))
-
-        Given the :meth:`_query.Query.from_self` version::
-
-            q = session.query(User).filter(User.name.like('e%')).from_self()
-
-        This query renders as:
-
-        .. sourcecode:: sql
-
-            SELECT anon_1.user_id AS anon_1_user_id,
-                   anon_1.user_name AS anon_1_user_name
-            FROM (SELECT "user".id AS user_id, "user".name AS user_name
-            FROM "user"
-            WHERE "user".name LIKE :name_1) AS anon_1
-
-        There are lots of cases where :meth:`_query.Query.from_self`
-        may be useful.
-        A simple one is where above, we may want to apply a row LIMIT to
-        the set of user objects we query against, and then apply additional
-        joins against that row-limited set::
-
-            q = session.query(User).filter(User.name.like('e%')).\
-                limit(5).from_self().\
-                join(User.addresses).filter(Address.email.like('q%'))
-
-        The above query joins to the ``Address`` entity but only against the
-        first five results of the ``User`` query:
-
-        .. sourcecode:: sql
-
-            SELECT anon_1.user_id AS anon_1_user_id,
-                   anon_1.user_name AS anon_1_user_name
-            FROM (SELECT "user".id AS user_id, "user".name AS user_name
-            FROM "user"
-            WHERE "user".name LIKE :name_1
-             LIMIT :param_1) AS anon_1
-            JOIN address ON anon_1.user_id = address.user_id
-            WHERE address.email LIKE :email_1
-
-        **Automatic Aliasing**
-
-        Another key behavior of :meth:`_query.Query.from_self`
-        is that it applies
-        **automatic aliasing** to the entities inside the subquery, when
-        they are referenced on the outside.  Above, if we continue to
-        refer to the ``User`` entity without any additional aliasing applied
-        to it, those references will be in terms of the subquery::
-
-            q = session.query(User).filter(User.name.like('e%')).\
-                limit(5).from_self().\
-                join(User.addresses).filter(Address.email.like('q%')).\
-                order_by(User.name)
-
-        The ORDER BY against ``User.name`` is aliased to be in terms of the
-        inner subquery:
-
-        .. sourcecode:: sql
-
-            SELECT anon_1.user_id AS anon_1_user_id,
-                   anon_1.user_name AS anon_1_user_name
-            FROM (SELECT "user".id AS user_id, "user".name AS user_name
-            FROM "user"
-            WHERE "user".name LIKE :name_1
-             LIMIT :param_1) AS anon_1
-            JOIN address ON anon_1.user_id = address.user_id
-            WHERE address.email LIKE :email_1 ORDER BY anon_1.user_name
-
-        The automatic aliasing feature only works in a **limited** way,
-        for simple filters and orderings.   More ambitious constructions
-        such as referring to the entity in joins should prefer to use
-        explicit subquery objects, typically making use of the
-        :meth:`_query.Query.subquery`
-        method to produce an explicit subquery object.
-        Always test the structure of queries by viewing the SQL to ensure
-        a particular structure does what's expected!
-
-        **Changing the Entities**
-
-        :meth:`_query.Query.from_self`
-        also includes the ability to modify what
-        columns are being queried.   In our example, we want ``User.id``
-        to be queried by the inner query, so that we can join to the
-        ``Address`` entity on the outside, but we only wanted the outer
-        query to return the ``Address.email`` column::
-
-            q = session.query(User).filter(User.name.like('e%')).\
-                limit(5).from_self(Address.email).\
-                join(User.addresses).filter(Address.email.like('q%'))
-
-        yielding:
-
-        .. sourcecode:: sql
-
-            SELECT address.email AS address_email
-            FROM (SELECT "user".id AS user_id, "user".name AS user_name
-            FROM "user"
-            WHERE "user".name LIKE :name_1
-             LIMIT :param_1) AS anon_1
-            JOIN address ON anon_1.user_id = address.user_id
-            WHERE address.email LIKE :email_1
-
-        **Looking out for Inner / Outer Columns**
-
-        Keep in mind that when referring to columns that originate from
-        inside the subquery, we need to ensure they are present in the
-        columns clause of the subquery itself; this is an ordinary aspect of
-        SQL.  For example, if we wanted to load from a joined entity inside
-        the subquery using :func:`.contains_eager`, we need to add those
-        columns.   Below illustrates a join of ``Address`` to ``User``,
-        then a subquery, and then we'd like :func:`.contains_eager` to access
-        the ``User`` columns::
-
-            q = session.query(Address).join(Address.user).\
-                filter(User.name.like('e%'))
-
-            q = q.add_entity(User).from_self().\
-                options(contains_eager(Address.user))
-
-        We use :meth:`_query.Query.add_entity` above **before** we call
-        :meth:`_query.Query.from_self`
-        so that the ``User`` columns are present
-        in the inner subquery, so that they are available to the
-        :func:`.contains_eager` modifier we are using on the outside,
-        producing:
-
-        .. sourcecode:: sql
-
-            SELECT anon_1.address_id AS anon_1_address_id,
-                   anon_1.address_email AS anon_1_address_email,
-                   anon_1.address_user_id AS anon_1_address_user_id,
-                   anon_1.user_id AS anon_1_user_id,
-                   anon_1.user_name AS anon_1_user_name
-            FROM (
-                SELECT address.id AS address_id,
-                address.email AS address_email,
-                address.user_id AS address_user_id,
-                "user".id AS user_id,
-                "user".name AS user_name
-            FROM address JOIN "user" ON "user".id = address.user_id
-            WHERE "user".name LIKE :name_1) AS anon_1
-
-        If we didn't call ``add_entity(User)``, but still asked
-        :func:`.contains_eager` to load the ``User`` entity, it would be
-        forced to add the table on the outside without the correct
-        join criteria - note the ``anon1, "user"`` phrase at
-        the end:
-
-        .. sourcecode:: sql
-
-            -- incorrect query
-            SELECT anon_1.address_id AS anon_1_address_id,
-                   anon_1.address_email AS anon_1_address_email,
-                   anon_1.address_user_id AS anon_1_address_user_id,
-                   "user".id AS user_id,
-                   "user".name AS user_name
-            FROM (
-                SELECT address.id AS address_id,
-                address.email AS address_email,
-                address.user_id AS address_user_id
-            FROM address JOIN "user" ON "user".id = address.user_id
-            WHERE "user".name LIKE :name_1) AS anon_1, "user"
-
-        :param \*entities: optional list of entities which will replace
-         those being selected.
-
-        """
-        return self._from_self(*entities)
-
-    def _from_self(self, *entities):
         fromclause = (
             self.set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
             .correlate(None)
@@ -1376,7 +1137,7 @@ class Query(
             "_limit_clause",
             "_offset_clause",
             "_last_joined_entity",
-            "_legacy_setup_joins",
+            "_setup_joins",
             "_memoized_select_entities",
             "_distinct",
             "_distinct_on",
@@ -1390,12 +1151,6 @@ class Query(
             "_enable_single_crit": False,
         }
 
-        # this enables clause adaptation for non-ORM
-        # expressions.
-        # legacy.  see test/orm/test_froms.py for various
-        # "oldstyle" tests that rely on this and the corresponding
-        # "newtyle" that do not.
-        self._compile_options += {"_orm_only_from_obj_alias": False}
         return self
 
     @util.deprecated(
@@ -1721,21 +1476,14 @@ class Query(
                 roles.WhereHavingRole, criterion, apply_propagate_attrs=self
             )
 
-            # legacy vvvvvvvvvvvvvvvvvvvvvvvvvvv
-            if self._aliased_generation:
-                criterion = sql_util._deep_annotate(
-                    criterion, {"aliased_generation": self._aliased_generation}
-                )
-            # legacy ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
             self._where_criteria += (criterion,)
         return self
 
     @util.memoized_property
     def _last_joined_entity(self):
-        if self._legacy_setup_joins:
-            return _legacy_determine_last_joined_entity(
-                self._legacy_setup_joins, self._entity_from_pre_ent_zero()
+        if self._setup_joins:
+            return _determine_last_joined_entity(
+                self._setup_joins,
             )
         else:
             return None
@@ -1746,7 +1494,7 @@ class Query(
 
         """
 
-        if self._legacy_setup_joins:
+        if self._setup_joins:
             _last_joined_entity = self._last_joined_entity
             if _last_joined_entity is not None:
                 return _last_joined_entity
@@ -1856,18 +1604,6 @@ class Query(
                 coercions.expect(roles.OrderByRole, clause)
                 for clause in clauses
             )
-            # legacy vvvvvvvvvvvvvvvvvvvvvvvvvvv
-            if self._aliased_generation:
-                criterion = tuple(
-                    [
-                        sql_util._deep_annotate(
-                            o, {"aliased_generation": self._aliased_generation}
-                        )
-                        for o in criterion
-                    ]
-                )
-            # legacy ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
             self._order_by_clauses += criterion
         return self
 
@@ -1900,18 +1636,6 @@ class Query(
                 coercions.expect(roles.GroupByRole, clause)
                 for clause in clauses
             )
-            # legacy vvvvvvvvvvvvvvvvvvvvvvvvvvv
-            if self._aliased_generation:
-                criterion = tuple(
-                    [
-                        sql_util._deep_annotate(
-                            o, {"aliased_generation": self._aliased_generation}
-                        )
-                        for o in criterion
-                    ]
-                )
-            # legacy ^^^^^^^^^^^^^^^^^^^^^^^^^^
-
             self._group_by_clauses += criterion
         return self
 
@@ -2028,15 +1752,11 @@ class Query(
         """
         return self._set_op(expression.except_all, *q)
 
-    def _next_aliased_generation(self):
-        if "_aliased_generation_counter" not in self.__dict__:
-            self._aliased_generation_counter = 0
-        self._aliased_generation_counter += 1
-        return self._aliased_generation_counter
-
     @_generative
     @_assertions(_no_statement_condition, _no_limit_offset)
-    def join(self: SelfQuery, target, *props, **kwargs) -> SelfQuery:
+    def join(
+        self: SelfQuery, target, onclause=None, *, isouter=False, full=False
+    ) -> SelfQuery:
         r"""Create a SQL JOIN against this :class:`_query.Query`
         object's criterion
         and apply generatively, returning the newly resulting
@@ -2206,71 +1926,6 @@ class Query(
                 JOIN address ON user.id=address.user_id
                 WHERE user.name = :name_1
 
-        **Legacy Features of Query.join()**
-
-        .. deprecated:: 1.4 The following features are deprecated and will
-           be removed in SQLAlchemy 2.0.
-
-        The :meth:`_query.Query.join` method currently supports several
-        usage patterns and arguments that are considered to be legacy
-        as of SQLAlchemy 1.3.   A deprecation path will follow
-        in the 1.4 series for the following features:
-
-
-        * Automatic aliasing with the ``aliased=True`` flag::
-
-            session.query(Node).join(Node.children, aliased=True).\
-                filter(Node.name == 'some name')
-
-          **Why it's legacy**:  the automatic aliasing feature of
-          :class:`_query.Query` is intensely complicated, both in its internal
-          implementation as well as in its observed behavior, and is almost
-          never used.  It is difficult to know upon inspection where and when
-          its aliasing of a target entity, ``Node`` in the above case, will be
-          applied and when it won't, and additionally the feature has to use
-          very elaborate heuristics to achieve this implicit behavior.
-
-          **Modern calling pattern**: Use the :func:`_orm.aliased` construct
-          explicitly::
-
-            from sqlalchemy.orm import aliased
-
-            n1 = aliased(Node)
-
-            session.query(Node).join(Node.children.of_type(n1)).\
-                filter(n1.name == 'some name')
-
-        * Multiple joins in one call::
-
-            session.query(User).join("orders", "items")
-
-            session.query(User).join(User.orders, Order.items)
-
-            session.query(User).join(
-                (Order, User.orders),
-                (Item, Item.order_id == Order.id)
-            )
-
-            session.query(User).join(Order, Item)
-
-            # ... and several more forms actually
-
-          **Why it's legacy**: being able to chain multiple ON clauses in one
-          call to :meth:`_query.Query.join` is yet another attempt to solve
-          the problem of being able to specify what entity to join from,
-          and is the source of a large variety of potential calling patterns
-          that are internally expensive and complicated to parse and
-          accommodate.
-
-          **Modern calling pattern**:  Use relationship-bound attributes
-          or SQL-oriented ON clauses within separate calls, so that
-          each call to :meth:`_query.Query.join` knows what the left
-          side should be::
-
-            session.query(User).join(User.orders).join(
-                Item, Item.order_id == Order.id)
-
-
         :param \*props: Incoming arguments for :meth:`_query.Query.join`,
          the props collection in modern use should be considered to be a  one
          or two argument form, either as a single "target" entity or ORM
@@ -2285,168 +1940,41 @@ class Query(
 
          .. versionadded:: 1.1
 
-        :param from_joinpoint=False: When using ``aliased=True``, a setting
-         of True here will cause the join to be from the most recent
-         joined target, rather than starting back from the original
-         FROM clauses of the query.
-
-         .. note:: This flag is considered legacy.
-
-        :param aliased=False: If True, indicate that the JOIN target should be
-         anonymously aliased.  Subsequent calls to :meth:`_query.Query.filter`
-         and similar will adapt the incoming criterion to the target
-         alias, until :meth:`_query.Query.reset_joinpoint` is called.
-
-         .. note:: This flag is considered legacy.
-
         """
 
-        aliased, from_joinpoint, isouter, full = (
-            kwargs.pop("aliased", False),
-            kwargs.pop("from_joinpoint", False),
-            kwargs.pop("isouter", False),
-            kwargs.pop("full", False),
+        target = coercions.expect(
+            roles.JoinTargetRole,
+            target,
+            apply_propagate_attrs=self,
+            legacy=True,
         )
-
-        if aliased or from_joinpoint:
-            util.warn_deprecated_20(
-                "The ``aliased`` and ``from_joinpoint`` keyword arguments "
-                "to Query.join() are deprecated and will be removed "
-                "in SQLAlchemy 2.0."
+        if onclause is not None:
+            onclause = coercions.expect(
+                roles.OnClauseRole, onclause, legacy=True
             )
-
-        if kwargs:
-            raise TypeError(
-                "unknown arguments: %s" % ", ".join(sorted(kwargs))
-            )
-
-        # legacy vvvvvvvvvvvvvvvvvvvvvvvvvvv
-        if not from_joinpoint:
-            self._last_joined_entity = None
-            self._aliased_generation = None
-        # legacy ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-        if props:
-            onclause, legacy = props[0], props[1:]
-        else:
-            onclause = legacy = None
-
-        if not legacy and onclause is None and not isinstance(target, tuple):
-            # non legacy argument form
-            _props = [(target,)]
-        elif (
-            not legacy
-            and isinstance(
-                target,
-                (
-                    expression.Selectable,
-                    type,
-                    AliasedClass,
-                    types.FunctionType,
-                ),
-            )
-            and isinstance(
-                onclause,
-                (
-                    elements.ColumnElement,
-                    interfaces.PropComparator,
-                    types.FunctionType,
-                ),
-            )
-        ):
-            # non legacy argument form
-            _props = [(target, onclause)]
-        else:
-            # legacy forms.   more time consuming :)
-            _props = []
-            _single = []
-            for prop in (target,) + props:
-                if isinstance(prop, tuple):
-                    util.warn_deprecated_20(
-                        "Query.join() will no longer accept tuples as "
-                        "arguments in SQLAlchemy 2.0."
-                    )
-                    if _single:
-                        _props.extend((_s,) for _s in _single)
-                    _single = []
-
-                    # this checks for an extremely ancient calling form of
-                    # reversed tuples.
-                    if isinstance(prop[0], interfaces.PropComparator):
-                        prop = (prop[1], prop[0])
-
-                    _props.append(prop)
-                else:
-                    _single.append(prop)
-            if _single:
-                _props.extend((_s,) for _s in _single)
-
-        # legacy vvvvvvvvvvvvvvvvvvvvvvvvvvv
-        if aliased:
-            self._aliased_generation = self._next_aliased_generation()
-
-        if self._aliased_generation:
-            _props = [
-                (
-                    prop[0],
-                    sql_util._deep_annotate(
-                        prop[1],
-                        {"aliased_generation": self._aliased_generation},
-                    )
-                    if isinstance(prop[1], expression.ClauseElement)
-                    else prop[1],
-                )
-                if len(prop) == 2
-                else prop
-                for prop in _props
-            ]
-
-        # legacy ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-        joins_to_add = tuple(
+        self._setup_joins += (
             (
-                coercions.expect(
-                    roles.JoinTargetRole,
-                    prop[0],
-                    legacy=True,
-                    apply_propagate_attrs=self,
-                ),
-                (coercions.expect(roles.OnClauseRole, prop[1], legacy=True))
-                if len(prop) == 2
-                else None,
+                target,
+                onclause,
                 None,
                 {
                     "isouter": isouter,
-                    "aliased": aliased,
-                    "from_joinpoint": True if i > 0 else from_joinpoint,
                     "full": full,
-                    "aliased_generation": self._aliased_generation,
                 },
-            )
-            for i, prop in enumerate(_props)
+            ),
         )
-
-        if len(joins_to_add) > 1:
-            util.warn_deprecated_20(
-                "Passing a chain of multiple join conditions to Query.join() "
-                "is deprecated and will be removed in SQLAlchemy 2.0. "
-                "Please use individual join() calls per relationship."
-            )
-
-        self._legacy_setup_joins += joins_to_add
 
         self.__dict__.pop("_last_joined_entity", None)
         return self
 
-    def outerjoin(self, target, *props, **kwargs):
+    def outerjoin(self, target, onclause=None, *, full=False):
         """Create a left outer join against this ``Query`` object's criterion
         and apply generatively, returning the newly resulting ``Query``.
 
         Usage is the same as the ``join()`` method.
 
         """
-        kwargs["isouter"] = True
-        return self.join(target, *props, **kwargs)
+        return self.join(target, onclause=onclause, isouter=True, full=full)
 
     @_generative
     @_assertions(_no_statement_condition)
@@ -2461,7 +1989,7 @@ class Query(
 
         """
         self._last_joined_entity = None
-        self._aliased_generation = None
+
         return self
 
     @_generative
@@ -2512,128 +2040,6 @@ class Query(
         """
 
         self._set_select_from(from_obj, False)
-        return self
-
-    @util.deprecated_20(
-        ":meth:`_orm.Query.select_entity_from`",
-        alternative="Use the :func:`_orm.aliased` construct instead",
-    )
-    @_generative
-    @_assertions(_no_clauseelement_condition)
-    def select_entity_from(self: SelfQuery, from_obj) -> SelfQuery:
-        r"""Set the FROM clause of this :class:`_query.Query` to a
-        core selectable, applying it as a replacement FROM clause
-        for corresponding mapped entities.
-
-        The :meth:`_query.Query.select_entity_from`
-        method supplies an alternative
-        approach to the use case of applying an :func:`.aliased` construct
-        explicitly throughout a query.  Instead of referring to the
-        :func:`.aliased` construct explicitly,
-        :meth:`_query.Query.select_entity_from` automatically *adapts* all
-        occurrences of the entity to the target selectable.
-
-        Given a case for :func:`.aliased` such as selecting ``User``
-        objects from a SELECT statement::
-
-            select_stmt = select(User).where(User.id == 7)
-            user_alias = aliased(User, select_stmt)
-
-            q = session.query(user_alias).\
-                filter(user_alias.name == 'ed')
-
-        Above, we apply the ``user_alias`` object explicitly throughout the
-        query.  When it's not feasible for ``user_alias`` to be referenced
-        explicitly in many places, :meth:`_query.Query.select_entity_from`
-        may be
-        used at the start of the query to adapt the existing ``User`` entity::
-
-            q = session.query(User).\
-                select_entity_from(select_stmt.subquery()).\
-                filter(User.name == 'ed')
-
-        Above, the generated SQL will show that the ``User`` entity is
-        adapted to our statement, even in the case of the WHERE clause:
-
-        .. sourcecode:: sql
-
-            SELECT anon_1.id AS anon_1_id, anon_1.name AS anon_1_name
-            FROM (SELECT "user".id AS id, "user".name AS name
-            FROM "user"
-            WHERE "user".id = :id_1) AS anon_1
-            WHERE anon_1.name = :name_1
-
-        The :meth:`_query.Query.select_entity_from` method is similar to the
-        :meth:`_query.Query.select_from` method,
-        in that it sets the FROM clause
-        of the query.  The difference is that it additionally applies
-        adaptation to the other parts of the query that refer to the
-        primary entity.  If above we had used :meth:`_query.Query.select_from`
-        instead, the SQL generated would have been:
-
-        .. sourcecode:: sql
-
-            -- uses plain select_from(), not select_entity_from()
-            SELECT "user".id AS user_id, "user".name AS user_name
-            FROM "user", (SELECT "user".id AS id, "user".name AS name
-            FROM "user"
-            WHERE "user".id = :id_1) AS anon_1
-            WHERE "user".name = :name_1
-
-        To supply textual SQL to the :meth:`_query.Query.select_entity_from`
-        method,
-        we can make use of the :func:`_expression.text` construct.  However,
-        the
-        :func:`_expression.text`
-        construct needs to be aligned with the columns of our
-        entity, which is achieved by making use of the
-        :meth:`_expression.TextClause.columns` method::
-
-            text_stmt = text("select id, name from user").columns(
-                User.id, User.name).subquery()
-            q = session.query(User).select_entity_from(text_stmt)
-
-        :meth:`_query.Query.select_entity_from` itself accepts an
-        :func:`.aliased`
-        object, so that the special options of :func:`.aliased` such as
-        :paramref:`.aliased.adapt_on_names` may be used within the
-        scope of the :meth:`_query.Query.select_entity_from`
-        method's adaptation
-        services.  Suppose
-        a view ``user_view`` also returns rows from ``user``.    If
-        we reflect this view into a :class:`_schema.Table`, this view has no
-        relationship to the :class:`_schema.Table` to which we are mapped,
-        however
-        we can use name matching to select from it::
-
-            user_view = Table('user_view', metadata,
-                              autoload_with=engine)
-            user_view_alias = aliased(
-                User, user_view, adapt_on_names=True)
-            q = session.query(User).\
-                select_entity_from(user_view_alias).\
-                order_by(User.name)
-
-        .. versionchanged:: 1.1.7 The :meth:`_query.Query.select_entity_from`
-           method now accepts an :func:`.aliased` object as an alternative
-           to a :class:`_expression.FromClause` object.
-
-        :param from_obj: a :class:`_expression.FromClause`
-         object that will replace
-         the FROM clause of this :class:`_query.Query`.
-         It also may be an instance
-         of :func:`.aliased`.
-
-
-
-        .. seealso::
-
-            :meth:`_query.Query.select_from`
-
-        """
-
-        self._set_select_from([from_obj], True)
-        self._compile_options += {"_enable_single_crit": False}
         return self
 
     def __getitem__(self, item):
@@ -3137,7 +2543,7 @@ class Query(
 
         """
         col = sql.func.count(sql.literal_column("*"))
-        return self._from_self(col).enable_eagerloads(False).scalar()
+        return self._legacy_from_self(col).enable_eagerloads(False).scalar()
 
     def delete(self, synchronize_session="evaluate"):
         r"""Perform a DELETE with an arbitrary WHERE clause.
@@ -3452,7 +2858,7 @@ class BulkUD:
                 operator.eq,
             ),
             (
-                "_legacy_setup_joins",
+                "_setup_joins",
                 "join(), outerjoin(), select_from(), or from_self()",
                 (),
                 operator.eq,

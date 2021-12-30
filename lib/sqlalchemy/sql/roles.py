@@ -120,7 +120,10 @@ class StatementOptionRole(StructuralRole):
 
 class OnClauseRole(AllowsLambdaRole, StructuralRole):
     __slots__ = ()
-    _role_name = "SQL expression for ON clause"
+    _role_name = (
+        "ON clause, typically a SQL expression or "
+        "ORM relationship attribute"
+    )
 
 
 class WhereHavingRole(OnClauseRole):

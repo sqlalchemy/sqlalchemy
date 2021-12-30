@@ -606,22 +606,15 @@ class InElementImpl(RoleImpl):
             return element
 
 
-class OnClauseImpl(_CoerceLiterals, _ColumnCoercions, RoleImpl):
+class OnClauseImpl(_ColumnCoercions, RoleImpl):
     __slots__ = ()
 
     _coerce_consts = True
 
-    def _text_coercion(self, element, argname=None, legacy=False):
-        if legacy and isinstance(element, str):
-            util.warn_deprecated_20(
-                "Using strings to indicate relationship names in "
-                "Query.join() is deprecated and will be removed in "
-                "SQLAlchemy 2.0.  Please use the class-bound attribute "
-                "directly."
-            )
-            return element
-
-        return super(OnClauseImpl, self)._text_coercion(element, argname)
+    def _literal_coercion(
+        self, element, name=None, type_=None, argname=None, is_crud=False, **kw
+    ):
+        self._raise_for_expected(element)
 
     def _post_coercion(self, resolved, original_element=None, **kw):
         # this is a hack right now as we want to use coercion on an
@@ -936,8 +929,6 @@ class JoinTargetImpl(RoleImpl):
             # #6550, unless JoinTargetImpl._skip_clauseelement_for_target_match
             # were set to False.
             return original_element
-        elif legacy and isinstance(resolved, roles.WhereHavingRole):
-            return resolved
         elif legacy and resolved._is_select_statement:
             util.warn_deprecated(
                 "Implicit coercion of SELECT and textual SELECT "
