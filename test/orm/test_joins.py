@@ -411,7 +411,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         sess = fixture_session()
         assert_raises_message(
             TypeError,
-            r"Query.join\(\) got an unexpected keyword argument 'foob'",
+            r".*join\(\) got an unexpected keyword argument 'foob'",
             sess.query(User).join,
             "address",
             foob="bar",
@@ -419,7 +419,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
         )
         assert_raises_message(
             TypeError,
-            r"Query.outerjoin\(\) got an unexpected keyword argument 'foob'",
+            r".*outerjoin\(\) got an unexpected keyword argument 'foob'",
             sess.query(User).outerjoin,
             "address",
             foob="bar",
@@ -1767,7 +1767,7 @@ class JoinTest(QueryTest, AssertsCompiledSQL):
 
         with expect_raises_message(
             TypeError,
-            r"Query.join\(\) takes from 2 to 3 positional arguments but "
+            r".*join\(\) takes from 2 to 3 positional arguments but "
             "4 were given",
         ):
             sess.query(User).join(User.orders, Order.items, Item.keywords)
