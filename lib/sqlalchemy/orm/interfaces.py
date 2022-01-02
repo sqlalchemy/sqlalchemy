@@ -17,6 +17,8 @@ are exposed when inspecting mappings.
 """
 
 import collections
+from typing import Any
+from typing import TypeVar
 
 from . import exc as orm_exc
 from . import path_registry
@@ -39,6 +41,7 @@ from ..sql import visitors
 from ..sql.base import ExecutableOption
 from ..sql.cache_key import HasCacheKey
 
+_T = TypeVar("_T", bound=Any)
 
 __all__ = (
     "EXT_CONTINUE",
@@ -77,7 +80,7 @@ class ORMFromClauseRole(roles.StrictFromClauseRole):
 
 @inspection._self_inspects
 class MapperProperty(
-    HasCacheKey, _MappedAttribute, InspectionAttr, util.MemoizedSlots
+    HasCacheKey, _MappedAttribute[_T], InspectionAttr, util.MemoizedSlots
 ):
     """Represent a particular class attribute mapped by :class:`_orm.Mapper`.
 

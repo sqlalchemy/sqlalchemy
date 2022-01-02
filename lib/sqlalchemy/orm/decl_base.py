@@ -12,7 +12,7 @@ from sqlalchemy.orm import attributes
 from sqlalchemy.orm import instrumentation
 from . import clsregistry
 from . import exc as orm_exc
-from . import mapper as mapperlib
+from . import mapperlib
 from .attributes import InstrumentedAttribute
 from .attributes import QueryableAttribute
 from .base import _is_mapped_class

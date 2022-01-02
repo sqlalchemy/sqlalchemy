@@ -17,10 +17,30 @@ from ...sql.base import ColumnCollection
 from ...sql.dml import Insert as StandardInsert
 from ...sql.elements import ClauseElement
 from ...sql.expression import alias
-from ...util.langhelpers import public_factory
 
 
 __all__ = ("Insert", "insert")
+
+
+def insert(table):
+    """Construct a PostgreSQL-specific variant :class:`_postgresql.Insert`
+    construct.
+
+    .. container:: inherited_member
+
+        The :func:`sqlalchemy.dialects.postgresql.insert` function creates
+        a :class:`sqlalchemy.dialects.postgresql.Insert`.  This class is based
+        on the dialect-agnostic :class:`_sql.Insert` construct which may
+        be constructed using the :func:`_sql.insert` function in
+        SQLAlchemy Core.
+
+    The :class:`_postgresql.Insert` construct includes additional methods
+    :meth:`_postgresql.Insert.on_conflict_do_update`,
+    :meth:`_postgresql.Insert.on_conflict_do_nothing`.
+
+    """
+    return Insert(table)
+
 
 SelfInsert = typing.TypeVar("SelfInsert", bound="Insert")
 
@@ -181,11 +201,6 @@ class Insert(StandardInsert):
             constraint, index_elements, index_where
         )
         return self
-
-
-insert = public_factory(
-    Insert, ".dialects.postgresql.insert", ".dialects.postgresql.Insert"
-)
 
 
 class OnConflictClause(ClauseElement):

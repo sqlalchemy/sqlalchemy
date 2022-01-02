@@ -8,12 +8,18 @@
 """SQL specific types.
 
 """
-
 import collections.abc as collections_abc
 import datetime as dt
 import decimal
+import enum
 import json
 import pickle
+from typing import Any
+from typing import Sequence
+from typing import Text as typing_Text
+from typing import Tuple
+from typing import TypeVar
+from typing import Union
 
 from . import coercions
 from . import elements
@@ -41,6 +47,9 @@ from .. import util
 from ..engine import processors
 from ..util import langhelpers
 from ..util import OrderedDict
+
+
+_T = TypeVar("_T", bound="Any")
 
 
 class _LookupExpressionAdapter:
@@ -121,7 +130,7 @@ class Indexable:
     comparator_factory = Comparator
 
 
-class String(Concatenable, TypeEngine):
+class String(Concatenable, TypeEngine[typing_Text]):
 
     """The base for all string and character types.
 
@@ -136,7 +145,10 @@ class String(Concatenable, TypeEngine):
     __visit_name__ = "string"
 
     def __init__(
-        self,
+        # note pylance appears to require the "self" type in a constructor
+        # for the _T type to be correctly recognized when we send the
+        # class as the argument, e.g. `column("somecol", String)`
+        self: "String",
         length=None,
         collation=None,
     ):
@@ -289,7 +301,7 @@ class UnicodeText(Text):
         super(UnicodeText, self).__init__(length=length, **kwargs)
 
 
-class Integer(_LookupExpressionAdapter, TypeEngine):
+class Integer(_LookupExpressionAdapter, TypeEngine[int]):
 
     """A type for ``int`` integers."""
 
@@ -351,7 +363,9 @@ class BigInteger(Integer):
     __visit_name__ = "big_integer"
 
 
-class Numeric(_LookupExpressionAdapter, TypeEngine):
+class Numeric(
+    _LookupExpressionAdapter, TypeEngine[Union[decimal.Decimal, float]]
+):
 
     """A type for fixed precision numbers, such as ``NUMERIC`` or ``DECIMAL``.
 
@@ -396,7 +410,7 @@ class Numeric(_LookupExpressionAdapter, TypeEngine):
     _default_decimal_return_scale = 10
 
     def __init__(
-        self,
+        self: "Numeric",
         precision=None,
         scale=None,
         decimal_return_scale=None,
@@ -544,7 +558,10 @@ class Float(Numeric):
     scale = None
 
     def __init__(
-        self, precision=None, asdecimal=False, decimal_return_scale=None
+        self: "Float",
+        precision=None,
+        asdecimal=False,
+        decimal_return_scale=None,
     ):
         r"""
         Construct a Float.
@@ -583,7 +600,7 @@ class Float(Numeric):
             return None
 
 
-class DateTime(_LookupExpressionAdapter, TypeEngine):
+class DateTime(_LookupExpressionAdapter, TypeEngine[dt.datetime]):
 
     """A type for ``datetime.datetime()`` objects.
 
@@ -645,7 +662,7 @@ class DateTime(_LookupExpressionAdapter, TypeEngine):
         }
 
 
-class Date(_LookupExpressionAdapter, TypeEngine):
+class Date(_LookupExpressionAdapter, TypeEngine[dt.date]):
 
     """A type for ``datetime.date()`` objects."""
 
@@ -683,7 +700,7 @@ class Date(_LookupExpressionAdapter, TypeEngine):
         }
 
 
-class Time(_LookupExpressionAdapter, TypeEngine):
+class Time(_LookupExpressionAdapter, TypeEngine[dt.time]):
 
     """A type for ``datetime.time()`` objects."""
 
@@ -717,7 +734,7 @@ class Time(_LookupExpressionAdapter, TypeEngine):
         }
 
 
-class _Binary(TypeEngine):
+class _Binary(TypeEngine[bytes]):
 
     """Define base behavior for binary types."""
 
@@ -1019,7 +1036,7 @@ class SchemaType(SchemaEventTarget):
             return _we_are_the_impl(variant_mapping["_default"])
 
 
-class Enum(Emulated, String, SchemaType):
+class Enum(Emulated, String, TypeEngine[Union[str, enum.Enum]], SchemaType):
     """Generic Enum Type.
 
     The :class:`.Enum` type provides a set of possible string values
@@ -1496,7 +1513,7 @@ class Enum(Emulated, String, SchemaType):
             return super(Enum, self).python_type
 
 
-class PickleType(TypeDecorator):
+class PickleType(TypeDecorator[object]):
     """Holds Python objects, which are serialized using pickle.
 
     PickleType builds upon the Binary type to apply Python's
@@ -1597,7 +1614,7 @@ class PickleType(TypeDecorator):
             return x == y
 
 
-class Boolean(Emulated, TypeEngine, SchemaType):
+class Boolean(Emulated, TypeEngine[bool], SchemaType):
 
     """A bool datatype.
 
@@ -1621,7 +1638,10 @@ class Boolean(Emulated, TypeEngine, SchemaType):
     native = True
 
     def __init__(
-        self, create_constraint=False, name=None, _create_events=True
+        self: "Boolean",
+        create_constraint=False,
+        name=None,
+        _create_events=True,
     ):
         """Construct a Boolean.
 
@@ -1723,7 +1743,7 @@ class Boolean(Emulated, TypeEngine, SchemaType):
             return processors.int_to_boolean
 
 
-class _AbstractInterval(_LookupExpressionAdapter, TypeEngine):
+class _AbstractInterval(_LookupExpressionAdapter, TypeEngine[dt.timedelta]):
     @util.memoized_property
     def _expression_adaptations(self):
         # Based on https://www.postgresql.org/docs/current/\
@@ -1841,7 +1861,7 @@ class Interval(Emulated, _AbstractInterval, TypeDecorator):
         return process
 
 
-class JSON(Indexable, TypeEngine):
+class JSON(Indexable, TypeEngine[Any]):
     """Represent a SQL JSON type.
 
     .. note::  :class:`_types.JSON`
@@ -2399,7 +2419,9 @@ class JSON(Indexable, TypeEngine):
         return process
 
 
-class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
+class ARRAY(
+    SchemaEventTarget, Indexable, Concatenable, TypeEngine[Sequence[Any]]
+):
     """Represent a SQL Array type.
 
     .. note::  This type serves as the basis for all ARRAY operations.
@@ -2700,7 +2722,7 @@ class ARRAY(SchemaEventTarget, Indexable, Concatenable, TypeEngine):
             self.item_type._set_parent_with_dispatch(parent)
 
 
-class TupleType(TypeEngine):
+class TupleType(TypeEngine[Tuple[Any]]):
     """represent the composite type of a Tuple."""
 
     _is_tuple_type = True

@@ -14,11 +14,13 @@ This is a semi-private module; the main configurational API of the ORM is
 available in :class:`~sqlalchemy.orm.`.
 
 """
-
 from collections import deque
 from functools import reduce
 from itertools import chain
 import sys
+from typing import Generic
+from typing import Type
+from typing import TypeVar
 import weakref
 
 from . import attributes
@@ -58,6 +60,9 @@ from ..util import HasMemoized
 _mapper_registries = weakref.WeakKeyDictionary()
 
 
+_MC = TypeVar("_MC")
+
+
 def _all_registries():
     with _CONFIGURE_MUTEX:
         return set(_mapper_registries)
@@ -88,6 +93,7 @@ class Mapper(
     ORMEntityColumnsClauseRole,
     sql_base.MemoizedHasCacheKey,
     InspectionAttr,
+    Generic[_MC],
 ):
     """Defines an association between a Python class and a database table or
     other relational structure, so that ORM operations against the class may
@@ -115,7 +121,7 @@ class Mapper(
     )
     def __init__(
         self,
-        class_,
+        class_: Type[_MC],
         local_table=None,
         properties=None,
         primary_key=None,

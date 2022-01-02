@@ -14,7 +14,7 @@ from . import clsregistry
 from . import exc as orm_exc
 from . import instrumentation
 from . import interfaces
-from . import mapper as mapperlib
+from . import mapperlib
 from .base import _inspect_mapped_class
 from .decl_base import _add_attribute
 from .decl_base import _as_declarative

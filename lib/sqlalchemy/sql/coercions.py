@@ -8,6 +8,14 @@
 import collections.abc as collections_abc
 import numbers
 import re
+import typing
+from typing import Any
+from typing import Callable
+from typing import Optional
+from typing import overload
+from typing import Type
+from typing import TypeVar
+from typing import Union
 
 from . import operators
 from . import roles
@@ -20,13 +28,24 @@ from .. import exc
 from .. import inspection
 from .. import util
 
+if not typing.TYPE_CHECKING:
+    elements = None
+    lambdas = None
+    schema = None
+    selectable = None
+    traversals = None
 
-elements = None
-lambdas = None
-schema = None
-selectable = None
-sqltypes = None
-traversals = None
+if typing.TYPE_CHECKING:
+    from . import elements
+    from . import lambdas
+    from . import schema
+    from . import selectable
+    from . import traversals
+    from .elements import ClauseElement
+    from .elements import ColumnElement
+
+_SR = TypeVar("_SR", bound=roles.SQLRole)
+_StringOnlyR = TypeVar("_StringOnlyR", bound=roles.StringRole)
 
 
 def _is_literal(element):
@@ -110,14 +129,93 @@ def _expression_collection_was_a_list(attrname, fnname, args):
     return args
 
 
+@overload
 def expect(
-    role,
-    element,
-    apply_propagate_attrs=None,
-    argname=None,
-    post_inspect=False,
-    **kw,
-):
+    role: Type[roles.InElementRole],
+    element: Any,
+    *,
+    apply_propagate_attrs: Optional["ClauseElement"] = None,
+    argname: Optional[str] = None,
+    post_inspect: bool = False,
+    **kw: Any,
+) -> Union["elements.ColumnElement", "selectable.Select"]:
+    ...
+
+
+@overload
+def expect(
+    role: Type[roles.HasCTERole],
+    element: Any,
+    *,
+    apply_propagate_attrs: Optional["ClauseElement"] = None,
+    argname: Optional[str] = None,
+    post_inspect: bool = False,
+    **kw: Any,
+) -> "selectable.HasCTE":
+    ...
+
+
+@overload
+def expect(
+    role: Type[roles.ExpressionElementRole],
+    element: Any,
+    *,
+    apply_propagate_attrs: Optional["ClauseElement"] = None,
+    argname: Optional[str] = None,
+    post_inspect: bool = False,
+    **kw: Any,
+) -> "ColumnElement":
+    ...
+
+
+@overload
+def expect(
+    role: "Type[_StringOnlyR]",
+    element: Any,
+    *,
+    apply_propagate_attrs: Optional["ClauseElement"] = None,
+    argname: Optional[str] = None,
+    post_inspect: bool = False,
+    **kw: Any,
+) -> str:
+    ...
+
+
+@overload
+def expect(
+    role: Type[_SR],
+    element: Any,
+    *,
+    apply_propagate_attrs: Optional["ClauseElement"] = None,
+    argname: Optional[str] = None,
+    post_inspect: bool = False,
+    **kw: Any,
+) -> _SR:
+    ...
+
+
+@overload
+def expect(
+    role: Type[_SR],
+    element: Callable[..., Any],
+    *,
+    apply_propagate_attrs: Optional["ClauseElement"] = None,
+    argname: Optional[str] = None,
+    post_inspect: bool = False,
+    **kw: Any,
+) -> "lambdas.LambdaElement":
+    ...
+
+
+def expect(
+    role: Type[_SR],
+    element: Any,
+    *,
+    apply_propagate_attrs: Optional["ClauseElement"] = None,
+    argname: Optional[str] = None,
+    post_inspect: bool = False,
+    **kw: Any,
+) -> Union[str, _SR, "lambdas.LambdaElement"]:
     if (
         role.allows_lambda
         # note callable() will not invoke a __getattr__() method, whereas

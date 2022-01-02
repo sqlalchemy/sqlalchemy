@@ -10,6 +10,9 @@ that exist as configurational elements, but don't participate
 as actively in the load/persist ORM loop.
 
 """
+from typing import Any
+from typing import Type
+from typing import TypeVar
 
 from . import attributes
 from . import util as orm_util
@@ -24,8 +27,10 @@ from .. import util
 from ..sql import expression
 from ..sql import operators
 
+_T = TypeVar("_T", bound=Any)
 
-class DescriptorProperty(MapperProperty):
+
+class DescriptorProperty(MapperProperty[_T]):
     """:class:`.MapperProperty` which proxies access to a
     user-defined descriptor."""
 
@@ -86,7 +91,7 @@ class DescriptorProperty(MapperProperty):
         mapper.class_manager.instrument_attribute(self.key, proxy_attr)
 
 
-class CompositeProperty(DescriptorProperty):
+class CompositeProperty(DescriptorProperty[_T]):
     """Defines a "composite" mapped attribute, representing a collection
     of columns as one attribute.
 
@@ -99,49 +104,7 @@ class CompositeProperty(DescriptorProperty):
 
     """
 
-    def __init__(self, class_, *attrs, **kwargs):
-        r"""Return a composite column-based property for use with a Mapper.
-
-        See the mapping documentation section :ref:`mapper_composite` for a
-        full usage example.
-
-        The :class:`.MapperProperty` returned by :func:`.composite`
-        is the :class:`.CompositeProperty`.
-
-        :param class\_:
-          The "composite type" class, or any classmethod or callable which
-          will produce a new instance of the composite object given the
-          column values in order.
-
-        :param \*cols:
-          List of Column objects to be mapped.
-
-        :param active_history=False:
-          When ``True``, indicates that the "previous" value for a
-          scalar attribute should be loaded when replaced, if not
-          already loaded.  See the same flag on :func:`.column_property`.
-
-        :param group:
-          A group name for this property when marked as deferred.
-
-        :param deferred:
-          When True, the column property is "deferred", meaning that it does
-          not load immediately, and is instead loaded when the attribute is
-          first accessed on an instance.  See also
-          :func:`~sqlalchemy.orm.deferred`.
-
-        :param comparator_factory:  a class which extends
-          :class:`.CompositeProperty.Comparator` which provides custom SQL
-          clause generation for comparison operations.
-
-        :param doc:
-          optional string that will be applied as the doc on the
-          class-bound descriptor.
-
-        :param info: Optional data dictionary which will be populated into the
-            :attr:`.MapperProperty.info` attribute of this object.
-
-        """
+    def __init__(self, class_: Type[_T], *attrs, **kwargs):
         super(CompositeProperty, self).__init__()
 
         self.attrs = attrs
@@ -548,109 +511,6 @@ class SynonymProperty(DescriptorProperty):
         doc=None,
         info=None,
     ):
-        """Denote an attribute name as a synonym to a mapped property,
-        in that the attribute will mirror the value and expression behavior
-        of another attribute.
-
-        e.g.::
-
-            class MyClass(Base):
-                __tablename__ = 'my_table'
-
-                id = Column(Integer, primary_key=True)
-                job_status = Column(String(50))
-
-                status = synonym("job_status")
-
-
-        :param name: the name of the existing mapped property.  This
-          can refer to the string name ORM-mapped attribute
-          configured on the class, including column-bound attributes
-          and relationships.
-
-        :param descriptor: a Python :term:`descriptor` that will be used
-          as a getter (and potentially a setter) when this attribute is
-          accessed at the instance level.
-
-        :param map_column: **For classical mappings and mappings against
-          an existing Table object only**.  if ``True``, the :func:`.synonym`
-          construct will locate the :class:`_schema.Column`
-          object upon the mapped
-          table that would normally be associated with the attribute name of
-          this synonym, and produce a new :class:`.ColumnProperty` that instead
-          maps this :class:`_schema.Column`
-          to the alternate name given as the "name"
-          argument of the synonym; in this way, the usual step of redefining
-          the mapping of the :class:`_schema.Column`
-          to be under a different name is
-          unnecessary. This is usually intended to be used when a
-          :class:`_schema.Column`
-          is to be replaced with an attribute that also uses a
-          descriptor, that is, in conjunction with the
-          :paramref:`.synonym.descriptor` parameter::
-
-            my_table = Table(
-                "my_table", metadata,
-                Column('id', Integer, primary_key=True),
-                Column('job_status', String(50))
-            )
-
-            class MyClass:
-                @property
-                def _job_status_descriptor(self):
-                    return "Status: %s" % self._job_status
-
-
-            mapper(
-                MyClass, my_table, properties={
-                    "job_status": synonym(
-                        "_job_status", map_column=True,
-                        descriptor=MyClass._job_status_descriptor)
-                }
-            )
-
-          Above, the attribute named ``_job_status`` is automatically
-          mapped to the ``job_status`` column::
-
-            >>> j1 = MyClass()
-            >>> j1._job_status = "employed"
-            >>> j1.job_status
-            Status: employed
-
-          When using Declarative, in order to provide a descriptor in
-          conjunction with a synonym, use the
-          :func:`sqlalchemy.ext.declarative.synonym_for` helper.  However,
-          note that the :ref:`hybrid properties <mapper_hybrids>` feature
-          should usually be preferred, particularly when redefining attribute
-          behavior.
-
-        :param info: Optional data dictionary which will be populated into the
-            :attr:`.InspectionAttr.info` attribute of this object.
-
-            .. versionadded:: 1.0.0
-
-        :param comparator_factory: A subclass of :class:`.PropComparator`
-          that will provide custom comparison behavior at the SQL expression
-          level.
-
-          .. note::
-
-            For the use case of providing an attribute which redefines both
-            Python-level and SQL-expression level behavior of an attribute,
-            please refer to the Hybrid attribute introduced at
-            :ref:`mapper_hybrids` for a more effective technique.
-
-        .. seealso::
-
-            :ref:`synonyms` - Overview of synonyms
-
-            :func:`.synonym_for` - a helper oriented towards Declarative
-
-            :ref:`mapper_hybrids` - The Hybrid Attribute extension provides an
-            updated approach to augmenting attribute behavior more flexibly
-            than can be achieved with synonyms.
-
-        """
         super(SynonymProperty, self).__init__()
 
         self.name = name

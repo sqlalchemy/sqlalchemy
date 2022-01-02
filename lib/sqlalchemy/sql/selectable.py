@@ -48,7 +48,6 @@ from .base import Immutable
 from .base import prefix_anon_map
 from .coercions import _document_text_coercion
 from .elements import _anonymous_label
-from .elements import and_
 from .elements import BindParameter
 from .elements import BooleanClauseList
 from .elements import ClauseElement
@@ -62,6 +61,9 @@ from .elements import UnaryExpression
 from .visitors import InternalTraversal
 from .. import exc
 from .. import util
+
+
+and_ = BooleanClauseList.and_
 
 
 class _OffsetLimitParam(BindParameter):
@@ -472,7 +474,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
             method which allows for arbitrary column lists.
 
         """
-        return Select._create(self)
+        return Select(self)
 
     def join(self, right, onclause=None, isouter=False, full=False):
         """Return a :class:`_expression.Join` from this
@@ -990,86 +992,6 @@ class Join(roles.DMLTableRole, FromClause):
         self.isouter = isouter
         self.full = full
 
-    @classmethod
-    def _create_outerjoin(cls, left, right, onclause=None, full=False):
-        """Return an ``OUTER JOIN`` clause element.
-
-        The returned object is an instance of :class:`_expression.Join`.
-
-        Similar functionality is also available via the
-        :meth:`_expression.FromClause.outerjoin` method on any
-        :class:`_expression.FromClause`.
-
-        :param left: The left side of the join.
-
-        :param right: The right side of the join.
-
-        :param onclause:  Optional criterion for the ``ON`` clause, is
-          derived from foreign key relationships established between
-          left and right otherwise.
-
-        To chain joins together, use the :meth:`_expression.FromClause.join`
-        or
-        :meth:`_expression.FromClause.outerjoin` methods on the resulting
-        :class:`_expression.Join` object.
-
-        """
-        return cls(left, right, onclause, isouter=True, full=full)
-
-    @classmethod
-    def _create_join(
-        cls, left, right, onclause=None, isouter=False, full=False
-    ):
-        """Produce a :class:`_expression.Join` object, given two
-        :class:`_expression.FromClause`
-        expressions.
-
-        E.g.::
-
-            j = join(user_table, address_table,
-                     user_table.c.id == address_table.c.user_id)
-            stmt = select(user_table).select_from(j)
-
-        would emit SQL along the lines of::
-
-            SELECT user.id, user.name FROM user
-            JOIN address ON user.id = address.user_id
-
-        Similar functionality is available given any
-        :class:`_expression.FromClause` object (e.g. such as a
-        :class:`_schema.Table`) using
-        the :meth:`_expression.FromClause.join` method.
-
-        :param left: The left side of the join.
-
-        :param right: the right side of the join; this is any
-         :class:`_expression.FromClause` object such as a
-         :class:`_schema.Table` object, and
-         may also be a selectable-compatible object such as an ORM-mapped
-         class.
-
-        :param onclause: a SQL expression representing the ON clause of the
-         join.  If left at ``None``, :meth:`_expression.FromClause.join`
-         will attempt to
-         join the two tables based on a foreign key relationship.
-
-        :param isouter: if True, render a LEFT OUTER JOIN, instead of JOIN.
-
-        :param full: if True, render a FULL OUTER JOIN, instead of JOIN.
-
-         .. versionadded:: 1.1
-
-        .. seealso::
-
-            :meth:`_expression.FromClause.join` - method form,
-            based on a given left side.
-
-            :class:`_expression.Join` - the type of object produced.
-
-        """
-
-        return cls(left, right, onclause, isouter, full)
-
     @property
     def description(self):
         return "Join object on %s(%d) and %s(%d)" % (
@@ -1161,24 +1083,7 @@ class Join(roles.DMLTableRole, FromClause):
     ):
         """Create a join condition between two tables or selectables.
 
-        e.g.::
-
-            join_condition(tablea, tableb)
-
-        would produce an expression along the lines of::
-
-            tablea.c.id==tableb.c.tablea_id
-
-        The join is determined based on the foreign key relationships
-        between the two selectables.   If there are multiple ways
-        to join, or no way to join, an error is raised.
-
-        :param a_subset: An optional expression that is a sub-component
-         of ``a``.  An attempt will be made to join to just this sub-component
-         first before looking at the full ``a`` construct, and if found
-         will be successful even if there are other ways to join to ``a``.
-         This allows the "right side" of a join to be passed thereby
-         providing a "natural join".
+        See sqlalchemy.sql.util.join_condition() for full docs.
 
         """
         constraints = cls._joincond_scan_left_right(
@@ -1331,7 +1236,7 @@ class Join(roles.DMLTableRole, FromClause):
             FROM table_a JOIN table_b ON table_a.id = table_b.a_id
 
         """
-        return Select._create(self.left, self.right).select_from(self)
+        return Select(self.left, self.right).select_from(self)
 
     @util.preload_module("sqlalchemy.sql.util")
     def _anonymous_fromclause(self, name=None, flat=False):
@@ -1503,51 +1408,6 @@ class Alias(roles.DMLTableRole, AliasedReturnsRows):
 
     @classmethod
     def _factory(cls, selectable, name=None, flat=False):
-        """Return an :class:`_expression.Alias` object.
-
-        An :class:`_expression.Alias` represents any
-        :class:`_expression.FromClause`
-        with an alternate name assigned within SQL, typically using the ``AS``
-        clause when generated, e.g. ``SELECT * FROM table AS aliasname``.
-
-        Similar functionality is available via the
-        :meth:`_expression.FromClause.alias`
-        method available on all :class:`_expression.FromClause` subclasses.
-        In terms of
-        a SELECT object as generated from the :func:`_expression.select`
-        function, the :meth:`_expression.SelectBase.alias` method returns an
-        :class:`_expression.Alias` or similar object which represents a named,
-        parenthesized subquery.
-
-        When an :class:`_expression.Alias` is created from a
-        :class:`_schema.Table` object,
-        this has the effect of the table being rendered
-        as ``tablename AS aliasname`` in a SELECT statement.
-
-        For :func:`_expression.select` objects, the effect is that of
-        creating a named subquery, i.e. ``(select ...) AS aliasname``.
-
-        The ``name`` parameter is optional, and provides the name
-        to use in the rendered SQL.  If blank, an "anonymous" name
-        will be deterministically generated at compile time.
-        Deterministic means the name is guaranteed to be unique against
-        other constructs used in the same statement, and will also be the
-        same name for each successive compilation of the same statement
-        object.
-
-        :param selectable: any :class:`_expression.FromClause` subclass,
-            such as a table, select statement, etc.
-
-        :param name: string name to be assigned as the alias.
-            If ``None``, a name will be deterministically generated
-            at compile time.
-
-        :param flat: Will be passed through to if the given selectable
-         is an instance of :class:`_expression.Join` - see
-         :meth:`_expression.Join.alias`
-         for details.
-
-        """
         return coercions.expect(
             roles.FromClauseRole, selectable, allow_select=True
         ).alias(name=name, flat=flat)
@@ -1724,25 +1584,6 @@ class Lateral(AliasedReturnsRows):
 
     @classmethod
     def _factory(cls, selectable, name=None):
-        """Return a :class:`_expression.Lateral` object.
-
-        :class:`_expression.Lateral` is an :class:`_expression.Alias`
-        subclass that represents
-        a subquery with the LATERAL keyword applied to it.
-
-        The special behavior of a LATERAL subquery is that it appears in the
-        FROM clause of an enclosing SELECT, but may correlate to other
-        FROM clauses of that SELECT.   It is a special case of subquery
-        only supported by a small number of backends, currently more recent
-        PostgreSQL versions.
-
-        .. versionadded:: 1.1
-
-        .. seealso::
-
-            :ref:`lateral_selects` -  overview of usage.
-
-        """
         return coercions.expect(
             roles.FromClauseRole, selectable, explicit_subquery=True
         ).lateral(name=name)
@@ -1773,48 +1614,6 @@ class TableSample(AliasedReturnsRows):
 
     @classmethod
     def _factory(cls, selectable, sampling, name=None, seed=None):
-        """Return a :class:`_expression.TableSample` object.
-
-        :class:`_expression.TableSample` is an :class:`_expression.Alias`
-        subclass that represents
-        a table with the TABLESAMPLE clause applied to it.
-        :func:`_expression.tablesample`
-        is also available from the :class:`_expression.FromClause`
-        class via the
-        :meth:`_expression.FromClause.tablesample` method.
-
-        The TABLESAMPLE clause allows selecting a randomly selected approximate
-        percentage of rows from a table. It supports multiple sampling methods,
-        most commonly BERNOULLI and SYSTEM.
-
-        e.g.::
-
-            from sqlalchemy import func
-
-            selectable = people.tablesample(
-                        func.bernoulli(1),
-                        name='alias',
-                        seed=func.random())
-            stmt = select(selectable.c.people_id)
-
-        Assuming ``people`` with a column ``people_id``, the above
-        statement would render as::
-
-            SELECT alias.people_id FROM
-            people AS alias TABLESAMPLE bernoulli(:bernoulli_1)
-            REPEATABLE (random())
-
-        .. versionadded:: 1.1
-
-        :param sampling: a ``float`` percentage between 0 and 100 or
-            :class:`_functions.Function`.
-
-        :param name: optional alias name
-
-        :param seed: any real-valued SQL expression.  When specified, the
-         REPEATABLE sub-clause is also rendered.
-
-        """
         return coercions.expect(roles.FromClauseRole, selectable).tablesample(
             sampling, name=name, seed=seed
         )
@@ -2493,28 +2292,6 @@ class TableClause(roles.DMLTableRole, Immutable, FromClause):
     """No PK or default support so no autoincrement column."""
 
     def __init__(self, name, *columns, **kw):
-        """Produce a new :class:`_expression.TableClause`.
-
-        The object returned is an instance of
-        :class:`_expression.TableClause`, which
-        represents the "syntactical" portion of the schema-level
-        :class:`_schema.Table` object.
-        It may be used to construct lightweight table constructs.
-
-        .. versionchanged:: 1.0.0 :func:`_expression.table` can now
-           be imported from the plain ``sqlalchemy`` namespace like any
-           other SQL element.
-
-
-        :param name: Name of the table.
-
-        :param columns: A collection of :func:`_expression.column` constructs.
-
-        :param schema: The schema name for this table.
-
-            .. versionadded:: 1.3.18 :func:`_expression.table` can now
-               accept a ``schema`` argument.
-        """
         super(TableClause, self).__init__()
         self.name = name
         self._columns = DedupeColumnCollection()
@@ -2697,41 +2474,6 @@ class Values(Generative, FromClause):
     ]
 
     def __init__(self, *columns, name=None, literal_binds=False):
-        r"""Construct a :class:`_expression.Values` construct.
-
-        The column expressions and the actual data for
-        :class:`_expression.Values` are given in two separate steps.  The
-        constructor receives the column expressions typically as
-        :func:`_expression.column` constructs,
-        and the data is then passed via the
-        :meth:`_expression.Values.data` method as a list,
-        which can be called multiple
-        times to add more data, e.g.::
-
-            from sqlalchemy import column
-            from sqlalchemy import values
-
-            value_expr = values(
-                column('id', Integer),
-                column('name', String),
-                name="my_values"
-            ).data(
-                [(1, 'name1'), (2, 'name2'), (3, 'name3')]
-            )
-
-        :param \*columns: column expressions, typically composed using
-         :func:`_expression.column` objects.
-
-        :param name: the name for this VALUES construct.  If omitted, the
-         VALUES construct will be unnamed in a SQL expression.   Different
-         backends may have different requirements here.
-
-        :param literal_binds: Defaults to False.  Whether or not to render
-         the data values inline in the SQL output, rather than using bound
-         parameters.
-
-        """
-
         super(Values, self).__init__()
         self._column_args = columns
         self.name = name
@@ -3708,91 +3450,26 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
 
     @classmethod
     def _create_union(cls, *selects, **kwargs):
-        r"""Return a ``UNION`` of multiple selectables.
-
-        The returned object is an instance of
-        :class:`_expression.CompoundSelect`.
-
-        A similar :func:`union()` method is available on all
-        :class:`_expression.FromClause` subclasses.
-
-        :param \*selects:
-          a list of :class:`_expression.Select` instances.
-
-        :param \**kwargs:
-          available keyword arguments are the same as those of
-          :func:`select`.
-
-        """
         return CompoundSelect(CompoundSelect.UNION, *selects, **kwargs)
 
     @classmethod
     def _create_union_all(cls, *selects):
-        r"""Return a ``UNION ALL`` of multiple selectables.
-
-        The returned object is an instance of
-        :class:`_expression.CompoundSelect`.
-
-        A similar :func:`union_all()` method is available on all
-        :class:`_expression.FromClause` subclasses.
-
-        :param \*selects:
-          a list of :class:`_expression.Select` instances.
-
-        """
         return CompoundSelect(CompoundSelect.UNION_ALL, *selects)
 
     @classmethod
     def _create_except(cls, *selects):
-        r"""Return an ``EXCEPT`` of multiple selectables.
-
-        The returned object is an instance of
-        :class:`_expression.CompoundSelect`.
-
-        :param \*selects:
-          a list of :class:`_expression.Select` instances.
-
-        """
         return CompoundSelect(CompoundSelect.EXCEPT, *selects)
 
     @classmethod
     def _create_except_all(cls, *selects):
-        r"""Return an ``EXCEPT ALL`` of multiple selectables.
-
-        The returned object is an instance of
-        :class:`_expression.CompoundSelect`.
-
-        :param \*selects:
-          a list of :class:`_expression.Select` instances.
-
-        """
         return CompoundSelect(CompoundSelect.EXCEPT_ALL, *selects)
 
     @classmethod
     def _create_intersect(cls, *selects):
-        r"""Return an ``INTERSECT`` of multiple selectables.
-
-        The returned object is an instance of
-        :class:`_expression.CompoundSelect`.
-
-        :param \*selects:
-          a list of :class:`_expression.Select` instances.
-
-        """
         return CompoundSelect(CompoundSelect.INTERSECT, *selects)
 
     @classmethod
     def _create_intersect_all(cls, *selects):
-        r"""Return an ``INTERSECT ALL`` of multiple selectables.
-
-        The returned object is an instance of
-        :class:`_expression.CompoundSelect`.
-
-        :param \*selects:
-          a list of :class:`_expression.Select` instances.
-
-
-        """
         return CompoundSelect(CompoundSelect.INTERSECT_ALL, *selects)
 
     def _scalar_type(self):
@@ -4413,59 +4090,6 @@ class Select(
     ]
 
     @classmethod
-    def _create(
-        cls, *entities: Union[roles.ColumnsClauseRole, Type]
-    ) -> "Select":
-        r"""Construct a new :class:`_expression.Select`.
-
-
-        .. versionadded:: 1.4 - The :func:`_sql.select` function now accepts
-           column arguments positionally.   The top-level :func:`_sql.select`
-           function will automatically use the 1.x or 2.x style API based on
-           the incoming arguments; using :func:`_future.select` from the
-           ``sqlalchemy.future`` module will enforce that only the 2.x style
-           constructor is used.
-
-        Similar functionality is also available via the
-        :meth:`_expression.FromClause.select` method on any
-        :class:`_expression.FromClause`.
-
-        .. seealso::
-
-            :ref:`coretutorial_selecting` - Core Tutorial description of
-            :func:`_expression.select`.
-
-        :param \*entities:
-          Entities to SELECT from.  For Core usage, this is typically a series
-          of :class:`_expression.ColumnElement` and / or
-          :class:`_expression.FromClause`
-          objects which will form the columns clause of the resulting
-          statement.   For those objects that are instances of
-          :class:`_expression.FromClause` (typically :class:`_schema.Table`
-          or :class:`_expression.Alias`
-          objects), the :attr:`_expression.FromClause.c`
-          collection is extracted
-          to form a collection of :class:`_expression.ColumnElement` objects.
-
-          This parameter will also accept :class:`_expression.TextClause`
-          constructs as
-          given, as well as ORM-mapped classes.
-
-        """
-
-        self = cls.__new__(cls)
-        self._raw_columns = [
-            coercions.expect(
-                roles.ColumnsClauseRole, ent, apply_propagate_attrs=self
-            )
-            for ent in entities
-        ]
-
-        GenerativeSelect.__init__(self)
-
-        return self
-
-    @classmethod
     def _create_raw_select(cls, **kw) -> "Select":
         """Create a :class:`.Select` using raw ``__new__`` with no coercions.
 
@@ -4478,8 +4102,22 @@ class Select(
         stmt.__dict__.update(kw)
         return stmt
 
-    def __init__(self):
-        raise NotImplementedError()
+    def __init__(self, *entities: Union[roles.ColumnsClauseRole, Type]):
+        r"""Construct a new :class:`_expression.Select`.
+
+        The public constructor for :class:`_expression.Select` is the
+        :func:`_sql.select` function.
+
+        """
+
+        self._raw_columns = [
+            coercions.expect(
+                roles.ColumnsClauseRole, ent, apply_propagate_attrs=self
+            )
+            for ent in entities
+        ]
+
+        GenerativeSelect.__init__(self)
 
     def _scalar_type(self):
         elem = self._raw_columns[0]
@@ -5787,52 +5425,16 @@ class Exists(UnaryExpression):
 
     """
 
-    _from_objects = []
+    _from_objects = ()
     inherit_cache = True
 
-    def __init__(self, *args, **kwargs):
-        """Construct a new :class:`_expression.Exists` construct.
-
-        The :func:`_sql.exists` can be invoked by itself to produce an
-        :class:`_sql.Exists` construct, which will accept simple WHERE
-        criteria::
-
-            exists_criteria = exists().where(table1.c.col1 == table2.c.col2)
-
-        However, for greater flexibility in constructing the SELECT, an
-        existing :class:`_sql.Select` construct may be converted to an
-        :class:`_sql.Exists`, most conveniently by making use of the
-        :meth:`_sql.SelectBase.exists` method::
-
-            exists_criteria = (
-                select(table2.c.col2).
-                where(table1.c.col1 == table2.c.col2).
-                exists()
-            )
-
-        The EXISTS criteria is then used inside of an enclosing SELECT::
-
-            stmt = select(table1.c.col1).where(exists_criteria)
-
-        The above statement will then be of the form::
-
-            SELECT col1 FROM table1 WHERE EXISTS
-            (SELECT table2.col2 FROM table2 WHERE table2.col2 = table1.col1)
-
-        .. seealso::
-
-            :ref:`tutorial_exists` - in the :term:`2.0 style` tutorial.
-
-            :meth:`_sql.SelectBase.exists` - method to transform a ``SELECT`` to an
-            ``EXISTS`` clause.
-
-        """  # noqa E501
-        if args and isinstance(args[0], (SelectBase, ScalarSelect)):
-            s = args[0]
+    def __init__(self, __argument=None):
+        if __argument is None:
+            s = Select(literal_column("*")).scalar_subquery()
+        elif isinstance(__argument, (SelectBase, ScalarSelect)):
+            s = __argument
         else:
-            if not args:
-                args = (literal_column("*"),)
-            s = Select._create(*args, **kwargs).scalar_subquery()
+            s = Select(__argument).scalar_subquery()
 
         UnaryExpression.__init__(
             self,
@@ -5865,7 +5467,7 @@ class Exists(UnaryExpression):
 
         """  # noqa
 
-        return Select._create(self)
+        return Select(self)
 
     def correlate(self, *fromclause):
         """Apply correlation to the subquery noted by this :class:`_sql.Exists`.

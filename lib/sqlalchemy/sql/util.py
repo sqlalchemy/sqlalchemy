@@ -46,9 +46,35 @@ from .. import exc
 from .. import util
 
 
-join_condition = util.langhelpers.public_factory(
-    Join._join_condition, ".sql.util.join_condition"
-)
+def join_condition(a, b, a_subset=None, consider_as_foreign_keys=None):
+    """Create a join condition between two tables or selectables.
+
+    e.g.::
+
+        join_condition(tablea, tableb)
+
+    would produce an expression along the lines of::
+
+        tablea.c.id==tableb.c.tablea_id
+
+    The join is determined based on the foreign key relationships
+    between the two selectables.   If there are multiple ways
+    to join, or no way to join, an error is raised.
+
+    :param a_subset: An optional expression that is a sub-component
+        of ``a``.  An attempt will be made to join to just this sub-component
+        first before looking at the full ``a`` construct, and if found
+        will be successful even if there are other ways to join to ``a``.
+        This allows the "right side" of a join to be passed thereby
+        providing a "natural join".
+
+    """
+    return Join._join_condition(
+        a,
+        b,
+        a_subset=a_subset,
+        consider_as_foreign_keys=consider_as_foreign_keys,
+    )
 
 
 def find_join_source(clauses, join_to):

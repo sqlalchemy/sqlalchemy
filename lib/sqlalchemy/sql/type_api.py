@@ -10,30 +10,48 @@
 """
 
 import typing
+from typing import Any
+from typing import Generic
+from typing import Tuple
+from typing import Type
+from typing import TypeVar
+from typing import Union
 
-from . import operators
 from .base import SchemaEventTarget
 from .cache_key import NO_CACHE
+from .operators import ColumnOperators
 from .visitors import Traversible
 from .. import exc
 from .. import util
 
 # these are back-assigned by sqltypes.
-BOOLEANTYPE = None
-INTEGERTYPE = None
-NULLTYPE = None
-STRINGTYPE = None
-MATCHTYPE = None
-INDEXABLE = None
-TABLEVALUE = None
-_resolve_value_to_type = None
+if not typing.TYPE_CHECKING:
+    BOOLEANTYPE = None
+    INTEGERTYPE = None
+    NULLTYPE = None
+    STRINGTYPE = None
+    MATCHTYPE = None
+    INDEXABLE = None
+    TABLEVALUE = None
+    _resolve_value_to_type = None
 
+if typing.TYPE_CHECKING:
+    from .elements import ColumnElement
+    from .operators import OperatorType
+    from .sqltypes import _resolve_value_to_type
+    from .sqltypes import Boolean as BOOLEANTYPE  # noqa
+    from .sqltypes import Indexable as INDEXABLE  # noqa
+    from .sqltypes import MatchType as MATCHTYPE  # noqa
+    from .sqltypes import NULLTYPE
+
+_T = TypeVar("_T", bound=Any)
+_CT = TypeVar("_CT", bound=Any)
 
 # replace with pep-673 when applicable
 SelfTypeEngine = typing.TypeVar("SelfTypeEngine", bound="TypeEngine")
 
 
-class TypeEngine(Traversible):
+class TypeEngine(Traversible, Generic[_T]):
     """The ultimate base class for all SQL datatypes.
 
     Common subclasses of :class:`.TypeEngine` include
@@ -55,6 +73,8 @@ class TypeEngine(Traversible):
     _is_array = False
     _is_type_decorator = False
 
+    _block_from_type_affinity = False
+
     render_bind_cast = False
     """Render bind casts for :attr:`.BindTyping.RENDER_CASTS` mode.
 
@@ -70,7 +90,10 @@ class TypeEngine(Traversible):
 
     """
 
-    class Comparator(operators.ColumnOperators):
+    class Comparator(
+        ColumnOperators["ColumnElement"],
+        Generic[_CT],
+    ):
         """Base class for custom comparison operations defined at the
         type level.  See :attr:`.TypeEngine.comparator_factory`.
 
@@ -84,23 +107,33 @@ class TypeEngine(Traversible):
         def __clause_element__(self):
             return self.expr
 
-        def __init__(self, expr):
+        def __init__(self, expr: "ColumnElement[_CT]"):
             self.expr = expr
-            self.type = expr.type
+            self.type: TypeEngine[_CT] = expr.type
 
         @util.preload_module("sqlalchemy.sql.default_comparator")
-        def operate(self, op, *other, **kwargs):
+        def operate(
+            self, op: "OperatorType", *other, **kwargs
+        ) -> "ColumnElement":
             default_comparator = util.preloaded.sql_default_comparator
-            o = default_comparator.operator_lookup[op.__name__]
-            return o[0](self.expr, op, *(other + o[1:]), **kwargs)
+            op_fn, addtl_kw = default_comparator.operator_lookup[op.__name__]
+            if kwargs:
+                addtl_kw = addtl_kw.union(kwargs)
+            return op_fn(self.expr, op, *other, **addtl_kw)
 
         @util.preload_module("sqlalchemy.sql.default_comparator")
-        def reverse_operate(self, op, other, **kwargs):
+        def reverse_operate(
+            self, op: "OperatorType", other, **kwargs
+        ) -> "ColumnElement":
             default_comparator = util.preloaded.sql_default_comparator
-            o = default_comparator.operator_lookup[op.__name__]
-            return o[0](self.expr, op, other, reverse=True, *o[1:], **kwargs)
+            op_fn, addtl_kw = default_comparator.operator_lookup[op.__name__]
+            if kwargs:
+                addtl_kw = addtl_kw.union(kwargs)
+            return op_fn(self.expr, op, other, reverse=True, **addtl_kw)
 
-        def _adapt_expression(self, op, other_comparator):
+        def _adapt_expression(
+            self, op: "OperatorType", other_comparator
+        ) -> Tuple["OperatorType", "TypeEngine[_CT]"]:
             """evaluate the return type of <self> <op> <othertype>,
             and apply any adaptations to the given operator.
 
@@ -611,7 +644,9 @@ class TypeEngine(Traversible):
         for t in self.__class__.__mro__:
             if t in (TypeEngine, UserDefinedType):
                 return typ
-            elif issubclass(t, (TypeEngine, UserDefinedType)):
+            elif issubclass(
+                t, (TypeEngine, UserDefinedType)
+            ) and not t.__dict__.get("_block_from_type_affinity", False):
                 typ = t
         else:
             return self.__class__
@@ -1202,7 +1237,7 @@ class NativeForEmulated:
         return cls(**kw)
 
 
-class TypeDecorator(ExternalType, SchemaEventTarget, TypeEngine):
+class TypeDecorator(ExternalType, SchemaEventTarget, TypeEngine[_T]):
     """Allows the creation of types which add additional functionality
     to an existing type.
 
@@ -1882,7 +1917,9 @@ def _reconstitute_comparator(expression):
     return expression.comparator
 
 
-def to_instance(typeobj, *arg, **kw):
+def to_instance(
+    typeobj: Union[Type[TypeEngine[_T]], TypeEngine[_T], None], *arg, **kw
+) -> TypeEngine[_T]:
     if typeobj is None:
         return NULLTYPE
 

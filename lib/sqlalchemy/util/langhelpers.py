@@ -36,6 +36,11 @@ from . import typing as compat_typing
 from .. import exc
 
 _T = TypeVar("_T")
+_F = TypeVar("_F", bound=Callable[..., Any])
+_MP = TypeVar("_MP", bound="memoized_property[Any]")
+_MA = TypeVar("_MA", bound="HasMemoized.memoized_attribute[Any]")
+_HP = TypeVar("_HP", bound="hybridproperty")
+_HM = TypeVar("_HM", bound="hybridmethod")
 
 
 def md5_hex(x):
@@ -234,101 +239,10 @@ def _exec_code_in_env(code, env, fn_name):
     return env[fn_name]
 
 
+_PF = TypeVar("_PF")
 _TE = TypeVar("_TE")
 
 _P = compat_typing.ParamSpec("_P")
-
-
-def public_factory(
-    target: typing.Callable[_P, _TE],
-    location: str,
-    class_location: Optional[str] = None,
-) -> typing.Callable[_P, _TE]:
-    """Produce a wrapping function for the given cls or classmethod.
-
-    Rationale here is so that the __init__ method of the
-    class can serve as documentation for the function.
-
-    """
-
-    if isinstance(target, type):
-        fn = target.__init__
-        callable_ = target
-        doc = (
-            "Construct a new :class:`%s` object. \n\n"
-            "This constructor is mirrored as a public API function; "
-            "see :func:`sqlalchemy%s` "
-            "for a full usage and argument description."
-            % (
-                class_location if class_location else ".%s" % target.__name__,
-                location,
-            )
-        )
-    else:
-        fn = callable_ = target
-        doc = (
-            "This function is mirrored; see :func:`sqlalchemy%s` "
-            "for a description of arguments." % location
-        )
-
-    location_name = location.split(".")[-1]
-    spec = compat.inspect_getfullargspec(fn)
-    del spec[0][0]
-    metadata = format_argspec_plus(spec, grouped=False)
-    metadata["name"] = location_name
-    code = (
-        """\
-def %(name)s%(grouped_args)s:
-    return cls(%(apply_kw)s)
-"""
-        % metadata
-    )
-    env = {
-        "cls": callable_,
-        "symbol": symbol,
-        "__name__": callable_.__module__,
-    }
-    exec(code, env)
-
-    decorated = env[location_name]
-
-    if hasattr(fn, "_linked_to"):
-        linked_to, linked_to_location = fn._linked_to
-        linked_to_doc = linked_to.__doc__
-        if class_location is None:
-            class_location = "%s.%s" % (target.__module__, target.__name__)
-
-        linked_to_doc = inject_docstring_text(
-            linked_to_doc,
-            ".. container:: inherited_member\n\n    "
-            "This documentation is inherited from :func:`sqlalchemy%s`; "
-            "this constructor, :func:`sqlalchemy%s`,   "
-            "creates a :class:`sqlalchemy%s` object.  See that class for "
-            "additional details describing this subclass."
-            % (linked_to_location, location, class_location),
-            1,
-        )
-        decorated.__doc__ = linked_to_doc
-    else:
-        decorated.__doc__ = fn.__doc__
-
-    decorated.__module__ = "sqlalchemy" + location.rsplit(".", 1)[0]
-    if decorated.__module__ not in sys.modules:
-        raise ImportError(
-            "public_factory location %s is not in sys.modules"
-            % (decorated.__module__,)
-        )
-
-    if hasattr(fn, "__func__"):
-        fn.__func__.__doc__ = doc
-        if not hasattr(fn.__func__, "_linked_to"):
-            fn.__func__._linked_to = (decorated, location)
-    else:
-        fn.__doc__ = doc
-        if not hasattr(fn, "_linked_to"):
-            fn._linked_to = (decorated, location)
-
-    return decorated
 
 
 class PluginLoader:
@@ -1182,13 +1096,25 @@ class HasMemoized:
         self.__dict__[key] = value
         self._memoized_keys |= {key}
 
-    class memoized_attribute:
+    class memoized_attribute(Generic[_T]):
         """A read-only @property that is only evaluated once."""
 
-        def __init__(self, fget, doc=None):
+        fget: Callable[..., _T]
+        __doc__: Optional[str]
+        __name__: str
+
+        def __init__(self, fget: Callable[..., _T], doc: Optional[str] = None):
             self.fget = fget
             self.__doc__ = doc or fget.__doc__
             self.__name__ = fget.__name__
+
+        @overload
+        def __get__(self: _MA, obj: None, cls: Any) -> _MA:
+            ...
+
+        @overload
+        def __get__(self, obj: Any, cls: Any) -> _T:
+            ...
 
         def __get__(self, obj, cls):
             if obj is None:
@@ -1198,7 +1124,7 @@ class HasMemoized:
             return result
 
     @classmethod
-    def memoized_instancemethod(cls, fn):
+    def memoized_instancemethod(cls, fn: Any) -> Any:
         """Decorate a method memoize its return value."""
 
         def oneshot(self, *args, **kw):

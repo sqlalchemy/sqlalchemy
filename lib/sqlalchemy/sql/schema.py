@@ -29,6 +29,14 @@ as components in SQL expressions.
 
 """
 import collections
+import typing
+from typing import Any
+from typing import MutableMapping
+from typing import Optional
+from typing import overload
+from typing import Type
+from typing import TypeVar
+from typing import Union
 
 from . import coercions
 from . import ddl
@@ -52,7 +60,13 @@ from .. import event
 from .. import exc
 from .. import inspection
 from .. import util
+from ..util.typing import Literal
 
+if typing.TYPE_CHECKING:
+    from .type_api import TypeEngine
+
+_T = TypeVar("_T", bound="Any")
+_ServerDefaultType = Union["FetchedValue", str, TextClause, ColumnElement]
 
 RETAIN_SCHEMA = util.symbol("retain_schema")
 
@@ -1086,12 +1100,108 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         return self._schema_item_copy(table)
 
 
-class Column(DialectKWArgs, SchemaItem, ColumnClause):
+class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
     """Represents a column in a database table."""
 
     __visit_name__ = "column"
 
     inherit_cache = True
+
+    @overload
+    def __init__(
+        self: "Column[None]",
+        __name: str,
+        *args: SchemaEventTarget,
+        autoincrement: Union[bool, Literal["auto", "ignore_fk"]] = ...,
+        default: Optional[Any] = ...,
+        doc: Optional[str] = ...,
+        key: Optional[str] = ...,
+        index: Optional[bool] = ...,
+        info: MutableMapping[Any, Any] = ...,
+        nullable: bool = ...,
+        onupdate: Optional[Any] = ...,
+        primary_key: bool = ...,
+        server_default: Optional[_ServerDefaultType] = ...,
+        server_onupdate: Optional["FetchedValue"] = ...,
+        quote: Optional[bool] = ...,
+        unique: Optional[bool] = ...,
+        system: bool = ...,
+        comment: Optional[str] = ...,
+        **kwargs: Any,
+    ) -> None:
+        ...
+
+    @overload
+    def __init__(
+        self: "Column[None]",
+        *args: SchemaEventTarget,
+        autoincrement: Union[bool, Literal["auto", "ignore_fk"]] = ...,
+        default: Optional[Any] = ...,
+        doc: Optional[str] = ...,
+        key: Optional[str] = ...,
+        index: Optional[bool] = ...,
+        info: MutableMapping[Any, Any] = ...,
+        nullable: bool = ...,
+        onupdate: Optional[Any] = ...,
+        primary_key: bool = ...,
+        server_default: Optional[_ServerDefaultType] = ...,
+        server_onupdate: Optional["FetchedValue"] = ...,
+        quote: Optional[bool] = ...,
+        unique: Optional[bool] = ...,
+        system: bool = ...,
+        comment: Optional[str] = ...,
+        **kwargs: Any,
+    ) -> None:
+        ...
+
+    @overload
+    def __init__(
+        self,
+        __name: str,
+        __type: Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"],
+        *args: SchemaEventTarget,
+        autoincrement: Union[bool, Literal["auto", "ignore_fk"]] = ...,
+        default: Optional[Any] = ...,
+        doc: Optional[str] = ...,
+        key: Optional[str] = ...,
+        index: Optional[bool] = ...,
+        info: MutableMapping[Any, Any] = ...,
+        nullable: bool = ...,
+        onupdate: Optional[Any] = ...,
+        primary_key: bool = ...,
+        server_default: Optional[_ServerDefaultType] = ...,
+        server_onupdate: Optional["FetchedValue"] = ...,
+        quote: Optional[bool] = ...,
+        unique: Optional[bool] = ...,
+        system: bool = ...,
+        comment: Optional[str] = ...,
+        **kwargs: Any,
+    ) -> None:
+        ...
+
+    @overload
+    def __init__(
+        self,
+        __type: Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"],
+        *args: SchemaEventTarget,
+        autoincrement: Union[bool, Literal["auto", "ignore_fk"]] = ...,
+        default: Optional[Any] = ...,
+        doc: Optional[str] = ...,
+        key: Optional[str] = ...,
+        index: Optional[bool] = ...,
+        info: MutableMapping[Any, Any] = ...,
+        nullable: bool = ...,
+        onupdate: Optional[Any] = ...,
+        primary_key: bool = ...,
+        server_default: Optional[_ServerDefaultType] = ...,
+        server_onupdate: Optional["FetchedValue"] = ...,
+        quote: Optional[bool] = ...,
+        unique: Optional[bool] = ...,
+        system: bool = ...,
+        comment: Optional[str] = ...,
+        **kwargs: Any,
+    ) -> None:
+        ...
 
     def __init__(self, *args, **kwargs):
         r"""

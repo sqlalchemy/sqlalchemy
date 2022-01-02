@@ -94,13 +94,12 @@ class array(expression.ClauseList, expression.ColumnElement):
             coercions.expect(roles.ExpressionElementRole, c) for c in clauses
         ]
 
-        super(array, self).__init__(*clauses, **kw)
-
         self._type_tuple = [arg.type for arg in clauses]
         main_type = kw.pop(
             "type_",
             self._type_tuple[0] if self._type_tuple else sqltypes.NULLTYPE,
         )
+        super(array, self).__init__(*clauses, **kw)
 
         if isinstance(main_type, ARRAY):
             self.type = ARRAY(
