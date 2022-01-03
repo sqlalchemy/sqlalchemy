@@ -787,7 +787,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                     for s in query._correlate
                 )
             )
-        elif query._correlate_except:
+        elif query._correlate_except is not None:
             self.correlate_except = tuple(
                 util.flatten_iterator(
                     sql_util.surface_selectables(s) if s is not None else None
@@ -1229,7 +1229,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         if correlate:
             statement.correlate.non_generative(statement, *correlate)
 
-        if correlate_except:
+        if correlate_except is not None:
             statement.correlate_except.non_generative(
                 statement, *correlate_except
             )
