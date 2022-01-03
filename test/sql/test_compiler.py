@@ -5920,6 +5920,14 @@ class CorrelateTest(fixtures.TestBase, AssertsCompiledSQL):
             )
         )
 
+    def test_correlate_except_empty(self):
+        t1, t2, s1 = self._fixture()
+        self._assert_where_all_correlated(
+            select(t1, t2).where(
+                t2.c.a == s1.correlate_except().scalar_subquery()
+            )
+        )
+
     def test_correlate_except_having(self):
         t1, t2, s1 = self._fixture()
         self._assert_having_correlated(
