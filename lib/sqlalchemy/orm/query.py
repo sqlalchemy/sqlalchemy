@@ -677,7 +677,7 @@ class Query(
         self._compile_options += opt
         return self
 
-    @util.deprecated_20(
+    @util.became_legacy_20(
         ":meth:`_orm.Query.with_labels` and :meth:`_orm.Query.apply_labels`",
         alternative="Use set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL) "
         "instead.",
@@ -803,10 +803,9 @@ class Query(
         self.load_options += {"_yield_per": count}
         return self
 
-    @util.deprecated_20(
+    @util.became_legacy_20(
         ":meth:`_orm.Query.get`",
         alternative="The method is now available as :meth:`_orm.Session.get`",
-        becomes_legacy=True,
     )
     def get(self, ident):
         """Return an instance based on the given primary key identifier,
@@ -933,8 +932,8 @@ class Query(
         :func:`~.expression.select`.
 
         The method here accepts mapped classes, :func:`.aliased` constructs,
-        and :func:`.mapper` constructs as arguments, which are resolved into
-        expression constructs, in addition to appropriate expression
+        and :class:`_orm.Mapper` constructs as arguments, which are resolved
+        into expression constructs, in addition to appropriate expression
         constructs.
 
         The correlation arguments are ultimately passed to
@@ -997,10 +996,9 @@ class Query(
         self.load_options += {"_invoke_all_eagers": value}
         return self
 
-    @util.deprecated_20(
+    @util.became_legacy_20(
         ":meth:`_orm.Query.with_parent`",
         alternative="Use the :func:`_orm.with_parent` standalone construct.",
-        becomes_legacy=True,
     )
     @util.preload_module("sqlalchemy.orm.relationships")
     def with_parent(self, instance, property=None, from_entity=None):  # noqa
@@ -2046,7 +2044,6 @@ class Query(
         return orm_util._getitem(
             self,
             item,
-            allow_negative=not self.session or not self.session.future,
         )
 
     @_generative
@@ -2405,11 +2402,10 @@ class Query(
 
         return result
 
-    @util.deprecated_20(
+    @util.became_legacy_20(
         ":meth:`_orm.Query.merge_result`",
         alternative="The method is superseded by the "
         ":func:`_orm.merge_frozen_result` function.",
-        becomes_legacy=True,
         enable_warnings=False,  # warnings occur via loading.merge_result
     )
     def merge_result(self, iterator, load=True):

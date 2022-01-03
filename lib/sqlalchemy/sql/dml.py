@@ -237,66 +237,6 @@ class UpdateBase(
 
     is_dml = True
 
-    @classmethod
-    def _constructor_20_deprecations(cls, fn_name, clsname, names):
-
-        param_to_method_lookup = dict(
-            whereclause=(
-                "The :paramref:`%(func)s.whereclause` parameter "
-                "will be removed "
-                "in SQLAlchemy 2.0.  Please refer to the "
-                ":meth:`%(classname)s.where` method."
-            ),
-            values=(
-                "The :paramref:`%(func)s.values` parameter will be removed "
-                "in SQLAlchemy 2.0.  Please refer to the "
-                ":meth:`%(classname)s.values` method."
-            ),
-            inline=(
-                "The :paramref:`%(func)s.inline` parameter will be "
-                "removed in "
-                "SQLAlchemy 2.0.  Please use the "
-                ":meth:`%(classname)s.inline` method."
-            ),
-            prefixes=(
-                "The :paramref:`%(func)s.prefixes parameter will be "
-                "removed in "
-                "SQLAlchemy 2.0.  Please use the "
-                ":meth:`%(classname)s.prefix_with` "
-                "method."
-            ),
-            return_defaults=(
-                "The :paramref:`%(func)s.return_defaults` parameter will be "
-                "removed in SQLAlchemy 2.0.  Please use the "
-                ":meth:`%(classname)s.return_defaults` method."
-            ),
-            returning=(
-                "The :paramref:`%(func)s.returning` parameter will be "
-                "removed in SQLAlchemy 2.0.  Please use the "
-                ":meth:`%(classname)s.returning`` method."
-            ),
-            preserve_parameter_order=(
-                "The :paramref:`%(func)s.preserve_parameter_order` parameter "
-                "will be removed in SQLAlchemy 2.0.   Use the "
-                ":meth:`%(classname)s.ordered_values` method with a list "
-                "of tuples. "
-            ),
-        )
-
-        return util.deprecated_params(
-            **{
-                name: (
-                    "2.0",
-                    param_to_method_lookup[name]
-                    % {
-                        "func": "_expression.%s" % fn_name,
-                        "classname": "_expression.%s" % clsname,
-                    },
-                )
-                for name in names
-            }
-        )
-
     def _generate_fromclause_column_proxies(self, fromclause):
         fromclause._columns._populate_separate_keys(
             col._make_proxy(fromclause) for col in self._returning
@@ -331,15 +271,6 @@ class UpdateBase(
         """
         self._validate_dialect_kwargs(opt)
         return self
-
-    def _validate_dialect_kwargs_deprecated(self, dialect_kw):
-        util.warn_deprecated_20(
-            "Passing dialect keyword arguments directly to the "
-            "%s constructor is deprecated and will be removed in SQLAlchemy "
-            "2.0.  Please use the ``with_dialect_options()`` method."
-            % (self.__class__.__name__)
-        )
-        self._validate_dialect_kwargs(dialect_kw)
 
     @_generative
     def returning(self: SelfUpdateBase, *cols) -> SelfUpdateBase:
@@ -499,14 +430,10 @@ class ValuesBase(UpdateBase):
 
     _returning = ()
 
-    def __init__(self, table, values, prefixes):
+    def __init__(self, table):
         self.table = coercions.expect(
             roles.DMLTableRole, table, apply_propagate_attrs=self
         )
-        if values is not None:
-            self.values.non_generative(self, values)
-        if prefixes:
-            self._setup_prefixes(prefixes)
 
     @_generative
     @_exclusive_against(
@@ -765,7 +692,7 @@ class ValuesBase(UpdateBase):
 
         :meth:`.ValuesBase.return_defaults` is used by the ORM to provide
         an efficient implementation for the ``eager_defaults`` feature of
-        :func:`.mapper`.
+        :class:`_orm.Mapper`.
 
         :param cols: optional list of column key names or
          :class:`_schema.Column`
@@ -809,6 +736,7 @@ class Insert(ValuesBase):
 
     select = None
     include_insert_from_select_defaults = False
+    _inline = False
 
     is_insert = True
 
@@ -835,26 +763,9 @@ class Insert(ValuesBase):
         + HasCTE._has_ctes_traverse_internals
     )
 
-    @ValuesBase._constructor_20_deprecations(
-        "insert",
-        "Insert",
-        [
-            "values",
-            "inline",
-            "prefixes",
-            "returning",
-            "return_defaults",
-        ],
-    )
     def __init__(
         self,
         table,
-        values=None,
-        inline=False,
-        prefixes=None,
-        returning=None,
-        return_defaults=False,
-        **dialect_kw,
     ):
         """Construct an :class:`_expression.Insert` object.
 
@@ -922,17 +833,7 @@ class Insert(ValuesBase):
             :ref:`inserts_and_updates` - SQL Expression Tutorial
 
         """
-        super(Insert, self).__init__(table, values, prefixes)
-        self._inline = inline
-        if returning:
-            self._returning = returning
-        if dialect_kw:
-            self._validate_dialect_kwargs_deprecated(dialect_kw)
-
-        if return_defaults:
-            self._return_defaults = True
-            if not isinstance(return_defaults, bool):
-                self._return_defaults_columns = return_defaults
+        super(Insert, self).__init__(table)
 
     @_generative
     def inline(self: SelfInsert) -> SelfInsert:
@@ -1120,6 +1021,8 @@ class Update(DMLWhereBase, ValuesBase):
     __visit_name__ = "update"
 
     is_update = True
+    _preserve_parameter_order = False
+    _inline = False
 
     _traverse_internals = (
         [
@@ -1142,30 +1045,9 @@ class Update(DMLWhereBase, ValuesBase):
         + HasCTE._has_ctes_traverse_internals
     )
 
-    @ValuesBase._constructor_20_deprecations(
-        "update",
-        "Update",
-        [
-            "whereclause",
-            "values",
-            "inline",
-            "prefixes",
-            "returning",
-            "return_defaults",
-            "preserve_parameter_order",
-        ],
-    )
     def __init__(
         self,
         table,
-        whereclause=None,
-        values=None,
-        inline=False,
-        prefixes=None,
-        returning=None,
-        return_defaults=False,
-        preserve_parameter_order=False,
-        **dialect_kw,
     ):
         r"""Construct an :class:`_expression.Update` object.
 
@@ -1275,18 +1157,7 @@ class Update(DMLWhereBase, ValuesBase):
 
 
         """
-        self._preserve_parameter_order = preserve_parameter_order
-        super(Update, self).__init__(table, values, prefixes)
-        if returning:
-            self._returning = returning
-        if whereclause is not None:
-            self._where_criteria += (
-                coercions.expect(roles.WhereHavingRole, whereclause),
-            )
-        self._inline = inline
-        if dialect_kw:
-            self._validate_dialect_kwargs_deprecated(dialect_kw)
-        self._return_defaults = return_defaults
+        super(Update, self).__init__(table)
 
     @_generative
     def ordered_values(self: SelfUpdate, *args) -> SelfUpdate:
@@ -1373,18 +1244,9 @@ class Delete(DMLWhereBase, UpdateBase):
         + HasCTE._has_ctes_traverse_internals
     )
 
-    @ValuesBase._constructor_20_deprecations(
-        "delete",
-        "Delete",
-        ["whereclause", "values", "prefixes", "returning"],
-    )
     def __init__(
         self,
         table,
-        whereclause=None,
-        returning=None,
-        prefixes=None,
-        **dialect_kw,
     ):
         r"""Construct :class:`_expression.Delete` object.
 
@@ -1424,16 +1286,3 @@ class Delete(DMLWhereBase, UpdateBase):
         self.table = coercions.expect(
             roles.DMLTableRole, table, apply_propagate_attrs=self
         )
-        if returning:
-            self._returning = returning
-
-        if prefixes:
-            self._setup_prefixes(prefixes)
-
-        if whereclause is not None:
-            self._where_criteria += (
-                coercions.expect(roles.WhereHavingRole, whereclause),
-            )
-
-        if dialect_kw:
-            self._validate_dialect_kwargs_deprecated(dialect_kw)

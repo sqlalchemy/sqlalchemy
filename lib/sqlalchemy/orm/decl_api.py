@@ -370,7 +370,7 @@ def declarative_base(
 
     The new base class will be given a metaclass that produces
     appropriate :class:`~sqlalchemy.schema.Table` objects and makes
-    the appropriate :func:`~sqlalchemy.orm.mapper` calls based on the
+    the appropriate :class:`_orm.Mapper` calls based on the
     information provided declaratively in the class and any subclasses
     of the class.
 
@@ -408,7 +408,7 @@ def declarative_base(
       ``metadata`` attribute of the generated declarative base class.
 
     :param mapper:
-      An optional callable, defaults to :func:`~sqlalchemy.orm.mapper`. Will
+      An optional callable, defaults to :class:`_orm.Mapper`. Will
       be used to map subclasses to their Tables.
 
     :param cls:
@@ -479,8 +479,8 @@ class registry:
     * :meth:`_orm.registry.map_imperatively` will produce a
       :class:`_orm.Mapper` for a class without scanning the class for
       declarative class attributes. This method suits the use case historically
-      provided by the
-      :func:`_orm.mapper` classical mapping function.
+      provided by the ``sqlalchemy.orm.mapper()`` classical mapping function,
+      which is removed as of SQLAlchemy 2.0.
 
     .. versionadded:: 1.4
 
@@ -749,7 +749,7 @@ class registry:
         examples.
 
         :param mapper:
-          An optional callable, defaults to :func:`~sqlalchemy.orm.mapper`.
+          An optional callable, defaults to :class:`_orm.Mapper`.
           This function is used to generate new :class:`_orm.Mapper` objects.
 
         :param cls:
@@ -923,8 +923,8 @@ class registry:
         information.  Instead, all mapping constructs are passed as
         arguments.
 
-        This method is intended to be fully equivalent to the classic
-        SQLAlchemy :func:`_orm.mapper` function, except that it's in terms of
+        This method is intended to be fully equivalent to the now-removed
+        SQLAlchemy ``mapper()`` function, except that it's in terms of
         a particular registry.
 
         E.g.::
@@ -948,15 +948,15 @@ class registry:
         and usage examples.
 
         :param class\_: The class to be mapped.  Corresponds to the
-         :paramref:`_orm.mapper.class_` parameter.
+         :paramref:`_orm.Mapper.class_` parameter.
 
         :param local_table: the :class:`_schema.Table` or other
          :class:`_sql.FromClause` object that is the subject of the mapping.
          Corresponds to the
-         :paramref:`_orm.mapper.local_table` parameter.
+         :paramref:`_orm.Mapper.local_table` parameter.
 
         :param \**kw: all other keyword arguments are passed to the
-         :func:`_orm.mapper` function directly.
+         :class:`_orm.Mapper` constructor directly.
 
         .. seealso::
 
@@ -966,9 +966,6 @@ class registry:
 
         """
         return _mapper(self, class_, local_table, kw)
-
-
-mapperlib._legacy_registry = registry()
 
 
 def as_declarative(**kw):

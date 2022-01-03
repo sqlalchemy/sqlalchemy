@@ -427,11 +427,11 @@ Glossary
     mapping
     mapped
     mapped class
-        We say a class is "mapped" when it has been passed through the
-        :func:`_orm.mapper` function.   This process associates the
-        class with a database table or other :term:`selectable`
-        construct, so that instances of it can be persisted
-        and loaded using a :class:`.Session`.
+        We say a class is "mapped" when it has been associated with an
+        instance of the :class:`_orm.Mapper` class. This process associates
+        the class with a database table or other :term:`selectable` construct,
+        so that instances of it can be persisted and loaded using a
+        :class:`.Session`.
 
         .. seealso::
 

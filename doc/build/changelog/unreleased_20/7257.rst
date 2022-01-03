@@ -3,7 +3,8 @@
     :tickets: 7257
 
     Migrated the codebase to remove all pre-2.0 behaviors and architectures
-    that were previously noted as deprecated for removal in 2.0, including:
+    that were previously noted as deprecated for removal in 2.0, including,
+    but not limited to:
 
     * removal of all Python 2 code, minimum version is now Python 3.7
 
@@ -26,6 +27,10 @@
       :class:`.Table`, and from all DDL/DML/DQL elements that previously could
       refer to a "bound engine"
 
+    * The standalone ``sqlalchemy.orm.mapper()`` function is removed; all
+      classical mapping should be done through the
+      :meth:`_orm.registry.map_imperatively` method of :class:`_orm.registry`.
+
     * The :meth:`_orm.Query.join` method no longer accepts strings for
       relationship names; the long-documented approach of using
       ``Class.attrname`` for join targets is now standard.
@@ -39,6 +44,14 @@
     * ``Query.from_self()``, ``Query.select_entity_from()`` and
       ``Query.with_polymorphic()`` are removed.
 
+    * The :paramref:`_orm.relationship.cascade_backrefs` parameter must now
+      remain at its new default of ``False``; the ``save-update`` cascade
+      no longer cascades along a backref.
+
+    * the :paramref:`_orm.Session.future` parameter must always be set to
+      ``True``.  2.0-style transactional patterns for :class:`_orm.Session`
+      are now always in effect.
+
     * Loader options no longer accept strings for attribute names.  The
       long-documented approach of using ``Class.attrname`` for loader option
       targets is now standard.
@@ -47,4 +60,6 @@
       ``select([cols])``, the "whereclause" and keyword parameters of
       ``some_table.select()``.
 
-    * More are in progress as development continues
+    * Legacy "in-place mutator" methods on :class:`_sql.Select` such as
+      ``append_whereclause()``, ``append_order_by()`` etc are removed.
+

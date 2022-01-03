@@ -21,18 +21,6 @@ from .. import util
 from ..util import topological
 
 
-def _warn_for_cascade_backrefs(state, prop):
-    util.warn_deprecated_20(
-        '"%s" object is being merged into a Session along the backref '
-        'cascade path for relationship "%s"; in SQLAlchemy 2.0, this '
-        "reverse cascade will not take place.  Set cascade_backrefs to "
-        "False in either the relationship() or backref() function for "
-        "the 2.0 behavior; or to set globally for the whole "
-        "Session, set the future=True flag" % (state.class_.__name__, prop),
-        code="s9r1",
-    )
-
-
 def track_cascade_events(descriptor, prop):
     """Establish event listeners on object attributes which handle
     cascade-on-set/append.
@@ -57,14 +45,9 @@ def track_cascade_events(descriptor, prop):
 
             if (
                 prop._cascade.save_update
-                and (
-                    (prop.cascade_backrefs and not sess.future)
-                    or key == initiator.key
-                )
+                and (key == initiator.key)
                 and not sess._contains_state(item_state)
             ):
-                if key != initiator.key:
-                    _warn_for_cascade_backrefs(item_state, prop)
                 sess._save_or_update_state(item_state)
         return item
 
@@ -119,14 +102,9 @@ def track_cascade_events(descriptor, prop):
                 newvalue_state = attributes.instance_state(newvalue)
                 if (
                     prop._cascade.save_update
-                    and (
-                        (prop.cascade_backrefs and not sess.future)
-                        or key == initiator.key
-                    )
+                    and (key == initiator.key)
                     and not sess._contains_state(newvalue_state)
                 ):
-                    if key != initiator.key:
-                        _warn_for_cascade_backrefs(newvalue_state, prop)
                     sess._save_or_update_state(newvalue_state)
 
             if (

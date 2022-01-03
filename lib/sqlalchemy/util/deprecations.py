@@ -8,7 +8,6 @@
 """Helpers related to deprecation of functions, methods, classes, other
 functionality."""
 
-import os
 import re
 
 from . import compat
@@ -20,19 +19,7 @@ from .langhelpers import inject_param_text
 from .. import exc
 
 
-SQLALCHEMY_WARN_20 = False
-
-if os.getenv("SQLALCHEMY_WARN_20", "false").lower() in ("true", "yes", "1"):
-    SQLALCHEMY_WARN_20 = True
-
-
 def _warn_with_version(msg, version, type_, stacklevel, code=None):
-    if (
-        issubclass(type_, exc.Base20DeprecationWarning)
-        and not SQLALCHEMY_WARN_20
-    ):
-        return
-
     warn = type_(msg, code=code)
     warn.deprecated_since = version
 
@@ -57,17 +44,6 @@ def warn_deprecated_limited(msg, args, version, stacklevel=3, code=None):
     )
 
 
-def warn_deprecated_20(msg, stacklevel=3, code=None):
-
-    _warn_with_version(
-        msg,
-        exc.RemovedIn20Warning.deprecated_since,
-        exc.RemovedIn20Warning,
-        stacklevel,
-        code=code,
-    )
-
-
 def deprecated_cls(version, message, constructor="__init__"):
     header = ".. deprecated:: %s %s" % (version, (message or ""))
 
@@ -79,41 +55,6 @@ def deprecated_cls(version, message, constructor="__init__"):
             message % dict(func=constructor),
             version,
             header,
-        )
-
-    return decorate
-
-
-def deprecated_20_cls(
-    clsname, alternative=None, constructor="__init__", becomes_legacy=False
-):
-    message = (
-        ".. deprecated:: 1.4 The %s class is considered legacy as of the "
-        "1.x series of SQLAlchemy and %s in 2.0."
-        % (
-            clsname,
-            "will be removed"
-            if not becomes_legacy
-            else "becomes a legacy construct",
-        )
-    )
-
-    if alternative:
-        message += " " + alternative
-
-    if becomes_legacy:
-        warning_cls = exc.LegacyAPIWarning
-    else:
-        warning_cls = exc.RemovedIn20Warning
-
-    def decorate(cls):
-        return _decorate_cls_with_warning(
-            cls,
-            constructor,
-            warning_cls,
-            message,
-            warning_cls.deprecated_since,
-            message,
         )
 
     return decorate
@@ -142,14 +83,6 @@ def deprecated(
 
     """
 
-    # nothing is deprecated "since" 2.0 at this time.  All "removed in 2.0"
-    # should emit the RemovedIn20Warning, but messaging should be expressed
-    # in terms of "deprecated since 1.4".
-
-    if version == "2.0":
-        if warning is None:
-            warning = exc.RemovedIn20Warning
-        version = "1.4"
     if add_deprecation_to_docstring:
         header = ".. deprecated:: %s %s" % (
             version,
@@ -164,8 +97,7 @@ def deprecated(
     if warning is None:
         warning = exc.SADeprecationWarning
 
-    if warning is not exc.RemovedIn20Warning:
-        message += " (deprecated since: %s)" % version
+    message += " (deprecated since: %s)" % version
 
     def decorate(fn):
         return _decorate_with_warning(
@@ -186,7 +118,7 @@ def moved_20(message, **kw):
     )
 
 
-def deprecated_20(api_name, alternative=None, becomes_legacy=False, **kw):
+def became_legacy_20(api_name, alternative=None, **kw):
     type_reg = re.match("^:(attr|func|meth):", api_name)
     if type_reg:
         type_ = {"attr": "attribute", "func": "function", "meth": "method"}[
@@ -200,9 +132,7 @@ def deprecated_20(api_name, alternative=None, becomes_legacy=False, **kw):
         % (
             api_name,
             type_,
-            "will be removed"
-            if not becomes_legacy
-            else "becomes a legacy construct",
+            "becomes a legacy construct",
         )
     )
 
@@ -219,10 +149,7 @@ def deprecated_20(api_name, alternative=None, becomes_legacy=False, **kw):
     if alternative:
         message += " " + alternative
 
-    if becomes_legacy:
-        warning_cls = exc.LegacyAPIWarning
-    else:
-        warning_cls = exc.RemovedIn20Warning
+    warning_cls = exc.LegacyAPIWarning
 
     return deprecated("2.0", message=message, warning=warning_cls, **kw)
 
@@ -250,11 +177,7 @@ def deprecated_params(**specs):
     for param, (version, message) in specs.items():
         versions[param] = version
         messages[param] = _sanitize_restructured_text(message)
-        version_warnings[param] = (
-            exc.RemovedIn20Warning
-            if version == "2.0"
-            else exc.SADeprecationWarning
-        )
+        version_warnings[param] = exc.SADeprecationWarning
 
     def decorate(fn):
         spec = compat.inspect_getfullargspec(fn)

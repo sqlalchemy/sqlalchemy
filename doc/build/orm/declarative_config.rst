@@ -152,19 +152,19 @@ Mapper Configuration Options with Declarative
 With all mapping forms, the mapping of the class is configured through
 parameters that become part of the :class:`_orm.Mapper` object.
 The function which ultimately receives these arguments is the
-:func:`_orm.mapper` function, and are delivered to it from one of
+:class:`_orm.Mapper` function, and are delivered to it from one of
 the front-facing mapping functions defined on the :class:`_orm.registry`
 object.
 
 For the declarative form of mapping, mapper arguments are specified
 using the ``__mapper_args__`` declarative class variable, which is a dictionary
-that is passed as keyword arguments to the :func:`_orm.mapper` function.
+that is passed as keyword arguments to the :class:`_orm.Mapper` function.
 Some examples:
 
 **Version ID Column**
 
-The :paramref:`_orm.mapper.version_id_col` and
-:paramref:`_orm.mapper.version_id_generator` parameters::
+The :paramref:`_orm.Mapper.version_id_col` and
+:paramref:`_orm.Mapper.version_id_generator` parameters::
 
     from datetime import datetime
 
@@ -181,8 +181,8 @@ The :paramref:`_orm.mapper.version_id_col` and
 
 **Single Table Inheritance**
 
-The :paramref:`_orm.mapper.polymorphic_on` and
-:paramref:`_orm.mapper.polymorphic_identity` parameters::
+The :paramref:`_orm.Mapper.polymorphic_on` and
+:paramref:`_orm.Mapper.polymorphic_identity` parameters::
 
     class Person(Base):
         __tablename__ = 'person'

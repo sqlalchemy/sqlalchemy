@@ -5,9 +5,7 @@ import sqlalchemy as tsa
 from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy import exc
-from sqlalchemy import ForeignKey
 from sqlalchemy import insert
-from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
 from sqlalchemy import pool
@@ -226,37 +224,6 @@ class PoolTestBase(fixtures.TestBase):
 
 def select1(db):
     return str(select(1).compile(dialect=db.dialect))
-
-
-class DeprecatedReflectionTest(fixtures.TablesTest):
-    @classmethod
-    def define_tables(cls, metadata):
-        Table(
-            "user",
-            metadata,
-            Column("id", Integer, primary_key=True),
-            Column("name", String(50)),
-        )
-        Table(
-            "address",
-            metadata,
-            Column("id", Integer, primary_key=True),
-            Column("user_id", ForeignKey("user.id")),
-            Column("email", String(50)),
-        )
-
-    def test_reflecttable(self):
-        inspector = inspect(testing.db)
-        metadata = MetaData()
-
-        table = Table("user", metadata)
-        with testing.expect_deprecated_20(
-            r"The Inspector.reflecttable\(\) method is considered "
-        ):
-            res = inspector.reflecttable(table, None)
-        exp = inspector.reflect_table(table, None)
-
-        eq_(res, exp)
 
 
 class EngineEventsTest(fixtures.TestBase):

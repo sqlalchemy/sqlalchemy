@@ -83,6 +83,23 @@ class ExecutionTest(_fixtures.FixtureTest):
             [(7,), (8,), (9,)],
         )
 
+    def test_no_string_execute(self, connection):
+
+        with Session(bind=connection) as sess:
+            with expect_raises_message(
+                sa.exc.ArgumentError,
+                r"Textual SQL expression 'select \* from users where.*' "
+                "should be explicitly declared",
+            ):
+                sess.execute("select * from users where id=:id", {"id": 7})
+
+            with expect_raises_message(
+                sa.exc.ArgumentError,
+                r"Textual SQL expression 'select id from users .*' "
+                "should be explicitly declared",
+            ):
+                sess.scalar("select id from users where id=:id", {"id": 7})
+
 
 class TransScopingTest(_fixtures.FixtureTest):
     run_inserts = None
@@ -734,7 +751,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         assert sess.is_active
 
     def test_active_flag_autobegin_future(self):
-        sess = Session(bind=config.db, future=True)
+        sess = Session(bind=config.db)
         assert sess.is_active
         assert not sess.in_transaction()
         sess.begin()
@@ -752,7 +769,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         assert sess.is_active
         sess.begin(_subtrans=True)
         sess.rollback()
-        assert not sess.is_active
+        assert sess.is_active
 
         sess.rollback()
         assert sess.is_active
@@ -888,7 +905,7 @@ class SessionStateTest(_fixtures.FixtureTest):
         )
         self.mapper_registry.map_imperatively(Address, addresses)
 
-        session = fixture_session(future=True)
+        session = fixture_session()
 
         @event.listens_for(session, "after_flush")
         def load_collections(session, flush_context):

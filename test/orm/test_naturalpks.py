@@ -871,12 +871,12 @@ class ReversePKsTest(fixtures.MappedTest):
         session.commit()
 
         # testing #3108
-        session.begin_nested()
+        nt1 = session.begin_nested()
 
         a_published.status = ARCHIVED
         a_editable.status = PUBLISHED
 
-        session.commit()
+        nt1.commit()
 
         session.rollback()
         eq_(a_published.status, PUBLISHED)

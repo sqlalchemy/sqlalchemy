@@ -111,7 +111,7 @@ class RelationshipProperty(StrategizedProperty):
         passive_updates=True,
         enable_typechecks=True,
         active_history=False,
-        cascade_backrefs=True,
+        cascade_backrefs=False,
     )
 
     _dependency_processor = None
@@ -403,21 +403,11 @@ class RelationshipProperty(StrategizedProperty):
             :ref:`tutorial_delete_cascade` - Tutorial example describing
             a delete cascade.
 
-        :param cascade_backrefs=True:
-          A boolean value indicating if the ``save-update`` cascade should
-          operate along an assignment event intercepted by a backref.
-          When set to ``False``, the attribute managed by this relationship
-          will not cascade an incoming transient object into the session of a
-          persistent parent, if the event is received via backref.
+        :param cascade_backrefs=False:
+          Legacy; this flag is always False.
 
-          .. deprecated:: 1.4 The
-             :paramref:`_orm.relationship.cascade_backrefs`
-             flag will default to False in all cases in SQLAlchemy 2.0.
-
-          .. seealso::
-
-            :ref:`backref_cascade` - Full discussion and examples on how
-            the :paramref:`_orm.relationship.cascade_backrefs` option is used.
+          .. versionchanged:: 2.0 "cascade_backrefs" functionality has been
+             removed.
 
         :param collection_class:
           A class or callable that returns a new list-holding object. will
@@ -1007,7 +997,13 @@ class RelationshipProperty(StrategizedProperty):
         self._user_defined_foreign_keys = foreign_keys
         self.collection_class = collection_class
         self.passive_deletes = passive_deletes
-        self.cascade_backrefs = cascade_backrefs
+
+        if cascade_backrefs:
+            raise sa_exc.ArgumentError(
+                "The 'cascade_backrefs' parameter passed to "
+                "relationship() may only be set to False."
+            )
+
         self.passive_updates = passive_updates
         self.remote_side = remote_side
         self.enable_typechecks = enable_typechecks

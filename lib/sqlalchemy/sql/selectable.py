@@ -1360,110 +1360,6 @@ class Join(roles.DMLTableRole, FromClause):
                 .alias(name)
             )
 
-    @util.deprecated_20(
-        ":meth:`_sql.Join.alias`",
-        alternative="Create a select + subquery, or alias the "
-        "individual tables inside the join, instead.",
-    )
-    def alias(self, name=None, flat=False):
-        r"""Return an alias of this :class:`_expression.Join`.
-
-        The default behavior here is to first produce a SELECT
-        construct from this :class:`_expression.Join`, then to produce an
-        :class:`_expression.Alias` from that.  So given a join of the form::
-
-            j = table_a.join(table_b, table_a.c.id == table_b.c.a_id)
-
-        The JOIN by itself would look like::
-
-            table_a JOIN table_b ON table_a.id = table_b.a_id
-
-        Whereas the alias of the above, ``j.alias()``, would in a
-        SELECT context look like::
-
-            (SELECT table_a.id AS table_a_id, table_b.id AS table_b_id,
-                table_b.a_id AS table_b_a_id
-                FROM table_a
-                JOIN table_b ON table_a.id = table_b.a_id) AS anon_1
-
-        The equivalent long-hand form, given a :class:`_expression.Join`
-        object ``j``, is::
-
-            from sqlalchemy import select, alias
-            j = alias(
-                select(j.left, j.right).\
-                    select_from(j).\
-                    set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL).\
-                    correlate(False),
-                name=name
-            )
-
-        The selectable produced by :meth:`_expression.Join.alias`
-        features the same
-        columns as that of the two individual selectables presented under
-        a single name - the individual columns are "auto-labeled", meaning
-        the ``.c.`` collection of the resulting :class:`_expression.Alias`
-        represents
-        the names of the individual columns using a
-        ``<tablename>_<columname>`` scheme::
-
-            j.c.table_a_id
-            j.c.table_b_a_id
-
-        :meth:`_expression.Join.alias` also features an alternate
-        option for aliasing joins which produces no enclosing SELECT and
-        does not normally apply labels to the column names.  The
-        ``flat=True`` option will call :meth:`_expression.FromClause.alias`
-        against the left and right sides individually.
-        Using this option, no new ``SELECT`` is produced;
-        we instead, from a construct as below::
-
-            j = table_a.join(table_b, table_a.c.id == table_b.c.a_id)
-            j = j.alias(flat=True)
-
-        we get a result like this::
-
-            table_a AS table_a_1 JOIN table_b AS table_b_1 ON
-            table_a_1.id = table_b_1.a_id
-
-        The ``flat=True`` argument is also propagated to the contained
-        selectables, so that a composite join such as::
-
-            j = table_a.join(
-                    table_b.join(table_c,
-                            table_b.c.id == table_c.c.b_id),
-                    table_b.c.a_id == table_a.c.id
-                ).alias(flat=True)
-
-        Will produce an expression like::
-
-            table_a AS table_a_1 JOIN (
-                    table_b AS table_b_1 JOIN table_c AS table_c_1
-                    ON table_b_1.id = table_c_1.b_id
-            ) ON table_a_1.id = table_b_1.a_id
-
-        The standalone :func:`_expression.alias` function as well as the
-        base :meth:`_expression.FromClause.alias`
-        method also support the ``flat=True``
-        argument as a no-op, so that the argument can be passed to the
-        ``alias()`` method of any selectable.
-
-        :param name: name given to the alias.
-
-        :param flat: if True, produce an alias of the left and right
-         sides of this :class:`_expression.Join` and return the join of those
-         two selectables.   This produces join expression that does not
-         include an enclosing SELECT.
-
-        .. seealso::
-
-            :ref:`core_tutorial_aliases`
-
-            :func:`_expression.alias`
-
-        """
-        return self._anonymous_fromclause(flat=flat, name=name)
-
     @property
     def _hide_froms(self):
         return itertools.chain(
@@ -2618,7 +2514,6 @@ class TableClause(roles.DMLTableRole, Immutable, FromClause):
             .. versionadded:: 1.3.18 :func:`_expression.table` can now
                accept a ``schema`` argument.
         """
-
         super(TableClause, self).__init__()
         self.name = name
         self._columns = DedupeColumnCollection()
@@ -2665,7 +2560,7 @@ class TableClause(roles.DMLTableRole, Immutable, FromClause):
         c.table = self
 
     @util.preload_module("sqlalchemy.sql.dml")
-    def insert(self, values=None, inline=False, **kwargs):
+    def insert(self):
         """Generate an :func:`_expression.insert` construct against this
         :class:`_expression.TableClause`.
 
@@ -2676,12 +2571,10 @@ class TableClause(roles.DMLTableRole, Immutable, FromClause):
         See :func:`_expression.insert` for argument and usage information.
 
         """
-        return util.preloaded.sql_dml.Insert(
-            self, values=values, inline=inline, **kwargs
-        )
+        return util.preloaded.sql_dml.Insert(self)
 
     @util.preload_module("sqlalchemy.sql.dml")
-    def update(self, whereclause=None, values=None, inline=False, **kwargs):
+    def update(self):
         """Generate an :func:`_expression.update` construct against this
         :class:`_expression.TableClause`.
 
@@ -2694,14 +2587,10 @@ class TableClause(roles.DMLTableRole, Immutable, FromClause):
         """
         return util.preloaded.sql_dml.Update(
             self,
-            whereclause=whereclause,
-            values=values,
-            inline=inline,
-            **kwargs,
         )
 
     @util.preload_module("sqlalchemy.sql.dml")
-    def delete(self, whereclause=None, **kwargs):
+    def delete(self):
         """Generate a :func:`_expression.delete` construct against this
         :class:`_expression.TableClause`.
 
@@ -2712,7 +2601,7 @@ class TableClause(roles.DMLTableRole, Immutable, FromClause):
         See :func:`_expression.delete` for argument and usage information.
 
         """
-        return util.preloaded.sql_dml.Delete(self, whereclause, **kwargs)
+        return util.preloaded.sql_dml.Delete(self)
 
     @property
     def _from_objects(self):
@@ -2806,7 +2695,7 @@ class Values(Generative, FromClause):
         ("literal_binds", InternalTraversal.dp_boolean),
     ]
 
-    def __init__(self, *columns, **kw):
+    def __init__(self, *columns, name=None, literal_binds=False):
         r"""Construct a :class:`_expression.Values` construct.
 
         The column expressions and the actual data for
@@ -2844,8 +2733,8 @@ class Values(Generative, FromClause):
 
         super(Values, self).__init__()
         self._column_args = columns
-        self.name = kw.pop("name", None)
-        self.literal_binds = kw.pop("literal_binds", False)
+        self.name = name
+        self.literal_binds = literal_binds
         self.named_with_column = self.name is not None
 
     @property
@@ -3286,65 +3175,12 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
         return self.element._from_objects
 
 
-class DeprecatedSelectBaseGenerations:
-    """A collection of methods available on :class:`_sql.Select` and
-    :class:`_sql.CompoundSelect`, these are all **deprecated** methods as they
-    modify the object in-place.
-
-    """
-
-    @util.deprecated(
-        "1.4",
-        "The :meth:`_expression.GenerativeSelect.append_order_by` "
-        "method is deprecated "
-        "and will be removed in a future release.  Use the generative method "
-        ":meth:`_expression.GenerativeSelect.order_by`.",
-    )
-    def append_order_by(self, *clauses):
-        """Append the given ORDER BY criterion applied to this selectable.
-
-        The criterion will be appended to any pre-existing ORDER BY criterion.
-
-        This is an **in-place** mutation method; the
-        :meth:`_expression.GenerativeSelect.order_by` method is preferred,
-        as it
-        provides standard :term:`method chaining`.
-
-        .. seealso::
-
-            :meth:`_expression.GenerativeSelect.order_by`
-
-        """
-        self.order_by.non_generative(self, *clauses)
-
-    @util.deprecated(
-        "1.4",
-        "The :meth:`_expression.GenerativeSelect.append_group_by` "
-        "method is deprecated "
-        "and will be removed in a future release.  Use the generative method "
-        ":meth:`_expression.GenerativeSelect.group_by`.",
-    )
-    def append_group_by(self, *clauses):
-        """Append the given GROUP BY criterion applied to this selectable.
-
-        The criterion will be appended to any pre-existing GROUP BY criterion.
-
-        This is an **in-place** mutation method; the
-        :meth:`_expression.GenerativeSelect.group_by` method is preferred,
-        as it
-        provides standard :term:`method chaining`.
-
-
-        """
-        self.group_by.non_generative(self, *clauses)
-
-
 SelfGenerativeSelect = typing.TypeVar(
     "SelfGenerativeSelect", bound="GenerativeSelect"
 )
 
 
-class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
+class GenerativeSelect(SelectBase):
     """Base class for SELECT statements where additional elements can be
     added.
 
@@ -3368,38 +3204,8 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
     _fetch_clause_options = None
     _for_update_arg = None
 
-    def __init__(
-        self,
-        _label_style=LABEL_STYLE_DEFAULT,
-        use_labels=False,
-        limit=None,
-        offset=None,
-        order_by=None,
-        group_by=None,
-    ):
-        if use_labels:
-            if util.SQLALCHEMY_WARN_20:
-                util.warn_deprecated_20(
-                    "The use_labels=True keyword argument to GenerativeSelect "
-                    "is deprecated and will be removed in version 2.0. Please "
-                    "use "
-                    "select.set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL) "
-                    "if you need to replicate this legacy behavior.",
-                    stacklevel=4,
-                )
-            _label_style = LABEL_STYLE_TABLENAME_PLUS_COL
-
+    def __init__(self, _label_style=LABEL_STYLE_DEFAULT):
         self._label_style = _label_style
-
-        if limit is not None:
-            self.limit.non_generative(self, limit)
-        if offset is not None:
-            self.offset.non_generative(self, offset)
-
-        if order_by is not None:
-            self.order_by.non_generative(self, *util.to_list(order_by))
-        if group_by is not None:
-            self.group_by.non_generative(self, *util.to_list(group_by))
 
     @_generative
     def with_for_update(
@@ -3515,14 +3321,6 @@ class GenerativeSelect(DeprecatedSelectBaseGenerations, SelectBase):
             self = self._generate()
             self._label_style = style
         return self
-
-    @util.deprecated_20(
-        ":meth:`_sql.GenerativeSelect.apply_labels`",
-        alternative="Use set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL) "
-        "instead.",
-    )
-    def apply_labels(self):
-        return self.set_label_style(LABEL_STYLE_TABLENAME_PLUS_COL)
 
     @property
     def _group_by_clause(self):
@@ -3894,9 +3692,9 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
     INTERSECT_ALL = util.symbol("INTERSECT ALL")
 
     _is_from_container = True
+    _auto_correlate = False
 
-    def __init__(self, keyword, *selects, **kwargs):
-        self._auto_correlate = kwargs.pop("correlate", False)
+    def __init__(self, keyword, *selects):
         self.keyword = keyword
         self.selects = [
             coercions.expect(roles.CompoundElementRole, s).self_group(
@@ -3905,17 +3703,7 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
             for s in selects
         ]
 
-        if kwargs and util.SQLALCHEMY_WARN_20:
-            util.warn_deprecated_20(
-                "Set functions such as union(), union_all(), extract(), etc. "
-                "in SQLAlchemy 2.0 will accept a "
-                "series of SELECT statements only. "
-                "Please use generative methods such as order_by() for "
-                "additional modifications to this CompoundSelect.",
-                stacklevel=4,
-            )
-
-        GenerativeSelect.__init__(self, **kwargs)
+        GenerativeSelect.__init__(self)
 
     @classmethod
     def _create_union(cls, *selects, **kwargs):
@@ -3938,7 +3726,7 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         return CompoundSelect(CompoundSelect.UNION, *selects, **kwargs)
 
     @classmethod
-    def _create_union_all(cls, *selects, **kwargs):
+    def _create_union_all(cls, *selects):
         r"""Return a ``UNION ALL`` of multiple selectables.
 
         The returned object is an instance of
@@ -3950,15 +3738,11 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         :param \*selects:
           a list of :class:`_expression.Select` instances.
 
-        :param \**kwargs:
-          available keyword arguments are the same as those of
-          :func:`select`.
-
         """
-        return CompoundSelect(CompoundSelect.UNION_ALL, *selects, **kwargs)
+        return CompoundSelect(CompoundSelect.UNION_ALL, *selects)
 
     @classmethod
-    def _create_except(cls, *selects, **kwargs):
+    def _create_except(cls, *selects):
         r"""Return an ``EXCEPT`` of multiple selectables.
 
         The returned object is an instance of
@@ -3967,15 +3751,11 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         :param \*selects:
           a list of :class:`_expression.Select` instances.
 
-        :param \**kwargs:
-          available keyword arguments are the same as those of
-          :func:`select`.
-
         """
-        return CompoundSelect(CompoundSelect.EXCEPT, *selects, **kwargs)
+        return CompoundSelect(CompoundSelect.EXCEPT, *selects)
 
     @classmethod
-    def _create_except_all(cls, *selects, **kwargs):
+    def _create_except_all(cls, *selects):
         r"""Return an ``EXCEPT ALL`` of multiple selectables.
 
         The returned object is an instance of
@@ -3984,15 +3764,11 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         :param \*selects:
           a list of :class:`_expression.Select` instances.
 
-        :param \**kwargs:
-          available keyword arguments are the same as those of
-          :func:`select`.
-
         """
-        return CompoundSelect(CompoundSelect.EXCEPT_ALL, *selects, **kwargs)
+        return CompoundSelect(CompoundSelect.EXCEPT_ALL, *selects)
 
     @classmethod
-    def _create_intersect(cls, *selects, **kwargs):
+    def _create_intersect(cls, *selects):
         r"""Return an ``INTERSECT`` of multiple selectables.
 
         The returned object is an instance of
@@ -4001,15 +3777,11 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         :param \*selects:
           a list of :class:`_expression.Select` instances.
 
-        :param \**kwargs:
-          available keyword arguments are the same as those of
-          :func:`select`.
-
         """
-        return CompoundSelect(CompoundSelect.INTERSECT, *selects, **kwargs)
+        return CompoundSelect(CompoundSelect.INTERSECT, *selects)
 
     @classmethod
-    def _create_intersect_all(cls, *selects, **kwargs):
+    def _create_intersect_all(cls, *selects):
         r"""Return an ``INTERSECT ALL`` of multiple selectables.
 
         The returned object is an instance of
@@ -4018,12 +3790,9 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         :param \*selects:
           a list of :class:`_expression.Select` instances.
 
-        :param \**kwargs:
-          available keyword arguments are the same as those of
-          :func:`select`.
 
         """
-        return CompoundSelect(CompoundSelect.INTERSECT_ALL, *selects, **kwargs)
+        return CompoundSelect(CompoundSelect.INTERSECT_ALL, *selects)
 
     def _scalar_type(self):
         return self.selects[0]._scalar_type()
@@ -4115,134 +3884,6 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
 
         """
         return self.selects[0].selected_columns
-
-
-class DeprecatedSelectGenerations:
-    """A collection of methods available on :class:`_sql.Select`, these
-    are all **deprecated** methods as they modify the :class:`_sql.Select`
-    object in -place.
-
-    """
-
-    @util.deprecated(
-        "1.4",
-        "The :meth:`_expression.Select.append_correlation` "
-        "method is deprecated "
-        "and will be removed in a future release.  Use the generative "
-        "method :meth:`_expression.Select.correlate`.",
-    )
-    def append_correlation(self, fromclause):
-        """Append the given correlation expression to this select()
-        construct.
-
-        This is an **in-place** mutation method; the
-        :meth:`_expression.Select.correlate` method is preferred,
-        as it provides
-        standard :term:`method chaining`.
-
-        """
-
-        self.correlate.non_generative(self, fromclause)
-
-    @util.deprecated(
-        "1.4",
-        "The :meth:`_expression.Select.append_column` method is deprecated "
-        "and will be removed in a future release.  Use the generative "
-        "method :meth:`_expression.Select.add_columns`.",
-    )
-    def append_column(self, column):
-        """Append the given column expression to the columns clause of this
-        select() construct.
-
-        E.g.::
-
-            my_select.append_column(some_table.c.new_column)
-
-        This is an **in-place** mutation method; the
-        :meth:`_expression.Select.add_columns` method is preferred,
-        as it provides standard
-        :term:`method chaining`.
-
-        """
-        self.add_columns.non_generative(self, column)
-
-    @util.deprecated(
-        "1.4",
-        "The :meth:`_expression.Select.append_prefix` method is deprecated "
-        "and will be removed in a future release.  Use the generative "
-        "method :meth:`_expression.Select.prefix_with`.",
-    )
-    def append_prefix(self, clause):
-        """Append the given columns clause prefix expression to this select()
-        construct.
-
-        This is an **in-place** mutation method; the
-        :meth:`_expression.Select.prefix_with` method is preferred,
-        as it provides
-        standard :term:`method chaining`.
-
-        """
-        self.prefix_with.non_generative(self, clause)
-
-    @util.deprecated(
-        "1.4",
-        "The :meth:`_expression.Select.append_whereclause` "
-        "method is deprecated "
-        "and will be removed in a future release.  Use the generative "
-        "method :meth:`_expression.Select.where`.",
-    )
-    def append_whereclause(self, whereclause):
-        """Append the given expression to this select() construct's WHERE
-        criterion.
-
-        The expression will be joined to existing WHERE criterion via AND.
-
-        This is an **in-place** mutation method; the
-        :meth:`_expression.Select.where` method is preferred,
-        as it provides standard
-        :term:`method chaining`.
-
-        """
-        self.where.non_generative(self, whereclause)
-
-    @util.deprecated(
-        "1.4",
-        "The :meth:`_expression.Select.append_having` method is deprecated "
-        "and will be removed in a future release.  Use the generative "
-        "method :meth:`_expression.Select.having`.",
-    )
-    def append_having(self, having):
-        """Append the given expression to this select() construct's HAVING
-        criterion.
-
-        The expression will be joined to existing HAVING criterion via AND.
-
-        This is an **in-place** mutation method; the
-        :meth:`_expression.Select.having` method is preferred,
-        as it provides standard
-        :term:`method chaining`.
-
-        """
-
-        self.having.non_generative(self, having)
-
-    @util.deprecated(
-        "1.4",
-        "The :meth:`_expression.Select.append_from` method is deprecated "
-        "and will be removed in a future release.  Use the generative "
-        "method :meth:`_expression.Select.select_from`.",
-    )
-    def append_from(self, fromclause):
-        """Append the given :class:`_expression.FromClause` expression
-        to this select() construct's FROM clause.
-
-        This is an **in-place** mutation method; the
-        :meth:`_expression.Select.select_from` method is preferred,
-        as it provides
-        standard :term:`method chaining`.
-
-        """
-        self.select_from.non_generative(self, fromclause)
 
 
 @CompileState.plugin_for("default", "select")
@@ -4700,7 +4341,6 @@ class Select(
     HasSuffixes,
     HasHints,
     HasCompileState,
-    DeprecatedSelectGenerations,
     _SelectFromElements,
     GenerativeSelect,
 ):
@@ -5345,7 +4985,9 @@ class Select(
         )
 
     @_generative
-    def with_only_columns(self: SelfSelect, *columns, **kw) -> SelfSelect:
+    def with_only_columns(
+        self: SelfSelect, *columns, maintain_column_froms=False
+    ) -> SelfSelect:
         r"""Return a new :func:`_expression.select` construct with its columns
         clause replaced with the given columns.
 
@@ -5403,10 +5045,6 @@ class Select(
         # I95c560ffcbfa30b26644999412fb6a385125f663 , asserting this
         # is the case for now.
         self._assert_no_memoizations()
-
-        maintain_column_froms = kw.pop("maintain_column_froms", False)
-        if kw:
-            raise TypeError("unknown parameters: %s" % (", ".join(kw),))
 
         if maintain_column_froms:
             self.select_from.non_generative(self, *self.columns_clause_froms)

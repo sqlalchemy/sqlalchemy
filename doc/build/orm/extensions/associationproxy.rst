@@ -98,7 +98,7 @@ for us transparently::
 The :class:`.AssociationProxy` object produced by the :func:`.association_proxy` function
 is an instance of a `Python descriptor <https://docs.python.org/howto/descriptor.html>`_.
 It is always declared with the user-defined class being mapped, regardless of
-whether Declarative or classical mappings via the :func:`.mapper` function are used.
+whether Declarative or classical mappings via the :class:`_orm.Mapper` function are used.
 
 The proxy functions by operating upon the underlying mapped attribute
 or collection in response to operations, and changes made via the proxy are immediately

@@ -245,6 +245,37 @@ class LoadOnFKsTest(fixtures.DeclarativeMappedTest):
 
         self.assert_sql_count(testing.db, go, 0)
 
+    def test_enable_rel_loading_on_persistent_allows_backref_event(
+        self, parent_fixture
+    ):
+        sess, p1, p2, c1, c2 = parent_fixture
+        Parent, Child = self.classes("Parent", "Child")
+
+        c3 = Child()
+        sess.enable_relationship_loading(c3)
+        c3.parent_id = p1.id
+        c3.parent = p1
+
+        # backref did not fire off when c3.parent was set.
+        # originally this was impacted by #3708, now does not happen
+        # due to backref_cascades behavior being removed
+        assert c3 not in p1.children
+
+    def test_enable_rel_loading_allows_backref_event(self, parent_fixture):
+        sess, p1, p2, c1, c2 = parent_fixture
+        Parent, Child = self.classes("Parent", "Child")
+
+        c3 = Child()
+        sess.enable_relationship_loading(c3)
+        c3.parent_id = p1.id
+
+        c3.parent = p1
+
+        # backref did not fire off when c3.parent was set.
+        # originally this was impacted by #3708, now does not happen
+        # due to backref_cascades behavior being removed
+        assert c3 not in p1.children
+
     def test_backref_doesnt_double(self, parent_fixture):
         sess, p1, p2, c1, c2 = parent_fixture
         Parent, Child = self.classes("Parent", "Child")

@@ -152,8 +152,8 @@ class InstanceEvents(event.Events):
     * unmapped superclasses of mapped or to-be-mapped classes
       (using the ``propagate=True`` flag)
     * :class:`_orm.Mapper` objects
-    * the :class:`_orm.Mapper` class itself and the :func:`.mapper`
-      function indicate listening for all mappers.
+    * the :class:`_orm.Mapper` class itself indicates listening for all
+      mappers.
 
     Instance events are closely related to mapper events, but
     are more specific to the instance and its instrumentation,
@@ -200,6 +200,12 @@ class InstanceEvents(event.Events):
         elif isinstance(target, mapperlib.Mapper):
             return target.class_manager
         elif target is orm.mapper:
+            util.warn_deprecated(
+                "The `sqlalchemy.orm.mapper()` symbol is deprecated and "
+                "will be removed in a future release. For the mapper-wide "
+                "event target, use the 'sqlalchemy.orm.Mapper' class.",
+                "2.0",
+            )
             return instrumentation.ClassManager
         elif isinstance(target, type):
             if issubclass(target, mapperlib.Mapper):
@@ -638,8 +644,8 @@ class MapperEvents(event.Events):
     * unmapped superclasses of mapped or to-be-mapped classes
       (using the ``propagate=True`` flag)
     * :class:`_orm.Mapper` objects
-    * the :class:`_orm.Mapper` class itself and the :func:`.mapper`
-      function indicate listening for all mappers.
+    * the :class:`_orm.Mapper` class itself indicates listening for all
+      mappers.
 
     Mapper events provide hooks into critical sections of the
     mapper, including those related to object instrumentation,
@@ -692,6 +698,12 @@ class MapperEvents(event.Events):
         orm = util.preloaded.orm
 
         if target is orm.mapper:
+            util.warn_deprecated(
+                "The `sqlalchemy.orm.mapper()` symbol is deprecated and "
+                "will be removed in a future release. For the mapper-wide "
+                "event target, use the 'sqlalchemy.orm.Mapper' class.",
+                "2.0",
+            )
             return mapperlib.Mapper
         elif isinstance(target, type):
             if issubclass(target, mapperlib.Mapper):
@@ -721,7 +733,7 @@ class MapperEvents(event.Events):
         ):
             util.warn(
                 "'before_configured' and 'after_configured' ORM events "
-                "only invoke with the mapper() function or Mapper class "
+                "only invoke with the Mapper class "
                 "as the target."
             )
 
@@ -896,13 +908,13 @@ class MapperEvents(event.Events):
         new mappers have been made available and new mapper use is
         detected.
 
-        This event can **only** be applied to the :class:`_orm.Mapper` class
-        or :func:`.mapper` function, and not to individual mappings or
-        mapped classes.  It is only invoked for all mappings as a whole::
+        This event can **only** be applied to the :class:`_orm.Mapper` class,
+        and not to individual mappings or mapped classes. It is only invoked
+        for all mappings as a whole::
 
-            from sqlalchemy.orm import mapper
+            from sqlalchemy.orm import Mapper
 
-            @event.listens_for(mapper, "before_configured")
+            @event.listens_for(Mapper, "before_configured")
             def go():
                 # ...
 
@@ -959,13 +971,13 @@ class MapperEvents(event.Events):
         Also contrast to :meth:`.MapperEvents.before_configured`,
         which is invoked before the series of mappers has been configured.
 
-        This event can **only** be applied to the :class:`_orm.Mapper` class
-        or :func:`.mapper` function, and not to individual mappings or
+        This event can **only** be applied to the :class:`_orm.Mapper` class,
+        and not to individual mappings or
         mapped classes.  It is only invoked for all mappings as a whole::
 
-            from sqlalchemy.orm import mapper
+            from sqlalchemy.orm import Mapper
 
-            @event.listens_for(mapper, "after_configured")
+            @event.listens_for(Mapper, "after_configured")
             def go():
                 # ...
 
@@ -1005,7 +1017,7 @@ class MapperEvents(event.Events):
         The event is often called for a batch of objects of the
         same class before their INSERT statements are emitted at
         once in a later step. In the extremely rare case that
-        this is not desirable, the :func:`.mapper` can be
+        this is not desirable, the :class:`_orm.Mapper` object can be
         configured with ``batch=False``, which will cause
         batches of instances to be broken up into individual
         (and more poorly performing) event->persist->event
@@ -1052,7 +1064,7 @@ class MapperEvents(event.Events):
         same class after their INSERT statements have been
         emitted at once in a previous step. In the extremely
         rare case that this is not desirable, the
-        :func:`.mapper` can be configured with ``batch=False``,
+        :class:`_orm.Mapper` object can be configured with ``batch=False``,
         which will cause batches of instances to be broken up
         into individual (and more poorly performing)
         event->persist->event steps.
@@ -1116,7 +1128,7 @@ class MapperEvents(event.Events):
         The event is often called for a batch of objects of the
         same class before their UPDATE statements are emitted at
         once in a later step. In the extremely rare case that
-        this is not desirable, the :func:`.mapper` can be
+        this is not desirable, the :class:`_orm.Mapper` can be
         configured with ``batch=False``, which will cause
         batches of instances to be broken up into individual
         (and more poorly performing) event->persist->event
@@ -1180,7 +1192,7 @@ class MapperEvents(event.Events):
         The event is often called for a batch of objects of the
         same class after their UPDATE statements have been emitted at
         once in a previous step. In the extremely rare case that
-        this is not desirable, the :func:`.mapper` can be
+        this is not desirable, the :class:`_orm.Mapper` can be
         configured with ``batch=False``, which will cause
         batches of instances to be broken up into individual
         (and more poorly performing) event->persist->event

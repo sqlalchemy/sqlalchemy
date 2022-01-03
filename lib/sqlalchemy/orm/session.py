@@ -985,7 +985,7 @@ class Session(_SessionClassMethods):
         self,
         bind=None,
         autoflush=True,
-        future=False,
+        future=True,
         expire_on_commit=True,
         twophase=False,
         binds=None,
@@ -1074,20 +1074,7 @@ class Session(_SessionClassMethods):
 
                 :ref:`session_committing`
 
-        :param future: if True, use 2.0 style transactional and engine
-          behavior.  Future mode includes the following behaviors:
-
-          * The :class:`_orm.Session` will not use "bound" metadata in order
-            to locate an :class:`_engine.Engine`; the engine or engines in use
-            must be specified to the constructor of :class:`_orm.Session` or
-            otherwise be configured against the :class:`_orm.sessionmaker`
-            in use
-
-          * The behavior of the :paramref:`_orm.relationship.cascade_backrefs`
-            flag on a :func:`_orm.relationship` will always assume
-            "False" behavior.
-
-          .. versionadded:: 1.4
+        :param future: Deprecated; this flag is always True.
 
           .. seealso::
 
@@ -1128,6 +1115,12 @@ class Session(_SessionClassMethods):
             )
         self.identity_map = identity.WeakInstanceDict()
 
+        if not future:
+            raise sa_exc.ArgumentError(
+                "The 'future' parameter passed to "
+                "Session() may only be set to True."
+            )
+
         self._new = {}  # InstanceState->object, strong refs object
         self._deleted = {}  # same
         self.bind = bind
@@ -1136,7 +1129,6 @@ class Session(_SessionClassMethods):
         self._warn_on_events = False
         self._transaction = None
         self._nested_transaction = None
-        self.future = future
         self.hash_key = _new_sessionid()
         self.autoflush = autoflush
         self.expire_on_commit = expire_on_commit
@@ -1169,33 +1161,6 @@ class Session(_SessionClassMethods):
         with self:
             with self.begin():
                 yield self
-
-    @property
-    @util.deprecated_20(
-        ":attr:`_orm.Session.transaction`",
-        alternative="For context manager use, use "
-        ":meth:`_orm.Session.begin`.  To access "
-        "the current root transaction, use "
-        ":meth:`_orm.Session.get_transaction`.",
-        warn_on_attribute_access=True,
-    )
-    def transaction(self):
-        """The current active or inactive :class:`.SessionTransaction`.
-
-        May be None if no transaction has begun yet.
-
-        .. versionchanged:: 1.4  the :attr:`.Session.transaction` attribute
-           is now a read-only descriptor that also may return None if no
-           transaction has begun yet.
-
-
-        """
-        return self._legacy_transaction()
-
-    def _legacy_transaction(self):
-        if not self.future:
-            self._autobegin()
-        return self._transaction
 
     def in_transaction(self):
         """Return True if this :class:`_orm.Session` has begun a transaction.
@@ -1350,13 +1315,7 @@ class Session(_SessionClassMethods):
 
         If no transaction is in progress, this method is a pass-through.
 
-        In :term:`1.x-style` use, this method rolls back the topmost
-        database transaction if no nested transactions are in effect, or
-        to the current nested transaction if one is in effect.
-
-        When
-        :term:`2.0-style` use is in effect via the
-        :paramref:`_orm.Session.future` flag, the method always rolls back
+        The method always rolls back
         the topmost database transaction, discarding any nested
         transactions that may be in progress.
 
@@ -1370,7 +1329,7 @@ class Session(_SessionClassMethods):
         if self._transaction is None:
             pass
         else:
-            self._transaction.rollback(_to_root=self.future)
+            self._transaction.rollback(_to_root=True)
 
     def commit(self):
         """Flush pending changes and commit the current transaction.
@@ -1378,15 +1337,8 @@ class Session(_SessionClassMethods):
         If no transaction is in progress, the method will first
         "autobegin" a new transaction and commit.
 
-        If :term:`1.x-style` use is in effect and there are currently
-        SAVEPOINTs in progress via :meth:`_orm.Session.begin_nested`,
-        the operation will release the current SAVEPOINT but not commit
-        the outermost database transaction.
-
-        If :term:`2.0-style` use is in effect via the
-        :paramref:`_orm.Session.future` flag, the outermost database
-        transaction is committed unconditionally, automatically releasing any
-        SAVEPOINTs in effect.
+        The outermost database transaction is committed unconditionally,
+        automatically releasing any SAVEPOINTs in effect.
 
         .. seealso::
 
@@ -1399,7 +1351,7 @@ class Session(_SessionClassMethods):
             if not self._autobegin():
                 raise sa_exc.InvalidRequestError("No transaction is begun.")
 
-        self._transaction.commit(_to_root=self.future)
+        self._transaction.commit(_to_root=True)
 
     def prepare(self):
         """Prepare the current transaction in progress for two phase commit.
@@ -1418,7 +1370,7 @@ class Session(_SessionClassMethods):
 
         self._transaction.prepare()
 
-    def connection(self, bind_arguments=None, execution_options=None, **kw):
+    def connection(self, bind_arguments=None, execution_options=None):
         r"""Return a :class:`_engine.Connection` object corresponding to this
         :class:`.Session` object's transactional state.
 
@@ -1437,15 +1389,6 @@ class Session(_SessionClassMethods):
          "mapper", "bind", "clause", other custom arguments that are passed
          to :meth:`.Session.get_bind`.
 
-        :param bind:
-          deprecated; use bind_arguments
-
-        :param mapper:
-          deprecated; use bind_arguments
-
-        :param clause:
-          deprecated; use bind_arguments
-
         :param execution_options: a dictionary of execution options that will
          be passed to :meth:`_engine.Connection.execution_options`, **when the
          connection is first procured only**.   If the connection is already
@@ -1456,17 +1399,15 @@ class Session(_SessionClassMethods):
 
             :ref:`session_transaction_isolation`
 
-        :param \**kw:
-          deprecated; use bind_arguments
-
         """
 
-        if not bind_arguments:
-            bind_arguments = kw
+        if bind_arguments:
+            bind = bind_arguments.pop("bind", None)
 
-        bind = bind_arguments.pop("bind", None)
-        if bind is None:
-            bind = self.get_bind(**bind_arguments)
+            if bind is None:
+                bind = self.get_bind(**bind_arguments)
+        else:
+            bind = self.get_bind()
 
         return self._connection_for_bind(
             bind,
@@ -1490,7 +1431,6 @@ class Session(_SessionClassMethods):
         bind_arguments=None,
         _parent_execute_state=None,
         _add_event=None,
-        **kw,
     ):
         r"""Execute a SQL expression construct.
 
@@ -1505,8 +1445,8 @@ class Session(_SessionClassMethods):
             )
 
         The API contract of :meth:`_orm.Session.execute` is similar to that
-        of :meth:`_future.Connection.execute`, the :term:`2.0 style` version
-        of :class:`_future.Connection`.
+        of :meth:`_engine.Connection.execute`, the :term:`2.0 style` version
+        of :class:`_engine.Connection`.
 
         .. versionchanged:: 1.4 the :meth:`_orm.Session.execute` method is
            now the primary point of ORM statement execution when using
@@ -1539,32 +1479,13 @@ class Session(_SessionClassMethods):
          Contents of this dictionary are passed to the
          :meth:`.Session.get_bind` method.
 
-        :param mapper:
-          deprecated; use the bind_arguments dictionary
-
-        :param bind:
-          deprecated; use the bind_arguments dictionary
-
-        :param \**kw:
-          deprecated; use the bind_arguments dictionary
-
         :return: a :class:`_engine.Result` object.
 
 
         """
         statement = coercions.expect(roles.StatementRole, statement)
 
-        if kw:
-            util.warn_deprecated_20(
-                "Passing bind arguments to Session.execute() as keyword "
-                "arguments is deprecated and will be removed SQLAlchemy 2.0. "
-                "Please use the bind_arguments parameter."
-            )
-            if not bind_arguments:
-                bind_arguments = kw
-            else:
-                bind_arguments.update(kw)
-        elif not bind_arguments:
+        if not bind_arguments:
             bind_arguments = {}
 
         if (
@@ -1848,7 +1769,7 @@ class Session(_SessionClassMethods):
          mapped.
 
         :param bind: an :class:`_engine.Engine` or :class:`_engine.Connection`
-                    object.
+         object.
 
         .. seealso::
 
@@ -1913,15 +1834,12 @@ class Session(_SessionClassMethods):
         :ref:`session_custom_partitioning`.
 
         :param mapper:
-          Optional :func:`.mapper` mapped class or instance of
-          :class:`_orm.Mapper`.   The bind can be derived from a
-          :class:`_orm.Mapper`
-          first by consulting the "binds" map associated with this
-          :class:`.Session`, and secondly by consulting the
-          :class:`_schema.MetaData`
-          associated with the :class:`_schema.Table` to which the
-          :class:`_orm.Mapper`
-          is mapped for a bind.
+          Optional mapped class or corresponding :class:`_orm.Mapper` instance.
+          The bind can be derived from a :class:`_orm.Mapper` first by
+          consulting the "binds" map associated with this :class:`.Session`,
+          and secondly by consulting the :class:`_schema.MetaData` associated
+          with the :class:`_schema.Table` to which the :class:`_orm.Mapper` is
+          mapped for a bind.
 
         :param clause:
             A :class:`_expression.ClauseElement` (i.e.
@@ -2587,7 +2505,7 @@ class Session(_SessionClassMethods):
             )
 
         .. versionadded:: 1.4 Added :meth:`_orm.Session.get`, which is moved
-           from the now deprecated :meth:`_orm.Query.get` method.
+           from the now legacy :meth:`_orm.Query.get` method.
 
         :meth:`_orm.Session.get` is special in that it provides direct
         access to the identity map of the :class:`.Session`.

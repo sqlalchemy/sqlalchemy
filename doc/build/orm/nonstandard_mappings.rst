@@ -161,7 +161,7 @@ key.
     almost never needed; it necessarily tends to produce complex queries
     which are often less efficient than that which would be produced
     by direct query construction.   The practice is to some degree
-    based on the very early history of SQLAlchemy where the :func:`.mapper`
+    based on the very early history of SQLAlchemy where the :class:`_orm.Mapper`
     construct was meant to represent the primary querying interface;
     in modern usage, the :class:`_query.Query` object can be used to construct
     virtually any SELECT statement, including complex composites, and should
@@ -174,7 +174,7 @@ In modern SQLAlchemy, a particular class is mapped by only one so-called
 **primary** mapper at a time.   This mapper is involved in three main areas of
 functionality: querying, persistence, and instrumentation of the mapped class.
 The rationale of the primary mapper relates to the fact that the
-:func:`.mapper` modifies the class itself, not only persisting it towards a
+:class:`_orm.Mapper` modifies the class itself, not only persisting it towards a
 particular :class:`_schema.Table`, but also :term:`instrumenting` attributes upon the
 class which are structured specifically according to the table metadata.   It's
 not possible for more than one mapper to be associated with a class in equal

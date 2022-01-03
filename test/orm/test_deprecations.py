@@ -1,4 +1,3 @@
-from contextlib import nullcontext
 from unittest.mock import call
 from unittest.mock import Mock
 
@@ -16,12 +15,10 @@ from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import text
-from sqlalchemy import true
 from sqlalchemy.engine import default
 from sqlalchemy.engine import result_tuple
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
-from sqlalchemy.orm import backref
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import collections
 from sqlalchemy.orm import column_property
@@ -31,12 +28,9 @@ from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import defaultload
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
-from sqlalchemy.orm import eagerload
 from sqlalchemy.orm import foreign
 from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import mapper
-from sqlalchemy.orm import relation
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import Session
@@ -46,7 +40,6 @@ from sqlalchemy.orm import synonym
 from sqlalchemy.orm import undefer
 from sqlalchemy.orm import with_parent
 from sqlalchemy.orm import with_polymorphic
-from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.orm.collections import collection
 from sqlalchemy.orm.util import polymorphic_union
 from sqlalchemy.testing import assert_raises_message
@@ -67,13 +60,11 @@ from .inheritance import _poly_fixtures
 from .inheritance._poly_fixtures import Manager
 from .inheritance._poly_fixtures import Person
 from .test_deferred import InheritanceTest as _deferred_InheritanceTest
-from .test_dynamic import _DynamicFixture
 from .test_events import _RemoveListeners
 from .test_options import PathTest as OptionsPathTest
 from .test_options import PathTest
 from .test_options import QueryTest as OptionsQueryTest
 from .test_query import QueryTest
-from .test_transaction import _LocalFixture
 from ..sql.test_compare import CacheKeyFixture
 
 if True:
@@ -413,35 +404,6 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             "subquery object."
         )
 
-    def test_deprecated_negative_slices(self):
-        User = self.classes.User
-
-        sess = fixture_session()
-        q = sess.query(User).order_by(User.id)
-
-        with testing.expect_deprecated(
-            "Support for negative indexes for SQL index / slice operators"
-        ):
-            eq_(q[-5:-2], [User(id=7), User(id=8)])
-
-        with testing.expect_deprecated(
-            "Support for negative indexes for SQL index / slice operators"
-        ):
-            eq_(q[-1], User(id=10))
-
-        with testing.expect_deprecated(
-            "Support for negative indexes for SQL index / slice operators"
-        ):
-            eq_(q[-2], User(id=9))
-
-        with testing.expect_deprecated(
-            "Support for negative indexes for SQL index / slice operators"
-        ):
-            eq_(q[:-2], [User(id=7), User(id=8)])
-
-        # this doesn't evaluate anything because it's a net-negative
-        eq_(q[-2:-5], [])
-
     def test_deprecated_select_coercion_join_target(self):
         User = self.classes.User
         addresses = self.tables.addresses
@@ -458,44 +420,6 @@ class DeprecatedQueryTest(_fixtures.FixtureTest, AssertsCompiledSQL):
                 "addresses.user_id AS user_id, addresses.email_address "
                 "AS email_address FROM addresses) AS anon_1 "
                 "ON users.id = anon_1.user_id",
-            )
-
-    def test_deprecated_negative_slices_compile(self):
-        User = self.classes.User
-
-        sess = fixture_session()
-        q = sess.query(User).order_by(User.id)
-
-        with testing.expect_deprecated(
-            "Support for negative indexes for SQL index / slice operators"
-        ):
-            self.assert_sql(
-                testing.db,
-                lambda: q[-5:-2],
-                [
-                    (
-                        "SELECT users.id AS users_id, users.name "
-                        "AS users_name "
-                        "FROM users ORDER BY users.id",
-                        {},
-                    )
-                ],
-            )
-
-        with testing.expect_deprecated(
-            "Support for negative indexes for SQL index / slice operators"
-        ):
-            self.assert_sql(
-                testing.db,
-                lambda: q[-5:],
-                [
-                    (
-                        "SELECT users.id AS users_id, users.name "
-                        "AS users_name "
-                        "FROM users ORDER BY users.id",
-                        {},
-                    )
-                ],
             )
 
     def test_invalid_column(self):
@@ -629,114 +553,6 @@ class LazyLoadOptSpecificityTest(fixtures.DeclarativeMappedTest):
         self.assert_sql_count(testing.db, go, expected)
 
 
-class DynamicTest(_DynamicFixture, _fixtures.FixtureTest):
-    def test_negative_slice_access_raises(self):
-        User, Address = self._user_address_fixture()
-        sess = fixture_session()
-        u1 = sess.get(User, 8)
-
-        with testing.expect_deprecated_20(
-            "Support for negative indexes for SQL index / slice"
-        ):
-            eq_(u1.addresses[-1], Address(id=4))
-
-        with testing.expect_deprecated_20(
-            "Support for negative indexes for SQL index / slice"
-        ):
-            eq_(u1.addresses[-5:-2], [Address(id=2)])
-
-        with testing.expect_deprecated_20(
-            "Support for negative indexes for SQL index / slice"
-        ):
-            eq_(u1.addresses[-2], Address(id=3))
-
-        with testing.expect_deprecated_20(
-            "Support for negative indexes for SQL index / slice"
-        ):
-            eq_(u1.addresses[:-2], [Address(id=2)])
-
-
-class SessionTest(fixtures.RemovesEvents, _LocalFixture):
-    def test_transaction_attr(self):
-        s1 = Session(testing.db)
-
-        with testing.expect_deprecated_20(
-            "The Session.transaction attribute is considered legacy as "
-            "of the 1.x series"
-        ):
-            s1.transaction
-
-    def test_textual_execute(self, connection):
-        """test that Session.execute() converts to text()"""
-
-        users = self.tables.users
-
-        with Session(bind=connection) as sess:
-            sess.execute(users.insert(), dict(id=7, name="jack"))
-
-            with testing.expect_deprecated_20(
-                "Using plain strings to indicate SQL statements "
-                "without using the text"
-            ):
-                # use :bindparam style
-                eq_(
-                    sess.execute(
-                        "select * from users where id=:id", {"id": 7}
-                    ).fetchall(),
-                    [(7, "jack")],
-                )
-
-            with testing.expect_deprecated_20(
-                "Using plain strings to indicate SQL statements "
-                "without using the text"
-            ):
-                # use :bindparam style
-                eq_(
-                    sess.scalar(
-                        "select id from users where id=:id", {"id": 7}
-                    ),
-                    7,
-                )
-
-    def test_session_str(self):
-        s1 = Session(testing.db)
-        str(s1)
-
-    @testing.combinations(
-        {"mapper": None},
-        {"clause": None},
-        {"bind_arguments": {"mapper": None}, "clause": None},
-        {"bind_arguments": {}, "clause": None},
-    )
-    def test_bind_kwarg_deprecated(self, kw):
-        s1 = Session(testing.db)
-
-        for meth in s1.execute, s1.scalar:
-            m1 = mock.Mock(side_effect=s1.get_bind)
-            with mock.patch.object(s1, "get_bind", m1):
-                expr = text("select 1")
-
-                with testing.expect_deprecated_20(
-                    r"Passing bind arguments to Session.execute\(\) as "
-                    "keyword "
-                    "arguments is deprecated and will be removed SQLAlchemy "
-                    "2.0"
-                ):
-                    meth(expr, **kw)
-
-                bind_arguments = kw.pop("bind_arguments", None)
-                if bind_arguments:
-                    bind_arguments.update(kw)
-
-                    if "clause" not in kw:
-                        bind_arguments["clause"] = expr
-                    eq_(m1.mock_calls, [call(**bind_arguments)])
-                else:
-                    if "clause" not in kw:
-                        kw["clause"] = expr
-                    eq_(m1.mock_calls, [call(**kw)])
-
-
 class DeprecatedInhTest(_poly_fixtures._Polymorphic):
     def test_with_polymorphic(self):
         Person = _poly_fixtures.Person
@@ -750,8 +566,78 @@ class DeprecatedInhTest(_poly_fixtures._Polymorphic):
         )
 
 
-class DeprecatedMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
+class DeprecatedMapperTest(
+    fixtures.RemovesEvents, _fixtures.FixtureTest, AssertsCompiledSQL
+):
     __dialect__ = "default"
+
+    def test_listen_on_mapper_mapper_event_fn(self, registry):
+        from sqlalchemy.orm import mapper
+
+        m1 = Mock()
+
+        with expect_deprecated(
+            r"The `sqlalchemy.orm.mapper\(\)` symbol is deprecated and "
+            "will be removed"
+        ):
+
+            @event.listens_for(mapper, "before_configured")
+            def go():
+                m1()
+
+        @registry.mapped
+        class MyClass:
+            __tablename__ = "t1"
+            id = Column(Integer, primary_key=True)
+
+        registry.configure()
+        eq_(m1.mock_calls, [call()])
+
+    def test_listen_on_mapper_instrumentation_event_fn(self, registry):
+        from sqlalchemy.orm import mapper
+
+        m1 = Mock()
+
+        with expect_deprecated(
+            r"The `sqlalchemy.orm.mapper\(\)` symbol is deprecated and "
+            "will be removed"
+        ):
+
+            @event.listens_for(mapper, "init")
+            def go(target, args, kwargs):
+                m1(target, args, kwargs)
+
+        @registry.mapped
+        class MyClass:
+            __tablename__ = "t1"
+            id = Column(Integer, primary_key=True)
+
+        mc = MyClass(id=5)
+        eq_(m1.mock_calls, [call(mc, (), {"id": 5})])
+
+    def test_we_couldnt_remove_mapper_yet(self):
+        """test that the mapper() function is present but raises an
+        informative error when used.
+
+        The function itself was to be removed as of 2.0, however we forgot
+        to mark deprecated the use of the function as an event target,
+        so it needs to stay around for another cycle at least.
+
+        """
+
+        class MyClass:
+            pass
+
+        t1 = Table("t1", MetaData(), Column("id", Integer, primary_key=True))
+
+        from sqlalchemy.orm import mapper
+
+        with assertions.expect_raises_message(
+            sa_exc.InvalidRequestError,
+            r"The 'sqlalchemy.orm.mapper\(\)' function is removed as of "
+            "SQLAlchemy 2.0.",
+        ):
+            mapper(MyClass, t1)
 
     def test_deferred_scalar_loader_name_change(self):
         class Foo:
@@ -1392,7 +1278,6 @@ class ViewonlyFlagWarningTest(fixtures.MappedTest):
         ("passive_updates", False),
         ("enable_typechecks", False),
         ("active_history", True),
-        ("cascade_backrefs", False),
     )
     def test_viewonly_warning(self, flag, value):
         Order = self.classes.Order
@@ -1504,7 +1389,7 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             non_primary=True,
         )
 
-    def test_illegal_non_primary_legacy(self):
+    def test_illegal_non_primary_legacy(self, registry):
         users, Address, addresses, User = (
             self.tables.users,
             self.classes.Address,
@@ -1512,18 +1397,12 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             self.classes.User,
         )
 
-        with testing.expect_deprecated(
-            "Calling the mapper.* function directly outside of a declarative "
-        ):
-            mapper(User, users)
-        with testing.expect_deprecated(
-            "Calling the mapper.* function directly outside of a declarative "
-        ):
-            mapper(Address, addresses)
+        registry.map_imperatively(User, users)
+        registry.map_imperatively(Address, addresses)
         with testing.expect_deprecated(
             "The mapper.non_primary parameter is deprecated"
         ):
-            m = mapper(  # noqa F841
+            m = registry.map_imperatively(  # noqa F841
                 User,
                 users,
                 non_primary=True,
@@ -1536,22 +1415,19 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             configure_mappers,
         )
 
-    def test_illegal_non_primary_2_legacy(self):
+    def test_illegal_non_primary_2_legacy(self, registry):
         User, users = self.classes.User, self.tables.users
 
-        with testing.expect_deprecated(
-            "The mapper.non_primary parameter is deprecated"
-        ):
-            assert_raises_message(
-                sa.exc.InvalidRequestError,
-                "Configure a primary mapper first",
-                mapper,
-                User,
-                users,
-                non_primary=True,
-            )
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Configure a primary mapper first",
+            registry.map_imperatively,
+            User,
+            users,
+            non_primary=True,
+        )
 
-    def test_illegal_non_primary_3_legacy(self):
+    def test_illegal_non_primary_3_legacy(self, registry):
         users, addresses = self.tables.users, self.tables.addresses
 
         class Base:
@@ -1560,21 +1436,16 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         class Sub(Base):
             pass
 
-        with testing.expect_deprecated(
-            "Calling the mapper.* function directly outside of a declarative "
-        ):
-            mapper(Base, users)
-        with testing.expect_deprecated(
-            "The mapper.non_primary parameter is deprecated",
-        ):
-            assert_raises_message(
-                sa.exc.InvalidRequestError,
-                "Configure a primary mapper first",
-                mapper,
-                Sub,
-                addresses,
-                non_primary=True,
-            )
+        registry.map_imperatively(Base, users)
+
+        assert_raises_message(
+            sa.exc.InvalidRequestError,
+            "Configure a primary mapper first",
+            registry.map_imperatively,
+            Sub,
+            addresses,
+            non_primary=True,
+        )
 
 
 class InstancesTest(QueryTest, AssertsCompiledSQL):
@@ -1774,78 +1645,6 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
             assert self.static.user_order_result == result
 
         self.assert_sql_count(testing.db, go, 1)
-
-
-class TestDeprecation20(QueryTest):
-    def test_relation(self):
-        User = self.classes.User
-        with testing.expect_deprecated_20(".*relationship"):
-            relation(User.addresses)
-
-    def test_eagerloading(self):
-        User = self.classes.User
-        with testing.expect_deprecated_20(".*joinedload"):
-            eagerload(User.addresses)
-
-
-class DistinctOrderByImplicitTest(QueryTest, AssertsCompiledSQL):
-    __dialect__ = "default"
-
-    def test_columns_augmented_roundtrip_three(self):
-        User, Address = self.classes.User, self.classes.Address
-
-        sess = fixture_session()
-
-        q = (
-            sess.query(User.id, User.name.label("foo"), Address.id)
-            .join(Address, true())
-            .filter(User.name == "jack")
-            .filter(User.id + Address.user_id > 0)
-            .distinct()
-            .order_by(User.id, User.name, Address.email_address)
-        )
-
-        # even though columns are added, they aren't in the result
-        with testing.expect_deprecated(
-            "ORDER BY columns added implicitly due to "
-        ):
-            eq_(
-                q.all(),
-                [
-                    (7, "jack", 3),
-                    (7, "jack", 4),
-                    (7, "jack", 2),
-                    (7, "jack", 5),
-                    (7, "jack", 1),
-                ],
-            )
-            for row in q:
-                eq_(row._mapping.keys(), ["id", "foo", "id"])
-
-    def test_columns_augmented_sql_one(self):
-        User, Address = self.classes.User, self.classes.Address
-
-        sess = fixture_session()
-
-        q = (
-            sess.query(User.id, User.name.label("foo"), Address.id)
-            .distinct()
-            .order_by(User.id, User.name, Address.email_address)
-        )
-
-        # Address.email_address is added because of DISTINCT,
-        # however User.id, User.name are not b.c. they're already there,
-        # even though User.name is labeled
-        with testing.expect_deprecated(
-            "ORDER BY columns added implicitly due to "
-        ):
-            self.assert_compile(
-                q,
-                "SELECT DISTINCT users.id AS users_id, users.name AS foo, "
-                "addresses.id AS addresses_id, addresses.email_address AS "
-                "addresses_email_address FROM users, addresses "
-                "ORDER BY users.id, users.name, addresses.email_address",
-            )
 
 
 class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
@@ -2802,252 +2601,6 @@ class ParentTest(QueryTest, AssertsCompiledSQL):
             "FROM addresses WHERE :param_2 = addresses.user_id) AS anon_1",
             checkparams={"param_1": 7, "param_2": 8},
         )
-
-
-class CollectionCascadesDespiteBackrefTest(fixtures.TestBase):
-    """test old cascade_backrefs behavior
-
-    see test/orm/test_cascade.py::class CollectionCascadesNoBackrefTest
-    for the future version
-
-    """
-
-    @testing.fixture
-    def cascade_fixture(self, registry):
-        def go(collection_class):
-            @registry.mapped
-            class A:
-                __tablename__ = "a"
-
-                id = Column(Integer, primary_key=True)
-                bs = relationship(
-                    "B", backref="a", collection_class=collection_class
-                )
-
-            @registry.mapped
-            class B:
-                __tablename__ = "b_"
-                id = Column(Integer, primary_key=True)
-                a_id = Column(ForeignKey("a.id"))
-                key = Column(String)
-
-            return A, B
-
-        yield go
-
-    @testing.combinations(
-        (set, "add"),
-        (list, "append"),
-        (attribute_mapped_collection("key"), "__setitem__"),
-        (attribute_mapped_collection("key"), "setdefault"),
-        (attribute_mapped_collection("key"), "update_dict"),
-        (attribute_mapped_collection("key"), "update_kw"),
-        argnames="collection_class,methname",
-    )
-    @testing.combinations((True,), (False,), argnames="future")
-    def test_cascades_on_collection(
-        self, cascade_fixture, collection_class, methname, future
-    ):
-        A, B = cascade_fixture(collection_class)
-
-        s = Session(future=future)
-
-        a1 = A()
-        s.add(a1)
-
-        b1 = B(key="b1")
-        b2 = B(key="b2")
-        b3 = B(key="b3")
-
-        if future:
-            dep_ctx = nullcontext
-        else:
-
-            def dep_ctx():
-                return assertions.expect_deprecated_20(
-                    '"B" object is being merged into a Session along the '
-                    'backref cascade path for relationship "A.bs"'
-                )
-
-        with dep_ctx():
-            b1.a = a1
-        with dep_ctx():
-            b3.a = a1
-
-        if future:
-            assert b1 not in s
-            assert b3 not in s
-        else:
-            assert b1 in s
-            assert b3 in s
-
-        if methname == "__setitem__":
-            meth = getattr(a1.bs, methname)
-            meth(b1.key, b1)
-            meth(b2.key, b2)
-        elif methname == "setdefault":
-            meth = getattr(a1.bs, methname)
-            meth(b1.key, b1)
-            meth(b2.key, b2)
-        elif methname == "update_dict" and isinstance(a1.bs, dict):
-            a1.bs.update({b1.key: b1, b2.key: b2})
-        elif methname == "update_kw" and isinstance(a1.bs, dict):
-            a1.bs.update(b1=b1, b2=b2)
-        else:
-            meth = getattr(a1.bs, methname)
-            meth(b1)
-            meth(b2)
-
-        assert b1 in s
-        assert b2 in s
-
-        # future version:
-        if future:
-            assert b3 not in s  # the event never triggers from reverse
-        else:
-            # old behavior
-            assert b3 in s
-
-
-class LoadOnFKsTest(fixtures.DeclarativeMappedTest):
-    @classmethod
-    def setup_classes(cls):
-        Base = cls.DeclarativeBasic
-
-        class Parent(Base):
-            __tablename__ = "parent"
-            __table_args__ = {"mysql_engine": "InnoDB"}
-
-            id = Column(
-                Integer, primary_key=True, test_needs_autoincrement=True
-            )
-
-        class Child(Base):
-            __tablename__ = "child"
-            __table_args__ = {"mysql_engine": "InnoDB"}
-
-            id = Column(
-                Integer, primary_key=True, test_needs_autoincrement=True
-            )
-            parent_id = Column(Integer, ForeignKey("parent.id"))
-
-            parent = relationship(Parent, backref=backref("children"))
-
-    @testing.fixture
-    def parent_fixture(self, connection):
-        Parent, Child = self.classes("Parent", "Child")
-
-        sess = fixture_session(bind=connection, autoflush=False)
-        p1 = Parent()
-        p2 = Parent()
-        c1, c2 = Child(), Child()
-        c1.parent = p1
-        sess.add_all([p1, p2])
-        assert c1 in sess
-
-        yield sess, p1, p2, c1, c2
-
-        sess.close()
-
-    def test_enable_rel_loading_on_persistent_allows_backref_event(
-        self, parent_fixture
-    ):
-        sess, p1, p2, c1, c2 = parent_fixture
-        Parent, Child = self.classes("Parent", "Child")
-
-        c3 = Child()
-        sess.enable_relationship_loading(c3)
-        c3.parent_id = p1.id
-        with assertions.expect_deprecated_20(
-            '"Child" object is being merged into a Session along the '
-            'backref cascade path for relationship "Parent.children"'
-        ):
-            c3.parent = p1
-
-        # backref fired off when c3.parent was set,
-        # because the "old" value was None
-        # change as of [ticket:3708]
-        assert c3 in p1.children
-
-    def test_enable_rel_loading_allows_backref_event(self, parent_fixture):
-        sess, p1, p2, c1, c2 = parent_fixture
-        Parent, Child = self.classes("Parent", "Child")
-
-        c3 = Child()
-        sess.enable_relationship_loading(c3)
-        c3.parent_id = p1.id
-
-        with assertions.expect_deprecated_20(
-            '"Child" object is being merged into a Session along the '
-            'backref cascade path for relationship "Parent.children"'
-        ):
-            c3.parent = p1
-
-        # backref fired off when c3.parent was set,
-        # because the "old" value was None
-        # change as of [ticket:3708]
-        assert c3 in p1.children
-
-
-class LazyTest(_fixtures.FixtureTest):
-    run_inserts = "once"
-    run_deletes = None
-
-    def test_backrefs_dont_lazyload(self):
-        users, Address, addresses, User = (
-            self.tables.users,
-            self.classes.Address,
-            self.tables.addresses,
-            self.classes.User,
-        )
-
-        self.mapper_registry.map_imperatively(
-            User,
-            users,
-            properties={"addresses": relationship(Address, backref="user")},
-        )
-        self.mapper_registry.map_imperatively(Address, addresses)
-        sess = fixture_session(autoflush=False)
-        ad = sess.query(Address).filter_by(id=1).one()
-        assert ad.user.id == 7
-
-        def go():
-            ad.user = None
-            assert ad.user is None
-
-        self.assert_sql_count(testing.db, go, 0)
-
-        u1 = sess.query(User).filter_by(id=7).one()
-
-        def go():
-            assert ad not in u1.addresses
-
-        self.assert_sql_count(testing.db, go, 1)
-
-        sess.expire(u1, ["addresses"])
-
-        def go():
-            assert ad in u1.addresses
-
-        self.assert_sql_count(testing.db, go, 1)
-
-        sess.expire(u1, ["addresses"])
-        ad2 = Address()
-
-        def go():
-            with assertions.expect_deprecated_20(
-                ".* object is being merged into a Session along the "
-                "backref cascade path for relationship "
-            ):
-                ad2.user = u1
-            assert ad2.user is u1
-
-        self.assert_sql_count(testing.db, go, 0)
-
-        def go():
-            assert ad2 in u1.addresses
-
-        self.assert_sql_count(testing.db, go, 1)
 
 
 class MergeResultTest(_fixtures.FixtureTest):

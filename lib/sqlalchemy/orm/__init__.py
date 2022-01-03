@@ -100,6 +100,7 @@ from .util import with_parent
 from .util import with_polymorphic
 from .. import sql as _sql
 from .. import util as _sa_util
+from ..exc import InvalidRequestError
 from ..util.langhelpers import public_factory
 
 
@@ -144,11 +145,31 @@ with_loader_criteria = public_factory(LoaderCriteriaOption, ".orm")
 relationship = public_factory(RelationshipProperty, ".orm.relationship")
 
 
-@_sa_util.deprecated_20("relation", "Please use :func:`.relationship`.")
-def relation(*arg, **kw):
-    """A synonym for :func:`relationship`."""
+def mapper(*arg, **kw):
+    """Placeholder for the now-removed ``mapper()`` function.
 
-    return relationship(*arg, **kw)
+    Classical mappings should be performed using the
+    :meth:`_orm.registry.map_imperatively` method.
+
+    This symbol remains in SQLAlchemy 2.0 to suit the deprecated use case
+    of using the ``mapper()`` function as a target for ORM event listeners,
+    which failed to be marked as deprecated in the 1.4 series.
+
+    Global ORM mapper listeners should instead use the :class:`_orm.Mapper`
+    class as the target.
+
+    .. versionchanged:: 2.0  The ``mapper()`` function was removed; the
+       symbol remains temporarily as a placeholder for the event listening
+       use case.
+
+    """
+    raise InvalidRequestError(
+        "The 'sqlalchemy.orm.mapper()' function is removed as of "
+        "SQLAlchemy 2.0.  Use the "
+        "'sqlalchemy.orm.registry.map_imperatively()` "
+        "method of the ``sqlalchemy.orm.registry`` class to perform "
+        "classical mapping."
+    )
 
 
 def dynamic_loader(argument, **kw):
@@ -251,8 +272,6 @@ def query_expression(default_expr=_sql.null()):
     return prop
 
 
-mapper = public_factory(Mapper, ".orm.mapper")
-
 synonym = public_factory(SynonymProperty, ".orm.synonym")
 
 
@@ -282,12 +301,6 @@ def clear_mappers():
     """
 
     mapperlib._dispose_registries(mapperlib._all_registries(), False)
-
-
-@_sa_util.deprecated_20("eagerload", "Please use :func:`_orm.joinedload`.")
-def eagerload(*args, **kwargs):
-    """A synonym for :func:`joinedload()`."""
-    return joinedload(*args, **kwargs)
 
 
 contains_alias = public_factory(AliasOption, ".orm.contains_alias")

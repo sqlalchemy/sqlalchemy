@@ -1076,8 +1076,6 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         m2o_cascade=True,
         o2m=False,
         m2o=False,
-        o2m_cascade_backrefs=True,
-        m2o_cascade_backrefs=True,
     ):
 
         Address, addresses, users, User = (
@@ -1092,12 +1090,10 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
                 addresses_rel = {
                     "addresses": relationship(
                         Address,
-                        cascade_backrefs=o2m_cascade_backrefs,
                         cascade=o2m_cascade and "save-update" or "",
                         backref=backref(
                             "user",
                             cascade=m2o_cascade and "save-update" or "",
-                            cascade_backrefs=m2o_cascade_backrefs,
                         ),
                     )
                 }
@@ -1107,7 +1103,6 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
                     "addresses": relationship(
                         Address,
                         cascade=o2m_cascade and "save-update" or "",
-                        cascade_backrefs=o2m_cascade_backrefs,
                     )
                 }
             user_rel = {}
@@ -1116,7 +1111,6 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
                 "user": relationship(
                     User,
                     cascade=m2o_cascade and "save-update" or "",
-                    cascade_backrefs=m2o_cascade_backrefs,
                 )
             }
             addresses_rel = {}
@@ -1137,8 +1131,6 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         bkd_cascade=True,
         fwd=False,
         bkd=False,
-        fwd_cascade_backrefs=True,
-        bkd_cascade_backrefs=True,
     ):
 
         keywords, items, item_keywords, Keyword, Item = (
@@ -1155,12 +1147,10 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
                     "keywords": relationship(
                         Keyword,
                         secondary=item_keywords,
-                        cascade_backrefs=fwd_cascade_backrefs,
                         cascade=fwd_cascade and "save-update" or "",
                         backref=backref(
                             "items",
                             cascade=bkd_cascade and "save-update" or "",
-                            cascade_backrefs=bkd_cascade_backrefs,
                         ),
                     )
                 }
@@ -1171,7 +1161,6 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
                         Keyword,
                         secondary=item_keywords,
                         cascade=fwd_cascade and "save-update" or "",
-                        cascade_backrefs=fwd_cascade_backrefs,
                     )
                 }
             items_rel = {}
@@ -1181,7 +1170,6 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
                     Item,
                     secondary=item_keywords,
                     cascade=bkd_cascade and "save-update" or "",
-                    cascade_backrefs=bkd_cascade_backrefs,
                 )
             }
             keywords_rel = {}
@@ -1404,11 +1392,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
             sess.flush()
 
             a1 = Address(email_address="a1")
-            with testing.expect_deprecated(
-                '"Address" object is being merged into a Session along '
-                'the backref cascade path for relationship "User.addresses"'
-            ):
-                a1.user = u1
+            a1.user = u1
             sess.add(a1)
             sess.expunge(u1)
             assert u1 not in sess
@@ -1469,11 +1453,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
             sess.flush()
 
             a1 = Address(email_address="a1")
-            with testing.expect_deprecated(
-                '"Address" object is being merged into a Session along the '
-                'backref cascade path for relationship "User.addresses"'
-            ):
-                a1.user = u1
+            a1.user = u1
             sess.add(a1)
             sess.expunge(u1)
             assert u1 not in sess
@@ -2761,20 +2741,14 @@ class NoBackrefCascadeTest(_fixtures.FixtureTest):
         cls.mapper_registry.map_imperatively(
             User,
             users,
-            properties={
-                "addresses": relationship(
-                    Address, backref="user", cascade_backrefs=False
-                )
-            },
+            properties={"addresses": relationship(Address, backref="user")},
         )
 
         cls.mapper_registry.map_imperatively(
             Dingaling,
             dingalings,
             properties={
-                "address": relationship(
-                    Address, backref="dingalings", cascade_backrefs=False
-                )
+                "address": relationship(Address, backref="dingalings")
             },
         )
 
@@ -2805,7 +2779,7 @@ class NoBackrefCascadeTest(_fixtures.FixtureTest):
 
         assert a1 not in sess
 
-    def test_o2m_flag_on_backref(self):
+    def test_o2m_on_backref_no_cascade(self):
         Dingaling, Address = self.classes.Dingaling, self.classes.Address
 
         sess = fixture_session()
@@ -2814,15 +2788,9 @@ class NoBackrefCascadeTest(_fixtures.FixtureTest):
         sess.add(a1)
 
         d1 = Dingaling()
-        with testing.expect_deprecated(
-            '"Dingaling" object is being merged into a Session along the '
-            'backref cascade path for relationship "Address.dingalings"'
-        ):
-            d1.address = a1
+        d1.address = a1
         assert d1 in a1.dingalings
-        assert d1 in sess
-
-        sess.commit()
+        assert d1 not in sess
 
     def test_m2o_basic(self):
         Dingaling, Address = self.classes.Dingaling, self.classes.Address
@@ -2836,7 +2804,7 @@ class NoBackrefCascadeTest(_fixtures.FixtureTest):
         a1.dingalings.append(d1)
         assert a1 not in sess
 
-    def test_m2o_flag_on_backref(self):
+    def test_m2o_on_backref_no_cascade(self):
         User, Address = self.classes.User, self.classes.Address
 
         sess = fixture_session()
@@ -2845,14 +2813,10 @@ class NoBackrefCascadeTest(_fixtures.FixtureTest):
         sess.add(a1)
 
         u1 = User(name="u1")
-        with testing.expect_deprecated(
-            '"User" object is being merged into a Session along the backref '
-            'cascade path for relationship "Address.user"'
-        ):
-            u1.addresses.append(a1)
-        assert u1 in sess
+        u1.addresses.append(a1)
+        assert u1 not in sess
 
-    def test_m2o_commit_warns(self):
+    def test_m2o_commit_no_cascade(self):
         Dingaling, Address = self.classes.Dingaling, self.classes.Address
 
         sess = fixture_session()
@@ -3844,7 +3808,9 @@ class O2MConflictTest(fixtures.MappedTest):
                 "child": relationship(
                     Child,
                     uselist=False,
-                    backref=backref("parent", cascade_backrefs=False),
+                    backref=backref(
+                        "parent",
+                    ),
                 )
             },
         )
@@ -3910,7 +3876,7 @@ class O2MConflictTest(fixtures.MappedTest):
                     Child,
                     uselist=False,
                     cascade="all, delete, delete-orphan",
-                    backref=backref("parent", cascade_backrefs=False),
+                    backref=backref("parent"),
                 )
             },
         )
@@ -3937,7 +3903,6 @@ class O2MConflictTest(fixtures.MappedTest):
                     single_parent=True,
                     backref=backref("child", uselist=False),
                     cascade="all,delete,delete-orphan",
-                    cascade_backrefs=False,
                 )
             },
         )
@@ -3963,7 +3928,6 @@ class O2MConflictTest(fixtures.MappedTest):
                     single_parent=True,
                     backref=backref("child", uselist=True),
                     cascade="all,delete,delete-orphan",
-                    cascade_backrefs=False,
                 )
             },
         )
@@ -4499,7 +4463,6 @@ class CollectionCascadesNoBackrefTest(fixtures.TestBase):
                     "B",
                     backref="a",
                     collection_class=collection_class,
-                    cascade_backrefs=False,
                 )
 
             @registry.mapped
@@ -4522,13 +4485,12 @@ class CollectionCascadesNoBackrefTest(fixtures.TestBase):
         (attribute_mapped_collection("key"), "update_kw"),
         argnames="collection_class,methname",
     )
-    @testing.combinations((True,), (False,), argnames="future")
     def test_cascades_on_collection(
-        self, cascade_fixture, collection_class, methname, future
+        self, cascade_fixture, collection_class, methname
     ):
         A, B = cascade_fixture(collection_class)
 
-        s = Session(future=future)
+        s = Session()
 
         a1 = A()
         s.add(a1)

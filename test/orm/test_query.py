@@ -2855,7 +2855,7 @@ class SliceTest(QueryTest):
     def test_negative_indexes_raise(self):
         User = self.classes.User
 
-        sess = fixture_session(future=True)
+        sess = fixture_session()
         q = sess.query(User).order_by(User.id)
 
         with expect_raises_message(

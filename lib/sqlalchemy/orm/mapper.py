@@ -57,8 +57,6 @@ from ..util import HasMemoized
 
 _mapper_registries = weakref.WeakKeyDictionary()
 
-_legacy_registry = None
-
 
 def _all_registries():
     with _CONFIGURE_MUTEX:
@@ -148,16 +146,15 @@ class Mapper(
     ):
         r"""Direct constructor for a new :class:`_orm.Mapper` object.
 
-        The :func:`_orm.mapper` function is normally invoked through the
+        The :class:`_orm.Mapper` constructor is not called directly, and
+        is normally invoked through the
         use of the :class:`_orm.registry` object through either the
         :ref:`Declarative <orm_declarative_mapping>` or
         :ref:`Imperative <orm_imperative_mapping>` mapping styles.
 
-        .. versionchanged:: 1.4 The :func:`_orm.mapper` function should not
-           be called directly for classical mapping; for a classical mapping
-           configuration, use the :meth:`_orm.registry.map_imperatively`
-           method.   The :func:`_orm.mapper` function may become private in a
-           future release.
+        .. versionchanged:: 2.0 The public facing ``mapper()`` function is
+           removed; for a classical mapping configuration, use the
+           :meth:`_orm.registry.map_imperatively` method.
 
         Parameters documented below may be passed to either the
         :meth:`_orm.registry.map_imperatively` method, or may be passed in the
@@ -1202,8 +1199,7 @@ class Mapper(
 
         # we expect that declarative has applied the class manager
         # already and set up a registry.  if this is None,
-        # we will emit a deprecation warning below when we also see that
-        # it has no registry.
+        # this raises as of 2.0.
         manager = attributes.manager_of_class(self.class_)
 
         if self.non_primary:
@@ -1251,14 +1247,12 @@ class Mapper(
         )
 
         if not manager.registry:
-            util.warn_deprecated_20(
-                "Calling the mapper() function directly outside of a "
-                "declarative registry is deprecated."
+            raise sa_exc.InvalidRequestError(
+                "The _mapper() function may not be invoked directly outside "
+                "of a declarative registry."
                 " Please use the sqlalchemy.orm.registry.map_imperatively() "
                 "function for a classical mapping."
             )
-            assert _legacy_registry is not None
-            _legacy_registry._add_manager(manager)
 
         self.class_manager = manager
         self.registry = manager.registry

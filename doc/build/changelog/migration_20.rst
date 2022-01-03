@@ -1381,8 +1381,8 @@ The original "mapper()" function now a core element of Declarative, renamed
 
 **Synopsis**
 
-The :func:`_orm.mapper` function moves behind the scenes to be invoked
-by higher level APIs.  The new version of this function is the method
+The ``sqlalchemy.orm.mapper()`` standalone function moves behind the scenes to
+be invoked by higher level APIs. The new version of this function is the method
 :meth:`_orm.registry.map_imperatively` taken from a :class:`_orm.registry`
 object.
 

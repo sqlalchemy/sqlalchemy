@@ -175,7 +175,7 @@ automatically providing the new value of the version id counter.
 The ORM typically does not actively fetch the values of database-generated
 values when it emits an INSERT or UPDATE, instead leaving these columns as
 "expired" and to be fetched when they are next accessed, unless the ``eager_defaults``
-:func:`.mapper` flag is set.  However, when a
+:class:`_orm.Mapper` flag is set.  However, when a
 server side version column is used, the ORM needs to actively fetch the newly
 generated value.  This is so that the version counter is set up *before*
 any concurrent transaction may update it again.   This fetching is also

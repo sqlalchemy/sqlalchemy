@@ -538,12 +538,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             "1.4",
             "Deprecated alias of :paramref:`_schema.Table.must_exist`",
         ),
-        autoload=(
-            "2.0",
-            "The autoload parameter is deprecated and will be removed in "
-            "version 2.0.  Please use the "
-            "autoload_with parameter, passing an engine or connection.",
-        ),
     )
     def __new__(cls, *args, **kw):
         if not args and not kw:
@@ -638,7 +632,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             self.fullname = self.name
 
         autoload_with = kwargs.pop("autoload_with", None)
-        autoload = kwargs.pop("autoload", autoload_with is not None)
+        autoload = autoload_with is not None
         # this argument is only used with _init_existing()
         kwargs.pop("autoload_replace", True)
         keep_existing = kwargs.pop("keep_existing", False)

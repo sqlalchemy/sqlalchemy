@@ -107,11 +107,11 @@ Documentation for Declarative mapping continues at :ref:`declarative_config_topl
 Creating an Explicit Base Non-Dynamically (for use with mypy, similar)
 ----------------------------------------------------------------------
 
+TODO: update for 2.0 - code here may not be accurate
+
 SQLAlchemy includes a :ref:`Mypy plugin <mypy_toplevel>` that automatically
 accommodates for the dynamically generated ``Base`` class
 delivered by SQLAlchemy functions like :func:`_orm.declarative_base`.
-This plugin works along with a new set of typing stubs published at
-`sqlalchemy2-stubs <https://pypi.org/project/sqlalchemy2-stubs>`_.
 
 When this plugin is not in use, or when using other :pep:`484` tools which
 may not know how to interpret this class, the declarative base class may
@@ -126,8 +126,6 @@ be produced in a fully explicit fashion using the
     class Base(metaclass=DeclarativeMeta):
         __abstract__ = True
 
-        # these are supplied by the sqlalchemy2-stubs, so may be omitted
-        # when they are installed
         registry = mapper_registry
         metadata = mapper_registry.metadata
 
@@ -339,9 +337,10 @@ during flush from autoincrement or other default value generator.   To
 allow them to be specified in the constructor explicitly, they would instead
 be given a default value of ``None``.
 
-For a :func:`_orm.relationship` to be declared separately, it needs to
-be specified directly within the :paramref:`_orm.mapper.properties`
-dictionary passed to the :func:`_orm.mapper`.   An alternative to this
+For a :func:`_orm.relationship` to be declared separately, it needs to be
+specified directly within the :paramref:`_orm.Mapper.properties` dictionary
+which itself is specified within the ``__mapper_args__`` dictionary, so that it
+is passed to the constructor for :class:`_orm.Mapper`. An alternative to this
 approach is in the next example.
 
 .. _orm_declarative_dataclasses_declarative_table:
@@ -527,16 +526,10 @@ Imperative (a.k.a. Classical) Mappings
 An **imperative** or **classical** mapping refers to the configuration of a
 mapped class using the :meth:`_orm.registry.map_imperatively` method,
 where the target class does not include any declarative class attributes.
-The "map imperative" style has historically been achieved using the
-:func:`_orm.mapper` function directly, however this function now expects
-that a :meth:`_orm.registry` is present.
 
-.. deprecated:: 1.4  Using the :func:`_orm.mapper` function directly to
-   achieve a classical mapping directly is deprecated.   The
-   :meth:`_orm.registry.map_imperatively` method retains the identical
-   functionality while also allowing for string-based resolution of
-   other mapped classes from within the registry.
-
+.. versionchanged:: 2.0  The :meth:`_orm.registry.map_imperatively` method
+   is now used to create classical mappings.  The ``sqlalchemy.orm.mapper()``
+   standalone function is effectively removed.
 
 In "classical" form, the table metadata is created separately with the
 :class:`_schema.Table` construct, then associated with the ``User`` class via
@@ -588,8 +581,8 @@ yet be linked to table metadata, nor can we specify a string here.
 Some examples in the documentation still use the classical approach, but note that
 the classical as well as Declarative approaches are **fully interchangeable**.  Both
 systems ultimately create the same configuration, consisting of a :class:`_schema.Table`,
-user-defined class, linked together with a :func:`.mapper`.  When we talk about
-"the behavior of :func:`.mapper`", this includes when using the Declarative system
+user-defined class, linked together with a :class:`_orm.Mapper` object.  When we talk about
+"the behavior of :class:`_orm.Mapper`", this includes when using the Declarative system
 as well - it's still used, just behind the scenes.
 
 
@@ -671,15 +664,15 @@ on the class itself as declarative class variables::
 Mapper Configuration Overview
 =============================
 
-With all mapping forms, the mapping of the class can be
-configured in many ways by passing construction arguments that become
-part of the :class:`_orm.Mapper` object.   The function which ultimately
-receives these arguments is the :func:`_orm.mapper` function, which are delivered
-to it originating from one of the front-facing mapping functions defined
-on the :class:`_orm.registry` object.
+With all mapping forms, the mapping of the class can be configured in many ways
+by passing construction arguments that become part of the :class:`_orm.Mapper`
+object. The construct which ultimately receives these arguments is the
+constructor to the :class:`_orm.Mapper` class, and the arguments are delivered
+to it originating from one of the front-facing mapping functions defined on the
+:class:`_orm.registry` object.
 
 There are four general classes of configuration information that the
-:func:`_orm.mapper` function looks for:
+:class:`_orm.Mapper` class looks for:
 
 The class to be mapped
 ----------------------
@@ -746,12 +739,12 @@ the section :ref:`orm_declarative_properties` for notes on this process.
 When mapping with the :ref:`imperative <orm_imperative_mapping>` style, the
 properties dictionary is passed directly as the ``properties`` argument
 to :meth:`_orm.registry.map_imperatively`, which will pass it along to the
-:paramref:`_orm.mapper.properties` parameter.
+:paramref:`_orm.Mapper.properties` parameter.
 
 Other mapper configuration parameters
 -------------------------------------
 
-These flags are documented at  :func:`_orm.mapper`.
+These flags are documented at  :class:`_orm.Mapper`.
 
 When mapping with the :ref:`declarative <orm_declarative_mapping>` mapping
 style, additional mapper configuration arguments are configured via the
@@ -760,7 +753,7 @@ style, additional mapper configuration arguments are configured via the
 
 When mapping with the :ref:`imperative <orm_imperative_mapping>` style,
 keyword arguments are passed to the to :meth:`_orm.registry.map_imperatively`
-method which passes them along to the :func:`_orm.mapper` function.
+method which passes them along to the :class:`_orm.Mapper` class.
 
 
 .. [1] When running under Python 2, a Python 2 "old style" class is the only

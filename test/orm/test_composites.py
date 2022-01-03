@@ -90,14 +90,14 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
             },
         )
 
-    def _fixture(self, future=False):
+    def _fixture(self):
         Graph, Edge, Point = (
             self.classes.Graph,
             self.classes.Edge,
             self.classes.Point,
         )
 
-        sess = Session(testing.db, future=future)
+        sess = Session(testing.db)
         g = Graph(
             id=1,
             edges=[
@@ -231,7 +231,7 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
     def test_bulk_update_sql(self):
         Edge, Point = (self.classes.Edge, self.classes.Point)
 
-        sess = self._fixture(future=True)
+        sess = self._fixture()
 
         e1 = sess.execute(
             select(Edge).filter(Edge.start == Point(14, 5))
@@ -256,7 +256,7 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
     def test_bulk_update_evaluate(self):
         Edge, Point = (self.classes.Edge, self.classes.Point)
 
-        sess = self._fixture(future=True)
+        sess = self._fixture()
 
         e1 = sess.execute(
             select(Edge).filter(Edge.start == Point(14, 5))

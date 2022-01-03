@@ -8,9 +8,7 @@
 
 
 from ... import inspection
-from ... import util
 from ...orm import exc as orm_exc
-from ...orm import registry
 from ...orm import relationships
 from ...orm.base import _mapper_or_none
 from ...orm.clsregistry import _resolver
@@ -18,23 +16,6 @@ from ...orm.decl_base import _DeferredMapperConfig
 from ...orm.util import polymorphic_union
 from ...schema import Table
 from ...util import OrderedDict
-
-
-@util.deprecated(
-    "2.0",
-    "the instrument_declarative function is deprecated "
-    "and will be removed in SQLAlhcemy 2.0.  Please use "
-    ":meth:`_orm.registry.map_declaratively",
-)
-def instrument_declarative(cls, cls_registry, metadata):
-    """Given a class, configure the class declaratively,
-    using the given registry, which can be any dictionary, and
-    MetaData object.
-
-    """
-    registry(metadata=metadata, class_registry=cls_registry).map_declaratively(
-        cls
-    )
 
 
 class ConcreteBase:

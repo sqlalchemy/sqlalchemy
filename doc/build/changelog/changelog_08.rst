@@ -1896,7 +1896,7 @@
         de-associated from any of its orphan-enabled parents.  Previously,
         the pending object would be expunged only if de-associated
         from all of its orphan-enabled parents.  The new flag ``legacy_is_orphan``
-        is added to :func:`_orm.mapper` which re-establishes the
+        is added to :class:`_orm.Mapper` which re-establishes the
         legacy behavior.
 
         See the change note and example case at :ref:`legacy_is_orphan_addition`

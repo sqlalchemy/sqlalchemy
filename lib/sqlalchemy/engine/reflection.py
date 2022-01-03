@@ -681,17 +681,6 @@ class Inspector:
                 conn, table_name, schema, info_cache=self.info_cache, **kw
             )
 
-    @util.deprecated_20(
-        ":meth:`_reflection.Inspector.reflecttable`",
-        "The :meth:`_reflection.Inspector.reflecttable` "
-        "method was renamed to "
-        ":meth:`_reflection.Inspector.reflect_table`. This deprecated alias "
-        "will be removed in a future release.",
-    )
-    def reflecttable(self, *args, **kwargs):
-        "See reflect_table. This method name is deprecated"
-        return self.reflect_table(*args, **kwargs)
-
     def reflect_table(
         self,
         table,

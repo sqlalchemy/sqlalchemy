@@ -31,7 +31,7 @@ from ..util import decorator
 def expect_warnings(*messages, **kw):
     """Context manager which expects one or more warnings.
 
-    With no arguments, squelches all SAWarning and RemovedIn20Warning emitted via
+    With no arguments, squelches all SAWarning emitted via
     sqlalchemy.util.warn and sqlalchemy.util.warn_limited.   Otherwise
     pass string expressions that will match selected warnings via regex;
     all non-matching warnings are sent through.
@@ -41,9 +41,7 @@ def expect_warnings(*messages, **kw):
     Note that the test suite sets SAWarning warnings to raise exceptions.
 
     """  # noqa
-    return _expect_warnings(
-        (sa_exc.RemovedIn20Warning, sa_exc.SAWarning), messages, **kw
-    )
+    return _expect_warnings(sa_exc.SAWarning, messages, **kw)
 
 
 @contextlib.contextmanager
@@ -199,9 +197,7 @@ def _expect_warnings(
             else:
                 real_warn(msg, *arg, **kw)
 
-        with mock.patch("warnings.warn", our_warn), mock.patch(
-            "sqlalchemy.util.SQLALCHEMY_WARN_20", True
-        ), mock.patch("sqlalchemy.util.deprecations.SQLALCHEMY_WARN_20", True):
+        with mock.patch("warnings.warn", our_warn):
             try:
                 yield
             finally:
