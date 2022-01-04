@@ -1,0 +1,8 @@
+.. change::
+    :tags: change, mysql
+    :tickets: 7518
+
+    Replace ``SHOW VARIABLES LIKE`` statement with equivalent
+    ``SELECT @@variable`` in MySQL and MariaDB dialect initialization.
+    This should avoid mutex contention caused by ``SHOW VARIABLES``,
+    improving initialization performance.
