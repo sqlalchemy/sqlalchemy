@@ -31,6 +31,7 @@ from operator import rshift
 from operator import sub
 from operator import truediv
 
+from .. import exc
 from .. import util
 
 
@@ -117,7 +118,12 @@ class Operators:
         return self.operate(inv)
 
     def op(
-        self, opstring, precedence=0, is_comparison=False, return_type=None
+        self,
+        opstring,
+        precedence=0,
+        is_comparison=False,
+        return_type=None,
+        python_impl=None,
     ):
         """Produce a generic operator function.
 
@@ -164,6 +170,26 @@ class Operators:
           :class:`.Boolean`, and those that do not will be of the same
           type as the left-hand operand.
 
+        :param python_impl: an optional Python function that can evaluate
+         two Python values in the same way as this operator works when
+         run on the database server.  Useful for in-Python SQL expression
+         evaluation functions, such as for ORM hybrid attributes, and the
+         ORM "evaluator" used to match objects in a session after a multi-row
+         update or delete.
+
+         e.g.::
+
+            >>> expr = column('x').op('+', python_impl=lambda a, b: a + b)('y')
+
+         The operator for the above expression will also work for non-SQL
+         left and right objects::
+
+            >>> expr.operator(5, 10)
+            15
+
+         .. versionadded:: 2.0
+
+
         .. seealso::
 
             :ref:`types_operators`
@@ -171,14 +197,20 @@ class Operators:
             :ref:`relationship_custom_operator`
 
         """
-        operator = custom_op(opstring, precedence, is_comparison, return_type)
+        operator = custom_op(
+            opstring,
+            precedence,
+            is_comparison,
+            return_type,
+            python_impl=python_impl,
+        )
 
         def against(other):
             return operator(self, other)
 
         return against
 
-    def bool_op(self, opstring, precedence=0):
+    def bool_op(self, opstring, precedence=0, python_impl=None):
         """Return a custom boolean operator.
 
         This method is shorthand for calling
@@ -191,7 +223,12 @@ class Operators:
             :meth:`.Operators.op`
 
         """
-        return self.op(opstring, precedence=precedence, is_comparison=True)
+        return self.op(
+            opstring,
+            precedence=precedence,
+            is_comparison=True,
+            python_impl=python_impl,
+        )
 
     def operate(self, op, *other, **kwargs):
         r"""Operate on an argument.
@@ -218,6 +255,8 @@ class Operators:
 
         """
         raise NotImplementedError(str(op))
+
+    __sa_operate__ = operate
 
     def reverse_operate(self, op, other, **kwargs):
         """Reverse operate on an argument.
@@ -256,6 +295,16 @@ class custom_op:
 
     __name__ = "custom_op"
 
+    __slots__ = (
+        "opstring",
+        "precedence",
+        "is_comparison",
+        "natural_self_precedent",
+        "eager_grouping",
+        "return_type",
+        "python_impl",
+    )
+
     def __init__(
         self,
         opstring,
@@ -264,6 +313,7 @@ class custom_op:
         return_type=None,
         natural_self_precedent=False,
         eager_grouping=False,
+        python_impl=None,
     ):
         self.opstring = opstring
         self.precedence = precedence
@@ -273,6 +323,7 @@ class custom_op:
         self.return_type = (
             return_type._to_instance(return_type) if return_type else None
         )
+        self.python_impl = python_impl
 
     def __eq__(self, other):
         return isinstance(other, custom_op) and other.opstring == self.opstring
@@ -281,7 +332,16 @@ class custom_op:
         return id(self)
 
     def __call__(self, left, right, **kw):
-        return left.operate(self, right, **kw)
+        if hasattr(left, "__sa_operate__"):
+            return left.operate(self, right, **kw)
+        elif self.python_impl:
+            return self.python_impl(left, right, **kw)
+        else:
+            raise exc.InvalidRequestError(
+                f"Custom operator {self.opstring!r} can't be used with "
+                "plain Python objects unless it includes the "
+                "'python_impl' parameter."
+            )
 
 
 class ColumnOperators(Operators):

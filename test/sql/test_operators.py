@@ -55,6 +55,7 @@ from sqlalchemy.sql.expression import union
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import combinations
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -3285,6 +3286,28 @@ class CustomOpTest(fixtures.TestBase):
             None
         )
         is_(expr.type, some_return_type)
+
+    def test_python_impl(self):
+        """test #3162"""
+        c = column("x")
+        c2 = column("y")
+        op1 = c.op("$", python_impl=lambda a, b: a > b)(c2).operator
+
+        is_(op1(3, 5), False)
+        is_(op1(5, 3), True)
+
+    def test_python_impl_not_present(self):
+        """test #3162"""
+        c = column("x")
+        c2 = column("y")
+        op1 = c.op("$")(c2).operator
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            r"Custom operator '\$' can't be used with plain Python objects "
+            "unless it includes the 'python_impl' parameter.",
+        ):
+            op1(3, 5)
 
 
 class TupleTypingTest(fixtures.TestBase):
