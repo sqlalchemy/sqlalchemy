@@ -91,35 +91,14 @@ class Mapper(
     sql_base.MemoizedHasCacheKey,
     InspectionAttr,
 ):
-    """Define the correlation of class attributes to database table
-    columns.
+    """Defines an association between a Python class and a database table or
+    other relational structure, so that ORM operations against the class may
+    proceed.
 
-    The :class:`_orm.Mapper` object is instantiated using the
-    :func:`~sqlalchemy.orm.mapper` function.    For information
+    The :class:`_orm.Mapper` object is instantiated using mapping methods
+    present on the :class:`_orm.registry` object.  For information
     about instantiating new :class:`_orm.Mapper` objects, see
-    that function's documentation.
-
-
-    When :func:`.mapper` is used
-    explicitly to link a user defined class with table
-    metadata, this is referred to as *classical mapping*.
-    Modern SQLAlchemy usage tends to favor the
-    :mod:`sqlalchemy.ext.declarative` extension for class
-    configuration, which
-    makes usage of :func:`.mapper` behind the scenes.
-
-    Given a particular class known to be mapped by the ORM,
-    the :class:`_orm.Mapper` which maintains it can be acquired
-    using the :func:`_sa.inspect` function::
-
-        from sqlalchemy import inspect
-
-        mapper = inspect(MyClass)
-
-    A class which was mapped by the :mod:`sqlalchemy.ext.declarative`
-    extension will also have its mapper available via the ``__mapper__``
-    attribute.
-
+    :ref:`orm_mapping_classes_toplevel`.
 
     """
 
