@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 7514
+
+    Fixed issue where :meth:`_sql.Select.correlate_except` method, when passed
+    either the ``None`` value or no arguments, would not correlate any elements
+    when used in an ORM context (that is, passing ORM entities as FROM
+    clauses), rather than causing all FROM elements to be considered as
+    "correlated" in the same way which occurs when using Core-only constructs.
