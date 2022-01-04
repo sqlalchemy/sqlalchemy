@@ -3115,24 +3115,21 @@ class MySQLDialect(default.DefaultDialect):
         # https://dev.mysql.com/doc/refman/en/identifier-case-sensitivity.html
 
         charset = self._connection_charset
-        show_var = connection.execute(
-            sql.text("SHOW VARIABLES LIKE 'lower_case_table_names'")
+        show_var = connection.exec_driver_sql(
+            "SELECT @@lower_case_table_names"
         )
-        row = self._compat_first(
-            show_var,
-            charset=charset,
-        )
+        row = self._compat_first(show_var, charset=charset)
         if not row:
             cs = 0
         else:
             # 4.0.15 returns OFF or ON according to [ticket:489]
             # 3.23 doesn't, 4.0.27 doesn't..
-            if row[1] == "OFF":
+            if row[0] == "OFF":
                 cs = 0
-            elif row[1] == "ON":
+            elif row[0] == "ON":
                 cs = 1
             else:
-                cs = int(row[1])
+                cs = int(row[0])
         self._casing = cs
         return cs
 
@@ -3151,7 +3148,7 @@ class MySQLDialect(default.DefaultDialect):
 
     def _detect_sql_mode(self, connection):
         row = self._compat_first(
-            connection.exec_driver_sql("SHOW VARIABLES LIKE 'sql_mode'"),
+            connection.exec_driver_sql("SELECT @@sql_mode"),
             charset=self._connection_charset,
         )
 
@@ -3162,7 +3159,7 @@ class MySQLDialect(default.DefaultDialect):
             )
             self._sql_mode = ""
         else:
-            self._sql_mode = row[1] or ""
+            self._sql_mode = row[0] or ""
 
     def _detect_ansiquotes(self, connection):
         """Detect and adjust for the ANSI_QUOTES sql mode."""
