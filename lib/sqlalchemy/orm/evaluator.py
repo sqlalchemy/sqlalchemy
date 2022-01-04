@@ -7,13 +7,14 @@
 
 import operator
 
+from .. import exc
 from .. import inspect
 from .. import util
 from ..sql import and_
 from ..sql import operators
 
 
-class UnevaluatableError(Exception):
+class UnevaluatableError(exc.InvalidRequestError):
     pass
 
 
@@ -27,59 +28,19 @@ class _NoObject(operators.ColumnOperators):
 
 _NO_OBJECT = _NoObject()
 
-_straight_ops = set(
-    getattr(operators, op)
-    for op in (
-        "add",
-        "mul",
-        "sub",
-        "mod",
-        "truediv",
-        "lt",
-        "le",
-        "ne",
-        "gt",
-        "ge",
-        "eq",
-    )
-)
-
-_extended_ops = {
-    operators.in_op: (lambda a, b: a in b if a is not _NO_OBJECT else None),
-    operators.not_in_op: (
-        lambda a, b: a not in b if a is not _NO_OBJECT else None
-    ),
-}
-
-_notimplemented_ops = set(
-    getattr(operators, op)
-    for op in (
-        "like_op",
-        "not_like_op",
-        "ilike_op",
-        "not_ilike_op",
-        "startswith_op",
-        "between_op",
-        "endswith_op",
-        "concat_op",
-    )
-)
-
 
 class EvaluatorCompiler:
     def __init__(self, target_cls=None):
         self.target_cls = target_cls
 
-    def process(self, *clauses):
-        if len(clauses) > 1:
-            clause = and_(*clauses)
-        elif clauses:
-            clause = clauses[0]
+    def process(self, clause, *clauses):
+        if clauses:
+            clause = and_(clause, *clauses)
 
-        meth = getattr(self, "visit_%s" % clause.__visit_name__, None)
+        meth = getattr(self, f"visit_{clause.__visit_name__}", None)
         if not meth:
             raise UnevaluatableError(
-                "Cannot evaluate %s" % type(clause).__name__
+                f"Cannot evaluate {type(clause).__name__}"
             )
         return meth(clause)
 
@@ -102,8 +63,8 @@ class EvaluatorCompiler:
                 self.target_cls, parentmapper.class_
             ):
                 raise UnevaluatableError(
-                    "Can't evaluate criteria against alternate class %s"
-                    % parentmapper.class_
+                    "Can't evaluate criteria against "
+                    f"alternate class {parentmapper.class_}"
                 )
             key = parentmapper._columntoproperty[clause].key
         else:
@@ -113,13 +74,13 @@ class EvaluatorCompiler:
                 and key in inspect(self.target_cls).column_attrs
             ):
                 util.warn(
-                    "Evaluating non-mapped column expression '%s' onto "
+                    f"Evaluating non-mapped column expression '{clause}' onto "
                     "ORM instances; this is a deprecated use case.  Please "
                     "make use of the actual mapped columns in ORM-evaluated "
-                    "UPDATE / DELETE expressions." % clause
+                    "UPDATE / DELETE expressions."
                 )
             else:
-                raise UnevaluatableError("Cannot evaluate column: %s" % clause)
+                raise UnevaluatableError(f"Cannot evaluate column: {clause}")
 
         get_corresponding_attr = operator.attrgetter(key)
         return (
@@ -132,89 +93,143 @@ class EvaluatorCompiler:
         return self.visit_clauselist(clause)
 
     def visit_clauselist(self, clause):
-        evaluators = list(map(self.process, clause.clauses))
-        if clause.operator is operators.or_:
+        evaluators = [self.process(clause) for clause in clause.clauses]
 
-            def evaluate(obj):
-                has_null = False
-                for sub_evaluate in evaluators:
-                    value = sub_evaluate(obj)
-                    if value:
-                        return True
-                    has_null = has_null or value is None
-                if has_null:
-                    return None
-                return False
-
-        elif clause.operator is operators.and_:
-
-            def evaluate(obj):
-                for sub_evaluate in evaluators:
-                    value = sub_evaluate(obj)
-                    if not value:
-                        if value is None or value is _NO_OBJECT:
-                            return None
-                        return False
-                return True
-
-        elif clause.operator is operators.comma_op:
-
-            def evaluate(obj):
-                values = []
-                for sub_evaluate in evaluators:
-                    value = sub_evaluate(obj)
-                    if value is None or value is _NO_OBJECT:
-                        return None
-                    values.append(value)
-                return tuple(values)
-
+        dispatch = (
+            f"visit_{clause.operator.__name__.rstrip('_')}_clauselist_op"
+        )
+        meth = getattr(self, dispatch, None)
+        if meth:
+            return meth(clause.operator, evaluators, clause)
         else:
             raise UnevaluatableError(
-                "Cannot evaluate clauselist with operator %s" % clause.operator
+                f"Cannot evaluate clauselist with operator {clause.operator}"
             )
-
-        return evaluate
 
     def visit_binary(self, clause):
-        eval_left, eval_right = list(
-            map(self.process, [clause.left, clause.right])
-        )
-        operator = clause.operator
-        if operator is operators.is_:
+        eval_left = self.process(clause.left)
+        eval_right = self.process(clause.right)
 
-            def evaluate(obj):
-                return eval_left(obj) == eval_right(obj)
-
-        elif operator is operators.is_not:
-
-            def evaluate(obj):
-                return eval_left(obj) != eval_right(obj)
-
-        elif operator in _extended_ops:
-
-            def evaluate(obj):
-                left_val = eval_left(obj)
-                right_val = eval_right(obj)
-                if left_val is None or right_val is None:
-                    return None
-
-                return _extended_ops[operator](left_val, right_val)
-
-        elif operator in _straight_ops:
-
-            def evaluate(obj):
-                left_val = eval_left(obj)
-                right_val = eval_right(obj)
-                if left_val is None or right_val is None:
-                    return None
-                return operator(eval_left(obj), eval_right(obj))
-
+        dispatch = f"visit_{clause.operator.__name__.rstrip('_')}_binary_op"
+        meth = getattr(self, dispatch, None)
+        if meth:
+            return meth(clause.operator, eval_left, eval_right)
         else:
             raise UnevaluatableError(
-                "Cannot evaluate %s with operator %s"
-                % (type(clause).__name__, clause.operator)
+                f"Cannot evaluate {type(clause).__name__} with "
+                f"operator {clause.operator}"
             )
+
+    def visit_or_clauselist_op(self, operator, evaluators, clause):
+        def evaluate(obj):
+            has_null = False
+            for sub_evaluate in evaluators:
+                value = sub_evaluate(obj)
+                if value:
+                    return True
+                has_null = has_null or value is None
+            if has_null:
+                return None
+            return False
+
         return evaluate
+
+    def visit_and_clauselist_op(self, operator, evaluators, clause):
+        def evaluate(obj):
+            for sub_evaluate in evaluators:
+                value = sub_evaluate(obj)
+                if not value:
+                    if value is None or value is _NO_OBJECT:
+                        return None
+                    return False
+            return True
+
+        return evaluate
+
+    def visit_comma_op_clauselist_op(self, operator, evaluators, clause):
+        def evaluate(obj):
+            values = []
+            for sub_evaluate in evaluators:
+                value = sub_evaluate(obj)
+                if value is None or value is _NO_OBJECT:
+                    return None
+                values.append(value)
+            return tuple(values)
+
+        return evaluate
+
+    def visit_custom_op_binary_op(self, operator, eval_left, eval_right):
+        if operator.python_impl:
+            return self._straight_evaluate(operator, eval_left, eval_right)
+        else:
+            raise UnevaluatableError(
+                f"Custom operator {operator.opstring!r} can't be evaluated "
+                "in Python unless it specifies a callable using "
+                "`.python_impl`."
+            )
+
+    def visit_is_binary_op(self, operator, eval_left, eval_right):
+        def evaluate(obj):
+            return eval_left(obj) == eval_right(obj)
+
+        return evaluate
+
+    def visit_is_not_binary_op(self, operator, eval_left, eval_right):
+        def evaluate(obj):
+            return eval_left(obj) != eval_right(obj)
+
+        return evaluate
+
+    def _straight_evaluate(self, operator, eval_left, eval_right):
+        def evaluate(obj):
+            left_val = eval_left(obj)
+            right_val = eval_right(obj)
+            if left_val is None or right_val is None:
+                return None
+            return operator(eval_left(obj), eval_right(obj))
+
+        return evaluate
+
+    visit_add_binary_op = _straight_evaluate
+    visit_mul_binary_op = _straight_evaluate
+    visit_sub_binary_op = _straight_evaluate
+    visit_mod_binary_op = _straight_evaluate
+    visit_truediv_binary_op = _straight_evaluate
+    visit_lt_binary_op = _straight_evaluate
+    visit_le_binary_op = _straight_evaluate
+    visit_ne_binary_op = _straight_evaluate
+    visit_gt_binary_op = _straight_evaluate
+    visit_ge_binary_op = _straight_evaluate
+    visit_eq_binary_op = _straight_evaluate
+
+    def visit_in_op_binary_op(self, operator, eval_left, eval_right):
+        return self._straight_evaluate(
+            lambda a, b: a in b if a is not _NO_OBJECT else None,
+            eval_left,
+            eval_right,
+        )
+
+    def visit_not_in_op_binary_op(self, operator, eval_left, eval_right):
+        return self._straight_evaluate(
+            lambda a, b: a not in b if a is not _NO_OBJECT else None,
+            eval_left,
+            eval_right,
+        )
+
+    def visit_concat_op_binary_op(self, operator, eval_left, eval_right):
+        return self._straight_evaluate(
+            lambda a, b: a + b, eval_left, eval_right
+        )
+
+    def visit_startswith_op_binary_op(self, operator, eval_left, eval_right):
+        return self._straight_evaluate(
+            lambda a, b: a.startswith(b), eval_left, eval_right
+        )
+
+    def visit_endswith_op_binary_op(self, operator, eval_left, eval_right):
+        return self._straight_evaluate(
+            lambda a, b: a.endswith(b), eval_left, eval_right
+        )
 
     def visit_unary(self, clause):
         eval_inner = self.process(clause.element)
@@ -228,8 +243,8 @@ class EvaluatorCompiler:
 
             return evaluate
         raise UnevaluatableError(
-            "Cannot evaluate %s with operator %s"
-            % (type(clause).__name__, clause.operator)
+            f"Cannot evaluate {type(clause).__name__} "
+            f"with operator {clause.operator}"
         )
 
     def visit_bindparam(self, clause):

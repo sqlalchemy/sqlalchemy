@@ -8,7 +8,9 @@ from sqlalchemy import Integer
 from sqlalchemy import not_
 from sqlalchemy import or_
 from sqlalchemy import String
+from sqlalchemy import testing
 from sqlalchemy import tuple_
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import evaluator
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import relationship
@@ -17,6 +19,7 @@ from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -200,6 +203,23 @@ class EvaluateTest(fixtures.MappedTest):
             ],
         )
 
+    @testing.combinations(
+        lambda User: User.name + "_foo" == "named_foo",
+        lambda User: User.name.startswith("nam"),
+        lambda User: User.name.endswith("named"),
+    )
+    def test_string_ops(self, expr):
+        User = self.classes.User
+
+        test_expr = testing.resolve_lambda(expr, User=User)
+        eval_eq(
+            test_expr,
+            testcases=[
+                (User(name="named"), True),
+                (User(name="othername"), False),
+            ],
+        )
+
     def test_in(self):
         User = self.classes.User
 
@@ -224,6 +244,15 @@ class EvaluateTest(fixtures.MappedTest):
                 (None, None),
             ],
         )
+
+    def test_mulitple_expressions(self):
+        User = self.classes.User
+
+        evaluator = compiler.process(User.id > 5, User.name == "ed")
+
+        is_(evaluator(User(id=7, name="ed")), True)
+        is_(evaluator(User(id=7, name="noted")), False)
+        is_(evaluator(User(id=4, name="ed")), False)
 
     def test_in_tuples(self):
         User = self.classes.User
@@ -265,6 +294,52 @@ class EvaluateTest(fixtures.MappedTest):
                 (User(id=None, name="foo"), None),
                 (User(id=None, name=None), None),
                 (None, None),
+            ],
+        )
+
+    def test_hybrids(self, registry):
+        @registry.mapped
+        class SomeClass:
+            __tablename__ = "sc"
+            id = Column(Integer, primary_key=True)
+            data = Column(String)
+
+            @hybrid_property
+            def foo_data(self):
+                return self.data + "_foo"
+
+        eval_eq(
+            SomeClass.foo_data == "somedata_foo",
+            testcases=[
+                (SomeClass(data="somedata"), True),
+                (SomeClass(data="otherdata"), False),
+                (SomeClass(data=None), None),
+            ],
+        )
+
+    def test_custom_op_no_impl(self):
+        """test #3162"""
+
+        User = self.classes.User
+
+        with expect_raises_message(
+            evaluator.UnevaluatableError,
+            r"Custom operator '\^\^' can't be evaluated in "
+            "Python unless it specifies",
+        ):
+            compiler.process(User.name.op("^^")("bar"))
+
+    def test_custom_op(self):
+        """test #3162"""
+
+        User = self.classes.User
+
+        eval_eq(
+            User.name.op("^^", python_impl=lambda a, b: a + "_foo_" + b)("bar")
+            == "name_foo_bar",
+            testcases=[
+                (User(name="name"), True),
+                (User(name="notname"), False),
             ],
         )
 

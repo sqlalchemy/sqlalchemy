@@ -17,6 +17,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import synonym
+from sqlalchemy.sql import operators
 from sqlalchemy.sql import update
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -161,6 +162,27 @@ class PropertyComparatorTest(fixtures.TestBase, AssertsCompiledSQL):
             [ent._label_name for ent in compiled.compile_state._entities],
             ["same_name", "id", "name"],
         )
+
+    def test_custom_op(self, registry):
+        """test #3162"""
+
+        my_op = operators.custom_op(
+            "my_op", python_impl=lambda a, b: a + "_foo_" + b
+        )
+
+        @registry.mapped
+        class SomeClass:
+            __tablename__ = "sc"
+            id = Column(Integer, primary_key=True)
+            data = Column(String)
+
+            @hybrid.hybrid_property
+            def foo_data(self):
+                return my_op(self.data, "bar")
+
+        eq_(SomeClass(data="data").foo_data, "data_foo_bar")
+
+        self.assert_compile(SomeClass.foo_data, "sc.data my_op :data_1")
 
 
 class PropertyExpressionTest(fixtures.TestBase, AssertsCompiledSQL):

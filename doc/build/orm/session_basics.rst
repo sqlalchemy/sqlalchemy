@@ -615,6 +615,16 @@ values for ``synchronize_session`` are supported:
   able to evaluate the expression in Python and will raise an error.  If
   this occurs, use the ``'fetch'`` strategy for the operation instead.
 
+  .. tip::
+
+    If a SQL expression makes use of custom operators using the
+    :meth:`_sql.Operators.op` or :class:`_sql.custom_op` feature, the
+    :paramref:`_sql.Operators.op.python_impl` parameter may be used to indicate
+    a Python function that will be used by the ``"evaluate"`` synchronization
+    strategy.
+
+    .. versionadded:: 2.0
+
   .. warning::
 
     The ``"evaluate"`` strategy should be avoided if an UPDATE operation is
