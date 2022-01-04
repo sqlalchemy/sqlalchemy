@@ -1957,6 +1957,23 @@ class ArrayRoundTripTest:
             def __ne__(self, other):
                 return not self.__eq__(other)
 
+        difficult_enum = [
+            "Value",
+            "With space",
+            "With,comma",
+            'With"quote',
+            "With\\escape",
+            """Various!@#$%^*()"'\\][{};:.<>|_+~chars""",
+        ]
+
+        def make_difficult_enum(cls_, native):
+            return cls_(
+                *difficult_enum, name="difficult_enum", native_enum=native
+            )
+
+        def difficult_enum_values(x):
+            return [v for i, v in enumerate(difficult_enum) if i != x - 1]
+
         elements = [
             (sqltypes.Integer, lambda x: [1, x, 3, 4, 5]),
             (sqltypes.Text, str_values),
@@ -2044,6 +2061,18 @@ class ArrayRoundTripTest:
             (sqltypes.Enum(AnEnum, native_enum=True), enum_values),
             (sqltypes.Enum(AnEnum, native_enum=False), enum_values),
             (postgresql.ENUM(AnEnum, native_enum=True), enum_values),
+            (
+                make_difficult_enum(sqltypes.Enum, native=True),
+                difficult_enum_values,
+            ),
+            (
+                make_difficult_enum(sqltypes.Enum, native=False),
+                difficult_enum_values,
+            ),
+            (
+                make_difficult_enum(postgresql.ENUM, native=True),
+                difficult_enum_values,
+            ),
         ]
 
         if not exclude_json:
