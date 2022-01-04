@@ -1,8 +1,10 @@
 from sqlalchemy import bindparam
+from sqlalchemy import Column
 from sqlalchemy import exc
 from sqlalchemy import func
 from sqlalchemy import insert
 from sqlalchemy import inspect
+from sqlalchemy import Integer
 from sqlalchemy import literal_column
 from sqlalchemy import null
 from sqlalchemy import or_
@@ -31,12 +33,15 @@ from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.util import resolve_lambda
+from sqlalchemy.util.langhelpers import hybridproperty
 from .inheritance import _poly_fixtures
 from .test_query import QueryTest
+from ..sql.test_compiler import CorrelateTest as _CoreCorrelateTest
 
 # TODO:
 # composites / unions, etc.
@@ -2320,3 +2325,29 @@ class RawSelectTest(QueryTest, AssertsCompiledSQL):
         )
         self.assert_compile(stmt1, expected)
         self.assert_compile(stmt2, expected)
+
+
+class CorrelateTest(fixtures.DeclarativeMappedTest, _CoreCorrelateTest):
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class T1(Base):
+            __tablename__ = "t1"
+            a = Column(Integer, primary_key=True)
+
+            @hybridproperty
+            def c(self):
+                return self
+
+        class T2(Base):
+            __tablename__ = "t2"
+            a = Column(Integer, primary_key=True)
+
+            @hybridproperty
+            def c(self):
+                return self
+
+    def _fixture(self):
+        t1, t2 = self.classes("T1", "T2")
+        return t1, t2, select(t1).where(t1.c.a == t2.c.a)
