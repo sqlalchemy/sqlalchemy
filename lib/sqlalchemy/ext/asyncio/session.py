@@ -190,7 +190,7 @@ class AsyncSession(ReversibleProxy):
         params=None,
         execution_options=util.EMPTY_DICT,
         bind_arguments=None,
-        **kw
+        **kw,
     ):
         """Execute a statement and return a buffered
         :class:`_engine.Result` object.
@@ -214,7 +214,7 @@ class AsyncSession(ReversibleProxy):
             params=params,
             execution_options=execution_options,
             bind_arguments=bind_arguments,
-            **kw
+            **kw,
         )
 
     async def scalar(
@@ -223,7 +223,7 @@ class AsyncSession(ReversibleProxy):
         params=None,
         execution_options=util.EMPTY_DICT,
         bind_arguments=None,
-        **kw
+        **kw,
     ):
         """Execute a statement and return a scalar result.
 
@@ -238,7 +238,7 @@ class AsyncSession(ReversibleProxy):
             params=params,
             execution_options=execution_options,
             bind_arguments=bind_arguments,
-            **kw
+            **kw,
         )
         return result.scalar()
 
@@ -248,7 +248,7 @@ class AsyncSession(ReversibleProxy):
         params=None,
         execution_options=util.EMPTY_DICT,
         bind_arguments=None,
-        **kw
+        **kw,
     ):
         """Execute a statement and return scalar results.
 
@@ -269,7 +269,7 @@ class AsyncSession(ReversibleProxy):
             params=params,
             execution_options=execution_options,
             bind_arguments=bind_arguments,
-            **kw
+            **kw,
         )
         return result.scalars()
 
@@ -307,7 +307,7 @@ class AsyncSession(ReversibleProxy):
         params=None,
         execution_options=util.EMPTY_DICT,
         bind_arguments=None,
-        **kw
+        **kw,
     ):
         """Execute a statement and return a streaming
         :class:`_asyncio.AsyncResult` object."""
@@ -325,7 +325,7 @@ class AsyncSession(ReversibleProxy):
             params=params,
             execution_options=execution_options,
             bind_arguments=bind_arguments,
-            **kw
+            **kw,
         )
         return _result.AsyncResult(result)
 
@@ -335,7 +335,7 @@ class AsyncSession(ReversibleProxy):
         params=None,
         execution_options=util.EMPTY_DICT,
         bind_arguments=None,
-        **kw
+        **kw,
     ):
         """Execute a statement and return a stream of scalar results.
 
@@ -356,7 +356,7 @@ class AsyncSession(ReversibleProxy):
             params=params,
             execution_options=execution_options,
             bind_arguments=bind_arguments,
-            **kw
+            **kw,
         )
         return result.scalars()
 

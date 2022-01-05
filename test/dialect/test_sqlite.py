@@ -2278,8 +2278,8 @@ class ConstraintReflectionTest(fixtures.TestBase):
             [
                 {
                     "unique": 0,
-                    "name": u"ix_main_l_bar",
-                    "column_names": [u"bar"],
+                    "name": "ix_main_l_bar",
+                    "column_names": ["bar"],
                 }
             ],
         )

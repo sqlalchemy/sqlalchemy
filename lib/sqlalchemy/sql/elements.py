@@ -516,7 +516,7 @@ class ClauseElement(
         column_keys=None,
         for_executemany=False,
         schema_translate_map=None,
-        **kw
+        **kw,
     ):
         if compiled_cache is not None and dialect._supports_statement_cache:
             elem_cache_key = self._generate_cache_key()
@@ -542,7 +542,7 @@ class ClauseElement(
                     column_keys=column_keys,
                     for_executemany=for_executemany,
                     schema_translate_map=schema_translate_map,
-                    **kw
+                    **kw,
                 )
                 compiled_cache[key] = compiled_sql
             else:
@@ -555,7 +555,7 @@ class ClauseElement(
                 column_keys=column_keys,
                 for_executemany=for_executemany,
                 schema_translate_map=schema_translate_map,
-                **kw
+                **kw,
             )
 
             if not dialect._supports_statement_cache:
@@ -4134,7 +4134,7 @@ class Over(ColumnElement):
         if partition_by is not None:
             self.partition_by = ClauseList(
                 *util.to_list(partition_by),
-                _literal_as_text_role=roles.ByOfRole
+                _literal_as_text_role=roles.ByOfRole,
             )
 
         if range_:
@@ -4667,7 +4667,7 @@ class NamedColumn(ColumnElement):
         name=None,
         name_is_truncatable=False,
         disallow_is_literal=False,
-        **kw
+        **kw,
     ):
         c = ColumnClause(
             coercions.expect(roles.TruncatedLabelRole, name or self.name)
@@ -4965,7 +4965,7 @@ class ColumnClause(
         name=None,
         name_is_truncatable=False,
         disallow_is_literal=False,
-        **kw
+        **kw,
     ):
         # the "is_literal" flag normally should never be propagated; a proxied
         # column is always a SQL identifier and never the actual expression

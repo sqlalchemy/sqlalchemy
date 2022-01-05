@@ -701,7 +701,7 @@ class AttributeImpl:
         load_on_unexpire=True,
         send_modified_events=True,
         accepts_scalar_loader=None,
-        **kwargs
+        **kwargs,
     ):
         r"""Construct an AttributeImpl.
 
@@ -1318,7 +1318,7 @@ class CollectionAttributeImpl(AttributeImpl):
         trackparent=False,
         copy_function=None,
         compare_function=None,
-        **kwargs
+        **kwargs,
     ):
         super(CollectionAttributeImpl, self).__init__(
             class_,
@@ -1327,7 +1327,7 @@ class CollectionAttributeImpl(AttributeImpl):
             dispatch,
             trackparent=trackparent,
             compare_function=compare_function,
-            **kwargs
+            **kwargs,
         )
 
         if copy_function is None:
@@ -2081,7 +2081,7 @@ def register_attribute_impl(
     useobject=False,
     impl_class=None,
     backref=None,
-    **kw
+    **kw,
 ):
 
     manager = manager_of_class(class_)

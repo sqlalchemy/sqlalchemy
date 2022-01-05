@@ -746,7 +746,7 @@ class ResultTest(BakedTest):
                 result = bq(sess).all()
 
                 if cond1:
-                    eq_(result, [(8, u"ed"), (9, u"fred"), (10, u"chuck")])
+                    eq_(result, [(8, "ed"), (9, "fred"), (10, "chuck")])
                 else:
                     eq_(result, [(7, "jack")])
 
@@ -993,7 +993,7 @@ class CustomIntegrationTest(testing.AssertsCompiledSQL, BakedTest):
                     Address,
                     order_by=self.tables.addresses.c.id,
                     lazy=lazy,
-                    **kw
+                    **kw,
                 )
             },
         )

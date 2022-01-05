@@ -260,12 +260,12 @@ class ReflectionTest(fixtures.TestBase, ComparesTables, AssertsCompiledSQL):
                 [
                     {
                         "id": 1,
-                        "txt": u"foo",
+                        "txt": "foo",
                         "dt2": datetime.datetime(2020, 1, 1, 1, 1, 1),
                     },
                     {
                         "id": 2,
-                        "txt": u"bar",
+                        "txt": "bar",
                         "dt2": datetime.datetime(2020, 2, 2, 2, 2, 2),
                     },
                 ],
@@ -587,7 +587,7 @@ class ReflectHugeViewTest(fixtures.TablesTest):
             *[
                 Column("long_named_column_number_%d" % i, Integer)
                 for i in range(col_num)
-            ]
+            ],
         )
         cls.view_str = (
             view_str

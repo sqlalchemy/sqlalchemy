@@ -647,7 +647,7 @@ class PytestFixtureFunctions(plugin_base.FixtureFunctions):
                     idx
                     for idx, char in enumerate(id_)
                     if char in ("n", "r", "s", "a")
-                ]
+                ],
             )
             fns = [
                 (operator.itemgetter(idx), _combination_id_fns[char])

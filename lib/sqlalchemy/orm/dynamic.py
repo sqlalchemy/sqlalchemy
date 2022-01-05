@@ -77,7 +77,7 @@ class DynamicAttributeImpl(attributes.AttributeImpl):
         target_mapper,
         order_by,
         query_class=None,
-        **kw
+        **kw,
     ):
         super(DynamicAttributeImpl, self).__init__(
             class_, key, typecallable, dispatch, **kw

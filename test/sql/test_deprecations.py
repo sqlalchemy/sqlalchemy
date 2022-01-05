@@ -1294,7 +1294,7 @@ class DMLTest(_UpdateFromTestBase, fixtures.TablesTest, AssertsCompiledSQL):
                 (t, combination)
                 for i, combination in zip(range(10), combinations())
             ],
-            argnames="t, idx_to_value"
+            argnames="t, idx_to_value",
         )
 
     @random_update_order_parameters()

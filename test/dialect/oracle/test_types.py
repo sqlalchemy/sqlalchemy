@@ -1003,11 +1003,11 @@ class LOBFetchTest(fixtures.TablesTest):
         long_text.create(connection)
 
         if isinstance(datatype, UnicodeText):
-            word_seed = u"ab🐍’«cdefg"
+            word_seed = "ab🐍’«cdefg"
         else:
             word_seed = "abcdef"
 
-        some_text = u" ".join(
+        some_text = " ".join(
             "".join(random.choice(word_seed) for j in range(150))
             for i in range(datasize)
         )
@@ -1033,9 +1033,9 @@ class LOBFetchTest(fixtures.TablesTest):
         )
         long_text.create(connection)
 
-        word_seed = u"ab🐍’«cdefg"
+        word_seed = "ab🐍’«cdefg"
 
-        some_text = u" ".join(
+        some_text = " ".join(
             "".join(random.choice(word_seed) for j in range(10))
             for i in range(15)
         )

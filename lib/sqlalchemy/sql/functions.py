@@ -580,7 +580,7 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
             _compared_to_type=self.type,
             unique=True,
             type_=type_,
-            **kw
+            **kw,
         )
 
     def self_group(self, against=None):
@@ -867,7 +867,7 @@ class Function(FunctionElement):
             _compared_to_type=self.type,
             type_=type_,
             unique=True,
-            **kw
+            **kw,
         )
 
 

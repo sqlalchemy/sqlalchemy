@@ -2390,7 +2390,7 @@ class MySQLDialect(default.DefaultDialect):
         json_serializer=None,
         json_deserializer=None,
         is_mariadb=None,
-        **kwargs
+        **kwargs,
     ):
         kwargs.pop("use_ansiquotes", None)  # legacy
         default.DefaultDialect.__init__(self, **kwargs)

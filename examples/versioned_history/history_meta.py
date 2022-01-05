@@ -128,7 +128,7 @@ def _history_mapper(local_mapper):
             local_mapper.local_table.name + "_history",
             local_mapper.local_table.metadata,
             *cols,
-            schema=local_mapper.local_table.schema
+            schema=local_mapper.local_table.schema,
         )
     else:
         # single table inheritance.  take any additional columns that may have

@@ -902,7 +902,7 @@ class RefreshDeferExpireTest(fixtures.DeclarativeMappedTest):
             shard_chooser=lambda *args: "main",
             id_chooser=lambda *args: ["fake", "main"],
             execute_chooser=lambda *args: ["fake", "main"],
-            **kw
+            **kw,
         )
 
     def test_refresh(self):

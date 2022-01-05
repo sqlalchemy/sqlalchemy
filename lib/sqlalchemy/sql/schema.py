@@ -680,7 +680,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
         self._init_items(
             *args,
-            allow_replacements=extend_existing or keep_existing or autoload
+            allow_replacements=extend_existing or keep_existing or autoload,
         )
 
     def _autoload(
@@ -1049,7 +1049,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
             schema=schema,
             comment=self.comment,
             *args,
-            **self.kwargs
+            **self.kwargs,
         )
         for c in self.constraints:
             if isinstance(c, ForeignKeyConstraint):
@@ -1087,7 +1087,7 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                     for expr in index.expressions
                 ],
                 _table=table,
-                **index.kwargs
+                **index.kwargs,
             )
         return self._schema_item_copy(table)
 
@@ -1892,7 +1892,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
             doc=self.doc,
             comment=self.comment,
             *args,
-            **column_kwargs
+            **column_kwargs,
         )
         return self._schema_item_copy(c)
 
@@ -1930,7 +1930,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
                 primary_key=self.primary_key,
                 nullable=self.nullable,
                 _proxies=[self],
-                *fk
+                *fk,
             )
         except TypeError as err:
             raise TypeError(
@@ -2007,7 +2007,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         link_to_name=False,
         match=None,
         info=None,
-        **dialect_kw
+        **dialect_kw,
     ):
         r"""
         Construct a column-level FOREIGN KEY.
@@ -2150,7 +2150,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             initially=self.initially,
             link_to_name=self.link_to_name,
             match=self.match,
-            **self._unvalidated_dialect_kw
+            **self._unvalidated_dialect_kw,
         )
         return self._schema_item_copy(fk)
 
@@ -2421,7 +2421,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
                 deferrable=self.deferrable,
                 initially=self.initially,
                 match=self.match,
-                **self._unvalidated_dialect_kw
+                **self._unvalidated_dialect_kw,
             )
             self.constraint._append_element(column, self)
             self.constraint._set_parent_with_dispatch(table)
@@ -3021,7 +3021,7 @@ class Constraint(DialectKWArgs, SchemaItem):
         _create_rule=None,
         info=None,
         _type_bound=False,
-        **dialect_kw
+        **dialect_kw,
     ):
         r"""Create a SQL constraint.
 
@@ -3266,7 +3266,7 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
                 _copy_expression(expr, self.parent, target_table)
                 for expr in self.columns
             ],
-            **constraint_kwargs
+            **constraint_kwargs,
         )
         return self._schema_item_copy(c)
 
@@ -3314,7 +3314,7 @@ class CheckConstraint(ColumnCollectionConstraint):
         _create_rule=None,
         _autoattach=True,
         _type_bound=False,
-        **kw
+        **kw,
     ):
         r"""Construct a CHECK constraint.
 
@@ -3358,7 +3358,7 @@ class CheckConstraint(ColumnCollectionConstraint):
             _type_bound=_type_bound,
             _autoattach=_autoattach,
             *columns,
-            **kw
+            **kw,
         )
         if table is not None:
             self._set_parent_with_dispatch(table)
@@ -3426,7 +3426,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         match=None,
         table=None,
         info=None,
-        **dialect_kw
+        **dialect_kw,
     ):
         r"""Construct a composite-capable FOREIGN KEY.
 
@@ -3505,7 +3505,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
             deferrable=deferrable,
             initially=initially,
             info=info,
-            **dialect_kw
+            **dialect_kw,
         )
         self.onupdate = onupdate
         self.ondelete = ondelete
@@ -3546,7 +3546,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
                 match=self.match,
                 deferrable=self.deferrable,
                 initially=self.initially,
-                **self.dialect_kwargs
+                **self.dialect_kwargs,
             )
             for refcol in refcolumns
         ]
@@ -4055,7 +4055,7 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
             self,
             *expressions,
             _column_flag=_column_flag,
-            _gather_expressions=self.expressions
+            _gather_expressions=self.expressions,
         )
 
         if table is not None:
@@ -4423,7 +4423,7 @@ class MetaData(SchemaItem):
         extend_existing=False,
         autoload_replace=True,
         resolve_fks=True,
-        **dialect_kwargs
+        **dialect_kwargs,
     ):
         r"""Load all available table definitions from the database.
 

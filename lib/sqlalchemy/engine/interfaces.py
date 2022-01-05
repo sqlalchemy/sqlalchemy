@@ -729,7 +729,7 @@ class Dialect:
         connection: "Connection",
         table_name: str,
         schema: Optional[str] = None,
-        **kw
+        **kw,
     ) -> List[ReflectedColumn]:
         """Return information about columns in ``table_name``.
 
@@ -747,7 +747,7 @@ class Dialect:
         connection: "Connection",
         table_name: str,
         schema: Optional[str] = None,
-        **kw: Any
+        **kw: Any,
     ) -> ReflectedPrimaryKeyConstraint:
         """Return information about the primary key constraint on
         table_name`.
@@ -766,7 +766,7 @@ class Dialect:
         connection: "Connection",
         table_name: str,
         schema: Optional[str] = None,
-        **kw: Any
+        **kw: Any,
     ) -> List[ReflectedForeignKeyConstraint]:
         """Return information about foreign_keys in ``table_name``.
 
@@ -833,7 +833,7 @@ class Dialect:
         connection: "Connection",
         view_name: str,
         schema: Optional[str] = None,
-        **kw: Any
+        **kw: Any,
     ) -> str:
         """Return view definition.
 
@@ -849,7 +849,7 @@ class Dialect:
         connection: "Connection",
         table_name: str,
         schema: Optional[str] = None,
-        **kw: Any
+        **kw: Any,
     ) -> List[ReflectedIndex]:
         """Return information about indexes in ``table_name``.
 
@@ -867,7 +867,7 @@ class Dialect:
         connection: "Connection",
         table_name: str,
         schema: Optional[str] = None,
-        **kw: Any
+        **kw: Any,
     ) -> List[ReflectedUniqueConstraint]:
         r"""Return information about unique constraints in ``table_name``.
 
@@ -884,7 +884,7 @@ class Dialect:
         connection: "Connection",
         table_name: str,
         schema: Optional[str] = None,
-        **kw: Any
+        **kw: Any,
     ) -> List[ReflectedCheckConstraint]:
         r"""Return information about check constraints in ``table_name``.
 
@@ -901,7 +901,7 @@ class Dialect:
         connection: "Connection",
         table_name: str,
         schema: Optional[str] = None,
-        **kw: Any
+        **kw: Any,
     ) -> Dict[str, Any]:
         r"""Return the "options" for the table identified by ``table_name``
         as a dictionary.
@@ -913,7 +913,7 @@ class Dialect:
         connection: "Connection",
         table_name: str,
         schema: Optional[str] = None,
-        **kw: Any
+        **kw: Any,
     ) -> ReflectedTableComment:
         r"""Return the "comment" for the table identified by ``table_name``.
 
@@ -956,7 +956,7 @@ class Dialect:
         connection: "Connection",
         table_name: str,
         schema: Optional[str] = None,
-        **kw: Any
+        **kw: Any,
     ) -> bool:
         """For internal dialect use, check the existence of a particular table
         or view in the database.
@@ -1017,7 +1017,7 @@ class Dialect:
         connection: "Connection",
         sequence_name: str,
         schema: Optional[str] = None,
-        **kw: Any
+        **kw: Any,
     ) -> bool:
         """Check the existence of a particular sequence in the database.
 

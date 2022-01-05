@@ -1698,10 +1698,10 @@ class ReflectionTest(
         eq_(
             check_constraints,
             {
-                u"cc1": u"(a > 1) AND (a < 5)",
-                u"cc2": u"(a = 1) OR ((a > 2) AND (a < 5))",
-                u"cc3": u"is_positive(a)",
-                u"cc4": u"(b)::text <> 'hi\nim a name   \nyup\n'::text",
+                "cc1": "(a > 1) AND (a < 5)",
+                "cc2": "(a = 1) OR ((a > 2) AND (a < 5))",
+                "cc3": "is_positive(a)",
+                "cc4": "(b)::text <> 'hi\nim a name   \nyup\n'::text",
             },
         )
 

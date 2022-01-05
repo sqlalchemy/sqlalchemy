@@ -786,7 +786,7 @@ class TextErrorsTest(fixtures.TestBase, AssertsCompiledSQL):
             r"explicitly declared (?:with|as) text\(%(stmt)r\)"
             % {"stmt": util.ellipses_string(offending_clause)},
             fn,
-            *arg
+            *arg,
         )
 
     def test_where(self):

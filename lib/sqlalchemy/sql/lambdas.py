@@ -314,7 +314,7 @@ class LambdaElement(elements.ClauseElement):
         self._resolved = clone(
             self._resolved,
             deferred_copy_internals=deferred_copy_internals,
-            **kw
+            **kw,
         )
 
     @util.memoized_property

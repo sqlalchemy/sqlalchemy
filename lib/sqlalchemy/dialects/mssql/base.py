@@ -2047,7 +2047,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
                 expression.BinaryExpression(
                     binary.right, binary.left, binary.operator
                 ),
-                **kwargs
+                **kwargs,
             )
         return super(MSSQLCompiler, self).visit_binary(binary, **kwargs)
 
@@ -2540,7 +2540,7 @@ def _db_plus_owner_listing(fn):
             dbname,
             owner,
             schema,
-            **kw
+            **kw,
         )
 
     return update_wrapper(wrap, fn)
@@ -2559,7 +2559,7 @@ def _db_plus_owner(fn):
             dbname,
             owner,
             schema,
-            **kw
+            **kw,
         )
 
     return update_wrapper(wrap, fn)
@@ -2727,7 +2727,7 @@ class MSDialect(default.DefaultDialect):
         json_serializer=None,
         json_deserializer=None,
         legacy_schema_aliasing=None,
-        **opts
+        **opts,
     ):
         self.query_timeout = int(query_timeout or 0)
         self.schema_name = schema_name

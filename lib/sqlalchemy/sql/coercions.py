@@ -115,7 +115,7 @@ def expect(
     apply_propagate_attrs=None,
     argname=None,
     post_inspect=False,
-    **kw
+    **kw,
 ):
     if (
         role.allows_lambda
@@ -205,7 +205,7 @@ def expect(
                 resolved,
                 argname=argname,
                 original_element=original_element,
-                **kw
+                **kw,
             )
         return resolved
     else:
@@ -441,7 +441,7 @@ class _SelectIsNotFrom:
             resolved=resolved,
             advice=advice,
             code=code,
-            **kw
+            **kw,
         )
 
 
@@ -956,7 +956,7 @@ class FromClauseImpl(_SelectIsNotFrom, _NoTextCoercion, RoleImpl):
         argname=None,
         explicit_subquery=False,
         allow_select=True,
-        **kw
+        **kw,
     ):
         if resolved._is_select_statement:
             if explicit_subquery:
@@ -991,7 +991,7 @@ class StrictFromClauseImpl(FromClauseImpl):
         resolved,
         argname=None,
         allow_select=False,
-        **kw
+        **kw,
     ):
         if resolved._is_select_statement and allow_select:
             util.warn_deprecated(

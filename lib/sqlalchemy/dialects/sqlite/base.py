@@ -1864,7 +1864,7 @@ class SQLiteDialect(default.DefaultDialect):
         json_deserializer=None,
         _json_serializer=None,
         _json_deserializer=None,
-        **kwargs
+        **kwargs,
     ):
         default.DefaultDialect.__init__(self, **kwargs)
 
@@ -2377,7 +2377,7 @@ class SQLiteDialect(default.DefaultDialect):
             table_name,
             schema=schema,
             include_auto_indexes=True,
-            **kw
+            **kw,
         ):
             if not idx["name"].startswith("sqlite_autoindex"):
                 continue

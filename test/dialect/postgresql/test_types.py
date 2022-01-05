@@ -1515,14 +1515,14 @@ class ArrayRoundTripTest:
                 {
                     "id": 1,
                     "intarr": [1, 2, 3],
-                    "strarr": [u"one", u"two", u"three"],
+                    "strarr": ["one", "two", "three"],
                 },
                 {
                     "id": 2,
                     "intarr": [4, 5, 6],
-                    "strarr": [u"four", u"five", u"six"],
+                    "strarr": ["four", "five", "six"],
                 },
-                {"id": 3, "intarr": [1, 5], "strarr": [u"one", u"five"]},
+                {"id": 3, "intarr": [1, 5], "strarr": ["one", "five"]},
                 {"id": 4, "intarr": [], "strarr": []},
             ],
         )
@@ -1556,9 +1556,9 @@ class ArrayRoundTripTest:
             .where(
                 arrtable.c.strarr.in_(
                     [
-                        [u"one", u"five"],
-                        [u"four", u"five", u"six"],
-                        [u"nine", u"ten"],
+                        ["one", "five"],
+                        ["four", "five", "six"],
+                        ["nine", "ten"],
                     ]
                 )
             )

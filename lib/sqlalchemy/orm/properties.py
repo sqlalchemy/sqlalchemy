@@ -291,7 +291,7 @@ class ColumnProperty(StrategizedProperty):
             deferred=self.deferred,
             group=self.group,
             active_history=self.active_history,
-            *self.columns
+            *self.columns,
         )
 
     def _getcommitted(

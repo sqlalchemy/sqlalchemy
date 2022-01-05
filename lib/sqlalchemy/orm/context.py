@@ -1043,7 +1043,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             statement_hints=self.select_statement._statement_hints,
             correlate=self.correlate,
             correlate_except=self.correlate_except,
-            **self._select_args
+            **self._select_args,
         )
 
         inner = inner.alias()
@@ -1083,7 +1083,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                 statement,
                 *self.compound_eager_adapter.copy_and_process(
                     unwrapped_order_by
-                )
+                ),
             )
 
         statement.order_by.non_generative(statement, *self.eager_order_by)
@@ -1121,7 +1121,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             statement_hints=self.select_statement._statement_hints,
             correlate=self.correlate,
             correlate_except=self.correlate_except,
-            **self._select_args
+            **self._select_args,
         )
 
         if self.eager_order_by:

@@ -275,7 +275,7 @@ def flag_combinations(*combinations):
             for d in combinations
         ],
         id_="i" + ("a" * len(keys)),
-        argnames=",".join(keys)
+        argnames=",".join(keys),
     )
 
 

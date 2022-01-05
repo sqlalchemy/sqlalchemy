@@ -114,7 +114,7 @@ class _PGDialect_common_psycopg(PGDialect):
         client_encoding=None,
         use_native_hstore=True,
         use_native_uuid=True,
-        **kwargs
+        **kwargs,
     ):
         PGDialect.__init__(self, **kwargs)
         if not use_native_hstore:

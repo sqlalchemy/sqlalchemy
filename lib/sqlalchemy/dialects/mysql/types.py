@@ -74,7 +74,7 @@ class _StringType(sqltypes.String):
         binary=False,
         unicode=False,
         national=False,
-        **kw
+        **kw,
     ):
         self.charset = charset
 

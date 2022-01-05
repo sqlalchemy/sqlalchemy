@@ -221,7 +221,7 @@ class ExcludeConstraint(ColumnCollectionConstraint):
             *columns,
             name=kw.get("name"),
             deferrable=kw.get("deferrable"),
-            initially=kw.get("initially")
+            initially=kw.get("initially"),
         )
         self.using = kw.get("using", "gist")
         where = kw.get("where")
@@ -258,7 +258,7 @@ class ExcludeConstraint(ColumnCollectionConstraint):
             deferrable=self.deferrable,
             initially=self.initially,
             where=self.where,
-            using=self.using
+            using=self.using,
         )
         c.dispatch._update(self.dispatch)
         return c

@@ -219,7 +219,7 @@ class InstanceEvents(event.Events):
         raw=False,
         propagate=False,
         restore_load_context=False,
-        **kw
+        **kw,
     ):
         target, fn = (event_key.dispatch_target, event_key._listen_fn)
 

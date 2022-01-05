@@ -3935,7 +3935,7 @@ class PGDialect(default.DefaultDialect):
         table_name,
         schema=None,
         postgresql_ignore_search_path=False,
-        **kw
+        **kw,
     ):
         preparer = self.identifier_preparer
         table_oid = self.get_table_oid(

@@ -1941,7 +1941,7 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
                 "a",
                 metadata,
                 Column("foo", String, primary_key=True),
-                **_kwargs
+                **_kwargs,
             )
             eq_(getattr(table_a, attrib), _attrib_value)
             eq_(getattr(metadata.tables["a"], attrib), _attrib_value)

@@ -57,7 +57,7 @@ def _register_attribute(
     proxy_property=None,
     active_history=False,
     impl_class=None,
-    **kw
+    **kw,
 ):
 
     listen_hooks = []
@@ -123,7 +123,7 @@ def _register_attribute(
                 impl_class=impl_class,
                 send_modified_events=not useobject or not prop.viewonly,
                 doc=prop.doc,
-                **kw
+                **kw,
             )
 
             for hook in listen_hooks:
@@ -153,7 +153,7 @@ class UninstrumentedColumnLoader(LoaderStrategy):
         loadopt,
         adapter,
         column_collection=None,
-        **kwargs
+        **kwargs,
     ):
         for c in self.columns:
             if adapter:
@@ -196,7 +196,7 @@ class ColumnLoader(LoaderStrategy):
         column_collection,
         memoized_populators,
         check_for_adapt=False,
-        **kwargs
+        **kwargs,
     ):
         for c in self.columns:
             if adapter:
@@ -283,7 +283,7 @@ class ExpressionColumnLoader(ColumnLoader):
         adapter,
         column_collection,
         memoized_populators,
-        **kwargs
+        **kwargs,
     ):
         columns = None
         if loadopt and "expression" in loadopt.local_opts:
@@ -437,7 +437,7 @@ class DeferredColumnLoader(LoaderStrategy):
         column_collection,
         memoized_populators,
         only_load_props=None,
-        **kw
+        **kw,
     ):
 
         if (
@@ -471,7 +471,7 @@ class DeferredColumnLoader(LoaderStrategy):
                 adapter,
                 column_collection,
                 memoized_populators,
-                **kw
+                **kw,
             )
         elif self.is_class_level:
             memoized_populators[self.parent_property] = _SET_DEFERRED_EXPIRED
@@ -1350,7 +1350,7 @@ class SubqueryLoader(PostLoader):
                         orig_query, compile_state=orig_compile_state
                     )
                     if ent["entity"] is not None
-                }
+                },
             )
 
         # select from the identity columns of the outer (specifically, these
@@ -1934,7 +1934,7 @@ class JoinedLoader(AbstractRelationshipLoader):
         column_collection=None,
         parentmapper=None,
         chained_from_outerjoin=False,
-        **kwargs
+        **kwargs,
     ):
         """Add a left outer join to the statement that's being constructed."""
 

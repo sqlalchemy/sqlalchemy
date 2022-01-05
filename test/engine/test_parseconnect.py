@@ -319,7 +319,7 @@ class URLTest(fixtures.TestBase):
             "%s must be a string" % argname,
             url.URL.create,
             "somedriver",
-            **{argname: value}
+            **{argname: value},
         )
 
     @testing.combinations("username", "host", "database", argnames="argname")
@@ -352,7 +352,7 @@ class URLTest(fixtures.TestBase):
             TypeError,
             "%s must be a string" % argname,
             u1.set,
-            **{argname: 35.8}
+            **{argname: 35.8},
         )
 
     def test_only_str_query_key_constructor(self):

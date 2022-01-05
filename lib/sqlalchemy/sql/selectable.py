@@ -2697,7 +2697,7 @@ class TableClause(roles.DMLTableRole, Immutable, FromClause):
             whereclause=whereclause,
             values=values,
             inline=inline,
-            **kwargs
+            **kwargs,
         )
 
     @util.preload_module("sqlalchemy.sql.dml")
@@ -5001,7 +5001,7 @@ class Select(
         onclause=None,
         *,
         isouter=False,
-        full=False
+        full=False,
     ) -> SelfSelect:
         r"""Create a SQL JOIN against this :class:`_expression.Select`
         object's criterion
@@ -5340,7 +5340,7 @@ class Select(
             *util.preloaded.sql_util.reduce_columns(
                 self._all_selected_columns,
                 only_synonyms=only_synonyms,
-                *(self._where_criteria + self._from_obj)
+                *(self._where_criteria + self._from_obj),
             )
         )
 

@@ -533,7 +533,7 @@ class _UserDefinedTypeFixture:
 
             def process_bind_param(self, value, dialect):
                 if value is None:
-                    value = u"<null value>"
+                    value = "<null value>"
                 return "BIND_IN" + value
 
             def process_result_value(self, value, dialect):
@@ -575,7 +575,7 @@ class _UserDefinedTypeFixture:
 
                 def process(value):
                     if value is None:
-                        value = u"<null value>"
+                        value = "<null value>"
 
                     return "BIND_IN" + impl_processor(value)
 
@@ -2417,7 +2417,7 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
                     *[v.name for v in values],
                     name="myenum",
                     native_enum=False,
-                    create_constraint=True
+                    create_constraint=True,
                 )
 
             # future method

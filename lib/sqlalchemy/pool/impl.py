@@ -44,7 +44,7 @@ class QueuePool(Pool):
         max_overflow=10,
         timeout=30.0,
         use_lifo=False,
-        **kw
+        **kw,
     ):
         r"""
         Construct a QueuePool.

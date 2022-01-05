@@ -327,7 +327,7 @@ class ReflectionTest(fixtures.TestBase, AssertsCompiledSQL):
             metadata,
             Column("c1", Integer()),
             comment=comment,
-            **kwargs
+            **kwargs,
         )
 
         conn = connection

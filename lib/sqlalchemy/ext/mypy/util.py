@@ -193,7 +193,7 @@ def get_callexpr_kwarg(
     callexpr: CallExpr,
     name: str,
     *,
-    expr_types: Tuple[TypingType[_TArgType], ...]
+    expr_types: Tuple[TypingType[_TArgType], ...],
 ) -> Optional[_TArgType]:
     ...
 
@@ -202,7 +202,7 @@ def get_callexpr_kwarg(
     callexpr: CallExpr,
     name: str,
     *,
-    expr_types: Optional[Tuple[TypingType[Any], ...]] = None
+    expr_types: Optional[Tuple[TypingType[Any], ...]] = None,
 ) -> Optional[Any]:
     try:
         arg_idx = callexpr.arg_names.index(name)

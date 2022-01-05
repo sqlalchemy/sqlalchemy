@@ -560,7 +560,7 @@ class %s(SuperCls):
             "t",
             m,
             Column("id", Integer, primary_key=True),
-            *[Column(name, Integer) for name in names]
+            *[Column(name, Integer) for name in names],
         )
 
         m = self.mapper_registry.map_imperatively(MyClass, t)

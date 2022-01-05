@@ -257,7 +257,10 @@ class ReflectionTest(fixtures.TestBase, ComparesTables):
         foo = Table(
             "foo",
             meta,
-            *[Column(n, sa.String(30)) for n in ["a", "b", "c", "d", "e", "f"]]
+            *[
+                Column(n, sa.String(30))
+                for n in ["a", "b", "c", "d", "e", "f"]
+            ],
         )
         meta.create_all(connection)
         meta2 = MetaData()

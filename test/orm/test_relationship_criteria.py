@@ -1070,7 +1070,7 @@ class TemporalFixtureTest(testing.fixtures.DeclarativeMappedTest):
                     datetime.datetime(2009, 10, 16, 12, 00, 00),
                     datetime.datetime(2009, 10, 18, 12, 00, 00),
                 ),
-                *loader_options
+                *loader_options,
             )
         )
         if is_joined:
@@ -1090,7 +1090,7 @@ class TemporalFixtureTest(testing.fixtures.DeclarativeMappedTest):
                     datetime.datetime(2009, 10, 15, 11, 00, 00),
                     datetime.datetime(2009, 10, 18, 12, 00, 00),
                 ),
-                *loader_options
+                *loader_options,
             )
         )
         if is_joined:

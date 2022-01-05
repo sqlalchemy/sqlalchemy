@@ -1782,7 +1782,7 @@ class HistoryTest(fixtures.TestBase):
             uselist=uselist,
             useobject=useobject,
             active_history=active_history,
-            **kw
+            **kw,
         )
         return Foo
 

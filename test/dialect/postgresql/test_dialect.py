@@ -374,7 +374,7 @@ class ExecuteManyMode:
                         {"x": "x2", "y": "y2"},
                         {"x": "x3", "y": "y3"},
                     ),
-                    **expected_kwargs
+                    **expected_kwargs,
                 )
             ],
         )
@@ -423,7 +423,7 @@ class ExecuteManyMode:
                         {"x": "x2", "y": "y2"},
                         {"x": "x3", "y": "y3"},
                     ),
-                    **expected_kwargs
+                    **expected_kwargs,
                 )
             ],
         )
@@ -476,7 +476,7 @@ class ExecuteManyMode:
                         {"x": "x2", "y": "y2"},
                         {"x": "x3", "y": "y3"},
                     ),
-                    **expected_kwargs
+                    **expected_kwargs,
                 )
             ],
         )
@@ -529,7 +529,7 @@ class ExecuteManyMode:
                             {"xval": "x1", "yval": "y5"},
                             {"xval": "x3", "yval": "y6"},
                         ),
-                        **expected_kwargs
+                        **expected_kwargs,
                     )
                 ],
             )

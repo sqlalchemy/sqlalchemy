@@ -1497,7 +1497,7 @@ class OracleDialect(default.DefaultDialect):
         use_binds_for_limits=None,
         use_nchar_for_unicode=False,
         exclude_tablespaces=("SYSTEM", "SYSAUX"),
-        **kwargs
+        **kwargs,
     ):
         default.DefaultDialect.__init__(self, **kwargs)
         self._use_nchar_for_unicode = use_nchar_for_unicode
@@ -1711,7 +1711,7 @@ class OracleDialect(default.DefaultDialect):
         schema=None,
         resolve_synonyms=False,
         dblink="",
-        **kw
+        **kw,
     ):
 
         if resolve_synonyms:
@@ -2053,7 +2053,7 @@ class OracleDialect(default.DefaultDialect):
         schema=None,
         resolve_synonyms=False,
         dblink="",
-        **kw
+        **kw,
     ):
 
         info_cache = kw.get("info_cache")
@@ -2090,7 +2090,7 @@ class OracleDialect(default.DefaultDialect):
         schema=None,
         resolve_synonyms=False,
         dblink="",
-        **kw
+        **kw,
     ):
 
         info_cache = kw.get("info_cache")
@@ -2433,7 +2433,7 @@ class OracleDialect(default.DefaultDialect):
         schema=None,
         resolve_synonyms=False,
         dblink="",
-        **kw
+        **kw,
     ):
         info_cache = kw.get("info_cache")
         (view_name, schema, dblink, synonym) = self._prepare_reflection_args(
