@@ -33,7 +33,6 @@ try:
         # return Decimal('5'). These are equivalent of course.
         return DecimalResultProcessor(target_class, "%%.%df" % scale).process
 
-
 except ImportError:
     from ._py_processors import int_to_boolean  # noqa
     from ._py_processors import str_to_date  # noqa
