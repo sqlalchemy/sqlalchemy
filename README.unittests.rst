@@ -135,7 +135,7 @@ with the tox runner also::
     [db]
     postgresql=postgresql+psycopg2://username:pass@hostname/dbname
 
-Now when we run ``tox -e py27-postgresql``, it will use our custom URL instead
+Now when we run ``tox -e py38-postgresql``, it will use our custom URL instead
 of the fixed one in setup.cfg.
 
 Database Configuration
