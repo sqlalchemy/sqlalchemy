@@ -287,7 +287,7 @@ class AutomapTest(fixtures.MappedTest):
                 attrname,
                 local_cls,
                 referred_cls,
-                **kw
+                **kw,
             )
 
         Base.prepare(generate_relationship=_gen_relationship)

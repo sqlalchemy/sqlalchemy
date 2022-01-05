@@ -583,7 +583,7 @@ def _setup_entity_query(
     with_polymorphic=None,
     only_load_props=None,
     polymorphic_discriminator=None,
-    **kw
+    **kw,
 ):
 
     if with_polymorphic:
@@ -616,7 +616,7 @@ def _setup_entity_query(
             column_collection=column_collection,
             memoized_populators=quick_populators,
             check_for_adapt=check_for_adapt,
-            **kw
+            **kw,
         )
 
     if (

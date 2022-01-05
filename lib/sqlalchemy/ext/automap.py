@@ -1082,7 +1082,7 @@ def _relationships_for_fks(
                         referred_cls,
                         local_cls,
                         collection_class=collection_class,
-                        **o2m_kws
+                        **o2m_kws,
                     )
                 else:
                     backref_obj = None
@@ -1114,7 +1114,7 @@ def _relationships_for_fks(
                     foreign_keys=[fk.parent for fk in constraint.elements],
                     back_populates=relationship_name,
                     collection_class=collection_class,
-                    **o2m_kws
+                    **o2m_kws,
                 )
                 if rel is not None:
                     referred_cfg.properties[backref_name] = rel

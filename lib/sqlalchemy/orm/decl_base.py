@@ -810,7 +810,7 @@ class _ClassScanMapperConfig(_MapperConfig):
                         tablename,
                         self._metadata_for_cls(manager),
                         *(tuple(declared_columns) + tuple(args)),
-                        **table_kw
+                        **table_kw,
                     ),
                 )
         else:

@@ -1026,7 +1026,7 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
             Column("a", Integer),
             Column("b", Integer),
             Column("c", Integer),
-            *fkcs
+            *fkcs,
         )
         Table("remote", m, Column("id", Integer, primary_key=True))
 

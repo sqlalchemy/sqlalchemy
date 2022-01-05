@@ -196,8 +196,8 @@ zzzeeksphinx_module_prefixes = {
 master_doc = "contents"
 
 # General information about the project.
-project = u"SQLAlchemy"
-copyright = u"2007-2021, the SQLAlchemy authors and contributors"  # noqa
+project = "SQLAlchemy"
+copyright = "2007-2021, the SQLAlchemy authors and contributors"  # noqa
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -401,8 +401,8 @@ man_pages = [
     (
         "index",
         "sqlalchemy",
-        u"SQLAlchemy Documentation",
-        [u"SQLAlchemy authors"],
+        "SQLAlchemy Documentation",
+        ["SQLAlchemy authors"],
         1,
     )
 ]
@@ -411,10 +411,10 @@ man_pages = [
 # -- Options for Epub output -------------------------------------------------
 
 # Bibliographic Dublin Core info.
-epub_title = u"SQLAlchemy"
-epub_author = u"SQLAlchemy authors"
-epub_publisher = u"SQLAlchemy authors"
-epub_copyright = u"2007-2015, SQLAlchemy authors"
+epub_title = "SQLAlchemy"
+epub_author = "SQLAlchemy authors"
+epub_publisher = "SQLAlchemy authors"
+epub_copyright = "2007-2015, SQLAlchemy authors"
 
 # The language of the text. It defaults to the language option
 # or en if the language is not set.

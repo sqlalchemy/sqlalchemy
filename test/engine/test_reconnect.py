@@ -173,7 +173,7 @@ class PrePingMockTest(fixtures.TestBase):
             creator=lambda: self.dbapi.connect("foo.db"),
             pre_ping=pre_ping,
             dialect=dialect,
-            **(pool_kw if pool_kw else {})
+            **(pool_kw if pool_kw else {}),
         )
 
         dialect.is_disconnect = lambda e, conn, cursor: isinstance(

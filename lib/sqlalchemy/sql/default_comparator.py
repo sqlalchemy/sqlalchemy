@@ -36,7 +36,7 @@ def _boolean_compare(
     _python_is_types=(util.NoneType, bool),
     _any_all_expr=False,
     result_type=None,
-    **kwargs
+    **kwargs,
 ):
 
     if result_type is None:
@@ -215,7 +215,7 @@ def _match_impl(expr, op, other, **kw):
         negate=operators.not_match_op
         if op is operators.match_op
         else operators.match_op,
-        **kw
+        **kw,
     )
 
 
@@ -275,7 +275,7 @@ def _regexp_match_impl(expr, op, pattern, flags, **kw):
         negate=operators.not_regexp_match_op
         if op is operators.regexp_match_op
         else operators.regexp_match_op,
-        **kw
+        **kw,
     )
 
 

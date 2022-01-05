@@ -62,7 +62,7 @@ class _RelationshipErrors:
             % (primary, expr, relname),
             fn,
             *arg,
-            **kw
+            **kw,
         )
 
     def _assert_raises_no_equality(
@@ -81,7 +81,7 @@ class _RelationshipErrors:
             % (primary, expr, relname),
             fn,
             *arg,
-            **kw
+            **kw,
         )
 
     def _assert_raises_ambig_join(
@@ -101,7 +101,7 @@ class _RelationshipErrors:
                 % (relname, secondary_arg),
                 fn,
                 *arg,
-                **kw
+                **kw,
             )
         else:
             assert_raises_message(
@@ -115,7 +115,7 @@ class _RelationshipErrors:
                 "foreign key reference to the parent table." % (relname,),
                 fn,
                 *arg,
-                **kw
+                **kw,
             )
 
     def _assert_raises_no_join(self, fn, relname, secondary_arg, *arg, **kw):
@@ -132,7 +132,7 @@ class _RelationshipErrors:
                 "'secondaryjoin' expressions" % (relname, secondary_arg),
                 fn,
                 *arg,
-                **kw
+                **kw,
             )
         else:
             assert_raises_message(
@@ -146,7 +146,7 @@ class _RelationshipErrors:
                 "expression." % (relname,),
                 fn,
                 *arg,
-                **kw
+                **kw,
             )
 
     def _assert_raises_ambiguous_direction(self, fn, relname, *arg, **kw):
@@ -161,7 +161,7 @@ class _RelationshipErrors:
             "via the foreign_keys argument." % relname,
             fn,
             *arg,
-            **kw
+            **kw,
         )
 
     def _assert_raises_no_local_remote(self, fn, relname, *arg, **kw):
@@ -176,7 +176,7 @@ class _RelationshipErrors:
             % (relname),
             fn,
             *arg,
-            **kw
+            **kw,
         )
 
 

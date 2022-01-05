@@ -495,7 +495,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
             # https://www.arbinada.com/en/node/1645
             sa.UniqueConstraint("name", name="user_tmp_uq_%s" % config.ident),
             sa.Index("user_tmp_ix", "foo"),
-            **kw
+            **kw,
         )
         if (
             testing.requires.view_reflection.enabled
@@ -1286,7 +1286,7 @@ class ComponentReflectionTestExtra(fixtures.TestBase):
         t = Table(
             "t",
             metadata,
-            *[Column("t%d" % i, type_) for i, type_ in enumerate(types)]
+            *[Column("t%d" % i, type_) for i, type_ in enumerate(types)],
         )
         t.create(connection)
 

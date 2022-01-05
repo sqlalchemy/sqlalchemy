@@ -883,7 +883,7 @@ class OracleDialect_cx_oracle(OracleDialect):
         arraysize=50,
         encoding_errors=None,
         threaded=None,
-        **kwargs
+        **kwargs,
     ):
 
         OracleDialect.__init__(self, **kwargs)
@@ -1123,7 +1123,7 @@ class OracleDialect_cx_oracle(OracleDialect):
                     str,
                     size,
                     cursor.arraysize,
-                    **dialect._cursor_var_unicode_kwargs
+                    **dialect._cursor_var_unicode_kwargs,
                 )
 
             elif dialect.auto_convert_lobs and default_type in (
@@ -1134,7 +1134,7 @@ class OracleDialect_cx_oracle(OracleDialect):
                     cx_Oracle.LONG_STRING,
                     size,
                     cursor.arraysize,
-                    **dialect._cursor_var_unicode_kwargs
+                    **dialect._cursor_var_unicode_kwargs,
                 )
 
             elif dialect.auto_convert_lobs and default_type in (

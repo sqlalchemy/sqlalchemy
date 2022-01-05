@@ -70,7 +70,7 @@ class ExceptionTest(fixtures.TablesTest):
                 # there's no way to make this happen with some drivers like
                 # mysqlclient, pymysql.  this at least does produce a non-
                 # ascii error message for cx_oracle, psycopg2
-                conn.execute(select(literal_column(u"méil")))
+                conn.execute(select(literal_column("méil")))
                 assert False
             except exc.DBAPIError as err:
                 err_str = str(err)

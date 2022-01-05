@@ -553,7 +553,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
-            *[Column("col%d" % i, Integer) for i in range(10)]
+            *[Column("col%d" % i, Integer) for i in range(10)],
         )
 
         class Wide:

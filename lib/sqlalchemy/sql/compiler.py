@@ -694,7 +694,7 @@ class SQLCompiler(Compiled):
         column_keys=None,
         for_executemany=False,
         linting=NO_LINTING,
-        **kwargs
+        **kwargs,
     ):
         """Construct a new :class:`.SQLCompiler` object.
 
@@ -1369,7 +1369,7 @@ class SQLCompiler(Compiled):
         return self.process(
             element.element,
             within_columns_clause=within_columns_clause,
-            **kwargs
+            **kwargs,
         )
 
     def visit_textual_label_reference(
@@ -1410,7 +1410,7 @@ class SQLCompiler(Compiled):
         within_columns_clause=False,
         render_label_as_label=None,
         result_map_targets=(),
-        **kw
+        **kw,
     ):
         # only render labels within the columns clause
         # or ORDER BY clause of a select.  dialect-specific compilers
@@ -1439,7 +1439,7 @@ class SQLCompiler(Compiled):
                     self,
                     within_columns_clause=True,
                     within_label_clause=True,
-                    **kw
+                    **kw,
                 )
                 + OPERATORS[operators.as_]
                 + self.preparer.format_label(label, labelname)
@@ -1466,7 +1466,7 @@ class SQLCompiler(Compiled):
         add_to_result_map=None,
         include_table=True,
         result_map_targets=(),
-        **kwargs
+        **kwargs,
     ):
         name = orig_name = column.name
         if name is None:
@@ -2135,7 +2135,7 @@ class SQLCompiler(Compiled):
         eager_grouping=False,
         from_linter=None,
         lateral_from_linter=None,
-        **kw
+        **kw,
     ):
         if from_linter and operators.is_comparison(binary.operator):
             if lateral_from_linter is not None:
@@ -2176,7 +2176,7 @@ class SQLCompiler(Compiled):
                     opstring,
                     from_linter=from_linter,
                     lateral_from_linter=lateral_from_linter,
-                    **kw
+                    **kw,
                 )
 
     def visit_function_as_comparison_op_binary(self, element, operator, **kw):
@@ -2201,7 +2201,7 @@ class SQLCompiler(Compiled):
         return self._generate_generic_binary(
             element,
             " " + self.escape_literal_column(operator.opstring) + " ",
-            **kw
+            **kw,
         )
 
     def visit_custom_op_unary_operator(self, element, operator, **kw):
@@ -2339,7 +2339,7 @@ class SQLCompiler(Compiled):
         return self._generate_generic_binary(
             binary,
             " NOT BETWEEN SYMMETRIC " if symmetric else " NOT BETWEEN ",
-            **kw
+            **kw,
         )
 
     def visit_regexp_match_op_binary(self, binary, operator, **kw):
@@ -2368,7 +2368,7 @@ class SQLCompiler(Compiled):
         skip_bind_expression=False,
         literal_execute=False,
         render_postcompile=False,
-        **kwargs
+        **kwargs,
     ):
         if not skip_bind_expression:
             impl = bindparam.type.dialect_impl(self.dialect)
@@ -2381,7 +2381,7 @@ class SQLCompiler(Compiled):
                     literal_binds=literal_binds,
                     literal_execute=literal_execute,
                     render_postcompile=render_postcompile,
-                    **kwargs
+                    **kwargs,
                 )
                 if bindparam.expanding:
                     # for postcompile w/ expanding, move the "wrapped" part
@@ -2478,7 +2478,7 @@ class SQLCompiler(Compiled):
             post_compile=post_compile,
             expanding=bindparam.expanding,
             bindparam_type=bindparam.type,
-            **kwargs
+            **kwargs,
         )
 
         if bindparam.expanding:
@@ -2576,7 +2576,7 @@ class SQLCompiler(Compiled):
         expanding=False,
         escaped_from=None,
         bindparam_type=None,
-        **kw
+        **kw,
     ):
 
         if self.positional:
@@ -2624,7 +2624,7 @@ class SQLCompiler(Compiled):
         fromhints=None,
         visiting_cte=None,
         from_linter=None,
-        **kwargs
+        **kwargs,
     ):
         self._init_cte_state()
 
@@ -2813,7 +2813,7 @@ class SQLCompiler(Compiled):
         lateral=False,
         enclosing_alias=None,
         from_linter=None,
-        **kwargs
+        **kwargs,
     ):
 
         if lateral:
@@ -2842,7 +2842,7 @@ class SQLCompiler(Compiled):
                 fromhints=fromhints,
                 lateral=lateral,
                 enclosing_alias=alias,
-                **kwargs
+                **kwargs,
             )
             if subquery and (asfrom or lateral):
                 inner = "(%s)" % (inner,)
@@ -2929,7 +2929,7 @@ class SQLCompiler(Compiled):
                 elements.Tuple(
                     types=element._column_types, *elem
                 ).self_group(),
-                **kw
+                **kw,
             )
             for chunk in element._data
             for elem in chunk
@@ -3233,7 +3233,7 @@ class SQLCompiler(Compiled):
         select_wraps_for=None,
         lateral=False,
         from_linter=None,
-        **kwargs
+        **kwargs,
     ):
         assert select_wraps_for is None, (
             "SQLAlchemy 1.4 requires use of "
@@ -3526,7 +3526,7 @@ class SQLCompiler(Compiled):
                             asfrom=True,
                             fromhints=byfrom,
                             from_linter=from_linter,
-                            **kwargs
+                            **kwargs,
                         )
                         for f in froms
                     ]
@@ -3538,7 +3538,7 @@ class SQLCompiler(Compiled):
                             self,
                             asfrom=True,
                             from_linter=from_linter,
-                            **kwargs
+                            **kwargs,
                         )
                         for f in froms
                     ]
@@ -3732,7 +3732,7 @@ class SQLCompiler(Compiled):
         fromhints=None,
         use_schema=True,
         from_linter=None,
-        **kwargs
+        **kwargs,
     ):
         if from_linter:
             from_linter.froms[table] = table.fullname
@@ -4054,7 +4054,7 @@ class SQLCompiler(Compiled):
                 update_stmt.table,
                 render_extra_froms,
                 dialect_hints,
-                **kw
+                **kw,
             )
             if extra_from_text:
                 text += " " + extra_from_text
@@ -4164,7 +4164,7 @@ class SQLCompiler(Compiled):
                 delete_stmt.table,
                 extra_froms,
                 dialect_hints,
-                **kw
+                **kw,
             )
             if extra_from_text:
                 text += " " + extra_from_text

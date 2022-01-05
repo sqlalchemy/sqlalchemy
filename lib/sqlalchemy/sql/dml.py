@@ -854,7 +854,7 @@ class Insert(ValuesBase):
         prefixes=None,
         returning=None,
         return_defaults=False,
-        **dialect_kw
+        **dialect_kw,
     ):
         """Construct an :class:`_expression.Insert` object.
 
@@ -1165,7 +1165,7 @@ class Update(DMLWhereBase, ValuesBase):
         returning=None,
         return_defaults=False,
         preserve_parameter_order=False,
-        **dialect_kw
+        **dialect_kw,
     ):
         r"""Construct an :class:`_expression.Update` object.
 
@@ -1384,7 +1384,7 @@ class Delete(DMLWhereBase, UpdateBase):
         whereclause=None,
         returning=None,
         prefixes=None,
-        **dialect_kw
+        **dialect_kw,
     ):
         r"""Construct :class:`_expression.Delete` object.
 

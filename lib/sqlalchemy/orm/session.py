@@ -1490,7 +1490,7 @@ class Session(_SessionClassMethods):
         bind_arguments=None,
         _parent_execute_state=None,
         _add_event=None,
-        **kw
+        **kw,
     ):
         r"""Execute a SQL expression construct.
 
@@ -1647,7 +1647,7 @@ class Session(_SessionClassMethods):
         params=None,
         execution_options=util.EMPTY_DICT,
         bind_arguments=None,
-        **kw
+        **kw,
     ):
         """Execute a statement and return a scalar result.
 
@@ -1662,7 +1662,7 @@ class Session(_SessionClassMethods):
             params=params,
             execution_options=execution_options,
             bind_arguments=bind_arguments,
-            **kw
+            **kw,
         ).scalar()
 
     def scalars(
@@ -1671,7 +1671,7 @@ class Session(_SessionClassMethods):
         params=None,
         execution_options=util.EMPTY_DICT,
         bind_arguments=None,
-        **kw
+        **kw,
     ):
         """Execute a statement and return the results as scalars.
 
@@ -1691,7 +1691,7 @@ class Session(_SessionClassMethods):
             params=params,
             execution_options=execution_options,
             bind_arguments=bind_arguments,
-            **kw
+            **kw,
         ).scalars()
 
     def close(self):
@@ -3974,7 +3974,7 @@ class sessionmaker(_SessionClassMethods):
         autoflush=True,
         expire_on_commit=True,
         info=None,
-        **kw
+        **kw,
     ):
         r"""Construct a new :class:`.sessionmaker`.
 

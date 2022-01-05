@@ -3095,7 +3095,7 @@ class MultiOwnerTest(
             "Association proxy D.c refers to an attribute 'csub_only_data'",
             fn,
             *arg,
-            **kw
+            **kw,
         )
 
     def _assert_raises_attribute(self, message, fn, *arg, **kw):

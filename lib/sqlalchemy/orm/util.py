@@ -1572,7 +1572,7 @@ class Bundle(
             expression.ClauseList(
                 _literal_as_text_role=roles.ColumnsClauseRole,
                 group=False,
-                *[e._annotations.get("bundle", e) for e in self.exprs]
+                *[e._annotations.get("bundle", e) for e in self.exprs],
             )
             ._annotate(annotations)
             ._set_propagate_attrs(

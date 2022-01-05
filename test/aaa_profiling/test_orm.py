@@ -375,7 +375,7 @@ class DeferOptionsTest(NoCache, fixtures.MappedTest):
                     **dict(
                         (letter, "%s%d" % (letter, i))
                         for letter in ["x", "y", "z", "p", "q", "r"]
-                    )
+                    ),
                 )
                 for i in range(1, 1001)
             ]
@@ -722,7 +722,7 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
             Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "b",
@@ -731,7 +731,7 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("a_id", ForeignKey("a.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "c",
@@ -740,7 +740,7 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("b_id", ForeignKey("b.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "d",
@@ -749,7 +749,7 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("c_id", ForeignKey("c.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "e",
@@ -758,7 +758,7 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("a_id", ForeignKey("a.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "f",
@@ -767,7 +767,7 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("e_id", ForeignKey("e.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "g",
@@ -776,7 +776,7 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("e_id", ForeignKey("e.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
 
     @classmethod
@@ -1024,7 +1024,7 @@ class BranchedOptionTest(NoCache, fixtures.MappedTest):
             Column(
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "b",
@@ -1033,7 +1033,7 @@ class BranchedOptionTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("a_id", ForeignKey("a.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "c",
@@ -1042,7 +1042,7 @@ class BranchedOptionTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("b_id", ForeignKey("b.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "d",
@@ -1051,7 +1051,7 @@ class BranchedOptionTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("b_id", ForeignKey("b.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "e",
@@ -1060,7 +1060,7 @@ class BranchedOptionTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("b_id", ForeignKey("b.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "f",
@@ -1069,7 +1069,7 @@ class BranchedOptionTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("b_id", ForeignKey("b.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
         Table(
             "g",
@@ -1078,7 +1078,7 @@ class BranchedOptionTest(NoCache, fixtures.MappedTest):
                 "id", Integer, primary_key=True, test_needs_autoincrement=True
             ),
             Column("a_id", ForeignKey("a.id")),
-            *make_some_columns()
+            *make_some_columns(),
         )
 
     @classmethod

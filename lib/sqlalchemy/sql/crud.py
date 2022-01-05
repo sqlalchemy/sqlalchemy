@@ -494,7 +494,7 @@ def _append_param_parameter(
             name=_col_bind_name(c)
             if not compile_state._has_multi_parameters
             else "%s_m0" % _col_bind_name(c),
-            **kw
+            **kw,
         )
     elif value._is_bind_parameter:
         value = _handle_values_anonymous_param(
@@ -504,7 +504,7 @@ def _append_param_parameter(
             name=_col_bind_name(c)
             if not compile_state._has_multi_parameters
             else "%s_m0" % _col_bind_name(c),
-            **kw
+            **kw,
         )
     else:
         # value is a SQL expression
@@ -881,7 +881,7 @@ def _get_update_multitable_params(
                         value,
                         required=value is REQUIRED,
                         name=_col_bind_name(c),
-                        **kw  # TODO: no test coverage for literal binds here
+                        **kw,  # TODO: no test coverage for literal binds here
                     )
                 elif value._is_bind_parameter:
                     value = _handle_values_anonymous_param(
@@ -949,7 +949,7 @@ def _extend_values_for_multiparams(
                         col,
                         row[key],
                         name="%s_m%d" % (col.key, i + 1),
-                        **kw
+                        **kw,
                     )
                 else:
                     new_param = compiler.process(row[key].self_group(), **kw)

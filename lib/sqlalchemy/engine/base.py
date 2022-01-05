@@ -1455,7 +1455,7 @@ class Connection(ConnectionEventsTarget):
         parameters,
         execution_options,
         *args,
-        **kw
+        **kw,
     ):
         """Create an :class:`.ExecutionContext` and execute, returning
         a :class:`_engine.CursorResult`."""

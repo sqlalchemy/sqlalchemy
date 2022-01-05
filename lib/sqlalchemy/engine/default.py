@@ -258,7 +258,7 @@ class DefaultDialect(interfaces.Dialect):
         # the direct reference to the "NO_LINTING" object
         compiler_linting=int(compiler.NO_LINTING),
         server_side_cursors=False,
-        **kwargs
+        **kwargs,
     ):
 
         if server_side_cursors:

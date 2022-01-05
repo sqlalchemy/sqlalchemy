@@ -120,7 +120,7 @@ class AsyncPgTest(fixtures.TestBase):
                 "name",
                 ENUM(
                     *("beans", "means", "keens", "faux", "beau", "flow"),
-                    name="my_enum"
+                    name="my_enum",
                 ),
             ),
         )

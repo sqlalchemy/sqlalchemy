@@ -29,7 +29,7 @@ class ResultSetTest(fixtures.TablesTest, AssertsExecutionResults):
             *[
                 Column("field%d" % fnum, String(50))
                 for fnum in range(NUM_FIELDS)
-            ]
+            ],
         )
         Table(
             "table2",
@@ -37,7 +37,7 @@ class ResultSetTest(fixtures.TablesTest, AssertsExecutionResults):
             *[
                 Column("field%d" % fnum, Unicode(50))
                 for fnum in range(NUM_FIELDS)
-            ]
+            ],
         )
 
     @classmethod

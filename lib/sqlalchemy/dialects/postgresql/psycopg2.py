@@ -558,7 +558,7 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
         executemany_mode="values_only",
         executemany_batch_page_size=100,
         executemany_values_page_size=1000,
-        **kwargs
+        **kwargs,
     ):
         _PGDialect_common_psycopg.__init__(self, **kwargs)
 
@@ -737,7 +737,7 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
                 parameters,
                 template=executemany_values,
                 fetch=bool(context.compiled.returning),
-                **kwargs
+                **kwargs,
             )
 
         elif self.executemany_mode & EXECUTEMANY_BATCH:

@@ -926,7 +926,7 @@ class SchemaType(SchemaEventTarget):
             inherit_schema=self.inherit_schema,
             metadata=metadata,
             _create_events=_create_events,
-            **kw
+            **kw,
         )
 
     def create(self, bind, checkfirst=False):

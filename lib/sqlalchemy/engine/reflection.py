@@ -960,7 +960,7 @@ class Inspector:
                         schema=referred_schema,
                         autoload_with=self.bind,
                         _extend_on=_extend_on,
-                        **reflection_options
+                        **reflection_options,
                     )
                 for column in referred_columns:
                     refspec.append(
@@ -974,7 +974,7 @@ class Inspector:
                         autoload_with=self.bind,
                         schema=sa_schema.BLANK_SCHEMA,
                         _extend_on=_extend_on,
-                        **reflection_options
+                        **reflection_options,
                     )
                 for column in referred_columns:
                     refspec.append(".".join([referred_table, column]))
@@ -988,7 +988,7 @@ class Inspector:
                     refspec,
                     conname,
                     link_to_name=True,
-                    **options
+                    **options,
                 )
             )
 
@@ -1054,7 +1054,7 @@ class Inspector:
                 name,
                 *idx_cols,
                 _table=table,
-                **dict(list(dialect_options.items()) + [("unique", unique)])
+                **dict(list(dialect_options.items()) + [("unique", unique)]),
             )
 
     def _reflect_unique_constraints(

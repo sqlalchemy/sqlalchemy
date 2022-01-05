@@ -501,7 +501,7 @@ class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
                 version="0.0.0",
                 paramstyle="named",
             ),
-            **kw
+            **kw,
         )
 
         dialect._get_server_version_info = server_version_info

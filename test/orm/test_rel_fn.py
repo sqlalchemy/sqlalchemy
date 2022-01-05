@@ -213,7 +213,7 @@ class _JoinFixtures:
             self.m2mleft,
             self.m2mright,
             secondary=self.m2msecondary,
-            **kw
+            **kw,
         )
 
     def _join_fixture_m2m_backref(self, **kw):
@@ -257,7 +257,7 @@ class _JoinFixtures:
             self.selfref,
             self.selfref,
             remote_side=set([self.selfref.c.id]),
-            **kw
+            **kw,
         )
 
     def _join_fixture_o2m_composite_selfref(self, **kw):
@@ -266,7 +266,7 @@ class _JoinFixtures:
             self.composite_selfref,
             self.composite_selfref,
             self.composite_selfref,
-            **kw
+            **kw,
         )
 
     def _join_fixture_m2o_composite_selfref(self, **kw):
@@ -281,7 +281,7 @@ class _JoinFixtures:
                     self.composite_selfref.c.group_id,
                 ]
             ),
-            **kw
+            **kw,
         )
 
     def _join_fixture_o2m_composite_selfref_func(self, **kw):
@@ -296,7 +296,7 @@ class _JoinFixtures:
                 self.composite_selfref.c.parent_id
                 == self.composite_selfref.c.id,
             ),
-            **kw
+            **kw,
         )
 
     def _join_fixture_o2m_composite_selfref_func_remote_side(self, **kw):
@@ -312,7 +312,7 @@ class _JoinFixtures:
                 == self.composite_selfref.c.id,
             ),
             remote_side=set([self.composite_selfref.c.parent_id]),
-            **kw
+            **kw,
         )
 
     def _join_fixture_o2m_composite_selfref_func_annotated(self, **kw):
@@ -327,7 +327,7 @@ class _JoinFixtures:
                 remote(self.composite_selfref.c.parent_id)
                 == self.composite_selfref.c.id,
             ),
-            **kw
+            **kw,
         )
 
     def _join_fixture_compound_expression_1(self, **kw):
@@ -340,7 +340,7 @@ class _JoinFixtures:
             == relationships.remote(
                 relationships.foreign(self.right.c.x * self.right.c.y)
             ),
-            **kw
+            **kw,
         )
 
     def _join_fixture_compound_expression_2(self, **kw):
@@ -351,7 +351,7 @@ class _JoinFixtures:
             self.right,
             primaryjoin=(self.left.c.x + self.left.c.y)
             == relationships.foreign(self.right.c.x * self.right.c.y),
-            **kw
+            **kw,
         )
 
     def _join_fixture_compound_expression_1_non_annotated(self, **kw):
@@ -362,7 +362,7 @@ class _JoinFixtures:
             self.right,
             primaryjoin=(self.left.c.x + self.left.c.y)
             == (self.right.c.x * self.right.c.y),
-            **kw
+            **kw,
         )
 
     def _join_fixture_base_to_joined_sub(self, **kw):
@@ -377,7 +377,7 @@ class _JoinFixtures:
             self.base_w_sub_rel,
             self.rel_sub,
             primaryjoin=self.base_w_sub_rel.c.sub_id == self.rel_sub.c.id,
-            **kw
+            **kw,
         )
 
     def _join_fixture_o2m_joined_sub_to_base(self, **kw):
@@ -460,7 +460,7 @@ class _JoinFixtures:
             self.left,
             self.right,
             primaryjoin=self.left.c.id == foreign(func.foo(self.right.c.lid)),
-            **kw
+            **kw,
         )
 
     def _join_fixture_o2m_to_oldstyle_func(self, **kw):
@@ -471,7 +471,7 @@ class _JoinFixtures:
             self.right,
             primaryjoin=self.left.c.id == func.foo(self.right.c.lid),
             consider_as_foreign_keys={self.right.c.lid},
-            **kw
+            **kw,
         )
 
     def _join_fixture_overlapping_composite_fks(self, **kw):
@@ -484,7 +484,7 @@ class _JoinFixtures:
                 self.composite_multi_ref.c.uid2,
                 self.composite_multi_ref.c.oid,
             },
-            **kw
+            **kw,
         )
 
     def _join_fixture_o2m_o_side_none(self, **kw):
@@ -496,7 +496,7 @@ class _JoinFixtures:
             primaryjoin=and_(
                 self.left.c.id == self.right.c.lid, self.left.c.x == 5
             ),
-            **kw
+            **kw,
         )
 
     def _join_fixture_purely_single_o2m(self, **kw):
@@ -595,7 +595,7 @@ class _JoinFixtures:
             % (primary, expr, relname),
             fn,
             *arg,
-            **kw
+            **kw,
         )
 
     def _assert_raises_no_equality(
@@ -614,7 +614,7 @@ class _JoinFixtures:
             % (primary, expr, relname),
             fn,
             *arg,
-            **kw
+            **kw,
         )
 
     def _assert_raises_ambig_join(
@@ -634,7 +634,7 @@ class _JoinFixtures:
                 % (relname, secondary_arg),
                 fn,
                 *arg,
-                **kw
+                **kw,
             )
         else:
             assert_raises_message(
@@ -645,7 +645,7 @@ class _JoinFixtures:
                 % (relname,),
                 fn,
                 *arg,
-                **kw
+                **kw,
             )
 
     def _assert_raises_no_join(self, fn, relname, secondary_arg, *arg, **kw):
@@ -662,7 +662,7 @@ class _JoinFixtures:
                 "'secondaryjoin' expressions" % (relname, secondary_arg),
                 fn,
                 *arg,
-                **kw
+                **kw,
             )
         else:
             assert_raises_message(
@@ -676,7 +676,7 @@ class _JoinFixtures:
                 "expression." % (relname,),
                 fn,
                 *arg,
-                **kw
+                **kw,
             )
 
 

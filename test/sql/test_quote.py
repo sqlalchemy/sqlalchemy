@@ -248,9 +248,9 @@ class QuoteTest(fixtures.TestBase, AssertsCompiledSQL):
         )
 
     def test_repr_unicode(self):
-        name = quoted_name(u"姓名", None)
+        name = quoted_name("姓名", None)
 
-        eq_(repr(name), repr(u"姓名"))
+        eq_(repr(name), repr("姓名"))
 
     def test_lower_case_names(self):
         # Create table with quote defaults
@@ -999,7 +999,7 @@ class NameNormalizeTest(fixtures.TestBase):
         ("NAME", "name", False),
         ("NA ME", "NA ME", False),
         ("NaMe", "NaMe", False),
-        (u"姓名", u"姓名", False),
+        ("姓名", "姓名", False),
         ("name", "name", True),  # an all-lower case name needs quote forced
     )
     def test_name_normalize(self, original, normalized, is_quote):
@@ -1015,7 +1015,7 @@ class NameNormalizeTest(fixtures.TestBase):
         ("name", "NAME", False),
         ("NA ME", "NA ME", False),
         ("NaMe", "NaMe", False),
-        (u"姓名", u"姓名", False),
+        ("姓名", "姓名", False),
         (quoted_name("name", quote=True), "name", True),
     )
     def test_name_denormalize(self, original, denormalized, is_quote):

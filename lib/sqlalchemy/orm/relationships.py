@@ -2482,7 +2482,7 @@ class RelationshipProperty(StrategizedProperty):
                 sj,
                 foreign_keys=foreign_keys,
                 back_populates=self.key,
-                **kwargs
+                **kwargs,
             )
             mapper._configure_property(backref_key, relationship)
 
