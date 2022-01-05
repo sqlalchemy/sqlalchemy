@@ -165,7 +165,7 @@ else:
             raise
 
         status_msgs(
-            exc.cause,
+            exc.__cause__,
             "WARNING: The Cython extension could not be compiled, "
             "speedups are not enabled.",
             "Failure information, if any, is above.",
