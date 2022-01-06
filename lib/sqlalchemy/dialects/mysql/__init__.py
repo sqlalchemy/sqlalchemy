@@ -68,7 +68,6 @@ __all__ = (
     "DECIMAL",
     "DOUBLE",
     "ENUM",
-    "DECIMAL",
     "FLOAT",
     "INTEGER",
     "INTEGER",
