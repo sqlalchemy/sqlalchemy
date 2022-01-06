@@ -196,7 +196,7 @@ master_doc = "contents"
 
 # General information about the project.
 project = u"SQLAlchemy"
-copyright = u"2007-2021, the SQLAlchemy authors and contributors"  # noqa
+copyright = u"2007-2022, the SQLAlchemy authors and contributors"  # noqa
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
