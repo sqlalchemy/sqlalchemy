@@ -76,9 +76,6 @@ jobs:
           pip install -f dist --no-index sqlalchemy
 
       - name: Check c extensions
-        # on windows in python 2.7 the cextension fail to build.
-        # for python 2.7 visual studio 9 is missing
-        if: matrix.os != 'windows-latest' || matrix.python-version != '2.7'
         run: |
           python -c 'from sqlalchemy.util import has_compiled_ext; assert has_compiled_ext()'
 
@@ -153,7 +150,7 @@ jobs:
         run: |
           (cat setup.cfg) | %{$_ -replace "tag_build.?=.?dev",""} | set-content setup.cfg
 
-      - name: Create wheel for manylinux1 and manylinux2010 for py3
+      - name: Create wheel for manylinux1 and manylinux2010
         # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
         # the action uses the image for manylinux2010 but can generate also a manylinux1 wheel
         # change the tag of this image to change the image used
@@ -166,7 +163,7 @@ jobs:
           # `--no-deps` is used to only generate the wheel for the current library. Redundant in sqlalchemy since it has no dependencies
           pip-wheel-args: "-w ./dist -v --no-deps"
 
-      - name: Create wheel for manylinux2014 for py3
+      - name: Create wheel for manylinux2014
         # this step uses the image provided by pypa here https://github.com/pypa/manylinux to generate the wheels on linux
         # the action uses the image for manylinux2010 but can generate also a manylinux1 wheel
         # change the tag of this image to change the image used

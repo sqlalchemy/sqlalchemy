@@ -2,7 +2,6 @@ import curses
 import logging
 import random
 import re
-import sys
 import textwrap
 import time
 
@@ -18,11 +17,6 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
-
-
-_PY3 = sys.version_info > (3, 0)
-if _PY3:
-    xrange = range
 
 
 logging.basicConfig(
@@ -158,7 +152,7 @@ class GlyphCoordinate(Base):
         glyph = self.glyph
         data = glyph.glyph_for_state(self, state)
         for color, char in [
-            (data[i], data[i + 1]) for i in xrange(0, len(data), 2)
+            (data[i], data[i + 1]) for i in range(0, len(data), 2)
         ]:
 
             x = self.x + col
@@ -190,7 +184,7 @@ class GlyphCoordinate(Base):
         glyph = self.glyph
         x = min(max(self.x, 0), MAX_X)
         width = min(glyph.width, MAX_X - x) or 1
-        for y_a in xrange(self.y, self.y + glyph.height):
+        for y_a in range(self.y, self.y + glyph.height):
             y = y_a
             window.addstr(y + VERT_PADDING, x + HORIZ_PADDING, " " * width)
 
@@ -455,9 +449,9 @@ def init_positions(session):
         ("enemy1", 10),
     )
     for (ship_vert, (etype, score)) in zip(
-        xrange(5, 30, ENEMY_VERT_SPACING), arrangement
+        range(5, 30, ENEMY_VERT_SPACING), arrangement
     ):
-        for ship_horiz in xrange(0, 50, 10):
+        for ship_horiz in range(0, 50, 10):
             session.add(
                 GlyphCoordinate(
                     session, etype, ship_horiz, ship_vert, score=score

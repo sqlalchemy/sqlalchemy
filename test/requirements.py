@@ -3,8 +3,6 @@
 
 """
 
-import sys
-
 from sqlalchemy import exc
 from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql import text
@@ -1391,26 +1389,6 @@ class DefaultRequirements(SuiteRequirements):
 
         return only_if(
             has_fastexecutemany, "only on pyodbc > 4.0.19 w/ msodbc driver"
-        )
-
-    @property
-    def python_fixed_issue_8743(self):
-        return exclusions.skip_if(
-            lambda: sys.version_info < (2, 7, 8),
-            "Python issue 8743 fixed in Python 2.7.8",
-        )
-
-    @property
-    def granular_timezone(self):
-        """the datetime.timezone class, or SQLAlchemy's port, supports
-        seconds and microseconds.
-
-        SQLAlchemy ported the Python 3.7 version for Python 2, so
-        it passes on that.  For Python 3.6 and earlier, it is not supported.
-
-        """
-        return exclusions.skip_if(
-            lambda: sys.version_info >= (3,) and sys.version_info < (3, 7)
         )
 
     @property

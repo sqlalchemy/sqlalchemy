@@ -8,7 +8,6 @@
 import collections.abc as collections_abc
 import itertools
 import operator
-import sys
 import types
 import weakref
 
@@ -1113,9 +1112,8 @@ class AnalyzedFunction:
         func = type(f)(
             f.__code__, globals_, f.__name__, f.__defaults__, closure
         )
-        if sys.version_info >= (3,):
-            func.__annotations__ = f.__annotations__
-            func.__kwdefaults__ = f.__kwdefaults__
+        func.__annotations__ = f.__annotations__
+        func.__kwdefaults__ = f.__kwdefaults__
         func.__doc__ = f.__doc__
         func.__module__ = f.__module__
 
