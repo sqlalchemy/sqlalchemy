@@ -24,7 +24,6 @@ from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import Mapper
-from sqlalchemy.orm import mapper
 from sqlalchemy.orm import mapperlib
 from sqlalchemy.orm import query
 from sqlalchemy.orm import relationship
@@ -672,11 +671,10 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         def init_e(target, args, kwargs):
             canary.append(("init_e", target))
 
-        event.listen(mapper, "init", init_a)
-        event.listen(Mapper, "init", init_b)
-        event.listen(class_mapper(A), "init", init_c)
-        event.listen(A, "init", init_d)
-        event.listen(A, "init", init_e, propagate=True)
+        event.listen(Mapper, "init", init_a)
+        event.listen(class_mapper(A), "init", init_b)
+        event.listen(A, "init", init_c)
+        event.listen(A, "init", init_d, propagate=True)
 
         a = A()
         eq_(
@@ -686,14 +684,13 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
                 ("init_b", a),
                 ("init_c", a),
                 ("init_d", a),
-                ("init_e", a),
             ],
         )
 
         # test propagate flag
         canary[:] = []
         b = B()
-        eq_(canary, [("init_a", b), ("init_b", b), ("init_e", b)])
+        eq_(canary, [("init_a", b), ("init_d", b)])
 
     def listen_all(self, mapper, **kw):
         canary = []
@@ -809,10 +806,10 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         canary = Mock()
 
-        event.listen(mapper, "before_configured", canary.listen1)
-        event.listen(mapper, "before_configured", canary.listen2, insert=True)
-        event.listen(mapper, "before_configured", canary.listen3)
-        event.listen(mapper, "before_configured", canary.listen4, insert=True)
+        event.listen(Mapper, "before_configured", canary.listen1)
+        event.listen(Mapper, "before_configured", canary.listen2, insert=True)
+        event.listen(Mapper, "before_configured", canary.listen3)
+        event.listen(Mapper, "before_configured", canary.listen4, insert=True)
 
         configure_mappers()
 
@@ -864,7 +861,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         def load(obj, ctx):
             canary.append("load")
 
-        event.listen(mapper, "load", load)
+        event.listen(Mapper, "load", load)
 
         s = fixture_session()
         u = User(name="u1")
@@ -1065,7 +1062,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         assert_raises_message(
             sa.exc.SAWarning,
             r"before_configured' and 'after_configured' ORM events only "
-            r"invoke with the mapper\(\) function or Mapper class as "
+            r"invoke with the Mapper class as "
             r"the target.",
             event.listen,
             User,
@@ -1076,7 +1073,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         assert_raises_message(
             sa.exc.SAWarning,
             r"before_configured' and 'after_configured' ORM events only "
-            r"invoke with the mapper\(\) function or Mapper class as "
+            r"invoke with the Mapper class as "
             r"the target.",
             event.listen,
             User,
@@ -1092,8 +1089,8 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         self.mapper_registry.map_imperatively(User, users)
 
-        event.listen(mapper, "before_configured", m1)
-        event.listen(mapper, "after_configured", m2)
+        event.listen(Mapper, "before_configured", m1)
+        event.listen(Mapper, "after_configured", m2)
 
         inspect(User)._post_inspect
 
@@ -1135,7 +1132,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             canary.init()
 
         # mapper level event
-        @event.listens_for(mapper, "instrument_class")
+        @event.listens_for(Mapper, "instrument_class")
         def instrument_class(mp, class_):
             canary.instrument_class(class_)
 
@@ -2256,9 +2253,8 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         sess.rollback()
         eq_(assertions, [True, True])
 
-    @testing.combinations((True,), (False,))
-    def test_autobegin_no_reentrant(self, future):
-        s1 = fixture_session(future=future)
+    def test_autobegin_no_reentrant(self):
+        s1 = fixture_session()
 
         canary = Mock()
 

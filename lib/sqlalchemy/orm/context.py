@@ -1091,24 +1091,6 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
     def _simple_statement(self):
 
-        if (
-            self.compile_options._use_legacy_query_style
-            and (self.distinct and not self.distinct_on)
-            and self.order_by
-        ):
-            to_add = sql_util.expand_column_list_from_order_by(
-                self.primary_columns, self.order_by
-            )
-            if to_add:
-                util.warn_deprecated_20(
-                    "ORDER BY columns added implicitly due to "
-                    "DISTINCT is deprecated and will be removed in "
-                    "SQLAlchemy 2.0.  SELECT statements with DISTINCT "
-                    "should be written to explicitly include the appropriate "
-                    "columns in the columns clause"
-                )
-            self.primary_columns += to_add
-
         statement = self._select_statement(
             self.primary_columns + self.secondary_columns,
             tuple(self.from_clauses) + tuple(self.eager_joins.values()),
@@ -2293,14 +2275,6 @@ class _BundleEntity(_QueryEntity):
                     )
 
         self.supports_single_entity = self.bundle.single_entity
-        if (
-            self.supports_single_entity
-            and not compile_state.compile_options._use_legacy_query_style
-        ):
-            util.warn_deprecated_20(
-                "The Bundle.single_entity flag has no effect when "
-                "using 2.0 style execution."
-            )
 
     @property
     def mapper(self):

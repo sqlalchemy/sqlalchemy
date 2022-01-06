@@ -1449,7 +1449,9 @@ class CycleTest(_fixtures.FixtureTest):
 
         @assert_cycles(4)
         def go():
-            result = s.connection(mapper=User).execute(stmt)
+            result = s.connection(bind_arguments=dict(mapper=User)).execute(
+                stmt
+            )
             while True:
                 row = result.fetchone()
                 if row is None:

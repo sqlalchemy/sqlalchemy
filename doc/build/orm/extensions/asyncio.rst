@@ -295,7 +295,7 @@ prevent this:
   :paramref:`_schema.Column.default` parameter is assigned to a SQL expression
   object. To access this value with asyncio, it has to be refreshed within the
   flush process, which is achieved by setting the
-  :paramref:`_orm.mapper.eager_defaults` parameter on the mapping::
+  :paramref:`_orm.Mapper.eager_defaults` parameter on the mapping::
 
 
     class A(Base):

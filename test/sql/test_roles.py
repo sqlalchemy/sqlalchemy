@@ -226,15 +226,13 @@ class RoleTest(fixtures.TestBase):
         ):
             expect(roles.ExpressionElementRole, Thing())
 
-    def test_statement_text_coercion(self):
-        with testing.expect_deprecated_20(
-            "Using plain strings to indicate SQL statements"
+    def test_no_statement_text_coercion(self):
+        with testing.expect_raises_message(
+            exc.ArgumentError,
+            r"Textual SQL expression 'select \* from table' should be "
+            "explicitly declared",
         ):
-            is_true(
-                expect(roles.StatementRole, "select * from table").compare(
-                    text("select * from table")
-                )
-            )
+            expect(roles.StatementRole, "select * from table")
 
     def test_select_statement_no_text_coercion(self):
         assert_raises_message(

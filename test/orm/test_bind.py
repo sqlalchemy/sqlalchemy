@@ -286,7 +286,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         sess.bind_mapper(Address, e2)
 
         engine = {"e1": e1, "e2": e2, "e3": e3}[expected]
-        conn = sess.connection(**testcase)
+        conn = sess.connection(bind_arguments=testcase)
         is_(conn.engine, engine)
 
         sess.close()
@@ -355,7 +355,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
                 canary.get_bind(**kw)
                 return Session.get_bind(self, **kw)
 
-        sess = GetBindSession(e3, future=True)
+        sess = GetBindSession(e3)
         sess.bind_mapper(User, e1)
         sess.bind_mapper(Address, e2)
 
@@ -422,7 +422,7 @@ class BindIntegrationTest(_fixtures.FixtureTest):
         c = testing.db.connect()
         sess = Session(bind=c)
         sess.begin()
-        transaction = sess._legacy_transaction()
+        transaction = sess.get_transaction()
         u = User(name="u1")
         sess.add(u)
         sess.flush()

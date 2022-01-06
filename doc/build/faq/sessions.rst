@@ -305,9 +305,9 @@ I've created a mapping against an Outer Join, and while the query returns rows, 
 Rows returned by an outer join may contain NULL for part of the primary key,
 as the primary key is the composite of both tables.  The :class:`_query.Query` object ignores incoming rows
 that don't have an acceptable primary key.   Based on the setting of the ``allow_partial_pks``
-flag on :func:`.mapper`, a primary key is accepted if the value has at least one non-NULL
+flag on :class:`_orm.Mapper`, a primary key is accepted if the value has at least one non-NULL
 value, or alternatively if the value has no NULL values.  See ``allow_partial_pks``
-at :func:`.mapper`.
+at :class:`_orm.Mapper`.
 
 
 I'm using ``joinedload()`` or ``lazy=False`` to create a JOIN/OUTER JOIN and SQLAlchemy is not constructing the correct query when I try to add a WHERE, ORDER BY, LIMIT, etc. (which relies upon the (OUTER) JOIN)

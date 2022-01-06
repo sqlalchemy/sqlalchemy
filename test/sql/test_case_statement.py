@@ -215,23 +215,10 @@ class CaseTest(fixtures.TestBase, AssertsCompiledSQL):
     def test_when_dicts(self, test_case, expected):
         t = table("test", column("col1"))
 
-        whens, value, else_ = testing.resolve_lambda(test_case, t=t)
-
-        def _case_args(whens, value=None, else_=None):
-            kw = {}
-            if value is not None:
-                kw["value"] = value
-            if else_ is not None:
-                kw["else_"] = else_
-
-            return case(whens, **kw)
-
-            # note: 1.3 also does not allow this form
-            # case([whens], **kw)
+        when_dict, value, else_ = testing.resolve_lambda(test_case, t=t)
 
         self.assert_compile(
-            _case_args(whens=whens, value=value, else_=else_),
-            expected,
+            case(when_dict, value=value, else_=else_), expected
         )
 
     def test_text_doesnt_explode(self, connection):

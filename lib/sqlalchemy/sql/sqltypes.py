@@ -1207,14 +1207,9 @@ class Enum(Emulated, String, SchemaType):
            .. versionadded:: 1.3.8
 
         :param omit_aliases: A boolean that when true will remove aliases from
-           pep 435 enums. For backward compatibility it defaults to ``False``.
-           A deprecation warning is raised if the enum has aliases and this
-           flag was not set.
+           pep 435 enums. defaults to ``True``.
 
-           .. versionadded:: 1.4.5
-
-           .. deprecated:: 1.4  The default will be changed to ``True`` in
-              SQLAlchemy 2.0.
+           .. versionchanged:: 2.0 This parameter now defaults to True.
 
         """
         self._enum_init(enums, kw)
@@ -1239,7 +1234,7 @@ class Enum(Emulated, String, SchemaType):
         self.values_callable = kw.pop("values_callable", None)
         self._sort_key_function = kw.pop("sort_key_function", NO_ARG)
         length_arg = kw.pop("length", NO_ARG)
-        self._omit_aliases = kw.pop("omit_aliases", NO_ARG)
+        self._omit_aliases = kw.pop("omit_aliases", True)
 
         values, objects = self._parse_into_values(enums, kw)
         self._setup_for_values(values, objects, kw)
@@ -1284,14 +1279,6 @@ class Enum(Emulated, String, SchemaType):
 
             _members = self.enum_class.__members__
 
-            aliases = [n for n, v in _members.items() if v.name != n]
-            if self._omit_aliases is NO_ARG and aliases:
-                util.warn_deprecated_20(
-                    "The provided enum %s contains the aliases %s. The "
-                    "``omit_aliases`` will default to ``True`` in SQLAlchemy "
-                    "2.0. Specify a value to silence this warning."
-                    % (self.enum_class.__name__, aliases)
-                )
             if self._omit_aliases is True:
                 # remove aliases
                 members = OrderedDict(

@@ -360,7 +360,6 @@ from .. import event
 from .. import inspect
 from .. import types
 from ..orm import Mapper
-from ..orm import mapper
 from ..orm.attributes import flag_modified
 from ..sql.base import SchemaEventTarget
 from ..util import memoized_property
@@ -567,7 +566,7 @@ class Mutable(MutableBase):
                 if isinstance(prop.columns[0].type, sqltype):
                     cls.associate_with_attribute(getattr(class_, prop.key))
 
-        event.listen(mapper, "mapper_configured", listen_for_type)
+        event.listen(Mapper, "mapper_configured", listen_for_type)
 
     @classmethod
     def as_mutable(cls, sqltype):
@@ -629,7 +628,7 @@ class Mutable(MutableBase):
                 ) or (prop.columns[0].type is sqltype):
                     cls.associate_with_attribute(getattr(class_, prop.key))
 
-        event.listen(mapper, "mapper_configured", listen_for_type)
+        event.listen(Mapper, "mapper_configured", listen_for_type)
 
         return sqltype
 

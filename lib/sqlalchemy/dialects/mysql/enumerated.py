@@ -12,7 +12,6 @@ from ... import exc
 from ... import sql
 from ... import util
 from ...sql import sqltypes
-from ...sql.base import NO_ARG
 
 
 class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum, _StringType):
@@ -59,15 +58,7 @@ class ENUM(sqltypes.NativeForEmulated, sqltypes.Enum, _StringType):
           BINARY in schema.  This does not affect the type of data stored,
           only the collation of character data.
 
-        :param quoting: Not used. A warning will be raised if provided.
-
         """
-        if kw.pop("quoting", NO_ARG) is not NO_ARG:
-            util.warn_deprecated_20(
-                "The 'quoting' parameter to :class:`.mysql.ENUM` is deprecated"
-                " and will be removed in a future release. "
-                "This parameter now has no effect."
-            )
         kw.pop("strict", None)
         self._enum_init(enums, kw)
         _StringType.__init__(self, length=self.length, **kw)
@@ -151,15 +142,7 @@ class SET(_StringType):
 
           .. versionadded:: 1.0.0
 
-        :param quoting: Not used. A warning will be raised if passed.
-
         """
-        if kw.pop("quoting", NO_ARG) is not NO_ARG:
-            util.warn_deprecated_20(
-                "The 'quoting' parameter to :class:`.mysql.SET` is deprecated"
-                " and will be removed in a future release. "
-                "This parameter now has no effect."
-            )
         self.retrieve_as_bitwise = kw.pop("retrieve_as_bitwise", False)
         self.values = tuple(values)
         if not self.retrieve_as_bitwise and "" in values:

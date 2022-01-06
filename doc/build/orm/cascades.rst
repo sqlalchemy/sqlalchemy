@@ -122,13 +122,6 @@ for granted; it simplifies code by allowing a single call to
 that :class:`.Session` at once.   While it can be disabled, there
 is usually not a need to do so.
 
-One case where ``save-update`` cascade does sometimes get in the way is in that
-it takes place in both directions for bi-directional relationships, e.g.
-backrefs, meaning that the association of a child object with a particular parent
-can have the effect of the parent object being implicitly associated with that
-child object's :class:`.Session`; this pattern, as well as how to modify its
-behavior using the :paramref:`_orm.relationship.cascade_backrefs` flag,
-is discussed in the section :ref:`backref_cascade`.
 
 .. _cascade_delete:
 
@@ -560,69 +553,6 @@ expunge
 from the :class:`.Session` using :meth:`.Session.expunge`, the
 operation should be propagated down to referred objects.
 
-.. _backref_cascade:
-
-Controlling Cascade on Backrefs
--------------------------------
-
-.. note:: This section applies to a behavior that is removed in SQLAlchemy 2.0.
-   By setting the :paramref:`_orm.Session.future` flag on a given
-   :class:`_orm.Session`, the 2.0 behavior will be achieved which is
-   essentially that the :paramref:`_orm.relationship.cascade_backrefs` flag is
-   ignored.   See the section :ref:`change_5150` for notes.
-
-In :term:`1.x style` ORM usage, the :ref:`cascade_save_update` cascade by
-default takes place on attribute change events emitted from backrefs.  This is
-probably a confusing statement more easily described through demonstration; it
-means that, given a mapping such as this::
-
-    mapper_registry.map_imperatively(Order, order_table, properties={
-        'items' : relationship(Item, backref='order')
-    })
-
-If an ``Order`` is already in the session, and is assigned to the ``order``
-attribute of an ``Item``, the backref appends the ``Item`` to the ``items``
-collection of that ``Order``, resulting in the ``save-update`` cascade taking
-place::
-
-    >>> o1 = Order()
-    >>> session.add(o1)
-    >>> o1 in session
-    True
-
-    >>> i1 = Item()
-    >>> i1.order = o1
-    >>> i1 in o1.items
-    True
-    >>> i1 in session
-    True
-
-This behavior can be disabled using the :paramref:`_orm.relationship.cascade_backrefs` flag::
-
-    mapper_registry.map_imperatively(Order, order_table, properties={
-        'items' : relationship(Item, backref='order', cascade_backrefs=False)
-    })
-
-So above, the assignment of ``i1.order = o1`` will append ``i1`` to the ``items``
-collection of ``o1``, but will not add ``i1`` to the session.   You can, of
-course, :meth:`~.Session.add` ``i1`` to the session at a later point.   This
-option may be helpful for situations where an object needs to be kept out of a
-session until it's construction is completed, but still needs to be given
-associations to objects which are already persistent in the target session.
-
-When relationships are created by the :paramref:`_orm.relationship.backref`
-parameter on :func:`_orm.relationship`, the :paramref:`_orm.cascade_backrefs`
-parameter may be set to ``False`` on the backref side by using the
-:func:`_orm.backref` function instead of a string. For example, the above relationship
-could be declared::
-
-    mapper_registry.map_imperatively(Order, order_table, properties={
-        'items' : relationship(
-            Item, backref=backref('order', cascade_backrefs=False), cascade_backrefs=False
-        )
-    })
-
-This sets the ``cascade_backrefs=False`` behavior on both relationships.
 
 .. _session_deleting_from_collections:
 

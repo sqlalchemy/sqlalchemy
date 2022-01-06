@@ -46,7 +46,7 @@ class EnumTest(fixtures.TestBase):
 
     @profiling.function_call_count()
     def test_create_enum_from_pep_435_w_expensive_members(self):
-        Enum(self.SomeEnum)
+        Enum(self.SomeEnum, omit_aliases=False)
 
 
 class CacheKeyTest(fixtures.TestBase):

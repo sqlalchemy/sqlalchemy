@@ -2046,25 +2046,17 @@ def randomize_unitofwork():
     ) = session.set = mapper.set = dependency.set = RandomSet
 
 
-def _getitem(iterable_query, item, allow_negative):
+def _getitem(iterable_query, item):
     """calculate __getitem__ in terms of an iterable query object
     that also has a slice() method.
 
     """
 
     def _no_negative_indexes():
-        if not allow_negative:
-            raise IndexError(
-                "negative indexes are not accepted by SQL "
-                "index / slice operators"
-            )
-        else:
-            util.warn_deprecated_20(
-                "Support for negative indexes for SQL index / slice operators "
-                "will be "
-                "removed in 2.0; these operators fetch the complete result "
-                "and do not work efficiently."
-            )
+        raise IndexError(
+            "negative indexes are not accepted by SQL "
+            "index / slice operators"
+        )
 
     if isinstance(item, slice):
         start, stop, step = util.decode_slice(item)

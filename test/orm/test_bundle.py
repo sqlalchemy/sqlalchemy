@@ -318,11 +318,7 @@ class BundleTest(fixtures.MappedTest, AssertsCompiledSQL):
 
         stmt = select(b1).filter(b1.c.d1.between("d3d1", "d5d1"))
 
-        with testing.expect_deprecated_20(
-            "The Bundle.single_entity flag has no effect when "
-            "using 2.0 style execution."
-        ):
-            rows = sess.execute(stmt).all()
+        rows = sess.execute(stmt).all()
         eq_(
             rows,
             [(("d3d1", "d3d2"),), (("d4d1", "d4d2"),), (("d5d1", "d5d2"),)],

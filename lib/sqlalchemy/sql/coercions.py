@@ -99,14 +99,15 @@ def _document_text_coercion(paramname, meth_rst, param_rst):
 def _expression_collection_was_a_list(attrname, fnname, args):
     if args and isinstance(args[0], (list, set, dict)) and len(args) == 1:
         if isinstance(args[0], list):
-            util.warn_deprecated_20(
-                'The "%s" argument to %s(), when referring to a sequence '
+            raise exc.ArgumentError(
+                f'The "{attrname}" argument to {fnname}(), when '
+                "referring to a sequence "
                 "of items, is now passed as a series of positional "
-                "elements, rather than as a list. " % (attrname, fnname)
+                "elements, rather than as a list. "
             )
         return args[0]
-    else:
-        return args
+
+    return args
 
 
 def expect(
@@ -882,15 +883,6 @@ class StatementImpl(_CoerceLiterals, RoleImpl):
             return super(StatementImpl, self)._implicit_coercions(
                 original_element, resolved, argname=argname, **kw
             )
-
-    def _text_coercion(self, element, argname=None):
-        util.warn_deprecated_20(
-            "Using plain strings to indicate SQL statements without using "
-            "the text() construct is  "
-            "deprecated and will be removed in version 2.0.  Ensure plain "
-            "SQL statements are passed using the text() construct."
-        )
-        return elements.TextClause(element)
 
 
 class SelectStatementImpl(_NoTextCoercion, RoleImpl):

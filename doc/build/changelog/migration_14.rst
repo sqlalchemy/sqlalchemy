@@ -292,11 +292,11 @@ the :class:`_orm.registry` object, and fall into these categories:
     * Using :meth:`_orm.registry.map_imperatively`
         * :ref:`orm_imperative_dataclasses`
 
-The existing classical mapping function :func:`_orm.mapper` remains, however
-it is deprecated to call upon :func:`_orm.mapper` directly; the new
-:meth:`_orm.registry.map_imperatively` method now routes the request through
-the :meth:`_orm.registry` so that it integrates with other declarative mappings
-unambiguously.
+The existing classical mapping function ``sqlalchemy.orm.mapper()`` remains,
+however it is deprecated to call upon ``sqlalchemy.orm.mapper()`` directly; the
+new :meth:`_orm.registry.map_imperatively` method now routes the request
+through the :meth:`_orm.registry` so that it integrates with other declarative
+mappings unambiguously.
 
 The new approach interoperates with 3rd party class instrumentation systems
 which necessarily must take place on the class before the mapping process

@@ -25,7 +25,7 @@ from sqlalchemy.orm import deferred
 from sqlalchemy.orm import descriptor_props
 from sqlalchemy.orm import exc as orm_exc
 from sqlalchemy.orm import joinedload
-from sqlalchemy.orm import mapper
+from sqlalchemy.orm import Mapper
 from sqlalchemy.orm import registry
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
@@ -1489,7 +1489,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
     def test_custom_mapper_attribute(self):
         def mymapper(cls, tbl, **kwargs):
-            m = sa.orm.mapper(cls, tbl, **kwargs)
+            m = sa.orm.Mapper(cls, tbl, **kwargs)
             m.CHECK = True
             return m
 
@@ -1504,7 +1504,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
     def test_custom_mapper_argument(self):
         def mymapper(cls, tbl, **kwargs):
-            m = sa.orm.mapper(cls, tbl, **kwargs)
+            m = sa.orm.Mapper(cls, tbl, **kwargs)
             m.CHECK = True
             return m
 
@@ -2214,7 +2214,7 @@ class DeclarativeTest(DeclarativeTestBase):
 
         canary = mock.Mock()
 
-        @event.listens_for(mapper, "instrument_class")
+        @event.listens_for(Mapper, "instrument_class")
         def instrument_class(mp, cls):
             canary.instrument_class(mp, cls)
 

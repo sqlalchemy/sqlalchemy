@@ -20,8 +20,6 @@ Class Mapping API
 
 .. autofunction:: synonym_for
 
-.. autofunction:: mapper
-
 .. autofunction:: object_mapper
 
 .. autofunction:: class_mapper

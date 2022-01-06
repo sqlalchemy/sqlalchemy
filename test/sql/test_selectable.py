@@ -608,6 +608,17 @@ class SelectableTest(
             "table1.col3, table1.colx FROM table1) AS anon_1",
         )
 
+    def test_with_only_generative_no_list(self):
+        s1 = table1.select().scalar_subquery()
+
+        with testing.expect_raises_message(
+            exc.ArgumentError,
+            r"The \"columns\" argument to "
+            r"Select.with_only_columns\(\), when referring "
+            "to a sequence of items, is now passed",
+        ):
+            s1.with_only_columns([s1])
+
     @testing.combinations(
         (
             [table1.c.col1],

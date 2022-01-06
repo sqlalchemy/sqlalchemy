@@ -35,7 +35,6 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
-from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.util import resolve_lambda
 from sqlalchemy.util.langhelpers import hybridproperty
@@ -231,14 +230,6 @@ class ColumnsClauseFromsTest(QueryTest, AssertsCompiledSQL):
             },
         )
         eq_(len(froms), 1)
-
-    def test_with_only_columns_unknown_kw(self):
-        User, Address = self.classes("User", "Address")
-
-        stmt = select(User.id)
-
-        with expect_raises_message(TypeError, "unknown parameters: foo"):
-            stmt.with_only_columns(User.id, foo="bar")
 
     @testing.combinations((True,), (False,))
     def test_replace_into_select_from_maintains_existing(self, use_flag):

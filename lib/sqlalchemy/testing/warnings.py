@@ -46,13 +46,6 @@ def setup_filters():
         message="The loop argument is deprecated",
     )
 
-    # ignore things that are deprecated *as of* 2.0 :)
-    warnings.filterwarnings(
-        "ignore",
-        category=sa_exc.SADeprecationWarning,
-        message=r".*\(deprecated since: 2.0\)$",
-    )
-
     try:
         import pytest
     except ImportError:

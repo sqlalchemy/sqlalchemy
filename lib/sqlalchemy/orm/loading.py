@@ -262,11 +262,10 @@ def merge_frozen_result(session, statement, frozen_result, load=True):
         session.autoflush = autoflush
 
 
-@util.deprecated_20(
+@util.became_legacy_20(
     ":func:`_orm.merge_result`",
     alternative="The function as well as the method on :class:`_orm.Query` "
     "is superseded by the :func:`_orm.merge_frozen_result` function.",
-    becomes_legacy=True,
 )
 @util.preload_module("sqlalchemy.orm.context")
 def merge_result(query, iterator, load=True):

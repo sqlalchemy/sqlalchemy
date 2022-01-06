@@ -4796,7 +4796,7 @@ This document details individual issue-level changes made throughout
         Fixed ORM unit of work regression where an errant "assert primary_key"
         statement interferes with primary key generation sequences that don't
         actually consider the columns in the table to use a real primary key
-        constraint, instead using :paramref:`_orm.mapper.primary_key` to establish
+        constraint, instead using :paramref:`_orm.Mapper.primary_key` to establish
         certain columns as "primary".
 
     .. change::

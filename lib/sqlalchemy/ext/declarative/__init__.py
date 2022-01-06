@@ -8,7 +8,6 @@
 from .extensions import AbstractConcreteBase
 from .extensions import ConcreteBase
 from .extensions import DeferredReflection
-from .extensions import instrument_declarative
 from ... import util
 from ...orm.decl_api import as_declarative as _as_declarative
 from ...orm.decl_api import declarative_base as _declarative_base

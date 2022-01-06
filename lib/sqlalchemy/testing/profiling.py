@@ -238,21 +238,18 @@ def function_call_count(variance=0.05, times=1, warmup=0):
     # likely due to the introduction of __signature__.
 
     from sqlalchemy.util import decorator
-    from sqlalchemy.util import deprecations
-    from sqlalchemy.testing import mock
 
     @decorator
     def wrap(fn, *args, **kw):
 
-        with mock.patch.object(deprecations, "SQLALCHEMY_WARN_20", False):
-            for warm in range(warmup):
-                fn(*args, **kw)
+        for warm in range(warmup):
+            fn(*args, **kw)
 
-            timerange = range(times)
-            with count_functions(variance=variance):
-                for time in timerange:
-                    rv = fn(*args, **kw)
-                return rv
+        timerange = range(times)
+        with count_functions(variance=variance):
+            for time in timerange:
+                rv = fn(*args, **kw)
+            return rv
 
     return wrap
 

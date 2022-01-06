@@ -705,11 +705,7 @@ class LegacyAPIWarning(Base20DeprecationWarning):
     """indicates an API that is in 'legacy' status, a long term deprecation."""
 
 
-class RemovedIn20Warning(Base20DeprecationWarning):
-    """indicates an API that will be fully removed in SQLAlchemy 2.0."""
-
-
-class MovedIn20Warning(RemovedIn20Warning):
+class MovedIn20Warning(Base20DeprecationWarning):
     """Subtype of RemovedIn20Warning to indicate an API that moved only."""
 
 

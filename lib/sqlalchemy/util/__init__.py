@@ -70,16 +70,13 @@ from .concurrency import await_fallback
 from .concurrency import await_only
 from .concurrency import greenlet_spawn
 from .concurrency import is_exit_exception
+from .deprecations import became_legacy_20
 from .deprecations import deprecated
-from .deprecations import deprecated_20
-from .deprecations import deprecated_20_cls
 from .deprecations import deprecated_cls
 from .deprecations import deprecated_params
 from .deprecations import inject_docstring_text
 from .deprecations import moved_20
-from .deprecations import SQLALCHEMY_WARN_20
 from .deprecations import warn_deprecated
-from .deprecations import warn_deprecated_20
 from .langhelpers import add_parameter_text
 from .langhelpers import as_interface
 from .langhelpers import asbool

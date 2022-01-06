@@ -695,30 +695,22 @@ class DistinctEngineShardTest(ShardTest, fixtures.MappedTest):
         for i in range(1, 5):
             os.remove("shard%d_%s.db" % (i, provision.FOLLOWER_IDENT))
 
-    @testing.combinations((True,), (False,))
-    @testing.uses_deprecated("Using plain strings")
-    def test_plain_core_textual_lookup_w_shard(self, use_legacy_text):
+    def test_plain_core_textual_lookup_w_shard(self):
         sess = self._fixture_data()
 
-        if use_legacy_text:
-            stmt = "SELECT * FROM weather_locations"
-        else:
-            stmt = text("SELECT * FROM weather_locations")
+        stmt = text("SELECT * FROM weather_locations")
 
         eq_(
-            sess.execute(stmt, shard_id="asia").fetchall(),
+            sess.execute(
+                stmt, bind_arguments=dict(shard_id="asia")
+            ).fetchall(),
             [(1, "Asia", "Tokyo")],
         )
 
-    @testing.combinations((True,), (False,))
-    @testing.uses_deprecated("Using plain strings")
-    def test_plain_core_textual_lookup(self, use_legacy_text):
+    def test_plain_core_textual_lookup(self):
         sess = self._fixture_data()
 
-        if use_legacy_text:
-            stmt = "SELECT * FROM weather_locations WHERE id=1"
-        else:
-            stmt = text("SELECT * FROM weather_locations WHERE id=1")
+        stmt = text("SELECT * FROM weather_locations WHERE id=1")
         eq_(
             sess.execute(stmt).fetchall(),
             [(1, "Asia", "Tokyo")],

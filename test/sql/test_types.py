@@ -79,7 +79,6 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
-from sqlalchemy.testing import expect_deprecated_20
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -2528,12 +2527,6 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             connection.execute(table.select().order_by(table.c.id)).fetchall(),
             [(1, self.SomeEnum.three), (2, self.SomeEnum.three)],
         )
-
-    def test_omit_warn(self):
-        with expect_deprecated_20(
-            r"The provided enum someenum contains the aliases \['four'\]"
-        ):
-            Enum(self.SomeEnum)
 
     @testing.combinations(
         (True, "native"), (False, "non_native"), id_="ai", argnames="native"
