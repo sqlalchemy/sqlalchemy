@@ -297,6 +297,27 @@ NOTE: with this configuration the url to use is not the default one configured
 in setup, but ``mssql+pymssql://scott:tiger^5HHH@127.0.0.1:1433/test``.  It can
 be used with pytest by using ``--db docker_mssql``.
 
+**Oracle configuration**::
+
+    # create the container with the proper configuration for sqlalchemy
+    docker run --rm --name oracle -p 127.0.0.1:1521:1521 -d -e ORACLE_PASSWORD=tiger -e ORACLE_DATABASE=test -e APP_USER=scott -e APP_USER_PASSWORD=tiger gvenzl/oracle-xe:21-slim
+
+    # enter the database container and run the command
+    docker exec -ti oracle bash
+    >> sqlplus system/tiger@//localhost/XEPDB1 <<EOF
+    CREATE USER test_schema IDENTIFIED BY tiger;
+    GRANT DBA TO SCOTT;
+    GRANT UNLIMITED TABLESPACE TO scott;
+    GRANT UNLIMITED TABLESPACE TO test_schema;
+    EOF
+
+    # To stop the container. It will also remove it.
+    docker stop oracle
+
+NOTE: with this configuration the url to use is
+``oracle+cx_oracle://scott:tiger@127.0.0.1:1521/?service_name=XEPDB1``.  It can
+be used with pytest by using ``--dburi oracle+cx_oracle://scott:tiger@127.0.0.1:1521/?service_name=XEPDB1``.
+
 CONFIGURING LOGGING
 -------------------
 SQLAlchemy logs its activity and debugging through Python's logging package.
