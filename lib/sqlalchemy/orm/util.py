@@ -1837,7 +1837,7 @@ def with_parent(instance, prop, from_entity=None):
 
     E.g.::
 
-        stmt = select(Address).where(with_parent(some_user, Address.user))
+        stmt = select(Address).where(with_parent(some_user, User.addresses))
 
 
     The SQL rendered is the same as that rendered when a lazy loader
