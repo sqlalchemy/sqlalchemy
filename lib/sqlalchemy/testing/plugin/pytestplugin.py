@@ -13,7 +13,6 @@ import itertools
 import operator
 import os
 import re
-import sys
 
 import pytest
 
@@ -528,13 +527,6 @@ def setup_test_methods(request):
     #    depending on the flags defined by the test class)
 
 
-def getargspec(fn):
-    if sys.version_info.major == 3:
-        return inspect.getfullargspec(fn)
-    else:
-        return inspect.getargspec(fn)
-
-
 def _pytest_fn_decorator(target):
     """Port of langhelpers.decorator with pytest-specific tricks."""
 
@@ -611,12 +603,8 @@ class PytestFixtureFunctions(plugin_base.FixtureFunctions):
         """
         from sqlalchemy.testing import exclusions
 
-        if sys.version_info.major == 3:
-            if len(arg_sets) == 1 and hasattr(arg_sets[0], "__next__"):
-                arg_sets = list(arg_sets[0])
-        else:
-            if len(arg_sets) == 1 and hasattr(arg_sets[0], "next"):
-                arg_sets = list(arg_sets[0])
+        if len(arg_sets) == 1 and hasattr(arg_sets[0], "__next__"):
+            arg_sets = list(arg_sets[0])
 
         argnames = kw.pop("argnames", None)
 
@@ -711,7 +699,7 @@ class PytestFixtureFunctions(plugin_base.FixtureFunctions):
                 return fn
             else:
                 if argnames is None:
-                    _argnames = getargspec(fn).args[1:]
+                    _argnames = inspect.getfullargspec(fn).args[1:]
                 else:
                     _argnames = re.split(r", *", argnames)
 

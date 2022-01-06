@@ -734,7 +734,6 @@ class SetTest(_CollectionOperations):
             self.assert_((p1.children > other) == (control > other))
             self.assert_((p1.children >= other) == (control >= other))
 
-    @testing.requires.python_fixed_issue_8743
     def test_set_comparison_empty_to_empty(self):
         # test issue #3265 which was fixed in Python version 2.7.8
         Parent = self.classes.Parent
