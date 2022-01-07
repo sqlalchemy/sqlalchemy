@@ -777,7 +777,7 @@ class EagerTest5(fixtures.MappedTest):
         d2 = sess.get(DerivedII, "uid2")
         sess.expunge_all()
 
-        # object is not in the session; therefore the lazy load cant trigger
+        # object is not in the session; therefore the lazy load can't trigger
         # here, eager load had to succeed
         assert len([c for c in d2.comments]) == 1
 

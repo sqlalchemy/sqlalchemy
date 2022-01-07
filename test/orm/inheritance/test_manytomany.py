@@ -231,7 +231,7 @@ class InheritTest3(fixtures.MappedTest):
     def define_tables(cls, metadata):
         global foo, bar, blub, bar_foo, blub_bar, blub_foo
 
-        # the 'data' columns are to appease SQLite which cant handle a blank
+        # the 'data' columns are to appease SQLite which can't handle a blank
         # INSERT
         foo = Table(
             "foo",

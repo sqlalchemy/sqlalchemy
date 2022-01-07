@@ -313,8 +313,8 @@ class TokenRegistry(PathRegistry):
     def __getitem__(self, entity):
         try:
             return self.path[entity]
-        except TypeError as te:
-            raise IndexError(f"{entity}") from te
+        except TypeError as err:
+            raise IndexError(f"{entity}") from err
 
 
 class PropRegistry(PathRegistry):

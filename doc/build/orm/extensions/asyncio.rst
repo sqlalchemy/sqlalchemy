@@ -587,7 +587,7 @@ The above example prints something along the lines of::
     particular SQLAlchemy API has been invoked by end-user code, and *before*
     some other internal aspect of that API occurs.
 
-    Constrast this to the architecture of the asyncio extension, which takes
+    Contrast this to the architecture of the asyncio extension, which takes
     place on the **exterior** of SQLAlchemy's usual flow from end-user API to
     DBAPI function.
 

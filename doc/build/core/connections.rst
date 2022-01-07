@@ -119,7 +119,7 @@ illustrated in the example below::
 .. topic::  the Python DBAPI is where autobegin actually happens
 
     The design of "commit as you go" is intended to be complementary to the
-    design of the :term:`DBAPI`, which is the underyling database interface
+    design of the :term:`DBAPI`, which is the underlying database interface
     that SQLAlchemy interacts with. In the DBAPI, the ``connection`` object does
     not assume changes to the database will be automatically committed, instead
     requiring in the default case that the ``connection.commit()`` method is

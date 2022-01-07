@@ -1069,7 +1069,7 @@ class ExtraColsTest(QueryTest, AssertsCompiledSQL):
         # the column properties
         stmt = select(stmt.subquery())
 
-        # TODO: shouldnt we be able to get to stmt.subquery().c.count ?
+        # TODO: shouldn't we be able to get to stmt.subquery().c.count ?
         self.assert_compile(
             stmt,
             "SELECT anon_2.anon_1, anon_2.anon_3, anon_2.id, anon_2.name "

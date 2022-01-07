@@ -3412,7 +3412,7 @@ class _RangeTypeRoundTrip(fixtures.TablesTest):
 
             extras = psycopg_extras()
         else:
-            assert False, "Unknonw dialect"
+            assert False, "Unknown dialect"
         return extras
 
     @classmethod

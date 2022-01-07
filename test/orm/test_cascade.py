@@ -2146,7 +2146,7 @@ class M2OCascadeDeleteOrphanTestTwo(fixtures.MappedTest):
         y = T3(data="T3a")
         x = T2(data="T2a", t3=y)
 
-        # cant attach the T3 to another T2
+        # can't attach the T3 to another T2
         assert_raises(sa_exc.InvalidRequestError, T2, data="T2b", t3=y)
 
         # set via backref tho is OK, unsets from previous parent

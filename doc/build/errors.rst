@@ -1438,7 +1438,7 @@ the :term:`detached` state.
 .. note:: The above reference to a "pre-buffered" vs. "un-buffered"
    :class:`_result.Result` object refers to the process by which the ORM
    converts incoming raw database rows from the :term:`DBAPI` into ORM
-   objects.  It does not imply whether or not the underyling ``cursor``
+   objects.  It does not imply whether or not the underlying ``cursor``
    object itself, which represents pending results from the DBAPI, is itself
    buffered or unbuffered, as this is essentially a lower layer of buffering.
    For background on buffering of the ``cursor`` results itself, see the

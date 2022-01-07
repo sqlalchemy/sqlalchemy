@@ -1035,7 +1035,7 @@ class OverlappingFksSiblingTest(fixtures.MappedTest):
 
     @testing.provide_metadata
     def test_works_two(self):
-        # doesn't actually work with real FKs beacuse it creates conflicts :)
+        # doesn't actually work with real FKs because it creates conflicts :)
         self._fixture_one(
             add_b_a=True, add_b_a_overlaps="a_member", add_bsub1_a=True
         )
@@ -1668,7 +1668,7 @@ class FKsAsPksTest(fixtures.MappedTest):
             sess.commit()
 
     def test_no_delete_PK_AtoB(self):
-        """A cant be deleted without B because B would have no PK value."""
+        """A can't be deleted without B because B would have no PK value."""
 
         tableB, A, B, tableA = (
             self.tables.tableB,
@@ -1732,7 +1732,7 @@ class FKsAsPksTest(fixtures.MappedTest):
     def test_nullPKsOK_BtoA(self, metadata, connection):
         A, tableA = self.classes.A, self.tables.tableA
 
-        # postgresql cant handle a nullable PK column...?
+        # postgresql can't handle a nullable PK column...?
         tableC = Table(
             "tablec",
             metadata,
@@ -4722,7 +4722,7 @@ class SecondaryNestedJoinTest(
 
         # here, the "lazy" strategy has to ensure the "secondary"
         # table is part of the "select_from()", since it's a join().
-        # referring to just the columns wont actually render all those
+        # referring to just the columns won't actually render all those
         # join conditions.
         self.assert_sql_execution(
             testing.db,

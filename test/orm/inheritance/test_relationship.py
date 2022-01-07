@@ -2321,7 +2321,7 @@ class JoinedloadOverWPolyAliased(
             cls is self.classes.Sub1
             and Link.child.entity.class_ is self.classes.Parent
         ):
-            # in 1.x we werent checking for this:
+            # in 1.x we weren't checking for this:
             # query(Sub1).options(
             #   joinedload(Sub1.links).joinedload(Link.child).joinedload(Sub1.links)
             # )

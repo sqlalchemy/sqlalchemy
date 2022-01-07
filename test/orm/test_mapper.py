@@ -920,7 +920,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         sess = fixture_session()
         u1 = sess.get(User, 7)
         u2 = sess.get(User, 8)
-        # comparaison ops need to work
+        # comparison ops need to work
         a1 = sess.query(Address).filter(Address.user == u1).one()
         eq_(a1.id, 1)
         a1.user = u2

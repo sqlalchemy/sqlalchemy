@@ -524,7 +524,7 @@ class ResultTest(fixtures.TestBase):
 
     def test_one_unique(self):
         # assert that one() counts rows after uniqueness has been applied.
-        # this would raise if we didnt have unique
+        # this would raise if we didn't have unique
         result = self._fixture(data=[(1, 1, 1), (1, 1, 1)])
 
         row = result.unique().one()
@@ -541,7 +541,7 @@ class ResultTest(fixtures.TestBase):
 
     def test_one_unique_mapping(self):
         # assert that one() counts rows after uniqueness has been applied.
-        # this would raise if we didnt have unique
+        # this would raise if we didn't have unique
         result = self._fixture(data=[(1, 1, 1), (1, 1, 1)])
 
         row = result.mappings().unique().one()

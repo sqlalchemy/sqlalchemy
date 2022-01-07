@@ -1917,8 +1917,8 @@ def inject_param_text(doctext, inject_params):
             lines.extend([line, to_inject, "\n"])
             to_inject = None
         elif line.endswith("::"):
-            # TODO: this still wont cover if the code example itself has blank
-            # lines in it, need to detect those via indentation.
+            # TODO: this still won't cover if the code example itself has
+            # blank lines in it, need to detect those via indentation.
             lines.extend([line, doclines.popleft()])
             continue
         lines.append(line)

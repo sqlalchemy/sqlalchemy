@@ -1784,7 +1784,7 @@ class TypeDecorator(ExternalType, SchemaEventTarget, TypeEngine):
             in a result row subsequent to statement execution time.
 
         Subclasses of :class:`_types.TypeDecorator` can override this method
-        to provide custom column expresion behavior for the type.  This
+        to provide custom column expression behavior for the type.  This
         implementation will **replace** that of the underlying implementation
         type.
 

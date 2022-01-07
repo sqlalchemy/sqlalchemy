@@ -470,7 +470,7 @@ class DefaultRequirements(SuiteRequirements):
         """
         return fails_if(
             self._mysql_not_mariadb_103,
-            'MySQL error 1093 "Cant specify target table '
+            "MySQL error 1093 \"Can't specify target table "
             'for update in FROM clause", resolved by MariaDB 10.3',
         )
 
@@ -647,7 +647,7 @@ class DefaultRequirements(SuiteRequirements):
 
     @property
     def dupe_order_by_ok(self):
-        """target db wont choke if ORDER BY specifies the same expression
+        """target db won't choke if ORDER BY specifies the same expression
         more than once
 
         """
