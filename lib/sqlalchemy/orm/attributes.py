@@ -13,10 +13,14 @@ defines a large part of the ORM's interactivity.
 
 
 """
-
+from collections import namedtuple
 import operator
-from typing import Generic
+from typing import Any
+from typing import List
+from typing import NamedTuple
+from typing import Tuple
 from typing import TypeVar
+from typing import Union
 
 from . import collections
 from . import exc as orm_exc
@@ -57,6 +61,8 @@ from ..sql import roles
 from ..sql import traversals
 from ..sql import visitors
 
+_T = TypeVar("_T")
+
 
 class NoKey(str):
     pass
@@ -67,9 +73,9 @@ NO_KEY = NoKey("no name")
 
 @inspection._self_inspects
 class QueryableAttribute(
-    interfaces._MappedAttribute,
+    interfaces._MappedAttribute[_T],
     interfaces.InspectionAttr,
-    interfaces.PropComparator,
+    interfaces.PropComparator[_T],
     traversals.HasCopyInternals,
     roles.JoinTargetRole,
     roles.OnClauseRole,
@@ -362,80 +368,7 @@ def _queryable_attribute_unreduce(key, mapped_class, parententity, entity):
         return getattr(entity, key)
 
 
-_T = TypeVar("_T")
-_Generic_T = Generic[_T]
-
-
-class Mapped(QueryableAttribute, _Generic_T):
-    """Represent an ORM mapped :term:`descriptor` attribute for typing purposes.
-
-    This class represents the complete descriptor interface for any class
-    attribute that will have been :term:`instrumented` by the ORM
-    :class:`_orm.Mapper` class. When used with typing stubs, it is the final
-    type that would be used by a type checker such as mypy to provide the full
-    behavioral contract for the attribute.
-
-    .. tip::
-
-        The :class:`_orm.Mapped` class represents attributes that are handled
-        directly by the :class:`_orm.Mapper` class. It does not include other
-        Python descriptor classes that are provided as extensions, including
-        :ref:`hybrids_toplevel` and the :ref:`associationproxy_toplevel`.
-        While these systems still make use of ORM-specific superclasses
-        and structures, they are not :term:`instrumented` by the
-        :class:`_orm.Mapper` and instead provide their own functionality
-        when they are accessed on a class.
-
-    When using the :ref:`SQLAlchemy Mypy plugin <mypy_toplevel>`, the
-    :class:`_orm.Mapped` construct is used in typing annotations to indicate to
-    the plugin those attributes that are expected to be mapped; the plugin also
-    applies :class:`_orm.Mapped` as an annotation automatically when it scans
-    through declarative mappings in :ref:`orm_declarative_table` style. For
-    more indirect mapping styles such as
-    :ref:`imperative table <orm_imperative_table_configuration>` it is
-    typically applied explicitly to class level attributes that expect
-    to be mapped based on a given :class:`_schema.Table` configuration.
-
-    :class:`_orm.Mapped` is defined in the
-    `sqlalchemy2-stubs <https://pypi.org/project/sqlalchemy2-stubs>`_ project
-    as a :pep:`484` generic class which may subscribe to any arbitrary Python
-    type, which represents the Python type handled by the attribute::
-
-        class MyMappedClass(Base):
-            __table_ = Table(
-                "some_table", Base.metadata,
-                Column("id", Integer, primary_key=True),
-                Column("data", String(50)),
-                Column("created_at", DateTime)
-            )
-
-            id : Mapped[int]
-            data: Mapped[str]
-            created_at: Mapped[datetime]
-
-    For complete background on how to use :class:`_orm.Mapped` with
-    pep-484 tools like Mypy, see the link below for background on SQLAlchemy's
-    Mypy plugin.
-
-    .. versionadded:: 1.4
-
-    .. seealso::
-
-        :ref:`mypy_toplevel` - complete background on Mypy integration
-
-    """
-
-    def __get__(self, instance, owner):
-        raise NotImplementedError()
-
-    def __set__(self, instance, value):
-        raise NotImplementedError()
-
-    def __delete__(self, instance):
-        raise NotImplementedError()
-
-
-class InstrumentedAttribute(Mapped):
+class InstrumentedAttribute(QueryableAttribute[_T]):
     """Class bound instrumented attribute which adds basic
     :term:`descriptor` methods.
 
@@ -469,9 +402,7 @@ class InstrumentedAttribute(Mapped):
             return self.impl.get(state, dict_)
 
 
-HasEntityNamespace = util.namedtuple(
-    "HasEntityNamespace", ["entity_namespace"]
-)
+HasEntityNamespace = namedtuple("HasEntityNamespace", ["entity_namespace"])
 HasEntityNamespace.is_mapper = HasEntityNamespace.is_aliased_class = False
 
 
@@ -1837,7 +1768,7 @@ _NO_HISTORY = util.symbol("NO_HISTORY")
 _NO_STATE_SYMBOLS = frozenset([id(PASSIVE_NO_RESULT), id(NO_VALUE)])
 
 
-class History(util.namedtuple("History", ["added", "unchanged", "deleted"])):
+class History(NamedTuple):
     """A 3-tuple of added, unchanged and deleted values,
     representing the changes which have occurred on an instrumented
     attribute.
@@ -1862,10 +1793,12 @@ class History(util.namedtuple("History", ["added", "unchanged", "deleted"])):
 
     """
 
+    added: Union[Tuple[()], List[Any]]
+    unchanged: Union[Tuple[()], List[Any]]
+    deleted: Union[Tuple[()], List[Any]]
+
     def __bool__(self):
         return self != HISTORY_BLANK
-
-    __nonzero__ = __bool__
 
     def empty(self):
         """Return True if this :class:`.History` has no changes
@@ -2012,7 +1945,7 @@ class History(util.namedtuple("History", ["added", "unchanged", "deleted"])):
             )
 
 
-HISTORY_BLANK = History(None, None, None)
+HISTORY_BLANK = History((), (), ())
 
 
 def get_history(obj, key, passive=PASSIVE_OFF):

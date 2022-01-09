@@ -31,11 +31,12 @@ from .. import util
 from ..util import HasMemoized
 from ..util import hybridmethod
 from ..util import typing as compat_typing
+from ..util._has_cy import HAS_CYEXTENSION
 
-try:
-    from sqlalchemy.cyextension.util import prefix_anon_map  # noqa
-except ImportError:
+if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
     from ._py_util import prefix_anon_map  # noqa
+else:
+    from sqlalchemy.cyextension.util import prefix_anon_map  # noqa
 
 coercions = None
 elements = None

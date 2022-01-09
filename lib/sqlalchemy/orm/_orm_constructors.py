@@ -6,11 +6,16 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 import typing
+from typing import Any
 from typing import Callable
+from typing import Collection
+from typing import Optional
+from typing import overload
 from typing import Type
 from typing import Union
 
 from . import mapper as mapperlib
+from .base import Mapped
 from .descriptor_props import CompositeProperty
 from .descriptor_props import SynonymProperty
 from .properties import ColumnProperty
@@ -21,6 +26,11 @@ from .util import LoaderCriteriaOption
 from .. import sql
 from .. import util
 from ..exc import InvalidRequestError
+from ..sql.schema import Column
+from ..sql.schema import SchemaEventTarget
+from ..sql.type_api import TypeEngine
+from ..util.typing import Literal
+
 
 _RC = typing.TypeVar("_RC")
 _T = typing.TypeVar("_T")
@@ -41,9 +51,138 @@ def contains_alias(alias) -> "AliasOption":
     return AliasOption(alias)
 
 
+@overload
+def mapped_column(
+    *args: SchemaEventTarget,
+    nullable: bool = ...,
+    primary_key: bool = ...,
+    **kw: Any,
+) -> "Mapped":
+    ...
+
+
+@overload
+def mapped_column(
+    __type: Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"],
+    *args: SchemaEventTarget,
+    nullable: Union[Literal[None], Literal[True]] = ...,
+    primary_key: Union[Literal[None], Literal[False]] = ...,
+    **kw: Any,
+) -> "Mapped[Optional[_T]]":
+    ...
+
+
+@overload
+def mapped_column(
+    __type: Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"],
+    *args: SchemaEventTarget,
+    nullable: Union[Literal[None], Literal[True]] = ...,
+    primary_key: Union[Literal[None], Literal[False]] = ...,
+    **kw: Any,
+) -> "Mapped[Optional[_T]]":
+    ...
+
+
+@overload
+def mapped_column(
+    __type: Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"],
+    *args: SchemaEventTarget,
+    nullable: Union[Literal[None], Literal[False]] = ...,
+    primary_key: Literal[True] = True,
+    **kw: Any,
+) -> "Mapped[_T]":
+    ...
+
+
+@overload
+def mapped_column(
+    __type: Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"],
+    *args: SchemaEventTarget,
+    nullable: Literal[False] = ...,
+    primary_key: bool = ...,
+    **kw: Any,
+) -> "Mapped[_T]":
+    ...
+
+
+@overload
+def mapped_column(
+    __name: str,
+    __type: Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"],
+    *args: SchemaEventTarget,
+    nullable: Union[Literal[None], Literal[True]] = ...,
+    primary_key: Union[Literal[None], Literal[False]] = ...,
+    **kw: Any,
+) -> "Mapped[Optional[_T]]":
+    ...
+
+
+@overload
+def mapped_column(
+    __name: str,
+    __type: Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"],
+    *args: SchemaEventTarget,
+    nullable: Union[Literal[None], Literal[True]] = ...,
+    primary_key: Union[Literal[None], Literal[False]] = ...,
+    **kw: Any,
+) -> "Mapped[Optional[_T]]":
+    ...
+
+
+@overload
+def mapped_column(
+    __name: str,
+    __type: Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"],
+    *args: SchemaEventTarget,
+    nullable: Union[Literal[None], Literal[False]] = ...,
+    primary_key: Literal[True] = True,
+    **kw: Any,
+) -> "Mapped[_T]":
+    ...
+
+
+@overload
+def mapped_column(
+    __name: str,
+    __type: Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"],
+    *args: SchemaEventTarget,
+    nullable: Literal[False] = ...,
+    primary_key: bool = ...,
+    **kw: Any,
+) -> "Mapped[_T]":
+    ...
+
+
+def mapped_column(*args, **kw) -> "Mapped":
+    """construct a new ORM-mapped :class:`_schema.Column` construct.
+
+    The :func:`_orm.mapped_column` function is shorthand for the construction
+    of a Core :class:`_schema.Column` object delivered within a
+    :func:`_orm.column_property` construct, which provides for consistent
+    typing information to be delivered to the class so that it works under
+    static type checkers such as mypy and delivers useful information in
+    IDE related type checkers such as pylance.   The function can be used
+    in declarative mappings anywhere that :class:`_schema.Column` is normally
+    used::
+
+        from sqlalchemy.orm import mapped_column
+
+        class User(Base):
+            __tablename__ = 'user'
+
+            id = mapped_column(Integer)
+            name = mapped_column(String)
+
+
+    .. versionadded:: 2.0
+
+    """
+    return column_property(Column(*args, **kw))
+
+
 def column_property(
     column: sql.ColumnElement[_T], *additional_columns, **kwargs
-) -> "ColumnProperty[_T]":
+) -> "Mapped[_T]":
     r"""Provide a column-level property for use with a mapping.
 
     Column-based properties can normally be applied to the mapper's
@@ -130,7 +269,7 @@ def column_property(
     return ColumnProperty(column, *additional_columns, **kwargs)
 
 
-def composite(class_: Type[_T], *attrs, **kwargs) -> "CompositeProperty[_T]":
+def composite(class_: Type[_T], *attrs, **kwargs) -> "Mapped[_T]":
     r"""Return a composite column-based property for use with a Mapper.
 
     See the mapping documentation section :ref:`mapper_composite` for a
@@ -359,13 +498,15 @@ def with_loader_criteria(
     )
 
 
+@overload
 def relationship(
     argument: Union[str, Type[_RC], Callable[[], Type[_RC]]],
     secondary=None,
+    *,
+    uselist: Literal[True] = None,
     primaryjoin=None,
     secondaryjoin=None,
     foreign_keys=None,
-    uselist=None,
     order_by=False,
     backref=None,
     back_populates=None,
@@ -399,7 +540,98 @@ def relationship(
     omit_join=None,
     sync_backref=None,
     _legacy_inactive_history_style=False,
-) -> RelationshipProperty[_RC]:
+) -> Mapped[Collection[_RC]]:
+    ...
+
+
+@overload
+def relationship(
+    argument: Union[str, Type[_RC], Callable[[], Type[_RC]]],
+    secondary=None,
+    *,
+    uselist: Optional[bool] = None,
+    primaryjoin=None,
+    secondaryjoin=None,
+    foreign_keys=None,
+    order_by=False,
+    backref=None,
+    back_populates=None,
+    overlaps=None,
+    post_update=False,
+    cascade=False,
+    viewonly=False,
+    lazy="select",
+    collection_class=None,
+    passive_deletes=RelationshipProperty._persistence_only["passive_deletes"],
+    passive_updates=RelationshipProperty._persistence_only["passive_updates"],
+    remote_side=None,
+    enable_typechecks=RelationshipProperty._persistence_only[
+        "enable_typechecks"
+    ],
+    join_depth=None,
+    comparator_factory=None,
+    single_parent=False,
+    innerjoin=False,
+    distinct_target_key=None,
+    doc=None,
+    active_history=RelationshipProperty._persistence_only["active_history"],
+    cascade_backrefs=RelationshipProperty._persistence_only[
+        "cascade_backrefs"
+    ],
+    load_on_pending=False,
+    bake_queries=True,
+    _local_remote_pairs=None,
+    query_class=None,
+    info=None,
+    omit_join=None,
+    sync_backref=None,
+    _legacy_inactive_history_style=False,
+) -> Mapped[_RC]:
+    ...
+
+
+def relationship(
+    argument: Union[str, Type[_RC], Callable[[], Type[_RC]]],
+    secondary=None,
+    *,
+    primaryjoin=None,
+    secondaryjoin=None,
+    foreign_keys=None,
+    uselist: Optional[bool] = None,
+    order_by=False,
+    backref=None,
+    back_populates=None,
+    overlaps=None,
+    post_update=False,
+    cascade=False,
+    viewonly=False,
+    lazy="select",
+    collection_class=None,
+    passive_deletes=RelationshipProperty._persistence_only["passive_deletes"],
+    passive_updates=RelationshipProperty._persistence_only["passive_updates"],
+    remote_side=None,
+    enable_typechecks=RelationshipProperty._persistence_only[
+        "enable_typechecks"
+    ],
+    join_depth=None,
+    comparator_factory=None,
+    single_parent=False,
+    innerjoin=False,
+    distinct_target_key=None,
+    doc=None,
+    active_history=RelationshipProperty._persistence_only["active_history"],
+    cascade_backrefs=RelationshipProperty._persistence_only[
+        "cascade_backrefs"
+    ],
+    load_on_pending=False,
+    bake_queries=True,
+    _local_remote_pairs=None,
+    query_class=None,
+    info=None,
+    omit_join=None,
+    sync_backref=None,
+    _legacy_inactive_history_style=False,
+) -> Mapped[_RC]:
     """Provide a relationship between two mapped classes.
 
     This corresponds to a parent-child or associative table relationship.
@@ -1261,7 +1493,7 @@ def synonym(
     comparator_factory=None,
     doc=None,
     info=None,
-) -> "SynonymProperty":
+) -> "Mapped":
     """Denote an attribute name as a synonym to a mapped property,
     in that the attribute will mirror the value and expression behavior
     of another attribute.

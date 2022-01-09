@@ -17,7 +17,9 @@ are exposed when inspecting mappings.
 """
 
 import collections
+import typing
 from typing import Any
+from typing import cast
 from typing import TypeVar
 
 from . import exc as orm_exc
@@ -32,6 +34,7 @@ from .base import MANYTOMANY
 from .base import MANYTOONE
 from .base import NOT_EXTENSION
 from .base import ONETOMANY
+from .base import SQLORMOperations
 from .. import inspect
 from .. import inspection
 from .. import util
@@ -307,20 +310,16 @@ class MapperProperty(
 
 
 @inspection._self_inspects
-class PropComparator(operators.ColumnOperators):
-    r"""Defines SQL operators for :class:`.MapperProperty` objects.
+class PropComparator(
+    SQLORMOperations[_T], operators.ColumnOperators[SQLORMOperations]
+):
+    r"""Defines SQL operations for ORM mapped attributes.
 
     SQLAlchemy allows for operators to
     be redefined at both the Core and ORM level.  :class:`.PropComparator`
     is the base class of operator redefinition for ORM-level operations,
     including those of :class:`.ColumnProperty`,
     :class:`.RelationshipProperty`, and :class:`.CompositeProperty`.
-
-    .. note:: With the advent of Hybrid properties introduced in SQLAlchemy
-       0.7, as well as Core-level operator redefinition in
-       SQLAlchemy 0.8, the use case for user-defined :class:`.PropComparator`
-       instances is extremely rare.  See :ref:`hybrids_toplevel` as well
-       as :ref:`types_operators`.
 
     User-defined subclasses of :class:`.PropComparator` may be created. The
     built-in Python comparison and math operator methods, such as
@@ -463,18 +462,34 @@ class PropComparator(operators.ColumnOperators):
         return self.property.info
 
     @staticmethod
-    def any_op(a, b, **kwargs):
+    def _any_op(a, b, **kwargs):
         return a.any(b, **kwargs)
 
     @staticmethod
-    def has_op(a, b, **kwargs):
-        return a.has(b, **kwargs)
+    def _has_op(left, other, **kwargs):
+        return left.has(other, **kwargs)
 
     @staticmethod
-    def of_type_op(a, class_):
+    def _of_type_op(a, class_):
         return a.of_type(class_)
 
-    def of_type(self, class_):
+    any_op = cast(operators.OperatorType, _any_op)
+    has_op = cast(operators.OperatorType, _has_op)
+    of_type_op = cast(operators.OperatorType, _of_type_op)
+
+    if typing.TYPE_CHECKING:
+
+        def operate(
+            self, op: operators.OperatorType, *other: Any, **kwargs: Any
+        ) -> "SQLORMOperations":
+            ...
+
+        def reverse_operate(
+            self, op: operators.OperatorType, other: Any, **kwargs: Any
+        ) -> "SQLORMOperations":
+            ...
+
+    def of_type(self, class_) -> "SQLORMOperations[_T]":
         r"""Redefine this object in terms of a polymorphic subclass,
         :func:`_orm.with_polymorphic` construct, or :func:`_orm.aliased`
         construct.
@@ -500,7 +515,7 @@ class PropComparator(operators.ColumnOperators):
 
         return self.operate(PropComparator.of_type_op, class_)
 
-    def and_(self, *criteria):
+    def and_(self, *criteria) -> "SQLORMOperations[_T]":
         """Add additional criteria to the ON clause that's represented by this
         relationship attribute.
 
@@ -528,7 +543,7 @@ class PropComparator(operators.ColumnOperators):
         """
         return self.operate(operators.and_, *criteria)
 
-    def any(self, criterion=None, **kwargs):
+    def any(self, criterion=None, **kwargs) -> "SQLORMOperations[_T]":
         r"""Return true if this collection contains any member that meets the
         given criterion.
 
@@ -546,7 +561,7 @@ class PropComparator(operators.ColumnOperators):
 
         return self.operate(PropComparator.any_op, criterion, **kwargs)
 
-    def has(self, criterion=None, **kwargs):
+    def has(self, criterion=None, **kwargs) -> "SQLORMOperations[_T]":
         r"""Return true if this element references a member which meets the
         given criterion.
 
@@ -565,7 +580,7 @@ class PropComparator(operators.ColumnOperators):
         return self.operate(PropComparator.has_op, criterion, **kwargs)
 
 
-class StrategizedProperty(MapperProperty):
+class StrategizedProperty(MapperProperty[_T]):
     """A MapperProperty which uses selectable strategies to affect
     loading behavior.
 

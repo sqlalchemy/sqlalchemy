@@ -1653,8 +1653,14 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
 
         u1 = User()
-        eq_(attributes.instance_state(u1).attrs.x.history, (None, None, None))
-        eq_(attributes.instance_state(u1).attrs.y.history, (None, None, None))
+        eq_(
+            attributes.instance_state(u1).attrs.x.history,
+            attributes.HISTORY_BLANK,
+        )
+        eq_(
+            attributes.instance_state(u1).attrs.y.history,
+            attributes.HISTORY_BLANK,
+        )
 
         u1.y = 5
         eq_(attributes.instance_state(u1).attrs.x.history, ([5], (), ()))

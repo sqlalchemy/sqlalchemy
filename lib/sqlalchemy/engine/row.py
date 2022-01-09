@@ -7,21 +7,21 @@
 
 """Define row constructs including :class:`.Row`."""
 
-
 import collections.abc as collections_abc
 import operator
+import typing
 
 from ..sql import util as sql_util
+from ..util._has_cy import HAS_CYEXTENSION
 
-
-try:
-    from sqlalchemy.cyextension.resultproxy import BaseRow
-    from sqlalchemy.cyextension.resultproxy import KEY_INTEGER_ONLY
-    from sqlalchemy.cyextension.resultproxy import KEY_OBJECTS_ONLY
-except ImportError:
+if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
     from ._py_row import BaseRow
     from ._py_row import KEY_INTEGER_ONLY
     from ._py_row import KEY_OBJECTS_ONLY
+else:
+    from sqlalchemy.cyextension.resultproxy import BaseRow
+    from sqlalchemy.cyextension.resultproxy import KEY_INTEGER_ONLY
+    from sqlalchemy.cyextension.resultproxy import KEY_OBJECTS_ONLY
 
 
 class Row(BaseRow, collections_abc.Sequence):

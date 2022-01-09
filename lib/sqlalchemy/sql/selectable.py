@@ -15,6 +15,9 @@ import collections
 import itertools
 from operator import attrgetter
 import typing
+from typing import Any as TODO_Any
+from typing import Optional
+from typing import Tuple
 from typing import Type
 from typing import Union
 
@@ -53,6 +56,7 @@ from .elements import BooleanClauseList
 from .elements import ClauseElement
 from .elements import ClauseList
 from .elements import ColumnClause
+from .elements import ColumnElement
 from .elements import GroupedElement
 from .elements import Grouping
 from .elements import literal_column
@@ -2648,8 +2652,7 @@ class SelectBase(
         """
         return self.selected_columns
 
-    @property
-    @util.deprecated(
+    @util.deprecated_property(
         "1.4",
         "The :attr:`_expression.SelectBase.c` and "
         ":attr:`_expression.SelectBase.columns` attributes "
@@ -4039,16 +4042,16 @@ class Select(
 
     __visit_name__ = "select"
 
-    _setup_joins = ()
-    _memoized_select_entities = ()
+    _setup_joins: Tuple[TODO_Any, ...] = ()
+    _memoized_select_entities: Tuple[TODO_Any, ...] = ()
 
     _distinct = False
-    _distinct_on = ()
-    _correlate = ()
-    _correlate_except = None
-    _where_criteria = ()
-    _having_criteria = ()
-    _from_obj = ()
+    _distinct_on: Tuple[ColumnElement, ...] = ()
+    _correlate: Tuple[FromClause, ...] = ()
+    _correlate_except: Optional[Tuple[FromClause, ...]] = None
+    _where_criteria: Tuple[ColumnElement, ...] = ()
+    _having_criteria: Tuple[ColumnElement, ...] = ()
+    _from_obj: Tuple[FromClause, ...] = ()
     _auto_correlate = True
 
     _compile_options = SelectState.default_select_compile_options
@@ -4417,8 +4420,7 @@ class Select(
         """
         return self._compile_state_factory(self, None)._get_display_froms()
 
-    @property
-    @util.deprecated(
+    @util.deprecated_property(
         "1.4.23",
         "The :attr:`_expression.Select.froms` attribute is moved to "
         "the :meth:`_expression.Select.get_final_froms` method.",

@@ -15,8 +15,8 @@ and `secondaryjoin` aspects of :func:`_orm.relationship`.
 """
 import collections
 import re
+from typing import Any
 from typing import Callable
-from typing import Generic
 from typing import Type
 from typing import TypeVar
 from typing import Union
@@ -53,7 +53,8 @@ from ..sql.util import join_condition
 from ..sql.util import selectables_overlap
 from ..sql.util import visit_binary_product
 
-_RC = TypeVar("_RC")
+_T = TypeVar("_T", bound=Any)
+_PT = TypeVar("_PT", bound=Any)
 
 
 def remote(expr):
@@ -96,7 +97,7 @@ def foreign(expr):
 
 
 @log.class_logger
-class RelationshipProperty(StrategizedProperty, Generic[_RC]):
+class RelationshipProperty(StrategizedProperty[_T]):
     """Describes an object property that holds a single item or list
     of items that correspond to a related database table.
 
@@ -125,7 +126,7 @@ class RelationshipProperty(StrategizedProperty, Generic[_RC]):
 
     def __init__(
         self,
-        argument: Union[str, Type[_RC], Callable[[], Type[_RC]]],
+        argument: Union[str, Type[_T], Callable[[], Type[_T]]],
         secondary=None,
         primaryjoin=None,
         secondaryjoin=None,
@@ -285,7 +286,7 @@ class RelationshipProperty(StrategizedProperty, Generic[_RC]):
             doc=self.doc,
         )
 
-    class Comparator(PropComparator):
+    class Comparator(PropComparator[_PT]):
         """Produce boolean, comparison, and other operators for
         :class:`.RelationshipProperty` attributes.
 
@@ -860,6 +861,8 @@ class RelationshipProperty(StrategizedProperty, Generic[_RC]):
         def property(self):
             self.prop.parent._check_configure()
             return self.prop
+
+    comparator: Comparator[_T]
 
     def _with_parent(self, instance, alias_secondary=True, from_entity=None):
         assert instance is not None

@@ -10,12 +10,10 @@ import numbers
 import re
 import typing
 from typing import Any
-from typing import Callable
+from typing import Any as TODO_Any
 from typing import Optional
-from typing import overload
 from typing import Type
 from typing import TypeVar
-from typing import Union
 
 from . import operators
 from . import roles
@@ -42,7 +40,6 @@ if typing.TYPE_CHECKING:
     from . import selectable
     from . import traversals
     from .elements import ClauseElement
-    from .elements import ColumnElement
 
 _SR = TypeVar("_SR", bound=roles.SQLRole)
 _StringOnlyR = TypeVar("_StringOnlyR", bound=roles.StringRole)
@@ -129,82 +126,8 @@ def _expression_collection_was_a_list(attrname, fnname, args):
     return args
 
 
-@overload
-def expect(
-    role: Type[roles.InElementRole],
-    element: Any,
-    *,
-    apply_propagate_attrs: Optional["ClauseElement"] = None,
-    argname: Optional[str] = None,
-    post_inspect: bool = False,
-    **kw: Any,
-) -> Union["elements.ColumnElement", "selectable.Select"]:
-    ...
-
-
-@overload
-def expect(
-    role: Type[roles.HasCTERole],
-    element: Any,
-    *,
-    apply_propagate_attrs: Optional["ClauseElement"] = None,
-    argname: Optional[str] = None,
-    post_inspect: bool = False,
-    **kw: Any,
-) -> "selectable.HasCTE":
-    ...
-
-
-@overload
-def expect(
-    role: Type[roles.ExpressionElementRole],
-    element: Any,
-    *,
-    apply_propagate_attrs: Optional["ClauseElement"] = None,
-    argname: Optional[str] = None,
-    post_inspect: bool = False,
-    **kw: Any,
-) -> "ColumnElement":
-    ...
-
-
-@overload
-def expect(
-    role: "Type[_StringOnlyR]",
-    element: Any,
-    *,
-    apply_propagate_attrs: Optional["ClauseElement"] = None,
-    argname: Optional[str] = None,
-    post_inspect: bool = False,
-    **kw: Any,
-) -> str:
-    ...
-
-
-@overload
-def expect(
-    role: Type[_SR],
-    element: Any,
-    *,
-    apply_propagate_attrs: Optional["ClauseElement"] = None,
-    argname: Optional[str] = None,
-    post_inspect: bool = False,
-    **kw: Any,
-) -> _SR:
-    ...
-
-
-@overload
-def expect(
-    role: Type[_SR],
-    element: Callable[..., Any],
-    *,
-    apply_propagate_attrs: Optional["ClauseElement"] = None,
-    argname: Optional[str] = None,
-    post_inspect: bool = False,
-    **kw: Any,
-) -> "lambdas.LambdaElement":
-    ...
+# TODO; would like to have overloads here, however mypy is being extremely
+# pedantic about them. not sure why pylance is OK with them.
 
 
 def expect(
@@ -215,7 +138,7 @@ def expect(
     argname: Optional[str] = None,
     post_inspect: bool = False,
     **kw: Any,
-) -> Union[str, _SR, "lambdas.LambdaElement"]:
+) -> TODO_Any:
     if (
         role.allows_lambda
         # note callable() will not invoke a __getattr__() method, whereas
@@ -350,7 +273,9 @@ class RoleImpl:
         self.name = role_class._role_name
         self._use_inspection = issubclass(role_class, roles.UsesInspection)
 
-    def _implicit_coercions(self, element, resolved, argname=None, **kw):
+    def _implicit_coercions(
+        self, element, resolved, argname=None, **kw
+    ) -> Any:
         self._raise_for_expected(element, argname, resolved)
 
     def _raise_for_expected(
@@ -422,9 +347,8 @@ class _ColumnCoercions:
             "subquery.",
         )
 
-    def _implicit_coercions(
-        self, original_element, resolved, argname=None, **kw
-    ):
+    def _implicit_coercions(self, element, resolved, argname=None, **kw):
+        original_element = element
         if not getattr(resolved, "is_clause_element", False):
             self._raise_for_expected(original_element, argname, resolved)
         elif resolved._is_select_statement:

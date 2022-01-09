@@ -9,6 +9,9 @@
 
 """
 
+from typing import Any
+from typing import TypeVar
+
 from . import annotation
 from . import coercions
 from . import operators
@@ -42,6 +45,8 @@ from .visitors import InternalTraversal
 from .. import util
 
 
+_T = TypeVar("_T", bound=Any)
+
 _registry = util.defaultdict(dict)
 
 
@@ -67,7 +72,7 @@ def register_function(identifier, fn, package="_default"):
     reg[identifier] = fn
 
 
-class FunctionElement(Executable, ColumnElement, FromClause, Generative):
+class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
     """Base for SQL function-oriented constructs.
 
     .. seealso::

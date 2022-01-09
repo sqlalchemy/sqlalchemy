@@ -57,7 +57,6 @@ from .compat import dottedgetter
 from .compat import has_refcount_gc
 from .compat import inspect_getfullargspec
 from .compat import local_dataclass_fields
-from .compat import namedtuple
 from .compat import next
 from .compat import osx
 from .compat import py38
@@ -74,6 +73,7 @@ from .deprecations import became_legacy_20
 from .deprecations import deprecated
 from .deprecations import deprecated_cls
 from .deprecations import deprecated_params
+from .deprecations import deprecated_property
 from .deprecations import inject_docstring_text
 from .deprecations import moved_20
 from .deprecations import warn_deprecated
@@ -128,6 +128,7 @@ from .langhelpers import safe_reraise
 from .langhelpers import set_creation_order
 from .langhelpers import string_or_unprintable
 from .langhelpers import symbol
+from .langhelpers import TypingOnly
 from .langhelpers import unbound_method_to_callable
 from .langhelpers import walk_subclasses
 from .langhelpers import warn

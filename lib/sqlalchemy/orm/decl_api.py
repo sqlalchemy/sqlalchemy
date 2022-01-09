@@ -7,6 +7,13 @@
 """Public API functions and helpers for declarative."""
 import itertools
 import re
+import typing
+from typing import Any
+from typing import Callable
+from typing import ClassVar
+from typing import Optional
+from typing import TypeVar
+from typing import Union
 import weakref
 
 from . import attributes
@@ -15,7 +22,9 @@ from . import exc as orm_exc
 from . import instrumentation
 from . import interfaces
 from . import mapperlib
+from .attributes import InstrumentedAttribute
 from .base import _inspect_mapped_class
+from .base import Mapped
 from .decl_base import _add_attribute
 from .decl_base import _as_declarative
 from .decl_base import _declarative_constructor
@@ -23,12 +32,17 @@ from .decl_base import _DeferredMapperConfig
 from .decl_base import _del_attribute
 from .decl_base import _mapper
 from .descriptor_props import SynonymProperty as _orm_synonym
+from .mapper import Mapper
 from .. import exc
 from .. import inspection
 from .. import util
+from ..sql.elements import SQLCoreOperations
 from ..sql.schema import MetaData
+from ..sql.selectable import FromClause
 from ..util import hybridmethod
 from ..util import hybridproperty
+
+_T = TypeVar("_T", bound=Any)
 
 
 def has_inherited_table(cls):
@@ -50,11 +64,21 @@ def has_inherited_table(cls):
     return False
 
 
-class DeclarativeMeta(type):
-    # DeclarativeMeta could be replaced by __subclass_init__()
-    # except for the class-level __setattr__() and __delattr__ hooks,
-    # which are still very important.
+class DeclarativeAttributeIntercept(type):
+    """Metaclass that may be used in conjunction with the
+    :class:`_orm.DeclarativeBase` class to support addition of class
+    attributes dynamically.
 
+    """
+
+    def __setattr__(cls, key, value):
+        _add_attribute(cls, key, value)
+
+    def __delattr__(cls, key):
+        _del_attribute(cls, key)
+
+
+class DeclarativeMeta(type):
     def __init__(cls, classname, bases, dict_, **kw):
         # early-consume registry from the initial declarative base,
         # assign privately to not conflict with subclass attributes named
@@ -121,7 +145,7 @@ def synonym_for(name, map_column=False):
     return decorate
 
 
-class declared_attr(interfaces._MappedAttribute, property):
+class declared_attr(interfaces._MappedAttribute[_T]):
     """Mark a class-level method as representing the definition of
     a mapped property or special declarative member name.
 
@@ -204,39 +228,52 @@ class declared_attr(interfaces._MappedAttribute, property):
 
     """  # noqa E501
 
-    def __init__(self, fget, cascading=False):
-        super(declared_attr, self).__init__(fget)
-        self.__doc__ = fget.__doc__
-        self._cascading = cascading
+    if typing.TYPE_CHECKING:
 
-    def __get__(desc, self, cls):
+        def __set__(self, instance, value):
+            ...
+
+        def __delete__(self, instance: Any):
+            ...
+
+    def __init__(
+        self,
+        fn: Callable[..., Union[Mapped[_T], SQLCoreOperations[_T]]],
+        cascading=False,
+    ):
+        self.fget = fn
+        self._cascading = cascading
+        self.__doc__ = fn.__doc__
+
+    def __get__(self, instance, owner) -> InstrumentedAttribute[_T]:
         # the declared_attr needs to make use of a cache that exists
         # for the span of the declarative scan_attributes() phase.
         # to achieve this we look at the class manager that's configured.
+        cls = owner
         manager = attributes.manager_of_class(cls)
         if manager is None:
-            if not re.match(r"^__.+__$", desc.fget.__name__):
+            if not re.match(r"^__.+__$", self.fget.__name__):
                 # if there is no manager at all, then this class hasn't been
                 # run through declarative or mapper() at all, emit a warning.
                 util.warn(
                     "Unmanaged access of declarative attribute %s from "
-                    "non-mapped class %s" % (desc.fget.__name__, cls.__name__)
+                    "non-mapped class %s" % (self.fget.__name__, cls.__name__)
                 )
-            return desc.fget(cls)
+            return self.fget(cls)
         elif manager.is_mapped:
             # the class is mapped, which means we're outside of the declarative
             # scan setup, just run the function.
-            return desc.fget(cls)
+            return self.fget(cls)
 
         # here, we are inside of the declarative scan.  use the registry
         # that is tracking the values of these attributes.
         declarative_scan = manager.declarative_scan
         reg = declarative_scan.declared_attr_reg
 
-        if desc in reg:
-            return reg[desc]
+        if self in reg:
+            return reg[self]
         else:
-            reg[desc] = obj = desc.fget(cls)
+            reg[self] = obj = self.fget(cls)
             return obj
 
     @hybridmethod
@@ -361,6 +398,115 @@ def declarative_mixin(cls):
     return cls
 
 
+def _setup_declarative_base(cls):
+    if "metadata" in cls.__dict__:
+        metadata = cls.metadata
+    else:
+        metadata = None
+
+    reg = cls.__dict__.get("registry", None)
+    if reg is not None:
+        if not isinstance(reg, registry):
+            raise exc.InvalidRequestError(
+                "Declarative base class has a 'registry' attribute that is "
+                "not an instance of sqlalchemy.orm.registry()"
+            )
+    else:
+        reg = registry(metadata=metadata)
+        cls.registry = reg
+
+    cls._sa_registry = reg
+
+    if "metadata" not in cls.__dict__:
+        cls.metadata = cls.registry.metadata
+
+
+class DeclarativeBaseNoMeta:
+    """Same as :class:`_orm.DeclarativeBase`, but does not use a metaclass
+    to intercept new attributes.
+
+    The :class:`_orm.DeclarativeBaseNoMeta` base may be used when use of
+    custom metaclasses is desirable.
+
+    .. versionadded:: 2.0
+
+
+    """
+
+    registry: ClassVar["registry"]
+    _sa_registry: ClassVar["registry"]
+    metadata: ClassVar[MetaData]
+    __mapper__: ClassVar[Mapper]
+    __table__: Optional[FromClause]
+
+    if typing.TYPE_CHECKING:
+
+        def __init__(self, **kw: Any):
+            ...
+
+    def __init_subclass__(cls) -> None:
+        if DeclarativeBaseNoMeta in cls.__bases__:
+            _setup_declarative_base(cls)
+        else:
+            cls._sa_registry.map_declaratively(cls)
+
+
+class DeclarativeBase(metaclass=DeclarativeAttributeIntercept):
+    """Base class used for declarative class definitions.
+
+    The :class:`_orm.DeclarativeBase` allows for the creation of new
+    declarative bases in such a way that is compatible with type checkers::
+
+
+        from sqlalchemy.orm import DeclarativeBase
+
+        class Base(DeclarativeBase):
+            pass
+
+
+    The above ``Base`` class is now usable as the base for new declarative
+    mappings.  The superclass makes use of the ``__init_subclass__()``
+    method to set up new classes and metaclasses aren't used.
+
+    .. versionadded:: 2.0
+
+    """
+
+    registry: ClassVar["registry"]
+    _sa_registry: ClassVar["registry"]
+    metadata: ClassVar[MetaData]
+    __mapper__: ClassVar[Mapper]
+    __table__: Optional[FromClause]
+
+    if typing.TYPE_CHECKING:
+
+        def __init__(self, **kw: Any):
+            ...
+
+    def __init_subclass__(cls) -> None:
+        if DeclarativeBase in cls.__bases__:
+            _setup_declarative_base(cls)
+        else:
+            cls._sa_registry.map_declaratively(cls)
+
+
+def add_mapped_attribute(target, key, attr):
+    """Add a new mapped attribute to an ORM mapped class.
+
+    E.g.::
+
+        add_mapped_attribute(User, "addresses", relationship(Address))
+
+    This may be used for ORM mappings that aren't using a declarative
+    metaclass that intercepts attribute set operations.
+
+    .. versionadded:: 2.0
+
+
+    """
+    _add_attribute(target, key, attr)
+
+
 def declarative_base(
     metadata=None,
     mapper=None,
@@ -369,7 +515,7 @@ def declarative_base(
     constructor=_declarative_constructor,
     class_registry=None,
     metaclass=DeclarativeMeta,
-):
+) -> Any:
     r"""Construct a base class for declarative class definitions.
 
     The new base class will be given a metaclass that produces
@@ -1010,7 +1156,9 @@ def as_declarative(**kw):
     ).as_declarative_base(**kw)
 
 
-@inspection._inspects(DeclarativeMeta)
+@inspection._inspects(
+    DeclarativeMeta, DeclarativeBase, DeclarativeAttributeIntercept
+)
 def _inspect_decl_meta(cls):
     mp = _inspect_mapped_class(cls)
     if mp is None:

@@ -4,8 +4,11 @@ from typing import Generic
 from typing import overload
 from typing import Type
 from typing import TypeVar
+from typing import Union
 
 from . import compat
+
+_T = TypeVar("_T", bound=Any)
 
 if compat.py38:
     from typing import Literal
@@ -47,4 +50,23 @@ class _TypeToInstance(Generic[_T]):
 
     @overload
     def __set__(self, instance: object, value: _T) -> None:
+        ...
+
+
+class ReadOnlyInstanceDescriptor(Protocol[_T]):
+    """protocol representing an instance-only descriptor"""
+
+    @overload
+    def __get__(
+        self, instance: None, owner: Any
+    ) -> "ReadOnlyInstanceDescriptor[_T]":
+        ...
+
+    @overload
+    def __get__(self, instance: object, owner: Any) -> _T:
+        ...
+
+    def __get__(
+        self, instance: object, owner: Any
+    ) -> Union["ReadOnlyInstanceDescriptor[_T]", _T]:
         ...

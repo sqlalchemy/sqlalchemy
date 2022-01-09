@@ -23,7 +23,6 @@ from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
-from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertions import expect_raises_message
 
 
@@ -333,13 +332,6 @@ class URLTest(fixtures.TestBase):
             TypeError, "drivername must be a string", url.URL.create, value
         )
 
-    @testing.combinations((35.8), (True,), (None,), argnames="value")
-    def test_only_str_drivername_no_none_legacy(self, value):
-        with expect_deprecated(r"Calling URL\(\) directly"):
-            assert_raises_message(
-                TypeError, "drivername must be a string", url.URL, value
-            )
-
     @testing.combinations(
         "username",
         "host",
@@ -389,34 +381,23 @@ class URLTest(fixtures.TestBase):
             {"foo": 35.8},
         )
 
-    def test_deprecated_constructor(self):
-        with testing.expect_deprecated(
-            r"Calling URL\(\) directly is deprecated and will be "
-            "disabled in a future release."
-        ):
-            u1 = url.URL(
-                drivername="somedriver",
-                username="user",
-                port=52,
-                host="hostname",
-            )
-        eq_(u1, url.make_url("somedriver://user@hostname:52"))
+    def test_constructor_is_nt_so_all_args_work(self):
+        """test #7130
 
-    def test_deprecated_constructor_all_args(self):
-        """test #7130"""
-        with testing.expect_deprecated(
-            r"Calling URL\(\) directly is deprecated and will be "
-            "disabled in a future release."
-        ):
-            u1 = url.URL(
-                "somedriver",
-                "user",
-                "secret",
-                "10.20.30.40",
-                1234,
-                "DB",
-                {"key": "value"},
-            )
+        For typing support, we can't override the __new__ method.  so
+        URL now allows the namedtuple constructor, which people basically
+        shouldn't use directly.
+
+        """
+        u1 = url.URL(
+            "somedriver",
+            "user",
+            "secret",
+            "10.20.30.40",
+            1234,
+            "DB",
+            {"key": "value"},
+        )
         eq_(
             u1,
             url.make_url(
@@ -424,25 +405,26 @@ class URLTest(fixtures.TestBase):
             ),
         )
 
+    @testing.fails()
     def test_arg_validation_all_seven_posn(self):
-        """test #7130"""
-        with testing.expect_deprecated(
-            r"Calling URL\(\) directly is deprecated and will be "
-            "disabled in a future release."
-        ):
+        """test #7130
 
-            assert_raises_message(
-                TypeError,
-                "drivername must be a string",
-                url.URL,
-                b"somedriver",
-                "user",
-                "secret",
-                "10.20.30.40",
-                1234,
-                "DB",
-                {"key": "value"},
-            )
+        this can't work right now with typing.NamedTuple, we'd have to
+        convert URL to a dataclass.
+
+        """
+        assert_raises_message(
+            TypeError,
+            "drivername must be a string",
+            url.URL,
+            b"somedriver",
+            "user",
+            "secret",
+            "10.20.30.40",
+            1234,
+            "DB",
+            {"key": "value"},
+        )
 
     def test_deprecated_translate_connect_args_names(self):
         u = url.make_url("somedriver://user@hostname:52")

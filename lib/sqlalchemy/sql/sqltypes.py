@@ -65,7 +65,7 @@ class _LookupExpressionAdapter:
     def _expression_adaptations(self):
         raise NotImplementedError()
 
-    class Comparator(TypeEngine.Comparator):
+    class Comparator(TypeEngine.Comparator[_T]):
         _blank_dict = util.immutabledict()
 
         def _adapt_expression(self, op, other_comparator):
@@ -88,7 +88,7 @@ class Concatenable:
     """A mixin that marks a type as supporting 'concatenation',
     typically strings."""
 
-    class Comparator(TypeEngine.Comparator):
+    class Comparator(TypeEngine.Comparator[_T]):
         def _adapt_expression(self, op, other_comparator):
             if op is operators.add and isinstance(
                 other_comparator,
@@ -113,7 +113,7 @@ class Indexable:
 
     """
 
-    class Comparator(TypeEngine.Comparator):
+    class Comparator(TypeEngine.Comparator[_T]):
         def _setup_getitem(self, index):
             raise NotImplementedError()
 
@@ -1377,7 +1377,7 @@ class Enum(Emulated, String, TypeEngine[Union[str, enum.Enum]], SchemaType):
                     )
                 ) from err
 
-    class Comparator(String.Comparator):
+    class Comparator(String.Comparator[_T]):
         def _adapt_expression(self, op, other_comparator):
             op, typ = super(Enum.Comparator, self)._adapt_expression(
                 op, other_comparator
@@ -2204,7 +2204,7 @@ class JSON(Indexable, TypeEngine[Any]):
 
         """
 
-    class Comparator(Indexable.Comparator, Concatenable.Comparator):
+    class Comparator(Indexable.Comparator[_T], Concatenable.Comparator[_T]):
         """Define comparison operations for :class:`_types.JSON`."""
 
         def _setup_getitem(self, index):
@@ -2523,7 +2523,7 @@ class ARRAY(
     """If True, Python zero-based indexes should be interpreted as one-based
     on the SQL expression side."""
 
-    class Comparator(Indexable.Comparator, Concatenable.Comparator):
+    class Comparator(Indexable.Comparator[_T], Concatenable.Comparator[_T]):
 
         """Define comparison operations for :class:`_types.ARRAY`.
 
@@ -2967,7 +2967,7 @@ class NullType(TypeEngine):
 
         return process
 
-    class Comparator(TypeEngine.Comparator):
+    class Comparator(TypeEngine.Comparator[_T]):
         def _adapt_expression(self, op, other_comparator):
             if isinstance(
                 other_comparator, NullType.Comparator

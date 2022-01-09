@@ -11,6 +11,7 @@
 
 import typing
 from typing import Any
+from typing import Callable
 from typing import Generic
 from typing import Tuple
 from typing import Type
@@ -1400,7 +1401,7 @@ class TypeDecorator(ExternalType, SchemaEventTarget, TypeEngine[_T]):
 
     """
 
-    class Comparator(TypeEngine.Comparator):
+    class Comparator(TypeEngine.Comparator[_CT]):
         """A :class:`.TypeEngine.Comparator` that is specific to
         :class:`.TypeDecorator`.
 
@@ -1425,7 +1426,7 @@ class TypeDecorator(ExternalType, SchemaEventTarget, TypeEngine[_T]):
             )
 
     @property
-    def comparator_factory(self):
+    def comparator_factory(self) -> Callable[..., TypeEngine.Comparator[_T]]:
         if TypeDecorator.Comparator in self.impl.comparator_factory.__mro__:
             return self.impl.comparator_factory
         else:

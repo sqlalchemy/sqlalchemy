@@ -28,6 +28,7 @@ from ..sql import expression
 from ..sql import operators
 
 _T = TypeVar("_T", bound=Any)
+_PT = TypeVar("_PT", bound=Any)
 
 
 class DescriptorProperty(MapperProperty[_T]):
@@ -362,7 +363,7 @@ class CompositeProperty(DescriptorProperty[_T]):
 
             return proc
 
-    class Comparator(PropComparator):
+    class Comparator(PropComparator[_PT]):
         """Produce boolean, comparison, and other operators for
         :class:`.CompositeProperty` attributes.
 
@@ -448,7 +449,7 @@ class CompositeProperty(DescriptorProperty[_T]):
         return str(self.parent.class_.__name__) + "." + self.key
 
 
-class ConcreteInheritedProperty(DescriptorProperty):
+class ConcreteInheritedProperty(DescriptorProperty[_T]):
     """A 'do nothing' :class:`.MapperProperty` that disables
     an attribute on a concrete subclass that is only present
     on the inherited mapper, not the concrete classes' mapper.
@@ -501,7 +502,7 @@ class ConcreteInheritedProperty(DescriptorProperty):
         self.descriptor = NoninheritedConcreteProp()
 
 
-class SynonymProperty(DescriptorProperty):
+class SynonymProperty(DescriptorProperty[_T]):
     def __init__(
         self,
         name,

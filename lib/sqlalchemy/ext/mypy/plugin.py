@@ -112,6 +112,8 @@ class SQLAlchemyPlugin(Plugin):
         self, file: MypyFile
     ) -> List[Tuple[int, str, int]]:
         return [
+            #
+            (10, "sqlalchemy.orm", -1),
             (10, "sqlalchemy.orm.attributes", -1),
             (10, "sqlalchemy.orm.decl_api", -1),
         ]
@@ -270,7 +272,7 @@ def _add_globals(ctx: Union[ClassDefContext, DynamicClassDefContext]) -> None:
 
     """
 
-    util.add_global(ctx, "sqlalchemy.orm.attributes", "Mapped", "__sa_Mapped")
+    util.add_global(ctx, "sqlalchemy.orm", "Mapped", "__sa_Mapped")
 
 
 def _set_declarative_metaclass(

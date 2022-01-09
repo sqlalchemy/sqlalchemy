@@ -6,7 +6,6 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """Define generic result set constructs."""
-
 import collections.abc as collections_abc
 import functools
 import itertools
@@ -19,11 +18,13 @@ from .. import util
 from ..sql.base import _generative
 from ..sql.base import HasMemoized
 from ..sql.base import InPlaceGenerative
+from ..util._has_cy import HAS_CYEXTENSION
 
-try:
-    from sqlalchemy.cyextension.resultproxy import tuplegetter
-except ImportError:
+
+if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
     from ._py_row import tuplegetter
+else:
+    from sqlalchemy.cyextension.resultproxy import tuplegetter
 
 
 class ResultMetaData:
