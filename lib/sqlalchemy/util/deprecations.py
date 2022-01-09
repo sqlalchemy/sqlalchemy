@@ -11,6 +11,8 @@ functionality."""
 import re
 from typing import Any
 from typing import Callable
+from typing import cast
+from typing import Optional
 from typing import TypeVar
 
 from . import compat
@@ -67,11 +69,11 @@ def deprecated_cls(version, message, constructor="__init__"):
 
 
 def deprecated_property(
-    version,
-    message=None,
-    add_deprecation_to_docstring=True,
-    warning=None,
-    enable_warnings=True,
+    version: str,
+    message: Optional[str] = None,
+    add_deprecation_to_docstring: bool = True,
+    warning: Optional[str] = None,
+    enable_warnings: bool = True,
 ) -> Callable[[Callable[..., _T]], ReadOnlyInstanceDescriptor[_T]]:
     """the @deprecated decorator with a @property.
 
@@ -99,14 +101,17 @@ def deprecated_property(
     great!   now it is.
 
     """
-    return lambda fn: property(
-        deprecated(
-            version,
-            message=message,
-            add_deprecation_to_docstring=add_deprecation_to_docstring,
-            warning=warning,
-            enable_warnings=enable_warnings,
-        )(fn)
+    return cast(
+        Callable[[Callable[..., _T]], ReadOnlyInstanceDescriptor[_T]],
+        lambda fn: property(
+            deprecated(
+                version,
+                message=message,
+                add_deprecation_to_docstring=add_deprecation_to_docstring,
+                warning=warning,
+                enable_warnings=enable_warnings,
+            )(fn)
+        ),
     )
 
 
@@ -325,11 +330,12 @@ def _decorate_cls_with_warning(
             )
         doc = inject_docstring_text(doc, docstring_header, 1)
 
+        constructor_fn = None
         if type(cls) is type:
             clsdict = dict(cls.__dict__)
             clsdict["__doc__"] = doc
             clsdict.pop("__dict__", None)
-            cls = type(cls.__name__, cls.__bases__, clsdict)
+            cls = type(cls.__name__, cls.__bases__, clsdict)  # type: ignore
             if constructor is not None:
                 constructor_fn = clsdict[constructor]
 
@@ -339,6 +345,7 @@ def _decorate_cls_with_warning(
                 constructor_fn = getattr(cls, constructor)
 
         if constructor is not None:
+            assert constructor_fn is not None
             setattr(
                 cls,
                 constructor,

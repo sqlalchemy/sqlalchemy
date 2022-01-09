@@ -18,6 +18,7 @@ from collections import deque
 from functools import reduce
 from itertools import chain
 import sys
+import threading
 from typing import Generic
 from typing import Type
 from typing import TypeVar
@@ -83,7 +84,7 @@ _already_compiling = False
 NO_ATTRIBUTE = util.symbol("NO_ATTRIBUTE")
 
 # lock used to synchronize the "mapper configure" step
-_CONFIGURE_MUTEX = util.threading.RLock()
+_CONFIGURE_MUTEX = threading.RLock()
 
 
 @inspection._self_inspects
@@ -93,6 +94,7 @@ class Mapper(
     ORMEntityColumnsClauseRole,
     sql_base.MemoizedHasCacheKey,
     InspectionAttr,
+    log.Identified,
     Generic[_MC],
 ):
     """Defines an association between a Python class and a database table or
@@ -2361,7 +2363,7 @@ class Mapper(
                 yield c
 
     @HasMemoized.memoized_attribute
-    def attrs(self):
+    def attrs(self) -> util.ImmutableProperties["MapperProperty"]:
         """A namespace of all :class:`.MapperProperty` objects
         associated this mapper.
 

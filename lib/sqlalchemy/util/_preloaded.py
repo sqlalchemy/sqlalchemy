@@ -9,8 +9,14 @@
 runtime.
 
 """
-
 import sys
+from types import ModuleType
+import typing
+from typing import Any
+from typing import Callable
+from typing import TypeVar
+
+_FN = TypeVar("_FN", bound=Callable[..., Any])
 
 
 class _ModuleRegistry:
@@ -37,7 +43,7 @@ class _ModuleRegistry:
         self.module_registry = set()
         self.prefix = prefix
 
-    def preload_module(self, *deps):
+    def preload_module(self, *deps: str) -> Callable[[_FN], _FN]:
         """Adds the specified modules to the list to load.
 
         This method can be used both as a normal function and as a decorator.
@@ -46,7 +52,7 @@ class _ModuleRegistry:
         self.module_registry.update(deps)
         return lambda fn: fn
 
-    def import_prefix(self, path):
+    def import_prefix(self, path: str) -> None:
         """Resolve all the modules in the registry that start with the
         specified path.
         """
@@ -60,6 +66,11 @@ class _ModuleRegistry:
             ) and key not in self.__dict__:
                 __import__(module, globals(), locals())
                 self.__dict__[key] = sys.modules[module]
+
+    if typing.TYPE_CHECKING:
+
+        def __getattr__(self, key: str) -> ModuleType:
+            ...
 
 
 preloaded = _ModuleRegistry()

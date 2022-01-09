@@ -12,9 +12,23 @@ raised as a result of DBAPI exceptions are all subclasses of
 :exc:`.DBAPIError`.
 
 """
+import typing
+from typing import Any
+from typing import List
+from typing import Optional
+from typing import overload
+from typing import Tuple
+from typing import Type
+from typing import Union
 
 from .util import _preloaded
 from .util import compat
+
+if typing.TYPE_CHECKING:
+    from .engine.interfaces import Dialect
+    from .sql._typing import _ExecuteParams
+    from .sql.compiler import Compiled
+    from .sql.elements import ClauseElement
 
 _version_token = None
 
@@ -22,15 +36,15 @@ _version_token = None
 class HasDescriptionCode:
     """helper which adds 'code' as an attribute and '_code_str' as a method"""
 
-    code = None
+    code: Optional[str] = None
 
-    def __init__(self, *arg, **kw):
+    def __init__(self, *arg: Any, **kw: Any):
         code = kw.pop("code", None)
         if code is not None:
             self.code = code
         super(HasDescriptionCode, self).__init__(*arg, **kw)
 
-    def _code_str(self):
+    def _code_str(self) -> str:
         if not self.code:
             return ""
         else:
@@ -43,7 +57,7 @@ class HasDescriptionCode:
                 )
             )
 
-    def __str__(self):
+    def __str__(self) -> str:
         message = super(HasDescriptionCode, self).__str__()
         if self.code:
             message = "%s %s" % (message, self._code_str())
@@ -53,7 +67,7 @@ class HasDescriptionCode:
 class SQLAlchemyError(HasDescriptionCode, Exception):
     """Generic error class."""
 
-    def _message(self):
+    def _message(self) -> str:
         # rules:
         #
         # 1. single arg string will usually be a unicode
@@ -64,16 +78,18 @@ class SQLAlchemyError(HasDescriptionCode, Exception):
         # SQLAlchemy though this is happening in at least one known external
         # library, call str() which does a repr().
         #
-        if len(self.args) == 1:
-            text = self.args[0]
+        text: str
 
-            if isinstance(text, bytes):
-                text = compat.decode_backslashreplace(text, "utf-8")
+        if len(self.args) == 1:
+            arg_text = self.args[0]
+
+            if isinstance(arg_text, bytes):
+                text = compat.decode_backslashreplace(arg_text, "utf-8")
             # This is for when the argument is not a string of any sort.
             # Otherwise, converting this exception to string would fail for
             # non-string arguments.
             else:
-                text = str(text)
+                text = str(arg_text)
 
             return text
         else:
@@ -82,7 +98,7 @@ class SQLAlchemyError(HasDescriptionCode, Exception):
             # a repr() of the tuple
             return str(self.args)
 
-    def _sql_message(self):
+    def _sql_message(self) -> str:
         message = self._message()
 
         if self.code:
@@ -90,7 +106,7 @@ class SQLAlchemyError(HasDescriptionCode, Exception):
 
         return message
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self._sql_message()
 
 
@@ -110,13 +126,13 @@ class ObjectNotExecutableError(ArgumentError):
 
     """
 
-    def __init__(self, target):
+    def __init__(self, target: Any):
         super(ObjectNotExecutableError, self).__init__(
             "Not an executable object: %r" % target
         )
         self.target = target
 
-    def __reduce__(self):
+    def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
         return self.__class__, (self.target,)
 
 
@@ -154,7 +170,14 @@ class CircularDependencyError(SQLAlchemyError):
 
     """
 
-    def __init__(self, message, cycles, edges, msg=None, code=None):
+    def __init__(
+        self,
+        message: str,
+        cycles: Any,
+        edges: Any,
+        msg: Optional[str] = None,
+        code: Optional[str] = None,
+    ):
         if msg is None:
             message += " (%s)" % ", ".join(repr(s) for s in cycles)
         else:
@@ -163,7 +186,7 @@ class CircularDependencyError(SQLAlchemyError):
         self.cycles = cycles
         self.edges = edges
 
-    def __reduce__(self):
+    def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
         return (
             self.__class__,
             (None, self.cycles, self.edges, self.args[0]),
@@ -187,7 +210,12 @@ class UnsupportedCompilationError(CompileError):
 
     code = "l7de"
 
-    def __init__(self, compiler, element_type, message=None):
+    def __init__(
+        self,
+        compiler: "Compiled",
+        element_type: Type["ClauseElement"],
+        message: Optional[str] = None,
+    ):
         super(UnsupportedCompilationError, self).__init__(
             "Compiler %r can't render element of type %s%s"
             % (compiler, element_type, ": %s" % message if message else "")
@@ -196,7 +224,7 @@ class UnsupportedCompilationError(CompileError):
         self.element_type = element_type
         self.message = message
 
-    def __reduce__(self):
+    def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
         return self.__class__, (self.compiler, self.element_type, self.message)
 
 
@@ -216,7 +244,7 @@ class DisconnectionError(SQLAlchemyError):
 
     """
 
-    invalidate_pool = False
+    invalidate_pool: bool = False
 
 
 class InvalidatePoolError(DisconnectionError):
@@ -234,7 +262,7 @@ class InvalidatePoolError(DisconnectionError):
 
     """
 
-    invalidate_pool = True
+    invalidate_pool: bool = True
 
 
 class TimeoutError(SQLAlchemyError):  # noqa
@@ -332,11 +360,11 @@ class NoReferencedTableError(NoReferenceError):
 
     """
 
-    def __init__(self, message, tname):
+    def __init__(self, message: str, tname: str):
         NoReferenceError.__init__(self, message)
         self.table_name = tname
 
-    def __reduce__(self):
+    def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
         return self.__class__, (self.args[0], self.table_name)
 
 
@@ -346,12 +374,12 @@ class NoReferencedColumnError(NoReferenceError):
 
     """
 
-    def __init__(self, message, tname, cname):
+    def __init__(self, message: str, tname: str, cname: str):
         NoReferenceError.__init__(self, message)
         self.table_name = tname
         self.column_name = cname
 
-    def __reduce__(self):
+    def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
         return (
             self.__class__,
             (self.args[0], self.table_name, self.column_name),
@@ -409,26 +437,29 @@ class StatementError(SQLAlchemyError):
 
     """
 
-    statement = None
+    statement: Optional[str] = None
     """The string SQL statement being invoked when this exception occurred."""
 
-    params = None
+    params: Optional["_ExecuteParams"] = None
     """The parameter list being used when this exception occurred."""
 
-    orig = None
-    """The DBAPI exception object."""
+    orig: Optional[BaseException] = None
+    """The original exception that was thrown.
 
-    ismulti = None
+    """
+
+    ismulti: Optional[bool] = None
+    """multi parameter passed to repr_params().  None is meaningful."""
 
     def __init__(
         self,
-        message,
-        statement,
-        params,
-        orig,
-        hide_parameters=False,
-        code=None,
-        ismulti=None,
+        message: str,
+        statement: Optional[str],
+        params: Optional["_ExecuteParams"],
+        orig: Optional[BaseException],
+        hide_parameters: bool = False,
+        code: Optional[str] = None,
+        ismulti: Optional[bool] = None,
     ):
         SQLAlchemyError.__init__(self, message, code=code)
         self.statement = statement
@@ -436,12 +467,12 @@ class StatementError(SQLAlchemyError):
         self.orig = orig
         self.ismulti = ismulti
         self.hide_parameters = hide_parameters
-        self.detail = []
+        self.detail: List[str] = []
 
-    def add_detail(self, msg):
+    def add_detail(self, msg: str) -> None:
         self.detail.append(msg)
 
-    def __reduce__(self):
+    def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
         return (
             self.__class__,
             (
@@ -457,8 +488,11 @@ class StatementError(SQLAlchemyError):
         )
 
     @_preloaded.preload_module("sqlalchemy.sql.util")
-    def _sql_message(self):
-        util = _preloaded.preloaded.sql_util
+    def _sql_message(self) -> str:
+        if typing.TYPE_CHECKING:
+            from .sql import util
+        else:
+            util = _preloaded.preloaded.sql_util
 
         details = [self._message()]
         if self.statement:
@@ -505,18 +539,67 @@ class DBAPIError(StatementError):
 
     code = "dbapi"
 
+    # I dont think I'm going to try to do overloads like this everywhere
+    # in the library, but as this module is early days for me typing everything
+    # I am sort of just practicing
+
+    @overload
     @classmethod
     def instance(
         cls,
-        statement,
-        params,
-        orig,
-        dbapi_base_err,
-        hide_parameters=False,
-        connection_invalidated=False,
-        dialect=None,
-        ismulti=None,
-    ):
+        statement: str,
+        params: "_ExecuteParams",
+        orig: DontWrapMixin,
+        dbapi_base_err: Type[Exception],
+        hide_parameters: bool = False,
+        connection_invalidated: bool = False,
+        dialect: Optional["Dialect"] = None,
+        ismulti: Optional[bool] = None,
+    ) -> DontWrapMixin:
+        ...
+
+    @overload
+    @classmethod
+    def instance(
+        cls,
+        statement: str,
+        params: "_ExecuteParams",
+        orig: Exception,
+        dbapi_base_err: Type[Exception],
+        hide_parameters: bool = False,
+        connection_invalidated: bool = False,
+        dialect: Optional["Dialect"] = None,
+        ismulti: Optional[bool] = None,
+    ) -> StatementError:
+        ...
+
+    @overload
+    @classmethod
+    def instance(
+        cls,
+        statement: str,
+        params: "_ExecuteParams",
+        orig: BaseException,
+        dbapi_base_err: Type[Exception],
+        hide_parameters: bool = False,
+        connection_invalidated: bool = False,
+        dialect: Optional["Dialect"] = None,
+        ismulti: Optional[bool] = None,
+    ) -> BaseException:
+        ...
+
+    @classmethod
+    def instance(
+        cls,
+        statement: str,
+        params: "_ExecuteParams",
+        orig: Union[BaseException, DontWrapMixin],
+        dbapi_base_err: Type[Exception],
+        hide_parameters: bool = False,
+        connection_invalidated: bool = False,
+        dialect: Optional["Dialect"] = None,
+        ismulti: Optional[bool] = None,
+    ) -> Union[BaseException, DontWrapMixin]:
         # Don't ever wrap these, just return them directly as if
         # DBAPIError didn't exist.
         if (
@@ -578,7 +661,7 @@ class DBAPIError(StatementError):
             ismulti=ismulti,
         )
 
-    def __reduce__(self):
+    def __reduce__(self) -> Union[str, Tuple[Any, ...]]:
         return (
             self.__class__,
             (
@@ -595,13 +678,13 @@ class DBAPIError(StatementError):
 
     def __init__(
         self,
-        statement,
-        params,
-        orig,
-        hide_parameters=False,
-        connection_invalidated=False,
-        code=None,
-        ismulti=None,
+        statement: str,
+        params: "_ExecuteParams",
+        orig: BaseException,
+        hide_parameters: bool = False,
+        connection_invalidated: bool = False,
+        code: Optional[str] = None,
+        ismulti: Optional[bool] = None,
     ):
         try:
             text = str(orig)
@@ -684,7 +767,7 @@ class SATestSuiteWarning(Warning):
 class SADeprecationWarning(HasDescriptionCode, DeprecationWarning):
     """Issued for usage of deprecated APIs."""
 
-    deprecated_since = None
+    deprecated_since: Optional[str] = None
     "Indicates the version that started raising this deprecation warning"
 
 
@@ -700,10 +783,10 @@ class Base20DeprecationWarning(SADeprecationWarning):
 
     """
 
-    deprecated_since = "1.4"
+    deprecated_since: Optional[str] = "1.4"
     "Indicates the version that started raising this deprecation warning"
 
-    def __str__(self):
+    def __str__(self) -> str:
         return (
             super(Base20DeprecationWarning, self).__str__()
             + " (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)"
@@ -724,7 +807,7 @@ class SAPendingDeprecationWarning(PendingDeprecationWarning):
 
     """
 
-    deprecated_since = None
+    deprecated_since: Optional[str] = None
     "Indicates the version that started raising this deprecation warning"
 
 

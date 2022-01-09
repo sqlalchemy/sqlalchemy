@@ -42,6 +42,9 @@ from ..sql.selectable import FromClause
 from ..util import hybridmethod
 from ..util import hybridproperty
 
+if typing.TYPE_CHECKING:
+    from .state import InstanceState  # noqa
+
 _T = TypeVar("_T", bound=Any)
 
 
@@ -64,7 +67,9 @@ def has_inherited_table(cls):
     return False
 
 
-class DeclarativeAttributeIntercept(type):
+class DeclarativeAttributeIntercept(
+    type, inspection.Inspectable["Mapper[Any]"]
+):
     """Metaclass that may be used in conjunction with the
     :class:`_orm.DeclarativeBase` class to support addition of class
     attributes dynamically.
@@ -78,7 +83,7 @@ class DeclarativeAttributeIntercept(type):
         _del_attribute(cls, key)
 
 
-class DeclarativeMeta(type):
+class DeclarativeMeta(type, inspection.Inspectable["Mapper[Any]"]):
     def __init__(cls, classname, bases, dict_, **kw):
         # early-consume registry from the initial declarative base,
         # assign privately to not conflict with subclass attributes named
@@ -421,7 +426,7 @@ def _setup_declarative_base(cls):
         cls.metadata = cls.registry.metadata
 
 
-class DeclarativeBaseNoMeta:
+class DeclarativeBaseNoMeta(inspection.Inspectable["Mapper"]):
     """Same as :class:`_orm.DeclarativeBase`, but does not use a metaclass
     to intercept new attributes.
 
@@ -451,7 +456,10 @@ class DeclarativeBaseNoMeta:
             cls._sa_registry.map_declaratively(cls)
 
 
-class DeclarativeBase(metaclass=DeclarativeAttributeIntercept):
+class DeclarativeBase(
+    inspection.Inspectable["InstanceState"],
+    metaclass=DeclarativeAttributeIntercept,
+):
     """Base class used for declarative class definitions.
 
     The :class:`_orm.DeclarativeBase` allows for the creation of new

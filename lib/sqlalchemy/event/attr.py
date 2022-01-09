@@ -30,13 +30,13 @@ as well as support for subclass propagation (e.g. events assigned to
 """
 import collections
 from itertools import chain
+import threading
 import weakref
 
 from . import legacy
 from . import registry
 from .. import exc
 from .. import util
-from ..util import threading
 from ..util.concurrency import AsyncAdaptedLock
 
 

@@ -5,8 +5,10 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+from typing import Dict
 
-class prefix_anon_map(dict):
+
+class prefix_anon_map(Dict[str, str]):
     """A map that creates new keys for missing key access.
 
     Considers keys of the form "<ident> <name>" to produce
@@ -27,7 +29,7 @@ class prefix_anon_map(dict):
         return value
 
 
-class cache_anon_map(dict):
+class cache_anon_map(Dict[int, str]):
     """A map that creates new keys for missing key access.
 
     Produces an incrementing sequence given a series of unique keys.

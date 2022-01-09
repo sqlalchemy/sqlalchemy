@@ -19,13 +19,17 @@ from .util import _distill_params_20
 from .util import _distill_raw_params
 from .util import TransactionalContext
 from .. import exc
+from .. import inspection
 from .. import log
 from .. import util
 from ..sql import compiler
 from ..sql import util as sql_util
+from ..sql._typing import _ExecuteOptions
+from ..sql._typing import _ExecuteParams
 
 if typing.TYPE_CHECKING:
     from .interfaces import Dialect
+    from .reflection import Inspector  # noqa
     from .url import URL
     from ..pool import Pool
     from ..pool import PoolProxiedConnection
@@ -38,7 +42,7 @@ _EMPTY_EXECUTION_OPTS = util.immutabledict()
 NO_OPTIONS = util.immutabledict()
 
 
-class Connection(ConnectionEventsTarget):
+class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     """Provides high-level functionality for a wrapped DB-API connection.
 
     The :class:`_engine.Connection` object is procured by calling
@@ -1079,7 +1083,12 @@ class Connection(ConnectionEventsTarget):
 
         return self.execute(statement, parameters, execution_options).scalars()
 
-    def execute(self, statement, parameters=None, execution_options=None):
+    def execute(
+        self,
+        statement,
+        parameters: Optional[_ExecuteParams] = None,
+        execution_options: Optional[_ExecuteOptions] = None,
+    ):
         r"""Executes a SQL statement construct and returns a
         :class:`_engine.Result`.
 
@@ -2270,7 +2279,9 @@ class TwoPhaseTransaction(RootTransaction):
         self.connection._commit_twophase_impl(self.xid, self._is_prepared)
 
 
-class Engine(ConnectionEventsTarget, log.Identified):
+class Engine(
+    ConnectionEventsTarget, log.Identified, inspection.Inspectable["Inspector"]
+):
     """
     Connects a :class:`~sqlalchemy.pool.Pool` and
     :class:`~sqlalchemy.engine.interfaces.Dialect` together to provide a

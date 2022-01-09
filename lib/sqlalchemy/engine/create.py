@@ -5,6 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+from typing import Any
 
 from . import base
 from . import url as _url
@@ -40,7 +41,7 @@ from ..sql import compiler
         "is deprecated and will be removed in a future release. ",
     ),
 )
-def create_engine(url, **kwargs):
+def create_engine(url: "_url.URL", **kwargs: Any) -> "base.Engine":
     """Create a new :class:`_engine.Engine` instance.
 
     The standard calling form is to send the :ref:`URL <database_urls>` as the

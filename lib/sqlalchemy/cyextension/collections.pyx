@@ -22,52 +22,53 @@ cdef list cunique_list(seq, hashfunc=None):
 def unique_list(seq, hashfunc=None):
     return cunique_list(seq, hashfunc)
 
-cdef class OrderedSet(set):
+cdef class OrderedSet:
 
     cdef list _list
+    cdef set _set
 
     def __init__(self, d=None):
-        set.__init__(self)
         if d is not None:
             self._list = cunique_list(d)
-            set.update(self, self._list)
+            self._set = set(self._list)
         else:
             self._list = []
+            self._set = set()
 
     cdef OrderedSet _copy(self):
         cdef OrderedSet cp = OrderedSet.__new__(OrderedSet)
         cp._list = list(self._list)
-        set.update(cp, cp._list)
+        cp._set = set(cp._list)
         return cp
 
     cdef OrderedSet _from_list(self, list new_list):
         cdef OrderedSet new = OrderedSet.__new__(OrderedSet)
         new._list = new_list
-        set.update(new, new_list)
+        new._set = set(new_list)
         return new
 
     def add(self, element):
         if element not in self:
             self._list.append(element)
-            PySet_Add(self, element)
+            PySet_Add(self._set, element)
 
     def remove(self, element):
         # set.remove will raise if element is not in self
-        set.remove(self, element)
+        self._set.remove(element)
         self._list.remove(element)
 
     def insert(self, Py_ssize_t pos, element):
         if element not in self:
             self._list.insert(pos, element)
-            PySet_Add(self, element)
+            PySet_Add(self._set, element)
 
     def discard(self, element):
         if element in self:
-            set.remove(self, element)
+            self._set.remove(element)
             self._list.remove(element)
 
     def clear(self):
-        set.clear(self)
+        self._set.clear()
         self._list = []
 
     def __getitem__(self, key):
@@ -84,20 +85,33 @@ cdef class OrderedSet(set):
 
     __str__ = __repr__
 
-    def update(self, iterable):
-        for e in iterable:
-            if e not in self:
-                self._list.append(e)
-                set.add(self, e)
-        return self
+    def update(self, *iterables):
+        for iterable in iterables:
+            for e in iterable:
+                if e not in self:
+                    self._list.append(e)
+                    self._set.add(e)
 
     def __ior__(self, iterable):
-        return self.update(iterable)
+        self.update(iterable)
+        return self
 
     def union(self, other):
         result = self._copy()
         result.update(other)
         return result
+
+    def __len__(self) -> int:
+        return len(self._set)
+
+    def __eq__(self, other):
+        return self._set == other
+
+    def __ne__(self, other):
+        return self._set != other
+
+    def __contains__(self, element):
+        return element in self._set
 
     def __or__(self, other):
         return self.union(other)
@@ -138,27 +152,27 @@ cdef class OrderedSet(set):
         cdef set other_set = self._to_set(other)
         set.intersection_update(self, other_set)
         self._list = [a for a in self._list if a in other_set]
-        return self
 
     def __iand__(self, other):
-        return self.intersection_update(other)
+        self.intersection_update(other)
+        return self
 
     def symmetric_difference_update(self, other):
         set.symmetric_difference_update(self, other)
         self._list = [a for a in self._list if a in self]
         self._list += [a for a in other if a in self]
-        return self
 
     def __ixor__(self, other):
-        return self.symmetric_difference_update(other)
+        self.symmetric_difference_update(other)
+        return self
 
     def difference_update(self, other):
         set.difference_update(self, other)
         self._list = [a for a in self._list if a in self]
-        return self
 
     def __isub__(self, other):
-        return self.difference_update(other)
+        self.difference_update(other)
+        return self
 
 
 cdef object cy_id(object item):

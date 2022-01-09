@@ -57,7 +57,7 @@ def cache(fn, self, con, *args, **kw):
 
 
 @inspection._self_inspects
-class Inspector:
+class Inspector(inspection.Inspectable["Inspector"]):
     """Performs database schema inspection.
 
     The Inspector acts as a proxy to the reflection methods of the

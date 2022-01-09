@@ -8,23 +8,25 @@
 import asyncio
 from contextvars import copy_context as _copy_context
 import sys
+import typing
 from typing import Any
 from typing import Callable
 from typing import Coroutine
 
-import greenlet
+import greenlet  # type: ignore # noqa
 
 from .langhelpers import memoized_property
 from .. import exc
 
-try:
+if not typing.TYPE_CHECKING:
+    try:
 
-    # If greenlet.gr_context is present in current version of greenlet,
-    # it will be set with a copy of the current context on creation.
-    # Refs: https://github.com/python-greenlet/greenlet/pull/198
-    getattr(greenlet.greenlet, "gr_context")
-except (ImportError, AttributeError):
-    _copy_context = None  # noqa
+        # If greenlet.gr_context is present in current version of greenlet,
+        # it will be set with a copy of the current context on creation.
+        # Refs: https://github.com/python-greenlet/greenlet/pull/198
+        getattr(greenlet.greenlet, "gr_context")
+    except (ImportError, AttributeError):
+        _copy_context = None  # noqa
 
 
 def is_exit_exception(e):
@@ -40,7 +42,7 @@ def is_exit_exception(e):
 # Issue for context: https://github.com/python-greenlet/greenlet/issues/173
 
 
-class _AsyncIoGreenlet(greenlet.greenlet):
+class _AsyncIoGreenlet(greenlet.greenlet):  # type: ignore
     def __init__(self, fn, driver):
         greenlet.greenlet.__init__(self, fn, driver)
         self.driver = driver
@@ -48,7 +50,7 @@ class _AsyncIoGreenlet(greenlet.greenlet):
             self.gr_context = _copy_context()
 
 
-def await_only(awaitable: Coroutine) -> Any:
+def await_only(awaitable: Coroutine[Any, Any, Any]) -> Any:
     """Awaits an async function in a sync method.
 
     The sync method must be inside a :func:`greenlet_spawn` context.
@@ -72,7 +74,7 @@ def await_only(awaitable: Coroutine) -> Any:
     return current.driver.switch(awaitable)
 
 
-def await_fallback(awaitable: Coroutine) -> Any:
+def await_fallback(awaitable: Coroutine[Any, Any, Any]) -> Any:
     """Awaits an async function in a sync method.
 
     The sync method must be inside a :func:`greenlet_spawn` context.
@@ -97,7 +99,10 @@ def await_fallback(awaitable: Coroutine) -> Any:
 
 
 async def greenlet_spawn(
-    fn: Callable, *args, _require_await=False, **kwargs
+    fn: Callable[..., Any],
+    *args: Any,
+    _require_await: bool = False,
+    **kwargs: Any,
 ) -> Any:
     """Runs a sync function ``fn`` in a new greenlet.
 

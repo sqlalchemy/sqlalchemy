@@ -19,13 +19,23 @@ import operator
 import re
 import sys
 import textwrap
+import threading
 import types
 import typing
 from typing import Any
 from typing import Callable
+from typing import cast
+from typing import Dict
+from typing import FrozenSet
 from typing import Generic
+from typing import Iterator
+from typing import List
 from typing import Optional
 from typing import overload
+from typing import Sequence
+from typing import Set
+from typing import Tuple
+from typing import Type
 from typing import TypeVar
 from typing import Union
 import warnings
@@ -33,6 +43,7 @@ import warnings
 from . import _collections
 from . import compat
 from . import typing as compat_typing
+from ._has_cy import HAS_CYEXTENSION
 from .. import exc
 
 _T = TypeVar("_T")
@@ -43,7 +54,7 @@ _HP = TypeVar("_HP", bound="hybridproperty")
 _HM = TypeVar("_HM", bound="hybridmethod")
 
 
-def md5_hex(x):
+def md5_hex(x: Any) -> str:
     x = x.encode("utf-8")
     m = hashlib.md5()
     m.update(x)
@@ -70,26 +81,44 @@ class safe_reraise:
 
     __slots__ = ("warn_only", "_exc_info")
 
-    def __init__(self, warn_only=False):
+    _exc_info: Union[
+        None,
+        Tuple[
+            Type[BaseException],
+            BaseException,
+            types.TracebackType,
+        ],
+        Tuple[None, None, None],
+    ]
+
+    def __init__(self, warn_only: bool = False):
         self.warn_only = warn_only
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         self._exc_info = sys.exc_info()
 
-    def __exit__(self, type_, value, traceback):
+    def __exit__(
+        self,
+        type_: Optional[Type[BaseException]],
+        value: Optional[BaseException],
+        traceback: Optional[types.TracebackType],
+    ) -> None:
+        assert self._exc_info is not None
         # see #2703 for notes
         if type_ is None:
             exc_type, exc_value, exc_tb = self._exc_info
+            assert exc_value is not None
             self._exc_info = None  # remove potential circular references
             if not self.warn_only:
                 raise exc_value.with_traceback(exc_tb)
         else:
             self._exc_info = None  # remove potential circular references
+            assert value is not None
             raise value.with_traceback(traceback)
 
 
-def walk_subclasses(cls):
-    seen = set()
+def walk_subclasses(cls: type) -> Iterator[type]:
+    seen: Set[Any] = set()
 
     stack = [cls]
     while stack:
@@ -102,7 +131,7 @@ def walk_subclasses(cls):
         yield cls
 
 
-def string_or_unprintable(element):
+def string_or_unprintable(element: Any) -> str:
     if isinstance(element, str):
         return element
     else:
@@ -112,13 +141,15 @@ def string_or_unprintable(element):
             return "unprintable element %r" % element
 
 
-def clsname_as_plain_name(cls):
+def clsname_as_plain_name(cls: Type[Any]) -> str:
     return " ".join(
         n.lower() for n in re.findall(r"([A-Z][a-z]+)", cls.__name__)
     )
 
 
-def method_is_overridden(instance_or_cls, against_method):
+def method_is_overridden(
+    instance_or_cls: Union[Type[Any], object], against_method: types.MethodType
+) -> bool:
     """Return True if the two class methods don't match."""
 
     if not isinstance(instance_or_cls, type):
@@ -128,18 +159,18 @@ def method_is_overridden(instance_or_cls, against_method):
 
     method_name = against_method.__name__
 
-    current_method = getattr(current_cls, method_name)
+    current_method: types.MethodType = getattr(current_cls, method_name)
 
     return current_method != against_method
 
 
-def decode_slice(slc):
+def decode_slice(slc: slice) -> Tuple[Any, ...]:
     """decode a slice object as sent to __getitem__.
 
     takes into account the 2.5 __index__() method, basically.
 
     """
-    ret = []
+    ret: List[Any] = []
     for x in slc.start, slc.stop, slc.step:
         if hasattr(x, "__index__"):
             x = x.__index__()
@@ -147,23 +178,23 @@ def decode_slice(slc):
     return tuple(ret)
 
 
-def _unique_symbols(used, *bases):
-    used = set(used)
+def _unique_symbols(used: Sequence[str], *bases: str) -> Iterator[str]:
+    used_set = set(used)
     for base in bases:
         pool = itertools.chain(
             (base,),
             map(lambda i: base + str(i), range(1000)),
         )
         for sym in pool:
-            if sym not in used:
-                used.add(sym)
+            if sym not in used_set:
+                used_set.add(sym)
                 yield sym
                 break
         else:
             raise NameError("exhausted namespace for symbol base %s" % base)
 
 
-def map_bits(fn, n):
+def map_bits(fn: Callable[[int], Any], n: int) -> Iterator[Any]:
     """Call the given function given each nonzero bit from n."""
 
     while n:
@@ -172,28 +203,34 @@ def map_bits(fn, n):
         n ^= b
 
 
-_Fn = typing.TypeVar("_Fn", bound=typing.Callable)
+_Fn = typing.TypeVar("_Fn", bound=typing.Callable[..., Any])
 _Args = compat_typing.ParamSpec("_Args")
 
 
 def decorator(
-    target: typing.Callable[compat_typing.Concatenate[_Fn, _Args], typing.Any]
+    target: typing.Callable[  # type: ignore
+        compat_typing.Concatenate[_Fn, _Args], typing.Any
+    ]
 ) -> _Fn:
     """A signature-matching decorator factory."""
 
-    def decorate(fn):
+    def decorate(fn: typing.Callable[..., Any]) -> typing.Callable[..., Any]:
         if not inspect.isfunction(fn) and not inspect.ismethod(fn):
             raise Exception("not a decoratable function")
 
         spec = compat.inspect_getfullargspec(fn)
-        env = {}
+        env: Dict[str, Any] = {}
 
         spec = _update_argspec_defaults_into_env(spec, env)
 
-        names = tuple(spec[0]) + spec[1:3] + (fn.__name__,)
+        names = (
+            tuple(cast("Tuple[str, ...]", spec[0]))
+            + cast("Tuple[str, ...]", spec[1:3])
+            + (fn.__name__,)
+        )
         targ_name, fn_name = _unique_symbols(names, "target", "fn")
 
-        metadata = dict(target=targ_name, fn=fn_name)
+        metadata: Dict[str, Optional[str]] = dict(target=targ_name, fn=fn_name)
         metadata.update(format_argspec_plus(spec, grouped=False))
         metadata["name"] = fn.__name__
         code = (
@@ -205,9 +242,15 @@ def %(name)s%(grouped_args)s:
         )
         env.update({targ_name: target, fn_name: fn, "__name__": fn.__module__})
 
-        decorated = _exec_code_in_env(code, env, fn.__name__)
+        decorated = cast(
+            types.FunctionType,
+            _exec_code_in_env(code, env, fn.__name__),
+        )
         decorated.__defaults__ = getattr(fn, "__func__", fn).__defaults__
-        decorated.__wrapped__ = fn
+
+        # claims to be fixed?
+        # https://github.com/python/mypy/issues/11896
+        decorated.__wrapped__ = fn  # type: ignore
         return update_wrapper(decorated, fn)
 
     return typing.cast(_Fn, update_wrapper(decorate, target))
@@ -303,7 +346,26 @@ def _inspect_func_args(fn):
         )
 
 
-def get_cls_kwargs(cls, _set=None):
+@overload
+def get_cls_kwargs(
+    cls: type,
+    *,
+    _set: Optional[Set[str]] = None,
+    raiseerr: compat_typing.Literal[True] = ...,
+) -> Set[str]:
+    ...
+
+
+@overload
+def get_cls_kwargs(
+    cls: type, *, _set: Optional[Set[str]] = None, raiseerr: bool = False
+) -> Optional[Set[str]]:
+    ...
+
+
+def get_cls_kwargs(
+    cls: type, *, _set: Optional[Set[str]] = None, raiseerr: bool = False
+) -> Optional[Set[str]]:
     r"""Return the full set of inherited kwargs for the given `cls`.
 
     Probes a class's __init__ method, collecting all named arguments.  If the
@@ -321,6 +383,7 @@ def get_cls_kwargs(cls, _set=None):
     toplevel = _set is None
     if toplevel:
         _set = set()
+    assert _set is not None
 
     ctr = cls.__dict__.get("__init__", False)
 
@@ -335,11 +398,18 @@ def get_cls_kwargs(cls, _set=None):
         _set.update(names)
 
         if not has_kw and not toplevel:
-            return None
+            if raiseerr:
+                raise TypeError(
+                    f"given cls {cls} doesn't have an __init__ method"
+                )
+            else:
+                return None
+    else:
+        has_kw = False
 
     if not has_init or has_kw:
         for c in cls.__bases__:
-            if get_cls_kwargs(c, _set) is None:
+            if get_cls_kwargs(c, _set=_set) is None:
                 break
 
     _set.discard("self")
@@ -411,7 +481,9 @@ def get_callable_argspec(fn, no_self=False, _is_init=False):
         raise TypeError("Can't inspect callable: %s" % fn)
 
 
-def format_argspec_plus(fn, grouped=True):
+def format_argspec_plus(
+    fn: Union[Callable[..., Any], compat.FullArgSpec], grouped: bool = True
+) -> Dict[str, Optional[str]]:
     """Returns a dictionary of formatted, introspected function arguments.
 
     A enhanced variant of inspect.formatargspec to support code generation.
@@ -474,10 +546,13 @@ def format_argspec_plus(fn, grouped=True):
 
     num_defaults = 0
     if spec[3]:
-        num_defaults += len(spec[3])
+        num_defaults += len(cast(Tuple[Any], spec[3]))
     if spec[4]:
         num_defaults += len(spec[4])
+
     name_args = spec[0] + spec[4]
+
+    defaulted_vals: Union[List[str], Tuple[()]]
 
     if num_defaults:
         defaulted_vals = name_args[0 - num_defaults :]
@@ -489,7 +564,7 @@ def format_argspec_plus(fn, grouped=True):
         spec[1],
         spec[2],
         defaulted_vals,
-        formatvalue=lambda x: "=" + x,
+        formatvalue=lambda x: "=" + str(x),
     )
 
     if spec[0]:
@@ -498,7 +573,7 @@ def format_argspec_plus(fn, grouped=True):
             spec[1],
             spec[2],
             defaulted_vals,
-            formatvalue=lambda x: "=" + x,
+            formatvalue=lambda x: "=" + str(x),
         )
     else:
         apply_kw_proxied = apply_kw
@@ -570,7 +645,7 @@ def create_proxy_methods(
 
     def decorate(cls):
         def instrument(name, clslevel=False):
-            fn = getattr(target_cls, name)
+            fn = cast(Callable[..., Any], getattr(target_cls, name))
             spec = compat.inspect_getfullargspec(fn)
             env = {"__name__": fn.__module__}
 
@@ -599,7 +674,9 @@ def create_proxy_methods(
                     % metadata
                 )
 
-            proxy_fn = _exec_code_in_env(code, env, fn.__name__)
+            proxy_fn = cast(
+                Callable[..., Any], _exec_code_in_env(code, env, fn.__name__)
+            )
             proxy_fn.__defaults__ = getattr(fn, "__func__", fn).__defaults__
             proxy_fn.__doc__ = inject_docstring_text(
                 fn.__doc__,
@@ -721,7 +798,7 @@ def generic_repr(obj, additional_kw=(), to_inspect=None, omit_kwarg=()):
         except TypeError:
             continue
         else:
-            default_len = spec.defaults and len(spec.defaults) or 0
+            default_len = len(spec.defaults) if spec.defaults else 0
             if i == 0:
                 if spec.varargs:
                     vargs = spec.varargs
@@ -735,6 +812,7 @@ def generic_repr(obj, additional_kw=(), to_inspect=None, omit_kwarg=()):
                 )
 
             if default_len:
+                assert spec.defaults
                 kw_args.update(
                     [
                         (arg, default)
@@ -811,9 +889,6 @@ def class_hierarchy(cls):
     class_hierarchy(class A(object)) returns (A, object), not A plus every
     class systemwide that derives from object.
 
-    Old-style classes are discarded and hierarchies rooted on them
-    will not be descended.
-
     """
 
     hier = {cls}
@@ -829,7 +904,15 @@ def class_hierarchy(cls):
         if c.__module__ == "builtins" or not hasattr(c, "__subclasses__"):
             continue
 
-        for s in [_ for _ in c.__subclasses__() if _ not in hier]:
+        for s in [
+            _
+            for _ in (
+                c.__subclasses__()
+                if not issubclass(c, type)
+                else c.__subclasses__(c)
+            )
+            if _ not in hier
+        ]:
             process.append(s)
             hier.add(s)
     return list(hier)
@@ -886,10 +969,12 @@ def monkeypatch_proxied_specials(
 
     for method in dunders:
         try:
-            fn = getattr(from_cls, method)
-            if not hasattr(fn, "__call__"):
+            maybe_fn = getattr(from_cls, method)
+            if not hasattr(maybe_fn, "__call__"):
                 continue
-            fn = getattr(fn, "__func__", fn)
+            maybe_fn = getattr(maybe_fn, "__func__", maybe_fn)
+            fn = cast(Callable[..., Any], maybe_fn)
+
         except AttributeError:
             continue
         try:
@@ -1021,7 +1106,7 @@ class memoized_property(Generic[_T]):
     __name__: str
 
     def __init__(self, fget: Callable[..., _T], doc: Optional[str] = None):
-        self.fget = fget
+        self.fget = fget  # type: ignore[assignment]
         self.__doc__ = doc or fget.__doc__
         self.__name__ = fget.__name__
 
@@ -1041,7 +1126,7 @@ class memoized_property(Generic[_T]):
         if obj is None:
             return self
         obj.__dict__[self.__name__] = result = self.fget(obj)
-        return result
+        return result  # type: ignore
 
     def _reset(self, obj):
         memoized_property.reset(obj, self.__name__)
@@ -1082,7 +1167,7 @@ class HasMemoized:
 
     __slots__ = ()
 
-    _memoized_keys = frozenset()
+    _memoized_keys: FrozenSet[str] = frozenset()
 
     def _reset_memoizations(self):
         for elem in self._memoized_keys:
@@ -1104,7 +1189,8 @@ class HasMemoized:
         __name__: str
 
         def __init__(self, fget: Callable[..., _T], doc: Optional[str] = None):
-            self.fget = fget
+            # https://github.com/python/mypy/issues/708
+            self.fget = fget  # type: ignore
             self.__doc__ = doc or fget.__doc__
             self.__name__ = fget.__name__
 
@@ -1268,7 +1354,7 @@ def constructor_copy(obj, cls, *args, **kw):
 def counter():
     """Return a threadsafe counter function."""
 
-    lock = compat.threading.Lock()
+    lock = threading.Lock()
     counter = itertools.count(1)
 
     # avoid the 2to3 "next" transformation...
@@ -1362,12 +1448,14 @@ class classproperty(property):
 
     """
 
-    def __init__(self, fget, *arg, **kw):
+    fget: Callable[[Any], Any]
+
+    def __init__(self, fget: Callable[[Any], Any], *arg: Any, **kw: Any):
         super(classproperty, self).__init__(fget, *arg, **kw)
         self.__doc__ = fget.__doc__
 
-    def __get__(desc, self, cls):
-        return desc.fget(cls)
+    def __get__(self, obj: Any, cls: Optional[type] = None) -> Any:
+        return self.fget(cls)  # type: ignore
 
 
 class hybridproperty:
@@ -1406,7 +1494,9 @@ class hybridmethod:
 
 
 class _symbol(int):
-    def __new__(self, name, doc=None, canonical=None):
+    name: str
+
+    def __new__(cls, name, doc=None, canonical=None):
         """Construct a new named symbol."""
         assert isinstance(name, str)
         if canonical is None:
@@ -1452,8 +1542,8 @@ class symbol:
 
     """
 
-    symbols = {}
-    _lock = compat.threading.Lock()
+    symbols: Dict[str, "_symbol"] = {}
+    _lock = threading.Lock()
 
     def __new__(cls, name, doc=None, canonical=None):
         with cls._lock:
@@ -1545,6 +1635,8 @@ class _hash_limit_string(str):
 
 
     """
+
+    _hash: int
 
     def __new__(cls, value, num, args):
         interpolated = (value % args) + (
@@ -1731,8 +1823,8 @@ class EnsureKWArg:
         super().__init_subclass__()
 
     @classmethod
-    def _wrap_w_kw(cls, fn):
-        def wrap(*arg, **kw):
+    def _wrap_w_kw(cls, fn: Callable[..., Any]) -> Callable[..., Any]:
+        def wrap(*arg: Any, **kw: Any) -> Any:
             return fn(*arg)
 
         return update_wrapper(wrap, fn)
@@ -1910,15 +2002,12 @@ def repr_tuple_names(names):
 
 
 def has_compiled_ext(raise_=False):
-    try:
-        from sqlalchemy.cyextension import collections  # noqa F401
-        from sqlalchemy.cyextension import immutabledict  # noqa F401
-        from sqlalchemy.cyextension import processors  # noqa F401
-        from sqlalchemy.cyextension import resultproxy  # noqa F401
-        from sqlalchemy.cyextension import util  # noqa F401
-
+    if HAS_CYEXTENSION:
         return True
-    except ImportError:
-        if raise_:
-            raise
+    elif raise_:
+        raise ImportError(
+            "cython extensions were expected to be installed, "
+            "but are not present"
+        )
+    else:
         return False

@@ -162,7 +162,20 @@ class OrderedSetTest(fixtures.TestBase):
 
         eq_(o.difference(iter([3, 4])), util.OrderedSet([2, 5]))
         eq_(o.intersection(iter([3, 4, 6])), util.OrderedSet([3, 4]))
-        eq_(o.union(iter([3, 4, 6])), util.OrderedSet([2, 3, 4, 5, 6]))
+        eq_(o.union(iter([3, 4, 6])), util.OrderedSet([3, 2, 4, 5, 6]))
+
+    def test_len(self):
+        eq_(len(util.OrderedSet([1, 2, 3])), 3)
+
+    def test_eq_no_insert_order(self):
+        eq_(util.OrderedSet([3, 2, 4, 5]), util.OrderedSet([2, 3, 4, 5]))
+
+        ne_(util.OrderedSet([3, 2, 4, 5]), util.OrderedSet([3, 2, 4, 5, 6]))
+
+    def test_eq_non_ordered_set(self):
+        eq_(util.OrderedSet([3, 2, 4, 5]), {2, 3, 4, 5})
+
+        ne_(util.OrderedSet([3, 2, 4, 5]), {3, 2, 4, 5, 6})
 
     def test_repr(self):
         o = util.OrderedSet([])
@@ -295,7 +308,7 @@ class ImmutableTest(fixtures.TestBase):
             lambda: d.update({2: 4}),
         )
         if hasattr(d, "pop"):
-            calls += (d.pop, d.popitem)
+            calls += (lambda: d.pop(2), d.popitem)
         for m in calls:
             with expect_raises_message(TypeError, "object is immutable"):
                 m()

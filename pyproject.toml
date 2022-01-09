@@ -23,3 +23,67 @@ filterwarnings = [
     "error::DeprecationWarning:test",
     "error::DeprecationWarning:sqlalchemy"
 ]
+
+
+[tool.pyright]
+include = [
+    "lib/sqlalchemy/events.py",
+    "lib/sqlalchemy/exc.py",
+    "lib/sqlalchemy/log.py",
+    "lib/sqlalchemy/inspection.py",
+    "lib/sqlalchemy/schema.py",
+    "lib/sqlalchemy/types.py",
+    "lib/sqlalchemy/util/",
+]
+
+
+
+[tool.mypy]
+mypy_path = "./lib/"
+show_error_codes = true
+strict = false
+incremental = true
+
+# disabled checking
+[[tool.mypy.overrides]]
+module="sqlalchemy.*"
+ignore_errors = true
+warn_unused_ignores = false
+
+strict = true
+
+# https://github.com/python/mypy/issues/8754
+# we are a pep-561 package, so implicit-rexport should be
+# enabled
+implicit_reexport = true
+
+# individual packages or even modules should be listed here
+# with strictness-specificity set up.  there's no way we are going to get
+# the whole library 100% strictly typed, so we have to tune this based on
+# the type of module or package we are dealing with
+
+# strict checking
+[[tool.mypy.overrides]]
+module = [
+    "sqlalchemy.events",
+    "sqlalchemy.events",
+    "sqlalchemy.exc",
+    "sqlalchemy.inspection",
+    "sqlalchemy.schema",
+    "sqlalchemy.types",
+]
+ignore_errors = false
+strict = true
+
+# partial checking, internals can be untyped
+[[tool.mypy.overrides]]
+module="sqlalchemy.util.*"
+ignore_errors = false
+
+# util is for internal use so we can get by without everything
+# being typed
+allow_untyped_defs = true
+check_untyped_defs = false
+allow_untyped_calls = true
+
+

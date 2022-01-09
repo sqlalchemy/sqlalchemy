@@ -10,6 +10,7 @@
 
 """
 
+import threading
 import traceback
 import weakref
 
@@ -21,7 +22,6 @@ from .. import exc
 from .. import util
 from ..util import chop_traceback
 from ..util import queue as sqla_queue
-from ..util import threading
 
 
 class QueuePool(Pool):

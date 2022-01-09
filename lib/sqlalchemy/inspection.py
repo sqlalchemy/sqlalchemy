@@ -28,15 +28,43 @@ tools which build on top of SQLAlchemy configurations to be constructed
 in a forwards-compatible way.
 
 """
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import Generic
+from typing import overload
+from typing import Type
+from typing import TypeVar
+from typing import Union
 
 from . import exc
-from . import util
+from .util.typing import Literal
+
+_T = TypeVar("_T", bound=Any)
+
+_registrars: Dict[type, Union[Literal[True], Callable[[Any], Any]]] = {}
 
 
-_registrars = util.defaultdict(list)
+class Inspectable(Generic[_T]):
+    """define a class as inspectable.
+
+    This allows typing to set up a linkage between an object that
+    can be inspected and the type of inspection it returns.
+
+    """
 
 
-def inspect(subject, raiseerr=True):
+@overload
+def inspect(subject: Inspectable[_T], raiseerr: bool = True) -> _T:
+    ...
+
+
+@overload
+def inspect(subject: Any, raiseerr: bool = True) -> Any:
+    ...
+
+
+def inspect(subject: Any, raiseerr: bool = True) -> Any:
     """Produce an inspection object for the given target.
 
     The returned value in some cases may be the
@@ -58,12 +86,14 @@ def inspect(subject, raiseerr=True):
     type_ = type(subject)
     for cls in type_.__mro__:
         if cls in _registrars:
-            reg = _registrars[cls]
-            if reg is True:
+            reg = _registrars.get(cls, None)
+            if reg is None:
+                continue
+            elif reg is True:
                 return subject
             ret = reg(subject)
             if ret is not None:
-                break
+                return ret
     else:
         reg = ret = None
 
@@ -75,8 +105,10 @@ def inspect(subject, raiseerr=True):
     return ret
 
 
-def _inspects(*types):
-    def decorate(fn_or_cls):
+def _inspects(
+    *types: type,
+) -> Callable[[Callable[[Any], Any]], Callable[[Any], Any]]:
+    def decorate(fn_or_cls: Callable[[Any], Any]) -> Callable[[Any], Any]:
         for type_ in types:
             if type_ in _registrars:
                 raise AssertionError(
@@ -88,6 +120,8 @@ def _inspects(*types):
     return decorate
 
 
-def _self_inspects(cls):
-    _inspects(cls)(True)
+def _self_inspects(cls: Type[_T]) -> Type[_T]:
+    if cls in _registrars:
+        raise AssertionError("Type %s is already " "registered" % cls)
+    _registrars[cls] = True
     return cls

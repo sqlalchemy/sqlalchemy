@@ -5,6 +5,11 @@ recursive-include doc *.html *.css *.txt *.js *.png *.py Makefile *.rst *.sty
 recursive-include examples *.py *.xml
 recursive-include test *.py *.dat *.testpatch
 
+# for some reason in some environments stale Cython .c files
+# are being pulled in, these should never be in a dist
+exclude lib/sqlalchemy/cyextension/*.c
+exclude lib/sqlalchemy/cyextension/*.so
+
 # include the pyx and pxd extensions, which otherwise
 # don't come in if --with-cextensions isn't specified.
 recursive-include lib *.pyx *.pxd *.txt *.typed

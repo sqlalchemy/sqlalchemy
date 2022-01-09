@@ -8,26 +8,53 @@
 """Collection classes and helpers."""
 import collections.abc as collections_abc
 import operator
+import threading
 import types
+import typing
+from typing import Any
+from typing import Callable
+from typing import cast
+from typing import Dict
+from typing import FrozenSet
+from typing import Generic
+from typing import Iterable
+from typing import Iterator
+from typing import List
+from typing import Optional
+from typing import overload
+from typing import Sequence
+from typing import Set
+from typing import Tuple
+from typing import TypeVar
+from typing import Union
+from typing import ValuesView
 import weakref
 
-from .compat import threading
+from ._has_cy import HAS_CYEXTENSION
+from .typing import Literal
 
-try:
+if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
+    from ._py_collections import immutabledict
+    from ._py_collections import IdentitySet
+    from ._py_collections import ImmutableContainer
+    from ._py_collections import ImmutableDictBase
+    from ._py_collections import OrderedSet
+    from ._py_collections import unique_list  # noqa
+else:
     from sqlalchemy.cyextension.immutabledict import ImmutableContainer
+    from sqlalchemy.cyextension.immutabledict import ImmutableDictBase
     from sqlalchemy.cyextension.immutabledict import immutabledict
     from sqlalchemy.cyextension.collections import IdentitySet
     from sqlalchemy.cyextension.collections import OrderedSet
     from sqlalchemy.cyextension.collections import unique_list  # noqa
-except ImportError:
-    from ._py_collections import immutabledict
-    from ._py_collections import IdentitySet
-    from ._py_collections import ImmutableContainer
-    from ._py_collections import OrderedSet
-    from ._py_collections import unique_list  # noqa
 
 
-EMPTY_SET = frozenset()
+_T = TypeVar("_T", bound=Any)
+_KT = TypeVar("_KT", bound=Any)
+_VT = TypeVar("_VT", bound=Any)
+
+
+EMPTY_SET: FrozenSet[Any] = frozenset()
 
 
 def coerce_to_immutabledict(d):
@@ -39,13 +66,11 @@ def coerce_to_immutabledict(d):
         return immutabledict(d)
 
 
-EMPTY_DICT = immutabledict()
+EMPTY_DICT: immutabledict[Any, Any] = immutabledict()
 
 
-class FacadeDict(ImmutableContainer, dict):
+class FacadeDict(ImmutableDictBase[Any, Any]):
     """A dictionary that is not publicly mutable."""
-
-    clear = pop = popitem = setdefault = update = ImmutableContainer._immutable
 
     def __new__(cls, *args):
         new = dict.__new__(cls)
@@ -68,18 +93,23 @@ class FacadeDict(ImmutableContainer, dict):
         return "FacadeDict(%s)" % dict.__repr__(self)
 
 
-class Properties:
+_DT = TypeVar("_DT", bound=Any)
+
+
+class Properties(Generic[_T]):
     """Provide a __getattr__/__setattr__ interface over a dict."""
 
     __slots__ = ("_data",)
 
+    _data: Dict[str, _T]
+
     def __init__(self, data):
         object.__setattr__(self, "_data", data)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._data)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[_T]:
         return iter(list(self._data.values()))
 
     def __dir__(self):
@@ -93,7 +123,7 @@ class Properties:
     def __setitem__(self, key, obj):
         self._data[key] = obj
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> _T:
         return self._data[key]
 
     def __delitem__(self, key):
@@ -108,16 +138,16 @@ class Properties:
     def __setstate__(self, state):
         object.__setattr__(self, "_data", state["_data"])
 
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> _T:
         try:
             return self._data[key]
         except KeyError:
             raise AttributeError(key)
 
-    def __contains__(self, key):
+    def __contains__(self, key: str) -> bool:
         return key in self._data
 
-    def as_immutable(self):
+    def as_immutable(self) -> "ImmutableProperties[_T]":
         """Return an immutable proxy for this :class:`.Properties`."""
 
         return ImmutableProperties(self._data)
@@ -125,29 +155,39 @@ class Properties:
     def update(self, value):
         self._data.update(value)
 
-    def get(self, key, default=None):
+    @overload
+    def get(self, key: str) -> Optional[_T]:
+        ...
+
+    @overload
+    def get(self, key: str, default: Union[_DT, _T]) -> Union[_DT, _T]:
+        ...
+
+    def get(
+        self, key: str, default: Optional[Union[_DT, _T]] = None
+    ) -> Optional[Union[_T, _DT]]:
         if key in self:
             return self[key]
         else:
             return default
 
-    def keys(self):
+    def keys(self) -> List[str]:
         return list(self._data)
 
-    def values(self):
+    def values(self) -> List[_T]:
         return list(self._data.values())
 
-    def items(self):
+    def items(self) -> List[Tuple[str, _T]]:
         return list(self._data.items())
 
-    def has_key(self, key):
+    def has_key(self, key: str) -> bool:
         return key in self._data
 
     def clear(self):
         self._data.clear()
 
 
-class OrderedProperties(Properties):
+class OrderedProperties(Properties[_T]):
     """Provide a __getattr__/__setattr__ interface with an OrderedDict
     as backing store."""
 
@@ -157,7 +197,7 @@ class OrderedProperties(Properties):
         Properties.__init__(self, OrderedDict())
 
 
-class ImmutableProperties(ImmutableContainer, Properties):
+class ImmutableProperties(ImmutableContainer, Properties[_T]):
     """Provide immutable dict/object attribute to an underlying dictionary."""
 
     __slots__ = ()
@@ -220,7 +260,7 @@ class OrderedIdentitySet(IdentitySet):
                 self.add(o)
 
 
-class PopulateDict(dict):
+class PopulateDict(Dict[_KT, _VT]):
     """A dict which populates missing values via a creation function.
 
     Note the creation function takes a key, unlike
@@ -228,26 +268,26 @@ class PopulateDict(dict):
 
     """
 
-    def __init__(self, creator):
+    def __init__(self, creator: Callable[[_KT], _VT]):
         self.creator = creator
 
-    def __missing__(self, key):
+    def __missing__(self, key: Any) -> Any:
         self[key] = val = self.creator(key)
         return val
 
 
-class WeakPopulateDict(dict):
+class WeakPopulateDict(Dict[_KT, _VT]):
     """Like PopulateDict, but assumes a self + a method and does not create
     a reference cycle.
 
     """
 
-    def __init__(self, creator_method):
+    def __init__(self, creator_method: types.MethodType):
         self.creator = creator_method.__func__
         weakself = creator_method.__self__
         self.weakself = weakref.ref(weakself)
 
-    def __missing__(self, key):
+    def __missing__(self, key: Any) -> Any:
         self[key] = val = self.creator(self.weakself(), key)
         return val
 
@@ -261,37 +301,40 @@ column_dict = dict
 ordered_column_set = OrderedSet
 
 
-_getters = PopulateDict(operator.itemgetter)
-
-_property_getters = PopulateDict(
-    lambda idx: property(operator.itemgetter(idx))
-)
-
-
-class UniqueAppender:
+class UniqueAppender(Generic[_T]):
     """Appends items to a collection ensuring uniqueness.
 
     Additional appends() of the same object are ignored.  Membership is
     determined by identity (``is a``) not equality (``==``).
     """
 
-    def __init__(self, data, via=None):
+    __slots__ = "data", "_data_appender", "_unique"
+
+    data: Union[Iterable[_T], Set[_T], List[_T]]
+    _data_appender: Callable[[_T], None]
+    _unique: Dict[int, Literal[True]]
+
+    def __init__(
+        self,
+        data: Union[Iterable[_T], Set[_T], List[_T]],
+        via: Optional[str] = None,
+    ):
         self.data = data
         self._unique = {}
         if via:
-            self._data_appender = getattr(data, via)
+            self._data_appender = getattr(data, via)  # type: ignore[assignment]  # noqa E501
         elif hasattr(data, "append"):
-            self._data_appender = data.append
+            self._data_appender = cast("List[_T]", data).append  # type: ignore[assignment]  # noqa E501
         elif hasattr(data, "add"):
-            self._data_appender = data.add
+            self._data_appender = cast("Set[_T]", data).add  # type: ignore[assignment]  # noqa E501
 
-    def append(self, item):
+    def append(self, item: _T) -> None:
         id_ = id(item)
         if id_ not in self._unique:
-            self._data_appender(item)
+            self._data_appender(item)  # type: ignore[call-arg]
             self._unique[id_] = True
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[_T]:
         return iter(self.data)
 
 
@@ -302,13 +345,27 @@ def coerce_generator_arg(arg):
         return arg
 
 
-def to_list(x, default=None):
+@overload
+def to_list(x: Sequence[_T], default: Optional[List[_T]] = None) -> List[_T]:
+    ...
+
+
+@overload
+def to_list(
+    x: Optional[Sequence[_T]], default: Optional[List[_T]] = None
+) -> Optional[List[_T]]:
+    ...
+
+
+def to_list(
+    x: Optional[Sequence[_T]], default: Optional[List[_T]] = None
+) -> Optional[List[_T]]:
     if x is None:
         return default
     if not isinstance(x, collections_abc.Iterable) or isinstance(
         x, (str, bytes)
     ):
-        return [x]
+        return [cast(_T, x)]
     elif isinstance(x, list):
         return x
     else:
@@ -367,7 +424,7 @@ def flatten_iterator(x):
             yield elem
 
 
-class LRUCache(dict):
+class LRUCache(typing.MutableMapping[_KT, _VT]):
     """Dictionary with 'squishy' removal of least
     recently used items.
 
@@ -377,7 +434,18 @@ class LRUCache(dict):
 
     """
 
-    __slots__ = "capacity", "threshold", "size_alert", "_counter", "_mutex"
+    __slots__ = (
+        "capacity",
+        "threshold",
+        "size_alert",
+        "_data",
+        "_counter",
+        "_mutex",
+    )
+
+    capacity: int
+    threshold: float
+    size_alert: Callable[["LRUCache[_KT, _VT]"], None]
 
     def __init__(self, capacity=100, threshold=0.5, size_alert=None):
         self.capacity = capacity
@@ -385,48 +453,56 @@ class LRUCache(dict):
         self.size_alert = size_alert
         self._counter = 0
         self._mutex = threading.Lock()
+        self._data: Dict[_KT, Tuple[_KT, _VT, List[int]]] = {}
 
     def _inc_counter(self):
         self._counter += 1
         return self._counter
 
-    def get(self, key, default=None):
-        item = dict.get(self, key, default)
-        if item is not default:
-            item[2] = self._inc_counter()
+    @overload
+    def get(self, key: _KT) -> Optional[_VT]:
+        ...
+
+    @overload
+    def get(self, key: _KT, default: Union[_VT, _T]) -> Union[_VT, _T]:
+        ...
+
+    def get(
+        self, key: _KT, default: Optional[Union[_VT, _T]] = None
+    ) -> Optional[Union[_VT, _T]]:
+        item = self._data.get(key, default)
+        if item is not default and item is not None:
+            item[2][0] = self._inc_counter()
             return item[1]
         else:
             return default
 
-    def __getitem__(self, key):
-        item = dict.__getitem__(self, key)
-        item[2] = self._inc_counter()
+    def __getitem__(self, key: _KT) -> _VT:
+        item = self._data[key]
+        item[2][0] = self._inc_counter()
         return item[1]
 
-    def values(self):
-        return [i[1] for i in dict.values(self)]
+    def __iter__(self) -> Iterator[_KT]:
+        return iter(self._data)
 
-    def setdefault(self, key, value):
-        if key in self:
-            return self[key]
-        else:
-            self[key] = value
-            return value
+    def __len__(self) -> int:
+        return len(self._data)
 
-    def __setitem__(self, key, value):
-        item = dict.get(self, key)
-        if item is None:
-            item = [key, value, self._inc_counter()]
-            dict.__setitem__(self, key, item)
-        else:
-            item[1] = value
+    def values(self) -> ValuesView[_VT]:
+        return typing.ValuesView({k: i[1] for k, i in self._data.items()})
+
+    def __setitem__(self, key: _KT, value: _VT) -> None:
+        self._data[key] = (key, value, [self._inc_counter()])
         self._manage_size()
 
+    def __delitem__(self, __v: _KT) -> None:
+        del self._data[__v]
+
     @property
-    def size_threshold(self):
+    def size_threshold(self) -> float:
         return self.capacity + self.capacity * self.threshold
 
-    def _manage_size(self):
+    def _manage_size(self) -> None:
         if not self._mutex.acquire(False):
             return
         try:
@@ -434,13 +510,15 @@ class LRUCache(dict):
             while len(self) > self.capacity + self.capacity * self.threshold:
                 if size_alert:
                     size_alert = False
-                    self.size_alert(self)
+                    self.size_alert(self)  # type: ignore
                 by_counter = sorted(
-                    dict.values(self), key=operator.itemgetter(2), reverse=True
+                    self._data.values(),
+                    key=operator.itemgetter(2),
+                    reverse=True,
                 )
                 for item in by_counter[self.capacity :]:
                     try:
-                        del self[item[0]]
+                        del self._data[item[0]]
                     except KeyError:
                         # deleted elsewhere; skip
                         continue
@@ -462,6 +540,8 @@ class ScopedRegistry:
     :param scopefunc:
       a callable that will return a key to store/retrieve an object.
     """
+
+    __slots__ = "createfunc", "scopefunc", "registry"
 
     def __init__(self, createfunc, scopefunc):
         """Construct a new :class:`.ScopedRegistry`.
@@ -529,7 +609,7 @@ class ThreadLocalRegistry(ScopedRegistry):
 
     def clear(self):
         try:
-            del self.registry.value
+            del self.registry.value  # type: ignore
         except AttributeError:
             pass
 

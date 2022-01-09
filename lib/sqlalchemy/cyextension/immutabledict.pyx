@@ -12,9 +12,24 @@ class ImmutableContainer:
     __delitem__ = __setitem__ = __setattr__ = _immutable
 
 
+class ImmutableDictBase(dict):
+    def _immutable(self, *a,**kw):
+        _immutable_fn(self)
+
+    @classmethod
+    def __class_getitem__(cls, key):
+        return cls
+
+    __delitem__ = __setitem__ = __setattr__ = _immutable
+    clear = pop = popitem = setdefault = update = _immutable
+
 cdef class immutabledict(dict):
     def __repr__(self):
         return f"immutabledict({dict.__repr__(self)})"
+
+    @classmethod
+    def __class_getitem__(cls, key):
+        return cls
 
     def union(self, *args, **kw):
         cdef dict to_merge = None

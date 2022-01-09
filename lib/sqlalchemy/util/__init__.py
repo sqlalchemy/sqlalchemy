@@ -62,7 +62,6 @@ from .compat import osx
 from .compat import py38
 from .compat import py39
 from .compat import pypy
-from .compat import threading
 from .compat import win32
 from .concurrency import asyncio
 from .concurrency import await_fallback

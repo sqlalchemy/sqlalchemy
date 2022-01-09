@@ -3333,6 +3333,8 @@ class OnConnectTest(fixtures.TestBase):
         cls_ = testing.db.dialect.__class__
 
         class SomeDialect(cls_):
+            supports_statement_cache = True
+
             def initialize(self, connection):
                 super(SomeDialect, self).initialize(connection)
                 m1.append("initialize")

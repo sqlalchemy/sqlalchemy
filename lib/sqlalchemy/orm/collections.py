@@ -104,6 +104,7 @@ through the adapter, allowing for some very sophisticated behavior.
 """
 
 import operator
+import threading
 import weakref
 
 from sqlalchemy.util.compat import inspect_getfullargspec
@@ -122,7 +123,7 @@ __all__ = [
     "attribute_mapped_collection",
 ]
 
-__instrumentation_mutex = util.threading.Lock()
+__instrumentation_mutex = threading.Lock()
 
 
 class _PlainColumnGetter:

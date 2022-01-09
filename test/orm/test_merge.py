@@ -31,18 +31,7 @@ from sqlalchemy.testing import not_in
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
-from sqlalchemy.util import has_compiled_ext
-from sqlalchemy.util import OrderedSet
 from test.orm import _fixtures
-
-
-if has_compiled_ext():
-    # cython ordered set is immutable, subclass it with a python
-    # class so that its method can be replaced
-    _OrderedSet = OrderedSet
-
-    class OrderedSet(_OrderedSet):
-        pass
 
 
 class MergeTest(_fixtures.FixtureTest):
@@ -167,7 +156,7 @@ class MergeTest(_fixtures.FixtureTest):
             users,
             properties={
                 "addresses": relationship(
-                    Address, backref="user", collection_class=OrderedSet
+                    Address, backref="user", collection_class=set
                 )
             },
         )
@@ -178,12 +167,10 @@ class MergeTest(_fixtures.FixtureTest):
         u = User(
             id=7,
             name="fred",
-            addresses=OrderedSet(
-                [
-                    Address(id=1, email_address="fred1"),
-                    Address(id=2, email_address="fred2"),
-                ]
-            ),
+            addresses={
+                Address(id=1, email_address="fred1"),
+                Address(id=2, email_address="fred2"),
+            },
         )
         eq_(load.called, 0)
 
@@ -203,12 +190,10 @@ class MergeTest(_fixtures.FixtureTest):
             User(
                 id=7,
                 name="fred",
-                addresses=OrderedSet(
-                    [
-                        Address(id=1, email_address="fred1"),
-                        Address(id=2, email_address="fred2"),
-                    ]
-                ),
+                addresses={
+                    Address(id=1, email_address="fred1"),
+                    Address(id=2, email_address="fred2"),
+                },
             ),
         )
 
@@ -258,7 +243,7 @@ class MergeTest(_fixtures.FixtureTest):
             users,
             properties={
                 "addresses": relationship(
-                    Address, backref="user", collection_class=OrderedSet
+                    Address, backref="user", collection_class=set
                 )
             },
         )
@@ -269,12 +254,10 @@ class MergeTest(_fixtures.FixtureTest):
         u = User(
             id=None,
             name="fred",
-            addresses=OrderedSet(
-                [
-                    Address(id=None, email_address="fred1"),
-                    Address(id=None, email_address="fred2"),
-                ]
-            ),
+            addresses={
+                Address(id=None, email_address="fred1"),
+                Address(id=None, email_address="fred2"),
+            },
         )
         eq_(load.called, 0)
 
@@ -293,12 +276,10 @@ class MergeTest(_fixtures.FixtureTest):
             sess.query(User).one(),
             User(
                 name="fred",
-                addresses=OrderedSet(
-                    [
-                        Address(email_address="fred1"),
-                        Address(email_address="fred2"),
-                    ]
-                ),
+                addresses={
+                    Address(email_address="fred1"),
+                    Address(email_address="fred2"),
+                },
             ),
         )
 
@@ -341,8 +322,7 @@ class MergeTest(_fixtures.FixtureTest):
                 "addresses": relationship(
                     Address,
                     backref="user",
-                    collection_class=OrderedSet,
-                    order_by=addresses.c.id,
+                    collection_class=set,
                     cascade="all, delete-orphan",
                 )
             },
@@ -355,12 +335,10 @@ class MergeTest(_fixtures.FixtureTest):
         u = User(
             id=7,
             name="fred",
-            addresses=OrderedSet(
-                [
-                    Address(id=1, email_address="fred1"),
-                    Address(id=2, email_address="fred2"),
-                ]
-            ),
+            addresses={
+                Address(id=1, email_address="fred1"),
+                Address(id=2, email_address="fred2"),
+            },
         )
         sess = fixture_session()
         sess.add(u)
@@ -372,12 +350,10 @@ class MergeTest(_fixtures.FixtureTest):
         u = User(
             id=7,
             name="fred",
-            addresses=OrderedSet(
-                [
-                    Address(id=3, email_address="fred3"),
-                    Address(id=4, email_address="fred4"),
-                ]
-            ),
+            addresses={
+                Address(id=3, email_address="fred3"),
+                Address(id=4, email_address="fred4"),
+            },
         )
 
         u = sess.merge(u)
@@ -393,12 +369,10 @@ class MergeTest(_fixtures.FixtureTest):
             User(
                 id=7,
                 name="fred",
-                addresses=OrderedSet(
-                    [
-                        Address(id=3, email_address="fred3"),
-                        Address(id=4, email_address="fred4"),
-                    ]
-                ),
+                addresses={
+                    Address(id=3, email_address="fred3"),
+                    Address(id=4, email_address="fred4"),
+                },
             ),
         )
         sess.flush()
@@ -408,12 +382,10 @@ class MergeTest(_fixtures.FixtureTest):
             User(
                 id=7,
                 name="fred",
-                addresses=OrderedSet(
-                    [
-                        Address(id=3, email_address="fred3"),
-                        Address(id=4, email_address="fred4"),
-                    ]
-                ),
+                addresses={
+                    Address(id=3, email_address="fred3"),
+                    Address(id=4, email_address="fred4"),
+                },
             ),
         )
 
@@ -433,7 +405,7 @@ class MergeTest(_fixtures.FixtureTest):
                     Address,
                     backref="user",
                     order_by=addresses.c.id,
-                    collection_class=OrderedSet,
+                    collection_class=set,
                 )
             },
         )
@@ -445,7 +417,7 @@ class MergeTest(_fixtures.FixtureTest):
         u = User(
             id=7,
             name="fred",
-            addresses=OrderedSet([a, Address(id=2, email_address="fred2")]),
+            addresses={a, Address(id=2, email_address="fred2")},
         )
         sess = fixture_session()
         sess.add(u)
@@ -467,12 +439,10 @@ class MergeTest(_fixtures.FixtureTest):
             User(
                 id=7,
                 name="fred jones",
-                addresses=OrderedSet(
-                    [
-                        Address(id=2, email_address="fred2"),
-                        Address(id=3, email_address="fred3"),
-                    ]
-                ),
+                addresses={
+                    Address(id=2, email_address="fred2"),
+                    Address(id=3, email_address="fred3"),
+                },
             ),
         )
 

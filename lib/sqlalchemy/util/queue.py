@@ -17,12 +17,11 @@ producing a ``put()`` inside the ``get()`` and therefore a reentrant
 condition.
 
 """
-
+import asyncio
 from collections import deque
+import threading
 from time import time as _time
 
-from .compat import threading
-from .concurrency import asyncio
 from .concurrency import await_fallback
 from .concurrency import await_only
 from .langhelpers import memoized_property

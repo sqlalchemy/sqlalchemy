@@ -17,10 +17,21 @@ and :class:`_pool.Pool` objects, corresponds to a logger specific to that
 instance only.
 
 """
-
 import logging
 import sys
+from typing import Any
+from typing import Optional
+from typing import overload
+from typing import Set
+from typing import Type
+from typing import TypeVar
+from typing import Union
 
+from .util.typing import Literal
+
+_IT = TypeVar("_IT", bound="Identified")
+
+_EchoFlagType = Union[None, bool, Literal["debug"]]
 
 # set initial level to WARN.  This so that
 # log statements don't occur in the absence of explicit
@@ -30,7 +41,7 @@ if rootlogger.level == logging.NOTSET:
     rootlogger.setLevel(logging.WARN)
 
 
-def _add_default_handler(logger):
+def _add_default_handler(logger: logging.Logger) -> None:
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(
         logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -38,32 +49,40 @@ def _add_default_handler(logger):
     logger.addHandler(handler)
 
 
-_logged_classes = set()
+_logged_classes: Set[Type["Identified"]] = set()
 
 
-def _qual_logger_name_for_cls(cls):
+def _qual_logger_name_for_cls(cls: Type["Identified"]) -> str:
     return (
         getattr(cls, "_sqla_logger_namespace", None)
         or cls.__module__ + "." + cls.__name__
     )
 
 
-def class_logger(cls):
+def class_logger(cls: Type[_IT]) -> Type[_IT]:
     logger = logging.getLogger(_qual_logger_name_for_cls(cls))
-    cls._should_log_debug = lambda self: logger.isEnabledFor(logging.DEBUG)
-    cls._should_log_info = lambda self: logger.isEnabledFor(logging.INFO)
+    cls._should_log_debug = lambda self: logger.isEnabledFor(  # type: ignore[assignment]  # noqa E501
+        logging.DEBUG
+    )
+    cls._should_log_info = lambda self: logger.isEnabledFor(  # type: ignore[assignment]  # noqa E501
+        logging.INFO
+    )
     cls.logger = logger
     _logged_classes.add(cls)
     return cls
 
 
 class Identified:
-    logging_name = None
+    logging_name: Optional[str] = None
 
-    def _should_log_debug(self):
+    logger: Union[logging.Logger, "InstanceLogger"]
+
+    _echo: _EchoFlagType
+
+    def _should_log_debug(self) -> bool:
         return self.logger.isEnabledFor(logging.DEBUG)
 
-    def _should_log_info(self):
+    def _should_log_info(self) -> bool:
         return self.logger.isEnabledFor(logging.INFO)
 
 
@@ -94,7 +113,9 @@ class InstanceLogger:
         "debug": logging.DEBUG,
     }
 
-    def __init__(self, echo, name):
+    _echo: _EchoFlagType
+
+    def __init__(self, echo: _EchoFlagType, name: str):
         self.echo = echo
         self.logger = logging.getLogger(name)
 
@@ -106,41 +127,41 @@ class InstanceLogger:
     #
     # Boilerplate convenience methods
     #
-    def debug(self, msg, *args, **kwargs):
+    def debug(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Delegate a debug call to the underlying logger."""
 
         self.log(logging.DEBUG, msg, *args, **kwargs)
 
-    def info(self, msg, *args, **kwargs):
+    def info(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Delegate an info call to the underlying logger."""
 
         self.log(logging.INFO, msg, *args, **kwargs)
 
-    def warning(self, msg, *args, **kwargs):
+    def warning(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Delegate a warning call to the underlying logger."""
 
         self.log(logging.WARNING, msg, *args, **kwargs)
 
     warn = warning
 
-    def error(self, msg, *args, **kwargs):
+    def error(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """
         Delegate an error call to the underlying logger.
         """
         self.log(logging.ERROR, msg, *args, **kwargs)
 
-    def exception(self, msg, *args, **kwargs):
+    def exception(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Delegate an exception call to the underlying logger."""
 
         kwargs["exc_info"] = 1
         self.log(logging.ERROR, msg, *args, **kwargs)
 
-    def critical(self, msg, *args, **kwargs):
+    def critical(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Delegate a critical call to the underlying logger."""
 
         self.log(logging.CRITICAL, msg, *args, **kwargs)
 
-    def log(self, level, msg, *args, **kwargs):
+    def log(self, level: int, msg: str, *args: Any, **kwargs: Any) -> None:
         """Delegate a log call to the underlying logger.
 
         The level here is determined by the echo
@@ -162,14 +183,14 @@ class InstanceLogger:
         if level >= selected_level:
             self.logger._log(level, msg, args, **kwargs)
 
-    def isEnabledFor(self, level):
+    def isEnabledFor(self, level: int) -> bool:
         """Is this logger enabled for level 'level'?"""
 
         if self.logger.manager.disable >= level:
             return False
         return level >= self.getEffectiveLevel()
 
-    def getEffectiveLevel(self):
+    def getEffectiveLevel(self) -> int:
         """What's the effective level for this logger?"""
 
         level = self._echo_map[self.echo]
@@ -178,7 +199,9 @@ class InstanceLogger:
         return level
 
 
-def instance_logger(instance, echoflag=None):
+def instance_logger(
+    instance: Identified, echoflag: _EchoFlagType = None
+) -> None:
     """create a logger for an instance that implements :class:`.Identified`."""
 
     if instance.logging_name:
@@ -190,6 +213,8 @@ def instance_logger(instance, echoflag=None):
         name = _qual_logger_name_for_cls(instance.__class__)
 
     instance._echo = echoflag
+
+    logger: Union[logging.Logger, InstanceLogger]
 
     if echoflag in (False, None):
         # if no echo setting or False, return a Logger directly,
@@ -215,11 +240,25 @@ class echo_property:
     ``logging.DEBUG``.
     """
 
-    def __get__(self, instance, owner):
+    @overload
+    def __get__(
+        self, instance: "Literal[None]", owner: "echo_property"
+    ) -> "echo_property":
+        ...
+
+    @overload
+    def __get__(
+        self, instance: Identified, owner: "echo_property"
+    ) -> _EchoFlagType:
+        ...
+
+    def __get__(
+        self, instance: Optional[Identified], owner: "echo_property"
+    ) -> Union["echo_property", _EchoFlagType]:
         if instance is None:
             return self
         else:
             return instance._echo
 
-    def __set__(self, instance, value):
+    def __set__(self, instance: Identified, value: _EchoFlagType) -> None:
         instance_logger(instance, echoflag=value)
