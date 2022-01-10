@@ -134,7 +134,7 @@ class Query(
     # local Query builder state, not needed for
     # compilation or execution
     _enable_assertions = True
-    _last_joined_entity = None
+
     _statement = None
 
     # mirrors that of ClauseElement, used to propagate the "orm"

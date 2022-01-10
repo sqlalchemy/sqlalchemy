@@ -37,7 +37,7 @@ from ..sql import operators
 from ..sql import roles
 from ..sql import visitors
 from ..sql.base import ExecutableOption
-from ..sql.traversals import HasCacheKey
+from ..sql.cache_key import HasCacheKey
 
 
 __all__ = (

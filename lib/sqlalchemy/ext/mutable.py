@@ -269,10 +269,10 @@ and to also route attribute set events via ``__setattr__`` to the
         def __ne__(self, other):
             return not self.__eq__(other)
 
-The :class:`.MutableComposite` class uses a Python metaclass to automatically
-establish listeners for any usage of :func:`_orm.composite` that specifies our
-``Point`` type. Below, when ``Point`` is mapped to the ``Vertex`` class,
-listeners are established which will route change events from ``Point``
+The :class:`.MutableComposite` class makes use of class mapping events to
+automatically establish listeners for any usage of :func:`_orm.composite` that
+specifies our ``Point`` type. Below, when ``Point`` is mapped to the ``Vertex``
+class, listeners are established which will route change events from ``Point``
 objects to each of the ``Vertex.start`` and ``Vertex.end`` attributes::
 
     from sqlalchemy.orm import composite, mapper

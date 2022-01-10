@@ -51,6 +51,10 @@ def has_inherited_table(cls):
 
 
 class DeclarativeMeta(type):
+    # DeclarativeMeta could be replaced by __subclass_init__()
+    # except for the class-level __setattr__() and __delattr__ hooks,
+    # which are still very important.
+
     def __init__(cls, classname, bases, dict_, **kw):
         # early-consume registry from the initial declarative base,
         # assign privately to not conflict with subclass attributes named

@@ -15,13 +15,16 @@ at the class level of a particular ``_Dispatch`` class as well as within
 instances of ``_Dispatch``.
 
 """
+from typing import ClassVar
+from typing import Optional
+from typing import Type
 import weakref
 
 from .attr import _ClsLevelDispatch
 from .attr import _EmptyListener
 from .attr import _JoinedListener
 from .. import util
-
+from ..util.typing import Protocol
 
 _registrars = util.defaultdict(list)
 
@@ -63,8 +66,8 @@ class _Dispatch:
     of the :class:`._Dispatch` class is returned.
 
     A :class:`._Dispatch` class is generated for each :class:`.Events`
-    class defined, by the :func:`._create_dispatcher_class` function.
-    The original :class:`.Events` classes remain untouched.
+    class defined, by the :meth:`._HasEventsDispatch._create_dispatcher_class`
+    method.  The original :class:`.Events` classes remain untouched.
     This decouples the construction of :class:`.Events` subclasses from
     the implementation used by the event internals, and allows
     inspecting tools like Sphinx to work in an unsurprising
@@ -77,6 +80,13 @@ class _Dispatch:
     __slots__ = "_parent", "_instance_cls", "__dict__", "_empty_listeners"
 
     _empty_listener_reg = weakref.WeakKeyDictionary()
+
+    _events: Type["_HasEventsDispatch"]
+    """reference back to the Events class.
+
+    Bidirectional against _HasEventsDispatch.dispatch
+
+    """
 
     def __init__(self, parent, instance_cls=None):
         self._parent = parent
@@ -159,56 +169,6 @@ class _Dispatch:
             ls.for_modify(self).clear()
 
 
-class _EventMeta(type):
-    """Intercept new Event subclasses and create
-    associated _Dispatch classes."""
-
-    def __init__(cls, classname, bases, dict_):
-        _create_dispatcher_class(cls, classname, bases, dict_)
-        type.__init__(cls, classname, bases, dict_)
-
-
-def _create_dispatcher_class(cls, classname, bases, dict_):
-    """Create a :class:`._Dispatch` class corresponding to an
-    :class:`.Events` class."""
-
-    # there's all kinds of ways to do this,
-    # i.e. make a Dispatch class that shares the '_listen' method
-    # of the Event class, this is the straight monkeypatch.
-    if hasattr(cls, "dispatch"):
-        dispatch_base = cls.dispatch.__class__
-    else:
-        dispatch_base = _Dispatch
-
-    event_names = [k for k in dict_ if _is_event_name(k)]
-    dispatch_cls = type(
-        "%sDispatch" % classname, (dispatch_base,), {"__slots__": event_names}
-    )
-
-    dispatch_cls._event_names = event_names
-
-    dispatch_inst = cls._set_dispatch(cls, dispatch_cls)
-    for k in dispatch_cls._event_names:
-        setattr(dispatch_inst, k, _ClsLevelDispatch(cls, dict_[k]))
-        _registrars[k].append(cls)
-
-    for super_ in dispatch_cls.__bases__:
-        if issubclass(super_, _Dispatch) and super_ is not _Dispatch:
-            for ls in super_._events.dispatch._event_descriptors:
-                setattr(dispatch_inst, ls.name, ls)
-                dispatch_cls._event_names.append(ls.name)
-
-    if getattr(cls, "_dispatch_target", None):
-        the_cls = cls._dispatch_target
-        if (
-            hasattr(the_cls, "__slots__")
-            and "_slots_dispatch" in the_cls.__slots__
-        ):
-            cls._dispatch_target.dispatch = slots_dispatcher(cls)
-        else:
-            cls._dispatch_target.dispatch = dispatcher(cls)
-
-
 def _remove_dispatcher(cls):
     for k in cls.dispatch._event_names:
         _registrars[k].remove(cls)
@@ -216,8 +176,31 @@ def _remove_dispatcher(cls):
             del _registrars[k]
 
 
-class Events(metaclass=_EventMeta):
-    """Define event listening functions for a particular target type."""
+class _HasEventsDispatchProto(Protocol):
+    """protocol for non-event classes that will also receive the 'dispatch'
+    attribute in the form of a descriptor.
+
+    """
+
+    dispatch: ClassVar["dispatcher"]
+
+
+class _HasEventsDispatch:
+    _dispatch_target: Optional[Type[_HasEventsDispatchProto]]
+    """class which will receive the .dispatch collection"""
+
+    dispatch: _Dispatch
+    """reference back to the _Dispatch class.
+
+    Bidirectional against _Dispatch._events
+
+    """
+
+    def __init_subclass__(cls) -> None:
+        """Intercept new Event subclasses and create associated _Dispatch
+        classes."""
+
+        cls._create_dispatcher_class(cls.__name__, cls.__bases__, cls.__dict__)
 
     @staticmethod
     def _set_dispatch(cls, dispatch_cls):
@@ -229,6 +212,54 @@ class Events(metaclass=_EventMeta):
         cls.dispatch = dispatch_cls(None)
         dispatch_cls._events = cls
         return cls.dispatch
+
+    @classmethod
+    def _create_dispatcher_class(cls, classname, bases, dict_):
+        """Create a :class:`._Dispatch` class corresponding to an
+        :class:`.Events` class."""
+
+        # there's all kinds of ways to do this,
+        # i.e. make a Dispatch class that shares the '_listen' method
+        # of the Event class, this is the straight monkeypatch.
+        if hasattr(cls, "dispatch"):
+            dispatch_base = cls.dispatch.__class__
+        else:
+            dispatch_base = _Dispatch
+
+        event_names = [k for k in dict_ if _is_event_name(k)]
+        dispatch_cls = type(
+            "%sDispatch" % classname,
+            (dispatch_base,),
+            {"__slots__": event_names},
+        )
+
+        dispatch_cls._event_names = event_names
+
+        dispatch_inst = cls._set_dispatch(cls, dispatch_cls)
+        for k in dispatch_cls._event_names:
+            setattr(dispatch_inst, k, _ClsLevelDispatch(cls, dict_[k]))
+            _registrars[k].append(cls)
+
+        for super_ in dispatch_cls.__bases__:
+            if issubclass(super_, _Dispatch) and super_ is not _Dispatch:
+                for ls in super_._events.dispatch._event_descriptors:
+                    setattr(dispatch_inst, ls.name, ls)
+                    dispatch_cls._event_names.append(ls.name)
+
+        if getattr(cls, "_dispatch_target", None):
+            dispatch_target_cls = cls._dispatch_target
+            assert dispatch_target_cls is not None
+            if (
+                hasattr(dispatch_target_cls, "__slots__")
+                and "_slots_dispatch" in dispatch_target_cls.__slots__
+            ):
+                dispatch_target_cls.dispatch = slots_dispatcher(cls)
+            else:
+                dispatch_target_cls.dispatch = dispatcher(cls)
+
+
+class Events(_HasEventsDispatch):
+    """Define event listening functions for a particular target type."""
 
     @classmethod
     def _accept_with(cls, target):

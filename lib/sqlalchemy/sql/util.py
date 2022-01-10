@@ -22,6 +22,7 @@ from .annotation import _shallow_annotate  # noqa
 from .base import _expand_cloned
 from .base import _from_objects
 from .base import ColumnSet
+from .cache_key import HasCacheKey  # noqa
 from .ddl import sort_tables  # noqa
 from .elements import _find_columns  # noqa
 from .elements import _label_reference
@@ -41,7 +42,6 @@ from .selectable import Join
 from .selectable import ScalarSelect
 from .selectable import SelectBase
 from .selectable import TableClause
-from .traversals import HasCacheKey  # noqa
 from .. import exc
 from .. import util
 

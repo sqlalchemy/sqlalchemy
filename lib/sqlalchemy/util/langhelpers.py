@@ -1743,14 +1743,28 @@ def attrsetter(attrname):
     return env["set"]
 
 
-class EnsureKWArgType(type):
+class EnsureKWArg:
     r"""Apply translation of functions to accept \**kw arguments if they
     don't already.
 
+    Used to ensure cross-compatibility with third party legacy code, for things
+    like compiler visit methods that need to accept ``**kw`` arguments,
+    but may have been copied from old code that didn't accept them.
+
     """
 
-    def __init__(cls, clsname, bases, clsdict):
+    ensure_kwarg: str
+    """a regular expression that indicates method names for which the method
+    should accept ``**kw`` arguments.
+
+    The class will scan for methods matching the name template and decorate
+    them if necessary to ensure ``**kw`` parameters are accepted.
+
+    """
+
+    def __init_subclass__(cls) -> None:
         fn_reg = cls.ensure_kwarg
+        clsdict = cls.__dict__
         if fn_reg:
             for key in clsdict:
                 m = re.match(fn_reg, key)
@@ -1758,11 +1772,12 @@ class EnsureKWArgType(type):
                     fn = clsdict[key]
                     spec = compat.inspect_getfullargspec(fn)
                     if not spec.varkw:
-                        clsdict[key] = wrapped = cls._wrap_w_kw(fn)
+                        wrapped = cls._wrap_w_kw(fn)
                         setattr(cls, key, wrapped)
-        super(EnsureKWArgType, cls).__init__(clsname, bases, clsdict)
+        super().__init_subclass__()
 
-    def _wrap_w_kw(self, fn):
+    @classmethod
+    def _wrap_w_kw(cls, fn):
         def wrap(*arg, **kw):
             return fn(*arg)
 

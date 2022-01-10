@@ -20,7 +20,7 @@ from .. import exc
 from .. import inspection
 from .. import util
 from ..sql import visitors
-from ..sql.traversals import HasCacheKey
+from ..sql.cache_key import HasCacheKey
 
 log = logging.getLogger(__name__)
 

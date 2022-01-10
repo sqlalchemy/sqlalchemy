@@ -32,7 +32,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import UserDefinedOption
-from sqlalchemy.sql.traversals import NO_CACHE
+from sqlalchemy.sql.cache_key import NO_CACHE
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL

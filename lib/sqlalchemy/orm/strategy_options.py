@@ -29,9 +29,9 @@ from .. import exc as sa_exc
 from .. import inspect
 from .. import util
 from ..sql import and_
+from ..sql import cache_key
 from ..sql import coercions
 from ..sql import roles
-from ..sql import traversals
 from ..sql import visitors
 from ..sql.base import _generative
 from ..sql.base import Generative
@@ -1316,7 +1316,7 @@ class _WildcardLoad(_AbstractLoad):
         self.__dict__.update(state)
 
 
-class _LoadElement(traversals.HasCacheKey):
+class _LoadElement(cache_key.HasCacheKey):
     """represents strategy information to select for a LoaderStrategy
     and pass options to it.
 

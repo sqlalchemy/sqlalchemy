@@ -503,7 +503,7 @@ class Compiled:
         return self.construct_params()
 
 
-class TypeCompiler(metaclass=util.EnsureKWArgType):
+class TypeCompiler(util.EnsureKWArg):
     """Produces DDL specification for TypeEngine objects."""
 
     ensure_kwarg = r"visit_\w+"

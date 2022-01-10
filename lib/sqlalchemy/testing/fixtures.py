@@ -21,7 +21,6 @@ from .. import event
 from .. import util
 from ..orm import declarative_base
 from ..orm import registry
-from ..orm.decl_api import DeclarativeMeta
 from ..schema import sort_tables_and_constraints
 
 
@@ -647,15 +646,11 @@ class MappedTest(TablesTest, assertions.AssertsExecutionResults):
         """
         cls_registry = cls.classes
 
-        assert cls_registry is not None
-
-        class FindFixture(type):
-            def __init__(cls, classname, bases, dict_):
-                cls_registry[classname] = cls
-                type.__init__(cls, classname, bases, dict_)
-
-        class _Base(metaclass=FindFixture):
-            pass
+        class _Base:
+            def __init_subclass__(cls) -> None:
+                assert cls_registry is not None
+                cls_registry[cls.__name__] = cls
+                super().__init_subclass__()
 
         class Basic(BasicEntity, _Base):
             pass
@@ -699,17 +694,16 @@ class DeclarativeMappedTest(MappedTest):
     def _with_register_classes(cls, fn):
         cls_registry = cls.classes
 
-        class FindFixtureDeclarative(DeclarativeMeta):
-            def __init__(cls, classname, bases, dict_):
-                cls_registry[classname] = cls
-                DeclarativeMeta.__init__(cls, classname, bases, dict_)
-
         class DeclarativeBasic:
             __table_cls__ = schema.Table
 
+            def __init_subclass__(cls) -> None:
+                assert cls_registry is not None
+                cls_registry[cls.__name__] = cls
+                super().__init_subclass__()
+
         _DeclBase = declarative_base(
             metadata=cls._tables_metadata,
-            metaclass=FindFixtureDeclarative,
             cls=DeclarativeBasic,
         )
 
