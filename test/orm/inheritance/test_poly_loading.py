@@ -1,18 +1,22 @@
 from sqlalchemy import exc
 from sqlalchemy import ForeignKey
+from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy.orm import backref
 from sqlalchemy.orm import defaultload
+from sqlalchemy.orm import immediateload
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectin_polymorphic
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import with_polymorphic
+from sqlalchemy.orm.interfaces import CompileStateOption
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assertsql
 from sqlalchemy.testing import eq_
@@ -589,17 +593,11 @@ class LoaderOptionsTest(
         session.add_all([parent, subclass1, other])
         session.commit()
 
-    def test_options_dont_pollute_baked(self):
-        self._test_options_dont_pollute(True)
-
-    def test_options_dont_pollute_unbaked(self):
-        self._test_options_dont_pollute(False)
-
-    def _test_options_dont_pollute(self, enable_baked):
+    def test_options_dont_pollute(self):
         Parent, ChildSubclass1, Other = self.classes(
             "Parent", "ChildSubclass1", "Other"
         )
-        session = fixture_session(enable_baked_queries=enable_baked)
+        session = fixture_session()
 
         def no_opt():
             q = session.query(Parent).options(
@@ -860,3 +858,74 @@ class IgnoreOptionsOnSubclassAttrLoad(fixtures.DeclarativeMappedTest):
             )
 
         asserter_.assert_(*expected)
+
+
+class LazyLoaderTransfersOptsTest(fixtures.DeclarativeMappedTest):
+    """test #7557"""
+
+    @classmethod
+    def setup_classes(cls):
+        Base = cls.DeclarativeBasic
+
+        class Address(Base):
+            __tablename__ = "address"
+
+            id = Column(Integer, primary_key=True)
+            user_id = Column(Integer, ForeignKey("user.id"))
+            address_type = Column(String(50))
+            __mapper_args__ = {
+                "polymorphic_identity": "base_address",
+                "polymorphic_on": address_type,
+            }
+
+        class EmailAddress(Address):
+            __tablename__ = "email_address"
+            email = Column(String(50))
+            address_id = Column(
+                Integer,
+                ForeignKey(Address.id),
+                primary_key=True,
+            )
+
+            __mapper_args__ = {
+                "polymorphic_identity": "email",
+                "polymorphic_load": "selectin",
+            }
+
+        class User(Base):
+            __tablename__ = "user"
+
+            id = Column(Integer, primary_key=True)
+            name = Column(String(50))
+            address = relationship(Address, uselist=False)
+
+    @classmethod
+    def insert_data(cls, connection):
+        User, EmailAddress = cls.classes("User", "EmailAddress")
+        with Session(connection) as sess:
+            sess.add_all(
+                [User(name="u1", address=EmailAddress(email="foo", user_id=1))]
+            )
+
+            sess.commit()
+
+    @testing.combinations(
+        None, selectinload, joinedload, lazyload, subqueryload, immediateload
+    )
+    def test_opt_propagates(self, strat):
+        User, EmailAddress = self.classes("User", "EmailAddress")
+        sess = fixture_session()
+
+        class AnyOpt(CompileStateOption):
+            _cache_key_traversal = ()
+            propagate_to_loaders = True
+
+        any_opt = AnyOpt()
+        if strat is None:
+            opts = (any_opt,)
+        else:
+            opts = (strat(User.address), any_opt)
+
+        u = sess.execute(select(User).options(*opts)).scalars().one()
+        address = u.address
+        eq_(inspect(address).load_options, set(opts))

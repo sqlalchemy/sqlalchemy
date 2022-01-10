@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 7557
+
+    Fixed regression which appeared in 1.4.23 which could cause loader options
+    to be mis-handled in some cases, in particular when using joined table
+    inheritance in combination with the ``polymorphic_load="selectin"`` option
+    as well as relationship lazy loading, leading to a ``TypeError``.
+
