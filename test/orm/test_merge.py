@@ -1583,7 +1583,7 @@ class MergeTest(_fixtures.FixtureTest):
         for u in s1_users:
             ustate = attributes.instance_state(u)
             eq_(ustate.load_path.path, (umapper,))
-            eq_(ustate.load_options, set())
+            eq_(ustate.load_options, ())
 
         for u in s2_users:
             sess.merge(u)
@@ -1591,7 +1591,7 @@ class MergeTest(_fixtures.FixtureTest):
         for u in s1_users:
             ustate = attributes.instance_state(u)
             eq_(ustate.load_path.path, (umapper,))
-            eq_(ustate.load_options, set([opt2]))
+            eq_(ustate.load_options, (opt2,))
 
         # test 2.  present options are replaced by merge options
         sess = fixture_session()
@@ -1599,7 +1599,7 @@ class MergeTest(_fixtures.FixtureTest):
         for u in s1_users:
             ustate = attributes.instance_state(u)
             eq_(ustate.load_path.path, (umapper,))
-            eq_(ustate.load_options, set([opt1]))
+            eq_(ustate.load_options, (opt1,))
 
         for u in s2_users:
             sess.merge(u)
@@ -1607,7 +1607,7 @@ class MergeTest(_fixtures.FixtureTest):
         for u in s1_users:
             ustate = attributes.instance_state(u)
             eq_(ustate.load_path.path, (umapper,))
-            eq_(ustate.load_options, set([opt2]))
+            eq_(ustate.load_options, (opt2,))
 
     def test_resolve_conflicts_pending_doesnt_interfere_no_ident(self):
         User, Address, Order = (

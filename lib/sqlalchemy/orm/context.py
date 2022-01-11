@@ -103,7 +103,7 @@ class QueryContext:
         self.loaders_require_uniquing = False
         self.params = params
 
-        self.propagated_loader_options = {
+        self.propagated_loader_options = tuple(
             # issue 7447.
             # propagated loader options will be present on loaded InstanceState
             # objects under state.load_options and are typically used by
@@ -118,14 +118,14 @@ class QueryContext:
             cached_o
             for cached_o in compile_state.select_statement._with_options
             if cached_o.propagate_to_loaders and cached_o._is_compile_state
-        } | {
+        ) + tuple(
             # for user defined loader options that are not "compile state",
             # those just need to be present as they are
             uncached_o
             for uncached_o in statement._with_options
             if uncached_o.propagate_to_loaders
             and not uncached_o._is_compile_state
-        }
+        )
 
         self.attributes = dict(compile_state.attributes)
 

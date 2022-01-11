@@ -928,4 +928,4 @@ class LazyLoaderTransfersOptsTest(fixtures.DeclarativeMappedTest):
 
         u = sess.execute(select(User).options(*opts)).scalars().one()
         address = u.address
-        eq_(inspect(address).load_options, set(opts))
+        eq_(inspect(address).load_options, opts)
