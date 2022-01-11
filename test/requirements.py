@@ -1127,6 +1127,27 @@ class DefaultRequirements(SuiteRequirements):
         return exclusions.open()
 
     @property
+    def datetime_implicit_bound(self):
+        """target dialect when given a datetime object will bind it such
+        that the database server knows the object is a datetime, and not
+        a plain string.
+
+        """
+        # pg8000 works in main / 2.0, support in 1.4 is not fully
+        # present.
+        return exclusions.skip_if("postgresql+pg8000") + exclusions.fails_on(
+            ["mysql", "mariadb"]
+        )
+
+    @property
+    def datetime_timezone(self):
+        return exclusions.only_on("postgresql")
+
+    @property
+    def time_timezone(self):
+        return exclusions.only_on("postgresql") + exclusions.skip_if("+pg8000")
+
+    @property
     def datetime_microseconds(self):
         """target dialect supports representation of Python
         datetime.datetime() with microsecond objects."""
@@ -1142,6 +1163,10 @@ class DefaultRequirements(SuiteRequirements):
         if TIMESTAMP is used."""
 
         return only_on(["oracle"])
+
+    @property
+    def timestamp_microseconds_implicit_bound(self):
+        return self.timestamp_microseconds + exclusions.fails_on(["oracle"])
 
     @property
     def datetime_historic(self):

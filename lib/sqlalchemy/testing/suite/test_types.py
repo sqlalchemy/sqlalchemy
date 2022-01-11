@@ -41,6 +41,7 @@ from ... import UnicodeText
 from ... import util
 from ...orm import declarative_base
 from ...orm import Session
+from ...util import compat
 from ...util import u
 
 
@@ -308,6 +309,11 @@ class _DateFixture(_LiteralRoundTripFixture, fixtures.TestBase):
             Column("decorated_date_data", Decorated),
         )
 
+    @testing.requires.datetime_implicit_bound
+    def test_select_direct(self, connection):
+        result = connection.scalar(select(literal(self.data)))
+        eq_(result, self.data)
+
     def test_round_trip(self, connection):
         date_table = self.tables.date_table
 
@@ -382,6 +388,15 @@ class DateTimeTest(_DateFixture, fixtures.TablesTest):
     data = datetime.datetime(2012, 10, 15, 12, 57, 18)
 
 
+class DateTimeTZTest(_DateFixture, fixtures.TablesTest):
+    __requires__ = ("datetime_timezone",)
+    __backend__ = True
+    datatype = DateTime(timezone=True)
+    data = datetime.datetime(
+        2012, 10, 15, 12, 57, 18, tzinfo=compat.timezone.utc
+    )
+
+
 class DateTimeMicrosecondsTest(_DateFixture, fixtures.TablesTest):
     __requires__ = ("datetime_microseconds",)
     __backend__ = True
@@ -395,12 +410,24 @@ class TimestampMicrosecondsTest(_DateFixture, fixtures.TablesTest):
     datatype = TIMESTAMP
     data = datetime.datetime(2012, 10, 15, 12, 57, 18, 396)
 
+    @testing.requires.timestamp_microseconds_implicit_bound
+    def test_select_direct(self, connection):
+        result = connection.scalar(select(literal(self.data)))
+        eq_(result, self.data)
+
 
 class TimeTest(_DateFixture, fixtures.TablesTest):
     __requires__ = ("time",)
     __backend__ = True
     datatype = Time
     data = datetime.time(12, 57, 18)
+
+
+class TimeTZTest(_DateFixture, fixtures.TablesTest):
+    __requires__ = ("time_timezone",)
+    __backend__ = True
+    datatype = Time(timezone=True)
+    data = datetime.time(12, 57, 18, tzinfo=compat.timezone.utc)
 
 
 class TimeMicrosecondsTest(_DateFixture, fixtures.TablesTest):
@@ -1424,6 +1451,7 @@ __all__ = (
     "JSONLegacyStringCastIndexTest",
     "DateTest",
     "DateTimeTest",
+    "DateTimeTZTest",
     "TextTest",
     "NumericTest",
     "IntegerTest",
@@ -1433,6 +1461,7 @@ __all__ = (
     "TimeMicrosecondsTest",
     "TimestampMicrosecondsTest",
     "TimeTest",
+    "TimeTZTest",
     "DateTimeMicrosecondsTest",
     "DateHistoricTest",
     "StringTest",

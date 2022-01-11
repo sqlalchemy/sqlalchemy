@@ -545,6 +545,17 @@ class TypeEngine(Traversible):
         """
         return Variant(self, {dialect_name: to_instance(type_)})
 
+    def _resolve_for_literal(self, value):
+        """adjust this type given a literal Python value that will be
+        stored in a bound parameter.
+
+        Used exclusively by _resolve_value_to_type().
+
+        .. versionadded:: 1.4.30 or 2.0
+
+        """
+        return self
+
     @util.memoized_property
     def _type_affinity(self):
         """Return a rudimental 'affinity' value expressing the general class

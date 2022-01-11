@@ -136,7 +136,10 @@ except ImportError:
 
 class AsyncpgTime(sqltypes.Time):
     def get_dbapi_type(self, dbapi):
-        return dbapi.TIME
+        if self.timezone:
+            return dbapi.TIME_W_TZ
+        else:
+            return dbapi.TIME
 
 
 class AsyncpgDate(sqltypes.Date):
@@ -818,6 +821,7 @@ class AsyncAdapt_asyncpg_dbapi:
     TIMESTAMP = util.symbol("TIMESTAMP")
     TIMESTAMP_W_TZ = util.symbol("TIMESTAMP_W_TZ")
     TIME = util.symbol("TIME")
+    TIME_W_TZ = util.symbol("TIME_W_TZ")
     DATE = util.symbol("DATE")
     INTERVAL = util.symbol("INTERVAL")
     NUMBER = util.symbol("NUMBER")
@@ -843,6 +847,7 @@ _pg_types = {
     AsyncAdapt_asyncpg_dbapi.TIMESTAMP_W_TZ: "timestamp with time zone",
     AsyncAdapt_asyncpg_dbapi.DATE: "date",
     AsyncAdapt_asyncpg_dbapi.TIME: "time",
+    AsyncAdapt_asyncpg_dbapi.TIME_W_TZ: "time with time zone",
     AsyncAdapt_asyncpg_dbapi.INTERVAL: "interval",
     AsyncAdapt_asyncpg_dbapi.NUMBER: "numeric",
     AsyncAdapt_asyncpg_dbapi.FLOAT: "float",
