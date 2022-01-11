@@ -512,11 +512,7 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
         },
     )
 
-    def __init__(
-        self, description_encoding=None, fast_executemany=False, **params
-    ):
-        if "description_encoding" in params:
-            self.description_encoding = params.pop("description_encoding")
+    def __init__(self, fast_executemany=False, **params):
         super(MSDialect_pyodbc, self).__init__(**params)
         self.use_scope_identity = (
             self.use_scope_identity
