@@ -20,9 +20,9 @@ import typing
 
 from . import roles
 from . import visitors
-from .traversals import HasCacheKey  # noqa
+from .cache_key import HasCacheKey  # noqa
+from .cache_key import MemoizedHasCacheKey  # noqa
 from .traversals import HasCopyInternals  # noqa
-from .traversals import MemoizedHasCacheKey  # noqa
 from .visitors import ClauseVisitor
 from .visitors import ExtendedInternalTraversal
 from .visitors import InternalTraversal
@@ -36,7 +36,6 @@ try:
     from sqlalchemy.cyextension.util import prefix_anon_map  # noqa
 except ImportError:
     from ._py_util import prefix_anon_map  # noqa
-
 
 coercions = None
 elements = None
@@ -610,18 +609,13 @@ class HasCompileState(Generative):
 
 
 class _MetaOptions(type):
-    """metaclass for the Options class."""
+    """metaclass for the Options class.
 
-    def __init__(cls, classname, bases, dict_):
-        cls._cache_attrs = tuple(
-            sorted(
-                d
-                for d in dict_
-                if not d.startswith("__")
-                and d not in ("_cache_key_traversal",)
-            )
-        )
-        type.__init__(cls, classname, bases, dict_)
+    This metaclass is actually necessary despite the availability of the
+    ``__init_subclass__()`` hook as this type also provides custom class-level
+    behavior for the ``__add__()`` method.
+
+    """
 
     def __add__(self, other):
         o1 = self()
@@ -639,6 +633,18 @@ class _MetaOptions(type):
 
 class Options(metaclass=_MetaOptions):
     """A cacheable option dictionary with defaults."""
+
+    def __init_subclass__(cls) -> None:
+        dict_ = cls.__dict__
+        cls._cache_attrs = tuple(
+            sorted(
+                d
+                for d in dict_
+                if not d.startswith("__")
+                and d not in ("_cache_key_traversal",)
+            )
+        )
+        super().__init_subclass__()
 
     def __init__(self, **kw):
         self.__dict__.update(kw)

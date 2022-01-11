@@ -22,11 +22,11 @@ from . import roles
 from . import type_api
 from .base import NO_ARG
 from .base import SchemaEventTarget
+from .cache_key import HasCacheKey
 from .elements import _NONE_NAME
 from .elements import quoted_name
 from .elements import Slice
 from .elements import TypeCoerce as type_coerce  # noqa
-from .traversals import HasCacheKey
 from .traversals import InternalTraversal
 from .type_api import Emulated
 from .type_api import NativeForEmulated  # noqa

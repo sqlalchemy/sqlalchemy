@@ -13,9 +13,8 @@ import typing
 
 from . import operators
 from .base import SchemaEventTarget
-from .traversals import NO_CACHE
+from .cache_key import NO_CACHE
 from .visitors import Traversible
-from .visitors import TraversibleType
 from .. import exc
 from .. import util
 
@@ -869,10 +868,6 @@ class TypeEngine(Traversible):
         return util.generic_repr(self)
 
 
-class VisitableCheckKWArg(util.EnsureKWArgType, TraversibleType):
-    pass
-
-
 class ExternalType:
     """mixin that defines attributes and behaviors specific to third-party
     datatypes.
@@ -1049,7 +1044,7 @@ class ExternalType:
         return NO_CACHE
 
 
-class UserDefinedType(ExternalType, TypeEngine, metaclass=VisitableCheckKWArg):
+class UserDefinedType(ExternalType, TypeEngine, util.EnsureKWArg):
     """Base for user defined types.
 
     This should be the base of new types.  Note that

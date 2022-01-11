@@ -29,10 +29,10 @@ from .base import HasMemoized
 from .base import Immutable
 from .base import NO_ARG
 from .base import SingletonConstant
+from .cache_key import MemoizedHasCacheKey
+from .cache_key import NO_CACHE
 from .coercions import _document_text_coercion
 from .traversals import HasCopyInternals
-from .traversals import MemoizedHasCacheKey
-from .traversals import NO_CACHE
 from .visitors import cloned_traverse
 from .visitors import InternalTraversal
 from .visitors import traverse

@@ -18,6 +18,7 @@ import typing
 from typing import Type
 from typing import Union
 
+from . import cache_key
 from . import coercions
 from . import operators
 from . import roles
@@ -4300,7 +4301,7 @@ class _SelectFromElements:
 
 
 class _MemoizedSelectEntities(
-    traversals.HasCacheKey, traversals.HasCopyInternals, visitors.Traversible
+    cache_key.HasCacheKey, traversals.HasCopyInternals, visitors.Traversible
 ):
     __visit_name__ = "memoized_select_entities"
 

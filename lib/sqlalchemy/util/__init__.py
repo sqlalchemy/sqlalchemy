@@ -98,7 +98,7 @@ from .langhelpers import decorator
 from .langhelpers import dictlike_iteritems
 from .langhelpers import duck_type_collection
 from .langhelpers import ellipses_string
-from .langhelpers import EnsureKWArgType
+from .langhelpers import EnsureKWArg
 from .langhelpers import format_argspec_init
 from .langhelpers import format_argspec_plus
 from .langhelpers import generic_repr

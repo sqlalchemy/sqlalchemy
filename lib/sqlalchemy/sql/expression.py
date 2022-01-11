@@ -94,6 +94,7 @@ from .base import _from_objects
 from .base import _select_iterables
 from .base import ColumnCollection
 from .base import Executable
+from .cache_key import CacheKey
 from .dml import Delete
 from .dml import Insert
 from .dml import Update
@@ -173,7 +174,6 @@ from .selectable import TableValuedAlias
 from .selectable import TextAsFrom
 from .selectable import TextualSelect
 from .selectable import Values
-from .traversals import CacheKey
 from .visitors import Visitable
 from ..util.langhelpers import public_factory
 

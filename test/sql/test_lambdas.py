@@ -18,7 +18,7 @@ from sqlalchemy.sql import select
 from sqlalchemy.sql import table
 from sqlalchemy.sql import util as sql_util
 from sqlalchemy.sql.base import ExecutableOption
-from sqlalchemy.sql.traversals import HasCacheKey
+from sqlalchemy.sql.cache_key import HasCacheKey
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_

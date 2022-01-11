@@ -11,6 +11,7 @@ import operator
 import types
 import weakref
 
+from . import cache_key as _cache_key
 from . import coercions
 from . import elements
 from . import roles
@@ -185,7 +186,7 @@ class LambdaElement(elements.ClauseElement):
         else:
             parent_closure_cache_key = ()
 
-        if parent_closure_cache_key is not traversals.NO_CACHE:
+        if parent_closure_cache_key is not _cache_key.NO_CACHE:
             anon_map = traversals.anon_map()
             cache_key = tuple(
                 [
@@ -194,7 +195,7 @@ class LambdaElement(elements.ClauseElement):
                 ]
             )
 
-            if traversals.NO_CACHE not in anon_map:
+            if _cache_key.NO_CACHE not in anon_map:
                 cache_key = parent_closure_cache_key + cache_key
 
                 self.closure_cache_key = cache_key
@@ -204,17 +205,17 @@ class LambdaElement(elements.ClauseElement):
                 except KeyError:
                     rec = None
             else:
-                cache_key = traversals.NO_CACHE
+                cache_key = _cache_key.NO_CACHE
                 rec = None
 
         else:
-            cache_key = traversals.NO_CACHE
+            cache_key = _cache_key.NO_CACHE
             rec = None
 
         self.closure_cache_key = cache_key
 
         if rec is None:
-            if cache_key is not traversals.NO_CACHE:
+            if cache_key is not _cache_key.NO_CACHE:
                 rec = AnalyzedFunction(
                     tracker, self, apply_propagate_attrs, fn
                 )
@@ -233,7 +234,7 @@ class LambdaElement(elements.ClauseElement):
 
         self._rec = rec
 
-        if cache_key is not traversals.NO_CACHE:
+        if cache_key is not _cache_key.NO_CACHE:
             if self.parent_lambda is not None:
                 bindparams[:0] = self.parent_lambda._resolved_bindparams
 
@@ -326,8 +327,8 @@ class LambdaElement(elements.ClauseElement):
         return expr
 
     def _gen_cache_key(self, anon_map, bindparams):
-        if self.closure_cache_key is traversals.NO_CACHE:
-            anon_map[traversals.NO_CACHE] = True
+        if self.closure_cache_key is _cache_key.NO_CACHE:
+            anon_map[_cache_key.NO_CACHE] = True
             return None
 
         cache_key = (
@@ -808,7 +809,7 @@ class AnalyzedCode:
                     for tup_elem in opts.track_on[idx]
                 )
 
-        elif isinstance(elem, traversals.HasCacheKey):
+        elif isinstance(elem, _cache_key.HasCacheKey):
 
             def get(closure, opts, anon_map, bindparams):
                 return opts.track_on[idx]._gen_cache_key(anon_map, bindparams)
@@ -834,7 +835,7 @@ class AnalyzedCode:
 
         """
 
-        if isinstance(cell_contents, traversals.HasCacheKey):
+        if isinstance(cell_contents, _cache_key.HasCacheKey):
 
             def get(closure, opts, anon_map, bindparams):
 
@@ -1166,7 +1167,7 @@ class PyWrapper(ColumnOperators):
             and not isinstance(
                 # TODO: coverage where an ORM option or similar is here
                 value,
-                traversals.HasCacheKey,
+                _cache_key.HasCacheKey,
             )
         ):
             name = object.__getattribute__(self, "_name")

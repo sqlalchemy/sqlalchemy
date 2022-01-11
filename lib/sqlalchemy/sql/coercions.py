@@ -14,7 +14,7 @@ from . import roles
 from . import visitors
 from .base import ExecutableOption
 from .base import Options
-from .traversals import HasCacheKey
+from .cache_key import HasCacheKey
 from .visitors import Visitable
 from .. import exc
 from .. import inspection
