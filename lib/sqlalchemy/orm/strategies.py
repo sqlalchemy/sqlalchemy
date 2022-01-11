@@ -964,7 +964,7 @@ class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
         if state.load_options or (loadopt and loadopt._extra_criteria):
             effective_path = state.load_path[self.parent_property]
 
-            opts = tuple(state.load_options)
+            opts = state.load_options
 
             if loadopt and loadopt._extra_criteria:
                 use_get = False
