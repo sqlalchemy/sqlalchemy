@@ -622,6 +622,13 @@ class DateTime(_LookupExpressionAdapter, TypeEngine):
     def get_dbapi_type(self, dbapi):
         return dbapi.DATETIME
 
+    def _resolve_for_literal(self, value):
+        with_timezone = value.tzinfo is not None
+        if with_timezone and not self.timezone:
+            return DATETIME_TIMEZONE
+        else:
+            return self
+
     @property
     def python_type(self):
         return dt.datetime
@@ -691,6 +698,13 @@ class Time(_LookupExpressionAdapter, TypeEngine):
     @property
     def python_type(self):
         return dt.time
+
+    def _resolve_for_literal(self, value):
+        with_timezone = value.tzinfo is not None
+        if with_timezone and not self.timezone:
+            return TIME_TIMEZONE
+        else:
+            return self
 
     @util.memoized_property
     def _expression_adaptations(self):
@@ -2981,6 +2995,8 @@ STRINGTYPE = String()
 INTEGERTYPE = Integer()
 MATCHTYPE = MatchType()
 TABLEVALUE = TableValueType()
+DATETIME_TIMEZONE = DateTime(timezone=True)
+TIME_TIMEZONE = Time(timezone=True)
 
 _type_map = {
     int: Integer(),
@@ -3018,7 +3034,7 @@ def _resolve_value_to_type(value):
             )
         return NULLTYPE
     else:
-        return _result_type
+        return _result_type._resolve_for_literal(value)
 
 
 # back-assign to type_api

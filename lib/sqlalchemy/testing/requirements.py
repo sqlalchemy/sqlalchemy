@@ -754,6 +754,29 @@ class SuiteRequirements(Requirements):
         return exclusions.open()
 
     @property
+    def datetime_timezone(self):
+        """target dialect supports representation of Python
+        datetime.datetime() with tzinfo with DateTime(timezone=True)."""
+
+        return exclusions.closed()
+
+    @property
+    def time_timezone(self):
+        """target dialect supports representation of Python
+        datetime.time() with tzinfo with Time(timezone=True)."""
+
+        return exclusions.closed()
+
+    @property
+    def datetime_implicit_bound(self):
+        """target dialect when given a datetime object will bind it such
+        that the database server knows the object is a datetime, and not
+        a plain string.
+
+        """
+        return exclusions.open()
+
+    @property
     def datetime_microseconds(self):
         """target dialect supports representation of Python
         datetime.datetime() with microsecond objects."""
@@ -766,6 +789,16 @@ class SuiteRequirements(Requirements):
         datetime.datetime() with microsecond objects but only
         if TIMESTAMP is used."""
         return exclusions.closed()
+
+    @property
+    def timestamp_microseconds_implicit_bound(self):
+        """target dialect when given a datetime object which also includes
+        a microseconds portion when using the TIMESTAMP data type
+        will bind it such that the database server knows
+        the object is a datetime with microseconds, and not a plain string.
+
+        """
+        return self.timestamp_microseconds
 
     @property
     def datetime_historic(self):
