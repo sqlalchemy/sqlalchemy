@@ -1410,7 +1410,6 @@ from ...types import SMALLINT
 from ...types import TEXT
 from ...types import VARCHAR
 
-
 IDX_USING = re.compile(r"^(?:btree|hash|gist|gin|[\w_]+)$", re.I)
 
 RESERVED_WORDS = set(
@@ -1750,6 +1749,14 @@ class UUID(sqltypes.TypeEngine):
             return process
         else:
             return None
+
+    def literal_processor(self, dialect):
+        bp = self.bind_processor(dialect)
+
+        def process(value):
+            return "'%s'" % bp(value)
+
+        return process
 
 
 PGUuid = UUID
