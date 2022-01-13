@@ -1,0 +1,8 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 7561
+
+    Added string rendering to the :class:`.postgresql.UUID` datatype, so that
+    stringifying a statement with "literal_binds" that uses this type will
+    render an appropriate string value for the PostgreSQL backend. Pull request
+    courtesy José Duarte.
