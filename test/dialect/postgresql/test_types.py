@@ -2793,40 +2793,27 @@ class UUIDTest(fixtures.TestBase):
             "not_as_uuid",
             postgresql.UUID(as_uuid=False),
             str(uuid.uuid4()),
-            str(uuid.uuid4()),
         ),
         (
             "as_uuid",
             postgresql.UUID(as_uuid=True),
             uuid.uuid4(),
-            uuid.uuid4(),
         ),
-        id_="iaaa",
-        argnames="datatype, value1, value2",
+        id_="iaa",
+        argnames="datatype, value1",
     )
-    def test_uuid_literal(self, datatype, value1, value2, connection):
+    def test_uuid_literal(self, datatype, value1, connection):
         v1 = connection.execute(
             select(
                 bindparam(
-                    "uuid_literal",
+                    "key",
+                    value=value1,
                     literal_execute=True,
                     type_=datatype,
                 )
             ),
-            uuid_literal=value1,
-        ).first()
-        v2 = connection.execute(
-            select(
-                bindparam(
-                    "uuid_literal",
-                    literal_execute=True,
-                    type_=datatype,
-                )
-            ),
-            uuid_literal=value2,
-        ).first()
-        eq_(v1, value1)
-        eq_(v2, value2)
+        )
+        eq_(v1.fetchone()[0], value1)
 
 
 class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):

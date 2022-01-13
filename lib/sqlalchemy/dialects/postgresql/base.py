@@ -1751,12 +1751,22 @@ class UUID(sqltypes.TypeEngine):
             return None
 
     def literal_processor(self, dialect):
-        bp = self.bind_processor(dialect)
+        if self.as_uuid:
 
-        def process(value):
-            return "'%s'" % bp(value)
+            def process(value):
+                if value is not None:
+                    value = "'%s'::UUID" % value
+                return value
 
-        return process
+            return process
+        else:
+
+            def process(value):
+                if value is not None:
+                    value = "'%s'" % value
+                return value
+
+            return process
 
 
 PGUuid = UUID
