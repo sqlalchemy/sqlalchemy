@@ -47,6 +47,7 @@ from sqlalchemy.dialects.postgresql import TSTZRANGE
 from sqlalchemy.exc import CompileError
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import bindparam
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql.type_api import Variant
@@ -922,11 +923,11 @@ class NumericInterpretationTest(fixtures.TestBase):
 
     def test_numeric_codes(self):
         from sqlalchemy.dialects.postgresql import (
+            base,
             pg8000,
             pygresql,
             psycopg2,
             psycopg2cffi,
-            base,
         )
 
         dialects = (
@@ -1415,9 +1416,11 @@ class ArrayTest(AssertsCompiledSQL, fixtures.TestBase):
         argnames="with_enum, using_aggregate_order_by",
     )
     def test_array_agg_specific(self, with_enum, using_aggregate_order_by):
-        from sqlalchemy.dialects.postgresql import aggregate_order_by
-        from sqlalchemy.dialects.postgresql import array_agg
-        from sqlalchemy.dialects.postgresql import ENUM
+        from sqlalchemy.dialects.postgresql import (
+            ENUM,
+            aggregate_order_by,
+            array_agg,
+        )
 
         element_type = ENUM if with_enum else Integer
         expr = (
@@ -2789,6 +2792,33 @@ class UUIDTest(fixtures.TestBase):
     # passes pg8000 as of 1.19.1
     def test_uuid_array(self, datatype, value1, value2, connection):
         self.test_round_trip(datatype, value1, value2, connection)
+
+    @testing.combinations(
+        (
+            "not_as_uuid",
+            postgresql.UUID(as_uuid=False),
+            str(uuid.uuid4()),
+        ),
+        (
+            "as_uuid",
+            postgresql.UUID(as_uuid=True),
+            uuid.uuid4(),
+        ),
+        id_="iaa",
+        argnames="datatype, value1",
+    )
+    def test_uuid_literal(self, datatype, value1, connection):
+        v1 = connection.execute(
+            select(
+                bindparam(
+                    "key",
+                    value=value1,
+                    literal_execute=True,
+                    type_=datatype,
+                )
+            ),
+        )
+        eq_(v1.fetchone()[0], value1)
 
 
 class HStoreTest(AssertsCompiledSQL, fixtures.TestBase):

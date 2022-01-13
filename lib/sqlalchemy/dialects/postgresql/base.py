@@ -1409,7 +1409,6 @@ from ...types import SMALLINT
 from ...types import TEXT
 from ...types import VARCHAR
 
-
 IDX_USING = re.compile(r"^(?:btree|hash|gist|gin|[\w_]+)$", re.I)
 
 AUTOCOMMIT_REGEXP = re.compile(
@@ -1755,6 +1754,24 @@ class UUID(sqltypes.TypeEngine):
             return process
         else:
             return None
+
+    def literal_processor(self, dialect):
+        if self.as_uuid:
+
+            def process(value):
+                if value is not None:
+                    value = "'%s'::UUID" % value
+                return value
+
+            return process
+        else:
+
+            def process(value):
+                if value is not None:
+                    value = "'%s'" % value
+                return value
+
+            return process
 
 
 PGUuid = UUID
