@@ -363,11 +363,11 @@ class TestORMInspection(_fixtures.FixtureTest):
         u1 = User(name="ed")
         insp = inspect(u1)
         hist = insp.attrs.addresses.history
-        eq_(hist.unchanged, None)
+        eq_(hist.unchanged, ())
         u1.addresses
         hist = insp.attrs.addresses.history
         # stays, this is #4519
-        eq_(hist.unchanged, None)
+        eq_(hist.unchanged, ())
 
     def test_instance_state_scalar_attr_hist(self):
         User = self.classes.User
@@ -378,7 +378,7 @@ class TestORMInspection(_fixtures.FixtureTest):
         assert "name" not in u1.__dict__
         insp = inspect(u1)
         hist = insp.attrs.name.history
-        eq_(hist.unchanged, None)
+        eq_(hist.unchanged, ())
         assert "name" not in u1.__dict__
 
     def test_instance_state_collection_attr_load_hist(self):

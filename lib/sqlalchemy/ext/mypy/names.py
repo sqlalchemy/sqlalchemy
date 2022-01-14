@@ -104,7 +104,7 @@ _lookup: Dict[str, Tuple[int, Set[str]]] = {
         },
     ),
     "TypeEngine": (TYPEENGINE, {"sqlalchemy.sql.type_api.TypeEngine"}),
-    "Mapped": (MAPPED, {"sqlalchemy.orm.attributes.Mapped"}),
+    "Mapped": (MAPPED, {NAMED_TYPE_SQLA_MAPPED}),
     "declarative_base": (
         DECLARATIVE_BASE,
         {

@@ -9,6 +9,9 @@
 functionality."""
 
 import re
+from typing import Any
+from typing import Callable
+from typing import TypeVar
 
 from . import compat
 from .langhelpers import _hash_limit_string
@@ -16,7 +19,10 @@ from .langhelpers import _warnings_warn
 from .langhelpers import decorator
 from .langhelpers import inject_docstring_text
 from .langhelpers import inject_param_text
+from .typing import ReadOnlyInstanceDescriptor
 from .. import exc
+
+_T = TypeVar("_T", bound=Any)
 
 
 def _warn_with_version(msg, version, type_, stacklevel, code=None):
@@ -58,6 +64,50 @@ def deprecated_cls(version, message, constructor="__init__"):
         )
 
     return decorate
+
+
+def deprecated_property(
+    version,
+    message=None,
+    add_deprecation_to_docstring=True,
+    warning=None,
+    enable_warnings=True,
+) -> Callable[[Callable[..., _T]], ReadOnlyInstanceDescriptor[_T]]:
+    """the @deprecated decorator with a @property.
+
+    E.g.::
+
+        class Foo:
+            @deprecated_property("1.4", "thing is deprecated")
+            def thing(self):
+                return "thing"
+
+    is equivalent to::
+
+        class Foo:
+            @property
+            @deprecated("1.4", "thing is deprecated")
+            def thing(self):
+                return "thing"
+
+    How come?
+
+    Because::
+
+        mypy: error: Decorated property not supported
+
+    great!   now it is.
+
+    """
+    return lambda fn: property(
+        deprecated(
+            version,
+            message=message,
+            add_deprecation_to_docstring=add_deprecation_to_docstring,
+            warning=warning,
+            enable_warnings=enable_warnings,
+        )(fn)
+    )
 
 
 def deprecated(

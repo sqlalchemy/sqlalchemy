@@ -16,6 +16,11 @@ be used directly and is also accepted directly by ``create_engine()``.
 
 import collections.abc as collections_abc
 import re
+from typing import Dict
+from typing import NamedTuple
+from typing import Optional
+from typing import Tuple
+from typing import Union
 from urllib.parse import parse_qsl
 from urllib.parse import quote_plus
 from urllib.parse import unquote
@@ -27,20 +32,7 @@ from ..dialects import plugins
 from ..dialects import registry
 
 
-class URL(
-    util.namedtuple(
-        "URL",
-        [
-            "drivername",
-            "username",
-            "password",
-            "host",
-            "port",
-            "database",
-            "query",
-        ],
-    )
-):
+class URL(NamedTuple):
     """
     Represent the components of a URL used to connect to a database.
 
@@ -86,17 +78,13 @@ class URL(
 
     """
 
-    def __new__(self, *arg, **kw):
-        if kw.pop("_new_ok", False):
-            return super(URL, self).__new__(self, *arg, **kw)
-        else:
-            util.warn_deprecated(
-                "Calling URL() directly is deprecated and will be disabled "
-                "in a future release.  The public constructor for URL is "
-                "now the URL.create() method.",
-                "1.4",
-            )
-            return URL.create(*arg, **kw)
+    drivername: str
+    username: Optional[str]
+    password: Optional[str]
+    host: Optional[str]
+    port: Optional[int]
+    database: Optional[str]
+    query: Dict[str, Union[str, Tuple[str]]]
 
     @classmethod
     def create(
@@ -153,7 +141,6 @@ class URL(
             cls._assert_port(port),
             cls._assert_none_str(database, "database"),
             cls._str_dict(query),
-            _new_ok=True,
         )
 
     @classmethod
@@ -264,10 +251,10 @@ class URL(
         if query is not None:
             kw["query"] = query
 
-        return self._replace(**kw)
+        return self._assert_replace(**kw)
 
-    def _replace(self, **kw):
-        """Override ``namedtuple._replace()`` to provide argument checking."""
+    def _assert_replace(self, **kw):
+        """argument checks before calling _replace()"""
 
         if "drivername" in kw:
             self._assert_str(kw["drivername"], "drivername")
@@ -279,7 +266,7 @@ class URL(
         if "query" in kw:
             kw["query"] = self._str_dict(kw["query"])
 
-        return super(URL, self)._replace(**kw)
+        return self._replace(**kw)
 
     def update_query_string(self, query_string, append=False):
         """Return a new :class:`_engine.URL` object with the :attr:`_engine.URL.query`
@@ -467,7 +454,6 @@ class URL(
                     for key in set(self.query).difference(names)
                 }
             ),
-            _new_ok=True,
         )
 
     @util.memoized_property

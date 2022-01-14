@@ -30,7 +30,6 @@ arm = "aarch" in platform.machine().lower()
 has_refcount_gc = bool(cpython)
 
 dottedgetter = operator.attrgetter
-namedtuple = collections.namedtuple
 next = next  # noqa
 
 FullArgSpec = collections.namedtuple(

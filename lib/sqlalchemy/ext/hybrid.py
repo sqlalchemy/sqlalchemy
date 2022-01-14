@@ -802,9 +802,14 @@ advanced and/or patient developers, there's probably a whole lot of amazing
 things it can be used for.
 
 """  # noqa
+from typing import Any
+from typing import TypeVar
+
 from .. import util
 from ..orm import attributes
 from ..orm import interfaces
+
+_T = TypeVar("_T", bound=Any)
 
 HYBRID_METHOD = util.symbol("HYBRID_METHOD")
 """Symbol indicating an :class:`InspectionAttr` that's
@@ -1147,7 +1152,7 @@ class hybrid_property(interfaces.InspectionAttrInfo):
         return expr_comparator
 
 
-class Comparator(interfaces.PropComparator):
+class Comparator(interfaces.PropComparator[_T]):
     """A helper class that allows easy construction of custom
     :class:`~.orm.interfaces.PropComparator`
     classes for usage with hybrids."""
@@ -1168,7 +1173,7 @@ class Comparator(interfaces.PropComparator):
         return self
 
 
-class ExprComparator(Comparator):
+class ExprComparator(Comparator[_T]):
     def __init__(self, cls, expression, hybrid):
         self.cls = cls
         self.expression = expression

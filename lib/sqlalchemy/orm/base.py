@@ -13,16 +13,24 @@ import operator
 import typing
 from typing import Any
 from typing import Generic
+from typing import overload
 from typing import TypeVar
+from typing import Union
 
 from . import exc
 from .. import exc as sa_exc
 from .. import inspection
 from .. import util
+from ..sql.elements import SQLCoreOperations
 from ..util import typing as compat_typing
+from ..util.langhelpers import TypingOnly
 
+
+if typing.TYPE_CHECKING:
+    from .attributes import InstrumentedAttribute
 
 _T = TypeVar("_T", bound=Any)
+
 
 PASSIVE_NO_RESULT = util.symbol(
     "PASSIVE_NO_RESULT",
@@ -579,7 +587,88 @@ class InspectionAttrInfo(InspectionAttr):
         return {}
 
 
-class _MappedAttribute(Generic[_T]):
+class SQLORMOperations(SQLCoreOperations[_T], TypingOnly):
+    __slots__ = ()
+
+    if typing.TYPE_CHECKING:
+
+        def of_type(self, class_):
+            ...
+
+        def and_(self, *criteria):
+            ...
+
+        def any(self, criterion=None, **kwargs):  # noqa A001
+            ...
+
+        def has(self, criterion=None, **kwargs):
+            ...
+
+
+class Mapped(Generic[_T], util.TypingOnly):
+    """Represent an ORM mapped attribute for typing purposes.
+
+    This class represents the complete descriptor interface for any class
+    attribute that will have been :term:`instrumented` by the ORM
+    :class:`_orm.Mapper` class.   Provides appropriate information to type
+    checkers such as pylance and mypy so that ORM-mapped attributes
+    are correctly typed.
+
+    .. tip::
+
+        The :class:`_orm.Mapped` class represents attributes that are handled
+        directly by the :class:`_orm.Mapper` class. It does not include other
+        Python descriptor classes that are provided as extensions, including
+        :ref:`hybrids_toplevel` and the :ref:`associationproxy_toplevel`.
+        While these systems still make use of ORM-specific superclasses
+        and structures, they are not :term:`instrumented` by the
+        :class:`_orm.Mapper` and instead provide their own functionality
+        when they are accessed on a class.
+
+    .. versionadded:: 1.4
+
+
+    """
+
+    __slots__ = ()
+
+    if typing.TYPE_CHECKING:
+
+        @overload
+        def __get__(
+            self, instance: None, owner: Any
+        ) -> "InstrumentedAttribute[_T]":
+            ...
+
+        @overload
+        def __get__(self, instance: object, owner: Any) -> _T:
+            ...
+
+        def __get__(
+            self, instance: object, owner: Any
+        ) -> Union["InstrumentedAttribute[_T]", _T]:
+            ...
+
+        @classmethod
+        def _empty_constructor(cls, arg1: Any) -> "SQLORMOperations[_T]":
+            ...
+
+        @overload
+        def __set__(self, instance: Any, value: _T) -> None:
+            ...
+
+        @overload
+        def __set__(self, instance: Any, value: SQLCoreOperations) -> None:
+            ...
+
+        def __set__(self, instance, value):
+            ...
+
+        def __delete__(self, instance: Any):
+            ...
+
+
+class _MappedAttribute(Mapped[_T], TypingOnly):
     """Mixin for attributes which should be replaced by mapper-assigned
     attributes.
 

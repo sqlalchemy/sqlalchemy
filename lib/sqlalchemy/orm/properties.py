@@ -13,7 +13,6 @@ mapped attributes.
 """
 
 from typing import Any
-from typing import Generic
 from typing import TypeVar
 
 from . import attributes
@@ -32,6 +31,7 @@ from ..sql import coercions
 from ..sql import roles
 
 _T = TypeVar("_T", bound=Any)
+_PT = TypeVar("_PT", bound=Any)
 
 __all__ = [
     "ColumnProperty",
@@ -43,7 +43,7 @@ __all__ = [
 
 
 @log.class_logger
-class ColumnProperty(StrategizedProperty, Generic[_T]):
+class ColumnProperty(StrategizedProperty[_T]):
     """Describes an object attribute that corresponds to a table column.
 
     Public constructor is the :func:`_orm.column_property` function.
@@ -90,6 +90,7 @@ class ColumnProperty(StrategizedProperty, Generic[_T]):
             )
             for c in columns
         ]
+        self.parent = self.key = None
         self.group = kwargs.pop("group", None)
         self.deferred = kwargs.pop("deferred", False)
         self.raiseload = kwargs.pop("raiseload", False)
@@ -253,7 +254,7 @@ class ColumnProperty(StrategizedProperty, Generic[_T]):
                 dest_dict, [self.key], no_loader=True
             )
 
-    class Comparator(util.MemoizedSlots, PropComparator):
+    class Comparator(util.MemoizedSlots, PropComparator[_PT]):
         """Produce boolean, comparison, and other operators for
         :class:`.ColumnProperty` attributes.
 
@@ -361,4 +362,6 @@ class ColumnProperty(StrategizedProperty, Generic[_T]):
             return op(col._bind_param(op, other), col, **kwargs)
 
     def __str__(self):
+        if not self.parent or not self.key:
+            return object.__repr__(self)
         return str(self.parent.class_.__name__) + "." + self.key

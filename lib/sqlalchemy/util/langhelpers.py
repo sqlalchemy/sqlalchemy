@@ -1669,6 +1669,32 @@ def attrsetter(attrname):
     return env["set"]
 
 
+class TypingOnly:
+    """A mixin class that marks a class as 'typing only', meaning it has
+    absolutely no methods, attributes, or runtime functionality whatsoever.
+
+    """
+
+    __slots__ = ()
+
+    def __init_subclass__(cls) -> None:
+        if TypingOnly in cls.__bases__:
+            remaining = set(cls.__dict__).difference(
+                {
+                    "__module__",
+                    "__doc__",
+                    "__slots__",
+                    "__orig_bases__",
+                }
+            )
+            if remaining:
+                raise AssertionError(
+                    f"Class {cls} directly inherits TypingOnly but has "
+                    f"additional attributes {remaining}."
+                )
+        super().__init_subclass__()
+
+
 class EnsureKWArg:
     r"""Apply translation of functions to accept \**kw arguments if they
     don't already.

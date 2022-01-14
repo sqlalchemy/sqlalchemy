@@ -2130,19 +2130,19 @@ class HistoryTest(fixtures.TestBase):
     def test_collection_no_value(self):
         Foo = self._fixture(uselist=True, useobject=True, active_history=True)
         f = Foo()
-        eq_(self._someattr_history(f, passive=True), (None, None, None))
+        eq_(self._someattr_history(f, passive=True), ((), (), ()))
 
     def test_scalar_obj_no_value(self):
         Foo = self._fixture(uselist=False, useobject=True, active_history=True)
         f = Foo()
-        eq_(self._someattr_history(f, passive=True), (None, None, None))
+        eq_(self._someattr_history(f, passive=True), ((), (), ()))
 
     def test_scalar_no_value(self):
         Foo = self._fixture(
             uselist=False, useobject=False, active_history=True
         )
         f = Foo()
-        eq_(self._someattr_history(f, passive=True), (None, None, None))
+        eq_(self._someattr_history(f, passive=True), ((), (), ()))
 
     def test_scalar_active_set(self):
         Foo = self._fixture(

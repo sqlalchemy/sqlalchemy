@@ -50,6 +50,7 @@ from .visitors import Traversible
 from .. import exc
 from .. import inspection
 from .. import util
+from ..util.langhelpers import TypingOnly
 
 if typing.TYPE_CHECKING:
     from decimal import Decimal
@@ -572,6 +573,352 @@ class CompilerColumnElement(
     __slots__ = ()
 
 
+class SQLCoreOperations(Generic[_T], TypingOnly):
+    __slots__ = ()
+
+    # annotations for comparison methods
+    # these are from operators->Operators / ColumnOperators,
+    # redefined with the specific types returned by ColumnElement hierarchies
+    if typing.TYPE_CHECKING:
+
+        def op(
+            self,
+            opstring: Any,
+            precedence: int = 0,
+            is_comparison: bool = False,
+            return_type: Optional[
+                Union[Type["TypeEngine[_OPT]"], "TypeEngine[_OPT]"]
+            ] = None,
+            python_impl=None,
+        ) -> Callable[[Any], "BinaryExpression[_OPT]"]:
+            ...
+
+        def bool_op(
+            self, opstring: Any, precedence: int = 0, python_impl=None
+        ) -> Callable[[Any], "BinaryExpression[bool]"]:
+            ...
+
+        def __and__(self, other: Any) -> "BooleanClauseList":
+            ...
+
+        def __or__(self, other: Any) -> "BooleanClauseList":
+            ...
+
+        def __invert__(self) -> "UnaryExpression[_T]":
+            ...
+
+        def __lt__(self, other: Any) -> "BinaryExpression[bool]":
+            ...
+
+        def __le__(self, other: Any) -> "BinaryExpression[bool]":
+            ...
+
+        def __eq__(self, other: Any) -> "BinaryExpression[bool]":
+            ...
+
+        def __ne__(self, other: Any) -> "BinaryExpression[bool]":
+            ...
+
+        def is_distinct_from(self, other: Any) -> "BinaryExpression[bool]":
+            ...
+
+        def is_not_distinct_from(self, other: Any) -> "BinaryExpression[bool]":
+            ...
+
+        def __gt__(self, other: Any) -> "BinaryExpression[bool]":
+            ...
+
+        def __ge__(self, other: Any) -> "BinaryExpression[bool]":
+            ...
+
+        def __neg__(self) -> "UnaryExpression[_T]":
+            ...
+
+        def __contains__(self, other: Any) -> "BinaryExpression[bool]":
+            ...
+
+        def __getitem__(self, index: Any) -> "ColumnElement":
+            ...
+
+        @overload
+        def concat(
+            self: "SQLCoreOperations[_ST]", other: Any
+        ) -> "BinaryExpression[_ST]":
+            ...
+
+        @overload
+        def concat(self, other: Any) -> "BinaryExpression":
+            ...
+
+        def concat(self, other: Any) -> "BinaryExpression":
+            ...
+
+        def like(self, other: Any, escape=None) -> "BinaryExpression[bool]":
+            ...
+
+        def ilike(self, other: Any, escape=None) -> "BinaryExpression[bool]":
+            ...
+
+        def in_(
+            self,
+            other: Union[Sequence[Any], "BindParameter", "Select"],
+        ) -> "BinaryExpression[bool]":
+            ...
+
+        def not_in(
+            self,
+            other: Union[Sequence[Any], "BindParameter", "Select"],
+        ) -> "BinaryExpression[bool]":
+            ...
+
+        def not_like(
+            self, other: Any, escape=None
+        ) -> "BinaryExpression[bool]":
+            ...
+
+        def not_ilike(
+            self, other: Any, escape=None
+        ) -> "BinaryExpression[bool]":
+            ...
+
+        def is_(self, other: Any) -> "BinaryExpression[bool]":
+            ...
+
+        def is_not(self, other: Any) -> "BinaryExpression[bool]":
+            ...
+
+        def startswith(
+            self, other: Any, escape=None, autoescape=False
+        ) -> "BinaryExpression[bool]":
+            ...
+
+        def endswith(
+            self, other: Any, escape=None, autoescape=False
+        ) -> "BinaryExpression[bool]":
+            ...
+
+        def contains(
+            self, other: Any, escape=None, autoescape=False
+        ) -> "BinaryExpression[bool]":
+            ...
+
+        def match(self, other: Any, **kwargs) -> "BinaryExpression[bool]":
+            ...
+
+        def regexp_match(
+            self, pattern, flags=None
+        ) -> "BinaryExpression[bool]":
+            ...
+
+        def regexp_replace(
+            self, pattern, replacement, flags=None
+        ) -> "BinaryExpression":
+            ...
+
+        def desc(self) -> "UnaryExpression[_T]":
+            ...
+
+        def asc(self) -> "UnaryExpression[_T]":
+            ...
+
+        def nulls_first(self) -> "UnaryExpression[_T]":
+            ...
+
+        def nulls_last(self) -> "UnaryExpression[_T]":
+            ...
+
+        def collate(self, collation) -> "CollationClause":
+            ...
+
+        def between(
+            self, cleft, cright, symmetric=False
+        ) -> "BinaryExpression[bool]":
+            ...
+
+        def distinct(self: "SQLCoreOperations[_T]") -> "UnaryExpression[_T]":
+            ...
+
+        def any_(self) -> "CollectionAggregate":
+            ...
+
+        def all_(self) -> "CollectionAggregate":
+            ...
+
+        # numeric overloads.  These need more tweaking
+        # in particular they all need to have a variant for Optiona[_T]
+        # because Optional only applies to the data side, not the expression
+        # side
+
+        @overload
+        def __add__(
+            self: "Union[_SQO[_NT], _SQO[Optional[_NT]]]",
+            other: "Union[_SQO[Optional[_NT]], _SQO[_NT], _NT]",
+        ) -> "BinaryExpression[_NT]":
+            ...
+
+        @overload
+        def __add__(
+            self: "Union[_SQO[_NT], _SQO[Optional[_NT]]]",
+            other: Any,
+        ) -> "BinaryExpression[_NUMERIC]":
+            ...
+
+        @overload
+        def __add__(
+            self: "Union[_SQO[_ST], _SQO[Optional[_ST]]]",
+            other: Any,
+        ) -> "BinaryExpression[_ST]":
+            ...
+
+        def __add__(self, other: Any) -> "BinaryExpression":
+            ...
+
+        @overload
+        def __radd__(self, other: Any) -> "BinaryExpression[_NUMERIC]":
+            ...
+
+        @overload
+        def __radd__(self, other: Any) -> "BinaryExpression":
+            ...
+
+        def __radd__(self, other: Any) -> "BinaryExpression":
+            ...
+
+        @overload
+        def __sub__(
+            self: "SQLCoreOperations[_NT]",
+            other: "Union[SQLCoreOperations[_NT], _NT]",
+        ) -> "BinaryExpression[_NT]":
+            ...
+
+        @overload
+        def __sub__(self, other: Any) -> "BinaryExpression":
+            ...
+
+        def __sub__(self, other: Any) -> "BinaryExpression":
+            ...
+
+        @overload
+        def __rsub__(
+            self: "SQLCoreOperations[_NT]", other: Any
+        ) -> "BinaryExpression[_NUMERIC]":
+            ...
+
+        @overload
+        def __rsub__(self, other: Any) -> "BinaryExpression":
+            ...
+
+        def __rsub__(self, other: Any) -> "BinaryExpression":
+            ...
+
+        @overload
+        def __mul__(
+            self: "SQLCoreOperations[_NT]", other: Any
+        ) -> "BinaryExpression[_NUMERIC]":
+            ...
+
+        @overload
+        def __mul__(self, other: Any) -> "BinaryExpression":
+            ...
+
+        def __mul__(self, other: Any) -> "BinaryExpression":
+            ...
+
+        @overload
+        def __rmul__(
+            self: "SQLCoreOperations[_NT]", other: Any
+        ) -> "BinaryExpression[_NUMERIC]":
+            ...
+
+        @overload
+        def __rmul__(self, other: Any) -> "BinaryExpression":
+            ...
+
+        def __rmul__(self, other: Any) -> "BinaryExpression":
+            ...
+
+        @overload
+        def __mod__(
+            self: "SQLCoreOperations[_NT]", other: Any
+        ) -> "BinaryExpression[_NUMERIC]":
+            ...
+
+        @overload
+        def __mod__(self, other: Any) -> "BinaryExpression":
+            ...
+
+        def __mod__(self, other: Any) -> "BinaryExpression":
+            ...
+
+        @overload
+        def __rmod__(
+            self: "SQLCoreOperations[_NT]", other: Any
+        ) -> "BinaryExpression[_NUMERIC]":
+            ...
+
+        @overload
+        def __rmod__(self, other: Any) -> "BinaryExpression":
+            ...
+
+        def __rmod__(self, other: Any) -> "BinaryExpression":
+            ...
+
+        @overload
+        def __truediv__(
+            self: "SQLCoreOperations[_NT]", other: Any
+        ) -> "BinaryExpression[_NUMERIC]":
+            ...
+
+        @overload
+        def __truediv__(self, other: Any) -> "BinaryExpression":
+            ...
+
+        def __truediv__(self, other: Any) -> "BinaryExpression":
+            ...
+
+        @overload
+        def __rtruediv__(
+            self: "SQLCoreOperations[_NT]", other: Any
+        ) -> "BinaryExpression[_NUMERIC]":
+            ...
+
+        @overload
+        def __rtruediv__(self, other: Any) -> "BinaryExpression":
+            ...
+
+        def __rtruediv__(self, other: Any) -> "BinaryExpression":
+            ...
+
+        @overload
+        def __floordiv__(
+            self: "SQLCoreOperations[_NT]", other: Any
+        ) -> "BinaryExpression[_NUMERIC]":
+            ...
+
+        @overload
+        def __floordiv__(self, other: Any) -> "BinaryExpression":
+            ...
+
+        def __floordiv__(self, other: Any) -> "BinaryExpression":
+            ...
+
+        @overload
+        def __rfloordiv__(
+            self: "SQLCoreOperations[_NT]", other: Any
+        ) -> "BinaryExpression[_NUMERIC]":
+            ...
+
+        @overload
+        def __rfloordiv__(self, other: Any) -> "BinaryExpression":
+            ...
+
+        def __rfloordiv__(self, other: Any) -> "BinaryExpression":
+            ...
+
+
+_SQO = SQLCoreOperations
+
+
 class ColumnElement(
     roles.ColumnArgumentOrKeyRole,
     roles.StatementOptionRole,
@@ -583,9 +930,9 @@ class ColumnElement(
     roles.DMLColumnRole,
     roles.DDLConstraintColumnRole,
     roles.DDLExpressionRole,
-    operators.ColumnOperators["ColumnElement"],
+    SQLCoreOperations[_T],
+    operators.ColumnOperators[SQLCoreOperations],
     ClauseElement,
-    Generic[_T],
 ):
     """Represent a column-oriented SQL expression suitable for usage in the
     "columns" clause, WHERE clause etc. of a statement.
@@ -828,336 +1175,6 @@ class ColumnElement(
                     key,
                 )
             ) from err
-
-    # annotations for comparison methods
-    # these are from operators->Operators / ColumnOperators,
-    # redefined with the specific types returned by ColumnElement hierarchies
-    if typing.TYPE_CHECKING:
-
-        def op(
-            self,
-            opstring: Any,
-            precedence: int = 0,
-            is_comparison: bool = False,
-            return_type: Optional[
-                Union[Type["TypeEngine[_OPT]"], "TypeEngine[_OPT]"]
-            ] = None,
-            python_impl=None,
-        ) -> Callable[[Any], "BinaryExpression[_OPT]"]:
-            ...
-
-        def bool_op(
-            self, opstring: Any, precedence: int = 0, python_impl=None
-        ) -> Callable[[Any], "BinaryExpression[bool]"]:
-            ...
-
-        def __and__(self, other: Any) -> "BooleanClauseList":
-            ...
-
-        def __or__(self, other: Any) -> "BooleanClauseList":
-            ...
-
-        def __invert__(self) -> "UnaryExpression[_T]":
-            ...
-
-        def __lt__(self, other: Any) -> "BinaryExpression[bool]":
-            ...
-
-        def __le__(self, other: Any) -> "BinaryExpression[bool]":
-            ...
-
-        def __eq__(self, other: Any) -> "BinaryExpression[bool]":
-            ...
-
-        def __ne__(self, other: Any) -> "BinaryExpression[bool]":
-            ...
-
-        def is_distinct_from(self, other: Any) -> "BinaryExpression[bool]":
-            ...
-
-        def is_not_distinct_from(self, other: Any) -> "BinaryExpression[bool]":
-            ...
-
-        def __gt__(self, other: Any) -> "BinaryExpression[bool]":
-            ...
-
-        def __ge__(self, other: Any) -> "BinaryExpression[bool]":
-            ...
-
-        def __neg__(self) -> "UnaryExpression[_T]":
-            ...
-
-        def __contains__(self, other: Any) -> "BinaryExpression[bool]":
-            ...
-
-        def __getitem__(self, index: Any) -> "ColumnElement":
-            ...
-
-        @overload
-        def concat(self, other: Any) -> "BinaryExpression[_ST]":
-            ...
-
-        @overload
-        def concat(self, other: Any) -> "BinaryExpression":
-            ...
-
-        def concat(self, other: Any) -> "BinaryExpression":
-            ...
-
-        def like(self, other: Any, escape=None) -> "BinaryExpression[bool]":
-            ...
-
-        def ilike(self, other: Any, escape=None) -> "BinaryExpression[bool]":
-            ...
-
-        def in_(
-            self,
-            other: Union[Sequence[Any], "BindParameter", "Select"],
-        ) -> "BinaryExpression[bool]":
-            ...
-
-        def not_in(
-            self,
-            other: Union[Sequence[Any], "BindParameter", "Select"],
-        ) -> "BinaryExpression[bool]":
-            ...
-
-        def not_like(
-            self, other: Any, escape=None
-        ) -> "BinaryExpression[bool]":
-            ...
-
-        def not_ilike(
-            self, other: Any, escape=None
-        ) -> "BinaryExpression[bool]":
-            ...
-
-        def is_(self, other: Any) -> "BinaryExpression[bool]":
-            ...
-
-        def is_not(self, other: Any) -> "BinaryExpression[bool]":
-            ...
-
-        def startswith(
-            self, other: Any, escape=None, autoescape=False
-        ) -> "BinaryExpression[bool]":
-            ...
-
-        def endswith(
-            self, other: Any, escape=None, autoescape=False
-        ) -> "BinaryExpression[bool]":
-            ...
-
-        def contains(
-            self, other: Any, escape=None, autoescape=False
-        ) -> "BinaryExpression[bool]":
-            ...
-
-        def match(self, other: Any, **kwargs) -> "BinaryExpression[bool]":
-            ...
-
-        def regexp_match(
-            self, pattern, flags=None
-        ) -> "BinaryExpression[bool]":
-            ...
-
-        def regexp_replace(
-            self, pattern, replacement, flags=None
-        ) -> "BinaryExpression":
-            ...
-
-        def desc(self) -> "UnaryExpression[_T]":
-            ...
-
-        def asc(self) -> "UnaryExpression[_T]":
-            ...
-
-        def nulls_first(self) -> "UnaryExpression[_T]":
-            ...
-
-        def nulls_last(self) -> "UnaryExpression[_T]":
-            ...
-
-        def collate(self, collation) -> "CollationClause":
-            ...
-
-        def between(
-            self, cleft, cright, symmetric=False
-        ) -> "BinaryExpression[bool]":
-            ...
-
-        def distinct(self: "ColumnElement[_T]") -> "UnaryExpression[_T]":
-            ...
-
-        def any_(self) -> "CollectionAggregate":
-            ...
-
-        def all_(self) -> "CollectionAggregate":
-            ...
-
-        # numeric overloads.  These need more tweaking
-
-        @overload
-        def __add__(
-            self: "ColumnElement[_NT]", other: "Union[ColumnElement[_NT], _NT]"
-        ) -> "BinaryExpression[_NT]":
-            ...
-
-        @overload
-        def __add__(
-            self: "ColumnElement[_NT]", other: Any
-        ) -> "BinaryExpression[_NUMERIC]":
-            ...
-
-        @overload
-        def __add__(
-            self: "ColumnElement[_ST]", other: Any
-        ) -> "BinaryExpression[_ST]":
-            ...
-
-        def __add__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        @overload
-        def __radd__(self, other: Any) -> "BinaryExpression[_NUMERIC]":
-            ...
-
-        @overload
-        def __radd__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        def __radd__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        @overload
-        def __sub__(
-            self: "ColumnElement[_NT]", other: "Union[ColumnElement[_NT], _NT]"
-        ) -> "BinaryExpression[_NT]":
-            ...
-
-        @overload
-        def __sub__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        def __sub__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        @overload
-        def __rsub__(
-            self: "ColumnElement[_NT]", other: Any
-        ) -> "BinaryExpression[_NUMERIC]":
-            ...
-
-        @overload
-        def __rsub__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        def __rsub__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        @overload
-        def __mul__(
-            self: "ColumnElement[_NT]", other: Any
-        ) -> "BinaryExpression[_NUMERIC]":
-            ...
-
-        @overload
-        def __mul__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        def __mul__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        @overload
-        def __rmul__(
-            self: "ColumnElement[_NT]", other: Any
-        ) -> "BinaryExpression[_NUMERIC]":
-            ...
-
-        @overload
-        def __rmul__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        def __rmul__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        @overload
-        def __mod__(
-            self: "ColumnElement[_NT]", other: Any
-        ) -> "BinaryExpression[_NUMERIC]":
-            ...
-
-        @overload
-        def __mod__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        def __mod__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        @overload
-        def __rmod__(
-            self: "ColumnElement[_NT]", other: Any
-        ) -> "BinaryExpression[_NUMERIC]":
-            ...
-
-        @overload
-        def __rmod__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        def __rmod__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        @overload
-        def __truediv__(
-            self: "ColumnElement[_NT]", other: Any
-        ) -> "BinaryExpression[_NUMERIC]":
-            ...
-
-        @overload
-        def __truediv__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        def __truediv__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        @overload
-        def __rtruediv__(
-            self: "ColumnElement[_NT]", other: Any
-        ) -> "BinaryExpression[_NUMERIC]":
-            ...
-
-        @overload
-        def __rtruediv__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        def __rtruediv__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        @overload
-        def __floordiv__(
-            self: "ColumnElement[_NT]", other: Any
-        ) -> "BinaryExpression[_NUMERIC]":
-            ...
-
-        @overload
-        def __floordiv__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        def __floordiv__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        @overload
-        def __rfloordiv__(
-            self: "ColumnElement[_NT]", other: Any
-        ) -> "BinaryExpression[_NUMERIC]":
-            ...
-
-        @overload
-        def __rfloordiv__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        def __rfloordiv__(self, other: Any) -> "BinaryExpression":
-            ...
 
     def operate(
         self,
