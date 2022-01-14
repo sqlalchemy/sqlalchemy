@@ -2809,6 +2809,8 @@ class FromStatement(GroupedElement, SelectBase, Executable):
 
 
 class AliasOption(interfaces.LoaderOption):
+    inherit_cache = False
+
     @util.deprecated(
         "1.4",
         "The :class:`.AliasOption` is not necessary "
@@ -2821,8 +2823,6 @@ class AliasOption(interfaces.LoaderOption):
         that the main table has been aliased.
 
         """
-
-    inherit_cache = False
 
     def process_compile_state(self, compile_state):
         pass

@@ -8,11 +8,7 @@
 """Future 2.0 API features.
 
 """
-from .engine import Connection
-from .engine import create_engine
-from .engine import Engine
-from ..sql.selectable import Select
-from ..util.langhelpers import public_factory
-
-
-select = public_factory(Select._create, ".future.select")
+from .engine import Connection as Connection
+from .engine import create_engine as create_engine
+from .engine import Engine as Engine
+from ..sql._selectable_constructors import select as select

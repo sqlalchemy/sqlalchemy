@@ -34,6 +34,7 @@ from ..sql.base import Options
 from ..sql.selectable import LABEL_STYLE_DISAMBIGUATE_ONLY
 from ..sql.selectable import LABEL_STYLE_NONE
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
+from ..sql.selectable import Select
 from ..sql.selectable import SelectState
 from ..sql.visitors import InternalTraversal
 
@@ -1132,7 +1133,6 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         group_by,
     ):
 
-        Select = future.Select
         statement = Select._create_raw_select(
             _raw_columns=raw_columns,
             _from_obj=from_obj,

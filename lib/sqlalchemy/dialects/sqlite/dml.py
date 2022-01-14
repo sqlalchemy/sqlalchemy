@@ -15,10 +15,30 @@ from ...sql.base import ColumnCollection
 from ...sql.dml import Insert as StandardInsert
 from ...sql.elements import ClauseElement
 from ...sql.expression import alias
-from ...util.langhelpers import public_factory
 
 
 __all__ = ("Insert", "insert")
+
+
+def insert(table):
+    """Construct a sqlite-specific variant :class:`_sqlite.Insert`
+    construct.
+
+    .. container:: inherited_member
+
+        The :func:`sqlalchemy.dialects.sqlite.insert` function creates
+        a :class:`sqlalchemy.dialects.sqlite.Insert`.  This class is based
+        on the dialect-agnostic :class:`_sql.Insert` construct which may
+        be constructed using the :func:`_sql.insert` function in
+        SQLAlchemy Core.
+
+    The :class:`_sqlite.Insert` construct includes additional methods
+    :meth:`_sqlite.Insert.on_conflict_do_update`,
+    :meth:`_sqlite.Insert.on_conflict_do_nothing`.
+
+    """
+    return Insert(table)
+
 
 SelfInsert = typing.TypeVar("SelfInsert", bound="Insert")
 
@@ -149,11 +169,6 @@ class Insert(StandardInsert):
             index_elements, index_where
         )
         return self
-
-
-insert = public_factory(
-    Insert, ".dialects.sqlite.insert", ".dialects.sqlite.Insert"
-)
 
 
 class OnConflictClause(ClauseElement):

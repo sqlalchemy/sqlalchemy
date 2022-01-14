@@ -12,6 +12,10 @@ mapped attributes.
 
 """
 
+from typing import Any
+from typing import Generic
+from typing import TypeVar
+
 from . import attributes
 from . import strategy_options
 from .descriptor_props import CompositeProperty
@@ -22,10 +26,12 @@ from .interfaces import StrategizedProperty
 from .relationships import RelationshipProperty
 from .util import _orm_full_deannotate
 from .. import log
+from .. import sql
 from .. import util
 from ..sql import coercions
 from ..sql import roles
 
+_T = TypeVar("_T", bound=Any)
 
 __all__ = [
     "ColumnProperty",
@@ -37,7 +43,7 @@ __all__ = [
 
 
 @log.class_logger
-class ColumnProperty(StrategizedProperty):
+class ColumnProperty(StrategizedProperty, Generic[_T]):
     """Describes an object attribute that corresponds to a table column.
 
     Public constructor is the :func:`_orm.column_property` function.
@@ -70,91 +76,11 @@ class ColumnProperty(StrategizedProperty):
         "raiseload",
     )
 
-    def __init__(self, *columns, **kwargs):
-        r"""Provide a column-level property for use with a mapping.
-
-        Column-based properties can normally be applied to the mapper's
-        ``properties`` dictionary using the :class:`_schema.Column`
-        element directly.
-        Use this function when the given column is not directly present within
-        the mapper's selectable; examples include SQL expressions, functions,
-        and scalar SELECT queries.
-
-        The :func:`_orm.column_property` function returns an instance of
-        :class:`.ColumnProperty`.
-
-        Columns that aren't present in the mapper's selectable won't be
-        persisted by the mapper and are effectively "read-only" attributes.
-
-        :param \*cols:
-              list of Column objects to be mapped.
-
-        :param active_history=False:
-          When ``True``, indicates that the "previous" value for a
-          scalar attribute should be loaded when replaced, if not
-          already loaded. Normally, history tracking logic for
-          simple non-primary-key scalar values only needs to be
-          aware of the "new" value in order to perform a flush. This
-          flag is available for applications that make use of
-          :func:`.attributes.get_history` or :meth:`.Session.is_modified`
-          which also need to know
-          the "previous" value of the attribute.
-
-        :param comparator_factory: a class which extends
-           :class:`.ColumnProperty.Comparator` which provides custom SQL
-           clause generation for comparison operations.
-
-        :param group:
-            a group name for this property when marked as deferred.
-
-        :param deferred:
-              when True, the column property is "deferred", meaning that
-              it does not load immediately, and is instead loaded when the
-              attribute is first accessed on an instance.  See also
-              :func:`~sqlalchemy.orm.deferred`.
-
-        :param doc:
-              optional string that will be applied as the doc on the
-              class-bound descriptor.
-
-        :param expire_on_flush=True:
-            Disable expiry on flush.   A column_property() which refers
-            to a SQL expression (and not a single table-bound column)
-            is considered to be a "read only" property; populating it
-            has no effect on the state of data, and it can only return
-            database state.   For this reason a column_property()'s value
-            is expired whenever the parent object is involved in a
-            flush, that is, has any kind of "dirty" state within a flush.
-            Setting this parameter to ``False`` will have the effect of
-            leaving any existing value present after the flush proceeds.
-            Note however that the :class:`.Session` with default expiration
-            settings still expires
-            all attributes after a :meth:`.Session.commit` call, however.
-
-        :param info: Optional data dictionary which will be populated into the
-            :attr:`.MapperProperty.info` attribute of this object.
-
-        :param raiseload: if True, indicates the column should raise an error
-            when undeferred, rather than loading the value.  This can be
-            altered at query time by using the :func:`.deferred` option with
-            raiseload=False.
-
-            .. versionadded:: 1.4
-
-            .. seealso::
-
-                :ref:`deferred_raiseload`
-
-        .. seealso::
-
-            :ref:`column_property_options` - to map columns while including
-            mapping options
-
-            :ref:`mapper_column_property_sql_expressions` - to map SQL
-            expressions
-
-        """
+    def __init__(
+        self, column: sql.ColumnElement[_T], *additional_columns, **kwargs
+    ):
         super(ColumnProperty, self).__init__()
+        columns = (column,) + additional_columns
         self._orig_columns = [
             coercions.expect(roles.LabeledColumnExprRole, c) for c in columns
         ]

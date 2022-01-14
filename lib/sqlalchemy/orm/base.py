@@ -11,6 +11,9 @@
 
 import operator
 import typing
+from typing import Any
+from typing import Generic
+from typing import TypeVar
 
 from . import exc
 from .. import exc as sa_exc
@@ -18,6 +21,8 @@ from .. import inspection
 from .. import util
 from ..util import typing as compat_typing
 
+
+_T = TypeVar("_T", bound=Any)
 
 PASSIVE_NO_RESULT = util.symbol(
     "PASSIVE_NO_RESULT",
@@ -574,7 +579,7 @@ class InspectionAttrInfo(InspectionAttr):
         return {}
 
 
-class _MappedAttribute:
+class _MappedAttribute(Generic[_T]):
     """Mixin for attributes which should be replaced by mapper-assigned
     attributes.
 

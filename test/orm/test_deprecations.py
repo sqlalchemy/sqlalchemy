@@ -1508,7 +1508,7 @@ class InstancesTest(QueryTest, AssertsCompiledSQL):
 
         def go():
             with testing.expect_deprecated(
-                "The AliasOption is not necessary for entities to be "
+                "The AliasOption object is not necessary for entities to be "
                 "matched up to a query"
             ):
                 result = (

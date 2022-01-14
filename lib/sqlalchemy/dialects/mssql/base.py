@@ -848,7 +848,6 @@ from ...types import SMALLINT
 from ...types import TEXT
 from ...types import VARCHAR
 from ...util import update_wrapper
-from ...util.langhelpers import public_factory
 
 
 # https://sqlserverbuilds.blogspot.com/
@@ -1347,6 +1346,32 @@ class SQL_VARIANT(sqltypes.TypeEngine):
     __visit_name__ = "SQL_VARIANT"
 
 
+def try_cast(*arg, **kw):
+    """Create a TRY_CAST expression.
+
+    :class:`.TryCast` is a subclass of SQLAlchemy's :class:`.Cast`
+    construct, and works in the same way, except that the SQL expression
+    rendered is "TRY_CAST" rather than "CAST"::
+
+        from sqlalchemy import select
+        from sqlalchemy import Numeric
+        from sqlalchemy.dialects.mssql import try_cast
+
+        stmt = select(
+            try_cast(product_table.c.unit_price, Numeric(10, 4))
+        )
+
+    The above would render::
+
+        SELECT TRY_CAST (product_table.unit_price AS NUMERIC(10, 4))
+        FROM product_table
+
+    .. versionadded:: 1.3.7
+
+    """
+    return TryCast(*arg, **kw)
+
+
 class TryCast(sql.elements.Cast):
     """Represent a SQL Server TRY_CAST expression."""
 
@@ -1355,33 +1380,6 @@ class TryCast(sql.elements.Cast):
     stringify_dialect = "mssql"
     inherit_cache = True
 
-    def __init__(self, *arg, **kw):
-        """Create a TRY_CAST expression.
-
-        :class:`.TryCast` is a subclass of SQLAlchemy's :class:`.Cast`
-        construct, and works in the same way, except that the SQL expression
-        rendered is "TRY_CAST" rather than "CAST"::
-
-            from sqlalchemy import select
-            from sqlalchemy import Numeric
-            from sqlalchemy.dialects.mssql import try_cast
-
-            stmt = select(
-                try_cast(product_table.c.unit_price, Numeric(10, 4))
-            )
-
-        The above would render::
-
-            SELECT TRY_CAST (product_table.unit_price AS NUMERIC(10, 4))
-            FROM product_table
-
-        .. versionadded:: 1.3.7
-
-        """
-        super(TryCast, self).__init__(*arg, **kw)
-
-
-try_cast = public_factory(TryCast, ".dialects.mssql.try_cast")
 
 # old names.
 MSDateTime = _MSDateTime

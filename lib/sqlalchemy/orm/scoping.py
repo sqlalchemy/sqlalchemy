@@ -5,8 +5,8 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-from . import class_mapper
 from . import exc as orm_exc
+from .base import class_mapper
 from .session import Session
 from .. import exc as sa_exc
 from ..util import create_proxy_methods

@@ -71,7 +71,13 @@ class ColumnListRole(SQLRole):
     __slots__ = ()
 
 
-class TruncatedLabelRole(SQLRole):
+class StringRole(SQLRole):
+    """mixin indicating a role that results in strings"""
+
+    __slots__ = ()
+
+
+class TruncatedLabelRole(StringRole, SQLRole):
     __slots__ = ()
     _role_name = "String SQL identifier"
 

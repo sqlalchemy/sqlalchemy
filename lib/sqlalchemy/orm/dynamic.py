@@ -15,12 +15,12 @@ basic add/delete mutation.
 from . import attributes
 from . import exc as orm_exc
 from . import interfaces
-from . import object_mapper
-from . import object_session
 from . import relationships
 from . import strategies
 from . import util as orm_util
+from .base import object_mapper
 from .query import Query
+from .session import object_session
 from .. import exc
 from .. import log
 from .. import util

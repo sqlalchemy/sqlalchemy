@@ -140,14 +140,14 @@ def _formatannotation(annotation, base_module=None):
     """vendored from python 3.7"""
 
     if getattr(annotation, "__module__", None) == "typing":
-        return f'"{repr(annotation).replace("typing.", "")}"'
+        return f'"{repr(annotation).replace("typing.", "").replace("~", "")}"'
     if isinstance(annotation, type):
         if annotation.__module__ in ("builtins", base_module):
             return repr(annotation.__qualname__)
         return annotation.__module__ + "." + annotation.__qualname__
     elif isinstance(annotation, typing.TypeVar):
-        return f'"{annotation}"'
-    return repr(annotation)
+        return f'"{repr(annotation).replace("~", "")}"'
+    return f'"{repr(annotation).replace("~", "")}"'
 
 
 def inspect_formatargspec(
