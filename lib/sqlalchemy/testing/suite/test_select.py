@@ -624,6 +624,105 @@ class FetchLimitOffsetTest(fixtures.TablesTest):
         eq_(set(fa), set([(3, 3, 4), (4, 4, 5), (5, 4, 6)]))
 
 
+class SameNamedSchemaTableTest(fixtures.TablesTest):
+    """tests for #7471"""
+
+    __backend__ = True
+
+    __requires__ = ("schemas",)
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "some_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            schema=config.test_schema,
+        )
+        Table(
+            "some_table",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column(
+                "some_table_id",
+                Integer,
+                # ForeignKey("%s.some_table.id" % config.test_schema),
+                nullable=False,
+            ),
+        )
+
+    @classmethod
+    def insert_data(cls, connection):
+        some_table, some_table_schema = cls.tables(
+            "some_table", "%s.some_table" % config.test_schema
+        )
+        connection.execute(some_table_schema.insert(), {"id": 1})
+        connection.execute(some_table.insert(), {"id": 1, "some_table_id": 1})
+
+    def test_simple_join_both_tables(self, connection):
+        some_table, some_table_schema = self.tables(
+            "some_table", "%s.some_table" % config.test_schema
+        )
+
+        eq_(
+            connection.execute(
+                select(some_table, some_table_schema).join_from(
+                    some_table,
+                    some_table_schema,
+                    some_table.c.some_table_id == some_table_schema.c.id,
+                )
+            ).first(),
+            (1, 1, 1),
+        )
+
+    def test_simple_join_whereclause_only(self, connection):
+        some_table, some_table_schema = self.tables(
+            "some_table", "%s.some_table" % config.test_schema
+        )
+
+        eq_(
+            connection.execute(
+                select(some_table)
+                .join_from(
+                    some_table,
+                    some_table_schema,
+                    some_table.c.some_table_id == some_table_schema.c.id,
+                )
+                .where(some_table.c.id == 1)
+            ).first(),
+            (1, 1),
+        )
+
+    def test_subquery(self, connection):
+        some_table, some_table_schema = self.tables(
+            "some_table", "%s.some_table" % config.test_schema
+        )
+
+        subq = (
+            select(some_table)
+            .join_from(
+                some_table,
+                some_table_schema,
+                some_table.c.some_table_id == some_table_schema.c.id,
+            )
+            .where(some_table.c.id == 1)
+            .subquery()
+        )
+
+        eq_(
+            connection.execute(
+                select(some_table, subq.c.id)
+                .join_from(
+                    some_table,
+                    subq,
+                    some_table.c.some_table_id == subq.c.id,
+                )
+                .where(some_table.c.id == 1)
+            ).first(),
+            (1, 1, 1),
+        )
+
+
 class JoinTest(fixtures.TablesTest):
     __backend__ = True
 

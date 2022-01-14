@@ -500,7 +500,7 @@ class CompileState:
 
     """
 
-    __slots__ = ("statement",)
+    __slots__ = ("statement", "_ambiguous_table_name_map")
 
     plugins = {}
 

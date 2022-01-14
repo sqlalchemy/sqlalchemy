@@ -1466,6 +1466,7 @@ class SQLCompiler(Compiled):
         add_to_result_map=None,
         include_table=True,
         result_map_targets=(),
+        ambiguous_table_name_map=None,
         **kwargs,
     ):
         name = orig_name = column.name
@@ -1502,6 +1503,14 @@ class SQLCompiler(Compiled):
             else:
                 schema_prefix = ""
             tablename = table.name
+
+            if (
+                not effective_schema
+                and ambiguous_table_name_map
+                and tablename in ambiguous_table_name_map
+            ):
+                tablename = ambiguous_table_name_map[tablename]
+
             if isinstance(tablename, elements._truncated_label):
                 tablename = self._truncated_identifier("alias", tablename)
 
@@ -3252,6 +3261,10 @@ class SQLCompiler(Compiled):
         compile_state = select_stmt._compile_state_factory(
             select_stmt, self, **kwargs
         )
+        kwargs[
+            "ambiguous_table_name_map"
+        ] = compile_state._ambiguous_table_name_map
+
         select_stmt = compile_state.statement
 
         toplevel = not self.stack
@@ -3732,6 +3745,7 @@ class SQLCompiler(Compiled):
         fromhints=None,
         use_schema=True,
         from_linter=None,
+        ambiguous_table_name_map=None,
         **kwargs,
     ):
         if from_linter:
@@ -3748,6 +3762,20 @@ class SQLCompiler(Compiled):
                 )
             else:
                 ret = self.preparer.quote(table.name)
+
+                if (
+                    not effective_schema
+                    and ambiguous_table_name_map
+                    and table.name in ambiguous_table_name_map
+                ):
+                    anon_name = self._truncated_identifier(
+                        "alias", ambiguous_table_name_map[table.name]
+                    )
+
+                    ret = ret + self.get_render_as_alias_suffix(
+                        self.preparer.format_alias(None, anon_name)
+                    )
+
             if fromhints and table in fromhints:
                 ret = self.format_from_hint_text(
                     ret, table, fromhints[table], iscrud
