@@ -230,9 +230,8 @@ class AsyncAdaptFallback_asyncmy_connection(AsyncAdapt_asyncmy_connection):
 
 
 class AsyncAdapt_asyncmy_dbapi:
-    def __init__(self, asyncmy, pymysql):
+    def __init__(self, asyncmy):
         self.asyncmy = asyncmy
-        self.pymysql = pymysql
         self.paramstyle = "format"
         self._init_dbapi_attributes()
 
@@ -251,16 +250,6 @@ class AsyncAdapt_asyncmy_dbapi:
             "NotSupportedError",
         ):
             setattr(self, name, getattr(self.asyncmy.errors, name))
-
-        for name in (
-            "NUMBER",
-            "STRING",
-            "DATETIME",
-            "BINARY",
-            "TIMESTAMP",
-            "Binary",
-        ):
-            setattr(self, name, getattr(self.pymysql, name))
 
     def connect(self, *arg, **kw):
         async_fallback = kw.pop("async_fallback", False)
@@ -288,9 +277,7 @@ class MySQLDialect_asyncmy(MySQLDialect_pymysql):
 
     @classmethod
     def dbapi(cls):
-        return AsyncAdapt_asyncmy_dbapi(
-            __import__("asyncmy"), __import__("pymysql")
-        )
+        return AsyncAdapt_asyncmy_dbapi(__import__("asyncmy"))
 
     @classmethod
     def get_pool_class(cls, url):
@@ -319,7 +306,7 @@ class MySQLDialect_asyncmy(MySQLDialect_pymysql):
             )
 
     def _found_rows_client_flag(self):
-        from pymysql.constants import CLIENT
+        from asyncmy.constants import CLIENT
 
         return CLIENT.FOUND_ROWS
 

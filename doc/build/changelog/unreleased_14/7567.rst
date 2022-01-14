@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, mysql
+    :tickets: 7567
+
+    Removed unnecessary dependency on PyMySQL from the asyncmy dialect. Pull
+    request courtesy long2ice.
+
