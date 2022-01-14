@@ -68,7 +68,6 @@ def MockDBAPI():  # noqa
 
 class PoolTestBase(fixtures.TestBase):
     def setup_test(self):
-        pool.clear_managers()
         self._teardown_conns = []
 
     def teardown_test(self):
@@ -76,10 +75,6 @@ class PoolTestBase(fixtures.TestBase):
             conn = ref()
             if conn:
                 conn.close()
-
-    @classmethod
-    def teardown_test_class(cls):
-        pool.clear_managers()
 
     def _with_teardown(self, connection):
         self._teardown_conns.append(weakref.ref(connection))

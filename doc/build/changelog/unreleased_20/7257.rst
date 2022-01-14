@@ -63,3 +63,6 @@
     * Legacy "in-place mutator" methods on :class:`_sql.Select` such as
       ``append_whereclause()``, ``append_order_by()`` etc are removed.
 
+    * Removed the very old "dbapi_proxy" module, which in very early
+      SQLAlchemy releases was used to provide a transparent connection pool
+      over a raw DBAPI connection.

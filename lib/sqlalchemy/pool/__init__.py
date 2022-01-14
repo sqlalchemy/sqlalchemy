@@ -27,8 +27,6 @@ from .base import PoolProxiedConnection
 from .base import reset_commit
 from .base import reset_none
 from .base import reset_rollback
-from .dbapi_proxy import clear_managers
-from .dbapi_proxy import manage
 from .impl import AssertionPool
 from .impl import AsyncAdaptedQueuePool
 from .impl import FallbackAsyncAdaptedQueuePool
