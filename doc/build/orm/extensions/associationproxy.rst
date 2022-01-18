@@ -57,13 +57,13 @@ with ``User`` requires traversal from each collection element to the ``.keyword`
 attribute, which can be awkward::
 
     >>> user = User('jek')
-    >>> user.kw.append(Keyword('cheese inspector'))
+    >>> user.kw.append(Keyword('cheese-inspector'))
     >>> print(user.kw)
     [<__main__.Keyword object at 0x12bf830>]
     >>> print(user.kw[0].keyword)
-    cheese inspector
+    cheese-inspector
     >>> print([keyword.keyword for keyword in user.kw])
-    ['cheese', 'inspector']
+    ['cheese-inspector']
 
 The ``association_proxy`` is applied to the ``User`` class to produce
 a "view" of the ``kw`` relationship, which only exposes the string
@@ -88,9 +88,9 @@ which is both readable and writable.  New ``Keyword`` objects are created
 for us transparently::
 
     >>> user = User('jek')
-    >>> user.keywords.append('cheese inspector')
+    >>> user.keywords.append('cheese-inspector')
     >>> user.keywords
-    ['cheese inspector']
+    ['cheese-inspector']
     >>> user.keywords.append('snack ninja')
     >>> user.kw
     [<__main__.Keyword object at 0x12cdd30>, <__main__.Keyword object at 0x12cde30>]
@@ -120,11 +120,11 @@ assignment event) is intercepted by the association proxy, it instantiates a
 new instance of the "intermediary" object using its constructor, passing as a
 single argument the given value. In our example above, an operation like::
 
-    user.keywords.append('cheese inspector')
+    user.keywords.append('cheese-inspector')
 
 Is translated by the association proxy into the operation::
 
-    user.kw.append(Keyword('cheese inspector'))
+    user.kw.append(Keyword('cheese-inspector'))
 
 The example works here because we have designed the constructor for ``Keyword``
 to accept a single positional argument, ``keyword``.   For those cases where a
