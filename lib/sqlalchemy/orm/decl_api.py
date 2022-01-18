@@ -772,6 +772,11 @@ class registry:
 
     def _add_manager(self, manager):
         self._managers[manager] = True
+        if manager.is_mapped:
+            raise exc.ArgumentError(
+                "Class '%s' already has a primary mapper defined. "
+                % manager.class_
+            )
         assert manager.registry is None
         manager.registry = self
 

@@ -1221,17 +1221,13 @@ class Mapper(
             manager.registry._add_non_primary_mapper(self)
             return
 
-        if manager is not None:
-            assert manager.class_ is self.class_
-            if manager.is_mapped:
-                raise sa_exc.ArgumentError(
-                    "Class '%s' already has a primary mapper defined. "
-                    % self.class_
-                )
-            # else:
-            # a ClassManager may already exist as
-            # ClassManager.instrument_attribute() creates
-            # new managers for each subclass if they don't yet exist.
+        if manager is None or not manager.registry:
+            raise sa_exc.InvalidRequestError(
+                "The _mapper() function and Mapper() constructor may not be "
+                "invoked directly outside of a declarative registry."
+                " Please use the sqlalchemy.orm.registry.map_imperatively() "
+                "function for a classical mapping."
+            )
 
         self.dispatch.instrument_class(self, self.class_)
 
@@ -1251,14 +1247,6 @@ class Mapper(
             # and call the class_instrument event
             finalize=True,
         )
-
-        if not manager.registry:
-            raise sa_exc.InvalidRequestError(
-                "The _mapper() function may not be invoked directly outside "
-                "of a declarative registry."
-                " Please use the sqlalchemy.orm.registry.map_imperatively() "
-                "function for a classical mapping."
-            )
 
         self.class_manager = manager
         self.registry = manager.registry

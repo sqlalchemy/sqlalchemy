@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 7579
+
+    Fixed issue where calling upon :meth:`_orm.regsitry.map_imperatively` more
+    than once for the same class would produce an unexpected error, rather than
+    an informative error that the target class is already mapped. This behavior
+    differed from that of the :func:`_orm.mapper` function which does report an
+    informative message already.

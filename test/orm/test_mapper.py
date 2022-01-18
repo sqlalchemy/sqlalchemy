@@ -114,6 +114,35 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             foobar="x",
         )
 
+    def test_class_already_mapped(self):
+        users, User = (
+            self.tables.users,
+            self.classes.User,
+        )
+
+        self.mapper(User, users)
+
+        with expect_raises_message(
+            sa.exc.ArgumentError,
+            "Class .*User.* already has a primary mapper defined",
+        ):
+            self.mapper(User, users)
+
+    def test_cant_call_legacy_constructor_directly(self):
+        users, User = (
+            self.tables.users,
+            self.classes.User,
+        )
+
+        from sqlalchemy.orm import Mapper
+
+        with expect_raises_message(
+            sa.exc.InvalidRequestError,
+            r"The _mapper\(\) function and Mapper\(\) constructor may not be "
+            "invoked directly",
+        ):
+            Mapper(User, users)
+
     def test_prop_shadow(self):
         """A backref name may not shadow an existing property name."""
 
