@@ -1230,6 +1230,11 @@ class Mapper(
         if manager is not None:
             assert manager.class_ is self.class_
             if manager.is_mapped:
+                # changed in #7579:
+                # this message is defined in two places as of this change,
+                # also in decl_api -> _add_manager().  in 2.0, this codepath
+                # is removed as any calls to mapper() / Mapper without
+                # the registry setting up first will be rejected.
                 raise sa_exc.ArgumentError(
                     "Class '%s' already has a primary mapper defined. "
                     % self.class_

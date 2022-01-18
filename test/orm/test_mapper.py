@@ -23,6 +23,8 @@ from sqlalchemy.orm import deferred
 from sqlalchemy.orm import dynamic_loader
 from sqlalchemy.orm import Load
 from sqlalchemy.orm import load_only
+from sqlalchemy.orm import Mapper
+from sqlalchemy.orm import mapper
 from sqlalchemy.orm import reconstructor
 from sqlalchemy.orm import registry
 from sqlalchemy.orm import relationship
@@ -33,6 +35,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_deprecated_20
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -113,6 +116,38 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             Plain,
             foobar="x",
         )
+
+    def test_class_already_mapped(self):
+        users, User = (
+            self.tables.users,
+            self.classes.User,
+        )
+
+        self.mapper(User, users)
+
+        with expect_raises_message(
+            sa.exc.ArgumentError,
+            "Class .*User.* already has a primary mapper defined",
+        ):
+            self.mapper(User, users)
+
+    @testing.combinations(mapper, Mapper)
+    def test_class_already_mapped_legacy(self, fn):
+        users, User = (
+            self.tables.users,
+            self.classes.User,
+        )
+
+        with expect_deprecated_20(
+            r"Calling the mapper\(\) function directly outside"
+        ):
+            fn(User, users)
+
+        with expect_raises_message(
+            sa.exc.ArgumentError,
+            "Class .*User.* already has a primary mapper defined",
+        ):
+            fn(User, users)
 
     def test_prop_shadow(self):
         """A backref name may not shadow an existing property name."""

@@ -644,7 +644,11 @@ class registry(object):
 
     def _add_manager(self, manager):
         self._managers[manager] = True
-        assert manager.registry is None
+        if manager.registry is not None and manager.is_mapped:
+            raise exc.ArgumentError(
+                "Class '%s' already has a primary mapper defined. "
+                % manager.class_
+            )
         manager.registry = self
 
     def configure(self, cascade=False):
