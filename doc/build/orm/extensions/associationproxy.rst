@@ -215,8 +215,12 @@ collection of ``User`` to the ``.keyword`` attribute present on each
             return 'Keyword(%s)' % repr(self.keyword)
 
 With the above configuration, we can operate upon the ``.keywords``
-collection of each ``User`` object, and the usage of ``UserKeyword``
-is concealed::
+collection of each ``User`` object, as if it contains ``Keyword``
+instances (and the usage of ``UserKeyword`` is concealed). Note: This
+example differs from the first one on this page in that the
+``.keywords`` association is not returning the string values within
+the ``Keyword`` objects, but rather the ``Keyword`` objects
+themselves.::
 
     >>> user = User('log')
     >>> for kw in (Keyword('new_from_blammo'), Keyword('its_big')):
@@ -229,18 +233,23 @@ Where above, each ``.keywords.append()`` operation is equivalent to::
 
     >>> user.user_keywords.append(UserKeyword(Keyword('its_heavy')))
 
-The ``UserKeyword`` association object has two attributes here which are populated;
-the ``.keyword`` attribute is populated directly as a result of passing
-the ``Keyword`` object as the first argument.   The ``.user`` argument is then
-assigned as the ``UserKeyword`` object is appended to the ``User.user_keywords``
-collection, where the bidirectional relationship configured between ``User.user_keywords``
-and ``UserKeyword.user`` results in a population of the ``UserKeyword.user`` attribute.
-The ``special_key`` argument above is left at its default value of ``None``.
+The ``UserKeyword`` association object has two attributes which are
+populated, with each attribute populated at a different stage of the
+operation; the ``.keyword`` attribute is populated directly as a
+result of passing the ``Keyword`` object as the first argument and
+this happens via the ``user.keywords.append()`` operation.  The
+``.user`` argument is then assigned during the step where the
+``UserKeyword`` object is appended to the ``User.user_keywords``
+collection, wherein the bidirectional relationship configured between
+``User.user_keywords`` and ``UserKeyword.user`` results in a
+population of the ``UserKeyword.user`` attribute.  The ``special_key``
+argument above is left at its default value of ``None``.
 
 For those cases where we do want ``special_key`` to have a value, we
-create the ``UserKeyword`` object explicitly.  Below we assign all three
-attributes, where the assignment of ``.user`` has the effect of the ``UserKeyword``
-being appended to the ``User.user_keywords`` collection::
+create the ``UserKeyword`` object explicitly.  Below we assign all
+three attributes, wherein the assignment of ``.user`` during
+construction, has the effect of appending the new ``UserKeyword`` to
+the ``User.user_keywords`` collection (via the relationship)::
 
     >>> UserKeyword(Keyword('its_wood'), user, special_key='my special key')
 
