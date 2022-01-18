@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 7032
+
+    Added an informative error message when a method object is passed to a SQL
+    construct. Previously, when such a callable were passed, as is a common
+    typographical error when dealing with method-chained SQL constructs, they
+    were interpreted as "lambda SQL" targets to be invoked at compilation time,
+    which would lead to silent failures. As this feature was not intended to be
+    used with methods, method objects are now rejected.
