@@ -1,3 +1,5 @@
+import pickle
+
 import sqlalchemy as sa
 from sqlalchemy import Column
 from sqlalchemy import ForeignKey
@@ -5,6 +7,7 @@ from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
@@ -1241,31 +1244,61 @@ class OptionsNoPropTestInh(_Polymorphic):
         eq_(loader.path, orig_path)
 
 
-class PickleTest(PathTest, QueryTest):
-    def _option_fixture(self, *arg):
-        return strategy_options._generate_from_keys(
-            strategy_options.Load.joinedload, arg, True, {}
+class PickleTest(fixtures.MappedTest):
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "users",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(30), nullable=False),
+        )
+        Table(
+            "addresses",
+            metadata,
+            Column("id", Integer, primary_key=True),
+            Column("user_id", None, ForeignKey("users.id")),
+            Column("email_address", String(50), nullable=False),
         )
 
-    def test_modern_opt_getstate(self):
-        User = self.classes.User
+    @testing.fixture
+    def user_address_fixture(self, registry):
+        from sqlalchemy.testing.pickleable import User, Address
 
-        opt = self._option_fixture(User.addresses)
+        registry.map_imperatively(
+            User,
+            self.tables.users,
+            properties={"addresses": relationship(Address)},
+        )
+        registry.map_imperatively(Address, self.tables.addresses)
 
-        q1 = fixture_session().query(User).options(opt)
-        c1 = q1._compile_context()
+        return User, Address
 
-        state = opt.__getstate__()
+    def test_slots(self, user_address_fixture):
+        User, Address = user_address_fixture
 
-        opt2 = Load.__new__(Load)
-        opt2.__setstate__(state)
+        opt = joinedload(User.addresses)
 
-        eq_(opt.__dict__, opt2.__dict__)
+        assert not hasattr(opt, "__dict__")
+        assert not hasattr(opt.context[0], "__dict__")
 
-        q2 = fixture_session().query(User).options(opt2)
-        c2 = q2._compile_context()
+    def test_pickle_relationship_loader(self, user_address_fixture):
+        User, Address = user_address_fixture
 
-        eq_(c1.attributes, c2.attributes)
+        for i in range(3):
+            opt = joinedload(User.addresses)
+
+            q1 = fixture_session().query(User).options(opt)
+            c1 = q1._compile_context()
+
+            pickled = pickle.dumps(opt)
+
+            opt2 = pickle.loads(pickled)
+
+            q2 = fixture_session().query(User).options(opt2)
+            c2 = q2._compile_context()
+
+            eq_(c1.attributes, c2.attributes)
 
 
 class LocalOptsTest(PathTest, QueryTest):

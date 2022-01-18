@@ -47,6 +47,11 @@ class CacheTraverseTarget(enum.Enum):
 class HasCacheKey:
     """Mixin for objects which can produce a cache key.
 
+    This class is usually in a hierarchy that starts with the
+    :class:`.HasTraverseInternals` base, but this is optional.  Currently,
+    the class should be able to work on its own without including
+    :class:`.HasTraverseInternals`.
+
     .. seealso::
 
         :class:`.CacheKey`
@@ -54,6 +59,8 @@ class HasCacheKey:
         :ref:`sql_caching`
 
     """
+
+    __slots__ = ()
 
     _cache_key_traversal = NO_CACHE
 
@@ -106,10 +113,16 @@ class HasCacheKey:
             _cache_key_traversal = getattr(cls, "_cache_key_traversal", None)
             if _cache_key_traversal is None:
                 try:
+                    # this would be HasTraverseInternals
                     _cache_key_traversal = cls._traverse_internals
                 except AttributeError:
                     cls._generated_cache_key_traversal = NO_CACHE
                     return NO_CACHE
+
+            assert _cache_key_traversal is not NO_CACHE, (
+                f"class {cls} has _cache_key_traversal=NO_CACHE, "
+                "which conflicts with inherit_cache=True"
+            )
 
             # TODO: wouldn't we instead get this from our superclass?
             # also, our superclass may not have this yet, but in any case,
@@ -323,6 +336,8 @@ class HasCacheKey:
 
 
 class MemoizedHasCacheKey(HasCacheKey, HasMemoized):
+    __slots__ = ()
+
     @HasMemoized.memoized_instancemethod
     def _generate_cache_key(self):
         return HasCacheKey._generate_cache_key(self)

@@ -1156,7 +1156,9 @@ class MemoizedSlots:
         raise AttributeError(key)
 
     def __getattr__(self, key):
-        if key.startswith("_memoized"):
+        if key.startswith("_memoized_attr_") or key.startswith(
+            "_memoized_method_"
+        ):
             raise AttributeError(key)
         elif hasattr(self, "_memoized_attr_%s" % key):
             value = getattr(self, "_memoized_attr_%s" % key)()

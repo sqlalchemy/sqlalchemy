@@ -45,6 +45,7 @@ from ..sql import util as sql_util
 from ..sql import visitors
 from ..sql.annotation import SupportsCloneAnnotations
 from ..sql.base import ColumnCollection
+from ..util.langhelpers import MemoizedSlots
 
 
 all_cascades = frozenset(
@@ -609,8 +610,9 @@ class AliasedClass:
 class AliasedInsp(
     ORMEntityColumnsClauseRole,
     ORMFromClauseRole,
-    sql_base.MemoizedHasCacheKey,
+    sql_base.HasCacheKey,
     InspectionAttr,
+    MemoizedSlots,
 ):
     """Provide an inspection interface for an
     :class:`.AliasedClass` object.
@@ -649,6 +651,30 @@ class AliasedInsp(
         :ref:`inspection_toplevel`
 
     """
+
+    __slots__ = (
+        "__weakref__",
+        "_weak_entity",
+        "mapper",
+        "selectable",
+        "name",
+        "_adapt_on_names",
+        "with_polymorphic_mappers",
+        "polymorphic_on",
+        "_use_mapper_path",
+        "_base_alias",
+        "represents_outer_join",
+        "persist_selectable",
+        "local_table",
+        "_is_with_polymorphic",
+        "_with_polymorphic_entities",
+        "_adapter",
+        "_target",
+        "__clause_element__",
+        "_memoized_values",
+        "_all_column_expressions",
+        "_nest_adapters",
+    )
 
     def __init__(
         self,
@@ -738,8 +764,7 @@ class AliasedInsp(
     is_aliased_class = True
     "always returns True"
 
-    @util.memoized_instancemethod
-    def __clause_element__(self):
+    def _memoized_method___clause_element__(self):
         return self.selectable._annotate(
             {
                 "parentmapper": self.mapper,
@@ -863,8 +888,7 @@ class AliasedInsp(
         else:
             assert False, "mapper %s doesn't correspond to %s" % (mapper, self)
 
-    @util.memoized_property
-    def _get_clause(self):
+    def _memoized_attr__get_clause(self):
         onclause, replacemap = self.mapper._get_clause
         return (
             self._adapter.traverse(onclause),
@@ -874,12 +898,10 @@ class AliasedInsp(
             },
         )
 
-    @util.memoized_property
-    def _memoized_values(self):
+    def _memoized_attr__memoized_values(self):
         return {}
 
-    @util.memoized_property
-    def _all_column_expressions(self):
+    def _memoized_attr__all_column_expressions(self):
         if self._is_with_polymorphic:
             cols_plus_keys = self.mapper._columns_plus_keys(
                 [ent.mapper for ent in self._with_polymorphic_entities]
@@ -964,6 +986,15 @@ class LoaderCriteriaOption(CriteriaOption):
     .. versionadded:: 1.4
 
     """
+
+    __slots__ = (
+        "root_entity",
+        "entity",
+        "deferred_where_criteria",
+        "where_criteria",
+        "include_aliases",
+        "propagate_to_loaders",
+    )
 
     _traverse_internals = [
         ("root_entity", visitors.ExtendedInternalTraversal.dp_plain_obj),

@@ -271,7 +271,6 @@ class PickleTest(fixtures.MappedTest):
         sess.add(u1)
         sess.commit()
         sess.close()
-
         u1 = (
             sess.query(User)
             .options(

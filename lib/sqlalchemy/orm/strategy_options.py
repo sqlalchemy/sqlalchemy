@@ -13,6 +13,7 @@ from typing import Any
 from typing import cast
 from typing import Mapping
 from typing import NoReturn
+from typing import Optional
 from typing import Tuple
 from typing import Union
 
@@ -32,9 +33,9 @@ from ..sql import and_
 from ..sql import cache_key
 from ..sql import coercions
 from ..sql import roles
+from ..sql import traversals
 from ..sql import visitors
 from ..sql.base import _generative
-from ..sql.base import Generative
 
 _RELATIONSHIP_TOKEN = "relationship"
 _COLUMN_TOKEN = "column"
@@ -45,9 +46,11 @@ if typing.TYPE_CHECKING:
 Self_AbstractLoad = typing.TypeVar("Self_AbstractLoad", bound="_AbstractLoad")
 
 
-class _AbstractLoad(Generative, LoaderOption):
+class _AbstractLoad(traversals.GenerativeOnTraversal, LoaderOption):
+    __slots__ = ("propagate_to_loaders",)
+
     _is_strategy_option = True
-    propagate_to_loaders = False
+    propagate_to_loaders: bool
 
     def contains_eager(self, attr, alias=None, _is_chain=False):
         r"""Indicate that the given attribute should be eagerly loaded from
@@ -882,13 +885,20 @@ class Load(_AbstractLoad):
 
     """
 
-    _cache_key_traversal = [
+    __slots__ = (
+        "path",
+        "context",
+    )
+
+    _traverse_internals = [
         ("path", visitors.ExtendedInternalTraversal.dp_has_cache_key),
         (
             "context",
             visitors.InternalTraversal.dp_has_cache_key_list,
         ),
+        ("propagate_to_loaders", visitors.InternalTraversal.dp_boolean),
     ]
+    _cache_key_traversal = None
 
     path: PathRegistry
     context: Tuple["_LoadElement", ...]
@@ -899,6 +909,7 @@ class Load(_AbstractLoad):
 
         self.path = insp._path_registry
         self.context = ()
+        self.propagate_to_loaders = False
 
     def __str__(self):
         return f"Load({self.path[0]})"
@@ -908,6 +919,7 @@ class Load(_AbstractLoad):
         load = cls.__new__(cls)
         load.path = path
         load.context = ()
+        load.propagate_to_loaders = False
         return load
 
     def _adjust_for_extra_criteria(self, context):
@@ -1128,13 +1140,13 @@ class Load(_AbstractLoad):
                     self.context += (load_element,)
 
     def __getstate__(self):
-        d = self.__dict__.copy()
+        d = self._shallow_to_dict()
         d["path"] = self.path.serialize()
         return d
 
     def __setstate__(self, state):
-        self.__dict__.update(state)
-        self.path = PathRegistry.deserialize(self.path)
+        state["path"] = PathRegistry.deserialize(state["path"])
+        self._shallow_from_dict(state)
 
 
 SelfWildcardLoad = typing.TypeVar("SelfWildcardLoad", bound="_WildcardLoad")
@@ -1143,16 +1155,27 @@ SelfWildcardLoad = typing.TypeVar("SelfWildcardLoad", bound="_WildcardLoad")
 class _WildcardLoad(_AbstractLoad):
     """represent a standalone '*' load operation"""
 
-    _cache_key_traversal = [
+    __slots__ = ("strategy", "path", "local_opts")
+
+    _traverse_internals = [
         ("strategy", visitors.ExtendedInternalTraversal.dp_plain_obj),
+        ("path", visitors.ExtendedInternalTraversal.dp_plain_obj),
         (
             "local_opts",
             visitors.ExtendedInternalTraversal.dp_string_multi_dict,
         ),
     ]
+    cache_key_traversal = None
 
-    local_opts = util.EMPTY_DICT
-    path: Tuple[str, ...] = ()
+    strategy: Optional[Tuple[Any, ...]]
+    local_opts: Mapping[str, Any]
+    path: Tuple[str, ...]
+    propagate_to_loaders = False
+
+    def __init__(self):
+        self.path = ()
+        self.strategy = None
+        self.local_opts = util.EMPTY_DICT
 
     def _clone_for_bind_strategy(
         self,
@@ -1170,16 +1193,6 @@ class _WildcardLoad(_AbstractLoad):
             and isinstance(attr, str)
             and attr in (_WILDCARD_TOKEN, _DEFAULT_TOKEN)
         )
-
-        if attr == _DEFAULT_TOKEN:
-            # for someload('*'), this currently does propagate=False,
-            # to prevent it from taking effect for lazy loads.
-            # it seems like adjusting for current_path for a lazy load etc.
-            # should be taking care of that, so that the option still takes
-            # effect for a refresh as well, but currently it does not.
-            # probably should be adjusted to be more accurate re: current
-            # path vs. refresh
-            self.propagate_to_loaders = False
 
         attr = f"{wildcard_key}:{attr}"
 
@@ -1310,13 +1323,16 @@ class _WildcardLoad(_AbstractLoad):
                 return None
 
     def __getstate__(self):
-        return self.__dict__.copy()
+        d = self._shallow_to_dict()
+        return d
 
     def __setstate__(self, state):
-        self.__dict__.update(state)
+        self._shallow_from_dict(state)
 
 
-class _LoadElement(cache_key.HasCacheKey):
+class _LoadElement(
+    cache_key.HasCacheKey, traversals.HasShallowCopy, visitors.Traversible
+):
     """represents strategy information to select for a LoaderStrategy
     and pass options to it.
 
@@ -1328,40 +1344,66 @@ class _LoadElement(cache_key.HasCacheKey):
 
     """
 
-    _cache_key_traversal = [
+    __slots__ = (
+        "path",
+        "strategy",
+        "propagate_to_loaders",
+        "local_opts",
+        "_extra_criteria",
+        "_reconcile_to_other",
+    )
+    __visit_name__ = "load_element"
+
+    _traverse_internals = [
         ("path", visitors.ExtendedInternalTraversal.dp_has_cache_key),
         ("strategy", visitors.ExtendedInternalTraversal.dp_plain_obj),
         (
             "local_opts",
             visitors.ExtendedInternalTraversal.dp_string_multi_dict,
         ),
+        ("_extra_criteria", visitors.InternalTraversal.dp_clauseelement_list),
+        ("propagate_to_loaders", visitors.InternalTraversal.dp_plain_obj),
+        ("_reconcile_to_other", visitors.InternalTraversal.dp_plain_obj),
     ]
+    _cache_key_traversal = None
 
-    _extra_criteria = ()
+    _extra_criteria: Tuple[Any, ...]
 
-    _reconcile_to_other = None
-    strategy = None
+    _reconcile_to_other: Optional[bool]
+    strategy: Tuple[Any, ...]
     path: PathRegistry
-    propagate_to_loaders = False
+    propagate_to_loaders: bool
 
     local_opts: Mapping[str, Any]
 
     is_token_strategy: bool
     is_class_strategy: bool
 
+    def __hash__(self):
+        return id(self)
+
+    def __eq__(self, other):
+        return traversals.compare(self, other)
+
     @property
     def is_opts_only(self):
         return bool(self.local_opts and self.strategy is None)
 
-    def __getstate__(self):
-        d = self.__dict__.copy()
-        d["path"] = self.path.serialize()
+    def _clone(self):
+        cls = self.__class__
+        s = cls.__new__(cls)
 
+        self._shallow_copy_to(s)
+        return s
+
+    def __getstate__(self):
+        d = self._shallow_to_dict()
+        d["path"] = self.path.serialize()
         return d
 
     def __setstate__(self, state):
         state["path"] = PathRegistry.deserialize(state["path"])
-        self.__dict__.update(state)
+        self._shallow_from_dict(state)
 
     def _raise_for_no_match(self, parent_loader, mapper_entities):
         path = parent_loader.path
@@ -1498,11 +1540,14 @@ class _LoadElement(cache_key.HasCacheKey):
         opt.local_opts = (
             util.immutabledict(local_opts) if local_opts else util.EMPTY_DICT
         )
+        opt._extra_criteria = ()
 
         if reconcile_to_other is not None:
             opt._reconcile_to_other = reconcile_to_other
         elif strategy is None and not local_opts:
             opt._reconcile_to_other = True
+        else:
+            opt._reconcile_to_other = None
 
         path = opt._init_path(path, attr, wildcard_key, attr_group, raiseerr)
 
@@ -1516,12 +1561,6 @@ class _LoadElement(cache_key.HasCacheKey):
 
     def __init__(self, path, strategy, local_opts, propagate_to_loaders):
         raise NotImplementedError()
-
-    def _clone(self):
-        cls = self.__class__
-        s = cls.__new__(cls)
-        s.__dict__ = self.__dict__.copy()
-        return s
 
     def _prepend_path_from(self, parent):
         """adjust the path of this :class:`._LoadElement` to be
@@ -1617,20 +1656,28 @@ class _AttributeStrategyLoad(_LoadElement):
 
     """
 
-    _cache_key_traversal = _LoadElement._cache_key_traversal + [
+    __slots__ = ("_of_type", "_path_with_polymorphic_path")
+
+    __visit_name__ = "attribute_strategy_load_element"
+
+    _traverse_internals = _LoadElement._traverse_internals + [
         ("_of_type", visitors.ExtendedInternalTraversal.dp_multi),
-        ("_extra_criteria", visitors.InternalTraversal.dp_clauseelement_list),
+        (
+            "_path_with_polymorphic_path",
+            visitors.ExtendedInternalTraversal.dp_has_cache_key,
+        ),
     ]
 
-    _of_type: Union["Mapper", AliasedInsp, None] = None
-    _path_with_polymorphic_path = None
+    _of_type: Union["Mapper", AliasedInsp, None]
+    _path_with_polymorphic_path: Optional[PathRegistry]
 
-    inherit_cache = True
     is_class_strategy = False
     is_token_strategy = False
 
     def _init_path(self, path, attr, wildcard_key, attr_group, raiseerr):
         assert attr is not None
+        self._of_type = None
+        self._path_with_polymorphic_path = None
         insp, _, prop = _parse_attr_argument(attr)
 
         if insp.is_property:
@@ -1832,12 +1879,14 @@ class _AttributeStrategyLoad(_LoadElement):
         return [("loader", cast(PathRegistry, effective_path).natural_path)]
 
     def __getstate__(self):
-        d = self.__dict__.copy()
-        d["_extra_criteria"] = ()
-        d["path"] = self.path.serialize()
+        d = super().__getstate__()
 
-        # TODO: we hope to do this logic only at compile time so that
-        # we aren't carrying these extra attributes around
+        # can't pickle this.  See
+        # test_pickled.py -> test_lazyload_extra_criteria_not_supported
+        # where we should be emitting a warning for the usual case where this
+        # would be non-None
+        d["_extra_criteria"] = ()
+
         if self._path_with_polymorphic_path:
             d[
                 "_path_with_polymorphic_path"
@@ -1854,14 +1903,19 @@ class _AttributeStrategyLoad(_LoadElement):
         return d
 
     def __setstate__(self, state):
-        state["path"] = PathRegistry.deserialize(state["path"])
-        self.__dict__.update(state)
-        if "_path_with_polymorphic_path" in state:
+        super().__setstate__(state)
+
+        if state.get("_path_with_polymorphic_path", None):
             self._path_with_polymorphic_path = PathRegistry.deserialize(
-                self._path_with_polymorphic_path
+                state["_path_with_polymorphic_path"]
             )
-        if self._of_type is not None:
-            self._of_type = inspect(self._of_type)
+        else:
+            self._path_with_polymorphic_path = None
+
+        if state.get("_of_type", None):
+            self._of_type = inspect(state["_of_type"])
+        else:
+            self._of_type = None
 
 
 class _TokenStrategyLoad(_LoadElement):
@@ -1876,6 +1930,8 @@ class _TokenStrategyLoad(_LoadElement):
         joinedload(User.addresses).raiseload('*')
 
     """
+
+    __visit_name__ = "token_strategy_load_element"
 
     inherit_cache = True
     is_class_strategy = False
@@ -1961,6 +2017,8 @@ class _ClassStrategyLoad(_LoadElement):
     inherit_cache = True
     is_class_strategy = True
     is_token_strategy = False
+
+    __visit_name__ = "class_strategy_load_element"
 
     def _init_path(self, path, attr, wildcard_key, attr_group, raiseerr):
         return path

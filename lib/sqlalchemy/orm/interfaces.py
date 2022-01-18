@@ -64,20 +64,24 @@ __all__ = (
 
 
 class ORMStatementRole(roles.StatementRole):
+    __slots__ = ()
     _role_name = (
         "Executable SQL or text() construct, including ORM " "aware objects"
     )
 
 
 class ORMColumnsClauseRole(roles.ColumnsClauseRole):
+    __slots__ = ()
     _role_name = "ORM mapped entity, aliased entity, or Column expression"
 
 
 class ORMEntityColumnsClauseRole(ORMColumnsClauseRole):
+    __slots__ = ()
     _role_name = "ORM mapped or aliased entity"
 
 
 class ORMFromClauseRole(roles.StrictFromClauseRole):
+    __slots__ = ()
     _role_name = "ORM mapped entity, aliased entity, or FROM expression"
 
 
@@ -798,6 +802,8 @@ class CompileStateOption(HasCacheKey, ORMOption):
 
     """
 
+    __slots__ = ()
+
     _is_compile_state = True
 
     def process_compile_state(self, compile_state):
@@ -832,6 +838,8 @@ class LoaderOption(CompileStateOption):
 
     """
 
+    __slots__ = ()
+
     def process_compile_state_replaced_entities(
         self, compile_state, mapper_entities
     ):
@@ -845,6 +853,8 @@ class CriteriaOption(CompileStateOption):
     .. versionadded:: 1.4
 
     """
+
+    __slots__ = ()
 
     _is_criteria_option = True
 
@@ -860,6 +870,8 @@ class UserDefinedOption(ORMOption):
     :meth:`.SessionEvents.do_orm_execute` event hook.
 
     """
+
+    __slots__ = ("payload",)
 
     _is_legacy_option = False
 
@@ -886,6 +898,8 @@ class UserDefinedOption(ORMOption):
 )
 class MapperOption(ORMOption):
     """Describe a modification to a Query"""
+
+    __slots__ = ()
 
     _is_legacy_option = True
 

@@ -46,7 +46,7 @@ from .traversals import HasCopyInternals
 from .visitors import cloned_traverse
 from .visitors import InternalTraversal
 from .visitors import traverse
-from .visitors import Traversible
+from .visitors import Visitable
 from .. import exc
 from .. import inspection
 from .. import util
@@ -126,7 +126,7 @@ def literal_column(text, type_=None):
     return ColumnClause(text, type_=type_, is_literal=True)
 
 
-class CompilerElement(Traversible):
+class CompilerElement(Visitable):
     """base class for SQL elements that can be compiled to produce a
     SQL string.
 

@@ -17,6 +17,7 @@ from itertools import zip_longest
 import operator
 import re
 import typing
+from typing import TypeVar
 
 from . import roles
 from . import visitors
@@ -571,11 +572,14 @@ class CompileState:
         return decorate
 
 
+SelfGenerative = TypeVar("SelfGenerative", bound="Generative")
+
+
 class Generative(HasMemoized):
     """Provide a method-chaining pattern in conjunction with the
     @_generative decorator."""
 
-    def _generate(self):
+    def _generate(self: SelfGenerative) -> SelfGenerative:
         skip = self._memoized_keys
         cls = self.__class__
         s = cls.__new__(cls)
@@ -783,6 +787,8 @@ class Options(metaclass=_MetaOptions):
 
 
 class CacheableOptions(Options, HasCacheKey):
+    __slots__ = ()
+
     @hybridmethod
     def _gen_cache_key(self, anon_map, bindparams):
         return HasCacheKey._gen_cache_key(self, anon_map, bindparams)
@@ -797,6 +803,8 @@ class CacheableOptions(Options, HasCacheKey):
 
 
 class ExecutableOption(HasCopyInternals):
+    __slots__ = ()
+
     _annotations = util.EMPTY_DICT
 
     __visit_name__ = "executable_option"
