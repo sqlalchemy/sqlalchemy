@@ -63,7 +63,7 @@ attribute, which can be awkward::
     >>> print(user.kw[0].keyword)
     cheese inspector
     >>> print([keyword.keyword for keyword in user.kw])
-    ['cheese inspector']
+    ['cheese', 'inspector']
 
 The ``association_proxy`` is applied to the ``User`` class to produce
 a "view" of the ``kw`` relationship, which only exposes the string
