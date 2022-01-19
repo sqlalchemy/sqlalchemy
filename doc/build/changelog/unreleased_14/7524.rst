@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, orm, asyncio
+    :tickets: 7524
+
+    Added missing method :meth:`_asyncio.AsyncSession.invalidate` to the
+    :class:`_asyncio.AsyncSession` class.
+

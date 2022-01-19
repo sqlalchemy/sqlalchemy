@@ -605,6 +605,13 @@ class AsyncSession(ReversibleProxy):
         """
         return await greenlet_spawn(self.sync_session.close)
 
+    async def invalidate(self):
+        """Close this Session, using connection invalidation.
+
+        For a complete description, see :meth:`_orm.Session.invalidate`.
+        """
+        return await greenlet_spawn(self.sync_session.invalidate)
+
     @classmethod
     async def close_all(self):
         """Close all :class:`_asyncio.AsyncSession` sessions."""

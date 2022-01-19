@@ -36,6 +36,7 @@ from ...util import ScopedRegistry
         "get",
         "get_bind",
         "is_modified",
+        "invalidate",
         "merge",
         "refresh",
         "rollback",
