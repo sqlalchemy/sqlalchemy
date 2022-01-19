@@ -22,6 +22,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import is_false
 from .test_engine_py3k import AsyncFixture as _AsyncFixture
 from ...orm import _fixtures
 
@@ -487,6 +488,22 @@ class AsyncSessionTransactionTest(AsyncFixture):
         async with AsyncSession(async_engine) as async_session:
             result = await async_session.execute(select(User))
             eq_(result.all(), [])
+
+    @async_test
+    @testing.requires.independent_connections
+    async def test_invalidate(self, async_session):
+        await async_session.execute(select(1))
+        conn = async_session.sync_session.connection()
+        fairy = conn.connection
+        connection_rec = fairy._connection_record
+
+        is_false(conn.closed)
+        is_false(connection_rec._is_hard_or_soft_invalidated())
+        await async_session.invalidate()
+        is_true(conn.closed)
+        is_true(connection_rec._is_hard_or_soft_invalidated())
+
+        eq_(async_session.in_transaction(), False)
 
 
 class AsyncCascadesTest(AsyncFixture):
