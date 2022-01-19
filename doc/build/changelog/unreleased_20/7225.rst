@@ -1,0 +1,6 @@
+.. change::
+    :tags: postgresql, change
+    :tickets: 7225
+
+    The parameter :paramref:`_postgresql.UUID.as_uuid` of
+    :class:`_postgresql.UUID` now defaults to ``True``.

@@ -650,7 +650,7 @@ class Dialect:
 
     See :class:`.BindTyping` for values.
 
-    ..versionadded:: 2.0
+    .. versionadded:: 2.0
 
     """
 

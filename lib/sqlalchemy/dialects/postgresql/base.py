@@ -1707,13 +1707,15 @@ class UUID(sqltypes.TypeEngine):
 
     __visit_name__ = "UUID"
 
-    def __init__(self, as_uuid=False):
+    def __init__(self, as_uuid=True):
         """Construct a UUID type.
 
 
-        :param as_uuid=False: if True, values will be interpreted
+        :param as_uuid=True: if True, values will be interpreted
          as Python uuid objects, converting to/from string via the
          DBAPI.
+
+         .. versionchanged: 2 ``as_uuid`` now defaults to ``True``.
 
         """
         self.as_uuid = as_uuid
