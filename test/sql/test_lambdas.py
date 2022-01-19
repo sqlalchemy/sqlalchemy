@@ -8,6 +8,7 @@ from sqlalchemy.sql import and_
 from sqlalchemy.sql import bindparam
 from sqlalchemy.sql import coercions
 from sqlalchemy.sql import column
+from sqlalchemy.sql import func
 from sqlalchemy.sql import join
 from sqlalchemy.sql import lambda_stmt
 from sqlalchemy.sql import lambdas
@@ -37,6 +38,26 @@ class LambdaElementTest(
     fixtures.TestBase, testing.AssertsExecutionResults, AssertsCompiledSQL
 ):
     __dialect__ = "default"
+
+    def test_reject_methods(self):
+        """test #7032"""
+
+        t1 = table("t1", column("q"), column("p"))
+
+        subq = select(t1).subquery
+
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Method <bound method Select.*.subquery .* may not be "
+            "passed as a SQL expression",
+        ):
+            select(func.count()).select_from(subq)
+
+        self.assert_compile(
+            select(func.count()).select_from(subq()),
+            "SELECT count(*) AS count_1 FROM "
+            "(SELECT t1.q AS q, t1.p AS p FROM t1) AS anon_1",
+        )
 
     def test_select_whereclause(self):
         t1 = table("t1", column("q"), column("p"))

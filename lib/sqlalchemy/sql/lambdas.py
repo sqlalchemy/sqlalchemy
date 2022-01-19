@@ -5,6 +5,7 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+import inspect
 import itertools
 import operator
 import sys
@@ -619,6 +620,10 @@ class AnalyzedCode(object):
         return analyzed
 
     def __init__(self, fn, lambda_element, opts):
+        if inspect.ismethod(fn):
+            raise exc.ArgumentError(
+                "Method %s may not be passed as a SQL expression" % fn
+            )
         closure = fn.__closure__
 
         self.track_bound_values = (
