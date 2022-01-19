@@ -622,12 +622,63 @@ The above example prints something along the lines of::
     to sync, and outgoing messages to the database API will be converted
     to asyncio transparently.
 
+.. _asyncio_events_run_async:
+
+Using awaitable-only driver methods in connection pool and other events
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+As discussed in the above section, event handlers such as those oriented
+around the :class:`.PoolEvents` event handlers receive a sync-style "DBAPI" connection,
+which is a wrapper object supplied by SQLAlchemy asyncio dialects to adapt
+the underlying asyncio "driver" connection into one that can be used by
+SQLAlchemy's internals.    A special use case arises when the user-defined
+implementation for such an event handler needs to make use of the
+ultimate "driver" connection directly, using awaitable only methods on that
+driver connection.  One such example is the ``.set_type_codec()`` method
+supplied by the asyncpg driver.
+
+To accommodate this use case, SQLAlchemy's :class:`.AdaptedConnection`
+class provides a method :meth:`.AdaptedConnection.run_async` that allows
+an awaitable function to be invoked within the "synchronous" context of
+an event handler or other SQLAlchemy internal.  This method is directly
+analogous to the :meth:`_asyncio.AsyncConnection.run_sync` method that
+allows a sync-style method to run under async.
+
+:meth:`.AdaptedConnection.run_async` should be passed a function that will
+accept the innermost "driver" connection as a single argument, and return
+an awaitable that will be invoked by the :meth:`.AdaptedConnection.run_async`
+method.  The given function itself does not need to be declared as ``async``;
+it's perfectly fine for it to be a Python ``lambda:``, as the return awaitable
+value will be invoked after being returned::
+
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy import event
+
+    engine = create_async_engine(...)
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def register_custom_types(dbapi_connection, ...):
+        dbapi_connection.run_async(
+            lambda connection: connection.set_type_codec('MyCustomType', encoder, decoder, ...)
+        )
+
+Above, the object passed to the ``register_custom_types`` event handler
+is an instance of :class:`.AdaptedConnection`, which provides a DBAPI-like
+interface to an underlying async-only driver-level connection object.
+The :meth:`.AdaptedConnection.run_async` method then provides access to an
+awaitable environment where the underlying driver level connection may be
+acted upon.
+
+.. versionadded:: 1.4.30
+
+
 Using multiple asyncio event loops
 ----------------------------------
 
-An application that makes use of multiple event loops, for example by combining asyncio
-with multithreading, should not share the same :class:`_asyncio.AsyncEngine`
-with different event loops when using the default pool implementation.
+An application that makes use of multiple event loops, for example in the
+uncommon case of combining asyncio with multithreading, should not share the
+same :class:`_asyncio.AsyncEngine` with different event loops when using the
+default pool implementation.
 
 If an :class:`_asyncio.AsyncEngine` is be passed from one event loop to another,
 the method :meth:`_asyncio.AsyncEngine.dispose()` should be called before it's

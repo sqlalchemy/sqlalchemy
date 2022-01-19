@@ -1,4 +1,5 @@
 import asyncio
+import inspect as stdlib_inspect
 
 from sqlalchemy import Column
 from sqlalchemy import create_engine
@@ -219,6 +220,30 @@ class AsyncEngineTest(EngineFixture):
         eq_(async_engine.name, sync_engine.name)
         eq_(async_engine.driver, sync_engine.driver)
         eq_(async_engine.echo, sync_engine.echo)
+
+    @async_test
+    async def test_run_async(self, async_engine):
+        async def test_meth(async_driver_connection):
+            # there's no method that's guaranteed to be on every
+            # driver, so just stringify it and compare that to the
+            # outside
+            return str(async_driver_connection)
+
+        def run_sync_to_async(connection):
+            connection_fairy = connection.connection
+            async_return = connection_fairy.run_async(
+                lambda driver_connection: test_meth(driver_connection)
+            )
+            assert not stdlib_inspect.iscoroutine(async_return)
+            return async_return
+
+        async with async_engine.connect() as conn:
+            driver_connection = (
+                await conn.get_raw_connection()
+            ).driver_connection
+            res = await conn.run_sync(run_sync_to_async)
+            assert not stdlib_inspect.iscoroutine(res)
+            eq_(res, str(driver_connection))
 
     @async_test
     async def test_engine_eq_ne(self, async_engine):
