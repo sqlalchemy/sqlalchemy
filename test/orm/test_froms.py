@@ -573,6 +573,16 @@ class EntityFromSubqueryTest(QueryTest, AssertsCompiledSQL):
 
         q = s.query(uq1.name, uq2.name).order_by(uq1.name, uq2.name)
 
+        self.assert_compile(
+            q,
+            "SELECT anon_1.name AS anon_1_name, anon_1.name_1 AS "
+            "anon_1_name_1 FROM "
+            "(SELECT users.id AS id, users.name AS name, users_1.id AS id_1, "
+            "users_1.name AS name_1 FROM users, users AS users_1 "
+            "WHERE users.id > users_1.id) AS anon_1 "
+            "ORDER BY anon_1.name, anon_1.name_1",
+        )
+
         eq_(
             q.all(),
             [
@@ -611,6 +621,158 @@ class EntityFromSubqueryTest(QueryTest, AssertsCompiledSQL):
                 ("jack", "ed@wood.com"),
                 ("jack", "fred@fred.com"),
             ],
+        )
+
+    def test_nested_aliases_none_to_none(self):
+        """test #7576"""
+
+        User = self.classes.User
+
+        u1 = aliased(User)
+        u2 = aliased(u1)
+
+        self.assert_compile(
+            select(u2), "SELECT users_1.id, users_1.name FROM users AS users_1"
+        )
+
+    def test_nested_alias_none_to_subquery(self):
+        """test #7576"""
+
+        User = self.classes.User
+
+        subq = select(User.id, User.name).subquery()
+
+        u1 = aliased(User, subq)
+
+        self.assert_compile(
+            select(u1),
+            "SELECT anon_1.id, anon_1.name FROM "
+            "(SELECT users.id AS id, users.name AS name FROM users) AS anon_1",
+        )
+
+        u2 = aliased(u1)
+
+        self.assert_compile(
+            select(u2),
+            "SELECT anon_1.id, anon_1.name FROM "
+            "(SELECT users.id AS id, users.name AS name FROM users) AS anon_1",
+        )
+
+    def test_nested_alias_subquery_to_subquery_w_replace(self):
+        """test #7576"""
+
+        User = self.classes.User
+
+        subq = select(User.id, User.name).subquery()
+
+        u1 = aliased(User, subq)
+
+        self.assert_compile(
+            select(u1),
+            "SELECT anon_1.id, anon_1.name FROM "
+            "(SELECT users.id AS id, users.name AS name FROM users) AS anon_1",
+        )
+
+        u2 = aliased(u1, subq)
+
+        self.assert_compile(
+            select(u2),
+            "SELECT anon_1.id, anon_1.name FROM "
+            "(SELECT users.id AS id, users.name AS name FROM users) AS anon_1",
+        )
+
+    def test_nested_alias_subquery_to_subquery_w_adaption(self):
+        """test #7576"""
+
+        User = self.classes.User
+
+        inner_subq = select(User.id, User.name).subquery()
+
+        u1 = aliased(User, inner_subq)
+
+        self.assert_compile(
+            select(u1),
+            "SELECT anon_1.id, anon_1.name FROM "
+            "(SELECT users.id AS id, users.name AS name FROM users) AS anon_1",
+        )
+
+        outer_subq = select(u1.id, u1.name).subquery()
+
+        u2 = aliased(u1, outer_subq)
+
+        self.assert_compile(
+            select(u2),
+            "SELECT anon_1.id, anon_1.name FROM "
+            "(SELECT anon_2.id AS id, anon_2.name AS name FROM "
+            "(SELECT users.id AS id, users.name AS name FROM users) "
+            "AS anon_2) AS anon_1",
+        )
+
+        outer_subq = (
+            select(u1.id, u1.name, User.id, User.name)
+            .where(u1.id > User.id)
+            .subquery()
+        )
+        u2 = aliased(u1, outer_subq)
+
+        # query here is:
+        # SELECT derived_from_inner_subq.id, derived_from_inner_subq.name
+        # FROM (
+        #    SELECT ... FROM inner_subq, users WHERE inner_subq.id > users.id
+        # ) as outer_subq
+        self.assert_compile(
+            select(u2),
+            "SELECT anon_1.id, anon_1.name FROM "
+            "(SELECT anon_2.id AS id, anon_2.name AS name, users.id AS id_1, "
+            "users.name AS name_1 FROM "
+            "(SELECT users.id AS id, users.name AS name FROM users) "
+            "AS anon_2, users "
+            "WHERE anon_2.id > users.id) AS anon_1",
+        )
+
+    def test_nested_alias_subquery_w_alias_to_none(self):
+        """test #7576"""
+
+        User = self.classes.User
+
+        u1 = aliased(User)
+
+        self.assert_compile(
+            select(u1), "SELECT users_1.id, users_1.name FROM users AS users_1"
+        )
+
+        subq = (
+            select(User.id, User.name, u1.id, u1.name)
+            .where(User.id > u1.id)
+            .subquery()
+        )
+
+        # aliased against aliased w/ subquery means, look for u1 inside the
+        # given subquery. adapt that.
+        u2 = aliased(u1, subq)
+
+        self.assert_compile(
+            select(u2),
+            "SELECT anon_1.id_1, anon_1.name_1 FROM "
+            "(SELECT users.id AS id, users.name AS name, "
+            "users_1.id AS id_1, users_1.name AS name_1 "
+            "FROM users, users AS users_1 "
+            "WHERE users.id > users_1.id) AS anon_1",
+        )
+
+        subq = select(User.id, User.name).subquery()
+        u2 = aliased(u1, subq)
+
+        # given that, it makes sense that if we remove "u1" from the subquery,
+        # we get a second FROM element like below.
+        # this is actually a form of the "wrong" query that was
+        # reported in #7576, but this is the case where we have a subquery,
+        # so yes, we need to adapt the "inner" alias to it.
+
+        self.assert_compile(
+            select(u2),
+            "SELECT users_1.id, users_1.name FROM users AS users_1, "
+            "(SELECT users.id AS id, users.name AS name FROM users) AS anon_1",
         )
 
     def test_multiple_entities(self):
