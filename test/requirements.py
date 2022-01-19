@@ -1861,3 +1861,17 @@ class DefaultRequirements(SuiteRequirements):
     def reflect_tables_no_columns(self):
         # so far sqlite, mariadb, mysql don't support this
         return only_on(["postgresql"])
+
+    @property
+    def mssql_filestream(self):
+        "returns if mssql supports filestream"
+
+        def check(config):
+            with config.db.connect() as conn:
+                res = conn.exec_driver_sql(
+                    "SELECT [type] FROM sys.master_files WHERE "
+                    "database_id = DB_ID() AND [type] = 2"
+                ).scalar()
+                return res is not None
+
+        return only_on(["mssql"]) + only_if(check)

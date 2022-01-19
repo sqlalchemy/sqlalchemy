@@ -108,6 +108,9 @@ construction arguments, are as follows:
    :members: __init__
 
 
+.. autoclass:: VARBINARY
+   :members: __init__
+
 .. autoclass:: VARCHAR
    :members: __init__
 
