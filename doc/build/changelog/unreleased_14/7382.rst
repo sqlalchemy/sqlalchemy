@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, reflection, postgresql, mssql
-    :tickets: 7382
-
-    Fixed reflection of covering indexes to report ``include_columns`` as part
-    of the ``dialect_options`` entry in the reflected index dictionary, thereby
-    enabling round trips from reflection->create to be complete. Included
-    columns continue to also be present under the ``include_columns`` key for
-    backwards compatibility.

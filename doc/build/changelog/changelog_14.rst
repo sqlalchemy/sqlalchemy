@@ -15,7 +15,192 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.30
-    :include_notes_from: unreleased_14
+    :released: January 19, 2022
+
+    .. change::
+        :tags: usecase, asyncio
+        :tickets: 7580
+
+        Added new method :meth:`.AdaptedConnection.run_async` to the DBAPI
+        connection interface used by asyncio drivers, which allows methods to be
+        called against the underlying "driver" connection directly within a
+        sync-style function where the ``await`` keyword can't be used, such as
+        within SQLAlchemy event handler functions. The method is analogous to the
+        :meth:`_asyncio.AsyncConnection.run_sync` method which translates
+        async-style calls to sync-style. The method is useful for things like
+        connection-pool on-connect handlers that need to invoke awaitable methods
+        on the driver connection when it's first created.
+
+        .. seealso::
+
+            :ref:`asyncio_events_run_async`
+
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7507
+
+        Fixed issue in joined-inheritance load of additional attributes
+        functionality in deep multi-level inheritance where an intermediary table
+        that contained no columns would not be included in the tables joined,
+        instead linking those tables to their primary key identifiers. While this
+        works fine, it nonetheless in 1.4 began producing the cartesian product
+        compiler warning. The logic has been changed so that these intermediary
+        tables are included regardless. While this does include additional tables
+        in the query that are not technically necessary, this only occurs for the
+        highly unusual case of deep 3+ level inheritance with intermediary tables
+        that have no non primary key columns, potential performance impact is
+        therefore expected to be negligible.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7579
+
+        Fixed issue where calling upon :meth:`_orm.registry.map_imperatively` more
+        than once for the same class would produce an unexpected error, rather than
+        an informative error that the target class is already mapped. This behavior
+        differed from that of the :func:`_orm.mapper` function which does report an
+        informative message already.
+
+    .. change::
+        :tags: bug, sql, postgresql
+        :tickets: 7537
+
+        Added additional rule to the system that determines ``TypeEngine``
+        implementations from Python literals to apply a second level of adjustment
+        to the type, so that a Python datetime with or without tzinfo can set the
+        ``timezone=True`` parameter on the returned :class:`.DateTime` object, as
+        well as :class:`.Time`. This helps with some round-trip scenarios on
+        type-sensitive PostgreSQL dialects such as asyncpg, psycopg3 (2.0 only).
+
+    .. change::
+        :tags: bug, postgresql, asyncpg
+        :tickets: 7537
+
+        Improved support for asyncpg handling of TIME WITH TIMEZONE, which
+        was not fully implemented.
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 7561
+
+        Added string rendering to the :class:`.postgresql.UUID` datatype, so that
+        stringifying a statement with "literal_binds" that uses this type will
+        render an appropriate string value for the PostgreSQL backend. Pull request
+        courtesy José Duarte.
+
+    .. change::
+        :tags: bug, orm, asyncio
+        :tickets: 7524
+
+        Added missing method :meth:`_asyncio.AsyncSession.invalidate` to the
+        :class:`_asyncio.AsyncSession` class.
+
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 7557
+
+        Fixed regression which appeared in 1.4.23 which could cause loader options
+        to be mis-handled in some cases, in particular when using joined table
+        inheritance in combination with the ``polymorphic_load="selectin"`` option
+        as well as relationship lazy loading, leading to a ``TypeError``.
+
+
+    .. change::
+        :tags: bug, mypy
+        :tickets: 7321
+
+        Fixed Mypy crash when running id daemon mode caused by a
+        missing attribute on an internal mypy ``Var`` instance.
+
+    .. change::
+        :tags: change, mysql
+        :tickets: 7518
+
+        Replace ``SHOW VARIABLES LIKE`` statement with equivalent
+        ``SELECT @@variable`` in MySQL and MariaDB dialect initialization.
+        This should avoid mutex contention caused by ``SHOW VARIABLES``,
+        improving initialization performance.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 7576
+
+        Fixed ORM regression where calling the :func:`_orm.aliased` function
+        against an existing :func:`_orm.aliased` construct would fail to produce
+        correct SQL if the existing construct were against a fixed table. The fix
+        allows that the original :func:`_orm.aliased` construct is disregarded if
+        it were only against a table that's now being replaced. It also allows for
+        correct behavior when constructing a :func:`_orm.aliased` without a
+        selectable argument against a :func:`_orm.aliased` that's against a
+        subuquery, to create an alias of that subquery (i.e. to change its name).
+
+        The nesting behavior of :func:`_orm.aliased` remains in place for the case
+        where the outer :func:`_orm.aliased` object is against a subquery which in
+        turn refers to the inner :func:`_orm.aliased` object. This is a relatively
+        new 1.4 feature that helps to suit use cases that were previously served by
+        the deprecated ``Query.from_self()`` method.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7514
+
+        Fixed issue where :meth:`_sql.Select.correlate_except` method, when passed
+        either the ``None`` value or no arguments, would not correlate any elements
+        when used in an ORM context (that is, passing ORM entities as FROM
+        clauses), rather than causing all FROM elements to be considered as
+        "correlated" in the same way which occurs when using Core-only constructs.
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 7505
+
+        Fixed regression from 1.3 where the "subqueryload" loader strategy would
+        fail with a stack trace if used against a query that made use of
+        :meth:`_orm.Query.from_statement` or :meth:`_sql.Select.from_statement`. As
+        subqueryload requires modifying the original statement, it's not compatible
+        with the "from_statement" use case, especially for statements made against
+        the :func:`_sql.text` construct. The behavior now is equivalent to that of
+        1.3 and previously, which is that the loader strategy silently degrades to
+        not be used for such statements, typically falling back to using the
+        lazyload strategy.
+
+
+    .. change::
+        :tags: bug, reflection, postgresql, mssql
+        :tickets: 7382
+
+        Fixed reflection of covering indexes to report ``include_columns`` as part
+        of the ``dialect_options`` entry in the reflected index dictionary, thereby
+        enabling round trips from reflection->create to be complete. Included
+        columns continue to also be present under the ``include_columns`` key for
+        backwards compatibility.
+
+    .. change::
+        :tags: bug, mysql
+        :tickets: 7567
+
+        Removed unnecessary dependency on PyMySQL from the asyncmy dialect. Pull
+        request courtesy long2ice.
+
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 7418
+
+        Fixed handling of array of enum values which require escape characters.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 7032
+
+        Added an informative error message when a method object is passed to a SQL
+        construct. Previously, when such a callable were passed, as is a common
+        typographical error when dealing with method-chained SQL constructs, they
+        were interpreted as "lambda SQL" targets to be invoked at compilation time,
+        which would lead to silent failures. As this feature was not intended to be
+        used with methods, method objects are now rejected.
 
 .. changelog::
     :version: 1.4.29
