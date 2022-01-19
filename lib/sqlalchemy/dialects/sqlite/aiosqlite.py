@@ -165,7 +165,7 @@ class AsyncAdapt_aiosqlite_ss_cursor(AsyncAdapt_aiosqlite_cursor):
 
 class AsyncAdapt_aiosqlite_connection(AdaptedConnection):
     await_ = staticmethod(await_only)
-    __slots__ = ("dbapi", "_connection")
+    __slots__ = ("dbapi",)
 
     def __init__(self, dbapi, connection):
         self.dbapi = dbapi

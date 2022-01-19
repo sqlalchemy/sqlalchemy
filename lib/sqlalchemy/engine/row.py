@@ -194,10 +194,7 @@ class ROMappingView(
     collections_abc.ValuesView,
     collections_abc.ItemsView,
 ):
-    __slots__ = (
-        "_mapping",
-        "_items",
-    )
+    __slots__ = ("_items",)
 
     def __init__(self, mapping, items):
         self._mapping = mapping

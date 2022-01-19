@@ -2257,7 +2257,7 @@ class TwoPhaseTransaction(RootTransaction):
 
     """
 
-    __slots__ = ("connection", "is_active", "xid", "_is_prepared")
+    __slots__ = ("xid", "_is_prepared")
 
     def __init__(self, connection, xid):
         self._is_prepared = False
