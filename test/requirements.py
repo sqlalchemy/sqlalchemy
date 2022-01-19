@@ -1703,3 +1703,17 @@ class DefaultRequirements(SuiteRequirements):
     def json_deserializer_binary(self):
         "indicates if the json_deserializer function is called with bytes"
         return only_on(["postgresql+psycopg"])
+
+    @property
+    def mssql_filestream(self):
+        "returns if mssql supports filestream"
+
+        def check(config):
+            with config.db.connect() as conn:
+                res = conn.exec_driver_sql(
+                    "SELECT [type] FROM sys.master_files WHERE "
+                    "database_id = DB_ID() AND [type] = 2"
+                ).scalar()
+                return res is not None
+
+        return only_on(["mssql"]) + only_if(check)

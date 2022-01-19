@@ -48,6 +48,7 @@ from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import ComparesTables
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
@@ -529,6 +530,12 @@ class TypeDDLTest(fixtures.TestBase):
             (mssql.MSVarBinary, [10], {}, "VARBINARY(10)"),
             (types.VARBINARY, [10], {}, "VARBINARY(10)"),
             (types.VARBINARY, [], {}, "VARBINARY(max)"),
+            (
+                mssql.MSVarBinary,
+                [],
+                {"filestream": True},
+                "VARBINARY(max) FILESTREAM",
+            ),
             (mssql.MSImage, [], {}, "IMAGE"),
             (mssql.IMAGE, [], {}, "IMAGE"),
             (types.LargeBinary, [], {}, "IMAGE"),
@@ -551,6 +558,17 @@ class TypeDDLTest(fixtures.TestBase):
                 "%s %s" % (col.name, columns[index][3]),
             )
             self.assert_(repr(col))
+
+    def test_VARBINARY_init(self):
+        d = mssql.dialect()
+        t = mssql.MSVarBinary(length=None, filestream=True)
+        eq_(str(t.compile(dialect=d)), "VARBINARY(max) FILESTREAM")
+        t = mssql.MSVarBinary(length="max", filestream=True)
+        eq_(str(t.compile(dialect=d)), "VARBINARY(max) FILESTREAM")
+        with expect_raises_message(
+            ValueError, "length must be None or 'max' when setting filestream"
+        ):
+            mssql.MSVarBinary(length=1000, filestream=True)
 
 
 class TypeRoundTripTest(
@@ -1007,6 +1025,15 @@ class TypeRoundTripTest(
             ),
         ]
 
+        if testing.requires.mssql_filestream.enabled:
+            columns.append(
+                (
+                    mssql.MSVarBinary,
+                    [],
+                    {"filestream": True},
+                    "VARBINARY(max) FILESTREAM",
+                )
+            )
         engine = engines.testing_engine(
             options={"deprecate_large_types": deprecate_large_types}
         )
@@ -1232,6 +1259,15 @@ class BinaryTest(fixtures.TestBase):
             True,
             None,
             False,
+        ),
+        (
+            mssql.VARBINARY(filestream=True),
+            "binary_data_one.dat",
+            None,
+            True,
+            None,
+            False,
+            testing.requires.mssql_filestream,
         ),
         (
             sqltypes.LargeBinary,

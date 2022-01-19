@@ -1,0 +1,10 @@
+.. change::
+    :tags: mssql
+    :tickets: 7243
+
+    Added support for ``FILESTREAM`` when using ``VARBINARY(max)``
+    in MSSQL.
+
+    .. seealso::
+
+        :paramref:`_mssql.VARBINARY.filestream`
