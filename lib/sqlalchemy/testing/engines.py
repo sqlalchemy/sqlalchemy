@@ -19,6 +19,7 @@ from .util import decorator
 from .util import gc_collect
 from .. import event
 from .. import pool
+from ..util import await_only
 from ..util.typing import Literal
 
 
@@ -105,7 +106,10 @@ class ConnectionKiller:
                         and proxy_ref._pool is rec.pool
                     ):
                         self._safe(proxy_ref._checkin)
-            rec.dispose()
+            if hasattr(rec, "sync_engine"):
+                await_only(rec.dispose())
+            else:
+                rec.dispose()
         eng.clear()
 
     def after_test(self):
@@ -332,6 +336,7 @@ def testing_engine(
         from sqlalchemy.pool import StaticPool
 
         if config.db is not None and isinstance(config.db.pool, StaticPool):
+            use_reaper = False
             engine.pool._transfer_from(config.db.pool)
 
     if scope == "global":
