@@ -495,11 +495,20 @@ class AliasedClass:
         insp = inspection.inspect(mapped_class_or_ac)
         mapper = insp.mapper
 
+        nest_adapters = False
+
         if alias is None:
-            alias = mapper._with_polymorphic_selectable._anonymous_fromclause(
-                name=name,
-                flat=flat,
-            )
+            if insp.is_aliased_class and insp.selectable._is_subquery:
+                alias = insp.selectable.alias()
+            else:
+                alias = (
+                    mapper._with_polymorphic_selectable._anonymous_fromclause(
+                        name=name,
+                        flat=flat,
+                    )
+                )
+        elif insp.is_aliased_class:
+            nest_adapters = True
 
         self._aliased_insp = AliasedInsp(
             self,
@@ -516,6 +525,7 @@ class AliasedClass:
             use_mapper_path,
             adapt_on_names,
             represents_outer_join,
+            nest_adapters,
         )
 
         self.__name__ = f"aliased({mapper.class_.__name__})"
@@ -652,6 +662,7 @@ class AliasedInsp(
         _use_mapper_path,
         adapt_on_names,
         represents_outer_join,
+        nest_adapters,
     ):
 
         mapped_class_or_ac = inspected.entity
@@ -667,6 +678,7 @@ class AliasedInsp(
         self._base_alias = weakref.ref(_base_alias or self)
         self._use_mapper_path = _use_mapper_path
         self.represents_outer_join = represents_outer_join
+        self._nest_adapters = nest_adapters
 
         if with_polymorphic_mappers:
             self._is_with_polymorphic = True
@@ -702,7 +714,7 @@ class AliasedInsp(
             ],
         )
 
-        if inspected.is_aliased_class:
+        if nest_adapters:
             self._adapter = inspected._adapter.wrap(self._adapter)
 
         self._adapt_on_names = adapt_on_names
@@ -773,6 +785,7 @@ class AliasedInsp(
             "base_alias": self._base_alias(),
             "use_mapper_path": self._use_mapper_path,
             "represents_outer_join": self.represents_outer_join,
+            "nest_adapters": self._nest_adapters,
         }
 
     def __setstate__(self, state):
@@ -787,6 +800,7 @@ class AliasedInsp(
             state["use_mapper_path"],
             state["adapt_on_names"],
             state["represents_outer_join"],
+            state["nest_adapters"],
         )
 
     def _merge_with(self, other):
