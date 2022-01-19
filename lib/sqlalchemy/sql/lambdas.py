@@ -6,6 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 import collections.abc as collections_abc
+import inspect
 import itertools
 import operator
 import types
@@ -618,6 +619,10 @@ class AnalyzedCode:
         return analyzed
 
     def __init__(self, fn, lambda_element, opts):
+        if inspect.ismethod(fn):
+            raise exc.ArgumentError(
+                "Method %s may not be passed as a SQL expression" % fn
+            )
         closure = fn.__closure__
 
         self.track_bound_values = (
