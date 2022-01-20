@@ -1165,6 +1165,8 @@ class LoadLazyAttribute:
 class PostLoader(AbstractRelationshipLoader):
     """A relationship loader that emits a second SELECT statement."""
 
+    __slots__ = ()
+
     def _check_recursive_postload(self, context, path, join_depth=None):
         effective_path = (
             context.compile_state.current_path or orm_util.PathRegistry.root

@@ -760,8 +760,6 @@ class ORMOption(ExecutableOption):
 
     """
 
-    __slots__ = ()
-
     _is_legacy_option = False
 
     propagate_to_loaders = False
