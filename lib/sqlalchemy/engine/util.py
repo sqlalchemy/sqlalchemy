@@ -43,7 +43,7 @@ class TransactionalContext:
 
     """
 
-    _trans_subject = None
+    __slots__ = ("_outer_trans_ctx", "_trans_subject")
 
     def _transaction_is_active(self):
         raise NotImplementedError()
