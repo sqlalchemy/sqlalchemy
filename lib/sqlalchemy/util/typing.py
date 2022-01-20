@@ -6,6 +6,8 @@ from typing import Type
 from typing import TypeVar
 from typing import Union
 
+from typing_extensions import NotRequired  # noqa
+
 from . import compat
 
 _T = TypeVar("_T", bound=Any)
@@ -25,11 +27,6 @@ if compat.py310:
 else:
     from typing_extensions import Concatenate  # noqa
     from typing_extensions import ParamSpec  # noqa
-
-if compat.py311:
-    from typing import NotRequired  # noqa
-else:
-    from typing_extensions import NotRequired  # noqa
 
 
 _T = TypeVar("_T")
