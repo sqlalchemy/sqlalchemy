@@ -1932,7 +1932,13 @@ class SQLCompiler(Compiled):
                 # TODO: would need a fast cast again here,
                 # unless we want to use an implicit cast like "+ 0.0"
                 + self.process(
-                    elements.Cast(binary.right, sqltypes.Numeric()), **kw
+                    elements.Cast(
+                        binary.right,
+                        binary.right.type
+                        if binary.right.type._type_affinity is sqltypes.Numeric
+                        else sqltypes.Numeric(),
+                    ),
+                    **kw,
                 )
             )
         else:

@@ -1843,7 +1843,6 @@ class MixedEntitiesTest(QueryTest, AssertsCompiledSQL):
             q2 = q.values(func.count(User.name))
         assert next(q2) == (4,)
 
-    @testing.fails_on("mssql", "FIXME: unknown")
     def test_values_specific_order_by(self):
         User = self.classes.User
 
