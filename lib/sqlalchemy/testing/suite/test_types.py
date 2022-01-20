@@ -42,6 +42,8 @@ from ... import Unicode
 from ... import UnicodeText
 from ...orm import declarative_base
 from ...orm import Session
+from ...sql.sqltypes import LargeBinary
+from ...sql.sqltypes import PickleType
 
 
 class _LiteralRoundTripFixture:
@@ -191,6 +193,42 @@ class UnicodeTextTest(_UnicodeFixture, fixtures.TablesTest):
 
     def test_null_strings_text(self, connection):
         self._test_null_strings(connection)
+
+
+class BinaryTest(_LiteralRoundTripFixture, fixtures.TablesTest):
+    __requires__ = ("binary_literals",)
+    __backend__ = True
+
+    @classmethod
+    def define_tables(cls, metadata):
+        Table(
+            "binary_table",
+            metadata,
+            Column(
+                "id", Integer, primary_key=True, test_needs_autoincrement=True
+            ),
+            Column("binary_data", LargeBinary),
+            Column("pickle_data", PickleType),
+        )
+
+    def test_binary_roundtrip(self, connection):
+        binary_table = self.tables.binary_table
+
+        connection.execute(
+            binary_table.insert(), {"id": 1, "binary_data": b"this is binary"}
+        )
+        row = connection.execute(select(binary_table.c.binary_data)).first()
+        eq_(row, (b"this is binary",))
+
+    def test_pickle_roundtrip(self, connection):
+        binary_table = self.tables.binary_table
+
+        connection.execute(
+            binary_table.insert(),
+            {"id": 1, "pickle_data": {"foo": [1, 2, 3], "bar": "bat"}},
+        )
+        row = connection.execute(select(binary_table.c.pickle_data)).first()
+        eq_(row, ({"foo": [1, 2, 3], "bar": "bat"},))
 
 
 class TextTest(_LiteralRoundTripFixture, fixtures.TablesTest):
@@ -1535,6 +1573,7 @@ class JSONLegacyStringCastIndexTest(
 
 
 __all__ = (
+    "BinaryTest",
     "UnicodeVarcharTest",
     "UnicodeTextTest",
     "JSONTest",

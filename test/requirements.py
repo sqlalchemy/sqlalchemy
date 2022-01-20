@@ -1054,7 +1054,19 @@ class DefaultRequirements(SuiteRequirements):
         a plain string.
 
         """
-        return exclusions.fails_on(["mysql", "mariadb"])
+
+        # mariadbconnector works.  pyodbc we dont know, not supported in
+        # testing.
+        return exclusions.fails_on(
+            [
+                "+mysqldb",
+                "+pymysql",
+                "+asyncmy",
+                "+mysqlconnector",
+                "+cymysql",
+                "+aiomysql",
+            ]
+        )
 
     @property
     def datetime_timezone(self):
