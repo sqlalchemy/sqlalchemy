@@ -2244,7 +2244,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 (value_tbl.c.val2 - value_tbl.c.val1) / value_tbl.c.val1,
             ),
             "SELECT values.id, (values.val2 - values.val1) "
-            "/ CAST(values.val1 AS NUMERIC) AS anon_1 FROM values",
+            "/ CAST(values.val1 AS FLOAT) AS anon_1 FROM values",
         )
 
         self.assert_compile(
@@ -2253,7 +2253,7 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             ),
             "SELECT values.id FROM values WHERE "
             "(values.val2 - values.val1) / "
-            "CAST(values.val1 AS NUMERIC) > :param_1",
+            "CAST(values.val1 AS FLOAT) > :param_1",
         )
 
         self.assert_compile(
@@ -2264,8 +2264,8 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
                 > 2.0,
             ),
             "SELECT values.id FROM values WHERE "
-            "(values.val1 / CAST((values.val2 - values.val1) AS NUMERIC)) "
-            "/ CAST(values.val1 AS NUMERIC) > :param_1",
+            "(values.val1 / CAST((values.val2 - values.val1) AS FLOAT)) "
+            "/ CAST(values.val1 AS FLOAT) > :param_1",
         )
 
     def test_percent_chars(self):

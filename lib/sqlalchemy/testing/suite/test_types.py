@@ -533,6 +533,8 @@ class CastTypeDecoratorTest(_LiteralRoundTripFixture, fixtures.TestBase):
 
 
 class TrueDivTest(fixtures.TestBase):
+    __backend__ = True
+
     @testing.combinations(
         ("15", "10", 1.5),
         ("-15", "10", -1.5),
@@ -576,11 +578,27 @@ class TrueDivTest(fixtures.TestBase):
         eq_(
             connection.scalar(
                 select(
-                    literal_column(left, type_=Numeric())
-                    / literal_column(right, type_=Numeric())
+                    literal_column(left, type_=Numeric(10, 2))
+                    / literal_column(right, type_=Numeric(10, 2))
                 )
             ),
             decimal.Decimal(expected),
+        )
+
+    @testing.combinations(
+        ("5.52", "2.4", 2.3), argnames="left, right, expected"
+    )
+    def test_truediv_float(self, connection, left, right, expected):
+        """test #4926"""
+
+        eq_(
+            connection.scalar(
+                select(
+                    literal_column(left, type_=Float())
+                    / literal_column(right, type_=Float())
+                )
+            ),
+            expected,
         )
 
     @testing.combinations(

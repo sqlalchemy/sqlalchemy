@@ -458,7 +458,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
     @testing.emits_warning("Compiled statement cache for lazy loader.*")
     @testing.crashes("sqlite", ":memory: connection not suitable here")
     def test_orm_many_engines(self):
-        metadata = MetaData(self.engine)
+        metadata = MetaData()
 
         table1 = Table(
             "mytable",
@@ -485,7 +485,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             Column("col3", Integer, ForeignKey("mytable.col1")),
         )
 
-        metadata.create_all()
+        metadata.create_all(self.engine)
 
         m1 = self.mapper_registry.map_imperatively(
             A,
