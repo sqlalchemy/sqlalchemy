@@ -3602,14 +3602,24 @@ class Session(_SessionClassMethods):
 
         """
 
-        def key(state):
+        obj_states = (attributes.instance_state(obj) for obj in objects)
+
+        if not preserve_order:
+            # the purpose of this sort is just so that common mappers
+            # and persistence states are grouped together, so that groupby
+            # will return a single group for a particular type of mapper.
+            # it's not trying to be deterministic beyond that.
+            obj_states = sorted(
+                obj_states,
+                key=lambda state: (id(state.mapper), state.key is not None),
+            )
+
+        def grouping_key(state):
             return (state.mapper, state.key is not None)
 
-        obj_states = (attributes.instance_state(obj) for obj in objects)
-        if not preserve_order:
-            obj_states = sorted(obj_states, key=key)
-
-        for (mapper, isupdate), states in itertools.groupby(obj_states, key):
+        for (mapper, isupdate), states in itertools.groupby(
+            obj_states, grouping_key
+        ):
             self._bulk_save_mappings(
                 mapper,
                 states,
