@@ -1911,7 +1911,7 @@ class ArrayRoundTripTest:
         t.drop(connection)
         eq_(inspect(connection).get_enums(), [])
 
-    def _type_combinations(exclude_json=False):
+    def _type_combinations(exclude_json=False, exclude_empty_lists=False):
         def str_values(x):
             return ["one", "two: %s" % x, "three", "four", "five"]
 
@@ -1944,6 +1944,9 @@ class ArrayRoundTripTest:
                 AnEnum.Baz,
                 AnEnum.Foo,
             ]
+
+        def empty_list(x):
+            return []
 
         class inet_str(str):
             def __eq__(self, other):
@@ -2078,6 +2081,15 @@ class ArrayRoundTripTest:
             ),
         ]
 
+        if not exclude_empty_lists:
+            elements.extend(
+                [
+                    (postgresql.ENUM(AnEnum), empty_list),
+                    (sqltypes.Enum(AnEnum, native_enum=True), empty_list),
+                    (sqltypes.Enum(AnEnum, native_enum=False), empty_list),
+                    (postgresql.ENUM(AnEnum, native_enum=True), empty_list),
+                ]
+            )
         if not exclude_json:
             elements.extend(
                 [
@@ -2166,7 +2178,7 @@ class ArrayRoundTripTest:
             connection.scalar(select(table.c.bar).where(table.c.id == 2)),
         )
 
-    @_type_combinations()
+    @_type_combinations(exclude_empty_lists=True)
     def test_type_specific_slice_update(
         self, type_specific_fixture, connection, type_, gen
     ):
@@ -2193,7 +2205,7 @@ class ArrayRoundTripTest:
 
         eq_(rows, [(gen(1),), (sliced_gen,)])
 
-    @_type_combinations(exclude_json=True)
+    @_type_combinations(exclude_json=True, exclude_empty_lists=True)
     def test_type_specific_value_delete(
         self, type_specific_fixture, connection, type_, gen
     ):

@@ -385,9 +385,10 @@ class ARRAY(sqltypes.ARRAY):
 
 
 def _split_enum_values(array_string):
+
     if '"' not in array_string:
         # no escape char is present so it can just split on the comma
-        return array_string.split(",")
+        return array_string.split(",") if array_string else []
 
     # handles quoted strings from:
     # r'abc,"quoted","also\\\\quoted", "quoted, comma", "esc \" quot", qpr'
