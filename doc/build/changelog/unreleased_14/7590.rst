@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, postgresql, regression
+    :tickets: 7590
+
+    Fixed regression where the change in :ticket:`7148` to repair ENUM handling
+    in PostgreSQL broke the use case of an empty ARRAY of ENUM, preventing rows
+    that contained an empty array from being handled correctly when fetching
+    results.
