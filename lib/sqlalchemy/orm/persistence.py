@@ -1225,15 +1225,16 @@ def _emit_insert_statements(
                         )
 
                     primary_key = result.inserted_primary_key
-                    for pk, col in zip(
-                        primary_key, mapper._pks_by_table[table]
-                    ):
-                        prop = mapper_rec._columntoproperty[col]
-                        if (
-                            col in value_params
-                            or state_dict.get(prop.key) is None
+                    if primary_key is not None:
+                        for pk, col in zip(
+                            primary_key, mapper._pks_by_table[table]
                         ):
-                            state_dict[prop.key] = pk
+                            prop = mapper_rec._columntoproperty[col]
+                            if (
+                                col in value_params
+                                or state_dict.get(prop.key) is None
+                            ):
+                                state_dict[prop.key] = pk
                     if bookkeeping:
                         if state:
                             _postfetch(
