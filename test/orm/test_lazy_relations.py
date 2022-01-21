@@ -25,6 +25,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import with_parent
 from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_warns
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -369,7 +370,7 @@ class LazyTest(_fixtures.FixtureTest):
         self.mapper_registry.map_imperatively(Order, orders)
         s = fixture_session()
         u1 = s.query(User).filter(User.id == 7).one()
-        assert_raises(sa.exc.SAWarning, getattr, u1, "order")
+        assert_warns(sa.exc.SAWarning, getattr, u1, "order")
 
     def test_callable_bind(self):
         Address, addresses, users, User = (

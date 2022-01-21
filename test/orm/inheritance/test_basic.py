@@ -35,6 +35,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import assert_warns_message
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Conditional
@@ -903,7 +904,7 @@ class PolymorphicAttributeManagementTest(fixtures.MappedTest):
         c1 = C()
         c1.class_name = "b"
         sess.add(c1)
-        assert_raises_message(
+        assert_warns_message(
             sa_exc.SAWarning,
             "Flushing object %s with incompatible "
             "polymorphic identity 'b'; the object may not "
@@ -922,7 +923,7 @@ class PolymorphicAttributeManagementTest(fixtures.MappedTest):
         b1 = B()
         b1.class_name = "c"
         sess.add(b1)
-        assert_raises_message(
+        assert_warns_message(
             sa_exc.SAWarning,
             "Flushing object %s with incompatible "
             "polymorphic identity 'c'; the object may not "
@@ -938,7 +939,7 @@ class PolymorphicAttributeManagementTest(fixtures.MappedTest):
         b1 = B()
         b1.class_name = "xyz"
         sess.add(b1)
-        assert_raises_message(
+        assert_warns_message(
             sa_exc.SAWarning,
             "Flushing object %s with incompatible "
             "polymorphic identity 'xyz'; the object may not "
@@ -968,7 +969,7 @@ class PolymorphicAttributeManagementTest(fixtures.MappedTest):
         sess.expire(c1)
 
         c1.class_name = "b"
-        assert_raises_message(
+        assert_warns_message(
             sa_exc.SAWarning,
             "Flushing object %s with incompatible "
             "polymorphic identity 'b'; the object may not "
@@ -2231,7 +2232,7 @@ class DistinctPKTest(fixtures.MappedTest):
             properties=dict(id=[employee_table.c.eid, person_table.c.id]),
             primary_key=[person_table.c.id, employee_table.c.eid],
         )
-        assert_raises_message(
+        assert_warns_message(
             sa_exc.SAWarning,
             r"On mapper Mapper\[Employee\(employees\)\], "
             "primary key column 'persons.id' is being "
@@ -2529,7 +2530,7 @@ class OverrideColKeyTest(fixtures.MappedTest):
                 Sub, subtable_two, inherits=Base
             )
 
-        assert_raises_message(
+        assert_warns_message(
             sa_exc.SAWarning,
             "Implicitly combining column base.base_id with "
             "column subtable_two.base_id under attribute 'base_id'",
@@ -3181,7 +3182,7 @@ class NoPKOnSubTableWarningTest(fixtures.MappedTest):
             pass
 
         self.mapper_registry.map_imperatively(P, parent)
-        assert_raises_message(
+        assert_warns_message(
             sa_exc.SAWarning,
             "Could not assemble any primary keys for locally mapped "
             "table 'child' - no rows will be persisted in this Table.",

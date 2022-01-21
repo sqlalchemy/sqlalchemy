@@ -34,6 +34,7 @@ from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
+from sqlalchemy.testing.assertions import assert_warns
 from sqlalchemy.testing.assertions import AssertsExecutionResults
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import is_
@@ -486,7 +487,7 @@ class DomainReflectionTest(fixtures.TestBase, AssertsExecutionResults):
         base.PGDialect.ischema_names = {}
         try:
             m2 = MetaData()
-            assert_raises(
+            assert_warns(
                 exc.SAWarning, Table, "testtable", m2, autoload_with=connection
             )
 

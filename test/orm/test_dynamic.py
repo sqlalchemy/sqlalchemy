@@ -15,6 +15,7 @@ from sqlalchemy.orm import Query
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
@@ -321,7 +322,7 @@ class DynamicTest(_DynamicFixture, _fixtures.FixtureTest, AssertsCompiledSQL):
             },
         )
         self.mapper_registry.map_imperatively(User, users)
-        assert_raises_message(
+        assert_warns_message(
             exc.SAWarning,
             "On relationship Address.user, 'dynamic' loaders cannot be "
             "used with many-to-one/one-to-one relationships and/or "

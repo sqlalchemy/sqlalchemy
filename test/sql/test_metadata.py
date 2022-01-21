@@ -53,6 +53,7 @@ from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import expect_warnings
 
 
 class MetaDataTest(fixtures.TestBase, ComparesTables):
@@ -1822,32 +1823,35 @@ class TableTest(fixtures.TestBase, AssertsCompiledSQL):
 
     def test_pk_col_mismatch_one(self):
         m = MetaData()
-        assert_raises_message(
-            exc.SAWarning,
+
+        with expect_warnings(
             "Table 't' specifies columns 'x' as primary_key=True, "
-            "not matching locally specified columns 'q'",
-            Table,
-            "t",
-            m,
-            Column("x", Integer, primary_key=True),
-            Column("q", Integer),
-            PrimaryKeyConstraint("q"),
-        )
+            "not matching locally specified columns 'q'"
+        ):
+            Table(
+                "t",
+                m,
+                Column("x", Integer, primary_key=True),
+                Column("q", Integer),
+                PrimaryKeyConstraint("q"),
+            )
 
     def test_pk_col_mismatch_two(self):
         m = MetaData()
-        assert_raises_message(
-            exc.SAWarning,
+
+        with expect_warnings(
             "Table 't' specifies columns 'a', 'b', 'c' as primary_key=True, "
-            "not matching locally specified columns 'b', 'c'",
-            Table,
-            "t",
-            m,
-            Column("a", Integer, primary_key=True),
-            Column("b", Integer, primary_key=True),
-            Column("c", Integer, primary_key=True),
-            PrimaryKeyConstraint("b", "c"),
-        )
+            "not matching locally specified columns 'b', 'c'"
+        ):
+
+            Table(
+                "t",
+                m,
+                Column("a", Integer, primary_key=True),
+                Column("b", Integer, primary_key=True),
+                Column("c", Integer, primary_key=True),
+                PrimaryKeyConstraint("b", "c"),
+            )
 
     @testing.emits_warning("Table 't'")
     def test_pk_col_mismatch_three(self):

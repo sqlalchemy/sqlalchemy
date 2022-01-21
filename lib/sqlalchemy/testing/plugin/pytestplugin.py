@@ -13,15 +13,9 @@ import itertools
 import operator
 import os
 import re
+import uuid
 
 import pytest
-
-try:
-    import xdist  # noqa
-
-    has_xdist = True
-except ImportError:
-    has_xdist = False
 
 
 def pytest_addoption(parser):
@@ -75,6 +69,9 @@ def pytest_addoption(parser):
 
 
 def pytest_configure(config):
+    if config.pluginmanager.hasplugin("xdist"):
+        config.pluginmanager.register(XDistHooks())
+
     if hasattr(config, "workerinput"):
         plugin_base.restore_important_follower_config(config.workerinput)
         plugin_base.configure_follower(config.workerinput["follower_ident"])
@@ -148,10 +145,8 @@ def pytest_collection_finish(session):
         collect_types.init_types_collection(filter_filename=_filter)
 
 
-if has_xdist:
-    import uuid
-
-    def pytest_configure_node(node):
+class XDistHooks:
+    def pytest_configure_node(self, node):
         from sqlalchemy.testing import provision
         from sqlalchemy.testing import asyncio
 
@@ -166,7 +161,7 @@ if has_xdist:
             provision.create_follower_db, node.workerinput["follower_ident"]
         )
 
-    def pytest_testnodedown(node, error):
+    def pytest_testnodedown(self, node, error):
         from sqlalchemy.testing import provision
         from sqlalchemy.testing import asyncio
 

@@ -17,11 +17,13 @@ from sqlalchemy.orm import remote
 from sqlalchemy.orm.interfaces import MANYTOONE
 from sqlalchemy.orm.interfaces import ONETOMANY
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import expect_raises_message
 
 
 class _JoinFixtures:
@@ -573,7 +575,7 @@ class _JoinFixtures:
         )
 
     def _assert_non_simple_warning(self, fn):
-        assert_raises_message(
+        assert_warns_message(
             exc.SAWarning,
             "Non-simple column elements in "
             "primary join condition for property "
@@ -818,9 +820,12 @@ class ColumnCollectionsTest(
         self._join_fixture_o2m_composite_selfref_func_remote_side()
 
     def test_determine_local_remote_pairs_o2m_overlap_func_warning(self):
-        self._assert_non_simple_warning(
-            self._join_fixture_m2o_sub_to_joined_sub_func
-        )
+        with expect_raises_message(
+            exc.ArgumentError, "Could not locate any relevant"
+        ):
+            self._assert_non_simple_warning(
+                self._join_fixture_m2o_sub_to_joined_sub_func
+            )
 
     def test_determine_local_remote_pairs_o2m_composite_selfref_func_annotated(
         self,
