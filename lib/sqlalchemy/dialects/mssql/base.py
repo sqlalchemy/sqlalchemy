@@ -1285,9 +1285,10 @@ class NTEXT(sqltypes.UnicodeText):
 class VARBINARY(sqltypes.VARBINARY, sqltypes.LargeBinary):
     """The MSSQL VARBINARY type.
 
-    This type is present to support "deprecate_large_types" mode where
-    either ``VARBINARY(max)`` or IMAGE is rendered.   Otherwise, this type
-    object is redundant vs. :class:`_types.VARBINARY`.
+    This type adds additional features to the core :class:`_types.VARBINARY`
+    type, including "deprecate_large_types" mode where
+    either ``VARBINARY(max)`` or IMAGE is rendered, as well as the SQL
+    Server ``FILESTREAM`` option.
 
     .. versionadded:: 1.0.0
 
@@ -1295,11 +1296,32 @@ class VARBINARY(sqltypes.VARBINARY, sqltypes.LargeBinary):
 
         :ref:`mssql_large_type_deprecation`
 
-
-
     """
 
     __visit_name__ = "VARBINARY"
+
+    def __init__(self, length=None, filestream=False):
+        """
+        Construct a VARBINARY type.
+
+        :param length: optional, a length for the column for use in
+          DDL statements, for those binary types that accept a length,
+          such as the MySQL BLOB type.
+
+        :param filestream=False: if True, renders the ``FILESTREAM`` keyword
+          in the table definition. In this case ``length`` must be ``None``
+          or ``'max'``.
+
+          .. versionadded:: 1.4.31
+
+        """
+
+        self.filestream = filestream
+        if self.filestream and length not in (None, "max"):
+            raise ValueError(
+                "length must be None or 'max' when setting filestream"
+            )
+        super(VARBINARY, self).__init__(length=length)
 
 
 class IMAGE(sqltypes.LargeBinary):
@@ -1569,7 +1591,10 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
         return "XML"
 
     def visit_VARBINARY(self, type_, **kw):
-        return self._extend("VARBINARY", type_, length=type_.length or "max")
+        text = self._extend("VARBINARY", type_, length=type_.length or "max")
+        if getattr(type_, "filestream", False):
+            text += " FILESTREAM"
+        return text
 
     def visit_boolean(self, type_, **kw):
         return self.visit_BIT(type_)
