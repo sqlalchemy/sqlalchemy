@@ -2,7 +2,7 @@
     :tags: bug, orm
     :tickets: 7591
 
-    Fixed issue in :meth:`_orm.Session.bulk_save_mappings` where the sorting
+    Fixed issue in :meth:`_orm.Session.bulk_save_objects` where the sorting
     that takes place when the ``preserve_order`` parameter is set to False
     would sort partially on ``Mapper`` objects, which is rejected in Python
     3.11.
