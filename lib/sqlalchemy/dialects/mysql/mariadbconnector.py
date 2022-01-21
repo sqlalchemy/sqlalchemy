@@ -163,22 +163,21 @@ class MySQLDialect_mariadbconnector(MySQLDialect):
     def _detect_charset(self, connection):
         return "utf8mb4"
 
-    _isolation_lookup = set(
-        [
+    def get_isolation_level_values(self, dbapi_connection):
+        return (
             "SERIALIZABLE",
             "READ UNCOMMITTED",
             "READ COMMITTED",
             "REPEATABLE READ",
             "AUTOCOMMIT",
-        ]
-    )
+        )
 
-    def _set_isolation_level(self, connection, level):
+    def set_isolation_level(self, connection, level):
         if level == "AUTOCOMMIT":
             connection.autocommit = True
         else:
             connection.autocommit = False
-            super(MySQLDialect_mariadbconnector, self)._set_isolation_level(
+            super(MySQLDialect_mariadbconnector, self).set_isolation_level(
                 connection, level
             )
 
