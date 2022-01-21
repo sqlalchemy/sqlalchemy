@@ -25,6 +25,8 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing import is_true
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import Conditional
@@ -3491,6 +3493,99 @@ class PartialNullPKTest(fixtures.MappedTest):
 
         t.col1 = "1"
         s.commit()
+
+
+class NoRowInsertedTest(fixtures.TestBase):
+    """test #7594.
+
+    failure modes when INSERT doesnt actually insert a row.
+    """
+
+    __backend__ = True
+    __requires__ = ("returning",)
+
+    @testing.fixture
+    def null_server_default_fixture(self, registry, connection):
+        @registry.mapped
+        class MyClass(object):
+            __tablename__ = "my_table"
+
+            id = Column(Integer, primary_key=True)
+            data = Column(String(50))
+
+        registry.metadata.create_all(connection)
+
+        @event.listens_for(connection, "before_cursor_execute", retval=True)
+        def revert_insert(
+            conn, cursor, statement, parameters, context, executemany
+        ):
+            if statement.startswith("INSERT"):
+                if statement.endswith("RETURNING my_table.id"):
+                    if executemany:
+                        # remove some rows, so the count is wrong
+                        parameters = parameters[0:1]
+                    else:
+                        # statement should return no rows
+                        statement = (
+                            "UPDATE my_table SET id=NULL WHERE 1!=1 "
+                            "RETURNING my_table.id"
+                        )
+                        parameters = {}
+                else:
+                    assert not testing.against(
+                        "postgresql"
+                    ), "this test has to at least run on PostgreSQL"
+                    testing.config.skip_test(
+                        "backend doesn't support the expected form of "
+                        "RETURNING for this test to work"
+                    )
+            return statement, parameters
+
+        return MyClass
+
+    def test_insert_single_no_pk_correct_exception(
+        self, null_server_default_fixture, connection
+    ):
+        MyClass = null_server_default_fixture
+
+        sess = fixture_session(bind=connection)
+
+        m1 = MyClass(data="data")
+        sess.add(m1)
+
+        with expect_raises_message(
+            orm_exc.FlushError,
+            "Single-row INSERT statement for .*MyClass.* did not produce",
+        ):
+            sess.flush()
+
+        is_true(inspect(m1).transient)
+        sess.rollback()
+        is_true(inspect(m1).transient)
+
+    def test_insert_multi_no_pk_correct_exception(
+        self, null_server_default_fixture, connection
+    ):
+        MyClass = null_server_default_fixture
+
+        sess = fixture_session(bind=connection)
+
+        m1, m2, m3 = MyClass(data="d1"), MyClass(data="d2"), MyClass(data="d3")
+        sess.add_all([m1, m2, m3])
+
+        is_multi_row = connection.dialect.insert_executemany_returning
+        with expect_raises_message(
+            orm_exc.FlushError,
+            "%s INSERT statement for .*MyClass.* did not produce"
+            % ("Multi-row" if is_multi_row else "Single-row"),
+        ):
+            sess.flush()
+
+        for m in m1, m2, m3:
+            is_true(inspect(m).transient)
+        sess.rollback()
+        for m in m1, m2, m3:
+            is_true(inspect(m).transient)
 
 
 class EnsurePKSortableTest(fixtures.MappedTest):

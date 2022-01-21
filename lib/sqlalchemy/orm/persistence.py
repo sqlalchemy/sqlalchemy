@@ -1177,6 +1177,22 @@ def _emit_insert_statements(
                         c.inserted_primary_key_rows,
                         c.returned_defaults_rows or (),
                     ):
+                        if inserted_primary_key is None:
+                            # this is a real problem and means that we didn't
+                            # get back as many PK rows.  we can't continue
+                            # since this indicates PK rows were missing, which
+                            # means we likely mis-populated records starting
+                            # at that point with incorrectly matched PK
+                            # values.
+                            raise orm_exc.FlushError(
+                                "Multi-row INSERT statement for %s did not "
+                                "produce "
+                                "the correct number of INSERTed rows for "
+                                "RETURNING.  Ensure there are no triggers or "
+                                "special driver issues preventing INSERT from "
+                                "functioning properly." % mapper_rec
+                            )
+
                         for pk, col in zip(
                             inserted_primary_key,
                             mapper._pks_by_table[table],
@@ -1225,6 +1241,15 @@ def _emit_insert_statements(
                         )
 
                     primary_key = result.inserted_primary_key
+                    if primary_key is None:
+                        raise orm_exc.FlushError(
+                            "Single-row INSERT statement for %s "
+                            "did not produce a "
+                            "new primary key result "
+                            "being invoked.  Ensure there are no triggers or "
+                            "special driver issues preventing INSERT from "
+                            "functioning properly." % (mapper_rec,)
+                        )
                     for pk, col in zip(
                         primary_key, mapper._pks_by_table[table]
                     ):

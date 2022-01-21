@@ -1,0 +1,16 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 7594
+
+    Fixed regression where the ORM exception that is to be raised when an
+    INSERT silently fails to actually insert a row (such as from a trigger)
+    would not be reached, due to a runtime exception raised ahead of time due
+    to the missing primary key value, thus raising an uninformative exception
+    rather than the correct one. For 1.4 and above, a new ``FlushError`` is
+    added for this case that's raised earlier than the previous "null identity"
+    exception was for 1.3, as a situation where the number of rows actually
+    INSERTed does not match what was expected is a more critical situation in
+    1.4 as it prevents batching of multiple objects from working correctly.
+    This is separate from the case where a newly fetched primary key is
+    fetched as NULL, which continues to raise the existing "null identity"
+    exception.
