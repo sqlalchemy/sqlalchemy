@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, mysql, regression
+    :tickets: 7593
+
+    Fixed regression in asyncmy dialect caused by :ticket:`7567` where removal
+    of the PyMySQL dependency broke binary columns, due to the asyncmy dialect
+    not being properly included within CI tests.

@@ -1136,7 +1136,16 @@ class DefaultRequirements(SuiteRequirements):
         # pg8000 works in main / 2.0, support in 1.4 is not fully
         # present.
         return exclusions.skip_if("postgresql+pg8000") + exclusions.fails_on(
-            ["mysql", "mariadb"]
+            # mariadbconnector works.  pyodbc we dont know, not supported in
+            # testing.
+            [
+                "+mysqldb",
+                "+pymysql",
+                "+asyncmy",
+                "+mysqlconnector",
+                "+cymysql",
+                "+aiomysql",
+            ]
         )
 
     @property

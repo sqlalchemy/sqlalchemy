@@ -228,6 +228,11 @@ class AsyncAdaptFallback_asyncmy_connection(AsyncAdapt_asyncmy_connection):
     await_ = staticmethod(await_fallback)
 
 
+def _Binary(x):
+    """Return x as a binary type."""
+    return bytes(x)
+
+
 class AsyncAdapt_asyncmy_dbapi:
     def __init__(self, asyncmy):
         self.asyncmy = asyncmy
@@ -249,6 +254,13 @@ class AsyncAdapt_asyncmy_dbapi:
             "NotSupportedError",
         ):
             setattr(self, name, getattr(self.asyncmy.errors, name))
+
+    STRING = util.symbol("STRING")
+    NUMBER = util.symbol("NUMBER")
+    BINARY = util.symbol("BINARY")
+    DATETIME = util.symbol("DATETIME")
+    TIMESTAMP = util.symbol("TIMESTAMP")
+    Binary = staticmethod(_Binary)
 
     def connect(self, *arg, **kw):
         async_fallback = kw.pop("async_fallback", False)
