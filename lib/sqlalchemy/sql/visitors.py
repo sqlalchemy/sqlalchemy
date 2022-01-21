@@ -184,6 +184,8 @@ class _HasTraversalDispatch:
 
     """
 
+    __slots__ = ()
+
     def __init_subclass__(cls) -> None:
         cls._generate_traversal_dispatch()
         super().__init_subclass__()
@@ -298,6 +300,8 @@ class InternalTraversal(_HasTraversalDispatch):
     .. versionadded:: 1.4
 
     """
+
+    __slots__ = ()
 
     dp_has_cache_key = symbol("HC")
     """Visit a :class:`.HasCacheKey` object."""
