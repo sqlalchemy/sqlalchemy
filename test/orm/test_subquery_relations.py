@@ -20,8 +20,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import undefer
 from sqlalchemy.orm import with_polymorphic
-from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warns
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -1510,7 +1510,7 @@ class EagerTest(_fixtures.FixtureTest, testing.AssertsCompiledSQL):
         )
         self.mapper_registry.map_imperatively(Order, orders)
         s = fixture_session()
-        assert_raises(
+        assert_warns(
             sa.exc.SAWarning,
             s.query(User).options(subqueryload(User.order)).all,
         )

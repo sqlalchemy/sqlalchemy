@@ -7,6 +7,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.util import gc_collect
 
 
@@ -34,16 +35,16 @@ class ClsRegistryTest(fixtures.TestBase):
         clsregistry.add_class("Foo", f1, base._class_registry)
         gc_collect()
 
-        assert_raises_message(
-            exc.SAWarning,
+        with expect_warnings(
             "This declarative base already contains a class with the "
             "same class name and module name as foo.bar.Foo, and "
-            "will be replaced in the string-lookup table.",
-            clsregistry.add_class,
-            "Foo",
-            f2,
-            base._class_registry,
-        )
+            "will be replaced in the string-lookup table."
+        ):
+            clsregistry.add_class(
+                "Foo",
+                f2,
+                base._class_registry,
+            )
 
     def test_resolve(self):
         base = registry()

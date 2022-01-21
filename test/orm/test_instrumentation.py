@@ -10,7 +10,7 @@ from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import relationship
 from sqlalchemy.testing import assert_raises
-from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import ne_
@@ -525,7 +525,7 @@ class MapperInitTest(fixtures.MappedTest):
             def __del__(self):
                 pass
 
-        assert_raises_message(
+        assert_warns_message(
             sa.exc.SAWarning,
             r"__del__\(\) method on class "
             r"<class '.*\.A'> will cause "

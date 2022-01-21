@@ -24,6 +24,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import was_deleted
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import assertions
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
@@ -1032,7 +1033,7 @@ class SessionStateTest(_fixtures.FixtureTest):
 
     def test_extra_dirty_state_post_flush_warning(self):
         s, a1, a2 = self._test_extra_dirty_state()
-        assert_raises_message(
+        assert_warns_message(
             sa.exc.SAWarning,
             "Attribute history events accumulated on 1 previously "
             "clean instances",
@@ -2275,7 +2276,8 @@ class FlushWarningsTest(fixtures.MappedTest):
         def evt(mapper, conn, instance):
             instance.addresses[0].user = User(name="u2")
 
-        self._test(evt, "related attribute set")
+        with expect_raises_message(orm_exc.FlushError, ".*Over 100"):
+            self._test(evt, "related attribute set")
 
     def test_m2o_cascade_remove(self):
         def evt(mapper, conn, instance):
@@ -2306,7 +2308,10 @@ class FlushWarningsTest(fixtures.MappedTest):
         def evt(mapper, conn, instance):
             object_session(instance).delete(Address(email="x1"))
 
-        self._test(evt, r"Session.delete\(\)")
+        with expect_raises_message(
+            sa.exc.InvalidRequestError, ".*is not persisted"
+        ):
+            self._test(evt, r"Session.delete\(\)")
 
     def _test(self, fn, method):
         User = self.classes.User
@@ -2317,6 +2322,6 @@ class FlushWarningsTest(fixtures.MappedTest):
 
         u1 = User(name="u1", addresses=[Address(name="a1")])
         s.add(u1)
-        assert_raises_message(
+        assert_warns_message(
             sa.exc.SAWarning, "Usage of the '%s'" % method, s.commit
         )

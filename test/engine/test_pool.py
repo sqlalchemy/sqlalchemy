@@ -14,7 +14,7 @@ from sqlalchemy.pool.base import _AsyncConnDialect
 from sqlalchemy.pool.base import _ConnDialect
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_context_ok
-from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import fixtures
@@ -1821,7 +1821,7 @@ class QueuePoolTest(PoolTestBase):
         c1 = p.connect()
         rec = c1._connection_record
         c1.close()
-        assert_raises_message(
+        assert_warns_message(
             Warning, "Double checkin attempted on %s" % rec, rec.checkin
         )
 

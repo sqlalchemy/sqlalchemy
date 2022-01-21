@@ -33,12 +33,13 @@ from sqlalchemy.orm.interfaces import MANYTOONE
 from sqlalchemy.orm.interfaces import ONETOMANY
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
 from sqlalchemy.testing import is_
-from sqlalchemy.testing.assertions import expect_warnings
 from sqlalchemy.testing.assertsql import assert_engine
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import fixture_session
@@ -872,7 +873,7 @@ class OverlappingFksSiblingTest(fixtures.MappedTest):
 
     @testing.provide_metadata
     def test_simple_warn(self):
-        assert_raises_message(
+        assert_warns_message(
             exc.SAWarning,
             r"relationship '(?:Child.parent|Parent.children)' will copy "
             r"column parent.id to column child.parent_id, which conflicts "
@@ -963,7 +964,7 @@ class OverlappingFksSiblingTest(fixtures.MappedTest):
 
     @testing.provide_metadata
     def test_double_rel_same_mapper_warns(self):
-        assert_raises_message(
+        assert_warns_message(
             exc.SAWarning,
             r"relationship 'Parent.child[12]' will copy column parent.id to "
             r"column child.parent_id, which conflicts with relationship\(s\): "
@@ -983,7 +984,7 @@ class OverlappingFksSiblingTest(fixtures.MappedTest):
 
     @testing.provide_metadata
     def test_warn_one(self):
-        assert_raises_message(
+        assert_warns_message(
             exc.SAWarning,
             r"relationship '(?:BSub1.a|BSub2.a_member|B.a)' will copy column "
             r"(?:a.id|a_member.a_id) to column b.a_id",
@@ -994,7 +995,7 @@ class OverlappingFksSiblingTest(fixtures.MappedTest):
 
     @testing.provide_metadata
     def test_warn_two(self):
-        assert_raises_message(
+        assert_warns_message(
             exc.SAWarning,
             r"relationship '(?:BSub1.a|B.a_member)' will copy column "
             r"(?:a.id|a_member.a_id) to column b.a_id",
@@ -1005,7 +1006,7 @@ class OverlappingFksSiblingTest(fixtures.MappedTest):
 
     @testing.provide_metadata
     def test_warn_three(self):
-        assert_raises_message(
+        assert_warns_message(
             exc.SAWarning,
             r"relationship '(?:BSub1.a|B.a_member|B.a)' will copy column "
             r"(?:a.id|a_member.a_id) to column b.a_id",
@@ -1017,7 +1018,7 @@ class OverlappingFksSiblingTest(fixtures.MappedTest):
 
     @testing.provide_metadata
     def test_warn_four(self):
-        assert_raises_message(
+        assert_warns_message(
             exc.SAWarning,
             r"relationship '(?:B.a|BSub2.a_member|B.a)' will copy column "
             r"(?:a.id|a_member.a_id) to column b.a_id",
@@ -1301,7 +1302,7 @@ class CompositeSelfRefFKTest(fixtures.MappedTest, AssertsCompiledSQL):
             },
         )
 
-        assert_raises_message(
+        assert_warns_message(
             exc.SAWarning,
             r"relationship .* will copy column .* to column "
             r"employee_t.company_id, which conflicts with relationship\(s\)",

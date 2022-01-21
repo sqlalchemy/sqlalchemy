@@ -19,10 +19,7 @@ def _pg_create_db(cfg, eng, ident):
     template_db = cfg.options.postgresql_templatedb
 
     with eng.execution_options(isolation_level="AUTOCOMMIT").begin() as conn:
-        try:
-            _pg_drop_db(cfg, conn, ident)
-        except Exception:
-            pass
+
         if not template_db:
             template_db = conn.exec_driver_sql(
                 "select current_database()"

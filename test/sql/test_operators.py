@@ -59,6 +59,7 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.types import ARRAY
 from sqlalchemy.types import Boolean
 from sqlalchemy.types import Concatenable
@@ -1220,15 +1221,14 @@ class ConjunctionTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         # these warning classes will change to ArgumentError when the
         # deprecated behavior is disabled
 
-        assert_raises_message(
-            exc.SADeprecationWarning,
+        with expect_deprecated(
             r"Invoking %(str_op)s\(\) without arguments is deprecated, and "
             r"will be disallowed in a future release.   For an empty "
             r"%(str_op)s\(\) construct, use "
             r"%(str_op)s\(%(str_continue)s, \*args\)\."
-            % {"str_op": str_op, "str_continue": str_continue},
-            op,
-        )
+            % {"str_op": str_op, "str_continue": str_continue}
+        ):
+            op()
 
     def test_empty_and_raw(self):
         self.assert_compile(

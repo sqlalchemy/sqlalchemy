@@ -24,6 +24,7 @@ from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.orm.decl_api import declarative_base
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import in_
@@ -94,7 +95,7 @@ class CascadeArgTest(fixtures.MappedTest):
     def test_delete_orphan_without_delete(self):
         Address = self.classes.Address
 
-        assert_raises_message(
+        assert_warns_message(
             sa_exc.SAWarning,
             "The 'delete-orphan' cascade option requires 'delete'.",
             relationship,
@@ -1221,7 +1222,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         sess.add(u1)
         assert u1 in sess
         assert a1 not in sess
-        assert_raises_message(sa_exc.SAWarning, "not in session", sess.flush)
+        assert_warns_message(sa_exc.SAWarning, "not in session", sess.flush)
 
     def test_o2m_only_child_persistent(self):
         User, Address = self.classes.User, self.classes.Address
@@ -1239,7 +1240,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         sess.add(u1)
         assert u1 in sess
         assert a1 not in sess
-        assert_raises_message(sa_exc.SAWarning, "not in session", sess.flush)
+        assert_warns_message(sa_exc.SAWarning, "not in session", sess.flush)
 
     def test_o2m_backref_child_pending(self):
         User, Address = self.classes.User, self.classes.Address
@@ -1265,7 +1266,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         sess.add(u1)
         assert u1 in sess
         assert a1 not in sess
-        assert_raises_message(sa_exc.SAWarning, "not in session", sess.flush)
+        assert_warns_message(sa_exc.SAWarning, "not in session", sess.flush)
 
     def test_o2m_backref_child_transient_nochange(self):
         User, Address = self.classes.User, self.classes.Address
@@ -1301,7 +1302,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         sess.expunge(a1)
         assert u1 in sess
         assert a1 not in sess
-        assert_raises_message(sa_exc.SAWarning, "not in session", sess.flush)
+        assert_warns_message(sa_exc.SAWarning, "not in session", sess.flush)
 
     def test_o2m_backref_child_expunged_nochange(self):
         User, Address = self.classes.User, self.classes.Address
@@ -1350,7 +1351,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         sess.add(a1)
         assert u1 not in sess
         assert a1 in sess
-        assert_raises_message(sa_exc.SAWarning, "not in session", sess.flush)
+        assert_warns_message(sa_exc.SAWarning, "not in session", sess.flush)
 
     def test_m2o_only_child_expunged(self):
         User, Address = self.classes.User, self.classes.Address
@@ -1367,7 +1368,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         sess.expunge(u1)
         assert u1 not in sess
         assert a1 in sess
-        assert_raises_message(sa_exc.SAWarning, "not in session", sess.flush)
+        assert_warns_message(sa_exc.SAWarning, "not in session", sess.flush)
 
     def test_m2o_backref_child_pending(self):
         User, Address = self.classes.User, self.classes.Address
@@ -1393,7 +1394,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         sess.add(a1)
         assert u1 not in sess
         assert a1 in sess
-        assert_raises_message(sa_exc.SAWarning, "not in session", sess.flush)
+        assert_warns_message(sa_exc.SAWarning, "not in session", sess.flush)
 
     def test_m2o_backref_child_expunged(self):
         User, Address = self.classes.User, self.classes.Address
@@ -1420,7 +1421,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
             sess.expunge(u1)
             assert u1 not in sess
             assert a1 in sess
-            assert_raises_message(
+            assert_warns_message(
                 sa_exc.SAWarning, "not in session", sess.flush
             )
 
@@ -1440,7 +1441,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
             sess.expunge(u1)
             assert u1 not in sess
             assert a1 in sess
-            assert_raises_message(
+            assert_warns_message(
                 sa_exc.SAWarning, "not in session", sess.flush
             )
 
@@ -1544,7 +1545,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         sess.add(i1)
         assert i1 in sess
         assert k1 not in sess
-        assert_raises_message(sa_exc.SAWarning, "not in session", sess.flush)
+        assert_warns_message(sa_exc.SAWarning, "not in session", sess.flush)
 
     def test_m2m_only_child_persistent(self):
         Item, Keyword = self.classes.Item, self.classes.Keyword
@@ -1562,7 +1563,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         sess.add(i1)
         assert i1 in sess
         assert k1 not in sess
-        assert_raises_message(sa_exc.SAWarning, "not in session", sess.flush)
+        assert_warns_message(sa_exc.SAWarning, "not in session", sess.flush)
 
     def test_m2m_backref_child_pending(self):
         Item, Keyword = self.classes.Item, self.classes.Keyword
@@ -1588,7 +1589,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         sess.add(i1)
         assert i1 in sess
         assert k1 not in sess
-        assert_raises_message(sa_exc.SAWarning, "not in session", sess.flush)
+        assert_warns_message(sa_exc.SAWarning, "not in session", sess.flush)
 
     def test_m2m_backref_child_transient_nochange(self):
         Item, Keyword = self.classes.Item, self.classes.Keyword
@@ -1624,7 +1625,7 @@ class NoSaveCascadeFlushTest(_fixtures.FixtureTest):
         sess.expunge(k1)
         assert i1 in sess
         assert k1 not in sess
-        assert_raises_message(sa_exc.SAWarning, "not in session", sess.flush)
+        assert_warns_message(sa_exc.SAWarning, "not in session", sess.flush)
 
     def test_m2m_backref_child_expunged_nochange(self):
         Item, Keyword = self.classes.Item, self.classes.Keyword
@@ -2808,7 +2809,7 @@ class NoBackrefCascadeTest(_fixtures.FixtureTest):
         a1 = Address(email_address="a1")
         a1.user = u1
 
-        assert_raises_message(sa_exc.SAWarning, "not in session", sess.commit)
+        assert_warns_message(sa_exc.SAWarning, "not in session", sess.commit)
 
         assert a1 not in sess
 
@@ -2871,7 +2872,7 @@ class NoBackrefCascadeTest(_fixtures.FixtureTest):
         a1.dingalings.append(d1)
         assert a1 not in sess
 
-        assert_raises_message(sa_exc.SAWarning, "not in session", sess.commit)
+        assert_warns_message(sa_exc.SAWarning, "not in session", sess.commit)
 
 
 class PendingOrphanTestSingleLevel(fixtures.MappedTest):

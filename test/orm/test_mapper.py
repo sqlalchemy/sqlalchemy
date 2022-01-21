@@ -33,6 +33,7 @@ from sqlalchemy.orm import synonym
 from sqlalchemy.orm.persistence import _sort_states
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_deprecated_20
@@ -832,7 +833,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         )
         self.mapper(Address, addresses)
 
-        assert_raises_message(
+        assert_warns_message(
             sa.exc.SAWarning,
             "Property User.addresses on Mapper|User|users being replaced "
             "with new property User.addresses; the old property will "
@@ -1015,7 +1016,7 @@ class MapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
             polymorphic_on=users.c.name,
             polymorphic_identity="user",
         )
-        assert_raises_message(
+        assert_warns_message(
             sa.exc.SAWarning,
             "Reassigning polymorphic association for identity 'user'",
             self.mapper_registry.map_imperatively,

@@ -9,6 +9,7 @@ from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -101,7 +102,7 @@ class ScopedSessionTest(fixtures.MappedTest):
             bind=testing.db,
         )
 
-        assert_raises_message(
+        assert_warns_message(
             sa.exc.SAWarning,
             "At least one scoped session is already present. ",
             Session.configure,

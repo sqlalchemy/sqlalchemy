@@ -1856,14 +1856,11 @@ class DeclaredAttrTest(DeclarativeTestBase, testing.AssertsCompiledSQL):
             def my_prop(cls):
                 return Column("x", Integer)
 
-        assert_raises_message(
-            sa.exc.SAWarning,
+        with expect_warnings(
             "Unmanaged access of declarative attribute my_prop "
-            "from non-mapped class Mixin",
-            getattr,
-            Mixin,
-            "my_prop",
-        )
+            "from non-mapped class Mixin"
+        ):
+            Mixin.my_prop
 
     def test_can_we_access_the_mixin_straight_special_names(self):
         class Mixin(object):

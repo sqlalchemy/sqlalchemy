@@ -14,8 +14,13 @@ from .. import exc as sa_exc
 from ..util.langhelpers import _warnings_warn
 
 
-class SATestSuiteWarning(sa_exc.SAWarning):
-    """warning for a condition detected during tests that is non-fatal"""
+class SATestSuiteWarning(Warning):
+    """warning for a condition detected during tests that is non-fatal
+
+    Currently outside of SAWarning so that we can work around tools like
+    Alembic doing the wrong thing with warnings.
+
+    """
 
 
 def warn_test_suite(message):
@@ -25,28 +30,21 @@ def warn_test_suite(message):
 def setup_filters():
     """Set global warning behavior for the test suite."""
 
+    # TODO: at this point we can use the normal pytest warnings plugin,
+    # if we decide the test suite can be linked to pytest only
+
+    origin = r"^(?:test|sqlalchemy)\..*"
+
     warnings.filterwarnings(
         "ignore", category=sa_exc.SAPendingDeprecationWarning
     )
     warnings.filterwarnings("error", category=sa_exc.SADeprecationWarning)
     warnings.filterwarnings("error", category=sa_exc.SAWarning)
+
     warnings.filterwarnings("always", category=SATestSuiteWarning)
 
-    # some selected deprecations...
-    warnings.filterwarnings("error", category=DeprecationWarning)
     warnings.filterwarnings(
-        "ignore", category=DeprecationWarning, message=r".*StopIteration"
-    )
-    warnings.filterwarnings(
-        "ignore",
-        category=DeprecationWarning,
-        message=r".*inspect.get.*argspec",
-    )
-
-    warnings.filterwarnings(
-        "ignore",
-        category=DeprecationWarning,
-        message="The loop argument is deprecated",
+        "error", category=DeprecationWarning, module=origin
     )
 
     # ignore things that are deprecated *as of* 2.0 :)
@@ -67,7 +65,7 @@ def setup_filters():
         pass
     else:
         warnings.filterwarnings(
-            "once", category=pytest.PytestDeprecationWarning
+            "once", category=pytest.PytestDeprecationWarning, module=origin
         )
 
 
