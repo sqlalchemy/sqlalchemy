@@ -19,7 +19,45 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.31
-    :include_notes_from: unreleased_14
+    :released: January 20, 2022
+
+    .. change::
+        :tags: bug, postgresql, regression
+        :tickets: 7590
+
+        Fixed regression where the change in :ticket:`7148` to repair ENUM handling
+        in PostgreSQL broke the use case of an empty ARRAY of ENUM, preventing rows
+        that contained an empty array from being handled correctly when fetching
+        results.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7591
+
+        Fixed issue in :meth:`_orm.Session.bulk_save_objects` where the sorting
+        that takes place when the ``preserve_order`` parameter is set to False
+        would sort partially on ``Mapper`` objects, which is rejected in Python
+        3.11.
+
+
+    .. change::
+        :tags: bug, mysql, regression
+        :tickets: 7593
+
+        Fixed regression in asyncmy dialect caused by :ticket:`7567` where removal
+        of the PyMySQL dependency broke binary columns, due to the asyncmy dialect
+        not being properly included within CI tests.
+
+    .. change::
+        :tags: mssql
+        :tickets: 7243
+
+        Added support for ``FILESTREAM`` when using ``VARBINARY(max)``
+        in MSSQL.
+
+        .. seealso::
+
+            :paramref:`_mssql.VARBINARY.filestream`
 
 .. changelog::
     :version: 1.4.30
