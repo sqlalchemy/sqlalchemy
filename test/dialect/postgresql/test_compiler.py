@@ -845,14 +845,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE TABLE testtbl (data INTEGER, CHECK (data = 0) NOT VALID)",
         )
 
-        dialect_9_0 = postgresql.dialect()
-        dialect_9_0._supports_not_valid_constraints = False
-        self.assert_compile(
-            schema.CreateTable(tbl),
-            "CREATE TABLE testtbl (data INTEGER, CHECK (data = 0))",
-            dialect=dialect_9_0,
-        )
-
     def test_create_foreign_key_constraint_not_valid(self):
         m = MetaData()
 
@@ -873,18 +865,6 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "b INTEGER, "
             "FOREIGN KEY(b) REFERENCES testtbl (a) NOT VALID"
             ")",
-        )
-
-        dialect_9_0 = postgresql.dialect()
-        dialect_9_0._supports_not_valid_constraints = False
-        self.assert_compile(
-            schema.CreateTable(tbl),
-            "CREATE TABLE testtbl ("
-            "a INTEGER, "
-            "b INTEGER, "
-            "FOREIGN KEY(b) REFERENCES testtbl (a)"
-            ")",
-            dialect=dialect_9_0,
         )
 
     def test_exclude_constraint_min(self):

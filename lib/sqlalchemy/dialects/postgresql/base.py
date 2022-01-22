@@ -2599,12 +2599,8 @@ class PGDDLCompiler(compiler.DDLCompiler):
         return colspec
 
     def _define_constraint_validity(self, constraint):
-        if self.dialect._supports_not_valid_constraints:
-            not_valid = constraint.dialect_options["postgresql"]["not_valid"]
-            if not_valid:
-                return " NOT VALID"
-
-        return ""
+        not_valid = constraint.dialect_options["postgresql"]["not_valid"]
+        return " NOT VALID" if not_valid else ""
 
     def visit_check_constraint(self, constraint):
         if constraint._type_bound:
@@ -3264,7 +3260,6 @@ class PGDialect(default.DefaultDialect):
     _backslash_escapes = True
     _supports_create_index_concurrently = True
     _supports_drop_index_concurrently = True
-    _supports_not_valid_constraints = True
 
     def __init__(self, json_serializer=None, json_deserializer=None, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
@@ -3307,10 +3302,6 @@ class PGDialect(default.DefaultDialect):
             2,
         )
         self.supports_identity_columns = self.server_version_info >= (10,)
-        self._supports_not_valid_constraints = self.server_version_info >= (
-            9,
-            1,
-        )
 
     def get_isolation_level_values(self, dbapi_conn):
         # note the generic dialect doesn't have AUTOCOMMIT, however
