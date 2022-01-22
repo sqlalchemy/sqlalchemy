@@ -175,6 +175,11 @@ class EngineFixture(AsyncFixture, fixtures.TablesTest):
     def async_engine(self):
         return engines.testing_engine(asyncio=True, transfer_staticpool=True)
 
+    @testing.fixture
+    def async_connection(self, async_engine):
+        with async_engine.sync_engine.connect() as conn:
+            yield AsyncConnection(async_engine, conn)
+
     @classmethod
     def define_tables(cls, metadata):
         Table(
@@ -354,56 +359,53 @@ class AsyncEngineTest(EngineFixture):
 
     @async_test
     async def test_proxied_attrs_connection(self, async_engine):
-        conn = await async_engine.connect()
+        async with async_engine.connect() as conn:
+            sync_conn = conn.sync_connection
 
-        sync_conn = conn.sync_connection
-
-        is_(conn.engine, async_engine)
-        is_(conn.closed, sync_conn.closed)
-        is_(conn.dialect, async_engine.sync_engine.dialect)
-        eq_(conn.default_isolation_level, sync_conn.default_isolation_level)
+            is_(conn.engine, async_engine)
+            is_(conn.closed, sync_conn.closed)
+            is_(conn.dialect, async_engine.sync_engine.dialect)
+            eq_(
+                conn.default_isolation_level, sync_conn.default_isolation_level
+            )
 
     @async_test
-    async def test_transaction_accessor(self, async_engine):
-        async with async_engine.connect() as conn:
-            is_none(conn.get_transaction())
-            is_false(conn.in_transaction())
-            is_false(conn.in_nested_transaction())
+    async def test_transaction_accessor(self, async_connection):
+        conn = async_connection
+        is_none(conn.get_transaction())
+        is_false(conn.in_transaction())
+        is_false(conn.in_nested_transaction())
 
-            trans = await conn.begin()
+        trans = await conn.begin()
 
-            is_true(conn.in_transaction())
-            is_false(conn.in_nested_transaction())
+        is_true(conn.in_transaction())
+        is_false(conn.in_nested_transaction())
 
-            is_(
-                trans.sync_transaction, conn.get_transaction().sync_transaction
-            )
+        is_(trans.sync_transaction, conn.get_transaction().sync_transaction)
 
-            nested = await conn.begin_nested()
+        nested = await conn.begin_nested()
 
-            is_true(conn.in_transaction())
-            is_true(conn.in_nested_transaction())
+        is_true(conn.in_transaction())
+        is_true(conn.in_nested_transaction())
 
-            is_(
-                conn.get_nested_transaction().sync_transaction,
-                nested.sync_transaction,
-            )
-            eq_(conn.get_nested_transaction(), nested)
+        is_(
+            conn.get_nested_transaction().sync_transaction,
+            nested.sync_transaction,
+        )
+        eq_(conn.get_nested_transaction(), nested)
 
-            is_(
-                trans.sync_transaction, conn.get_transaction().sync_transaction
-            )
+        is_(trans.sync_transaction, conn.get_transaction().sync_transaction)
 
-            await nested.commit()
+        await nested.commit()
 
-            is_true(conn.in_transaction())
-            is_false(conn.in_nested_transaction())
+        is_true(conn.in_transaction())
+        is_false(conn.in_nested_transaction())
 
-            await trans.rollback()
+        await trans.rollback()
 
-            is_none(conn.get_transaction())
-            is_false(conn.in_transaction())
-            is_false(conn.in_nested_transaction())
+        is_none(conn.get_transaction())
+        is_false(conn.in_transaction())
+        is_false(conn.in_nested_transaction())
 
     @testing.requires.queue_pool
     @async_test
@@ -426,31 +428,26 @@ class AsyncEngineTest(EngineFixture):
         is_not(new_fairy, connection_fairy)
         is_(new_fairy.is_valid, True)
         is_(connection_fairy.is_valid, False)
+        await conn.close()
 
     @async_test
-    async def test_get_dbapi_connection_raise(self, async_engine):
-
-        conn = await async_engine.connect()
-
+    async def test_get_dbapi_connection_raise(self, async_connection):
         with testing.expect_raises_message(
             exc.InvalidRequestError,
             "AsyncConnection.connection accessor is not "
             "implemented as the attribute",
         ):
-            conn.connection
+            async_connection.connection
 
     @async_test
-    async def test_get_raw_connection(self, async_engine):
+    async def test_get_raw_connection(self, async_connection):
 
-        conn = await async_engine.connect()
-
-        pooled = await conn.get_raw_connection()
-        is_(pooled, conn.sync_connection.connection)
+        pooled = await async_connection.get_raw_connection()
+        is_(pooled, async_connection.sync_connection.connection)
 
     @async_test
-    async def test_isolation_level(self, async_engine):
-        conn = await async_engine.connect()
-
+    async def test_isolation_level(self, async_connection):
+        conn = async_connection
         sync_isolation_level = await greenlet_spawn(
             conn.sync_connection.get_isolation_level
         )
@@ -462,8 +459,6 @@ class AsyncEngineTest(EngineFixture):
         isolation_level = await conn.get_isolation_level()
 
         eq_(isolation_level, "SERIALIZABLE")
-
-        await conn.close()
 
     @testing.requires.queue_pool
     @async_test
@@ -487,9 +482,8 @@ class AsyncEngineTest(EngineFixture):
     @testing.requires.independent_connections
     @async_test
     async def test_init_once_concurrency(self, async_engine):
-        c1 = async_engine.connect()
-        c2 = async_engine.connect()
-        await asyncio.wait([c1, c2])
+        async with async_engine.connect() as c1, async_engine.connect() as c2:
+            await asyncio.wait([c1, c2])
 
     @async_test
     async def test_connect_ctxmanager(self, async_engine):
@@ -645,16 +639,15 @@ class AsyncEventTest(EngineFixture):
         ):
             event.listen(async_engine, "before_cursor_execute", mock.Mock())
 
-        conn = await async_engine.connect()
-
-        with testing.expect_raises_message(
-            NotImplementedError,
-            "asynchronous events are not implemented "
-            "at this time.  Apply synchronous listeners to the "
-            "AsyncEngine.sync_engine or "
-            "AsyncConnection.sync_connection attributes.",
-        ):
-            event.listen(conn, "before_cursor_execute", mock.Mock())
+        async with async_engine.connect() as conn:
+            with testing.expect_raises_message(
+                NotImplementedError,
+                "asynchronous events are not implemented "
+                "at this time.  Apply synchronous listeners to the "
+                "AsyncEngine.sync_engine or "
+                "AsyncConnection.sync_connection attributes.",
+            ):
+                event.listen(conn, "before_cursor_execute", mock.Mock())
 
     @async_test
     async def test_sync_before_cursor_execute_engine(self, async_engine):
@@ -1076,16 +1069,16 @@ class AsyncProxyTest(EngineFixture, fixtures.TestBase):
 
     def test_regen_conn_but_not_engine(self, async_engine):
 
-        sync_conn = async_engine.sync_engine.connect()
+        with async_engine.sync_engine.connect() as sync_conn:
 
-        async_conn = AsyncConnection._retrieve_proxy_for_target(sync_conn)
-        async_conn2 = AsyncConnection._retrieve_proxy_for_target(sync_conn)
+            async_conn = AsyncConnection._retrieve_proxy_for_target(sync_conn)
+            async_conn2 = AsyncConnection._retrieve_proxy_for_target(sync_conn)
 
-        is_(async_conn, async_conn2)
-        is_(async_conn.engine, async_engine)
+            is_(async_conn, async_conn2)
+            is_(async_conn.engine, async_engine)
 
-    def test_regen_trans_but_not_conn(self, async_engine):
-        sync_conn = async_engine.sync_engine.connect()
+    def test_regen_trans_but_not_conn(self, connection_no_trans):
+        sync_conn = connection_no_trans
 
         async_conn = AsyncConnection._retrieve_proxy_for_target(sync_conn)
 
