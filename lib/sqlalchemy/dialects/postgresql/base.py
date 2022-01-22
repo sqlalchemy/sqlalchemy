@@ -1060,6 +1060,24 @@ dialect in conjunction with the :class:`_schema.Table` construct:
     `PostgreSQL CREATE TABLE options
     <https://www.postgresql.org/docs/current/static/sql-createtable.html>`_
 
+.. _postgresql_constraint_options:
+
+PostgreSQL Constraint Options
+-----------------------------
+
+* ``NOT VALID``::
+
+    CheckConstraint("some_field IS NOT NULL", postgresql_not_valid=True)
+
+    ForeignKeyConstraint(["some_id"], ["some_table.some_id"], postgresql_not_valid=True)
+
+  The above option is only available on check and foreign key constraints.
+
+  .. seealso::
+
+      `PostgreSQL ALTER TABLE options
+      <https://www.postgresql.org/docs/current/static/sql-altertable.html>`_
+
 .. _postgresql_table_valued_overview:
 
 Table values, Table and Column valued functions, Row and Tuple objects
@@ -2580,6 +2598,14 @@ class PGDDLCompiler(compiler.DDLCompiler):
             colspec += " NULL"
         return colspec
 
+    def _define_constraint_validity(self, constraint):
+        if self.dialect._supports_not_valid_constraints:
+            not_valid = constraint.dialect_options["postgresql"]["not_valid"]
+            if not_valid:
+                return " NOT VALID"
+
+        return ""
+
     def visit_check_constraint(self, constraint):
         if constraint._type_bound:
             typ = list(constraint.columns)[0].type
@@ -2594,7 +2620,16 @@ class PGDDLCompiler(compiler.DDLCompiler):
                     "create_constraint=False on this Enum datatype."
                 )
 
-        return super(PGDDLCompiler, self).visit_check_constraint(constraint)
+        text = super(PGDDLCompiler, self).visit_check_constraint(constraint)
+        text += self._define_constraint_validity(constraint)
+        return text
+
+    def visit_foreign_key_constraint(self, constraint):
+        text = super(PGDDLCompiler, self).visit_foreign_key_constraint(
+            constraint
+        )
+        text += self._define_constraint_validity(constraint)
+        return text
 
     def visit_drop_table_comment(self, drop):
         return "COMMENT ON TABLE %s IS NULL" % self.preparer.format_table(
@@ -3210,6 +3245,18 @@ class PGDialect(default.DefaultDialect):
                 "inherits": None,
             },
         ),
+        (
+            schema.CheckConstraint,
+            {
+                "not_valid": False,
+            },
+        ),
+        (
+            schema.ForeignKeyConstraint,
+            {
+                "not_valid": False,
+            },
+        ),
     ]
 
     reflection_options = ("postgresql_ignore_search_path",)
@@ -3217,6 +3264,7 @@ class PGDialect(default.DefaultDialect):
     _backslash_escapes = True
     _supports_create_index_concurrently = True
     _supports_drop_index_concurrently = True
+    _supports_not_valid_constraints = True
 
     def __init__(self, json_serializer=None, json_deserializer=None, **kwargs):
         default.DefaultDialect.__init__(self, **kwargs)
@@ -3259,6 +3307,10 @@ class PGDialect(default.DefaultDialect):
             2,
         )
         self.supports_identity_columns = self.server_version_info >= (10,)
+        self._supports_not_valid_constraints = self.server_version_info >= (
+            9,
+            1,
+        )
 
     def get_isolation_level_values(self, dbapi_conn):
         # note the generic dialect doesn't have AUTOCOMMIT, however

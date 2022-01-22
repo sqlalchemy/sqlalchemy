@@ -1,0 +1,10 @@
+.. change::
+    :tags: postgresql, dialect
+    :tickets: 7600
+
+    Added compiler support for ``NOT VALID`` CHECK and FOREIGN KEY constraints
+    in PostgreSQL dialect.
+
+    .. seealso::
+
+        :ref:`_postgresql_constraint_options`
