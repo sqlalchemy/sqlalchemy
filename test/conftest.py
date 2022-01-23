@@ -16,6 +16,8 @@ os.environ["SQLALCHEMY_WARN_20"] = "true"
 
 collect_ignore_glob = []
 
+# this requires that sqlalchemy.testing was not already
+# imported in order to work
 pytest.register_assert_rewrite("sqlalchemy.testing.assertions")
 
 

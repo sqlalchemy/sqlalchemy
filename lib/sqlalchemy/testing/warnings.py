@@ -4,20 +4,10 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
-import warnings
-
 from . import assertions
 from .. import exc as sa_exc
+from ..exc import SATestSuiteWarning
 from ..util.langhelpers import _warnings_warn
-
-
-class SATestSuiteWarning(Warning):
-    """warning for a condition detected during tests that is non-fatal
-
-    Currently outside of SAWarning so that we can work around tools like
-    Alembic doing the wrong thing with warnings.
-
-    """
 
 
 def warn_test_suite(message):
@@ -25,33 +15,15 @@ def warn_test_suite(message):
 
 
 def setup_filters():
-    """Set global warning behavior for the test suite."""
+    """hook for setting up warnings filters.
 
-    # TODO: at this point we can use the normal pytest warnings plugin,
-    # if we decide the test suite can be linked to pytest only
+    Note that when the pytest warnings plugin is in place, that plugin
+    overwrites whatever happens here.
 
-    origin = r"^(?:test|sqlalchemy)\..*"
+    Current SQLAlchemy 2.0 default is to use pytest warnings plugin
+    which is configured in pyproject.toml.
 
-    warnings.filterwarnings(
-        "ignore", category=sa_exc.SAPendingDeprecationWarning
-    )
-    warnings.filterwarnings("error", category=sa_exc.SADeprecationWarning)
-    warnings.filterwarnings("error", category=sa_exc.SAWarning)
-
-    warnings.filterwarnings("always", category=SATestSuiteWarning)
-
-    warnings.filterwarnings(
-        "error", category=DeprecationWarning, module=origin
-    )
-
-    try:
-        import pytest
-    except ImportError:
-        pass
-    else:
-        warnings.filterwarnings(
-            "once", category=pytest.PytestDeprecationWarning, module=origin
-        )
+    """
 
 
 def assert_warnings(fn, warning_msgs, regex=False):

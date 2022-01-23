@@ -672,6 +672,15 @@ class NotSupportedError(DatabaseError):
 # Warnings
 
 
+class SATestSuiteWarning(Warning):
+    """warning for a condition detected during tests that is non-fatal
+
+    Currently outside of SAWarning so that we can work around tools like
+    Alembic doing the wrong thing with warnings.
+
+    """
+
+
 class SADeprecationWarning(HasDescriptionCode, DeprecationWarning):
     """Issued for usage of deprecated APIs."""
 

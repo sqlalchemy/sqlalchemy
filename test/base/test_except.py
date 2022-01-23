@@ -511,6 +511,7 @@ ALL_EXC = [
         [lambda cls: cls("foo", code="42")],
     ),
     ([sa_exceptions.SAPendingDeprecationWarning], [lambda cls: cls(1, 2, 3)]),
+    ([sa_exceptions.SATestSuiteWarning], [lambda cls: cls()]),
 ]
 
 

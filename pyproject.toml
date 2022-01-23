@@ -9,3 +9,17 @@
 [tool.black]
 line-length = 79
 target-version = ['py37']
+
+
+[tool.pytest.ini_options]
+addopts = "--tb native -v -r sfxX --maxfail=250 -p warnings -p logging"
+python_files = "test/*test_*.py"
+minversion = "6.2"
+filterwarnings = [
+    "ignore::sqlalchemy.exc.SAPendingDeprecationWarning",
+    "error::sqlalchemy.exc.SADeprecationWarning",
+    "error::sqlalchemy.exc.SAWarning",
+    "always::sqlalchemy.exc.SATestSuiteWarning",
+    "error::DeprecationWarning:test",
+    "error::DeprecationWarning:sqlalchemy"
+]

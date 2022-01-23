@@ -757,13 +757,14 @@ def _finalize_fairy(
                 else:
                     message = (
                         "The garbage collector is trying to clean up "
-                        "connection %r. This feature is unsupported on async "
+                        f"connection {dbapi_connection!r}. This feature is "
+                        "unsupported on async "
                         "dbapi, since no IO can be performed at this stage to "
                         "reset the connection. Please close out all "
                         "connections when they are no longer used, calling "
                         "``close()`` or using a context manager to "
                         "manage their lifetime."
-                    ) % dbapi_connection
+                    )
                     pool.logger.error(message)
                     util.warn(message)
 
@@ -778,6 +779,14 @@ def _finalize_fairy(
 
     if connection_record and connection_record.fairy_ref is not None:
         connection_record.checkin()
+
+    # give gc some help.  See
+    # test/engine/test_pool.py::PoolEventsTest::test_checkin_event_gc[True]
+    # which actually started failing when pytest warnings plugin was
+    # turned on, due to util.warn() above
+    del dbapi_connection
+    del connection_record
+    del fairy
 
 
 # a dictionary of the _ConnectionFairy weakrefs to _ConnectionRecord, so that
