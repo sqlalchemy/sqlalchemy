@@ -806,7 +806,13 @@ class DeclarativeMultiBaseTest(
                 id = Column(Integer, primary_key=True)
 
     def test_column_named_twice(self):
-        def go():
+        with assertions.expect_deprecated(
+            "A column with name 'x' is already present in table 'foo'"
+        ), expect_warnings(
+            "On class 'Foo', Column object 'x' named directly multiple times, "
+            "only one will be used: x, y",
+        ):
+
             class Foo(Base):
                 __tablename__ = "foo"
 
@@ -814,15 +820,14 @@ class DeclarativeMultiBaseTest(
                 x = Column("x", Integer)
                 y = Column("x", Integer)
 
-        assert_raises_message(
-            sa.exc.SAWarning,
-            "On class 'Foo', Column object 'x' named directly multiple times, "
-            "only one will be used: x, y",
-            go,
-        )
-
     def test_column_repeated_under_prop(self):
-        def go():
+        with assertions.expect_deprecated(
+            "A column with name 'x' is already present in table 'foo'"
+        ), expect_warnings(
+            "On class 'Foo', Column object 'x' named directly multiple times, "
+            "only one will be used: x, y, z",
+        ):
+
             class Foo(Base):
                 __tablename__ = "foo"
 
@@ -830,13 +835,6 @@ class DeclarativeMultiBaseTest(
                 x = Column("x", Integer)
                 y = column_property(x)
                 z = Column("x", Integer)
-
-        assert_raises_message(
-            sa.exc.SAWarning,
-            "On class 'Foo', Column object 'x' named directly multiple times, "
-            "only one will be used: x, y, z",
-            go,
-        )
 
     def test_using_explicit_prop_in_schema_objects(self):
         class Foo(Base):
@@ -2416,15 +2414,14 @@ class DeclarativeMultiBaseTest(
             __tablename__ = "a"
             id = Column(Integer, primary_key=True)
 
-        assert_raises_message(
-            sa.exc.SAWarning,
+        with expect_warnings(
             "This declarative base already contains a class with ",
-            lambda: type(Base)(
+        ):
+            type(Base)(
                 "Test",
                 (Base,),
                 dict(__tablename__="b", id=Column(Integer, primary_key=True)),
-            ),
-        )
+            )
 
     @testing.teardown_events(MapperEvents)
     @testing.teardown_events(InstrumentationEvents)

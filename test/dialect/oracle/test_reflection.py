@@ -23,7 +23,7 @@ from sqlalchemy.dialects.oracle.base import BINARY_DOUBLE
 from sqlalchemy.dialects.oracle.base import BINARY_FLOAT
 from sqlalchemy.dialects.oracle.base import DOUBLE_PRECISION
 from sqlalchemy.dialects.oracle.base import NUMBER
-from sqlalchemy.testing import assert_raises
+from sqlalchemy.testing import assert_warns
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
@@ -352,7 +352,7 @@ class ConstraintTest(fixtures.TablesTest):
                 "foo_id", Integer, ForeignKey("foo.id", onupdate="CASCADE")
             ),
         )
-        assert_raises(exc.SAWarning, bar.create, connection)
+        assert_warns(exc.SAWarning, bar.create, connection)
 
         bat = Table(
             "bat",
@@ -361,7 +361,7 @@ class ConstraintTest(fixtures.TablesTest):
             Column("foo_id", Integer),
             ForeignKeyConstraint(["foo_id"], ["foo.id"], onupdate="CASCADE"),
         )
-        assert_raises(exc.SAWarning, bat.create, connection)
+        assert_warns(exc.SAWarning, bat.create, connection)
 
     def test_reflect_check_include_all(self, connection):
         insp = inspect(connection)

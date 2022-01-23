@@ -21,6 +21,8 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warns
+from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
@@ -193,7 +195,7 @@ class VersioningTest(fixtures.MappedTest):
             s1.commit()
 
             f1.value = "f1rev2"
-            assert_raises(sa.exc.SAWarning, s1.commit)
+            assert_warns(sa.exc.SAWarning, s1.commit)
         finally:
             testing.db.dialect.supports_sane_rowcount = save
 
@@ -1328,7 +1330,7 @@ class InheritanceTwoVersionIdsTest(fixtures.MappedTest):
             Base, base, version_id_col=base.c.version_id
         )
 
-        assert_raises_message(
+        assert_warns_message(
             exc.SAWarning,
             "Inheriting version_id_col 'version_id' does not "
             "match inherited version_id_col 'version_id' and will not "

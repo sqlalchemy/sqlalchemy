@@ -19,6 +19,7 @@ from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import not_in
+from sqlalchemy.testing.assertions import assert_warns
 from sqlalchemy.testing.util import all_partial_orderings
 from sqlalchemy.testing.util import gc_collect
 
@@ -3769,7 +3770,7 @@ class TestUnlink(fixtures.TestBase):
         a1.bs.append(B())
         state = attributes.instance_state(a1)
         state._expire(state.dict, set())
-        assert_raises(Warning, coll.append, B())
+        assert_warns(Warning, coll.append, B())
 
     def test_replaced(self):
         A, B = self.A, self.B
@@ -3790,7 +3791,7 @@ class TestUnlink(fixtures.TestBase):
         a1.bs.append(B())
         state = attributes.instance_state(a1)
         state._reset(state.dict, "bs")
-        assert_raises(Warning, coll.append, B())
+        assert_warns(Warning, coll.append, B())
 
     def test_ad_hoc_lazy(self):
         A, B = self.A, self.B
@@ -3799,4 +3800,4 @@ class TestUnlink(fixtures.TestBase):
         a1.bs.append(B())
         state = attributes.instance_state(a1)
         _set_callable(state, state.dict, "bs", lambda: B())
-        assert_raises(Warning, coll.append, B())
+        assert_warns(Warning, coll.append, B())

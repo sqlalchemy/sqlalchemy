@@ -35,8 +35,10 @@ from sqlalchemy.orm import UserDefinedOption
 from sqlalchemy.sql.cache_key import NO_CACHE
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_not
@@ -1059,7 +1061,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
         m1 = Mock()
 
         self.mapper_registry.map_imperatively(User, users)
-        assert_raises_message(
+        assert_warns_message(
             sa.exc.SAWarning,
             r"before_configured' and 'after_configured' ORM events only "
             r"invoke with the Mapper class as "
@@ -1070,7 +1072,7 @@ class MapperEventsTest(_RemoveListeners, _fixtures.FixtureTest):
             m1,
         )
 
-        assert_raises_message(
+        assert_warns_message(
             sa.exc.SAWarning,
             r"before_configured' and 'after_configured' ORM events only "
             r"invoke with the Mapper class as "
@@ -2197,7 +2199,12 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         u2 = User(name="u1", id=1)
         sess.add(u2)
-        assert_raises(sa.exc.SAWarning, sess.commit)
+
+        with expect_raises(sa.exc.IntegrityError), expect_warnings(
+            "New instance"
+        ):
+            sess.commit()
+
         sess.rollback()
         eq_(
             canary,
@@ -2249,7 +2256,11 @@ class SessionEventsTest(_RemoveListeners, _fixtures.FixtureTest):
 
         u2 = User(name="u1", id=1)
         sess.add(u2)
-        assert_raises(sa.exc.SAWarning, sess.commit)
+        with expect_raises(sa.exc.IntegrityError), expect_warnings(
+            "New instance"
+        ):
+            sess.commit()
+
         sess.rollback()
         eq_(assertions, [True, True])
 

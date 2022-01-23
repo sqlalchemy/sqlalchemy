@@ -17,6 +17,7 @@ from sqlalchemy.engine import url
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import assert_raises_message_context_ok
+from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
@@ -961,7 +962,7 @@ class CursorErrTest(fixtures.TestBase):
 
     def test_cursor_shutdown_in_initialize(self):
         db = self._fixture(True, True)
-        assert_raises_message_context_ok(
+        assert_warns_message(
             exc.SAWarning, "Exception attempting to detect", db.connect
         )
         eq_(
