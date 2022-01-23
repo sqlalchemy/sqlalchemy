@@ -19,6 +19,7 @@ from sqlalchemy.sql import literal_column
 from sqlalchemy.sql import select
 from sqlalchemy.sql import text
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
@@ -1447,7 +1448,7 @@ class UnicodeDefaultsTest(fixtures.TestBase):
 
     def test_nonunicode_default(self):
         default = b("foo")
-        assert_raises_message(
+        assert_warns_message(
             sa.exc.SAWarning,
             "Unicode column 'foobar' has non-unicode "
             "default value b?'foo' specified.",

@@ -72,6 +72,7 @@ from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
 from sqlalchemy.testing.assertions import assert_raises
 from sqlalchemy.testing.assertions import assert_raises_message
+from sqlalchemy.testing.assertions import assert_warns_message
 from sqlalchemy.testing.assertions import eq_
 from sqlalchemy.testing.assertions import expect_raises
 from sqlalchemy.testing.assertions import expect_warnings
@@ -1315,7 +1316,7 @@ class GetTest(QueryTest):
         User = self.classes.User
 
         s = fixture_session()
-        assert_raises_message(
+        assert_warns_message(
             sa_exc.SAWarning,
             r"fully NULL primary key identity cannot load any object.  "
             "This condition may raise an error in a future release.",
@@ -1329,7 +1330,7 @@ class GetTest(QueryTest):
 
         s = fixture_session()
 
-        assert_raises_message(
+        assert_warns_message(
             sa_exc.SAWarning,
             r"fully NULL primary key identity cannot load any object.  "
             "This condition may raise an error in a future release.",

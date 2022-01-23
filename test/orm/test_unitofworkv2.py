@@ -25,6 +25,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import unitofwork
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warns_message
 from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
@@ -1919,7 +1920,7 @@ class BasicStaleChecksTest(fixtures.MappedTest):
 
         sess.delete(p1)
 
-        assert_raises_message(
+        assert_warns_message(
             exc.SAWarning,
             r"DELETE statement on table 'parent' expected to "
             r"delete 1 row\(s\); 0 were matched.",
@@ -1939,7 +1940,7 @@ class BasicStaleChecksTest(fixtures.MappedTest):
         sess.delete(p1)
         sess.delete(p2)
 
-        assert_raises_message(
+        assert_warns_message(
             exc.SAWarning,
             r"DELETE statement on table 'parent' expected to "
             r"delete 2 row\(s\); 0 were matched.",
@@ -2004,7 +2005,7 @@ class BasicStaleChecksTest(fixtures.MappedTest):
         with patch.object(
             config.db.dialect, "supports_sane_multi_rowcount", False
         ):
-            assert_raises_message(
+            assert_warns_message(
                 exc.SAWarning,
                 r"DELETE statement on table 'parent' expected to "
                 r"delete 1 row\(s\); 0 were matched.",

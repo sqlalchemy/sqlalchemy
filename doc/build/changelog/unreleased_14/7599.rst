@@ -1,0 +1,16 @@
+.. change::
+    :tags: bug, tests
+    :tickets: 7599
+
+    Improvements to the test suite's integration with pytest such that the
+    "warnings" plugin, if manually enabled, will not interfere with the test
+    suite, such that third parties can enable the warnings plugin or make use
+    of the ``-W`` parameter and SQLAlchemy's test suite will continue to pass.
+    Additionally, modernized the detection of the "pytest-xdist" plugin so that
+    plugins can be globally disabled using PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+    without breaking the test suite if xdist were still installed. Warning
+    filters that promote deprecation warnings to errors are now localized to
+    SQLAlchemy-specific warnings, or within SQLAlchemy-specific sources for
+    general Python deprecation warnings, so that non-SQLAlchemy deprecation
+    warnings emitted from pytest plugins should also not impact the test suite.
+

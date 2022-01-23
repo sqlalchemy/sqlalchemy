@@ -75,6 +75,7 @@ from sqlalchemy.sql import visitors
 from sqlalchemy.sql.sqltypes import TypeEngine
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
+from sqlalchemy.testing import assert_warns
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import engines
@@ -1703,10 +1704,10 @@ class UnicodeTest(fixtures.TestBase):
         dialect.supports_unicode_binds = True
         uni = u.dialect_impl(dialect).bind_processor(dialect)
         if util.py3k:
-            assert_raises(exc.SAWarning, uni, b"x")
+            assert_warns(exc.SAWarning, uni, b"x")
             assert isinstance(uni(unicodedata), str)
         else:
-            assert_raises(exc.SAWarning, uni, "x")
+            assert_warns(exc.SAWarning, uni, "x")
             assert isinstance(uni(unicodedata), unicode)  # noqa
 
     def test_unicode_warnings_typelevel_sqla_unicode(self):
@@ -1715,7 +1716,7 @@ class UnicodeTest(fixtures.TestBase):
         dialect = default.DefaultDialect()
         dialect.supports_unicode_binds = False
         uni = u.dialect_impl(dialect).bind_processor(dialect)
-        assert_raises(exc.SAWarning, uni, util.b("x"))
+        assert_warns(exc.SAWarning, uni, util.b("x"))
         assert isinstance(uni(unicodedata), util.binary_type)
 
         eq_(uni(unicodedata), unicodedata.encode("utf-8"))
