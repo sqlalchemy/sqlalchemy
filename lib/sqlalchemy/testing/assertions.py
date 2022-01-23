@@ -192,6 +192,8 @@ def _expect_warnings(
             if not exception or not issubclass(exception, _EXC_CLS):
                 if not squelch_other_warnings:
                     return real_warn(msg, *arg, **kw)
+                else:
+                    return
 
             if not filters and not raise_on_any_unexpected:
                 return
