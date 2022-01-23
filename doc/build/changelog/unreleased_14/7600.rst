@@ -1,0 +1,12 @@
+.. change::
+    :tags: usecase, postgresql
+    :tickets: 7600
+
+    Added compiler support for the PostgreSQL ``NOT VALID`` phrase when rendering
+    DDL for the :class:`.CheckConstraint`, :class:`.ForeignKeyConstraint`
+    and :class:`.ForeignKey` schema constructs.  Pull request courtesy
+    Gilbert Gilb's.
+
+    .. seealso::
+
+        :ref:`postgresql_constraint_options`
