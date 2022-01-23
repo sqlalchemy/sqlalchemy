@@ -1261,22 +1261,59 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
           equivalent keyword argument is available such as ``server_default``,
           ``default`` and ``unique``.
 
-        :param autoincrement: Set up "auto increment" semantics for an integer
-          primary key column.  The default value is the string ``"auto"``
-          which indicates that a single-column primary key that is of
-          an INTEGER type with no stated client-side or python-side defaults
-          should receive auto increment semantics automatically;
-          all other varieties of primary key columns will not.  This
-          includes that :term:`DDL` such as PostgreSQL SERIAL or MySQL
-          AUTO_INCREMENT will be emitted for this column during a table
-          create, as well as that the column is assumed to generate new
-          integer primary key values when an INSERT statement invokes which
-          will be retrieved by the dialect.  When used in conjunction with
-          :class:`.Identity` on a dialect that supports it, this parameter
-          has no effect.
+        :param autoincrement: Set up "auto increment" semantics for an
+          **integer primary key column with no foreign key dependencies**
+          (see later in this docstring for a more specific definition).
+          This may influence the :term:`DDL` that will be emitted for
+          this column during a table create, as well as how the column
+          will be considered when INSERT statements are compiled and
+          executed.
 
-          The flag may be set to ``True`` to indicate that a column which
-          is part of a composite (e.g. multi-column) primary key should
+          The default value is the string ``"auto"``,
+          which indicates that a single-column (i.e. non-composite) primary key
+          that is of an INTEGER type with no other client-side or server-side
+          default constructs indicated should receive auto increment semantics
+          automatically. Other values include ``True`` (force this column to
+          have auto-increment semantics for a :term:`composite primary key` as
+          well), ``False`` (this column should never have auto-increment
+          semantics), and the string ``"ignore_fk"`` (special-case for foreign
+          key columns, see below).
+
+          The term "auto increment semantics" refers both to the kind of DDL
+          that will be emitted for the column within a CREATE TABLE statement,
+          when methods such as :meth:`.MetaData.create_all` and
+          :meth:`.Table.create` are invoked, as well as how the column will be
+          considered when an INSERT statement is compiled and emitted to the
+          database:
+
+          * **DDL rendering** (i.e. :meth:`.MetaData.create_all`,
+            :meth:`.Table.create`): When used on a :class:`.Column` that has
+            no other
+            default-generating construct associated with it (such as a
+            :class:`.Sequence` or :class:`.Identity` construct), the parameter
+            will imply that database-specific keywords such as PostgreSQL
+            ``SERIAL``, MySQL ``AUTO_INCREMENT``, or ``IDENTITY`` on SQL Server
+            should also be rendered.  Not every database backend has an
+            "implied" default generator available; for example the Oracle
+            backend always needs an explicit construct such as
+            :class:`.Identity` to be included with a :class:`.Column` in order
+            for the DDL rendered to include auto-generating constructs to also
+            be produced in the database.
+
+          * **INSERT semantics** (i.e. when a :func:`_sql.insert` construct is
+            compiled into a SQL string and is then executed on a database using
+            :meth:`_engine.Connection.execute` or equivalent): A single-row
+            INSERT statement will be known to produce a new integer primary key
+            value automatically for this column, which will be accessible
+            after the statement is invoked via the
+            :attr:`.CursorResult.inserted_primary_key` attribute upon the
+            :class:`.Result` object.   This also applies towards use of the
+            ORM when ORM-mapped objects are persisted to the database,
+            indicating that a new integer primary key will be available to
+            become part of the :term:`identity key` for that object.
+
+          The parameter may be set to ``True`` to indicate that a column which
+          is part of a composite (i.e. multi-column) primary key should
           have autoincrement semantics, though note that only one column
           within a primary key may have this setting.    It can also
           be set to ``True`` to indicate autoincrement semantics on a
@@ -1298,7 +1335,6 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
              that has an explicit client-side or server-side default,
              subject to limitations of the backend database and dialect.
 
-
           The setting *only* has an effect for columns which are:
 
           * Integer derived (i.e. INT, SMALLINT, BIGINT).
@@ -1318,29 +1354,68 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             column that refers to another via foreign key, as such a column is
             required to refer to a value that originates from elsewhere.
 
-          The setting has these two effects on columns that meet the
+          The setting has these effects on columns that meet the
           above criteria:
 
-          * DDL issued for the column will include database-specific
+          * DDL issued for the column, if the column does not already include
+            a default generating construct supported by the backend such as
+            :class:`.Identity`, will include database-specific
             keywords intended to signify this column as an
-            "autoincrement" column, such as AUTO INCREMENT on MySQL,
-            SERIAL on PostgreSQL, and IDENTITY on MS-SQL.  It does
-            *not* issue AUTOINCREMENT for SQLite since this is a
-            special SQLite flag that is not required for autoincrementing
-            behavior.
+            "autoincrement" column for specific backends.   Behavior for
+            primary SQLAlchemy dialects includes:
 
-            .. seealso::
+            * AUTO INCREMENT on MySQL and MariaDB
+            * SERIAL on PostgreSQL
+            * IDENTITY on MS-SQL - this occurs even without the
+              :class:`.Identity` construct as the
+              :paramref:`.Column.autoincrement` parameter pre-dates this
+              construct.
+            * SQLite - SQLite integer primary key columns are implicitly
+              "auto incrementing" and no additional keywords are rendered;
+              to render the special SQLite keyword ``AUTOINCREMENT``
+              is not included as this is unnecessary and not recommended
+              by the database vendor.  See the section
+              :ref:`sqlite_autoincrement` for more background.
+            * Oracle - The Oracle dialect has no default "autoincrement"
+              feature available at this time, instead the :class:`.Identity`
+              construct is recommended to achieve this (the :class:`.Sequence`
+              construct may also be used).
+            * Third-party dialects - consult those dialects' documentation
+              for details on their specific behaviors.
 
-                :ref:`sqlite_autoincrement`
+          * When a single-row :func:`_sql.insert` construct is compiled and
+            executed, which does not set the :meth:`_sql.Insert.inline`
+            modifier, newly generated primary key values for this column
+            will be automatically retrieved upon statement execution
+            using a method specific to the database driver in use:
 
-          * The column will be considered to be available using an
-            "autoincrement" method specific to the backend database, such
-            as calling upon ``cursor.lastrowid``, using RETURNING in an
-            INSERT statement to get at a sequence-generated value, or using
-            special functions such as "SELECT scope_identity()".
-            These methods are highly specific to the DBAPIs and databases in
-            use and vary greatly, so care should be taken when associating
-            ``autoincrement=True`` with a custom default generation function.
+            * MySQL, SQLite - calling upon ``cursor.lastrowid()``
+             (see
+             `https://www.python.org/dev/peps/pep-0249/#lastrowid
+             <https://www.python.org/dev/peps/pep-0249/#lastrowid>`_)
+            * PostgreSQL, SQL Server, Oracle - use RETURNING or an equivalent
+              construct when rendering an INSERT statement, and then retrieving
+              the newly generated primary key values after execution
+            * PostgreSQL, Oracle for :class:`_schema.Table` objects that
+              set :paramref:`_schema.Table.implicit_returning` to False -
+              for a :class:`.Sequence` only, the :class:`.Sequence` is invoked
+              explicitly before the INSERT statement takes place so that the
+              newly generated primary key value is available to the client
+            * SQL Server for :class:`_schema.Table` objects that
+              set :paramref:`_schema.Table.implicit_returning` to False -
+              the ``SELECT scope_identity()`` construct is used after the
+              INSERT statement is invoked to retrieve the newly generated
+              primary key value.
+            * Third-party dialects - consult those dialects' documentation
+              for details on their specific behaviors.
+
+           * For multiple-row :func:`_sql.insert` constructs invoked with
+             a list of parameters (i.e. "executemany" semantics), primary-key
+             retrieving behaviors are generally disabled, however there may
+             be special APIs that may be used to retrieve lists of new
+             primary key values for an "executemany", such as the psycopg2
+             "fast insertmany" feature.  Such features are very new and
+             may not yet be well covered in documentation.
 
 
         :param default: A scalar, Python callable, or

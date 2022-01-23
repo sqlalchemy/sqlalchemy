@@ -358,6 +358,11 @@ Glossary
         class each of which represents a particular database column
         or relationship to a related class.
 
+    identity key
+        A key associated with ORM-mapped objects that identifies their
+        primary key identity within the database, as well as their unique
+        identity within a :class:`_orm.Session` :term:`identity map`.
+
     identity map
         A mapping between Python objects and their database identities.
         The identity map is a collection that's associated with an
