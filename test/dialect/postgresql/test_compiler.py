@@ -3,6 +3,7 @@ from sqlalchemy import and_
 from sqlalchemy import BigInteger
 from sqlalchemy import bindparam
 from sqlalchemy import cast
+from sqlalchemy import CheckConstraint
 from sqlalchemy import Column
 from sqlalchemy import Computed
 from sqlalchemy import Date
@@ -10,6 +11,8 @@ from sqlalchemy import delete
 from sqlalchemy import Enum
 from sqlalchemy import exc
 from sqlalchemy import Float
+from sqlalchemy import ForeignKey
+from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import func
 from sqlalchemy import Identity
 from sqlalchemy import Index
@@ -855,6 +858,62 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         dialect_9_1._supports_drop_index_concurrently = False
         self.assert_compile(
             schema.DropIndex(idx1), "DROP INDEX test_idx1", dialect=dialect_9_1
+        )
+
+    def test_create_check_constraint_not_valid(self):
+        m = MetaData()
+
+        tbl = Table(
+            "testtbl",
+            m,
+            Column("data", Integer),
+            CheckConstraint("data = 0", postgresql_not_valid=True),
+        )
+
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE testtbl (data INTEGER, CHECK (data = 0) NOT VALID)",
+        )
+
+    def test_create_foreign_key_constraint_not_valid(self):
+        m = MetaData()
+
+        tbl = Table(
+            "testtbl",
+            m,
+            Column("a", Integer),
+            Column("b", Integer),
+            ForeignKeyConstraint(
+                "b", ["testtbl.a"], postgresql_not_valid=True
+            ),
+        )
+
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE testtbl ("
+            "a INTEGER, "
+            "b INTEGER, "
+            "FOREIGN KEY(b) REFERENCES testtbl (a) NOT VALID"
+            ")",
+        )
+
+    def test_create_foreign_key_column_not_valid(self):
+        m = MetaData()
+
+        tbl = Table(
+            "testtbl",
+            m,
+            Column("a", Integer),
+            Column("b", ForeignKey("testtbl.a", postgresql_not_valid=True)),
+        )
+
+        self.assert_compile(
+            schema.CreateTable(tbl),
+            "CREATE TABLE testtbl ("
+            "a INTEGER, "
+            "b INTEGER, "
+            "FOREIGN KEY(b) REFERENCES testtbl (a) NOT VALID"
+            ")",
         )
 
     def test_exclude_constraint_min(self):
