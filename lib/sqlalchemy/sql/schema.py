@@ -1310,7 +1310,11 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             :class:`.Result` object.   This also applies towards use of the
             ORM when ORM-mapped objects are persisted to the database,
             indicating that a new integer primary key will be available to
-            become part of the :term:`identity key` for that object.
+            become part of the :term:`identity key` for that object.  This
+            behavior takes place regardless of what DDL constructs are
+            associated with the :class:`_schema.Column` and is independent
+            of the "DDL Rendering" behavior discussed in the previous note
+            above.
 
           The parameter may be set to ``True`` to indicate that a column which
           is part of a composite (i.e. multi-column) primary key should
@@ -1409,13 +1413,13 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
             * Third-party dialects - consult those dialects' documentation
               for details on their specific behaviors.
 
-           * For multiple-row :func:`_sql.insert` constructs invoked with
-             a list of parameters (i.e. "executemany" semantics), primary-key
-             retrieving behaviors are generally disabled, however there may
-             be special APIs that may be used to retrieve lists of new
-             primary key values for an "executemany", such as the psycopg2
-             "fast insertmany" feature.  Such features are very new and
-             may not yet be well covered in documentation.
+          * For multiple-row :func:`_sql.insert` constructs invoked with
+            a list of parameters (i.e. "executemany" semantics), primary-key
+            retrieving behaviors are generally disabled, however there may
+            be special APIs that may be used to retrieve lists of new
+            primary key values for an "executemany", such as the psycopg2
+            "fast insertmany" feature.  Such features are very new and
+            may not yet be well covered in documentation.
 
 
         :param default: A scalar, Python callable, or
