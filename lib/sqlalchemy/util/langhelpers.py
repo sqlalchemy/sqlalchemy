@@ -30,6 +30,7 @@ from typing import FrozenSet
 from typing import Generic
 from typing import Iterator
 from typing import List
+from typing import Mapping
 from typing import Optional
 from typing import overload
 from typing import Sequence
@@ -52,6 +53,30 @@ _MP = TypeVar("_MP", bound="memoized_property[Any]")
 _MA = TypeVar("_MA", bound="HasMemoized.memoized_attribute[Any]")
 _HP = TypeVar("_HP", bound="hybridproperty")
 _HM = TypeVar("_HM", bound="hybridmethod")
+
+
+if compat.py310:
+
+    def get_annotations(obj: Any) -> Mapping[str, Any]:
+        return inspect.get_annotations(obj)
+
+else:
+
+    def get_annotations(obj: Any) -> Mapping[str, Any]:
+        # it's been observed that cls.__annotations__ can be non present.
+        # it's not clear what causes this, running under tox py37/38 it
+        # happens, running straight pytest it doesnt
+
+        # https://docs.python.org/3/howto/annotations.html#annotations-howto
+        if isinstance(obj, type):
+            ann = obj.__dict__.get("__annotations__", None)
+        else:
+            ann = getattr(obj, "__annotations__", None)
+
+        if ann is None:
+            return _collections.EMPTY_DICT
+        else:
+            return cast("Mapping[str, Any]", ann)
 
 
 def md5_hex(x: Any) -> str:

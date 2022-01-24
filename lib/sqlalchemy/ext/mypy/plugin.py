@@ -40,6 +40,19 @@ from . import decl_class
 from . import names
 from . import util
 
+try:
+    import sqlalchemy_stubs  # noqa
+except ImportError:
+    pass
+else:
+    import sqlalchemy
+
+    raise ImportError(
+        f"The SQLAlchemy mypy plugin in SQLAlchemy "
+        f"{sqlalchemy.__version__} does not work with sqlalchemy-stubs or "
+        "sqlalchemy2-stubs installed"
+    )
+
 
 class SQLAlchemyPlugin(Plugin):
     def get_dynamic_class_hook(

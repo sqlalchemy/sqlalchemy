@@ -17,19 +17,27 @@ from . import exc as exc
 from . import mapper as mapperlib
 from . import strategy_options as strategy_options
 from ._orm_constructors import _mapper_fn as mapper
+from ._orm_constructors import aliased as aliased
 from ._orm_constructors import backref as backref
 from ._orm_constructors import clear_mappers as clear_mappers
 from ._orm_constructors import column_property as column_property
 from ._orm_constructors import composite as composite
+from ._orm_constructors import CompositeProperty as CompositeProperty
 from ._orm_constructors import contains_alias as contains_alias
 from ._orm_constructors import create_session as create_session
 from ._orm_constructors import deferred as deferred
 from ._orm_constructors import dynamic_loader as dynamic_loader
+from ._orm_constructors import join as join
 from ._orm_constructors import mapped_column as mapped_column
+from ._orm_constructors import MappedColumn as MappedColumn
+from ._orm_constructors import outerjoin as outerjoin
 from ._orm_constructors import query_expression as query_expression
 from ._orm_constructors import relationship as relationship
+from ._orm_constructors import RelationshipProperty as RelationshipProperty
 from ._orm_constructors import synonym as synonym
+from ._orm_constructors import SynonymProperty as SynonymProperty
 from ._orm_constructors import with_loader_criteria as with_loader_criteria
+from ._orm_constructors import with_polymorphic as with_polymorphic
 from .attributes import AttributeEvent as AttributeEvent
 from .attributes import InstrumentedAttribute as InstrumentedAttribute
 from .attributes import QueryableAttribute as QueryableAttribute
@@ -46,8 +54,8 @@ from .decl_api import declared_attr as declared_attr
 from .decl_api import has_inherited_table as has_inherited_table
 from .decl_api import registry as registry
 from .decl_api import synonym_for as synonym_for
-from .descriptor_props import CompositeProperty as CompositeProperty
-from .descriptor_props import SynonymProperty as SynonymProperty
+from .descriptor_props import Composite as Composite
+from .descriptor_props import Synonym as Synonym
 from .dynamic import AppenderQuery as AppenderQuery
 from .events import AttributeEvents as AttributeEvents
 from .events import InstanceEvents as InstanceEvents
@@ -81,7 +89,7 @@ from .query import AliasOption as AliasOption
 from .query import FromStatement as FromStatement
 from .query import Query as Query
 from .relationships import foreign as foreign
-from .relationships import RelationshipProperty as RelationshipProperty
+from .relationships import Relationship as Relationship
 from .relationships import remote as remote
 from .scoping import scoped_session as scoped_session
 from .session import close_all_sessions as close_all_sessions
@@ -111,17 +119,13 @@ from .strategy_options import undefer as undefer
 from .strategy_options import undefer_group as undefer_group
 from .strategy_options import with_expression as with_expression
 from .unitofwork import UOWTransaction as UOWTransaction
-from .util import aliased as aliased
 from .util import Bundle as Bundle
 from .util import CascadeOptions as CascadeOptions
-from .util import join as join
 from .util import LoaderCriteriaOption as LoaderCriteriaOption
 from .util import object_mapper as object_mapper
-from .util import outerjoin as outerjoin
 from .util import polymorphic_union as polymorphic_union
 from .util import was_deleted as was_deleted
 from .util import with_parent as with_parent
-from .util import with_polymorphic as with_polymorphic
 from .. import util as _sa_util
 
 

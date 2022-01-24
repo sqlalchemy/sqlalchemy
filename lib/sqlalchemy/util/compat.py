@@ -39,7 +39,6 @@ arm = "aarch" in platform.machine().lower()
 has_refcount_gc = bool(cpython)
 
 dottedgetter = operator.attrgetter
-next = next  # noqa
 
 
 class FullArgSpec(typing.NamedTuple):

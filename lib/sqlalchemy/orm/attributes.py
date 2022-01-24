@@ -35,6 +35,7 @@ from .base import instance_state
 from .base import instance_str
 from .base import LOAD_AGAINST_COMMITTED
 from .base import manager_of_class
+from .base import Mapped as Mapped  # noqa
 from .base import NEVER_SET  # noqa
 from .base import NO_AUTOFLUSH
 from .base import NO_CHANGE  # noqa
@@ -79,6 +80,7 @@ class QueryableAttribute(
     traversals.HasCopyInternals,
     roles.JoinTargetRole,
     roles.OnClauseRole,
+    roles.ColumnsClauseRole,
     sql_base.Immutable,
     sql_base.MemoizedHasCacheKey,
 ):
@@ -190,7 +192,7 @@ class QueryableAttribute(
           construct has defined one).
 
         * If the attribute refers to any other kind of
-          :class:`.MapperProperty`, including :class:`.RelationshipProperty`,
+          :class:`.MapperProperty`, including :class:`.Relationship`,
           the attribute will refer to the :attr:`.MapperProperty.info`
           dictionary associated with that :class:`.MapperProperty`.
 
@@ -352,7 +354,7 @@ class QueryableAttribute(
 
 
         Return values here will commonly be instances of
-        :class:`.ColumnProperty` or :class:`.RelationshipProperty`.
+        :class:`.ColumnProperty` or :class:`.Relationship`.
 
 
         """

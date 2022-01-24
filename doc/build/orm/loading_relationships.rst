@@ -1261,8 +1261,6 @@ Relationship Loader API
 
 .. autofunction:: defaultload
 
-.. autofunction:: eagerload
-
 .. autofunction:: immediateload
 
 .. autofunction:: joinedload

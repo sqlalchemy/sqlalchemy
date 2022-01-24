@@ -119,14 +119,28 @@ start numbering at 1 or some other integer, provide ``count_from=1``.
 
 
 """
+from typing import Callable
+from typing import List
+from typing import Optional
+from typing import Sequence
+from typing import TypeVar
+
 from ..orm.collections import collection
 from ..orm.collections import collection_adapter
+
+_T = TypeVar("_T")
+OrderingFunc = Callable[[int, Sequence[_T]], int]
 
 
 __all__ = ["ordering_list"]
 
 
-def ordering_list(attr, count_from=None, **kw):
+def ordering_list(
+    attr: str,
+    count_from: Optional[int] = None,
+    ordering_func: Optional[OrderingFunc] = None,
+    reorder_on_append: bool = False,
+) -> Callable[[], "OrderingList"]:
     """Prepares an :class:`OrderingList` factory for use in mapper definitions.
 
     Returns an object suitable for use as an argument to a Mapper
@@ -157,7 +171,11 @@ def ordering_list(attr, count_from=None, **kw):
 
     """
 
-    kw = _unsugar_count_from(count_from=count_from, **kw)
+    kw = _unsugar_count_from(
+        count_from=count_from,
+        ordering_func=ordering_func,
+        reorder_on_append=reorder_on_append,
+    )
     return lambda: OrderingList(attr, **kw)
 
 
@@ -207,7 +225,7 @@ def _unsugar_count_from(**kw):
     return kw
 
 
-class OrderingList(list):
+class OrderingList(List[_T]):
     """A custom list that manages position information for its children.
 
     The :class:`.OrderingList` object is normally set up using the
@@ -216,8 +234,15 @@ class OrderingList(list):
 
     """
 
+    ordering_attr: str
+    ordering_func: OrderingFunc
+    reorder_on_append: bool
+
     def __init__(
-        self, ordering_attr=None, ordering_func=None, reorder_on_append=False
+        self,
+        ordering_attr: Optional[str] = None,
+        ordering_func: Optional[OrderingFunc] = None,
+        reorder_on_append: bool = False,
     ):
         """A custom list that manages position information for its children.
 
@@ -282,7 +307,7 @@ class OrderingList(list):
     def _set_order_value(self, entity, value):
         setattr(entity, self.ordering_attr, value)
 
-    def reorder(self):
+    def reorder(self) -> None:
         """Synchronize ordering for the entire collection.
 
         Sweeps through the list and ensures that each object has accurate

@@ -1326,6 +1326,18 @@ class SuiteRequirements(Requirements):
         return exclusions.only_if(check)
 
     @property
+    def no_sqlalchemy2_stubs(self):
+        def check(config):
+            try:
+                __import__("sqlalchemy-stubs.ext.mypy")
+            except ImportError:
+                return False
+            else:
+                return True
+
+        return exclusions.skip_if(check)
+
+    @property
     def python38(self):
         return exclusions.only_if(
             lambda: util.py38, "Python 3.8 or above required"

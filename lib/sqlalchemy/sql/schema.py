@@ -31,9 +31,12 @@ as components in SQL expressions.
 import collections
 import typing
 from typing import Any
+from typing import Dict
+from typing import List
 from typing import MutableMapping
 from typing import Optional
 from typing import overload
+from typing import Sequence as _typing_Sequence
 from typing import Type
 from typing import TypeVar
 from typing import Union
@@ -52,6 +55,7 @@ from .elements import ClauseElement
 from .elements import ColumnClause
 from .elements import ColumnElement
 from .elements import quoted_name
+from .elements import SQLCoreOperations
 from .elements import TextClause
 from .selectable import TableClause
 from .type_api import to_instance
@@ -64,9 +68,12 @@ from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
     from .type_api import TypeEngine
+    from ..engine import Connection
+    from ..engine import Engine
 
 _T = TypeVar("_T", bound="Any")
 _ServerDefaultType = Union["FetchedValue", str, TextClause, ColumnElement]
+_TAB = TypeVar("_TAB", bound="Table")
 
 RETAIN_SCHEMA = util.symbol("retain_schema")
 
@@ -188,313 +195,6 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
 
         :ref:`metadata_describing` - Introduction to database metadata
 
-    Constructor arguments are as follows:
-
-    :param name: The name of this table as represented in the database.
-
-        The table name, along with the value of the ``schema`` parameter,
-        forms a key which uniquely identifies this :class:`_schema.Table`
-        within
-        the owning :class:`_schema.MetaData` collection.
-        Additional calls to :class:`_schema.Table` with the same name,
-        metadata,
-        and schema name will return the same :class:`_schema.Table` object.
-
-        Names which contain no upper case characters
-        will be treated as case insensitive names, and will not be quoted
-        unless they are a reserved word or contain special characters.
-        A name with any number of upper case characters is considered
-        to be case sensitive, and will be sent as quoted.
-
-        To enable unconditional quoting for the table name, specify the flag
-        ``quote=True`` to the constructor, or use the :class:`.quoted_name`
-        construct to specify the name.
-
-    :param metadata: a :class:`_schema.MetaData`
-        object which will contain this
-        table.  The metadata is used as a point of association of this table
-        with other tables which are referenced via foreign key.  It also
-        may be used to associate this table with a particular
-        :class:`.Connection` or :class:`.Engine`.
-
-    :param \*args: Additional positional arguments are used primarily
-        to add the list of :class:`_schema.Column`
-        objects contained within this
-        table. Similar to the style of a CREATE TABLE statement, other
-        :class:`.SchemaItem` constructs may be added here, including
-        :class:`.PrimaryKeyConstraint`, and
-        :class:`_schema.ForeignKeyConstraint`.
-
-    :param autoload: Defaults to ``False``, unless
-        :paramref:`_schema.Table.autoload_with`
-        is set in which case it defaults to ``True``;
-        :class:`_schema.Column` objects
-        for this table should be reflected from the database, possibly
-        augmenting objects that were explicitly specified.
-        :class:`_schema.Column` and other objects explicitly set on the
-        table will replace corresponding reflected objects.
-
-        .. deprecated:: 1.4
-
-            The autoload parameter is deprecated and will be removed in
-            version 2.0.  Please use the
-            :paramref:`_schema.Table.autoload_with` parameter, passing an
-            engine or connection.
-
-        .. seealso::
-
-            :ref:`metadata_reflection_toplevel`
-
-    :param autoload_replace: Defaults to ``True``; when using
-        :paramref:`_schema.Table.autoload`
-        in conjunction with :paramref:`_schema.Table.extend_existing`,
-        indicates
-        that :class:`_schema.Column` objects present in the already-existing
-        :class:`_schema.Table`
-        object should be replaced with columns of the same
-        name retrieved from the autoload process.   When ``False``, columns
-        already present under existing names will be omitted from the
-        reflection process.
-
-        Note that this setting does not impact :class:`_schema.Column` objects
-        specified programmatically within the call to :class:`_schema.Table`
-        that
-        also is autoloading; those :class:`_schema.Column` objects will always
-        replace existing columns of the same name when
-        :paramref:`_schema.Table.extend_existing` is ``True``.
-
-        .. seealso::
-
-            :paramref:`_schema.Table.autoload`
-
-            :paramref:`_schema.Table.extend_existing`
-
-    :param autoload_with: An :class:`_engine.Engine` or
-        :class:`_engine.Connection` object,
-        or a :class:`_reflection.Inspector` object as returned by
-        :func:`_sa.inspect`
-        against one, with which this :class:`_schema.Table`
-        object will be reflected.
-        When set to a non-None value, the autoload process will take place
-        for this table against the given engine or connection.
-
-    :param extend_existing: When ``True``, indicates that if this
-        :class:`_schema.Table` is already present in the given
-        :class:`_schema.MetaData`,
-        apply further arguments within the constructor to the existing
-        :class:`_schema.Table`.
-
-        If :paramref:`_schema.Table.extend_existing` or
-        :paramref:`_schema.Table.keep_existing` are not set,
-        and the given name
-        of the new :class:`_schema.Table` refers to a :class:`_schema.Table`
-        that is
-        already present in the target :class:`_schema.MetaData` collection,
-        and
-        this :class:`_schema.Table`
-        specifies additional columns or other constructs
-        or flags that modify the table's state, an
-        error is raised.  The purpose of these two mutually-exclusive flags
-        is to specify what action should be taken when a
-        :class:`_schema.Table`
-        is specified that matches an existing :class:`_schema.Table`,
-        yet specifies
-        additional constructs.
-
-        :paramref:`_schema.Table.extend_existing`
-        will also work in conjunction
-        with :paramref:`_schema.Table.autoload` to run a new reflection
-        operation against the database, even if a :class:`_schema.Table`
-        of the same name is already present in the target
-        :class:`_schema.MetaData`; newly reflected :class:`_schema.Column`
-        objects
-        and other options will be added into the state of the
-        :class:`_schema.Table`, potentially overwriting existing columns
-        and options of the same name.
-
-        As is always the case with :paramref:`_schema.Table.autoload`,
-        :class:`_schema.Column` objects can be specified in the same
-        :class:`_schema.Table`
-        constructor, which will take precedence.  Below, the existing
-        table ``mytable`` will be augmented with :class:`_schema.Column`
-        objects
-        both reflected from the database, as well as the given
-        :class:`_schema.Column`
-        named "y"::
-
-            Table("mytable", metadata,
-                        Column('y', Integer),
-                        extend_existing=True,
-                        autoload_with=engine
-                    )
-
-        .. seealso::
-
-            :paramref:`_schema.Table.autoload`
-
-            :paramref:`_schema.Table.autoload_replace`
-
-            :paramref:`_schema.Table.keep_existing`
-
-
-    :param implicit_returning: True by default - indicates that
-        RETURNING can be used by default to fetch newly inserted primary key
-        values, for backends which support this.  Note that
-        :func:`_sa.create_engine` also provides an ``implicit_returning``
-        flag.
-
-    :param include_columns: A list of strings indicating a subset of
-        columns to be loaded via the ``autoload`` operation; table columns who
-        aren't present in this list will not be represented on the resulting
-        ``Table`` object. Defaults to ``None`` which indicates all columns
-        should be reflected.
-
-    :param resolve_fks: Whether or not to reflect :class:`_schema.Table`
-        objects
-        related to this one via :class:`_schema.ForeignKey` objects, when
-        :paramref:`_schema.Table.autoload` or
-        :paramref:`_schema.Table.autoload_with` is
-        specified.   Defaults to True.  Set to False to disable reflection of
-        related tables as :class:`_schema.ForeignKey`
-        objects are encountered; may be
-        used either to save on SQL calls or to avoid issues with related tables
-        that can't be accessed. Note that if a related table is already present
-        in the :class:`_schema.MetaData` collection, or becomes present later,
-        a
-        :class:`_schema.ForeignKey` object associated with this
-        :class:`_schema.Table` will
-        resolve to that table normally.
-
-        .. versionadded:: 1.3
-
-        .. seealso::
-
-            :paramref:`.MetaData.reflect.resolve_fks`
-
-
-    :param info: Optional data dictionary which will be populated into the
-        :attr:`.SchemaItem.info` attribute of this object.
-
-    :param keep_existing: When ``True``, indicates that if this Table
-        is already present in the given :class:`_schema.MetaData`, ignore
-        further arguments within the constructor to the existing
-        :class:`_schema.Table`, and return the :class:`_schema.Table`
-        object as
-        originally created. This is to allow a function that wishes
-        to define a new :class:`_schema.Table` on first call, but on
-        subsequent calls will return the same :class:`_schema.Table`,
-        without any of the declarations (particularly constraints)
-        being applied a second time.
-
-        If :paramref:`_schema.Table.extend_existing` or
-        :paramref:`_schema.Table.keep_existing` are not set,
-        and the given name
-        of the new :class:`_schema.Table` refers to a :class:`_schema.Table`
-        that is
-        already present in the target :class:`_schema.MetaData` collection,
-        and
-        this :class:`_schema.Table`
-        specifies additional columns or other constructs
-        or flags that modify the table's state, an
-        error is raised.  The purpose of these two mutually-exclusive flags
-        is to specify what action should be taken when a
-        :class:`_schema.Table`
-        is specified that matches an existing :class:`_schema.Table`,
-        yet specifies
-        additional constructs.
-
-        .. seealso::
-
-            :paramref:`_schema.Table.extend_existing`
-
-    :param listeners: A list of tuples of the form ``(<eventname>, <fn>)``
-        which will be passed to :func:`.event.listen` upon construction.
-        This alternate hook to :func:`.event.listen` allows the establishment
-        of a listener function specific to this :class:`_schema.Table` before
-        the "autoload" process begins.  Historically this has been intended
-        for use with the :meth:`.DDLEvents.column_reflect` event, however
-        note that this event hook may now be associated with the
-        :class:`_schema.MetaData` object directly::
-
-            def listen_for_reflect(table, column_info):
-                "handle the column reflection event"
-                # ...
-
-            t = Table(
-                'sometable',
-                autoload_with=engine,
-                listeners=[
-                    ('column_reflect', listen_for_reflect)
-                ])
-
-        .. seealso::
-
-            :meth:`_events.DDLEvents.column_reflect`
-
-    :param must_exist: When ``True``, indicates that this Table must already
-        be present in the given :class:`_schema.MetaData` collection, else
-        an exception is raised.
-
-    :param prefixes:
-        A list of strings to insert after CREATE in the CREATE TABLE
-        statement.  They will be separated by spaces.
-
-    :param quote: Force quoting of this table's name on or off, corresponding
-        to ``True`` or ``False``.  When left at its default of ``None``,
-        the column identifier will be quoted according to whether the name is
-        case sensitive (identifiers with at least one upper case character are
-        treated as case sensitive), or if it's a reserved word.  This flag
-        is only needed to force quoting of a reserved word which is not known
-        by the SQLAlchemy dialect.
-
-        .. note:: setting this flag to ``False`` will not provide
-           case-insensitive behavior for table reflection; table reflection
-           will always search for a mixed-case name in a case sensitive
-           fashion.  Case insensitive names are specified in SQLAlchemy only
-           by stating the name with all lower case characters.
-
-    :param quote_schema: same as 'quote' but applies to the schema identifier.
-
-    :param schema: The schema name for this table, which is required if
-        the table resides in a schema other than the default selected schema
-        for the engine's database connection.  Defaults to ``None``.
-
-        If the owning :class:`_schema.MetaData` of this :class:`_schema.Table`
-        specifies its
-        own :paramref:`_schema.MetaData.schema` parameter,
-        then that schema name will
-        be applied to this :class:`_schema.Table`
-        if the schema parameter here is set
-        to ``None``.  To set a blank schema name on a :class:`_schema.Table`
-        that
-        would otherwise use the schema set on the owning
-        :class:`_schema.MetaData`,
-        specify the special symbol :attr:`.BLANK_SCHEMA`.
-
-        .. versionadded:: 1.0.14  Added the :attr:`.BLANK_SCHEMA` symbol to
-           allow a :class:`_schema.Table`
-           to have a blank schema name even when the
-           parent :class:`_schema.MetaData` specifies
-           :paramref:`_schema.MetaData.schema`.
-
-        The quoting rules for the schema name are the same as those for the
-        ``name`` parameter, in that quoting is applied for reserved words or
-        case-sensitive names; to enable unconditional quoting for the schema
-        name, specify the flag ``quote_schema=True`` to the constructor, or use
-        the :class:`.quoted_name` construct to specify the name.
-
-    :param comment: Optional string that will render an SQL comment on table
-         creation.
-
-         .. versionadded:: 1.2 Added the :paramref:`_schema.Table.comment`
-            parameter
-            to :class:`_schema.Table`.
-
-    :param \**kw: Additional keyword arguments not mentioned above are
-        dialect specific, and passed in the form ``<dialectname>_<argname>``.
-        See the documentation regarding an individual dialect at
-        :ref:`dialect_toplevel` for detail on documented arguments.
-
     """
 
     __visit_name__ = "table"
@@ -547,13 +247,21 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
         else:
             return (self,)
 
-    @util.deprecated_params(
-        mustexist=(
-            "1.4",
-            "Deprecated alias of :paramref:`_schema.Table.must_exist`",
-        ),
-    )
-    def __new__(cls, *args, **kw):
+    if not typing.TYPE_CHECKING:
+        # typing tools seem to be inconsistent in how they handle
+        # __new__, so suggest this pattern for classes that use
+        # __new__.  apply typing to the __init__ method normally
+        @util.deprecated_params(
+            mustexist=(
+                "1.4",
+                "Deprecated alias of :paramref:`_schema.Table.must_exist`",
+            ),
+        )
+        def __new__(cls, *args: Any, **kw: Any) -> Any:
+            return cls._new(*args, **kw)
+
+    @classmethod
+    def _new(cls, *args, **kw):
         if not args and not kw:
             # python3k pickle seems to call this
             return object.__new__(cls)
@@ -607,14 +315,323 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
                 with util.safe_reraise():
                     metadata._remove_table(name, schema)
 
-    def __init__(self, *args, **kw):
-        """Constructor for :class:`_schema.Table`.
+    def __init__(
+        self,
+        name: str,
+        metadata: "MetaData",
+        *args: SchemaItem,
+        **kw: Any,
+    ):
+        r"""Constructor for :class:`_schema.Table`.
 
-        This method is a no-op.   See the top-level
-        documentation for :class:`_schema.Table`
-        for constructor arguments.
 
-        """
+        :param name: The name of this table as represented in the database.
+
+            The table name, along with the value of the ``schema`` parameter,
+            forms a key which uniquely identifies this :class:`_schema.Table`
+            within
+            the owning :class:`_schema.MetaData` collection.
+            Additional calls to :class:`_schema.Table` with the same name,
+            metadata,
+            and schema name will return the same :class:`_schema.Table` object.
+
+            Names which contain no upper case characters
+            will be treated as case insensitive names, and will not be quoted
+            unless they are a reserved word or contain special characters.
+            A name with any number of upper case characters is considered
+            to be case sensitive, and will be sent as quoted.
+
+            To enable unconditional quoting for the table name, specify the flag
+            ``quote=True`` to the constructor, or use the :class:`.quoted_name`
+            construct to specify the name.
+
+        :param metadata: a :class:`_schema.MetaData`
+            object which will contain this
+            table.  The metadata is used as a point of association of this table
+            with other tables which are referenced via foreign key.  It also
+            may be used to associate this table with a particular
+            :class:`.Connection` or :class:`.Engine`.
+
+        :param \*args: Additional positional arguments are used primarily
+            to add the list of :class:`_schema.Column`
+            objects contained within this
+            table. Similar to the style of a CREATE TABLE statement, other
+            :class:`.SchemaItem` constructs may be added here, including
+            :class:`.PrimaryKeyConstraint`, and
+            :class:`_schema.ForeignKeyConstraint`.
+
+        :param autoload: Defaults to ``False``, unless
+            :paramref:`_schema.Table.autoload_with`
+            is set in which case it defaults to ``True``;
+            :class:`_schema.Column` objects
+            for this table should be reflected from the database, possibly
+            augmenting objects that were explicitly specified.
+            :class:`_schema.Column` and other objects explicitly set on the
+            table will replace corresponding reflected objects.
+
+            .. deprecated:: 1.4
+
+                The autoload parameter is deprecated and will be removed in
+                version 2.0.  Please use the
+                :paramref:`_schema.Table.autoload_with` parameter, passing an
+                engine or connection.
+
+            .. seealso::
+
+                :ref:`metadata_reflection_toplevel`
+
+        :param autoload_replace: Defaults to ``True``; when using
+            :paramref:`_schema.Table.autoload`
+            in conjunction with :paramref:`_schema.Table.extend_existing`,
+            indicates
+            that :class:`_schema.Column` objects present in the already-existing
+            :class:`_schema.Table`
+            object should be replaced with columns of the same
+            name retrieved from the autoload process.   When ``False``, columns
+            already present under existing names will be omitted from the
+            reflection process.
+
+            Note that this setting does not impact :class:`_schema.Column` objects
+            specified programmatically within the call to :class:`_schema.Table`
+            that
+            also is autoloading; those :class:`_schema.Column` objects will always
+            replace existing columns of the same name when
+            :paramref:`_schema.Table.extend_existing` is ``True``.
+
+            .. seealso::
+
+                :paramref:`_schema.Table.autoload`
+
+                :paramref:`_schema.Table.extend_existing`
+
+        :param autoload_with: An :class:`_engine.Engine` or
+            :class:`_engine.Connection` object,
+            or a :class:`_reflection.Inspector` object as returned by
+            :func:`_sa.inspect`
+            against one, with which this :class:`_schema.Table`
+            object will be reflected.
+            When set to a non-None value, the autoload process will take place
+            for this table against the given engine or connection.
+
+        :param extend_existing: When ``True``, indicates that if this
+            :class:`_schema.Table` is already present in the given
+            :class:`_schema.MetaData`,
+            apply further arguments within the constructor to the existing
+            :class:`_schema.Table`.
+
+            If :paramref:`_schema.Table.extend_existing` or
+            :paramref:`_schema.Table.keep_existing` are not set,
+            and the given name
+            of the new :class:`_schema.Table` refers to a :class:`_schema.Table`
+            that is
+            already present in the target :class:`_schema.MetaData` collection,
+            and
+            this :class:`_schema.Table`
+            specifies additional columns or other constructs
+            or flags that modify the table's state, an
+            error is raised.  The purpose of these two mutually-exclusive flags
+            is to specify what action should be taken when a
+            :class:`_schema.Table`
+            is specified that matches an existing :class:`_schema.Table`,
+            yet specifies
+            additional constructs.
+
+            :paramref:`_schema.Table.extend_existing`
+            will also work in conjunction
+            with :paramref:`_schema.Table.autoload` to run a new reflection
+            operation against the database, even if a :class:`_schema.Table`
+            of the same name is already present in the target
+            :class:`_schema.MetaData`; newly reflected :class:`_schema.Column`
+            objects
+            and other options will be added into the state of the
+            :class:`_schema.Table`, potentially overwriting existing columns
+            and options of the same name.
+
+            As is always the case with :paramref:`_schema.Table.autoload`,
+            :class:`_schema.Column` objects can be specified in the same
+            :class:`_schema.Table`
+            constructor, which will take precedence.  Below, the existing
+            table ``mytable`` will be augmented with :class:`_schema.Column`
+            objects
+            both reflected from the database, as well as the given
+            :class:`_schema.Column`
+            named "y"::
+
+                Table("mytable", metadata,
+                            Column('y', Integer),
+                            extend_existing=True,
+                            autoload_with=engine
+                        )
+
+            .. seealso::
+
+                :paramref:`_schema.Table.autoload`
+
+                :paramref:`_schema.Table.autoload_replace`
+
+                :paramref:`_schema.Table.keep_existing`
+
+
+        :param implicit_returning: True by default - indicates that
+            RETURNING can be used by default to fetch newly inserted primary key
+            values, for backends which support this.  Note that
+            :func:`_sa.create_engine` also provides an ``implicit_returning``
+            flag.
+
+        :param include_columns: A list of strings indicating a subset of
+            columns to be loaded via the ``autoload`` operation; table columns who
+            aren't present in this list will not be represented on the resulting
+            ``Table`` object. Defaults to ``None`` which indicates all columns
+            should be reflected.
+
+        :param resolve_fks: Whether or not to reflect :class:`_schema.Table`
+            objects
+            related to this one via :class:`_schema.ForeignKey` objects, when
+            :paramref:`_schema.Table.autoload` or
+            :paramref:`_schema.Table.autoload_with` is
+            specified.   Defaults to True.  Set to False to disable reflection of
+            related tables as :class:`_schema.ForeignKey`
+            objects are encountered; may be
+            used either to save on SQL calls or to avoid issues with related tables
+            that can't be accessed. Note that if a related table is already present
+            in the :class:`_schema.MetaData` collection, or becomes present later,
+            a
+            :class:`_schema.ForeignKey` object associated with this
+            :class:`_schema.Table` will
+            resolve to that table normally.
+
+            .. versionadded:: 1.3
+
+            .. seealso::
+
+                :paramref:`.MetaData.reflect.resolve_fks`
+
+
+        :param info: Optional data dictionary which will be populated into the
+            :attr:`.SchemaItem.info` attribute of this object.
+
+        :param keep_existing: When ``True``, indicates that if this Table
+            is already present in the given :class:`_schema.MetaData`, ignore
+            further arguments within the constructor to the existing
+            :class:`_schema.Table`, and return the :class:`_schema.Table`
+            object as
+            originally created. This is to allow a function that wishes
+            to define a new :class:`_schema.Table` on first call, but on
+            subsequent calls will return the same :class:`_schema.Table`,
+            without any of the declarations (particularly constraints)
+            being applied a second time.
+
+            If :paramref:`_schema.Table.extend_existing` or
+            :paramref:`_schema.Table.keep_existing` are not set,
+            and the given name
+            of the new :class:`_schema.Table` refers to a :class:`_schema.Table`
+            that is
+            already present in the target :class:`_schema.MetaData` collection,
+            and
+            this :class:`_schema.Table`
+            specifies additional columns or other constructs
+            or flags that modify the table's state, an
+            error is raised.  The purpose of these two mutually-exclusive flags
+            is to specify what action should be taken when a
+            :class:`_schema.Table`
+            is specified that matches an existing :class:`_schema.Table`,
+            yet specifies
+            additional constructs.
+
+            .. seealso::
+
+                :paramref:`_schema.Table.extend_existing`
+
+        :param listeners: A list of tuples of the form ``(<eventname>, <fn>)``
+            which will be passed to :func:`.event.listen` upon construction.
+            This alternate hook to :func:`.event.listen` allows the establishment
+            of a listener function specific to this :class:`_schema.Table` before
+            the "autoload" process begins.  Historically this has been intended
+            for use with the :meth:`.DDLEvents.column_reflect` event, however
+            note that this event hook may now be associated with the
+            :class:`_schema.MetaData` object directly::
+
+                def listen_for_reflect(table, column_info):
+                    "handle the column reflection event"
+                    # ...
+
+                t = Table(
+                    'sometable',
+                    autoload_with=engine,
+                    listeners=[
+                        ('column_reflect', listen_for_reflect)
+                    ])
+
+            .. seealso::
+
+                :meth:`_events.DDLEvents.column_reflect`
+
+        :param must_exist: When ``True``, indicates that this Table must already
+            be present in the given :class:`_schema.MetaData` collection, else
+            an exception is raised.
+
+        :param prefixes:
+            A list of strings to insert after CREATE in the CREATE TABLE
+            statement.  They will be separated by spaces.
+
+        :param quote: Force quoting of this table's name on or off, corresponding
+            to ``True`` or ``False``.  When left at its default of ``None``,
+            the column identifier will be quoted according to whether the name is
+            case sensitive (identifiers with at least one upper case character are
+            treated as case sensitive), or if it's a reserved word.  This flag
+            is only needed to force quoting of a reserved word which is not known
+            by the SQLAlchemy dialect.
+
+            .. note:: setting this flag to ``False`` will not provide
+            case-insensitive behavior for table reflection; table reflection
+            will always search for a mixed-case name in a case sensitive
+            fashion.  Case insensitive names are specified in SQLAlchemy only
+            by stating the name with all lower case characters.
+
+        :param quote_schema: same as 'quote' but applies to the schema identifier.
+
+        :param schema: The schema name for this table, which is required if
+            the table resides in a schema other than the default selected schema
+            for the engine's database connection.  Defaults to ``None``.
+
+            If the owning :class:`_schema.MetaData` of this :class:`_schema.Table`
+            specifies its
+            own :paramref:`_schema.MetaData.schema` parameter,
+            then that schema name will
+            be applied to this :class:`_schema.Table`
+            if the schema parameter here is set
+            to ``None``.  To set a blank schema name on a :class:`_schema.Table`
+            that
+            would otherwise use the schema set on the owning
+            :class:`_schema.MetaData`,
+            specify the special symbol :attr:`.BLANK_SCHEMA`.
+
+            .. versionadded:: 1.0.14  Added the :attr:`.BLANK_SCHEMA` symbol to
+            allow a :class:`_schema.Table`
+            to have a blank schema name even when the
+            parent :class:`_schema.MetaData` specifies
+            :paramref:`_schema.MetaData.schema`.
+
+            The quoting rules for the schema name are the same as those for the
+            ``name`` parameter, in that quoting is applied for reserved words or
+            case-sensitive names; to enable unconditional quoting for the schema
+            name, specify the flag ``quote_schema=True`` to the constructor, or use
+            the :class:`.quoted_name` construct to specify the name.
+
+        :param comment: Optional string that will render an SQL comment on table
+            creation.
+
+            .. versionadded:: 1.2 Added the :paramref:`_schema.Table.comment`
+                parameter
+                to :class:`_schema.Table`.
+
+        :param \**kw: Additional keyword arguments not mentioned above are
+            dialect specific, and passed in the form ``<dialectname>_<argname>``.
+            See the documentation regarding an individual dialect at
+            :ref:`dialect_toplevel` for detail on documented arguments.
+
+        """  # noqa E501
+
         # __init__ is overridden to prevent __new__ from
         # calling the superclass constructor.
 
@@ -1203,7 +1220,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
     ) -> None:
         ...
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         r"""
         Construct a new ``Column`` object.
 
@@ -2179,18 +2196,18 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
     def __init__(
         self,
-        column,
-        _constraint=None,
-        use_alter=False,
-        name=None,
-        onupdate=None,
-        ondelete=None,
-        deferrable=None,
-        initially=None,
-        link_to_name=False,
-        match=None,
-        info=None,
-        **dialect_kw,
+        column: Union[str, Column, SQLCoreOperations],
+        _constraint: Optional["ForeignKeyConstraint"] = None,
+        use_alter: bool = False,
+        name: Optional[str] = None,
+        onupdate: Optional[str] = None,
+        ondelete: Optional[str] = None,
+        deferrable: Optional[bool] = None,
+        initially: Optional[bool] = None,
+        link_to_name: bool = False,
+        match: Optional[str] = None,
+        info: Optional[Dict[Any, Any]] = None,
+        **dialect_kw: Any,
     ):
         r"""
         Construct a column-level FOREIGN KEY.
@@ -2337,7 +2354,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         )
         return self._schema_item_copy(fk)
 
-    def _get_colspec(self, schema=None, table_name=None):
+    def _get_colspec(self, schema=None, table_name=None, _is_copy=False):
         """Return a string based 'column specification' for this
         :class:`_schema.ForeignKey`.
 
@@ -2357,6 +2374,14 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             else:
                 return "%s.%s" % (table_name, colname)
         elif self._table_column is not None:
+            if self._table_column.table is None:
+                if _is_copy:
+                    raise exc.InvalidRequestError(
+                        f"Can't copy ForeignKey object which refers to "
+                        f"non-table bound Column {self._table_column!r}"
+                    )
+                else:
+                    return self._table_column.key
             return "%s.%s" % (
                 self._table_column.table.fullname,
                 self._table_column.key,
@@ -3858,6 +3883,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
                     if target_table is not None
                     and x._table_key() == x.parent.table.key
                     else None,
+                    _is_copy=True,
                 )
                 for x in self.elements
             ],
@@ -4331,10 +4357,10 @@ class MetaData(SchemaItem):
 
     def __init__(
         self,
-        schema=None,
-        quote_schema=None,
-        naming_convention=None,
-        info=None,
+        schema: Optional[str] = None,
+        quote_schema: Optional[bool] = None,
+        naming_convention: Optional[Dict[str, str]] = None,
+        info: Optional[Dict[Any, Any]] = None,
     ):
         """Create a new MetaData object.
 
@@ -4465,7 +4491,7 @@ class MetaData(SchemaItem):
         self._sequences = {}
         self._fk_memos = collections.defaultdict(list)
 
-    tables = None
+    tables: Dict[str, Table]
     """A dictionary of :class:`_schema.Table`
     objects keyed to their name or "table key".
 
@@ -4483,10 +4509,10 @@ class MetaData(SchemaItem):
 
     """
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "MetaData()"
 
-    def __contains__(self, table_or_key):
+    def __contains__(self, table_or_key: Union[str, Table]) -> bool:
         if not isinstance(table_or_key, str):
             table_or_key = table_or_key.key
         return table_or_key in self.tables
@@ -4530,20 +4556,20 @@ class MetaData(SchemaItem):
         self._schemas = state["schemas"]
         self._fk_memos = state["fk_memos"]
 
-    def clear(self):
+    def clear(self) -> None:
         """Clear all Table objects from this MetaData."""
 
         dict.clear(self.tables)
         self._schemas.clear()
         self._fk_memos.clear()
 
-    def remove(self, table):
+    def remove(self, table: Table) -> None:
         """Remove the given Table object from this MetaData."""
 
         self._remove_table(table.name, table.schema)
 
     @property
-    def sorted_tables(self):
+    def sorted_tables(self) -> List[Table]:
         """Returns a list of :class:`_schema.Table` objects sorted in order of
         foreign key dependency.
 
@@ -4599,14 +4625,14 @@ class MetaData(SchemaItem):
 
     def reflect(
         self,
-        bind,
-        schema=None,
-        views=False,
-        only=None,
-        extend_existing=False,
-        autoload_replace=True,
-        resolve_fks=True,
-        **dialect_kwargs,
+        bind: Union["Engine", "Connection"],
+        schema: Optional[str] = None,
+        views: bool = False,
+        only: Optional[_typing_Sequence[str]] = None,
+        extend_existing: bool = False,
+        autoload_replace: bool = True,
+        resolve_fks: bool = True,
+        **dialect_kwargs: Any,
     ):
         r"""Load all available table definitions from the database.
 
@@ -4754,7 +4780,12 @@ class MetaData(SchemaItem):
                 except exc.UnreflectableTableError as uerr:
                     util.warn("Skipping table %s: %s" % (name, uerr))
 
-    def create_all(self, bind, tables=None, checkfirst=True):
+    def create_all(
+        self,
+        bind: Union["Engine", "Connection"],
+        tables: Optional[_typing_Sequence[Table]] = None,
+        checkfirst: bool = True,
+    ):
         """Create all tables stored in this metadata.
 
         Conditional by default, will not attempt to recreate tables already
@@ -4777,7 +4808,12 @@ class MetaData(SchemaItem):
             ddl.SchemaGenerator, self, checkfirst=checkfirst, tables=tables
         )
 
-    def drop_all(self, bind, tables=None, checkfirst=True):
+    def drop_all(
+        self,
+        bind: Union["Engine", "Connection"],
+        tables: Optional[_typing_Sequence[Table]] = None,
+        checkfirst: bool = True,
+    ):
         """Drop all tables stored in this metadata.
 
         Conditional by default, will not attempt to drop tables not present in

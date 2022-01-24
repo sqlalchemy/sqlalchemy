@@ -6,6 +6,11 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 import collections
+import typing
+from typing import Any
+from typing import Iterable
+from typing import Tuple
+from typing import Union
 
 from .. import util
 
@@ -20,10 +25,15 @@ any_async = False
 _current = None
 ident = "main"
 
-_fixture_functions = None  # installed by plugin_base
+if typing.TYPE_CHECKING:
+    from .plugin.plugin_base import FixtureFunctions
+
+    _fixture_functions: FixtureFunctions
+else:
+    _fixture_functions = None  # installed by plugin_base
 
 
-def combinations(*comb, **kw):
+def combinations(*comb: Union[Any, Tuple[Any, ...]], **kw: str):
     r"""Deliver multiple versions of a test based on positional combinations.
 
     This is a facade over pytest.mark.parametrize.
@@ -89,25 +99,32 @@ def combinations(*comb, **kw):
     return _fixture_functions.combinations(*comb, **kw)
 
 
-def combinations_list(arg_iterable, **kw):
+def combinations_list(
+    arg_iterable: Iterable[
+        Tuple[
+            Any,
+        ]
+    ],
+    **kw,
+):
     "As combination, but takes a single iterable"
     return combinations(*arg_iterable, **kw)
 
 
-def fixture(*arg, **kw):
+def fixture(*arg: Any, **kw: Any) -> Any:
     return _fixture_functions.fixture(*arg, **kw)
 
 
-def get_current_test_name():
+def get_current_test_name() -> str:
     return _fixture_functions.get_current_test_name()
 
 
-def mark_base_test_class():
+def mark_base_test_class() -> Any:
     return _fixture_functions.mark_base_test_class()
 
 
 class _AddToMarker:
-    def __getattr__(self, attr):
+    def __getattr__(self, attr: str) -> Any:
         return getattr(_fixture_functions.add_to_marker, attr)
 
 

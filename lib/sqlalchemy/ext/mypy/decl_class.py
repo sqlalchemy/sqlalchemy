@@ -337,7 +337,7 @@ def _scan_declarative_decorator_stmt(
     # <attr> : Mapped[<typ>] =
     # _sa_Mapped._empty_constructor(lambda: <function body>)
     # the function body is maintained so it gets type checked internally
-    rvalue = util.expr_to_mapped_constructor(
+    rvalue = names.expr_to_mapped_constructor(
         LambdaExpr(stmt.func.arguments, stmt.func.body)
     )
 

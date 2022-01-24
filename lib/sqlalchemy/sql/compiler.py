@@ -889,7 +889,7 @@ class SQLCompiler(Compiled):
     def _apply_numbered_params(self):
         poscount = itertools.count(1)
         self.string = re.sub(
-            r"\[_POSITION\]", lambda m: str(util.next(poscount)), self.string
+            r"\[_POSITION\]", lambda m: str(next(poscount)), self.string
         )
 
     @util.memoized_property

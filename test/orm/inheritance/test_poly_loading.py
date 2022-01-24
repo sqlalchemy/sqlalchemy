@@ -339,13 +339,13 @@ class TestGeometries(GeometryFixtureBase):
             testing.db,
             q.all,
             CompiledSQL(
-                "SELECT a.type AS a_type, a.id AS a_id, "
+                "SELECT a.id AS a_id, a.type AS a_type, "
                 "a.a_data AS a_a_data FROM a",
                 {},
             ),
             Or(
                 CompiledSQL(
-                    "SELECT a.type AS a_type, c.id AS c_id, a.id AS a_id, "
+                    "SELECT c.id AS c_id, a.id AS a_id, a.type AS a_type, "
                     "c.c_data AS c_c_data, c.e_data AS c_e_data, "
                     "c.d_data AS c_d_data "
                     "FROM a JOIN c ON a.id = c.id "
@@ -354,7 +354,7 @@ class TestGeometries(GeometryFixtureBase):
                     [{"primary_keys": [1, 2]}],
                 ),
                 CompiledSQL(
-                    "SELECT a.type AS a_type, c.id AS c_id, a.id AS a_id, "
+                    "SELECT c.id AS c_id, a.id AS a_id, a.type AS a_type, "
                     "c.c_data AS c_c_data, "
                     "c.d_data AS c_d_data, c.e_data AS c_e_data "
                     "FROM a JOIN c ON a.id = c.id "
@@ -396,13 +396,13 @@ class TestGeometries(GeometryFixtureBase):
             testing.db,
             q.all,
             CompiledSQL(
-                "SELECT a.type AS a_type, a.id AS a_id, "
+                "SELECT a.id AS a_id, a.type AS a_type, "
                 "a.a_data AS a_a_data FROM a",
                 {},
             ),
             Or(
                 CompiledSQL(
-                    "SELECT a.type AS a_type, c.id AS c_id, a.id AS a_id, "
+                    "SELECT a.id AS a_id, a.type AS a_type, c.id AS c_id, "
                     "c.c_data AS c_c_data, c.e_data AS c_e_data, "
                     "c.d_data AS c_d_data "
                     "FROM a JOIN c ON a.id = c.id "
@@ -411,7 +411,7 @@ class TestGeometries(GeometryFixtureBase):
                     [{"primary_keys": [1, 2]}],
                 ),
                 CompiledSQL(
-                    "SELECT a.type AS a_type, c.id AS c_id, a.id AS a_id, "
+                    "SELECT c.id AS c_id, a.id AS a_id, a.type AS a_type, "
                     "c.c_data AS c_c_data, c.d_data AS c_d_data, "
                     "c.e_data AS c_e_data "
                     "FROM a JOIN c ON a.id = c.id "
@@ -465,15 +465,15 @@ class TestGeometries(GeometryFixtureBase):
             testing.db,
             q.all,
             CompiledSQL(
-                "SELECT a.type AS a_type, a.id AS a_id, "
+                "SELECT a.id AS a_id, a.type AS a_type, "
                 "a.a_data AS a_a_data FROM a ORDER BY a.id",
                 {},
             ),
             Or(
                 # here, the test is that the adaptation of "a" takes place
                 CompiledSQL(
-                    "SELECT poly.a_type AS poly_a_type, "
-                    "poly.c_id AS poly_c_id, "
+                    "SELECT poly.c_id AS poly_c_id, "
+                    "poly.a_type AS poly_a_type, "
                     "poly.a_id AS poly_a_id, poly.c_c_data AS poly_c_c_data, "
                     "poly.e_id AS poly_e_id, poly.e_e_data AS poly_e_e_data, "
                     "poly.d_id AS poly_d_id, poly.d_d_data AS poly_d_d_data "
@@ -489,9 +489,9 @@ class TestGeometries(GeometryFixtureBase):
                     [{"primary_keys": [1, 2]}],
                 ),
                 CompiledSQL(
-                    "SELECT poly.a_type AS poly_a_type, "
-                    "poly.c_id AS poly_c_id, "
-                    "poly.a_id AS poly_a_id, poly.c_c_data AS poly_c_c_data, "
+                    "SELECT poly.c_id AS poly_c_id, "
+                    "poly.a_id AS poly_a_id, poly.a_type AS poly_a_type, "
+                    "poly.c_c_data AS poly_c_c_data, "
                     "poly.d_id AS poly_d_id, poly.d_d_data AS poly_d_d_data, "
                     "poly.e_id AS poly_e_id, poly.e_e_data AS poly_e_e_data "
                     "FROM (SELECT a.id AS a_id, a.type AS a_type, "

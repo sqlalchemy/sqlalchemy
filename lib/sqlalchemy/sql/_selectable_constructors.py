@@ -6,11 +6,11 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 from typing import Any
-from typing import Type
 from typing import Union
 
 from . import coercions
 from . import roles
+from ._typing import _ColumnsClauseElement
 from .elements import ColumnClause
 from .selectable import Alias
 from .selectable import CompoundSelect
@@ -21,6 +21,8 @@ from .selectable import Select
 from .selectable import TableClause
 from .selectable import TableSample
 from .selectable import Values
+from ..util.typing import _LiteralStar
+from ..util.typing import Literal
 
 
 def alias(selectable, name=None, flat=False):
@@ -279,7 +281,9 @@ def outerjoin(left, right, onclause=None, full=False):
     return Join(left, right, onclause, isouter=True, full=full)
 
 
-def select(*entities: Union[roles.ColumnsClauseRole, Type]) -> "Select":
+def select(
+    *entities: Union[_LiteralStar, Literal[1], _ColumnsClauseElement]
+) -> "Select":
     r"""Construct a new :class:`_expression.Select`.
 
 

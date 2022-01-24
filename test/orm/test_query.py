@@ -50,6 +50,7 @@ from sqlalchemy.orm import column_property
 from sqlalchemy.orm import contains_eager
 from sqlalchemy.orm import defer
 from sqlalchemy.orm import deferred
+from sqlalchemy.orm import join
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import Query
@@ -59,9 +60,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import subqueryload
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm import undefer
+from sqlalchemy.orm import with_parent
 from sqlalchemy.orm.context import QueryContext
-from sqlalchemy.orm.util import join
-from sqlalchemy.orm.util import with_parent
 from sqlalchemy.sql import expression
 from sqlalchemy.sql import operators
 from sqlalchemy.testing import AssertsCompiledSQL

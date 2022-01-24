@@ -13,6 +13,7 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import Generic
+from typing import Optional
 from typing import Tuple
 from typing import Type
 from typing import TypeVar
@@ -21,7 +22,7 @@ from typing import Union
 from .base import SchemaEventTarget
 from .cache_key import NO_CACHE
 from .operators import ColumnOperators
-from .visitors import Traversible
+from .visitors import Visitable
 from .. import exc
 from .. import util
 
@@ -52,7 +53,7 @@ _CT = TypeVar("_CT", bound=Any)
 SelfTypeEngine = typing.TypeVar("SelfTypeEngine", bound="TypeEngine")
 
 
-class TypeEngine(Traversible, Generic[_T]):
+class TypeEngine(Visitable, Generic[_T]):
     """The ultimate base class for all SQL datatypes.
 
     Common subclasses of :class:`.TypeEngine` include
@@ -573,7 +574,7 @@ class TypeEngine(Traversible, Generic[_T]):
         raise NotImplementedError()
 
     def with_variant(
-        self: SelfTypeEngine, type_: "TypeEngine", dialect_name: str
+        self: SelfTypeEngine, type_: "TypeEngine", *dialect_names: str
     ) -> SelfTypeEngine:
         r"""Produce a copy of this type object that will utilize the given
         type when applied to the dialect of the given name.
@@ -586,7 +587,7 @@ class TypeEngine(Traversible, Generic[_T]):
             string_type = String()
 
             string_type = string_type.with_variant(
-                mysql.VARCHAR(collation='foo'), 'mysql'
+                mysql.VARCHAR(collation='foo'), 'mysql', 'mariadb'
             )
 
         The variant mapping indicates that when this type is
@@ -602,16 +603,20 @@ class TypeEngine(Traversible, Generic[_T]):
         :param type\_: a :class:`.TypeEngine` that will be selected
          as a variant from the originating type, when a dialect
          of the given name is in use.
-        :param dialect_name: base name of the dialect which uses
-         this type. (i.e. ``'postgresql'``, ``'mysql'``, etc.)
+        :param \*dialect_names: one or more base names of the dialect which
+         uses this type. (i.e. ``'postgresql'``, ``'mysql'``, etc.)
+
+         .. versionchanged:: 2.0 multiple dialect names can be specified
+            for one variant.
 
         """
 
-        if dialect_name in self._variant_mapping:
-            raise exc.ArgumentError(
-                "Dialect '%s' is already present in "
-                "the mapping for this %r" % (dialect_name, self)
-            )
+        for dialect_name in dialect_names:
+            if dialect_name in self._variant_mapping:
+                raise exc.ArgumentError(
+                    "Dialect '%s' is already present in "
+                    "the mapping for this %r" % (dialect_name, self)
+                )
         new_type = self.copy()
         if isinstance(type_, type):
             type_ = type_()
@@ -620,8 +625,9 @@ class TypeEngine(Traversible, Generic[_T]):
                 "can't pass a type that already has variants as a "
                 "dialect-level type to with_variant()"
             )
+
         new_type._variant_mapping = self._variant_mapping.union(
-            {dialect_name: type_}
+            {dialect_name: type_ for dialect_name in dialect_names}
         )
         return new_type
 
@@ -919,7 +925,7 @@ class ExternalType:
 
     """
 
-    cache_ok = None
+    cache_ok: Optional[bool] = None
     """Indicate if statements using this :class:`.ExternalType` are "safe to
     cache".
 
@@ -1356,6 +1362,8 @@ class TypeDecorator(ExternalType, SchemaEventTarget, TypeEngine[_T]):
     __visit_name__ = "type_decorator"
 
     _is_type_decorator = True
+
+    impl: Union[TypeEngine[Any], Type[TypeEngine[Any]]]
 
     def __init__(self, *args, **kwargs):
         """Construct a :class:`.TypeDecorator`.

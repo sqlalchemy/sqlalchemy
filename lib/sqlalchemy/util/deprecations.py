@@ -13,6 +13,7 @@ from typing import Any
 from typing import Callable
 from typing import cast
 from typing import Optional
+from typing import Tuple
 from typing import TypeVar
 
 from . import compat
@@ -209,7 +210,10 @@ def became_legacy_20(api_name, alternative=None, **kw):
     return deprecated("2.0", message=message, warning=warning_cls, **kw)
 
 
-def deprecated_params(**specs):
+_C = TypeVar("_C", bound=Callable[..., Any])
+
+
+def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_C], _C]:
     """Decorates a function to warn on use of certain parameters.
 
     e.g. ::

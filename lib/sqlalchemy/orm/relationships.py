@@ -13,10 +13,15 @@ SQL annotation and aliasing behavior focused on the `primaryjoin`
 and `secondaryjoin` aspects of :func:`_orm.relationship`.
 
 """
+from __future__ import annotations
+
 import collections
+from collections import abc
 import re
+import typing
 from typing import Any
 from typing import Callable
+from typing import Optional
 from typing import Type
 from typing import TypeVar
 from typing import Union
@@ -26,11 +31,13 @@ from . import attributes
 from . import strategy_options
 from .base import _is_mapped_class
 from .base import state_str
+from .interfaces import _IntrospectsAnnotations
 from .interfaces import MANYTOMANY
 from .interfaces import MANYTOONE
 from .interfaces import ONETOMANY
 from .interfaces import PropComparator
 from .interfaces import StrategizedProperty
+from .util import _extract_mapped_subtype
 from .util import _orm_annotate
 from .util import _orm_deannotate
 from .util import CascadeOptions
@@ -53,8 +60,24 @@ from ..sql.util import join_condition
 from ..sql.util import selectables_overlap
 from ..sql.util import visit_binary_product
 
+if typing.TYPE_CHECKING:
+    from .mapper import Mapper
+    from .util import AliasedClass
+    from .util import AliasedInsp
+
 _T = TypeVar("_T", bound=Any)
 _PT = TypeVar("_PT", bound=Any)
+
+
+_RelationshipArgumentType = Union[
+    str,
+    Type[_T],
+    Callable[[], Type[_T]],
+    "Mapper[_T]",
+    "AliasedClass[_T]",
+    Callable[[], "Mapper[_T]"],
+    Callable[[], "AliasedClass[_T]"],
+]
 
 
 def remote(expr):
@@ -97,7 +120,9 @@ def foreign(expr):
 
 
 @log.class_logger
-class RelationshipProperty(StrategizedProperty[_T]):
+class Relationship(
+    _IntrospectsAnnotations, StrategizedProperty[_T], log.Identified
+):
     """Describes an object property that holds a single item or list
     of items that correspond to a related database table.
 
@@ -106,6 +131,10 @@ class RelationshipProperty(StrategizedProperty[_T]):
     .. seealso::
 
         :ref:`relationship_config_toplevel`
+
+    .. versionchanged:: 2.0 Renamed :class:`_orm.RelationshipProperty`
+       to :class:`_orm.Relationship`.  The old name
+       :class:`_orm.RelationshipProperty` remains as an alias.
 
     """
 
@@ -126,7 +155,7 @@ class RelationshipProperty(StrategizedProperty[_T]):
 
     def __init__(
         self,
-        argument: Union[str, Type[_T], Callable[[], Type[_T]]],
+        argument: Optional[_RelationshipArgumentType[_T]] = None,
         secondary=None,
         primaryjoin=None,
         secondaryjoin=None,
@@ -162,7 +191,7 @@ class RelationshipProperty(StrategizedProperty[_T]):
         sync_backref=None,
         _legacy_inactive_history_style=False,
     ):
-        super(RelationshipProperty, self).__init__()
+        super(Relationship, self).__init__()
 
         self.uselist = uselist
         self.argument = argument
@@ -221,9 +250,7 @@ class RelationshipProperty(StrategizedProperty[_T]):
         self.local_remote_pairs = _local_remote_pairs
         self.bake_queries = bake_queries
         self.load_on_pending = load_on_pending
-        self.comparator_factory = (
-            comparator_factory or RelationshipProperty.Comparator
-        )
+        self.comparator_factory = comparator_factory or Relationship.Comparator
         self.comparator = self.comparator_factory(self, None)
         util.set_creation_order(self)
 
@@ -288,7 +315,7 @@ class RelationshipProperty(StrategizedProperty[_T]):
 
     class Comparator(PropComparator[_PT]):
         """Produce boolean, comparison, and other operators for
-        :class:`.RelationshipProperty` attributes.
+        :class:`.Relationship` attributes.
 
         See the documentation for :class:`.PropComparator` for a brief
         overview of ORM level operator definition.
@@ -318,7 +345,7 @@ class RelationshipProperty(StrategizedProperty[_T]):
             of_type=None,
             extra_criteria=(),
         ):
-            """Construction of :class:`.RelationshipProperty.Comparator`
+            """Construction of :class:`.Relationship.Comparator`
             is internal to the ORM's attribute mechanics.
 
             """
@@ -340,7 +367,7 @@ class RelationshipProperty(StrategizedProperty[_T]):
         @util.memoized_property
         def entity(self):
             """The target entity referred to by this
-            :class:`.RelationshipProperty.Comparator`.
+            :class:`.Relationship.Comparator`.
 
             This is either a :class:`_orm.Mapper` or :class:`.AliasedInsp`
             object.
@@ -360,7 +387,7 @@ class RelationshipProperty(StrategizedProperty[_T]):
         @util.memoized_property
         def mapper(self):
             """The target :class:`_orm.Mapper` referred to by this
-            :class:`.RelationshipProperty.Comparator`.
+            :class:`.Relationship.Comparator`.
 
             This is the "target" or "remote" side of the
             :func:`_orm.relationship`.
@@ -411,7 +438,7 @@ class RelationshipProperty(StrategizedProperty[_T]):
 
 
             """
-            return RelationshipProperty.Comparator(
+            return Relationship.Comparator(
                 self.property,
                 self._parententity,
                 adapt_to_entity=self._adapt_to_entity,
@@ -427,7 +454,7 @@ class RelationshipProperty(StrategizedProperty[_T]):
             .. versionadded:: 1.4
 
             """
-            return RelationshipProperty.Comparator(
+            return Relationship.Comparator(
                 self.property,
                 self._parententity,
                 adapt_to_entity=self._adapt_to_entity,
@@ -468,7 +495,7 @@ class RelationshipProperty(StrategizedProperty[_T]):
             many-to-one comparisons:
 
             * Comparisons against collections are not supported.
-              Use :meth:`~.RelationshipProperty.Comparator.contains`.
+              Use :meth:`~.Relationship.Comparator.contains`.
             * Compared to a scalar one-to-many, will produce a
               clause that compares the target columns in the parent to
               the given target.
@@ -479,7 +506,7 @@ class RelationshipProperty(StrategizedProperty[_T]):
               queries that go beyond simple AND conjunctions of
               comparisons, such as those which use OR. Use
               explicit joins, outerjoins, or
-              :meth:`~.RelationshipProperty.Comparator.has` for
+              :meth:`~.Relationship.Comparator.has` for
               more comprehensive non-many-to-one scalar
               membership tests.
             * Comparisons against ``None`` given in a one-to-many
@@ -613,12 +640,12 @@ class RelationshipProperty(StrategizedProperty[_T]):
                 EXISTS (SELECT 1 FROM related WHERE related.my_id=my_table.id
                 AND related.x=2)
 
-            Because :meth:`~.RelationshipProperty.Comparator.any` uses
+            Because :meth:`~.Relationship.Comparator.any` uses
             a correlated subquery, its performance is not nearly as
             good when compared against large target tables as that of
             using a join.
 
-            :meth:`~.RelationshipProperty.Comparator.any` is particularly
+            :meth:`~.Relationship.Comparator.any` is particularly
             useful for testing for empty collections::
 
                 session.query(MyClass).filter(
@@ -631,10 +658,10 @@ class RelationshipProperty(StrategizedProperty[_T]):
                 NOT (EXISTS (SELECT 1 FROM related WHERE
                 related.my_id=my_table.id))
 
-            :meth:`~.RelationshipProperty.Comparator.any` is only
+            :meth:`~.Relationship.Comparator.any` is only
             valid for collections, i.e. a :func:`_orm.relationship`
             that has ``uselist=True``.  For scalar references,
-            use :meth:`~.RelationshipProperty.Comparator.has`.
+            use :meth:`~.Relationship.Comparator.has`.
 
             """
             if not self.property.uselist:
@@ -662,15 +689,15 @@ class RelationshipProperty(StrategizedProperty[_T]):
                 EXISTS (SELECT 1 FROM related WHERE
                 related.id==my_table.related_id AND related.x=2)
 
-            Because :meth:`~.RelationshipProperty.Comparator.has` uses
+            Because :meth:`~.Relationship.Comparator.has` uses
             a correlated subquery, its performance is not nearly as
             good when compared against large target tables as that of
             using a join.
 
-            :meth:`~.RelationshipProperty.Comparator.has` is only
+            :meth:`~.Relationship.Comparator.has` is only
             valid for scalar references, i.e. a :func:`_orm.relationship`
             that has ``uselist=False``.  For collection references,
-            use :meth:`~.RelationshipProperty.Comparator.any`.
+            use :meth:`~.Relationship.Comparator.any`.
 
             """
             if self.property.uselist:
@@ -683,7 +710,7 @@ class RelationshipProperty(StrategizedProperty[_T]):
             """Return a simple expression that tests a collection for
             containment of a particular item.
 
-            :meth:`~.RelationshipProperty.Comparator.contains` is
+            :meth:`~.Relationship.Comparator.contains` is
             only valid for a collection, i.e. a
             :func:`_orm.relationship` that implements
             one-to-many or many-to-many with ``uselist=True``.
@@ -700,12 +727,12 @@ class RelationshipProperty(StrategizedProperty[_T]):
             Where ``<some id>`` is the value of the foreign key
             attribute on ``other`` which refers to the primary
             key of its parent object. From this it follows that
-            :meth:`~.RelationshipProperty.Comparator.contains` is
+            :meth:`~.Relationship.Comparator.contains` is
             very useful when used with simple one-to-many
             operations.
 
             For many-to-many operations, the behavior of
-            :meth:`~.RelationshipProperty.Comparator.contains`
+            :meth:`~.Relationship.Comparator.contains`
             has more caveats. The association table will be
             rendered in the statement, producing an "implicit"
             join, that is, includes multiple tables in the FROM
@@ -722,14 +749,14 @@ class RelationshipProperty(StrategizedProperty[_T]):
 
             Where ``<some id>`` would be the primary key of
             ``other``. From the above, it is clear that
-            :meth:`~.RelationshipProperty.Comparator.contains`
+            :meth:`~.Relationship.Comparator.contains`
             will **not** work with many-to-many collections when
             used in queries that move beyond simple AND
             conjunctions, such as multiple
-            :meth:`~.RelationshipProperty.Comparator.contains`
+            :meth:`~.Relationship.Comparator.contains`
             expressions joined by OR. In such cases subqueries or
             explicit "outer joins" will need to be used instead.
-            See :meth:`~.RelationshipProperty.Comparator.any` for
+            See :meth:`~.Relationship.Comparator.any` for
             a less-performant alternative using EXISTS, or refer
             to :meth:`_query.Query.outerjoin`
             as well as :ref:`ormtutorial_joins`
@@ -818,7 +845,7 @@ class RelationshipProperty(StrategizedProperty[_T]):
 
             * Comparisons against collections are not supported.
               Use
-              :meth:`~.RelationshipProperty.Comparator.contains`
+              :meth:`~.Relationship.Comparator.contains`
               in conjunction with :func:`_expression.not_`.
             * Compared to a scalar one-to-many, will produce a
               clause that compares the target columns in the parent to
@@ -830,7 +857,7 @@ class RelationshipProperty(StrategizedProperty[_T]):
               queries that go beyond simple AND conjunctions of
               comparisons, such as those which use OR. Use
               explicit joins, outerjoins, or
-              :meth:`~.RelationshipProperty.Comparator.has` in
+              :meth:`~.Relationship.Comparator.has` in
               conjunction with :func:`_expression.not_` for
               more comprehensive non-many-to-one scalar
               membership tests.
@@ -1249,7 +1276,7 @@ class RelationshipProperty(StrategizedProperty[_T]):
 
     def _add_reverse_property(self, key):
         other = self.mapper.get_property(key, _configure_mappers=False)
-        if not isinstance(other, RelationshipProperty):
+        if not isinstance(other, Relationship):
             raise sa_exc.InvalidRequestError(
                 "back_populates on relationship '%s' refers to attribute '%s' "
                 "that is not a relationship.  The back_populates parameter "
@@ -1268,6 +1295,8 @@ class RelationshipProperty(StrategizedProperty[_T]):
 
         self._reverse_property.add(other)
         other._reverse_property.add(self)
+
+        other._setup_entity()
 
         if not other.mapper.common_parent(self.parent):
             raise sa_exc.ArgumentError(
@@ -1289,48 +1318,18 @@ class RelationshipProperty(StrategizedProperty[_T]):
             )
 
     @util.memoized_property
-    @util.preload_module("sqlalchemy.orm.mapper")
-    def entity(self):
+    def entity(self) -> Union["Mapper", "AliasedInsp"]:
         """Return the target mapped entity, which is an inspect() of the
         class or aliased class that is referred towards.
 
         """
-
-        mapperlib = util.preloaded.orm_mapper
-
-        if isinstance(self.argument, str):
-            argument = self._clsregistry_resolve_name(self.argument)()
-
-        elif callable(self.argument) and not isinstance(
-            self.argument, (type, mapperlib.Mapper)
-        ):
-            argument = self.argument()
-        else:
-            argument = self.argument
-
-        if isinstance(argument, type):
-            return mapperlib.class_mapper(argument, configure=False)
-
-        try:
-            entity = inspect(argument)
-        except sa_exc.NoInspectionAvailable:
-            pass
-        else:
-            if hasattr(entity, "mapper"):
-                return entity
-
-        raise sa_exc.ArgumentError(
-            "relationship '%s' expects "
-            "a class or a mapper argument (received: %s)"
-            % (self.key, type(argument))
-        )
+        self.parent._check_configure()
+        return self.entity
 
     @util.memoized_property
-    def mapper(self):
+    def mapper(self) -> "Mapper":
         """Return the targeted :class:`_orm.Mapper` for this
-        :class:`.RelationshipProperty`.
-
-        This is a lazy-initializing static attribute.
+        :class:`.Relationship`.
 
         """
         return self.entity.mapper
@@ -1338,13 +1337,14 @@ class RelationshipProperty(StrategizedProperty[_T]):
     def do_init(self):
         self._check_conflicts()
         self._process_dependent_arguments()
+        self._setup_entity()
         self._setup_registry_dependencies()
         self._setup_join_conditions()
         self._check_cascade_settings(self._cascade)
         self._post_init()
         self._generate_backref()
         self._join_condition._warn_for_conflicting_sync_targets()
-        super(RelationshipProperty, self).do_init()
+        super(Relationship, self).do_init()
         self._lazy_strategy = self._get_strategy((("lazy", "select"),))
 
     def _setup_registry_dependencies(self):
@@ -1432,6 +1432,84 @@ class RelationshipProperty(StrategizedProperty[_T]):
             for x in util.to_column_set(self.remote_side)
         )
 
+    def declarative_scan(
+        self, registry, cls, key, annotation, is_dataclass_field
+    ):
+        argument = _extract_mapped_subtype(
+            annotation,
+            cls,
+            key,
+            Relationship,
+            self.argument is None,
+            is_dataclass_field,
+        )
+        if argument is None:
+            return
+
+        if hasattr(argument, "__origin__"):
+
+            collection_class = argument.__origin__
+            if issubclass(collection_class, abc.Collection):
+                if self.collection_class is None:
+                    self.collection_class = collection_class
+            else:
+                self.uselist = False
+            if argument.__args__:
+                if issubclass(argument.__origin__, typing.Mapping):
+                    type_arg = argument.__args__[1]
+                else:
+                    type_arg = argument.__args__[0]
+                if hasattr(type_arg, "__forward_arg__"):
+                    str_argument = type_arg.__forward_arg__
+                    argument = str_argument
+                else:
+                    argument = type_arg
+            else:
+                raise sa_exc.ArgumentError(
+                    f"Generic alias {argument} requires an argument"
+                )
+        elif hasattr(argument, "__forward_arg__"):
+            argument = argument.__forward_arg__
+
+        self.argument = argument
+
+    @util.preload_module("sqlalchemy.orm.mapper")
+    def _setup_entity(self, __argument=None):
+        if "entity" in self.__dict__:
+            return
+
+        mapperlib = util.preloaded.orm_mapper
+
+        if __argument:
+            argument = __argument
+        else:
+            argument = self.argument
+
+        if isinstance(argument, str):
+            argument = self._clsregistry_resolve_name(argument)()
+        elif callable(argument) and not isinstance(
+            argument, (type, mapperlib.Mapper)
+        ):
+            argument = argument()
+        else:
+            argument = argument
+
+        if isinstance(argument, type):
+            entity = mapperlib.class_mapper(argument, configure=False)
+        else:
+            try:
+                entity = inspect(argument)
+            except sa_exc.NoInspectionAvailable:
+                entity = None
+
+            if not hasattr(entity, "mapper"):
+                raise sa_exc.ArgumentError(
+                    "relationship '%s' expects "
+                    "a class or a mapper argument (received: %s)"
+                    % (self.key, type(argument))
+                )
+
+        self.entity = entity  # type: ignore
         self.target = self.entity.persist_selectable
 
     def _setup_join_conditions(self):
@@ -1502,7 +1580,7 @@ class RelationshipProperty(StrategizedProperty[_T]):
     @property
     def cascade(self):
         """Return the current cascade setting for this
-        :class:`.RelationshipProperty`.
+        :class:`.Relationship`.
         """
         return self._cascade
 
@@ -1666,7 +1744,7 @@ class RelationshipProperty(StrategizedProperty[_T]):
             kwargs.setdefault("passive_updates", self.passive_updates)
             kwargs.setdefault("sync_backref", self.sync_backref)
             self.back_populates = backref_key
-            relationship = RelationshipProperty(
+            relationship = Relationship(
                 parent,
                 self.secondary,
                 pj,

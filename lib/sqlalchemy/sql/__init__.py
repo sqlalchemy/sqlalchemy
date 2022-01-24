@@ -75,6 +75,7 @@ from .expression import quoted_name as quoted_name
 from .expression import Select as Select
 from .expression import select as select
 from .expression import Selectable as Selectable
+from .expression import SelectLabelStyle as SelectLabelStyle
 from .expression import StatementLambdaElement as StatementLambdaElement
 from .expression import Subquery as Subquery
 from .expression import table as table

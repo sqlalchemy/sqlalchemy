@@ -14,7 +14,7 @@ import re
 
 from . import events  # noqa
 from .elements import _NONE_NAME
-from .elements import conv
+from .elements import conv as conv
 from .schema import CheckConstraint
 from .schema import Column
 from .schema import Constraint

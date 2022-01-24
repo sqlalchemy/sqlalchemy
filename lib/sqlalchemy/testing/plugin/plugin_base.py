@@ -19,6 +19,7 @@ import logging
 import os
 import re
 import sys
+from typing import Any
 
 from sqlalchemy.testing import asyncio
 
@@ -738,7 +739,7 @@ class FixtureFunctions(abc.ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def mark_base_test_class(self):
+    def mark_base_test_class(self) -> Any:
         raise NotImplementedError()
 
     @abc.abstractproperty
