@@ -106,6 +106,14 @@ def mark_base_test_class():
     return _fixture_functions.mark_base_test_class()
 
 
+class _AddToMarker:
+    def __getattr__(self, attr):
+        return getattr(_fixture_functions.add_to_marker, attr)
+
+
+add_to_marker = _AddToMarker()
+
+
 class Config:
     def __init__(self, db, db_opts, options, file_config):
         self._set_name(db)

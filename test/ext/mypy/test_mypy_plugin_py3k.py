@@ -10,6 +10,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 
 
+@testing.add_to_marker.mypy
 class MypyPluginTest(fixtures.TestBase):
     __requires__ = ("sqlalchemy2_stubs",)
 

@@ -12,7 +12,7 @@ target-version = ['py37']
 
 
 [tool.pytest.ini_options]
-addopts = "--tb native -v -r sfxX --maxfail=250 -p warnings -p logging"
+addopts = "--tb native -v -r sfxX --maxfail=250 -p warnings -p logging --strict-markers"
 python_files = "test/*test_*.py"
 minversion = "6.2"
 filterwarnings = [
@@ -23,7 +23,13 @@ filterwarnings = [
     "error::DeprecationWarning:test",
     "error::DeprecationWarning:sqlalchemy"
 ]
-
+markers = [
+    "memory_intensive: memory / CPU intensive suite tests",
+    "mypy: mypy integration / plugin tests",
+    "timing_intensive: time-oriented tests that are sensitive to race conditions",
+    "backend: tests that should run on all backends; typically dialect-sensitive",
+    "sparse_backend: tests that should run on multiple backends, not necessarily all",
+]
 
 [tool.pyright]
 include = [

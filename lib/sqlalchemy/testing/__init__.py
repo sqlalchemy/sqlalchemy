@@ -42,6 +42,7 @@ from .assertions import not_in
 from .assertions import not_in_
 from .assertions import startswith_
 from .assertions import uses_deprecated
+from .config import add_to_marker
 from .config import async_test
 from .config import combinations
 from .config import combinations_list
