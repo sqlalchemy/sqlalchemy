@@ -70,15 +70,15 @@ def pytest_addoption(parser):
 
 def pytest_configure(config):
     if plugin_base.exclude_tags or plugin_base.include_tags:
-        if config.option.markexpr:
-            raise ValueError(
-                "Can't combine explicit pytest marks with legacy options "
-                "such as --backend-only, --exclude-tags, etc. "
-            )
-        config.option.markexpr = " and ".join(
+        new_expr = " and ".join(
             list(plugin_base.include_tags)
             + [f"not {tag}" for tag in plugin_base.exclude_tags]
         )
+
+        if config.option.markexpr:
+            config.option.markexpr += f" and {new_expr}"
+        else:
+            config.option.markexpr = new_expr
 
     if config.pluginmanager.hasplugin("xdist"):
         config.pluginmanager.register(XDistHooks())
