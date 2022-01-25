@@ -655,6 +655,36 @@ class TransactionContextLoggingTest(fixtures.TestBase):
             ]
         )
 
+    def test_log_messages_have_correct_metadata(self, logging_engine):
+        buf = logging.handlers.BufferingHandler(100)
+        log = logging.getLogger("sqlalchemy.engine")
+        try:
+            log.addHandler(buf)
+
+            with logging_engine.connect().execution_options(
+                isolation_level="AUTOCOMMIT"
+            ) as conn:
+                conn.begin()
+                conn.rollback()
+        finally:
+            log.removeHandler(buf)
+
+        assert len(buf.buffer) >= 2
+
+        # log messages must originate from functions called 'begin'/'rollback'
+        logging_functions = {rec.funcName for rec in buf.buffer}
+        assert any(
+            "begin" in fn for fn in logging_functions
+        ), logging_functions
+        assert any(
+            "rollback" in fn for fn in logging_functions
+        ), logging_functions
+
+        # log messages must originate from different lines
+        log_lines = {rec.lineno for rec in buf.buffer}
+        assert len(log_lines) > 1, log_lines
+        buf.flush()
+
 
 class LoggingTokenTest(fixtures.TestBase):
     def setup_test(self):

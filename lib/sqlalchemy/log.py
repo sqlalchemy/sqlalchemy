@@ -161,7 +161,14 @@ class InstanceLogger:
 
         self.log(logging.CRITICAL, msg, *args, **kwargs)
 
-    def log(self, level: int, msg: str, *args: Any, **kwargs: Any) -> None:
+    def log(
+        self,
+        level: int,
+        msg: str,
+        *args: Any,
+        stacklevel: int = 1,
+        **kwargs: Any,
+    ) -> None:
         """Delegate a log call to the underlying logger.
 
         The level here is determined by the echo
@@ -181,7 +188,9 @@ class InstanceLogger:
             selected_level = self.logger.getEffectiveLevel()
 
         if level >= selected_level:
-            self.logger._log(level, msg, args, **kwargs)
+            self.logger._log(
+                level, msg, args, stacklevel=stacklevel + 1, **kwargs
+            )
 
     def isEnabledFor(self, level: int) -> bool:
         """Is this logger enabled for level 'level'?"""

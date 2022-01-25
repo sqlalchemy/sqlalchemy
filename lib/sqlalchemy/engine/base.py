@@ -136,7 +136,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         if fmt:
             message = fmt(message)
 
-        self.engine.logger.info(message, *arg, **kw)
+        self.engine.logger.info(message, *arg, stacklevel=2, **kw)
 
     def _log_debug(self, message, *arg, **kw):
         fmt = self._message_formatter
@@ -144,7 +144,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         if fmt:
             message = fmt(message)
 
-        self.engine.logger.debug(message, *arg, **kw)
+        self.engine.logger.debug(message, *arg, stacklevel=2, **kw)
 
     @property
     def _schema_translate_map(self):
