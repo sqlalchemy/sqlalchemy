@@ -17,6 +17,7 @@ to provide specific inclusion/exclusions.
 
 import platform
 
+from . import config
 from . import exclusions
 from . import only_on
 from .. import create_engine
@@ -1295,11 +1296,11 @@ class SuiteRequirements(Requirements):
 
     @property
     def timing_intensive(self):
-        return exclusions.requires_tag("timing_intensive")
+        return config.add_to_marker.timing_intensive
 
     @property
     def memory_intensive(self):
-        return exclusions.requires_tag("memory_intensive")
+        return config.add_to_marker.memory_intensive
 
     @property
     def threading_with_mock(self):

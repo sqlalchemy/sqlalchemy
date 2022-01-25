@@ -252,8 +252,8 @@ class EnsureZeroed(fixtures.ORMTest):
         )
 
 
+@testing.add_to_marker.memory_intensive
 class MemUsageTest(EnsureZeroed):
-    __tags__ = ("memory_intensive",)
     __requires__ = ("cpython", "no_windows")
 
     def test_type_compile(self):
@@ -347,9 +347,8 @@ class MemUsageTest(EnsureZeroed):
         go()
 
 
+@testing.add_to_marker.memory_intensive
 class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
-
-    __tags__ = ("memory_intensive",)
     __requires__ = "cpython", "memory_process_intensive", "no_asyncio"
     __sparse_backend__ = True
 
@@ -1150,8 +1149,8 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
             metadata.drop_all(self.engine)
 
 
+@testing.add_to_marker.memory_intensive
 class CycleTest(_fixtures.FixtureTest):
-    __tags__ = ("memory_intensive",)
     __requires__ = ("cpython", "no_windows")
 
     run_setup_mappers = "once"

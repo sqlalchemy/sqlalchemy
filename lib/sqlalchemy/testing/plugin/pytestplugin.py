@@ -69,6 +69,17 @@ def pytest_addoption(parser):
 
 
 def pytest_configure(config):
+    if plugin_base.exclude_tags or plugin_base.include_tags:
+        if config.option.markexpr:
+            raise ValueError(
+                "Can't combine explicit pytest marks with legacy options "
+                "such as --backend-only, --exclude-tags, etc. "
+            )
+        config.option.markexpr = " and ".join(
+            list(plugin_base.include_tags)
+            + [f"not {tag}" for tag in plugin_base.exclude_tags]
+        )
+
     if config.pluginmanager.hasplugin("xdist"):
         config.pluginmanager.register(XDistHooks())
 
@@ -206,18 +217,43 @@ def pytest_collection_modifyitems(session, config, items):
 
     def setup_test_classes():
         for test_class in test_classes:
+
+            # transfer legacy __backend__ and __sparse_backend__ symbols
+            # to be markers
+            add_markers = set()
+            if getattr(test_class.cls, "__backend__", False) or getattr(
+                test_class.cls, "__only_on__", False
+            ):
+                add_markers = {"backend"}
+            elif getattr(test_class.cls, "__sparse_backend__", False):
+                add_markers = {"sparse_backend"}
+            else:
+                add_markers = frozenset()
+
+            existing_markers = {
+                mark.name for mark in test_class.iter_markers()
+            }
+            add_markers = add_markers - existing_markers
+            all_markers = existing_markers.union(add_markers)
+
+            for marker in add_markers:
+                test_class.add_marker(marker)
+
             for sub_cls in plugin_base.generate_sub_tests(
-                test_class.cls, test_class.module
+                test_class.cls, test_class.module, all_markers
             ):
                 if sub_cls is not test_class.cls:
                     per_cls_dict = rebuilt_items[test_class.cls]
 
                     module = test_class.getparent(pytest.Module)
-                    for fn in collect(
-                        pytest.Class.from_parent(
-                            name=sub_cls.__name__, parent=module
-                        )
-                    ):
+
+                    new_cls = pytest.Class.from_parent(
+                        name=sub_cls.__name__, parent=module
+                    )
+                    for marker in add_markers:
+                        new_cls.add_marker(marker)
+
+                    for fn in collect(new_cls):
                         per_cls_dict[fn.name].append(fn)
 
     # class requirements will sometimes need to access the DB to check
@@ -572,6 +608,10 @@ def %(name)s%(grouped_args)s:
 class PytestFixtureFunctions(plugin_base.FixtureFunctions):
     def skip_test_exception(self, *arg, **kw):
         return pytest.skip.Exception(*arg, **kw)
+
+    @property
+    def add_to_marker(self):
+        return pytest.mark
 
     def mark_base_test_class(self):
         return pytest.mark.usefixtures(
