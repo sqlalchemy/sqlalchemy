@@ -2154,7 +2154,8 @@ class AttributeEvents(event.Events):
     These are typically defined on the class-bound descriptor for the
     target class.
 
-    e.g.::
+    For example, to register a listener that will receive the
+    :meth:`_orm.AttributeEvents.append` event::
 
         from sqlalchemy import event
 
@@ -2165,7 +2166,8 @@ class AttributeEvents(event.Events):
 
     Listeners have the option to return a possibly modified version of the
     value, when the :paramref:`.AttributeEvents.retval` flag is passed to
-    :func:`.event.listen` or :func:`.event.listens_for`::
+    :func:`.event.listen` or :func:`.event.listens_for`, such as below,
+    illustrated using the :meth:`_orm.AttributeEvents.set` event::
 
         def validate_phone(target, value, oldvalue, initiator):
             "Strip non-numeric characters from a phone number"
