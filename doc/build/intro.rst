@@ -126,6 +126,11 @@ approaches.
 Install via pip
 ---------------
 
+.. warning::  This section **does not apply until SQLAlchemy 2.0 is actually
+   released**, which as of January 26, 2022 the library is **not released yet**.
+   In the interim, these instructions **will not function** and will install
+   the latest 1.4 release.
+
 When ``pip`` is available, the distribution can be
 downloaded from PyPI and installed in one step::
 
