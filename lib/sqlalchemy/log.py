@@ -27,6 +27,7 @@ from typing import Type
 from typing import TypeVar
 from typing import Union
 
+from .util import py38
 from .util.typing import Literal
 
 _IT = TypeVar("_IT", bound="Identified")
@@ -181,6 +182,9 @@ class InstanceLogger:
             selected_level = self.logger.getEffectiveLevel()
 
         if level >= selected_level:
+            if py38:
+                kwargs["stacklevel"] = kwargs.get("stacklevel", 1) + 1
+
             self.logger._log(level, msg, args, **kwargs)
 
     def isEnabledFor(self, level: int) -> bool:
