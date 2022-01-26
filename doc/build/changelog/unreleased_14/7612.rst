@@ -1,0 +1,6 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 7612
+
+    Log messages emitted via sqlalchemy.engine.base and sqlalchemy.log now
+    report correct function names and line numbers.
