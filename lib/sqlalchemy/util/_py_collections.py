@@ -196,7 +196,7 @@ class OrderedSet(Set[_T]):
         other_set = super().difference(*other)
         return self.__class__(a for a in self._list if a in other_set)
 
-    def __sub__(self, other: AbstractSet[_T | None]) -> "OrderedSet[_T]":
+    def __sub__(self, other: AbstractSet[Optional[_T]]) -> "OrderedSet[_T]":
         return self.difference(other)
 
     def intersection_update(self, *other: Iterable[Any]) -> None:
@@ -220,7 +220,7 @@ class OrderedSet(Set[_T]):
         super().difference_update(*other)
         self._list = [a for a in self._list if a in self]
 
-    def __isub__(self, other: AbstractSet[_T | None]) -> "OrderedSet[_T]":
+    def __isub__(self, other: AbstractSet[Optional[_T]]) -> "OrderedSet[_T]":
         self.difference_update(other)
         return self
 
