@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, engine
+    :tickets: 7612
+
+    Adjusted the logging for key SQLAlchemy components including
+    :class:`_engine.Engine`, :class:`_engine.Connection` to establish an
+    appropriate stack level parameter, so that the Python logging tokens
+    ``funcName`` and ``lineno`` when used in custom logging formatters will
+    report the correct information, which can be useful when filtering log
+    output; supported on Python 3.8 and above. Pull request courtesy Markus
+    Gerstel.

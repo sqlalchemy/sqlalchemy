@@ -21,6 +21,7 @@ instance only.
 import logging
 import sys
 
+from .util import py38
 
 # set initial level to WARN.  This so that
 # log statements don't occur in the absence of explicit
@@ -160,6 +161,9 @@ class InstanceLogger(object):
             selected_level = self.logger.getEffectiveLevel()
 
         if level >= selected_level:
+            if py38:
+                kwargs["stacklevel"] = kwargs.get("stacklevel", 1) + 1
+
             self.logger._log(level, msg, args, **kwargs)
 
     def isEnabledFor(self, level):

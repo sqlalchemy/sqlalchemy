@@ -133,6 +133,9 @@ class Connection(Connectable):
         if fmt:
             message = fmt(message)
 
+        if util.py38:
+            kw["stacklevel"] = 2
+
         self.engine.logger.info(message, *arg, **kw)
 
     def _log_debug(self, message, *arg, **kw):
@@ -140,6 +143,9 @@ class Connection(Connectable):
 
         if fmt:
             message = fmt(message)
+
+        if util.py38:
+            kw["stacklevel"] = 2
 
         self.engine.logger.debug(message, *arg, **kw)
 
