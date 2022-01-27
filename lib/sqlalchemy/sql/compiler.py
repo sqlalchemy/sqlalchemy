@@ -4889,10 +4889,7 @@ class DDLCompiler(Compiled):
             for p in (
                 self.process(constraint)
                 for constraint in constraints
-                if (
-                    constraint._create_rule is None
-                    or constraint._create_rule(self)
-                )
+                if (constraint._should_create_for_compiler(self))
                 and (
                     not self.dialect.supports_alter
                     or not getattr(constraint, "use_alter", False)

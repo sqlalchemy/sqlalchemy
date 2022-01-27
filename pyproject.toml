@@ -79,7 +79,6 @@ module = [
     "sqlalchemy.ext.serializer",
 
     "sqlalchemy.sql.selectable",   # would be nice as strict
-    "sqlalchemy.sql.ddl",
     "sqlalchemy.sql.functions",  # would be nice as strict
     "sqlalchemy.sql.lambdas",
     "sqlalchemy.sql.dml",   # would be nice as strict
@@ -132,6 +131,7 @@ module = [
     "sqlalchemy.sql.coercions",
     "sqlalchemy.sql.compiler",
     "sqlalchemy.sql.crud",
+    "sqlalchemy.sql.ddl",  # would be nice as strict
     "sqlalchemy.sql.elements",    # would be nice as strict
     "sqlalchemy.sql.naming",
     "sqlalchemy.sql.schema",      # would be nice as strict
