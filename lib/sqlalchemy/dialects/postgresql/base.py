@@ -1058,7 +1058,54 @@ dialect in conjunction with the :class:`_schema.Table` construct:
 .. seealso::
 
     `PostgreSQL CREATE TABLE options
-    <https://www.postgresql.org/docs/current/static/sql-createtable.html>`_
+    <https://www.postgresql.org/docs/current/static/sql-createtable.html>`_ -
+    in the PostgreSQL documentation.
+
+.. _postgresql_constraint_options:
+
+PostgreSQL Constraint Options
+-----------------------------
+
+The following option(s) are supported by the PostgreSQL dialect in conjunction
+with selected constraint constructs:
+
+* ``NOT VALID``:  This option applies towards CHECK and FOREIGN KEY constraints
+  when the constraint is being added to an existing table via ALTER TABLE,
+  and has the effect that existing rows are not scanned during the ALTER
+  operation against the constraint being added.
+
+  When using a SQL migration tool such as `Alembic <https://alembic.sqlalchemy.org>`_
+  that renders ALTER TABLE constructs, the ``postgresql_not_valid`` argument
+  may be specified as an additional keyword argument within the operation
+  that creates the constraint, as in the following Alembic example::
+
+        def update():
+            op.create_foreign_key(
+                "fk_user_address",
+                "address",
+                "user",
+                ["user_id"],
+                ["id"],
+                postgresql_not_valid=True
+            )
+
+  The keyword is ultimately accepted directly by the
+  :class:`_schema.CheckConstraint`, :class:`_schema.ForeignKeyConstraint`
+  and :class:`_schema.ForeignKey` constructs; when using a tool like
+  Alembic, dialect-specific keyword arguments are passed through to
+  these constructs from the migration operation directives::
+
+       CheckConstraint("some_field IS NOT NULL", postgresql_not_valid=True)
+
+       ForeignKeyConstraint(["some_id"], ["some_table.some_id"], postgresql_not_valid=True)
+
+  .. versionadded:: 1.4.32
+
+  .. seealso::
+
+      `PostgreSQL ALTER TABLE options
+      <https://www.postgresql.org/docs/current/static/sql-altertable.html>`_ -
+      in the PostgreSQL documentation.
 
 .. _postgresql_table_valued_overview:
 
@@ -2580,6 +2627,10 @@ class PGDDLCompiler(compiler.DDLCompiler):
             colspec += " NULL"
         return colspec
 
+    def _define_constraint_validity(self, constraint):
+        not_valid = constraint.dialect_options["postgresql"]["not_valid"]
+        return " NOT VALID" if not_valid else ""
+
     def visit_check_constraint(self, constraint):
         if constraint._type_bound:
             typ = list(constraint.columns)[0].type
@@ -2594,7 +2645,16 @@ class PGDDLCompiler(compiler.DDLCompiler):
                     "create_constraint=False on this Enum datatype."
                 )
 
-        return super(PGDDLCompiler, self).visit_check_constraint(constraint)
+        text = super(PGDDLCompiler, self).visit_check_constraint(constraint)
+        text += self._define_constraint_validity(constraint)
+        return text
+
+    def visit_foreign_key_constraint(self, constraint):
+        text = super(PGDDLCompiler, self).visit_foreign_key_constraint(
+            constraint
+        )
+        text += self._define_constraint_validity(constraint)
+        return text
 
     def visit_drop_table_comment(self, drop):
         return "COMMENT ON TABLE %s IS NULL" % self.preparer.format_table(
@@ -3208,6 +3268,18 @@ class PGDialect(default.DefaultDialect):
                 "with_oids": None,
                 "on_commit": None,
                 "inherits": None,
+            },
+        ),
+        (
+            schema.CheckConstraint,
+            {
+                "not_valid": False,
+            },
+        ),
+        (
+            schema.ForeignKeyConstraint,
+            {
+                "not_valid": False,
             },
         ),
     ]
