@@ -43,7 +43,7 @@ class TransactionalContext:
 
     """
 
-    __slots__ = ("_outer_trans_ctx", "_trans_subject")
+    __slots__ = ("_outer_trans_ctx", "_trans_subject", "__weakref__")
 
     def _transaction_is_active(self):
         raise NotImplementedError()
