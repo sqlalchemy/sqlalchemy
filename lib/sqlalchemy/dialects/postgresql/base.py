@@ -8,7 +8,7 @@
 r"""
 .. dialect:: postgresql
     :name: PostgreSQL
-    :full_support: 9.6, 10, 11, 12, 13
+    :full_support: 9.6, 10, 11, 12, 13, 14
     :normal_support: 9.6+
     :best_effort: 8+
 
