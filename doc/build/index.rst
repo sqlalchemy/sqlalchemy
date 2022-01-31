@@ -47,7 +47,7 @@ SQLAlchemy Documentation
     SQLAlchemy APIs that have evolved over more than 15 years.   The
     SQLAlchemy tutorial provides a holistic view of the library, integrating
     Core and ORM features in a narrative style that is optimized towards
-    establihsing a solid understanding of the foundations upon which
+    establishing a solid understanding of the foundations upon which
     SQLAlchemy is built on.  The tutorials are recommended for all new users
     as well as veterans of older SQLAlchemy versions alike.
 
