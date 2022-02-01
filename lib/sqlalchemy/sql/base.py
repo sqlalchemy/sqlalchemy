@@ -639,6 +639,8 @@ class _MetaOptions(type):
 class Options(metaclass=_MetaOptions):
     """A cacheable option dictionary with defaults."""
 
+    __slots__ = ()
+
     def __init_subclass__(cls) -> None:
         dict_ = cls.__dict__
         cls._cache_attrs = tuple(

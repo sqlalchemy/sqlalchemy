@@ -43,7 +43,7 @@ class TransactionalContext:
 
     """
 
-    _trans_subject = None
+    __slots__ = ("_outer_trans_ctx", "_trans_subject", "__weakref__")
 
     def _transaction_is_active(self):
         raise NotImplementedError()
@@ -95,7 +95,7 @@ class TransactionalContext:
         return self
 
     def __exit__(self, type_, value, traceback):
-        subject = self._trans_subject
+        subject = getattr(self, "_trans_subject", None)
 
         # simplistically we could assume that
         # "subject._trans_context_manager is self".  However, any calling

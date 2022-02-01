@@ -456,6 +456,9 @@ class UOWTransaction:
 
 
 class IterateMappersMixin:
+
+    __slots__ = ()
+
     def _mappers(self, uow):
         if self.fromparent:
             return iter(

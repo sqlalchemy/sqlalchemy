@@ -6,6 +6,9 @@ def _immutable_fn(obj):
 
 
 class ImmutableContainer:
+
+    __slots__ = ()
+
     def _immutable(self, *a,**kw):
         _immutable_fn(self)
 

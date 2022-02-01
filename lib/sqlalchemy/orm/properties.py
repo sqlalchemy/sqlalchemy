@@ -64,7 +64,6 @@ class ColumnProperty(StrategizedProperty[_T]):
         "descriptor",
         "active_history",
         "expire_on_flush",
-        "info",
         "doc",
         "strategy_key",
         "_creation_order",
