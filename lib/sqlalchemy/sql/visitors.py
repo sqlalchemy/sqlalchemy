@@ -508,6 +508,8 @@ class ExtendedInternalTraversal(InternalTraversal):
 
     """
 
+    __slots__ = ()
+
     dp_ignore = symbol("IG")
     """Specify an object that should be ignored entirely.
 
