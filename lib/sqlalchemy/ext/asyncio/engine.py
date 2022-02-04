@@ -7,6 +7,7 @@
 from . import exc as async_exc
 from .base import ProxyComparable
 from .base import StartableContext
+from .result import _ensure_sync_result
 from .result import AsyncResult
 from ... import exc
 from ... import inspection
@@ -380,15 +381,8 @@ class AsyncConnection(ProxyComparable, StartableContext, AsyncConnectable):
             execution_options,
             _require_await=True,
         )
-        if result.context._is_server_side:
-            raise async_exc.AsyncMethodRequired(
-                "Can't use the connection.exec_driver_sql() method with a "
-                "server-side cursor."
-                "Use the connection.stream() method for an async "
-                "streaming result set."
-            )
 
-        return result
+        return await _ensure_sync_result(result, self.exec_driver_sql)
 
     async def stream(
         self,
@@ -461,14 +455,7 @@ class AsyncConnection(ProxyComparable, StartableContext, AsyncConnectable):
             execution_options,
             _require_await=True,
         )
-        if result.context._is_server_side:
-            raise async_exc.AsyncMethodRequired(
-                "Can't use the connection.execute() method with a "
-                "server-side cursor."
-                "Use the connection.stream() method for an async "
-                "streaming result set."
-            )
-        return result
+        return await _ensure_sync_result(result, self.execute)
 
     async def scalar(
         self,

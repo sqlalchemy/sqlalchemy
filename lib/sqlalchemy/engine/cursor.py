@@ -1786,6 +1786,7 @@ class CursorResult(BaseCursorResult, Result):
     _cursor_metadata = CursorResultMetaData
     _cursor_strategy_cls = CursorFetchStrategy
     _no_result_metadata = _NO_RESULT_METADATA
+    _is_cursor = True
 
     def _fetchiter_impl(self):
         fetchone = self.cursor_strategy.fetchone

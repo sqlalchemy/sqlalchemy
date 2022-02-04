@@ -292,6 +292,7 @@ class ResultInternal(InPlaceGenerative):
     _generate_rows = True
     _unique_filter_state = None
     _post_creational_filter = None
+    _is_cursor = False
 
     @HasMemoized.memoized_attribute
     def _row_getter(self):

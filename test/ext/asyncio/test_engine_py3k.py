@@ -18,6 +18,7 @@ from sqlalchemy import union_all
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.ext.asyncio import engine as _async_engine
+from sqlalchemy.ext.asyncio import exc as async_exc
 from sqlalchemy.ext.asyncio import exc as asyncio_exc
 from sqlalchemy.ext.asyncio.base import ReversibleProxy
 from sqlalchemy.ext.asyncio.engine import AsyncConnection
@@ -719,6 +720,32 @@ class AsyncInspection(EngineFixture):
 
 
 class AsyncResultTest(EngineFixture):
+    @async_test
+    async def test_no_ss_cursor_w_execute(self, async_engine):
+        users = self.tables.users
+        async with async_engine.connect() as conn:
+            conn = await conn.execution_options(stream_results=True)
+            with expect_raises_message(
+                async_exc.AsyncMethodRequired,
+                r"Can't use the AsyncConnection.execute\(\) method with a "
+                r"server-side cursor. Use the AsyncConnection.stream\(\) "
+                r"method for an async streaming result set.",
+            ):
+                await conn.execute(select(users))
+
+    @async_test
+    async def test_no_ss_cursor_w_exec_driver_sql(self, async_engine):
+        async with async_engine.connect() as conn:
+            conn = await conn.execution_options(stream_results=True)
+            with expect_raises_message(
+                async_exc.AsyncMethodRequired,
+                r"Can't use the AsyncConnection.exec_driver_sql\(\) "
+                r"method with a "
+                r"server-side cursor. Use the AsyncConnection.stream\(\) "
+                r"method for an async streaming result set.",
+            ):
+                await conn.exec_driver_sql("SELECT * FROM users")
+
     @testing.combinations(
         (None,), ("scalars",), ("mappings",), argnames="filter_"
     )
