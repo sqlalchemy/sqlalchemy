@@ -2704,9 +2704,18 @@ class MySQLDialect(default.DefaultDialect):
         ]
 
     def initialize(self, connection):
+        # this is driver-based, does not need server version info
+        # and is fairly critical for even basic SQL operations
         self._connection_charset = self._detect_charset(connection)
+
+        # call super().initialize() because we need to have
+        # server_version_info set up.  in 1.4 under python 2 only this does the
+        # "check unicode returns" thing, which is the one area that some
+        # SQL gets compiled within initialize() currently
+        default.DefaultDialect.initialize(self, connection)
+
         self._detect_sql_mode(connection)
-        self._detect_ansiquotes(connection)
+        self._detect_ansiquotes(connection)  # depends on sql mode
         self._detect_casing(connection)
         if self._server_ansiquotes:
             # if ansiquotes == True, build a new IdentifierPreparer
@@ -2714,8 +2723,6 @@ class MySQLDialect(default.DefaultDialect):
             self.identifier_preparer = self.preparer(
                 self, server_ansiquotes=self._server_ansiquotes
             )
-
-        default.DefaultDialect.initialize(self, connection)
 
         self.supports_sequences = (
             self.is_mariadb and self.server_version_info >= (10, 3)
@@ -3102,6 +3109,23 @@ class MySQLDialect(default.DefaultDialect):
             sql = parser._describe_to_create(table_name, columns)
         return parser.parse(sql, charset)
 
+    def _fetch_setting(self, connection, setting_name):
+        charset = self._connection_charset
+
+        if self.server_version_info and self.server_version_info < (5, 6):
+            sql = "SHOW VARIABLES LIKE '%s'" % setting_name
+            fetch_col = 1
+        else:
+            sql = "SELECT @@%s" % setting_name
+            fetch_col = 0
+
+        show_var = connection.exec_driver_sql(sql)
+        row = self._compat_first(show_var, charset=charset)
+        if not row:
+            return None
+        else:
+            return row[fetch_col]
+
     def _detect_charset(self, connection):
         raise NotImplementedError()
 
@@ -3114,22 +3138,18 @@ class MySQLDialect(default.DefaultDialect):
         """
         # https://dev.mysql.com/doc/refman/en/identifier-case-sensitivity.html
 
-        charset = self._connection_charset
-        show_var = connection.exec_driver_sql(
-            "SELECT @@lower_case_table_names"
-        )
-        row = self._compat_first(show_var, charset=charset)
-        if not row:
+        setting = self._fetch_setting(connection, "lower_case_table_names")
+        if setting is None:
             cs = 0
         else:
             # 4.0.15 returns OFF or ON according to [ticket:489]
             # 3.23 doesn't, 4.0.27 doesn't..
-            if row[0] == "OFF":
+            if setting == "OFF":
                 cs = 0
-            elif row[0] == "ON":
+            elif setting == "ON":
                 cs = 1
             else:
-                cs = int(row[0])
+                cs = int(setting)
         self._casing = cs
         return cs
 
@@ -3147,19 +3167,16 @@ class MySQLDialect(default.DefaultDialect):
         return collations
 
     def _detect_sql_mode(self, connection):
-        row = self._compat_first(
-            connection.exec_driver_sql("SELECT @@sql_mode"),
-            charset=self._connection_charset,
-        )
+        setting = self._fetch_setting(connection, "sql_mode")
 
-        if not row:
+        if setting is None:
             util.warn(
                 "Could not retrieve SQL_MODE; please ensure the "
                 "MySQL user has permissions to SHOW VARIABLES"
             )
             self._sql_mode = ""
         else:
-            self._sql_mode = row[0] or ""
+            self._sql_mode = setting or ""
 
     def _detect_ansiquotes(self, connection):
         """Detect and adjust for the ANSI_QUOTES sql mode."""

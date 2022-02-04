@@ -1079,7 +1079,11 @@ class ExpireTest(_fixtures.FixtureTest):
         self.mapper_registry.map_imperatively(
             User,
             users,
-            properties={"addresses": relationship(Address, backref="user")},
+            properties={
+                "addresses": relationship(
+                    Address, backref="user", order_by=addresses.c.id
+                )
+            },
         )
         self.mapper_registry.map_imperatively(Address, addresses)
 
