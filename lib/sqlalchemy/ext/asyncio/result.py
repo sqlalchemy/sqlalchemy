@@ -7,6 +7,7 @@
 
 import operator
 
+from . import exc as async_exc
 from ...engine.result import _NO_ROW
 from ...engine.result import FilterResult
 from ...engine.result import FrozenResult
@@ -646,3 +647,24 @@ class AsyncMappingResult(AsyncCommon):
 
         """
         return await greenlet_spawn(self._only_one_row, True, True, False)
+
+
+async def _ensure_sync_result(result, calling_method):
+    if not result._is_cursor:
+        cursor_result = getattr(result, "raw", None)
+    else:
+        cursor_result = result
+    if cursor_result and cursor_result.context._is_server_side:
+        await greenlet_spawn(cursor_result.close)
+        raise async_exc.AsyncMethodRequired(
+            "Can't use the %s.%s() method with a "
+            "server-side cursor. "
+            "Use the %s.stream() method for an async "
+            "streaming result set."
+            % (
+                calling_method.__self__.__class__.__name__,
+                calling_method.__name__,
+                calling_method.__self__.__class__.__name__,
+            )
+        )
+    return result

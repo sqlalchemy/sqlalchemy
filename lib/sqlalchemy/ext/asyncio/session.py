@@ -8,6 +8,7 @@ from . import engine
 from . import result as _result
 from .base import ReversibleProxy
 from .base import StartableContext
+from .result import _ensure_sync_result
 from ... import util
 from ...orm import object_session
 from ...orm import Session
@@ -208,7 +209,7 @@ class AsyncSession(ReversibleProxy):
         else:
             execution_options = _EXECUTE_OPTIONS
 
-        return await greenlet_spawn(
+        result = await greenlet_spawn(
             self.sync_session.execute,
             statement,
             params=params,
@@ -216,6 +217,7 @@ class AsyncSession(ReversibleProxy):
             bind_arguments=bind_arguments,
             **kw
         )
+        return await _ensure_sync_result(result, self.execute)
 
     async def scalar(
         self,
