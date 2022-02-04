@@ -5,6 +5,7 @@ import datetime
 from sqlalchemy import bindparam
 from sqlalchemy import Column
 from sqlalchemy import DateTime
+from sqlalchemy import event
 from sqlalchemy import exc
 from sqlalchemy import func
 from sqlalchemy import Integer
@@ -32,6 +33,35 @@ class BackendDialectTest(
     __backend__ = True
     __only_on__ = "mysql", "mariadb"
 
+    @testing.fixture
+    def mysql_version_dialect(self, testing_engine):
+        """yield a MySQL engine that will simulate a specific version.
+
+        patches out various methods to not fail
+
+        """
+        engine = testing_engine()
+        _server_version = [None]
+        with mock.patch.object(
+            engine.dialect,
+            "_get_server_version_info",
+            lambda conn: engine.dialect._parse_server_version(
+                _server_version[0]
+            ),
+        ), mock.patch.object(
+            engine.dialect, "_set_mariadb", lambda *arg: None
+        ), mock.patch.object(
+            engine.dialect,
+            "get_isolation_level",
+            lambda *arg: "REPEATABLE READ",
+        ):
+
+            def go(server_version):
+                _server_version[0] = server_version
+                return engine
+
+            yield go
+
     def test_reserved_words_mysql_vs_mariadb(
         self, mysql_mariadb_reserved_words
     ):
@@ -54,7 +84,6 @@ class BackendDialectTest(
         )
 
     def test_no_show_variables(self):
-        from sqlalchemy.testing import mock
 
         engine = engines.testing_engine()
 
@@ -74,7 +103,6 @@ class BackendDialectTest(
                 engine.connect()
 
     def test_no_default_isolation_level(self):
-        from sqlalchemy.testing import mock
 
         engine = engines.testing_engine()
 
@@ -98,6 +126,43 @@ class BackendDialectTest(
                 "connection."
             ):
                 engine.connect()
+
+    @testing.combinations(
+        "10.5.12-MariaDB", "5.6.49", "5.0.2", argnames="server_version"
+    )
+    def test_variable_fetch(self, mysql_version_dialect, server_version):
+        """test #7518"""
+        engine = mysql_version_dialect(server_version)
+
+        fetches = []
+
+        # the initialize() connection does not seem to use engine-level events.
+        # not changing that here
+
+        @event.listens_for(engine, "do_execute_no_params")
+        @event.listens_for(engine, "do_execute")
+        def do_execute_no_params(cursor, statement, *arg):
+            if statement.startswith("SHOW VARIABLES") or statement.startswith(
+                "SELECT @@"
+            ):
+                fetches.append(statement)
+            return None
+
+        engine.connect()
+
+        if server_version == "5.0.2":
+            eq_(
+                fetches,
+                [
+                    "SHOW VARIABLES LIKE 'sql_mode'",
+                    "SHOW VARIABLES LIKE 'lower_case_table_names'",
+                ],
+            )
+        else:
+            eq_(
+                fetches,
+                ["SELECT @@sql_mode", "SELECT @@lower_case_table_names"],
+            )
 
     def test_autocommit_isolation_level(self):
         c = testing.db.connect().execution_options(

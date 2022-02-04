@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, mysql, regression
+    :tickets: 7518
+
+    Fixed regression caused by :ticket:`7518` where changing the syntax "SHOW
+    VARIABLES" to "SELECT @@" broke compatibility with MySQL versions older
+    than 5.6, including early 5.0 releases. While these are very old MySQL
+    versions, a change in compatibility was not planned, so version-specific
+    logic has been restored to fall back to "SHOW VARIABLES" for MySQL server
+    versions < 5.6.

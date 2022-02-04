@@ -89,9 +89,7 @@ class MySQLDialect_pyodbc(PyODBCConnector, MySQLDialect):
         # If it's decided that issuing that sort of SQL leaves you SOL, then
         # this can prefer the driver value.
         try:
-            value = connection.exec_driver_sql(
-                "select @@character_set_client"
-            ).scalar()
+            value = self._fetch_setting("character_set_client")
             if value:
                 return value
         except exc.DBAPIError:
