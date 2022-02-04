@@ -57,6 +57,8 @@ _T = TypeVar("_T", bound=Any)
 class OperatorType(Protocol):
     """describe an op() function."""
 
+    __slots__ = ()
+
     __name__: str
 
     def __call__(
