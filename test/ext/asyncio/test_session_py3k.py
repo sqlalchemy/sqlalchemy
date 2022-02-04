@@ -11,6 +11,7 @@ from sqlalchemy import testing
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import async_object_session
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import exc as async_exc
 from sqlalchemy.ext.asyncio.base import ReversibleProxy
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import selectinload
@@ -19,6 +20,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.testing import async_test
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
@@ -164,6 +166,28 @@ class AsyncSessionQueryTest(AsyncFixture):
                 self.static.user_address_result[3:],
             ],
         )
+
+    @testing.combinations("statement", "execute", argnames="location")
+    @async_test
+    async def test_no_ss_cursor_w_execute(self, async_session, location):
+        User = self.classes.User
+
+        stmt = select(User)
+        if location == "statement":
+            stmt = stmt.execution_options(stream_results=True)
+
+        with expect_raises_message(
+            async_exc.AsyncMethodRequired,
+            r"Can't use the AsyncSession.execute\(\) method with a "
+            r"server-side cursor. Use the AsyncSession.stream\(\) "
+            r"method for an async streaming result set.",
+        ):
+            if location == "execute":
+                await async_session.execute(
+                    stmt, execution_options={"stream_results": True}
+                )
+            else:
+                await async_session.execute(stmt)
 
 
 class AsyncSessionTransactionTest(AsyncFixture):
