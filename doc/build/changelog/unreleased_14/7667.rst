@@ -5,11 +5,14 @@
     Fixed issue where the :meth:`_asyncio.AsyncSession.execute` method failed
     to raise an informative exception if the ``stream_results`` execution
     option were used, which is incompatible with a sync-style
-    :class:`_result.Result` object. An exception is now raised in this scenario
-    in the same way one is already raised when using ``stream_results`` in
-    conjunction with the :meth:`_asyncio.AsyncConnection.execute` method.
-    Additionally, for improved stability with state-sensitive dialects such as
-    asyncmy, the cursor is now closed when this error condition is raised;
-    previously with the asyncmy dialect, the connection would go into an
-    invalid state with unconsumed server side results remaining.
+    :class:`_result.Result` object when using an asyncio calling style, as the
+    operation to fetch more rows would need to be awaited. An exception is now
+    raised in this scenario in the same way one was already raised when the
+    ``stream_results`` option would be used with the
+    :meth:`_asyncio.AsyncConnection.execute` method.
+
+    Additionally, for improved stability with state-sensitive database drivers
+    such as asyncmy, the cursor is now closed when this error condition is
+    raised; previously with the asyncmy dialect, the connection would go into
+    an invalid state with unconsumed server side results remaining.
 
