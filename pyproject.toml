@@ -10,6 +10,9 @@
 line-length = 79
 target-version = ['py37']
 
+[tool.slotscheck]
+exclude-modules = '^sqlalchemy\.testing'
+
 
 [tool.pytest.ini_options]
 addopts = "--tb native -v -r sfxX --maxfail=250 -p warnings -p logging --strict-markers"

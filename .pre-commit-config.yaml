@@ -27,6 +27,13 @@ repos:
           - pydocstyle
           - pygments
 
-
-
-
+-   repo: https://github.com/ariebovenberg/slotscheck
+    rev: v0.11.0
+    hooks:
+    -   id: slotscheck
+        exclude: "^(?!lib/sqlalchemy)"
+        additional_dependencies:
+          - typing_extensions
+          - mypy
+          - greenlet
+        entry: env PYTHONPATH=lib slotscheck -v
