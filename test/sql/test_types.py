@@ -4016,3 +4016,30 @@ class LiteralTest(fixtures.TestBase):
             dialect=testing.db.dialect,
             compile_kwargs={"literal_binds": True},
         )
+
+
+class ResolveForLiteralTest(fixtures.TestBase):
+    """test suite for literal resolution, includes tests for
+    #7537 and #7551
+
+    """
+
+    @testing.combinations(
+        (
+            datetime.datetime(
+                2012, 10, 15, 12, 57, 18, tzinfo=datetime.timezone.utc
+            ),
+            sqltypes.DATETIME_TIMEZONE,
+        ),
+        (datetime.datetime(2012, 10, 15, 12, 57, 18, 396), sqltypes._DATETIME),
+        (
+            datetime.time(12, 57, 18, tzinfo=datetime.timezone.utc),
+            sqltypes.TIME_TIMEZONE,
+        ),
+        (datetime.time(12, 57, 18), sqltypes._TIME),
+        ("réve🐍 illé", sqltypes._UNICODE),
+        ("hello", sqltypes._STRING),
+        ("réveillé", sqltypes._UNICODE),
+    )
+    def test_resolve(self, value, expected):
+        is_(literal(value).type, expected)

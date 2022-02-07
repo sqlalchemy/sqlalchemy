@@ -1,0 +1,25 @@
+.. change::
+    :tags: bug, types
+    :tickets: 7551
+
+    Python string values for which a SQL type is determined from the type of
+    the value, mainly when using :func:`_sql.literal`, will now apply the
+    :class:`_types.String` type, rather than the :class:`_types.Unicode`
+    datatype, for Python string values that test as "ascii only" using Python
+    ``str.isascii()``. If the string is not ``isascii()``, the
+    :class:`_types.Unicode` datatype will be bound instead, which was used in
+    all string detection previously. This behavior **only applies to in-place
+    detection of datatypes when using ``literal()`` or other contexts that have
+    no existing datatype**, which is not usually the case under normal
+    :class:`_schema.Column` comparison operations, where the type of the
+    :class:`_schema.Column` being compared always takes precedence.
+
+    Use of the :class:`_types.Unicode` datatype can determine literal string
+    formatting on backends such as SQL Server, where a literal value (i.e.
+    using ``literal_binds``) will be rendered as ``N'<value>'`` instead of
+    ``'value'``. For normal bound value handling, the :class:`_types.Unicode`
+    datatype also may have implications for passing values to the DBAPI, again
+    in the case of SQL Server, the pyodbc driver supports the use of
+    :ref:`setinputsizes mode <mssql_pyodbc_setinputsizes>` which will handle
+    :class:`_types.String` versus :class:`_types.Unicode` differently.
+

@@ -184,6 +184,15 @@ class String(Concatenable, TypeEngine[typing_Text]):
         self.length = length
         self.collation = collation
 
+    def _resolve_for_literal(self, value):
+        # I was SO PROUD of my regex trick, but we dont need it.
+        # re.search(r"[^\u0000-\u007F]", value)
+
+        if value.isascii():
+            return _STRING
+        else:
+            return _UNICODE
+
     def literal_processor(self, dialect):
         def process(value):
             value = value.replace("'", "''")
@@ -3019,6 +3028,10 @@ MATCHTYPE = MatchType()
 TABLEVALUE = TableValueType()
 DATETIME_TIMEZONE = DateTime(timezone=True)
 TIME_TIMEZONE = Time(timezone=True)
+_DATETIME = DateTime()
+_TIME = Time()
+_STRING = String()
+_UNICODE = Unicode()
 
 _type_map = {
     int: Integer(),
@@ -3026,12 +3039,12 @@ _type_map = {
     bool: BOOLEANTYPE,
     decimal.Decimal: Numeric(),
     dt.date: Date(),
-    dt.datetime: DateTime(),
-    dt.time: Time(),
+    dt.datetime: _DATETIME,
+    dt.time: _TIME,
     dt.timedelta: Interval(),
     util.NoneType: NULLTYPE,
     bytes: LargeBinary(),
-    str: Unicode(),
+    str: _STRING,
 }
 
 

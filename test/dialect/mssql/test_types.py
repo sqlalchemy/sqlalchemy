@@ -1199,15 +1199,34 @@ class StringTest(fixtures.TestBase, AssertsCompiledSQL):
             literal_binds=True,
         )
 
-    def test_string_text_explicit_literal_binds(self):
-        # the literal expression here coerces the right side to
-        # Unicode on Python 3 for plain string, test with unicode
-        # string just to confirm literal is doing this
-        self.assert_compile(
-            column("x", String()) == literal("foo"),
-            "x = N'foo'",
-            literal_binds=True,
-        )
+    @testing.combinations(None, String(), Unicode(), argnames="coltype")
+    @testing.combinations(None, String(), Unicode(), argnames="literaltype")
+    @testing.combinations("réve🐍 illé", "hello", "réveillé", argnames="value")
+    def test_string_text_explicit_literal_binds(
+        self, coltype, literaltype, value
+    ):
+        """test #7551, dynamic coercion for string literals"""
+
+        lhs = column("x", coltype)
+        rhs = literal(value, type_=literaltype)
+
+        rhs_force_unicode = isinstance(literaltype, Unicode)
+        rhs_tests_as_unicode = literaltype is None and value != "hello"
+
+        should_it_be_n = rhs_force_unicode or rhs_tests_as_unicode
+
+        if should_it_be_n:
+            self.assert_compile(
+                lhs == rhs,
+                f"x = N'{value}'",
+                literal_binds=True,
+            )
+        else:
+            self.assert_compile(
+                lhs == rhs,
+                f"x = '{value}'",
+                literal_binds=True,
+            )
 
     def test_text_text_literal_binds(self):
         self.assert_compile(
