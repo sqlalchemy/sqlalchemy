@@ -18,6 +18,8 @@ _VT = TypeVar("_VT", bound=Any)
 
 
 class ImmutableContainer:
+    __slots__ = ()
+
     def _immutable(self, *arg: Any, **kw: Any) -> NoReturn:
         raise TypeError("%s object is immutable" % self.__class__.__name__)
 

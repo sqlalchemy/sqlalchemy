@@ -84,8 +84,8 @@ jobs:
       - name: Run tests
         run: tox -e mypy ${{ matrix.pytest-args }}
 
-  run-pep8:
-    name: pep8-${{ matrix.python-version }}
+  run-lint:
+    name: lint-${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       # run this job using this matrix, excluding some combinations below.
@@ -115,7 +115,7 @@ jobs:
           pip list
 
       - name: Run tests
-        run: tox -e pep8
+        run: tox -e lint
 
   # Arm emulation is quite slow (~20min) so for now just run it when merging to main
   # run-test-arm64:

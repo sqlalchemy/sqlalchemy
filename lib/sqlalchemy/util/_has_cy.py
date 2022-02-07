@@ -1,11 +1,15 @@
+import os
 import typing
 
 if not typing.TYPE_CHECKING:
-    try:
-        from ..cyextension import util  # noqa
-    except ImportError:
+    if os.environ.get("DISABLE_SQLALCHEMY_CEXT_RUNTIME"):
         HAS_CYEXTENSION = False
     else:
-        HAS_CYEXTENSION = True
+        try:
+            from ..cyextension import util  # noqa
+        except ImportError:
+            HAS_CYEXTENSION = False
+        else:
+            HAS_CYEXTENSION = True
 else:
     HAS_CYEXTENSION = False
