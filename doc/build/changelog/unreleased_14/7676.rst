@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, oracle
+    :tickets: 7676
+
+    Fixed issue in Oracle dialect where using a column name that requires
+    quoting when written as a bound parameter, such as ``"_id"``, would not
+    correctly track a Python generated default value due to the bound-parameter
+    rewriting missing this value, causing an Oracle error to be raised.

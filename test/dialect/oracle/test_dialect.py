@@ -532,6 +532,35 @@ class QuotedBindRoundTripTest(fixtures.TestBase):
             dict(uid=[1, 2, 3]),
         )
 
+    @testing.combinations(True, False, argnames="executemany")
+    def test_python_side_default(self, metadata, connection, executemany):
+        """test #7676"""
+
+        ids = ["a", "b", "c"]
+
+        def gen_id():
+            return ids.pop(0)
+
+        t = Table(
+            "has_id",
+            metadata,
+            Column("_id", String(50), default=gen_id, primary_key=True),
+            Column("_data", Integer),
+        )
+        metadata.create_all(connection)
+
+        if executemany:
+            result = connection.execute(
+                t.insert(), [{"_data": 27}, {"_data": 28}, {"_data": 29}]
+            )
+            eq_(
+                connection.execute(t.select().order_by(t.c._id)).all(),
+                [("a", 27), ("b", 28), ("c", 29)],
+            )
+        else:
+            result = connection.execute(t.insert(), {"_data": 27})
+            eq_(result.inserted_primary_key, ("a",))
+
 
 class CompatFlagsTest(fixtures.TestBase, AssertsCompiledSQL):
     def _dialect(self, server_version, **kw):
