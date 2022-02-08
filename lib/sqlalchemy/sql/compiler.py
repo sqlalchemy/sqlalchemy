@@ -1255,15 +1255,28 @@ class SQLCompiler(Compiled):
         )
 
     @util.memoized_property
+    def _within_exec_param_key_getter(self):
+        getter = self._key_getters_for_crud_column[2]
+        if self.escaped_bind_names:
+
+            def _get(obj):
+                key = getter(obj)
+                return self.escaped_bind_names.get(key, key)
+
+            return _get
+        else:
+            return getter
+
+    @util.memoized_property
     @util.preload_module("sqlalchemy.engine.result")
     def _inserted_primary_key_from_lastrowid_getter(self):
         result = util.preloaded.engine_result
 
-        key_getter = self._key_getters_for_crud_column[2]
+        param_key_getter = self._within_exec_param_key_getter
         table = self.statement.table
 
         getters = [
-            (operator.methodcaller("get", key_getter(col), None), col)
+            (operator.methodcaller("get", param_key_getter(col), None), col)
             for col in table.primary_key
         ]
 
@@ -1279,6 +1292,12 @@ class SQLCompiler(Compiled):
         row_fn = result.result_tuple([col.key for col in table.primary_key])
 
         def get(lastrowid, parameters):
+            """given cursor.lastrowid value and the parameters used for INSERT,
+            return a "row" that represents the primary key, either by
+            using the "lastrowid" or by extracting values from the parameters
+            that were sent along with the INSERT.
+
+            """
             if proc is not None:
                 lastrowid = proc(lastrowid)
 
@@ -1297,7 +1316,7 @@ class SQLCompiler(Compiled):
     def _inserted_primary_key_from_returning_getter(self):
         result = util.preloaded.engine_result
 
-        key_getter = self._key_getters_for_crud_column[2]
+        param_key_getter = self._within_exec_param_key_getter
         table = self.statement.table
 
         ret = {col: idx for idx, col in enumerate(self.returning)}
@@ -1305,7 +1324,10 @@ class SQLCompiler(Compiled):
         getters = [
             (operator.itemgetter(ret[col]), True)
             if col in ret
-            else (operator.methodcaller("get", key_getter(col), None), False)
+            else (
+                operator.methodcaller("get", param_key_getter(col), None),
+                False,
+            )
             for col in table.primary_key
         ]
 

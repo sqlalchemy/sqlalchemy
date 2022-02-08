@@ -1389,7 +1389,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
     def _setup_ins_pk_from_empty(self):
         getter = self.compiled._inserted_primary_key_from_lastrowid_getter
-
         return [getter(None, param) for param in self.compiled_parameters]
 
     def _setup_ins_pk_from_implicit_returning(self, result, rows):
@@ -1664,7 +1663,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             return self._exec_default(column, column.onupdate, column.type)
 
     def _process_executemany_defaults(self):
-        key_getter = self.compiled._key_getters_for_crud_column[2]
+        key_getter = self.compiled._within_exec_param_key_getter
 
         scalar_defaults = {}
 
@@ -1702,7 +1701,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         del self.current_parameters
 
     def _process_executesingle_defaults(self):
-        key_getter = self.compiled._key_getters_for_crud_column[2]
+        key_getter = self.compiled._within_exec_param_key_getter
         self.current_parameters = (
             compiled_parameters
         ) = self.compiled_parameters[0]
