@@ -12,6 +12,7 @@ from sqlalchemy import cast
 from sqlalchemy import Column
 from sqlalchemy import column
 from sqlalchemy import DateTime
+from sqlalchemy import Double
 from sqlalchemy import Enum
 from sqlalchemy import exc
 from sqlalchemy import Float
@@ -127,6 +128,7 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
             Column("x", postgresql.ARRAY(Float)),
             Column("y", postgresql.ARRAY(REAL)),
             Column("z", postgresql.ARRAY(postgresql.DOUBLE_PRECISION)),
+            Column("w", postgresql.ARRAY(Double)),
             Column("q", postgresql.ARRAY(Numeric)),
         )
         metadata.create_all(connection)
@@ -143,6 +145,7 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
             Column("x", sqltypes.ARRAY(Float)),
             Column("y", sqltypes.ARRAY(REAL)),
             Column("z", sqltypes.ARRAY(postgresql.DOUBLE_PRECISION)),
+            Column("w", sqltypes.ARRAY(Double)),
             Column("q", sqltypes.ARRAY(Numeric)),
         )
         metadata.create_all(connection)

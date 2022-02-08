@@ -600,6 +600,17 @@ class Float(Numeric):
             return None
 
 
+class Double(Float):
+    """A type for double ``FLOAT`` floating point types.
+
+    Typically generates a ``DOUBLE`` or ``DOUBLE_PRECISION`` in DDL,
+    and otherwise acts like a normal :class:`.Float` on the Python
+    side.
+    """
+
+    __visit_name__ = "double"
+
+
 class DateTime(_LookupExpressionAdapter, TypeEngine[dt.datetime]):
 
     """A type for ``datetime.datetime()`` objects.
@@ -2764,6 +2775,13 @@ class FLOAT(Float):
     """The SQL FLOAT type."""
 
     __visit_name__ = "FLOAT"
+
+
+class DOUBLE(Double):
+
+    """The SQL DOUBLE type."""
+
+    __visit_name__ = "DOUBLE"
 
 
 class NUMERIC(Numeric):

@@ -4848,6 +4848,9 @@ class GenericTypeCompiler(TypeCompiler):
     def visit_FLOAT(self, type_, **kw):
         return "FLOAT"
 
+    def visit_DOUBLE(self, type_, **kw):
+        return "DOUBLE"
+
     def visit_REAL(self, type_, **kw):
         return "REAL"
 
@@ -4965,6 +4968,9 @@ class GenericTypeCompiler(TypeCompiler):
 
     def visit_float(self, type_, **kw):
         return self.visit_FLOAT(type_, **kw)
+
+    def visit_double(self, type_, **kw):
+        return self.visit_DOUBLE(type_, **kw)
 
     def visit_numeric(self, type_, **kw):
         return self.visit_NUMERIC(type_, **kw)

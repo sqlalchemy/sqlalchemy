@@ -625,7 +625,7 @@ class NUMBER(sqltypes.Numeric, sqltypes.Integer):
             return sqltypes.Integer
 
 
-class DOUBLE_PRECISION(sqltypes.Float):
+class DOUBLE_PRECISION(sqltypes.Double):
     __visit_name__ = "DOUBLE_PRECISION"
 
 
@@ -760,11 +760,17 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
     def visit_float(self, type_, **kw):
         return self.visit_FLOAT(type_, **kw)
 
+    def visit_double(self, type_, **kw):
+        return self.visit_DOUBLE_PRECISION(type_, **kw)
+
     def visit_unicode(self, type_, **kw):
         if self.dialect._use_nchar_for_unicode:
             return self.visit_NVARCHAR2(type_, **kw)
         else:
             return self.visit_VARCHAR2(type_, **kw)
+
+    def visit_DOUBLE(self, type_, **kw):
+        return self.visit_DOUBLE_PRECISION(type_, **kw)
 
     def visit_INTERVAL(self, type_, **kw):
         return "INTERVAL DAY%s TO SECOND%s" % (

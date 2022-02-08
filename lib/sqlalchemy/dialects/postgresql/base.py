@@ -1575,7 +1575,7 @@ class BYTEA(sqltypes.LargeBinary):
     __visit_name__ = "BYTEA"
 
 
-class DOUBLE_PRECISION(sqltypes.Float):
+class DOUBLE_PRECISION(sqltypes.Double):
     __visit_name__ = "DOUBLE_PRECISION"
 
 
@@ -2897,6 +2897,12 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
             return "FLOAT(%(precision)s)" % {"precision": type_.precision}
 
     def visit_DOUBLE_PRECISION(self, type_, **kw):
+        return "DOUBLE PRECISION"
+
+    def visit_DOUBLE(self, type_, **kw):
+        return "DOUBLE PRECISION"
+
+    def visit_double(self, type_, **kw):
         return "DOUBLE PRECISION"
 
     def visit_BIGINT(self, type_, **kw):

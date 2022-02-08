@@ -52,6 +52,9 @@ type is emitted in ``CREATE TABLE``, such as ``VARCHAR`` see
 .. autoclass:: Enum
   :members: __init__, create, drop
 
+.. autoclass:: Double
+   :members:
+
 .. autoclass:: Float
   :members:
 

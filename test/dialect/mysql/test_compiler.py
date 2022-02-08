@@ -15,6 +15,8 @@ from sqlalchemy import Date
 from sqlalchemy import DATETIME
 from sqlalchemy import DateTime
 from sqlalchemy import DECIMAL
+from sqlalchemy import DOUBLE
+from sqlalchemy import Double
 from sqlalchemy import exc
 from sqlalchemy import extract
 from sqlalchemy import FLOAT
@@ -776,6 +778,8 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         (Float, "t.col"),
         (m.MSFloat, "t.col"),
         (m.MSDouble, "t.col"),
+        (DOUBLE, "t.col"),
+        (Double, "t.col"),
         (m.MSReal, "t.col"),
         (m.MSYear, "t.col"),
         (m.MSYear(2), "t.col"),
@@ -798,6 +802,8 @@ class SQLTest(fixtures.TestBase, AssertsCompiledSQL):
         (m.FLOAT, "CAST(t.col AS FLOAT)"),
         (Float, "CAST(t.col AS FLOAT)"),
         (FLOAT, "CAST(t.col AS FLOAT)"),
+        (Double, "CAST(t.col AS DOUBLE)"),
+        (DOUBLE, "CAST(t.col AS DOUBLE)"),
         (m.DOUBLE, "CAST(t.col AS DOUBLE)"),
         (m.FLOAT, "CAST(t.col AS FLOAT)"),
         argnames="type_,expected",

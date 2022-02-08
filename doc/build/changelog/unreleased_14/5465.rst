@@ -1,0 +1,6 @@
+.. change::
+    :tags: datatypes, use case
+    :tickets: 5465
+
+    Implements generic Double, DOUBLE types with compiler mapping to 
+    respective DOUBLE/DOUBLE PRECISION/FLOAT types in Dialects. 

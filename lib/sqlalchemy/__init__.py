@@ -98,6 +98,8 @@ from .types import Date as Date
 from .types import DATETIME as DATETIME
 from .types import DateTime as DateTime
 from .types import DECIMAL as DECIMAL
+from .types import DOUBLE
+from .types import Double
 from .types import Enum as Enum
 from .types import FLOAT as FLOAT
 from .types import Float as Float

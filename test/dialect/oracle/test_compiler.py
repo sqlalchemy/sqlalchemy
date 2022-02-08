@@ -1,6 +1,7 @@
 # coding: utf-8
 from sqlalchemy import and_
 from sqlalchemy import bindparam
+from sqlalchemy import cast
 from sqlalchemy import Computed
 from sqlalchemy import exc
 from sqlalchemy import except_
@@ -23,6 +24,7 @@ from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import type_coerce
 from sqlalchemy import TypeDecorator
+from sqlalchemy import types as sqltypes
 from sqlalchemy import union
 from sqlalchemy.dialects.oracle import base as oracle
 from sqlalchemy.dialects.oracle import cx_oracle
@@ -1378,6 +1380,20 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             schema.CreateTable(t),
             "CREATE TABLE t (y INTEGER NOT NULL)",
             dialect=dd,
+        )
+
+    def test_double_to_oracle_double(self):
+        """test #5465:
+        test sqlalchemy Double/DOUBLE to PostgreSQL DOUBLE PRECISION
+        """
+        d1 = sqltypes.Double
+        d2 = sqltypes.DOUBLE
+
+        self.assert_compile(
+            cast(column("foo"), d1), "CAST(foo AS DOUBLE PRECISION)"
+        )
+        self.assert_compile(
+            cast(column("bar"), d2), "CAST(bar AS DOUBLE PRECISION)"
         )
 
 

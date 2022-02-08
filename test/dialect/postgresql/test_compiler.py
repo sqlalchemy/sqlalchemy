@@ -243,6 +243,21 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CAST(bar AS someschema.somename) AS bar",
         )
 
+    def test_cast_double_pg_double(self):
+        """test #5465:
+
+        test sqlalchemy Double/DOUBLE to PostgreSQL DOUBLE PRECISION
+        """
+        d1 = sqltypes.Double
+        d2 = sqltypes.DOUBLE
+
+        stmt = select(cast(column("foo"), d1), cast(column("bar"), d2))
+        self.assert_compile(
+            stmt,
+            "SELECT CAST(foo AS DOUBLE PRECISION) AS foo, "
+            "CAST(bar AS DOUBLE PRECISION) AS bar",
+        )
+
     def test_cast_enum_schema_translate(self):
         """test #6739"""
         e1 = Enum("x", "y", "z", name="somename")
