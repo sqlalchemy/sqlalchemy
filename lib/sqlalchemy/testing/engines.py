@@ -280,7 +280,9 @@ def testing_engine(
     """Produce an engine configured by --options with optional overrides."""
 
     if asyncio:
-        from sqlalchemy.ext.asyncio import create_async_engine as create_engine
+        from sqlalchemy.ext.asyncio import (
+            create_async_engine as create_engine,
+        )
     elif future or (
         config.db and config.db._is_future and future is not False
     ):
