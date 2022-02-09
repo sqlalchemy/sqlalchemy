@@ -48,6 +48,13 @@ from .expression import Join as Join
 from .expression import join as join
 from .expression import label as label
 from .expression import LABEL_STYLE_DEFAULT as LABEL_STYLE_DEFAULT
+from .expression import (
+    LABEL_STYLE_DISAMBIGUATE_ONLY as LABEL_STYLE_DISAMBIGUATE_ONLY,
+)
+from .expression import LABEL_STYLE_NONE as LABEL_STYLE_NONE
+from .expression import (
+    LABEL_STYLE_TABLENAME_PLUS_COL as LABEL_STYLE_TABLENAME_PLUS_COL,
+)
 from .expression import lambda_stmt as lambda_stmt
 from .expression import LambdaElement as LambdaElement
 from .expression import lateral as lateral
@@ -87,16 +94,6 @@ from .expression import Values as Values
 from .expression import values as values
 from .expression import within_group as within_group
 from .visitors import ClauseVisitor as ClauseVisitor
-
-if True:
-    # work around zimports bug
-    from .expression import (
-        LABEL_STYLE_DISAMBIGUATE_ONLY as LABEL_STYLE_DISAMBIGUATE_ONLY,
-    )
-    from .expression import LABEL_STYLE_NONE as LABEL_STYLE_NONE
-    from .expression import (
-        LABEL_STYLE_TABLENAME_PLUS_COL as LABEL_STYLE_TABLENAME_PLUS_COL,
-    )
 
 
 def __go(lcls):
