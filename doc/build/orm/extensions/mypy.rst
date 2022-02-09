@@ -6,13 +6,29 @@ Mypy  / Pep-484 Support for ORM Mappings
 Support for :pep:`484` typing annotations as well as the
 `Mypy <https://mypy.readthedocs.io/>`_ type checking tool.
 
+.. topic:: SQLAlchemy Mypy Plugin Status Update
 
-.. note:: The Mypy plugin and typing annotations should be regarded as
-   **alpha level** for the
-   early 1.4 releases of SQLAlchemy.  The plugin has not been tested in real world
-   scenarios and may have many unhandled cases and error conditions.
-   Specifics of the new typing stubs are also **subject to change** during
-   the 1.4 series.
+   The SQLAlchemy Mypy plugin, while it has technically never left the
+   "alpha" stage, should **now be considered as legacy**.  SQLAlchemy 2.0
+   will allow for construction of declarative mappings in place which will
+   support proper typing directly, without the need for plugins.
+
+   The Mypy plugin itself does not solve the issue of supplying correct typing
+   with other typing tools such as Pylance/Pyright, Pytype, Pycharm, etc, which
+   cannot make use of Mypy plugins. Additionally, Mypy plugins are extremely
+   difficult to develop, maintain and test, as a Mypy plugin must be deeply
+   integrated with Mypy's internal datastructures and processes, which itself
+   are not stable within the Mypy project itself. The SQLAlchemy Mypy plugin
+   has lots of limitations when used with code that deviates from very basic
+   patterns which are reported regularly.
+
+   For these reasons, new non-regression issues reported against the Mypy
+   plugin are unlikely to be fixed; the plugin will be supplied with SQLAlchemy
+   2.0 as well but will be legacy support only.     SQLAlchemy 2.0 code that
+   makes use of upcoming declarative APIs, which are slightly adjusted from
+   the existing APIs, will enjoy full compliance with pep-484 as well as
+   working correctly within IDEs and other typing tools.
+
 
 Installation
 ------------
