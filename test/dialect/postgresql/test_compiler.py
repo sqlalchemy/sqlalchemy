@@ -252,8 +252,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
 
         stmt = select(cast(column("foo"), d1))
         self.assert_compile(
-            stmt,
-            "SELECT CAST(foo AS DOUBLE PRECISION) AS foo"
+            stmt, "SELECT CAST(foo AS DOUBLE PRECISION) AS foo"
         )
 
     def test_cast_enum_schema_translate(self):

@@ -1488,7 +1488,6 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
         else:
             return "FLOAT(%(precision)s)" % {"precision": precision}
 
-
     def visit_TINYINT(self, type_, **kw):
         return "TINYINT"
 
