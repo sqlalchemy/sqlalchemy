@@ -249,13 +249,11 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         test sqlalchemy Double/DOUBLE to PostgreSQL DOUBLE PRECISION
         """
         d1 = sqltypes.Double
-        d2 = sqltypes.DOUBLE
 
-        stmt = select(cast(column("foo"), d1), cast(column("bar"), d2))
+        stmt = select(cast(column("foo"), d1))
         self.assert_compile(
             stmt,
-            "SELECT CAST(foo AS DOUBLE PRECISION) AS foo, "
-            "CAST(bar AS DOUBLE PRECISION) AS bar",
+            "SELECT CAST(foo AS DOUBLE PRECISION) AS foo"
         )
 
     def test_cast_enum_schema_translate(self):

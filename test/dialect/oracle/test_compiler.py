@@ -1387,13 +1387,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         test sqlalchemy Double/DOUBLE to PostgreSQL DOUBLE PRECISION
         """
         d1 = sqltypes.Double
-        d2 = sqltypes.DOUBLE
 
         self.assert_compile(
             cast(column("foo"), d1), "CAST(foo AS DOUBLE PRECISION)"
-        )
-        self.assert_compile(
-            cast(column("bar"), d2), "CAST(bar AS DOUBLE PRECISION)"
         )
 
 
