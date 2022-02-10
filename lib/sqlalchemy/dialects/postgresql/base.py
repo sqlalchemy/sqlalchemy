@@ -2899,11 +2899,8 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_DOUBLE_PRECISION(self, type_, **kw):
         return "DOUBLE PRECISION"
 
-    def visit_DOUBLE(self, type_, **kw):
-        return "DOUBLE PRECISION"
-
     def visit_double(self, type_, **kw):
-        return "DOUBLE PRECISION"
+        return self.visit_DOUBLE_PRECISION(type, **kw)
 
     def visit_BIGINT(self, type_, **kw):
         return "BIGINT"

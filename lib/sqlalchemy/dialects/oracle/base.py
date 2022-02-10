@@ -769,9 +769,6 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
         else:
             return self.visit_VARCHAR2(type_, **kw)
 
-    def visit_DOUBLE(self, type_, **kw):
-        return self.visit_DOUBLE_PRECISION(type_, **kw)
-
     def visit_INTERVAL(self, type_, **kw):
         return "INTERVAL DAY%s TO SECOND%s" % (
             type_.day_precision is not None
