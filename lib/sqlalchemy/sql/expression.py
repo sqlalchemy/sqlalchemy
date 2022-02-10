@@ -123,7 +123,13 @@ from .selectable import HasPrefixes as HasPrefixes
 from .selectable import HasSuffixes as HasSuffixes
 from .selectable import Join as Join
 from .selectable import LABEL_STYLE_DEFAULT as LABEL_STYLE_DEFAULT
+from .selectable import (
+    LABEL_STYLE_DISAMBIGUATE_ONLY as LABEL_STYLE_DISAMBIGUATE_ONLY,
+)
 from .selectable import LABEL_STYLE_NONE as LABEL_STYLE_NONE
+from .selectable import (
+    LABEL_STYLE_TABLENAME_PLUS_COL as LABEL_STYLE_TABLENAME_PLUS_COL,
+)
 from .selectable import Lateral as Lateral
 from .selectable import ReturnsRows as ReturnsRows
 from .selectable import ScalarSelect as ScalarSelect
@@ -138,15 +144,6 @@ from .selectable import TextAsFrom as TextAsFrom
 from .selectable import TextualSelect as TextualSelect
 from .selectable import Values as Values
 from .visitors import Visitable as Visitable
-
-if True:
-    # work around zimports
-    from .selectable import (
-        LABEL_STYLE_DISAMBIGUATE_ONLY as LABEL_STYLE_DISAMBIGUATE_ONLY,
-    )
-    from .selectable import (
-        LABEL_STYLE_TABLENAME_PLUS_COL as LABEL_STYLE_TABLENAME_PLUS_COL,
-    )
 
 nullsfirst = nulls_first
 nullslast = nulls_last

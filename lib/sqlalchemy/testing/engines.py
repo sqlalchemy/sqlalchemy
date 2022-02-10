@@ -306,7 +306,9 @@ def testing_engine(
     transfer_staticpool=False,
 ):
     if asyncio:
-        from sqlalchemy.ext.asyncio import create_async_engine as create_engine
+        from sqlalchemy.ext.asyncio import (
+            create_async_engine as create_engine,
+        )
     else:
         from sqlalchemy import create_engine
     from sqlalchemy.engine.url import make_url

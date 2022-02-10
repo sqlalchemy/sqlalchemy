@@ -7,11 +7,9 @@ repos:
     -   id: black
 
 -   repo: https://github.com/sqlalchemyorg/zimports
-    rev: v0.4.2
+    rev: v0.5.0
     hooks:
     -   id: zimports
-        args:
-            - --keep-unused-type-checking
 
 -   repo: https://github.com/pycqa/flake8
     rev: 4.0.1

@@ -55,8 +55,13 @@ from .sql import intersect_all as intersect_all
 from .sql import join as join
 from .sql import label as label
 from .sql import LABEL_STYLE_DEFAULT as LABEL_STYLE_DEFAULT
-from .sql import LABEL_STYLE_DISAMBIGUATE_ONLY as LABEL_STYLE_DISAMBIGUATE_ONLY
+from .sql import (
+    LABEL_STYLE_DISAMBIGUATE_ONLY as LABEL_STYLE_DISAMBIGUATE_ONLY,
+)
 from .sql import LABEL_STYLE_NONE as LABEL_STYLE_NONE
+from .sql import (
+    LABEL_STYLE_TABLENAME_PLUS_COL as LABEL_STYLE_TABLENAME_PLUS_COL,
+)
 from .sql import lambda_stmt as lambda_stmt
 from .sql import lateral as lateral
 from .sql import literal as literal
@@ -127,12 +132,6 @@ from .types import Unicode as Unicode
 from .types import UnicodeText as UnicodeText
 from .types import VARBINARY as VARBINARY
 from .types import VARCHAR as VARCHAR
-
-if True:
-    # work around zimports bug
-    from .sql import (
-        LABEL_STYLE_TABLENAME_PLUS_COL as LABEL_STYLE_TABLENAME_PLUS_COL,
-    )
 
 
 __version__ = "2.0.0b1"
