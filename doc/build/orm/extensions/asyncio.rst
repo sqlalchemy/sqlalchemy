@@ -712,10 +712,10 @@ constructor::
     from sqlalchemy.ext.asyncio import async_scoped_session
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    async_session_factory = sessionmaker(some_async_engine, class_=_AsyncSession)
-    AsyncSession = async_scoped_session(async_session_factory, scopefunc=current_task)
+    async_session_factory = sessionmaker(some_async_engine, class_=AsyncSession)
+    AsyncScopedSession = async_scoped_session(async_session_factory, scopefunc=current_task)
 
-    some_async_session = AsyncSession()
+    some_async_session = AsyncScopedSession()
 
 :class:`_asyncio.async_scoped_session` also includes **proxy
 behavior** similar to that of :class:`.scoped_session`, which means it can be
@@ -728,10 +728,10 @@ the usual ``await`` keywords are necessary, including for the
        some_async_session.add(some_object)
 
        # use the AsyncSession via the context-local proxy
-       await AsyncSession.commit()
+       await AsyncScopedSession.commit()
 
        # "remove" the current proxied AsyncSession for the local context
-       await AsyncSession.remove()
+       await AsyncScopedSession.remove()
 
 .. versionadded:: 1.4.19
 
