@@ -1,3 +1,9 @@
 [tool.black]
 line-length = 79
 target-version = ['py27', 'py36']
+
+[tool.zimports]
+black-line-length = 79
+keep-unused-type-checking = true
+
+

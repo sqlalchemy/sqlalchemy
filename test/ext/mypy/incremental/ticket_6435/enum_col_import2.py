@@ -1,8 +1,10 @@
 from sqlalchemy import Column
 from sqlalchemy import Enum
-from sqlalchemy.orm import declarative_base, Mapped
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import Mapped
 from . import enum_col_import1
-from .enum_col_import1 import IntEnum, StrEnum
+from .enum_col_import1 import IntEnum
+from .enum_col_import1 import StrEnum
 
 Base = declarative_base()
 
