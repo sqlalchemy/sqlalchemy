@@ -96,6 +96,25 @@ To disable the prepared statement cache, use a value of zero::
    stale, nor can it retry the statement as the PostgreSQL transaction is
    invalidated when these errors occur.
 
+Disabling the PostgreSQL JIT to improve ENUM datatype handling
+---------------------------------------------------------------
+
+Asyncpg has an `issue <https://github.com/MagicStack/asyncpg/issues/727>`_ when
+using PostgreSQL ENUM datatypes, where upon the creation of new database
+connections, an expensive query may be emitted in order to retrieve metadata
+regarding custom types which has been shown to negatively affect performance.
+To mitigate this issue, the PostgreSQL "jit" setting may be disabled from the
+client using this setting passed to :func:`_asyncio.create_async_engine`::
+
+    engine = create_async_engine(
+        "postgresql+asyncpg://user:password@localhost/tmp",
+        connect_args={"server_settings": {"jit": "off"}},
+    )
+
+.. seealso::
+
+    https://github.com/MagicStack/asyncpg/issues/727
+
 """  # noqa
 
 import collections

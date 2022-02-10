@@ -1904,7 +1904,7 @@ class JSON(Indexable, TypeEngine[Any]):
         with engine.connect() as conn:
             conn.execute(
                 data_table.insert(),
-                data = {"key1": "value1", "key2": "value2"}
+                {"data": {"key1": "value1", "key2": "value2"}}
             )
 
     **JSON-Specific Expression Operators**
@@ -2000,20 +2000,22 @@ class JSON(Indexable, TypeEngine[Any]):
 
     **Support for JSON null vs. SQL NULL**
 
-    When working with NULL values, the :class:`_types.JSON`
-    type recommends the
+    When working with NULL values, the :class:`_types.JSON` type recommends the
     use of two specific constants in order to differentiate between a column
-    that evaluates to SQL NULL, e.g. no value, vs. the JSON-encoded string
-    of ``"null"``.   To insert or select against a value that is SQL NULL,
-    use the constant :func:`.null`::
+    that evaluates to SQL NULL, e.g. no value, vs. the JSON-encoded string of
+    ``"null"``. To insert or select against a value that is SQL NULL, use the
+    constant :func:`.null`. This symbol may be passed as a parameter value
+    specifically when using the :class:`_types.JSON` datatype, which contains
+    special logic that interprets this symbol to mean that the column value
+    should be SQL NULL as opposed to JSON ``"null"``::
 
         from sqlalchemy import null
-        conn.execute(table.insert(), json_value=null())
+        conn.execute(table.insert(), {"json_value": null()})
 
     To insert or select against a value that is JSON ``"null"``, use the
     constant :attr:`_types.JSON.NULL`::
 
-        conn.execute(table.insert(), json_value=JSON.NULL)
+        conn.execute(table.insert(), {"json_value": JSON.NULL})
 
     The :class:`_types.JSON` type supports a flag
     :paramref:`_types.JSON.none_as_null` which when set to True will result
@@ -2114,12 +2116,14 @@ class JSON(Indexable, TypeEngine[Any]):
         """Construct a :class:`_types.JSON` type.
 
         :param none_as_null=False: if True, persist the value ``None`` as a
-         SQL NULL value, not the JSON encoding of ``null``.   Note that
-         when this flag is False, the :func:`.null` construct can still
-         be used to persist a NULL value::
+         SQL NULL value, not the JSON encoding of ``null``. Note that when this
+         flag is False, the :func:`.null` construct can still be used to
+         persist a NULL value, which may be passed directly as a parameter
+         value that is specially interpreted by the :class:`_types.JSON` type
+         as SQL NULL::
 
              from sqlalchemy import null
-             conn.execute(table.insert(), data=null())
+             conn.execute(table.insert(), {"data": null()})
 
          .. note::
 
@@ -2461,7 +2465,7 @@ class ARRAY(
 
         connection.execute(
                 mytable.insert(),
-                data=[1,2,3]
+                {"data": [1,2,3]}
         )
 
     The :class:`_types.ARRAY` type can be constructed given a fixed number

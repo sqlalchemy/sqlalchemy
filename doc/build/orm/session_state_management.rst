@@ -204,11 +204,14 @@ When given an instance, it follows these steps:
   key if not located locally.
 * If the given instance has no primary key, or if no instance can be found
   with the primary key given, a new instance is created.
-* The state of the given instance is then copied onto the located/newly
-  created instance.    For attributes which are present on the source
-  instance, the value is transferred to the target instance.  For mapped
-  attributes which aren't present on the source, the attribute is
-  expired on the target instance, discarding its existing value.
+* The state of the given instance is then copied onto the located/newly created
+  instance. For attribute values which are present on the source instance, the
+  value is transferred to the target instance. For attribute values that aren't
+  present on the source instance, the corresponding attribute on the target
+  instance is :term:`expired` from memory, which discards any locally
+  present value from the target instance for that attribute, but no
+  direct modification is made to the database-persisted value for that
+  attribute.
 
   If the ``load=True`` flag is left at its default,
   this copy process emits events and will load the target object's
