@@ -158,7 +158,7 @@ is available to handle another request.
 This simple correspondence of web request and thread means that to associate a
 :class:`.Session` with a thread implies it is also associated with the web request
 running within that thread, and vice versa, provided that the :class:`.Session` is
-created only after the web request begins and torn down just before the web request ends.
+created only after the web request begins and tear down just before the web request ends.
 So it is a common practice to use :class:`.scoped_session` as a quick way
 to integrate the :class:`.Session` with a web application.  The sequence
 diagram below illustrates this flow::
