@@ -327,7 +327,7 @@ based database is used. This is set along with setting the
 ``check_same_thread`` parameter to ``False``. It has been observed that the
 previous approach of defaulting to :class:`_pool.NullPool`, which does not
 hold onto database connections after they are released, did in fact have a
-measurable negative performance impact. As always, the pool class is always
+measurable negative performance impact. As always, the pool class is
 customizable via the :paramref:`_sa.create_engine.poolclass` parameter.
 
 .. seealso::
