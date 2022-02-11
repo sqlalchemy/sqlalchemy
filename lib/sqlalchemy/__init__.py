@@ -124,6 +124,7 @@ from .types import String as String
 from .types import TEXT as TEXT
 from .types import Text as Text
 from .types import TIME as TIME
+from .types import UUID as UUID
 from .types import Time as Time
 from .types import TIMESTAMP as TIMESTAMP
 from .types import TupleType as TupleType

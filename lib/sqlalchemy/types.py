@@ -103,6 +103,7 @@ from .sql.sqltypes import STRINGTYPE
 from .sql.sqltypes import TEXT
 from .sql.sqltypes import Text
 from .sql.sqltypes import TIME
+from .sql.sqltypes import UUID
 from .sql.sqltypes import Time
 from .sql.sqltypes import TIMESTAMP
 from .sql.sqltypes import TupleType

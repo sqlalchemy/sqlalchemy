@@ -20,6 +20,7 @@ from typing import Text as typing_Text
 from typing import Tuple
 from typing import TypeVar
 from typing import Union
+from uuid import UUID as _python_UUID
 
 from . import coercions
 from . import elements
@@ -3022,6 +3023,97 @@ class MatchType(Boolean):
     .. versionadded:: 1.0.0
 
     """
+
+
+class UUID(TypeEngine):
+
+    """Represent a SQL UUID type.
+
+    Represents the UUID column type, interpreting
+    data either as natively returned by the DBAPI
+    or as Python uuid objects.
+
+    .. note::  :class:`_types.UUID`
+       is provided as a facade for vendor-specific
+       UUID types.  It only works on backends that have an actual
+       UUID type, currently:
+
+       * PostgreSQL
+
+       * MySQL
+
+       * MariaDB
+
+    The UUID type is currently known to work within the prominent DBAPI
+    drivers supported by SQLAlchemy including psycopg, psycopg2, pg8000 and
+    asyncpg. Support for other DBAPI drivers may be incomplete or non-present.
+
+    """
+
+    __visit_name__ = "UUID"
+
+    def __init__(self, as_uuid=True):
+        """Construct a UUID type.
+
+
+        :param as_uuid=True: if True, values will be interpreted
+         as Python uuid objects, converting to/from string via the
+         DBAPI.
+
+         .. versionchanged: 2 ``as_uuid`` now defaults to ``True``.
+
+        """
+        self.as_uuid = as_uuid
+
+    def coerce_compared_value(self, op, value):
+        """See :meth:`.TypeEngine.coerce_compared_value` for a description."""
+
+        if isinstance(value, str):
+            return self
+        else:
+            return super(UUID, self).coerce_compared_value(op, value)
+
+    def bind_processor(self, dialect):
+        if self.as_uuid:
+
+            def process(value):
+                if value is not None:
+                    value = str(value)
+                return value
+
+            return process
+        else:
+            return None
+
+    def result_processor(self, dialect, coltype):
+        if self.as_uuid:
+
+            def process(value):
+                if value is not None:
+                    value = _python_UUID(value)
+                return value
+
+            return process
+        else:
+            return None
+
+    def literal_processor(self, dialect):
+        if self.as_uuid:
+
+            def process(value):
+                if value is not None:
+                    value = "'%s'::UUID" % value
+                return value
+
+            return process
+        else:
+
+            def process(value):
+                if value is not None:
+                    value = "'%s'" % value
+                return value
+
+            return process
 
 
 NULLTYPE = NullType()
