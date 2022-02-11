@@ -58,6 +58,7 @@ __all__ = [
     "Indexable",
     "ARRAY",
     "JSON",
+    "UUID",
 ]
 
 from .sql.sqltypes import _Binary
@@ -103,12 +104,12 @@ from .sql.sqltypes import STRINGTYPE
 from .sql.sqltypes import TEXT
 from .sql.sqltypes import Text
 from .sql.sqltypes import TIME
-from .sql.sqltypes import UUID
 from .sql.sqltypes import Time
 from .sql.sqltypes import TIMESTAMP
 from .sql.sqltypes import TupleType
 from .sql.sqltypes import Unicode
 from .sql.sqltypes import UnicodeText
+from .sql.sqltypes import UUID
 from .sql.sqltypes import VARBINARY
 from .sql.sqltypes import VARCHAR
 from .sql.type_api import adapt_type

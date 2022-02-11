@@ -1424,7 +1424,6 @@ from collections import defaultdict
 import datetime as dt
 import re
 
-
 from . import array as _array
 from . import hstore as _hstore
 from . import json as _json
@@ -1454,8 +1453,8 @@ from ...types import INTEGER
 from ...types import NUMERIC
 from ...types import REAL
 from ...types import SMALLINT
-from ...types import UUID
 from ...types import TEXT
+from ...types import UUID
 from ...types import VARCHAR
 
 IDX_USING = re.compile(r"^(?:btree|hash|gist|gin|[\w_]+)$", re.I)
