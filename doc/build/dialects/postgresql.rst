@@ -49,6 +49,9 @@ construction arguments, are as follows:
 .. autoclass:: CIDR
 
 
+.. autoclass:: DOMAIN
+    :members: __init__, create, drop
+
 .. autoclass:: DOUBLE_PRECISION
     :members: __init__
     :noindex:

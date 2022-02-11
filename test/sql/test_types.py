@@ -111,7 +111,11 @@ def _all_dialects():
 def _types_for_mod(mod):
     for key in dir(mod):
         typ = getattr(mod, key)
-        if not isinstance(typ, type) or not issubclass(typ, types.TypeEngine):
+        if (
+            not isinstance(typ, type)
+            or not issubclass(typ, types.TypeEngine)
+            or typ.__dict__.get("__abstract__")
+        ):
             continue
         yield typ
 
@@ -141,6 +145,17 @@ def _all_types(omit_special_types=False):
                 continue
             seen.add(typ)
             yield typ
+
+
+def _get_instance(type_):
+    if issubclass(type_, ARRAY):
+        return type_(String)
+    elif hasattr(type_, "__test_init__"):
+        t1 = type_.__test_init__()
+        is_(isinstance(t1, type_), True)
+        return t1
+    else:
+        return type_()
 
 
 class AdaptTest(fixtures.TestBase):
@@ -240,11 +255,8 @@ class AdaptTest(fixtures.TestBase):
         adapt() beyond their defaults.
 
         """
+        t1 = _get_instance(typ)
 
-        if issubclass(typ, ARRAY):
-            t1 = typ(String)
-        else:
-            t1 = typ()
         for cls in target_adaptions:
             if (is_down_adaption and issubclass(typ, sqltypes.Emulated)) or (
                 not is_down_adaption and issubclass(cls, sqltypes.Emulated)
@@ -301,19 +313,13 @@ class AdaptTest(fixtures.TestBase):
     @testing.uses_deprecated()
     @testing.combinations(*[(t,) for t in _all_types(omit_special_types=True)])
     def test_repr(self, typ):
-        if issubclass(typ, ARRAY):
-            t1 = typ(String)
-        else:
-            t1 = typ()
+        t1 = _get_instance(typ)
         repr(t1)
 
     @testing.uses_deprecated()
     @testing.combinations(*[(t,) for t in _all_types(omit_special_types=True)])
     def test_str(self, typ):
-        if issubclass(typ, ARRAY):
-            t1 = typ(String)
-        else:
-            t1 = typ()
+        t1 = _get_instance(typ)
         str(t1)
 
     def test_str_third_party(self):
@@ -400,7 +406,7 @@ class AsGenericTest(fixtures.TestBase):
         (pg.JSON(), sa.JSON()),
         (pg.ARRAY(sa.String), sa.ARRAY(sa.String)),
         (Enum("a", "b", "c"), Enum("a", "b", "c")),
-        (pg.ENUM("a", "b", "c"), Enum("a", "b", "c")),
+        (pg.ENUM("a", "b", "c", name="pgenum"), Enum("a", "b", "c")),
         (mysql.ENUM("a", "b", "c"), Enum("a", "b", "c")),
         (pg.INTERVAL(precision=5), Interval(native=True, second_precision=5)),
         (
@@ -419,11 +425,7 @@ class AsGenericTest(fixtures.TestBase):
         ]
     )
     def test_as_generic_all_types_heuristic(self, type_):
-        if issubclass(type_, ARRAY):
-            t1 = type_(String)
-        else:
-            t1 = type_()
-
+        t1 = _get_instance(type_)
         try:
             gentype = t1.as_generic()
         except NotImplementedError:
@@ -445,10 +447,7 @@ class AsGenericTest(fixtures.TestBase):
         ]
     )
     def test_as_generic_all_types_custom(self, type_):
-        if issubclass(type_, ARRAY):
-            t1 = type_(String)
-        else:
-            t1 = type_()
+        t1 = _get_instance(type_)
 
         gentype = t1.as_generic(allow_nulltype=False)
         assert isinstance(gentype, TypeEngine)

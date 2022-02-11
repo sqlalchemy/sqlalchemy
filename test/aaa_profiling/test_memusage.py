@@ -312,20 +312,22 @@ class MemUsageTest(EnsureZeroed):
 
         eng = engines.testing_engine()
         for args in (
-            (types.Integer,),
-            (types.String,),
-            (types.PickleType,),
-            (types.Enum, "a", "b", "c"),
-            (sqlite.DATETIME,),
-            (postgresql.ENUM, "a", "b", "c"),
-            (types.Interval,),
-            (postgresql.INTERVAL,),
-            (mysql.VARCHAR,),
+            (types.Integer, {}),
+            (types.String, {}),
+            (types.PickleType, {}),
+            (types.Enum, "a", "b", "c", {}),
+            (sqlite.DATETIME, {}),
+            (postgresql.ENUM, "a", "b", "c", {"name": "pgenum"}),
+            (types.Interval, {}),
+            (postgresql.INTERVAL, {}),
+            (mysql.VARCHAR, {}),
         ):
 
             @profile_memory()
             def go():
-                type_ = args[0](*args[1:])
+                kwargs = args[-1]
+                posargs = args[1:-1]
+                type_ = args[0](*posargs, **kwargs)
                 bp = type_._cached_bind_processor(eng.dialect)
                 rp = type_._cached_result_processor(eng.dialect, 0)
                 bp, rp  # strong reference

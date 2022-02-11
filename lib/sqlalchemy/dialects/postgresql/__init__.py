@@ -22,6 +22,7 @@ from .base import BIGINT
 from .base import BOOLEAN
 from .base import CHAR
 from .base import DATE
+from .base import DOMAIN
 from .base import DOUBLE_PRECISION
 from .base import FLOAT
 from .base import INTEGER
@@ -40,6 +41,12 @@ from .hstore import HSTORE
 from .hstore import hstore
 from .json import JSON
 from .json import JSONB
+from .named_types import CreateDomainType
+from .named_types import CreateEnumType
+from .named_types import DropDomainType
+from .named_types import DropEnumType
+from .named_types import ENUM
+from .named_types import NamedType
 from .ranges import DATERANGE
 from .ranges import INT4RANGE
 from .ranges import INT8RANGE
@@ -49,9 +56,6 @@ from .ranges import TSTZRANGE
 from .types import BIT
 from .types import BYTEA
 from .types import CIDR
-from .types import CreateEnumType
-from .types import DropEnumType
-from .types import ENUM
 from .types import INET
 from .types import INTERVAL
 from .types import MACADDR
@@ -97,6 +101,7 @@ __all__ = (
     "INTERVAL",
     "ARRAY",
     "ENUM",
+    "DOMAIN",
     "dialect",
     "array",
     "HSTORE",
@@ -113,6 +118,9 @@ __all__ = (
     "Any",
     "All",
     "DropEnumType",
+    "DropDomainType",
+    "CreateDomainType",
+    "NamedType",
     "CreateEnumType",
     "ExcludeConstraint",
     "aggregate_order_by",

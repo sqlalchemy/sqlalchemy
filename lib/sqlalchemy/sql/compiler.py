@@ -5251,16 +5251,17 @@ class DDLCompiler(Compiled):
 
     def get_column_default_string(self, column):
         if isinstance(column.server_default, schema.DefaultClause):
-            if isinstance(column.server_default.arg, str):
-                return self.sql_compiler.render_literal_value(
-                    column.server_default.arg, sqltypes.STRINGTYPE
-                )
-            else:
-                return self.sql_compiler.process(
-                    column.server_default.arg, literal_binds=True
-                )
+            return self.render_default_string(column.server_default.arg)
         else:
             return None
+
+    def render_default_string(self, default):
+        if isinstance(default, str):
+            return self.sql_compiler.render_literal_value(
+                default, sqltypes.STRINGTYPE
+            )
+        else:
+            return self.sql_compiler.process(default, literal_binds=True)
 
     def visit_table_or_column_check_constraint(self, constraint, **kw):
         if constraint.is_column_level:

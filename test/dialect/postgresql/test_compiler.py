@@ -38,6 +38,7 @@ from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.dialects.postgresql import ARRAY as PG_ARRAY
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.dialects.postgresql import array_agg as pg_array_agg
+from sqlalchemy.dialects.postgresql import DOMAIN
 from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.dialects.postgresql import TSRANGE
@@ -270,7 +271,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             render_schema_translate=True,
         )
 
-    def test_create_type_schema_translate(self):
+    def test_create_enum_schema_translate(self):
         e1 = Enum("x", "y", "z", name="somename")
         e2 = Enum("x", "y", "z", name="somename", schema="someschema")
         schema_translate_map = {None: "foo", "someschema": "bar"}
@@ -285,6 +286,79 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             postgresql.CreateEnumType(e2),
             "CREATE TYPE bar.somename AS ENUM ('x', 'y', 'z')",
+            schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
+        )
+
+    def test_domain(self):
+        self.assert_compile(
+            postgresql.CreateDomainType(
+                DOMAIN(
+                    "x",
+                    Integer,
+                    default=text("11"),
+                    not_null=True,
+                    check="VALUE < 0",
+                )
+            ),
+            "CREATE DOMAIN x AS INTEGER DEFAULT 11 NOT NULL CHECK (VALUE < 0)",
+        )
+        self.assert_compile(
+            postgresql.CreateDomainType(
+                DOMAIN(
+                    "sOmEnAmE",
+                    Text,
+                    collation="utf8",
+                    constraint_name="a constraint",
+                    not_null=True,
+                )
+            ),
+            'CREATE DOMAIN "sOmEnAmE" AS TEXT COLLATE utf8 CONSTRAINT '
+            '"a constraint" NOT NULL',
+        )
+        self.assert_compile(
+            postgresql.CreateDomainType(
+                DOMAIN(
+                    "foo",
+                    Text,
+                    collation="utf8",
+                    default="foobar",
+                    constraint_name="no_bar",
+                    not_null=True,
+                    check="VALUE != 'bar'",
+                )
+            ),
+            "CREATE DOMAIN foo AS TEXT COLLATE utf8 DEFAULT 'foobar' "
+            "CONSTRAINT no_bar NOT NULL CHECK (VALUE != 'bar')",
+        )
+
+    def test_cast_domain_schema(self):
+        """test #6739"""
+        d1 = DOMAIN("somename", Integer)
+        d2 = DOMAIN("somename", Integer, schema="someschema")
+
+        stmt = select(cast(column("foo"), d1), cast(column("bar"), d2))
+        self.assert_compile(
+            stmt,
+            "SELECT CAST(foo AS somename) AS foo, "
+            "CAST(bar AS someschema.somename) AS bar",
+        )
+
+    def test_create_domain_schema_translate(self):
+        d1 = DOMAIN("somename", Integer)
+        d2 = DOMAIN("somename", Integer, schema="someschema")
+        schema_translate_map = {None: "foo", "someschema": "bar"}
+
+        self.assert_compile(
+            postgresql.CreateDomainType(d1),
+            "CREATE DOMAIN foo.somename AS INTEGER ",
+            schema_translate_map=schema_translate_map,
+            render_schema_translate=True,
+        )
+
+        self.assert_compile(
+            postgresql.CreateDomainType(d2),
+            "CREATE DOMAIN bar.somename AS INTEGER ",
             schema_translate_map=schema_translate_map,
             render_schema_translate=True,
         )
