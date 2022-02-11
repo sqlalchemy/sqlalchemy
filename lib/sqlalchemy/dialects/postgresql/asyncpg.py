@@ -138,7 +138,6 @@ from .base import PGDialect
 from .base import PGExecutionContext
 from .base import PGIdentifierPreparer
 from .base import REGCLASS
-from .base import UUID
 from ... import exc
 from ... import pool
 from ... import util
@@ -148,12 +147,6 @@ from ...sql import sqltypes
 from ...util.concurrency import asyncio
 from ...util.concurrency import await_fallback
 from ...util.concurrency import await_only
-
-
-try:
-    from uuid import UUID as _python_UUID  # noqa
-except ImportError:
-    _python_UUID = None
 
 
 class AsyncpgString(sqltypes.String):
@@ -235,30 +228,6 @@ class AsyncpgJSONPathType(json.JSONPathType):
             return tokens
 
         return process
-
-
-class AsyncpgUUID(UUID):
-    render_bind_cast = True
-
-    def bind_processor(self, dialect):
-        if not self.as_uuid and dialect.use_native_uuid:
-
-            def process(value):
-                if value is not None:
-                    value = _python_UUID(value)
-                return value
-
-            return process
-
-    def result_processor(self, dialect, coltype):
-        if not self.as_uuid and dialect.use_native_uuid:
-
-            def process(value):
-                if value is not None:
-                    value = str(value)
-                return value
-
-            return process
 
 
 class AsyncpgNumeric(sqltypes.Numeric):
@@ -831,8 +800,6 @@ class PGDialect_asyncpg(PGDialect):
     statement_compiler = PGCompiler_asyncpg
     preparer = PGIdentifierPreparer_asyncpg
 
-    use_native_uuid = True
-
     colspecs = util.update_copy(
         PGDialect.colspecs,
         {
@@ -842,7 +809,6 @@ class PGDialect_asyncpg(PGDialect):
             sqltypes.DateTime: AsyncpgDateTime,
             sqltypes.Interval: AsyncPgInterval,
             INTERVAL: AsyncPgInterval,
-            UUID: AsyncpgUUID,
             sqltypes.Boolean: AsyncpgBoolean,
             sqltypes.Integer: AsyncpgInteger,
             sqltypes.BigInteger: AsyncpgBigInteger,

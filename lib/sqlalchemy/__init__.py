@@ -252,6 +252,8 @@ from .types import TupleType as TupleType
 from .types import TypeDecorator as TypeDecorator
 from .types import Unicode as Unicode
 from .types import UnicodeText as UnicodeText
+from .types import UUID as UUID
+from .types import Uuid as Uuid
 from .types import VARBINARY as VARBINARY
 from .types import VARCHAR as VARCHAR
 

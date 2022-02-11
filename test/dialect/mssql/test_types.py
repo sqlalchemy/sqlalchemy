@@ -34,6 +34,7 @@ from sqlalchemy import UnicodeText
 from sqlalchemy.dialects.mssql import base as mssql
 from sqlalchemy.dialects.mssql import ROWVERSION
 from sqlalchemy.dialects.mssql import TIMESTAMP
+from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
 from sqlalchemy.dialects.mssql.base import _MSDate
 from sqlalchemy.dialects.mssql.base import BIT
 from sqlalchemy.dialects.mssql.base import DATETIMEOFFSET
@@ -53,6 +54,7 @@ from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
 from sqlalchemy.testing import pickleable
+from sqlalchemy.testing.suite import test_types
 from sqlalchemy.util import b
 
 
@@ -1232,6 +1234,12 @@ class StringTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             column("x", Text()) == "foo", "x = 'foo'", literal_binds=True
         )
+
+
+class UniqueIdentifierTest(test_types.UuidTest):
+    __only_on__ = "mssql"
+    __backend__ = True
+    datatype = UNIQUEIDENTIFIER
 
 
 class MyPickleType(types.TypeDecorator):

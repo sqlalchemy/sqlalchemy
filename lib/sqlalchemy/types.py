@@ -63,6 +63,8 @@ from .sql.sqltypes import TIMESTAMP as TIMESTAMP
 from .sql.sqltypes import TupleType as TupleType
 from .sql.sqltypes import Unicode as Unicode
 from .sql.sqltypes import UnicodeText as UnicodeText
+from .sql.sqltypes import UUID as UUID
+from .sql.sqltypes import Uuid as Uuid
 from .sql.sqltypes import VARBINARY as VARBINARY
 from .sql.sqltypes import VARCHAR as VARCHAR
 from .sql.type_api import adapt_type as adapt_type

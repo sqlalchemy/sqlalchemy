@@ -580,7 +580,8 @@ class _CXOracleDate(oracle._OracleDate):
 
 
 class _CXOracleTIMESTAMP(oracle._OracleDateLiteralRender, sqltypes.TIMESTAMP):
-    pass
+    def literal_processor(self, dialect):
+        return self._literal_processor_datetime(dialect)
 
 
 # TODO: the names used across CHAR / VARCHAR / NCHAR / NVARCHAR

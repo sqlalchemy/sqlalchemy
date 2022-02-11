@@ -98,6 +98,9 @@ type is emitted in ``CREATE TABLE``, such as ``VARCHAR`` see
 .. autoclass:: UnicodeText
    :members:
 
+.. autoclass:: Uuid
+  :members:
+
 .. _types_sqlstandard:
 
 SQL Standard and Multiple Vendor Types
@@ -180,6 +183,8 @@ its exact name in DDL with ``CREATE TABLE`` is issued.
 .. autoclass:: TIMESTAMP
     :members:
 
+
+.. autoclass:: UUID
 
 .. autoclass:: VARBINARY
 

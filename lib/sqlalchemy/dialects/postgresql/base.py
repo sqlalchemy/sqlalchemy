@@ -1453,9 +1453,6 @@ from collections import defaultdict
 import datetime as dt
 import re
 from typing import Any
-from typing import overload
-from typing import TypeVar
-from uuid import UUID as _python_UUID
 
 from . import array as _array
 from . import dml
@@ -1489,8 +1486,8 @@ from ...types import NUMERIC
 from ...types import REAL
 from ...types import SMALLINT
 from ...types import TEXT
+from ...types import UUID as UUID
 from ...types import VARCHAR
-from ...util.typing import Literal
 
 IDX_USING = re.compile(r"^(?:btree|hash|gist|gin|[\w_]+)$", re.I)
 
@@ -1604,6 +1601,11 @@ RESERVED_WORDS = set(
 _DECIMAL_TYPES = (1231, 1700)
 _FLOAT_TYPES = (700, 701, 1021, 1022)
 _INT_TYPES = (20, 21, 23, 26, 1005, 1007, 1016)
+
+
+class PGUuid(UUID):
+    render_bind_cast = True
+    render_literal_cast = True
 
 
 class BYTEA(sqltypes.LargeBinary[bytes]):
@@ -1764,103 +1766,6 @@ class BIT(sqltypes.TypeEngine[int]):
 
 
 PGBit = BIT
-
-_UUID_RETURN = TypeVar("_UUID_RETURN", str, _python_UUID)
-
-
-class UUID(sqltypes.TypeEngine[_UUID_RETURN]):
-
-    """PostgreSQL UUID type.
-
-    Represents the UUID column type, interpreting
-    data either as natively returned by the DBAPI
-    or as Python uuid objects.
-
-    The UUID type is currently known to work within the prominent DBAPI
-    drivers supported by SQLAlchemy including psycopg, psycopg2, pg8000 and
-    asyncpg. Support for other DBAPI drivers may be incomplete or non-present.
-
-    """
-
-    __visit_name__ = "UUID"
-
-    @overload
-    def __init__(self: "UUID[_python_UUID]", as_uuid: Literal[True] = ...):
-        ...
-
-    @overload
-    def __init__(self: "UUID[str]", as_uuid: Literal[False] = ...):
-        ...
-
-    def __init__(self, as_uuid: bool = True):
-        """Construct a UUID type.
-
-
-        :param as_uuid=True: if True, values will be interpreted
-         as Python uuid objects, converting to/from string via the
-         DBAPI.
-
-         .. versionchanged: 2 ``as_uuid`` now defaults to ``True``.
-
-        """
-        self.as_uuid = as_uuid
-
-    def coerce_compared_value(self, op, value):
-        """See :meth:`.TypeEngine.coerce_compared_value` for a description."""
-
-        if isinstance(value, str):
-            return self
-        else:
-            return super(UUID, self).coerce_compared_value(op, value)
-
-    def bind_processor(self, dialect):
-        if self.as_uuid:
-
-            def process(value):
-                if value is not None:
-                    value = str(value)
-                return value
-
-            return process
-        else:
-            return None
-
-    def result_processor(self, dialect, coltype):
-        if self.as_uuid:
-
-            def process(value):
-                if value is not None:
-                    value = _python_UUID(value)
-                return value
-
-            return process
-        else:
-            return None
-
-    def literal_processor(self, dialect):
-        if self.as_uuid:
-
-            def process(value):
-                if value is not None:
-                    value = "'%s'::UUID" % value
-                return value
-
-            return process
-        else:
-
-            def process(value):
-                if value is not None:
-                    value = "'%s'" % value
-                return value
-
-            return process
-
-    @property
-    def python_type(self):
-        return _python_UUID if self.as_uuid else str
-
-
-PGUuid = UUID
 
 
 class TSVECTOR(sqltypes.TypeEngine[Any]):
@@ -2162,6 +2067,7 @@ colspecs = {
     sqltypes.Enum: ENUM,
     sqltypes.JSON.JSONPathType: _json.JSONPathType,
     sqltypes.JSON: _json.JSON,
+    UUID: PGUuid,
 }
 
 ischema_names = {
@@ -3043,6 +2949,12 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
             compiled = "BIT(%d)" % type_.length
         return compiled
 
+    def visit_uuid(self, type_, **kw):
+        if type_.native_uuid:
+            return self.visit_UUID(type_, **kw)
+        else:
+            return super().visit_uuid(type_, **kw)
+
     def visit_UUID(self, type_, **kw):
         return "UUID"
 
@@ -3267,6 +3179,7 @@ class PGDialect(default.DefaultDialect):
 
     supports_native_enum = True
     supports_native_boolean = True
+    supports_native_uuid = True
     supports_smallserial = True
 
     supports_sequences = True

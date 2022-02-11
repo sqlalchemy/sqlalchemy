@@ -629,14 +629,26 @@ class LiteralValueImpl(RoleImpl):
     _resolve_literal_only = True
 
     def _implicit_coercions(
-        self, element, resolved, argname, type_=None, **kw
+        self,
+        element,
+        resolved,
+        argname,
+        type_=None,
+        literal_execute=False,
+        **kw,
     ):
         if not _is_literal(resolved):
             self._raise_for_expected(
                 element, resolved=resolved, argname=argname, **kw
             )
 
-        return elements.BindParameter(None, element, type_=type_, unique=True)
+        return elements.BindParameter(
+            None,
+            element,
+            type_=type_,
+            unique=True,
+            literal_execute=literal_execute,
+        )
 
     def _literal_coercion(self, element, argname=None, type_=None, **kw):
         return element

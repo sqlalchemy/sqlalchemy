@@ -789,6 +789,14 @@ class Dialect(EventTarget):
     """indicates if Decimal objects are handled and returned for precision
     numeric types, or if floats are returned"""
 
+    supports_native_uuid: bool
+    """indicates if Python UUID() objects are handled natively by the
+    driver for SQL UUID datatypes.
+
+    .. versionadded:: 2.0
+
+    """
+
     construct_arguments: Optional[
         List[Tuple[Type[ClauseElement], Mapping[str, Any]]]
     ] = None

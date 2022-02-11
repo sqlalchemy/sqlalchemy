@@ -813,7 +813,9 @@ import codecs
 import datetime
 import operator
 import re
+from typing import overload
 from typing import TYPE_CHECKING
+from uuid import UUID as _python_UUID
 
 from . import information_schema as ischema
 from .json import JSON
@@ -854,6 +856,7 @@ from ...types import SMALLINT
 from ...types import TEXT
 from ...types import VARCHAR
 from ...util import update_wrapper
+from ...util.typing import Literal
 
 if TYPE_CHECKING:
     from ...sql.dml import DMLState
@@ -1369,8 +1372,88 @@ class SMALLMONEY(sqltypes.TypeEngine):
     __visit_name__ = "SMALLMONEY"
 
 
-class UNIQUEIDENTIFIER(sqltypes.TypeEngine):
+class MSUUid(sqltypes.Uuid):
+    def bind_processor(self, dialect):
+        if self.native_uuid:
+            # this is currently assuming pyodbc; might not work for
+            # some other mssql driver
+            return None
+        else:
+            if self.as_uuid:
+
+                def process(value):
+                    if value is not None:
+                        value = value.hex
+                    return value
+
+                return process
+            else:
+
+                def process(value):
+                    if value is not None:
+                        value = value.replace("-", "").replace("''", "'")
+                    return value
+
+                return process
+
+    def literal_processor(self, dialect):
+        if self.native_uuid:
+
+            def process(value):
+                if value is not None:
+                    value = f"""'{str(value).replace("''", "'")}'"""
+                return value
+
+            return process
+        else:
+            if self.as_uuid:
+
+                def process(value):
+                    if value is not None:
+                        value = f"""'{value.hex}'"""
+                    return value
+
+                return process
+            else:
+
+                def process(value):
+                    if value is not None:
+                        value = f"""'{
+                            value.replace("-", "").replace("'", "''")
+                        }'"""
+                    return value
+
+                return process
+
+
+class UNIQUEIDENTIFIER(sqltypes.Uuid[sqltypes._UUID_RETURN]):
     __visit_name__ = "UNIQUEIDENTIFIER"
+
+    @overload
+    def __init__(
+        self: "UNIQUEIDENTIFIER[_python_UUID]", as_uuid: Literal[True] = ...
+    ):
+        ...
+
+    @overload
+    def __init__(self: "UNIQUEIDENTIFIER[str]", as_uuid: Literal[False] = ...):
+        ...
+
+    def __init__(self, as_uuid: bool = True):
+        """Construct a :class:`_mssql.UNIQUEIDENTIFIER` type.
+
+
+        :param as_uuid=True: if True, values will be interpreted
+         as Python uuid objects, converting to/from string via the
+         DBAPI.
+
+         .. versionchanged: 2.0 Added direct "uuid" support to the
+            :class:`_mssql.UNIQUEIDENTIFIER` datatype; uuid interpretation
+            defaults to ``True``.
+
+        """
+        self.as_uuid = as_uuid
+        self.native_uuid = True
 
 
 class SQL_VARIANT(sqltypes.TypeEngine):
@@ -1618,6 +1701,12 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_SMALLMONEY(self, type_, **kw):
         return "SMALLMONEY"
+
+    def visit_uuid(self, type_, **kw):
+        if type_.native_uuid:
+            return self.visit_UNIQUEIDENTIFIER(type_, **kw)
+        else:
+            return super().visit_uuid(type_, **kw)
 
     def visit_UNIQUEIDENTIFIER(self, type_, **kw):
         return "UNIQUEIDENTIFIER"
@@ -2709,6 +2798,10 @@ class MSDialect(default.DefaultDialect):
     supports_statement_cache = True
     supports_default_values = True
     supports_empty_insert = False
+
+    # supports_native_uuid is partial here, so we implement our
+    # own impl type
+
     execution_ctx_cls = MSExecutionContext
     use_scope_identity = True
     max_identifier_length = 128
@@ -2730,6 +2823,7 @@ class MSDialect(default.DefaultDialect):
         DATETIME2: DATETIME2,
         SMALLDATETIME: SMALLDATETIME,
         DATETIME: DATETIME,
+        sqltypes.Uuid: MSUUid,
     }
 
     engine_config_types = default.DefaultDialect.engine_config_types.union(

@@ -2248,6 +2248,9 @@ class MySQLTypeCompiler(compiler.GenericTypeCompiler):
         else:
             return self._extend_string(type_, {"national": True}, "CHAR")
 
+    def visit_UUID(self, type_, **kw):
+        return "UUID"
+
     def visit_VARBINARY(self, type_, **kw):
         return "VARBINARY(%d)" % type_.length
 

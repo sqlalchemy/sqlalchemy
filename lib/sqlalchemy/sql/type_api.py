@@ -134,6 +134,14 @@ class TypeEngine(Visitable, Generic[_T]):
 
     """
 
+    render_literal_cast = False
+    """render casts when rendering a value as an inline literal,
+    e.g. with :meth:`.TypeEngine.literal_processor`.
+
+    .. versionadded:: 2.0
+
+    """
+
     class Comparator(
         ColumnOperators,
         Generic[_CT],

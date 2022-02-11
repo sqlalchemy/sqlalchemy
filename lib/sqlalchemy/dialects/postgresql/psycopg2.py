@@ -676,7 +676,7 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
 
             fns.append(on_connect)
 
-        if self.dbapi and self.use_native_uuid:
+        if self.dbapi:
 
             def on_connect(dbapi_conn):
                 extras.register_uuid(None, dbapi_conn)

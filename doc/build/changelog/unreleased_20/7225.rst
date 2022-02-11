@@ -1,6 +1,13 @@
 .. change::
-    :tags: postgresql, change
+    :tags: postgresql, mssql, change
     :tickets: 7225
 
-    The parameter :paramref:`_postgresql.UUID.as_uuid` of
-    :class:`_postgresql.UUID` now defaults to ``True``.
+    The parameter :paramref:`_types.UUID.as_uuid` of :class:`_types.UUID`,
+    previously specific to the PostgreSQL dialect but now generalized for Core
+    (along with a new backend-agnostic :class:`_types.Uuid` datatype) now
+    defaults to ``True``, indicating that Python ``UUID`` objects are accepted
+    by this datatype by default. Additionally, the SQL Server
+    :class:`_mssql.UNIQUEIDENTIFIER` datatype has been converted to be a
+    UUID-receiving type; for legacy code that makes use of
+    :class:`_mssql.UNIQUEIDENTIFIER` using string values, set the
+    :paramref:`_mssql.UNIQUEIDENTIFIER.as_uuid` parameter to ``False``.

@@ -690,7 +690,7 @@ class LONG(sqltypes.Text):
 
 
 class _OracleDateLiteralRender:
-    def literal_processor(self, dialect):
+    def _literal_processor_datetime(self, dialect):
         def process(value):
             if value is not None:
                 if getattr(value, "microsecond", None):
@@ -704,6 +704,25 @@ class _OracleDateLiteralRender:
                         f"""TO_DATE"""
                         f"""('{value.isoformat().replace("T", " ")}', """
                         """'YYYY-MM-DD HH24:MI:SS')"""
+                    )
+            return value
+
+        return process
+
+    def _literal_processor_date(self, dialect):
+        def process(value):
+            if value is not None:
+                if getattr(value, "microsecond", None):
+                    value = (
+                        f"""TO_TIMESTAMP"""
+                        f"""('{value.isoformat().split("T")[0]}', """
+                        """'YYYY-MM-DD')"""
+                    )
+                else:
+                    value = (
+                        f"""TO_DATE"""
+                        f"""('{value.isoformat().split("T")[0]}', """
+                        """'YYYY-MM-DD')"""
                     )
             return value
 
@@ -723,12 +742,16 @@ class DATE(_OracleDateLiteralRender, sqltypes.DateTime):
 
     __visit_name__ = "DATE"
 
+    def literal_processor(self, dialect):
+        return self._literal_processor_datetime(dialect)
+
     def _compare_type_affinity(self, other):
         return other._type_affinity in (sqltypes.DateTime, sqltypes.Date)
 
 
 class _OracleDate(_OracleDateLiteralRender, sqltypes.Date):
-    pass
+    def literal_processor(self, dialect):
+        return self._literal_processor_date(dialect)
 
 
 class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):

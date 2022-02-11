@@ -390,7 +390,7 @@ def not_(clause: _ColumnExpressionArgument[_T]) -> ColumnElement[_T]:
 def bindparam(
     key: Optional[str],
     value: Any = _NoArg.NO_ARG,
-    type_: Optional[TypeEngine[_T]] = None,
+    type_: Optional[_TypeEngineArgument[_T]] = None,
     unique: bool = False,
     required: Union[bool, Literal[_NoArg.NO_ARG]] = _NoArg.NO_ARG,
     quote: Optional[bool] = None,
