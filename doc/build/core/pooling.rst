@@ -38,13 +38,6 @@ directly to :func:`~sqlalchemy.create_engine` as keyword arguments:
   engine = create_engine('postgresql+psycopg2://me@localhost/mydb',
                          pool_size=20, max_overflow=0)
 
-In the case of SQLite, the :class:`.SingletonThreadPool` or
-:class:`.NullPool` are selected by the dialect to provide
-greater compatibility with SQLite's threading and locking
-model, as well as to provide a reasonable default behavior
-to SQLite "memory" databases, which maintain their entire
-dataset within the scope of a single connection.
-
 All SQLAlchemy pool implementations have in common
 that none of them "pre create" connections - all implementations wait
 until first use before creating a connection.   At that point, if
@@ -64,13 +57,9 @@ Switching Pool Implementations
 The usual way to use a different kind of pool with :func:`_sa.create_engine`
 is to use the ``poolclass`` argument.   This argument accepts a class
 imported from the ``sqlalchemy.pool`` module, and handles the details
-of building the pool for you.   Common options include specifying
-:class:`.QueuePool` with SQLite::
-
-    from sqlalchemy.pool import QueuePool
-    engine = create_engine('sqlite:///file.db', poolclass=QueuePool)
-
-Disabling pooling using :class:`.NullPool`::
+of building the pool for you.   A common use case here is when
+connection pooling is to be disabled, which can be achieved by using
+the :class:`.NullPool` implementation::
 
     from sqlalchemy.pool import NullPool
     engine = create_engine(
