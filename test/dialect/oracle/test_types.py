@@ -12,7 +12,6 @@ from sqlalchemy import CHAR
 from sqlalchemy import DATE
 from sqlalchemy import Date
 from sqlalchemy import DateTime
-from sqlalchemy import DOUBLE
 from sqlalchemy import Double
 from sqlalchemy import event
 from sqlalchemy import FLOAT
@@ -313,7 +312,6 @@ class TypesTest(fixtures.TestBase):
             Column("floatcol2", FLOAT()),
             Column("doubleprec1", oracle.DOUBLE_PRECISION),
             Column("doubleprec2", Double()),
-            Column("doubleprec3", DOUBLE()),
             Column("numbercol1", oracle.NUMBER(9)),
             Column("numbercol2", oracle.NUMBER(9, 3)),
             Column("numbercol3", oracle.NUMBER),
