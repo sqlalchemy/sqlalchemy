@@ -257,7 +257,7 @@ class _ModNS(object):
                 else:
                     assert isinstance(value, _MultipleClassMarker)
                     return value.attempt_get(self.__parent.path, key)
-        raise AttributeError(
+        raise NameError(
             "Module %r has no mapped classes "
             "registered under the name %r" % (self.__parent.name, key)
         )
