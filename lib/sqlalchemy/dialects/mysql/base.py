@@ -1082,6 +1082,7 @@ colspecs = {
     _FloatType: _FloatType,
     sqltypes.Numeric: NUMERIC,
     sqltypes.Float: FLOAT,
+    sqltypes.Double: DOUBLE,
     sqltypes.Time: TIME,
     sqltypes.Enum: ENUM,
     sqltypes.MatchType: _MatchType,

@@ -1,0 +1,38 @@
+.. change::
+    :tags: feature, types
+    :tickets: 5465
+
+    Added :class:`.Double`, :class:`.DOUBLE`, :class:`.DOUBLE_PRECISION`
+    datatypes to the base ``sqlalchemy.`` module namespace, for explicit use of
+    double/double precision as well as generic "double" datatypes. Use
+    :class:`.Double` for generic support that will resolve to DOUBLE/DOUBLE
+    PRECISION/FLOAT as needed for different backends.
+
+
+.. change::
+    :tags: feature, oracle
+    :tickets: 5465
+
+    Implemented DDL and reflection support for ``FLOAT`` datatypes which
+    include an explicit "binary_precision" value. Using the Oracle-specific
+    :class:`_oracle.FLOAT` datatype, the new parameter
+    :paramref:`_oracle.FLOAT.binary_precision` may be specified which will
+    render Oracle's precision for floating point types directly. This value is
+    interpreted during reflection. Upon reflecting back a ``FLOAT`` datatype,
+    the datatype returned is one of :class:`_types.DOUBLE_PRECISION` for a
+    ``FLOAT`` for a precision of 126 (this is also Oracle's default precision
+    for ``FLOAT``), :class:`_types.REAL` for a precision of 63, and
+    :class:`_oracle.FLOAT` for a custom precision, as per Oracle documentation.
+
+    As part of this change, the generic :paramref:`_sqltypes.Float.precision`
+    value is explicitly rejected when generating DDL for Oracle, as this
+    precision cannot be accurately converted to "binary precision"; instead, an
+    error message encourages the use of
+    :meth:`_sqltypes.TypeEngine.with_variant` so that Oracle's specific form of
+    precision may be chosen exactly. This is a backwards-incompatible change in
+    behavior, as the previous "precision" value was silently ignored for
+    Oracle.
+
+    .. seealso::
+
+        :ref:`change_5465_oracle`

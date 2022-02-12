@@ -344,7 +344,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
                 metadata,
                 Column("user_id", sa.INT, primary_key=True),
                 Column("test1", sa.CHAR(5), nullable=False),
-                Column("test2", sa.Float(5), nullable=False),
+                Column("test2", sa.Float(), nullable=False),
                 Column(
                     "parent_user_id",
                     sa.Integer,
@@ -361,7 +361,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
                 metadata,
                 Column("user_id", sa.INT, primary_key=True),
                 Column("test1", sa.CHAR(5), nullable=False),
-                Column("test2", sa.Float(5), nullable=False),
+                Column("test2", sa.Float(), nullable=False),
                 schema=schema,
                 test_needs_fk=True,
             )

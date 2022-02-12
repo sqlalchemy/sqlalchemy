@@ -32,25 +32,20 @@ construction arguments, are as follows:
 .. autoclass:: DATE
    :members: __init__
 
-.. autoclass:: DOUBLE_PRECISION
+.. autoclass:: FLOAT
    :members: __init__
-
 
 .. autoclass:: INTERVAL
   :members: __init__
 
-
 .. autoclass:: NCLOB
   :members: __init__
-
 
 .. autoclass:: NUMBER
    :members: __init__
 
-
 .. autoclass:: LONG
   :members: __init__
-
 
 .. autoclass:: RAW
   :members: __init__

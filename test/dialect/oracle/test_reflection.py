@@ -1,8 +1,10 @@
 # coding: utf-8
 
 
+from sqlalchemy import Double
 from sqlalchemy import exc
 from sqlalchemy import FLOAT
+from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import ForeignKeyConstraint
 from sqlalchemy import func
@@ -19,10 +21,12 @@ from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import Unicode
 from sqlalchemy import UniqueConstraint
+from sqlalchemy.dialects import oracle
 from sqlalchemy.dialects.oracle.base import BINARY_DOUBLE
 from sqlalchemy.dialects.oracle.base import BINARY_FLOAT
 from sqlalchemy.dialects.oracle.base import DOUBLE_PRECISION
 from sqlalchemy.dialects.oracle.base import NUMBER
+from sqlalchemy.dialects.oracle.base import REAL
 from sqlalchemy.testing import assert_warns
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
@@ -803,17 +807,24 @@ class TypeReflectionTest(fixtures.TestBase):
         connection,
     ):
         specs = [
-            (DOUBLE_PRECISION(), FLOAT()),
-            # when binary_precision is supported
-            # (DOUBLE_PRECISION(), oracle.FLOAT(binary_precision=126)),
+            (DOUBLE_PRECISION(), DOUBLE_PRECISION()),
+            (Double(), DOUBLE_PRECISION()),
+            (REAL(), REAL()),
             (BINARY_DOUBLE(), BINARY_DOUBLE()),
             (BINARY_FLOAT(), BINARY_FLOAT()),
-            (FLOAT(5), FLOAT()),
-            # when binary_precision is supported
-            # (FLOAT(5), oracle.FLOAT(binary_precision=5),),
-            (FLOAT(), FLOAT()),
-            # when binary_precision is supported
-            # (FLOAT(5), oracle.FLOAT(binary_precision=126),),
+            (oracle.FLOAT(5), oracle.FLOAT(5)),
+            (
+                Float(5).with_variant(
+                    oracle.FLOAT(binary_precision=16), "oracle"
+                ),
+                oracle.FLOAT(16),
+            ),  # using conversion
+            (FLOAT(), DOUBLE_PRECISION()),
+            # from https://docs.oracle.com/cd/B14117_01/server.101/b10758/sqlqr06.htm  # noqa E501
+            # DOUBLE PRECISION == precision 126
+            # REAL == precision 63
+            (oracle.FLOAT(126), DOUBLE_PRECISION()),
+            (oracle.FLOAT(63), REAL()),
         ]
         self._run_test(metadata, connection, specs, ["precision"])
 

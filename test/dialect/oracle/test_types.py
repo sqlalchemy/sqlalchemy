@@ -12,7 +12,10 @@ from sqlalchemy import CHAR
 from sqlalchemy import DATE
 from sqlalchemy import Date
 from sqlalchemy import DateTime
+from sqlalchemy import Double
+from sqlalchemy import DOUBLE_PRECISION
 from sqlalchemy import event
+from sqlalchemy import exc
 from sqlalchemy import FLOAT
 from sqlalchemy import Float
 from sqlalchemy import Integer
@@ -41,6 +44,7 @@ from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import eq_
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import mock
@@ -300,6 +304,18 @@ class TypesTest(fixtures.TestBase):
             datetime.timedelta(days=35, seconds=5743),
         )
 
+    def test_no_decimal_float_precision(self):
+        with expect_raises_message(
+            exc.ArgumentError,
+            "Oracle FLOAT types use 'binary precision', which does not "
+            "convert cleanly from decimal 'precision'.  Please specify this "
+            "type with a separate Oracle variant, such as "
+            r"FLOAT\(precision=5\).with_variant\(oracle.FLOAT\("
+            r"binary_precision=16\), 'oracle'\), so that the Oracle "
+            "specific 'binary_precision' may be specified accurately.",
+        ):
+            FLOAT(5).compile(dialect=oracle.dialect())
+
     def test_numerics(self, metadata, connection):
         m = metadata
         t1 = Table(
@@ -309,7 +325,8 @@ class TypesTest(fixtures.TestBase):
             Column("numericcol", Numeric(precision=9, scale=2)),
             Column("floatcol1", Float()),
             Column("floatcol2", FLOAT()),
-            Column("doubleprec", oracle.DOUBLE_PRECISION),
+            Column("doubleprec1", DOUBLE_PRECISION),
+            Column("doubleprec2", Double()),
             Column("numbercol1", oracle.NUMBER(9)),
             Column("numbercol2", oracle.NUMBER(9, 3)),
             Column("numbercol3", oracle.NUMBER),
@@ -322,7 +339,8 @@ class TypesTest(fixtures.TestBase):
                 numericcol=5.2,
                 floatcol1=6.5,
                 floatcol2=8.5,
-                doubleprec=9.5,
+                doubleprec1=9.5,
+                doubleprec2=14.5,
                 numbercol1=12,
                 numbercol2=14.85,
                 numbercol3=15.76,
@@ -343,6 +361,7 @@ class TypesTest(fixtures.TestBase):
                     (6.5, float),
                     (8.5, float),
                     (9.5, float),
+                    (14.5, float),
                     (12, int),
                     (decimal.Decimal("14.85"), decimal.Decimal),
                     (15.76, float),
@@ -1154,7 +1173,7 @@ class SetInputSizesTest(fixtures.TestBase):
         (SmallInteger, 25, int, False),
         (Integer, 25, int, False),
         (Numeric(10, 8), decimal.Decimal("25.34534"), None, False),
-        (Float(15), 25.34534, None, False),
+        (oracle.FLOAT(15), 25.34534, None, False),
         (oracle.BINARY_DOUBLE, 25.34534, "NATIVE_FLOAT", False),
         (oracle.BINARY_FLOAT, 25.34534, "NATIVE_FLOAT", False),
         (oracle.DOUBLE_PRECISION, 25.34534, None, False),

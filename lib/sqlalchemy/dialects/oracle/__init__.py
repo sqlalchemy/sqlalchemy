@@ -24,6 +24,7 @@ from .base import NUMBER
 from .base import NVARCHAR
 from .base import NVARCHAR2
 from .base import RAW
+from .base import REAL
 from .base import ROWID
 from .base import TIMESTAMP
 from .base import VARCHAR

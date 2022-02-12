@@ -28,6 +28,9 @@ from .sql.sqltypes import Date
 from .sql.sqltypes import DATETIME
 from .sql.sqltypes import DateTime
 from .sql.sqltypes import DECIMAL
+from .sql.sqltypes import DOUBLE
+from .sql.sqltypes import Double
+from .sql.sqltypes import DOUBLE_PRECISION
 from .sql.sqltypes import Enum
 from .sql.sqltypes import FLOAT
 from .sql.sqltypes import Float
@@ -105,6 +108,9 @@ __all__ = [
     "BigInteger",
     "Numeric",
     "Float",
+    "Double",
+    "DOUBLE",
+    "DOUBLE_PRECISION",
     "DateTime",
     "Date",
     "Time",

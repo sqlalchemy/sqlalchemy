@@ -731,7 +731,7 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
 
     def test_render_literal_float(self, literal_round_trip):
         literal_round_trip(
-            Float(4),
+            Float(),
             [15.7563, decimal.Decimal("15.7563")],
             [15.7563],
             filter_=lambda n: n is not None and round(n, 5) or None,
@@ -783,17 +783,17 @@ class NumericTest(_LiteralRoundTripFixture, fixtures.TestBase):
     @testing.requires.floats_to_four_decimals
     def test_float_as_decimal(self, do_numeric_test):
         do_numeric_test(
-            Float(precision=8, asdecimal=True),
-            [15.7563, decimal.Decimal("15.7563"), None],
-            [decimal.Decimal("15.7563"), None],
+            Float(asdecimal=True),
+            [15.756, decimal.Decimal("15.756"), None],
+            [decimal.Decimal("15.756"), None],
             filter_=lambda n: n is not None and round(n, 4) or None,
         )
 
     def test_float_as_float(self, do_numeric_test):
         do_numeric_test(
-            Float(precision=8),
-            [15.7563, decimal.Decimal("15.7563")],
-            [15.7563],
+            Float(),
+            [15.756, decimal.Decimal("15.756")],
+            [15.756],
             filter_=lambda n: n is not None and round(n, 5) or None,
         )
 

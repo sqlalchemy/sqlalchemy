@@ -1179,7 +1179,7 @@ ischema_names = {
     "DATE_CHAR": sqltypes.DATE,
     "DATETIME": sqltypes.DATETIME,
     "DATETIME_CHAR": sqltypes.DATETIME,
-    "DOUBLE": sqltypes.FLOAT,
+    "DOUBLE": sqltypes.DOUBLE,
     "DECIMAL": sqltypes.DECIMAL,
     "FLOAT": sqltypes.FLOAT,
     "INT": sqltypes.INTEGER,

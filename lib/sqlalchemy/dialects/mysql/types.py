@@ -152,7 +152,7 @@ class DECIMAL(_NumericType, sqltypes.DECIMAL):
         )
 
 
-class DOUBLE(_FloatType):
+class DOUBLE(_FloatType, sqltypes.DOUBLE):
     """MySQL DOUBLE type."""
 
     __visit_name__ = "DOUBLE"

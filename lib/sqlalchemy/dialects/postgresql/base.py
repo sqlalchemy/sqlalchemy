@@ -1449,6 +1449,7 @@ from ...types import BIGINT
 from ...types import BOOLEAN
 from ...types import CHAR
 from ...types import DATE
+from ...types import DOUBLE_PRECISION
 from ...types import FLOAT
 from ...types import INTEGER
 from ...types import NUMERIC
@@ -1573,10 +1574,6 @@ _INT_TYPES = (20, 21, 23, 26, 1005, 1007, 1016)
 
 class BYTEA(sqltypes.LargeBinary):
     __visit_name__ = "BYTEA"
-
-
-class DOUBLE_PRECISION(sqltypes.Float):
-    __visit_name__ = "DOUBLE_PRECISION"
 
 
 class INET(sqltypes.TypeEngine):
@@ -2896,8 +2893,8 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
         else:
             return "FLOAT(%(precision)s)" % {"precision": type_.precision}
 
-    def visit_DOUBLE_PRECISION(self, type_, **kw):
-        return "DOUBLE PRECISION"
+    def visit_double(self, type_, **kw):
+        return self.visit_DOUBLE_PRECISION(type, **kw)
 
     def visit_BIGINT(self, type_, **kw):
         return "BIGINT"
