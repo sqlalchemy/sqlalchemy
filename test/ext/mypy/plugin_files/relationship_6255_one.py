@@ -1,13 +1,13 @@
 from typing import List
 from typing import Optional
 
-from sqlalchemy import Column
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import select
 from sqlalchemy import String
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
 
 Base = declarative_base()
@@ -16,8 +16,8 @@ Base = declarative_base()
 class User(Base):
     __tablename__ = "user"
 
-    id = Column(Integer, primary_key=True)
-    name = Column(String)
+    id = mapped_column(Integer, primary_key=True)
+    name = mapped_column(String, nullable=True)
 
     addresses: Mapped[List["Address"]] = relationship(
         "Address", back_populates="user"
@@ -31,10 +31,10 @@ class User(Base):
 class Address(Base):
     __tablename__ = "address"
 
-    id = Column(Integer, primary_key=True)
-    user_id: int = Column(ForeignKey("user.id"))
+    id = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
 
-    user: "User" = relationship("User", back_populates="addresses")
+    user: Mapped["User"] = relationship("User", back_populates="addresses")
 
     @property
     def some_other_property(self) -> Optional[str]:

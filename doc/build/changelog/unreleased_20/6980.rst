@@ -10,6 +10,10 @@
     behaviors, maintaining the original type allows for clearer type checking
     and debugging.
 
+    :meth:`_sqltypes.TypeEngine.with_variant` also accepts multiple dialect
+    names per call as well, in particular this is helpful for related
+    backend names such as ``"mysql", "mariadb"``.
+
     .. seealso::
 
         :ref:`change_6980`

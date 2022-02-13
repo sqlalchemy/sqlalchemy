@@ -65,10 +65,9 @@ warn_unused_ignores = false
 
 strict = true
 
-# https://github.com/python/mypy/issues/8754
-# we are a pep-561 package, so implicit-rexport should be
-# enabled
-implicit_reexport = true
+# some debate at
+# https://github.com/python/mypy/issues/8754.
+# implicit_reexport = true
 
 # individual packages or even modules should be listed here
 # with strictness-specificity set up.  there's no way we are going to get
@@ -78,7 +77,6 @@ implicit_reexport = true
 # strict checking
 [[tool.mypy.overrides]]
 module = [
-    "sqlalchemy.events",
     "sqlalchemy.events",
     "sqlalchemy.exc",
     "sqlalchemy.inspection",

@@ -930,7 +930,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
             [Item],
             lambda: (load_only(Item.keywords),),
             'Can\'t apply "column loader" strategy to property '
-            '"Item.keywords", which is a "relationship property"; this '
+            '"Item.keywords", which is a "relationship"; this '
             'loader strategy is intended to be used with a "column property".',
         )
 
@@ -942,7 +942,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
             lambda: (joinedload(Keyword.id).joinedload(Item.keywords),),
             'Can\'t apply "joined loader" strategy to property "Keyword.id", '
             'which is a "column property"; this loader strategy is intended '
-            'to be used with a "relationship property".',
+            'to be used with a "relationship".',
         )
 
     def test_option_against_wrong_multi_entity_type_attr_two(self):
@@ -953,7 +953,7 @@ class OptionsNoPropTest(_fixtures.FixtureTest):
             lambda: (joinedload(Keyword.keywords).joinedload(Item.keywords),),
             'Can\'t apply "joined loader" strategy to property '
             '"Keyword.keywords", which is a "column property"; this loader '
-            'strategy is intended to be used with a "relationship property".',
+            'strategy is intended to be used with a "relationship".',
         )
 
     def test_option_against_wrong_multi_entity_type_attr_three(self):

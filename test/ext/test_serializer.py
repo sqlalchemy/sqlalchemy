@@ -231,7 +231,7 @@ class SerializeTest(AssertsCompiledSQL, fixtures.MappedTest):
             serializer.loads(pickled_failing, users.metadata, None)
 
     def test_orm_join(self):
-        from sqlalchemy.orm.util import join
+        from sqlalchemy.orm import join
 
         j = join(User, Address, User.addresses)
 

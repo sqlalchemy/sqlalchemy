@@ -182,7 +182,7 @@ and pylance.  Given a program as below::
     from sqlalchemy.dialects.mysql import VARCHAR
 
 
-    type_ = String(255).with_variant(VARCHAR(255, charset='utf8mb4'), "mysql")
+    type_ = String(255).with_variant(VARCHAR(255, charset='utf8mb4'), "mysql", "mariadb")
 
     if typing.TYPE_CHECKING:
         reveal_type(type_)
@@ -191,6 +191,9 @@ A type checker like pyright will now report the type as::
 
     info: Type of "type_" is "String"
 
+In addition, as illustrated above, multiple dialect names may be passed for
+single type, in particular this is helpful for the pair of ``"mysql"`` and
+``"mariadb"`` dialects which are considered separately as of SQLAlchemy 1.4.
 
 :ticket:`6980`
 

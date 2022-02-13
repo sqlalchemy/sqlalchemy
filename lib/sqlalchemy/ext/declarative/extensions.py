@@ -378,7 +378,7 @@ class DeferredReflection:
                 metadata = mapper.class_.metadata
                 for rel in mapper._props.values():
                     if (
-                        isinstance(rel, relationships.RelationshipProperty)
+                        isinstance(rel, relationships.Relationship)
                         and rel.secondary is not None
                     ):
                         if isinstance(rel.secondary, Table):

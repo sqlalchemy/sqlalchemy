@@ -136,6 +136,7 @@ from .selectable import ScalarSelect as ScalarSelect
 from .selectable import Select as Select
 from .selectable import Selectable as Selectable
 from .selectable import SelectBase as SelectBase
+from .selectable import SelectLabelStyle as SelectLabelStyle
 from .selectable import Subquery as Subquery
 from .selectable import TableClause as TableClause
 from .selectable import TableSample as TableSample

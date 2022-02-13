@@ -10,14 +10,26 @@ that exist as configurational elements, but don't participate
 as actively in the load/persist ORM loop.
 
 """
+import inspect
+import itertools
+import operator
+import typing
 from typing import Any
-from typing import Type
+from typing import Callable
+from typing import List
+from typing import Optional
+from typing import Tuple
 from typing import TypeVar
+from typing import Union
 
 from . import attributes
 from . import util as orm_util
+from .base import Mapped
+from .interfaces import _IntrospectsAnnotations
+from .interfaces import _MapsColumns
 from .interfaces import MapperProperty
 from .interfaces import PropComparator
+from .util import _extract_mapped_subtype
 from .util import _none_set
 from .. import event
 from .. import exc as sa_exc
@@ -26,6 +38,9 @@ from .. import sql
 from .. import util
 from ..sql import expression
 from ..sql import operators
+
+if typing.TYPE_CHECKING:
+    from .properties import MappedColumn
 
 _T = TypeVar("_T", bound=Any)
 _PT = TypeVar("_PT", bound=Any)
@@ -92,12 +107,18 @@ class DescriptorProperty(MapperProperty[_T]):
         mapper.class_manager.instrument_attribute(self.key, proxy_attr)
 
 
-class CompositeProperty(DescriptorProperty[_T]):
+class Composite(
+    _MapsColumns[_T], _IntrospectsAnnotations, DescriptorProperty[_T]
+):
     """Defines a "composite" mapped attribute, representing a collection
     of columns as one attribute.
 
-    :class:`.CompositeProperty` is constructed using the :func:`.composite`
+    :class:`.Composite` is constructed using the :func:`.composite`
     function.
+
+    .. versionchanged:: 2.0 Renamed :class:`_orm.CompositeProperty`
+       to :class:`_orm.Composite`.  The old name
+       :class:`_orm.CompositeProperty` remains as an alias.
 
     .. seealso::
 
@@ -105,17 +126,29 @@ class CompositeProperty(DescriptorProperty[_T]):
 
     """
 
-    def __init__(self, class_: Type[_T], *attrs, **kwargs):
-        super(CompositeProperty, self).__init__()
+    composite_class: Union[type, Callable[..., type]]
+    attrs: Tuple[
+        Union[sql.ColumnElement[Any], "MappedColumn", str, Mapped[Any]], ...
+    ]
 
-        self.attrs = attrs
-        self.composite_class = class_
+    def __init__(self, class_=None, *attrs, **kwargs):
+        super().__init__()
+
+        if isinstance(class_, (Mapped, str, sql.ColumnElement)):
+            self.attrs = (class_,) + attrs
+            # will initialize within declarative_scan
+            self.composite_class = None  # type: ignore
+        else:
+            self.composite_class = class_
+            self.attrs = attrs
+
         self.active_history = kwargs.get("active_history", False)
         self.deferred = kwargs.get("deferred", False)
         self.group = kwargs.get("group", None)
         self.comparator_factory = kwargs.pop(
             "comparator_factory", self.__class__.Comparator
         )
+        self._generated_composite_accessor = None
         if "info" in kwargs:
             self.info = kwargs.pop("info")
 
@@ -123,11 +156,26 @@ class CompositeProperty(DescriptorProperty[_T]):
         self._create_descriptor()
 
     def instrument_class(self, mapper):
-        super(CompositeProperty, self).instrument_class(mapper)
+        super().instrument_class(mapper)
         self._setup_event_handlers()
 
+    def _composite_values_from_instance(self, value):
+        if self._generated_composite_accessor:
+            return self._generated_composite_accessor(value)
+        else:
+            try:
+                accessor = value.__composite_values__
+            except AttributeError as ae:
+                raise sa_exc.InvalidRequestError(
+                    f"Composite class {self.composite_class.__name__} is not "
+                    f"a dataclass and does not define a __composite_values__()"
+                    " method; can't get state"
+                ) from ae
+            else:
+                return accessor()
+
     def do_init(self):
-        """Initialization which occurs after the :class:`.CompositeProperty`
+        """Initialization which occurs after the :class:`.Composite`
         has been associated with its parent mapper.
 
         """
@@ -181,7 +229,8 @@ class CompositeProperty(DescriptorProperty[_T]):
                     setattr(instance, key, None)
             else:
                 for key, value in zip(
-                    self._attribute_keys, value.__composite_values__()
+                    self._attribute_keys,
+                    self._composite_values_from_instance(value),
                 ):
                     setattr(instance, key, value)
 
@@ -196,18 +245,74 @@ class CompositeProperty(DescriptorProperty[_T]):
 
         self.descriptor = property(fget, fset, fdel)
 
+    @util.preload_module("sqlalchemy.orm.properties")
+    @util.preload_module("sqlalchemy.orm.decl_base")
+    def declarative_scan(
+        self, registry, cls, key, annotation, is_dataclass_field
+    ):
+        MappedColumn = util.preloaded.orm_properties.MappedColumn
+        decl_base = util.preloaded.orm_decl_base
+
+        argument = _extract_mapped_subtype(
+            annotation,
+            cls,
+            key,
+            MappedColumn,
+            self.composite_class is None,
+            is_dataclass_field,
+        )
+
+        if argument and self.composite_class is None:
+            if isinstance(argument, str) or hasattr(
+                argument, "__forward_arg__"
+            ):
+                raise sa_exc.ArgumentError(
+                    f"Can't use forward ref {argument} for composite "
+                    f"class argument"
+                )
+            self.composite_class = argument
+        insp = inspect.signature(self.composite_class)
+        for param, attr in itertools.zip_longest(
+            insp.parameters.values(), self.attrs
+        ):
+            if param is None or attr is None:
+                raise sa_exc.ArgumentError(
+                    f"number of arguments to {self.composite_class.__name__} "
+                    f"class and number of attributes don't match"
+                )
+            if isinstance(attr, MappedColumn):
+                attr.declarative_scan_for_composite(
+                    registry, cls, key, param.name, param.annotation
+                )
+            elif isinstance(attr, schema.Column):
+                decl_base._undefer_column_name(param.name, attr)
+
+        if not hasattr(cls, "__composite_values__"):
+            getter = operator.attrgetter(
+                *[p.name for p in insp.parameters.values()]
+            )
+            if len(insp.parameters) == 1:
+                self._generated_composite_accessor = lambda obj: (getter(obj),)
+            else:
+                self._generated_composite_accessor = getter
+
     @util.memoized_property
     def _comparable_elements(self):
         return [getattr(self.parent.class_, prop.key) for prop in self.props]
 
     @util.memoized_property
+    @util.preload_module("orm.properties")
     def props(self):
         props = []
+        MappedColumn = util.preloaded.orm_properties.MappedColumn
+
         for attr in self.attrs:
             if isinstance(attr, str):
                 prop = self.parent.get_property(attr, _configure_mappers=False)
             elif isinstance(attr, schema.Column):
                 prop = self.parent._columntoproperty[attr]
+            elif isinstance(attr, MappedColumn):
+                prop = self.parent._columntoproperty[attr.column]
             elif isinstance(attr, attributes.InstrumentedAttribute):
                 prop = attr.property
             else:
@@ -220,8 +325,22 @@ class CompositeProperty(DescriptorProperty[_T]):
         return props
 
     @property
+    @util.preload_module("orm.properties")
     def columns(self):
-        return [a for a in self.attrs if isinstance(a, schema.Column)]
+        MappedColumn = util.preloaded.orm_properties.MappedColumn
+        return [
+            a.column if isinstance(a, MappedColumn) else a
+            for a in self.attrs
+            if isinstance(a, (schema.Column, MappedColumn))
+        ]
+
+    @property
+    def mapper_property_to_assign(self) -> Optional["MapperProperty[_T]"]:
+        return self
+
+    @property
+    def columns_to_assign(self) -> List[schema.Column]:
+        return [c for c in self.columns if c.table is None]
 
     def _setup_arguments_on_columns(self):
         """Propagate configuration arguments made on this composite
@@ -351,9 +470,7 @@ class CompositeProperty(DescriptorProperty[_T]):
     class CompositeBundle(orm_util.Bundle):
         def __init__(self, property_, expr):
             self.property = property_
-            super(CompositeProperty.CompositeBundle, self).__init__(
-                property_.key, *expr
-            )
+            super().__init__(property_.key, *expr)
 
         def create_row_processor(self, query, procs, labels):
             def proc(row):
@@ -365,7 +482,7 @@ class CompositeProperty(DescriptorProperty[_T]):
 
     class Comparator(PropComparator[_PT]):
         """Produce boolean, comparison, and other operators for
-        :class:`.CompositeProperty` attributes.
+        :class:`.Composite` attributes.
 
         See the example in :ref:`composite_operations` for an overview
         of usage , as well as the documentation for :class:`.PropComparator`.
@@ -402,7 +519,7 @@ class CompositeProperty(DescriptorProperty[_T]):
                     "proxy_key": self.prop.key,
                 }
             )
-            return CompositeProperty.CompositeBundle(self.prop, clauses)
+            return Composite.CompositeBundle(self.prop, clauses)
 
         def _bulk_update_tuples(self, value):
             if isinstance(value, sql.elements.BindParameter):
@@ -411,7 +528,7 @@ class CompositeProperty(DescriptorProperty[_T]):
             if value is None:
                 values = [None for key in self.prop._attribute_keys]
             elif isinstance(value, self.prop.composite_class):
-                values = value.__composite_values__()
+                values = self.prop._composite_values_from_instance(value)
             else:
                 raise sa_exc.ArgumentError(
                     "Can't UPDATE composite attribute %s to %r"
@@ -434,7 +551,7 @@ class CompositeProperty(DescriptorProperty[_T]):
             if other is None:
                 values = [None] * len(self.prop._comparable_elements)
             else:
-                values = other.__composite_values__()
+                values = self.prop._composite_values_from_instance(other)
             comparisons = [
                 a == b for a, b in zip(self.prop._comparable_elements, values)
             ]
@@ -477,7 +594,7 @@ class ConcreteInheritedProperty(DescriptorProperty[_T]):
         return comparator_callable
 
     def __init__(self):
-        super(ConcreteInheritedProperty, self).__init__()
+        super().__init__()
 
         def warn():
             raise AttributeError(
@@ -502,7 +619,24 @@ class ConcreteInheritedProperty(DescriptorProperty[_T]):
         self.descriptor = NoninheritedConcreteProp()
 
 
-class SynonymProperty(DescriptorProperty[_T]):
+class Synonym(DescriptorProperty[_T]):
+    """Denote an attribute name as a synonym to a mapped property,
+    in that the attribute will mirror the value and expression behavior
+    of another attribute.
+
+    :class:`.Synonym` is constructed using the :func:`_orm.synonym`
+    function.
+
+    .. versionchanged:: 2.0 Renamed :class:`_orm.SynonymProperty`
+       to :class:`_orm.Synonym`.  The old name
+       :class:`_orm.SynonymProperty` remains as an alias.
+
+    .. seealso::
+
+        :ref:`synonyms` - Overview of synonyms
+
+    """
+
     def __init__(
         self,
         name,
@@ -512,7 +646,7 @@ class SynonymProperty(DescriptorProperty[_T]):
         doc=None,
         info=None,
     ):
-        super(SynonymProperty, self).__init__()
+        super().__init__()
 
         self.name = name
         self.map_column = map_column

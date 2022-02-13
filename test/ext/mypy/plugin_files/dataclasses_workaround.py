@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from dataclasses import field
+from typing import Any
+from typing import Dict
 from typing import List
 from typing import Optional
 from typing import TYPE_CHECKING
@@ -40,7 +42,7 @@ class User:
     if TYPE_CHECKING:
         _mypy_mapped_attrs = [id, name, fullname, nickname, addresses]
 
-    __mapper_args__ = {  # type: ignore
+    __mapper_args__: Dict[str, Any] = {
         "properties": {"addresses": relationship("Address")}
     }
 

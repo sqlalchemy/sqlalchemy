@@ -34,19 +34,27 @@ from ._has_cy import HAS_CYEXTENSION
 from .typing import Literal
 
 if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
-    from ._py_collections import immutabledict
-    from ._py_collections import IdentitySet
-    from ._py_collections import ImmutableContainer
-    from ._py_collections import ImmutableDictBase
-    from ._py_collections import OrderedSet
-    from ._py_collections import unique_list  # noqa
+    from ._py_collections import immutabledict as immutabledict
+    from ._py_collections import IdentitySet as IdentitySet
+    from ._py_collections import ImmutableContainer as ImmutableContainer
+    from ._py_collections import ImmutableDictBase as ImmutableDictBase
+    from ._py_collections import OrderedSet as OrderedSet
+    from ._py_collections import unique_list as unique_list
 else:
-    from sqlalchemy.cyextension.immutabledict import ImmutableContainer
-    from sqlalchemy.cyextension.immutabledict import ImmutableDictBase
-    from sqlalchemy.cyextension.immutabledict import immutabledict
-    from sqlalchemy.cyextension.collections import IdentitySet
-    from sqlalchemy.cyextension.collections import OrderedSet
-    from sqlalchemy.cyextension.collections import unique_list  # noqa
+    from sqlalchemy.cyextension.immutabledict import (
+        ImmutableContainer as ImmutableContainer,
+    )
+    from sqlalchemy.cyextension.immutabledict import (
+        ImmutableDictBase as ImmutableDictBase,
+    )
+    from sqlalchemy.cyextension.immutabledict import (
+        immutabledict as immutabledict,
+    )
+    from sqlalchemy.cyextension.collections import IdentitySet as IdentitySet
+    from sqlalchemy.cyextension.collections import OrderedSet as OrderedSet
+    from sqlalchemy.cyextension.collections import (  # noqa
+        unique_list as unique_list,
+    )
 
 
 _T = TypeVar("_T", bound=Any)
@@ -55,6 +63,62 @@ _VT = TypeVar("_VT", bound=Any)
 
 
 EMPTY_SET: FrozenSet[Any] = frozenset()
+
+
+def merge_lists_w_ordering(a, b):
+    """merge two lists, maintaining ordering as much as possible.
+
+    this is to reconcile vars(cls) with cls.__annotations__.
+
+    Example::
+
+        >>> a = ['__tablename__', 'id', 'x', 'created_at']
+        >>> b = ['id', 'name', 'data', 'y', 'created_at']
+        >>> merge_lists_w_ordering(a, b)
+        ['__tablename__', 'id', 'name', 'data', 'y', 'x', 'created_at']
+
+    This is not necessarily the ordering that things had on the class,
+    in this case the class is::
+
+        class User(Base):
+            __tablename__ = "users"
+
+            id: Mapped[int] = mapped_column(primary_key=True)
+            name: Mapped[str]
+            data: Mapped[Optional[str]]
+            x = Column(Integer)
+            y: Mapped[int]
+            created_at: Mapped[datetime.datetime] = mapped_column()
+
+    But things are *mostly* ordered.
+
+    The algorithm could also be done by creating a partial ordering for
+    all items in both lists and then using topological_sort(), but that
+    is too much overhead.
+
+    Background on how I came up with this is at:
+    https://gist.github.com/zzzeek/89de958cf0803d148e74861bd682ebae
+
+    """
+    overlap = set(a).intersection(b)
+
+    result = []
+
+    current, other = iter(a), iter(b)
+
+    while True:
+        for element in current:
+            if element in overlap:
+                overlap.discard(element)
+                other, current = current, other
+                break
+
+            result.append(element)
+        else:
+            result.extend(other)
+            break
+
+    return result
 
 
 def coerce_to_immutabledict(d):

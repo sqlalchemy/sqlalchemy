@@ -5,6 +5,11 @@
 Composite Column Types
 ======================
 
+.. note::
+
+    This documentation is not yet updated to illustrate the new
+    typing-annotation syntax or direct support for dataclasses.
+
 Sets of columns can be associated with a single user-defined datatype. The ORM
 provides a single attribute which represents the group of columns using the
 class you provide.

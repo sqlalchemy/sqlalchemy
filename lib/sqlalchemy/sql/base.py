@@ -21,6 +21,7 @@ from typing import TypeVar
 
 from . import roles
 from . import visitors
+from ._typing import _ImmutableExecuteOptions
 from .cache_key import HasCacheKey  # noqa
 from .cache_key import MemoizedHasCacheKey  # noqa
 from .traversals import HasCopyInternals  # noqa
@@ -832,9 +833,8 @@ class Executable(roles.StatementRole, Generative):
 
     """
 
-    supports_execution = True
-    _execution_options = util.immutabledict()
-    _bind = None
+    supports_execution: bool = True
+    _execution_options: _ImmutableExecuteOptions = util.immutabledict()
     _with_options = ()
     _with_context_options = ()
 

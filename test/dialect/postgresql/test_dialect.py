@@ -29,7 +29,6 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import TypeDecorator
-from sqlalchemy import util
 from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.dialects.postgresql import HSTORE
 from sqlalchemy.dialects.postgresql import JSONB
@@ -615,7 +614,7 @@ class ExecutemanyValuesInsertsTest(ExecuteManyMode, fixtures.TablesTest):
                 "id",
                 Integer,
                 primary_key=True,
-                default=lambda: util.next(counter),
+                default=lambda: next(counter),
             ),
             Column("data", Integer),
         )

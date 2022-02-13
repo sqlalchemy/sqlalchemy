@@ -14,7 +14,7 @@ from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import polymorphic_union
 from sqlalchemy.orm import relationship
-from sqlalchemy.orm.util import with_polymorphic
+from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_

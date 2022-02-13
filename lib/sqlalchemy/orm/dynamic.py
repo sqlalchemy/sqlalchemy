@@ -28,7 +28,7 @@ from ..engine import result
 
 
 @log.class_logger
-@relationships.RelationshipProperty.strategy_for(lazy="dynamic")
+@relationships.Relationship.strategy_for(lazy="dynamic")
 class DynaLoader(strategies.AbstractRelationshipLoader):
     def init_class_attribute(self, mapper):
         self.is_class_level = True

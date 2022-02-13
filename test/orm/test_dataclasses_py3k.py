@@ -271,7 +271,9 @@ class PlainDeclarativeDataclassesTest(DataclassesTest):
             widgets: List[Widget] = dataclasses.field(default_factory=list)
             widget_count: int = dataclasses.field(init=False)
 
-            widgets = relationship("Widget")
+            __mapper_args__ = dict(
+                properties=dict(widgets=relationship("Widget"))
+            )
 
             def __post_init__(self):
                 self.widget_count = len(self.widgets)
@@ -912,7 +914,7 @@ class PropagationFromMixinTest(fixtures.TestBase):
             eq_(BaseType.__table__.name, "basetype")
             eq_(
                 list(BaseType.__table__.c.keys()),
-                ["timestamp", "type", "id", "value"],
+                ["type", "id", "value", "timestamp"],
             )
             eq_(BaseType.__table__.kwargs, {"mysql_engine": "InnoDB"})
             assert Single.__table__ is BaseType.__table__

@@ -36,6 +36,7 @@ from mypy.types import UnionType
 
 from . import infer
 from . import util
+from .names import expr_to_mapped_constructor
 from .names import NAMED_TYPE_SQLA_MAPPED
 
 
@@ -117,6 +118,7 @@ def re_apply_declarative_assignments(
         ):
 
             left_node = stmt.lvalues[0].node
+
             python_type_for_type = mapped_attr_lookup[
                 stmt.lvalues[0].name
             ].type
@@ -142,7 +144,7 @@ def re_apply_declarative_assignments(
                 )
             ):
 
-                python_type_for_type = (
+                new_python_type_for_type = (
                     infer.infer_type_from_right_hand_nameexpr(
                         api,
                         stmt,
@@ -152,19 +154,27 @@ def re_apply_declarative_assignments(
                     )
                 )
 
-                if python_type_for_type is None or isinstance(
-                    python_type_for_type, UnboundType
+                if new_python_type_for_type is not None and not isinstance(
+                    new_python_type_for_type, UnboundType
                 ):
-                    continue
+                    python_type_for_type = new_python_type_for_type
 
-                # update the SQLAlchemyAttribute with the better information
-                mapped_attr_lookup[
-                    stmt.lvalues[0].name
-                ].type = python_type_for_type
+                    # update the SQLAlchemyAttribute with the better
+                    # information
+                    mapped_attr_lookup[
+                        stmt.lvalues[0].name
+                    ].type = python_type_for_type
 
-                update_cls_metadata = True
+                    update_cls_metadata = True
 
-            if python_type_for_type is not None:
+            # for some reason if you have a Mapped type explicitly annotated,
+            # and here you set it again, mypy forgets how to do descriptors.
+            # no idea.  100% feeling around in the dark to see what sticks
+            if (
+                not isinstance(left_node.type, Instance)
+                or left_node.type.type.fullname != NAMED_TYPE_SQLA_MAPPED
+            ):
+                assert python_type_for_type is not None
                 left_node.type = api.named_type(
                     NAMED_TYPE_SQLA_MAPPED, [python_type_for_type]
                 )
@@ -202,6 +212,7 @@ def apply_type_to_mapped_statement(
     assert isinstance(left_node, Var)
 
     if left_hand_explicit_type is not None:
+        lvalue.is_inferred_def = False
         left_node.type = api.named_type(
             NAMED_TYPE_SQLA_MAPPED, [left_hand_explicit_type]
         )
@@ -224,7 +235,7 @@ def apply_type_to_mapped_statement(
     # _sa_Mapped._empty_constructor(<original CallExpr from rvalue>)
     # the original right-hand side is maintained so it gets type checked
     # internally
-    stmt.rvalue = util.expr_to_mapped_constructor(stmt.rvalue)
+    stmt.rvalue = expr_to_mapped_constructor(stmt.rvalue)
 
 
 def add_additional_orm_attributes(
