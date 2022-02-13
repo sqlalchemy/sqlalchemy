@@ -8,6 +8,8 @@
 """sqlalchemy.orm.interfaces.LoaderStrategy
    implementations, and related MapperOptions."""
 
+from __future__ import annotations
+
 import collections
 import itertools
 

@@ -6,6 +6,8 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 """Provides the Session class and related utilities."""
 
+from __future__ import annotations
+
 import contextlib
 import itertools
 import sys

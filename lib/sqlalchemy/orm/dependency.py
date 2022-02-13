@@ -9,6 +9,8 @@
 
 """
 
+from __future__ import annotations
+
 from . import attributes
 from . import exc
 from . import sync

@@ -28,6 +28,8 @@ Since these objects are part of the SQL expression language, they are usable
 as components in SQL expressions.
 
 """
+from __future__ import annotations
+
 import collections
 import typing
 from typing import Any

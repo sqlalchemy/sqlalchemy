@@ -12,6 +12,8 @@ raised as a result of DBAPI exceptions are all subclasses of
 :exc:`.DBAPIError`.
 
 """
+from __future__ import annotations
+
 import typing
 from typing import Any
 from typing import List

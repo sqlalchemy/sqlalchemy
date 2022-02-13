@@ -14,6 +14,8 @@ argument; alternatively, the URL is a public-facing construct which can
 be used directly and is also accepted directly by ``create_engine()``.
 """
 
+from __future__ import annotations
+
 import collections.abc as collections_abc
 import re
 from typing import Dict

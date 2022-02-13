@@ -8,6 +8,8 @@
 """ORM event interfaces.
 
 """
+from __future__ import annotations
+
 import weakref
 
 from . import instrumentation

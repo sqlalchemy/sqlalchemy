@@ -7,6 +7,8 @@
 
 """Core event interfaces."""
 
+from __future__ import annotations
+
 from .engine.events import ConnectionEvents
 from .engine.events import DialectEvents
 from .pool.events import PoolEvents

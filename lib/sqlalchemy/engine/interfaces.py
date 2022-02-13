@@ -7,6 +7,8 @@
 
 """Define core interfaces used by the engine system."""
 
+from __future__ import annotations
+
 from enum import Enum
 from typing import Any
 from typing import Callable

@@ -10,6 +10,8 @@
 
 """
 
+from __future__ import annotations
+
 from collections import deque
 import time
 from typing import Any

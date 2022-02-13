@@ -13,6 +13,8 @@ as well as some of the attribute loading strategies.
 
 """
 
+from __future__ import annotations
+
 from . import attributes
 from . import exc as orm_exc
 from . import path_registry

@@ -11,6 +11,8 @@
 """
 
 
+from __future__ import annotations
+
 from ._dml_constructors import delete as delete
 from ._dml_constructors import insert as insert
 from ._dml_constructors import update as update

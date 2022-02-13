@@ -11,6 +11,8 @@ SQL tables and derived rowsets.
 
 """
 
+from __future__ import annotations
+
 import collections
 from enum import Enum
 import itertools

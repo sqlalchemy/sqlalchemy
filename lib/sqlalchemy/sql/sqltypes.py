@@ -8,6 +8,8 @@
 """SQL specific types.
 
 """
+from __future__ import annotations
+
 import collections.abc as collections_abc
 import datetime as dt
 import decimal

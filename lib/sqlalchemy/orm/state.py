@@ -12,6 +12,8 @@ defines a large part of the ORM's interactivity.
 
 """
 
+from __future__ import annotations
+
 import weakref
 
 from . import base

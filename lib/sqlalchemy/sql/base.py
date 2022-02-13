@@ -10,6 +10,8 @@
 """
 
 
+from __future__ import annotations
+
 import collections.abc as collections_abc
 from functools import reduce
 import itertools

@@ -9,6 +9,8 @@ Provide :class:`_expression.Insert`, :class:`_expression.Update` and
 :class:`_expression.Delete`.
 
 """
+from __future__ import annotations
+
 import collections.abc as collections_abc
 import typing
 

@@ -5,6 +5,8 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+from __future__ import annotations
+
 from . import util as _util
 from .engine import AdaptedConnection as AdaptedConnection
 from .engine import BaseCursorResult as BaseCursorResult

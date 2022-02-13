@@ -13,6 +13,8 @@ The functions here are called only by the unit of work functions
 in unitofwork.py.
 
 """
+from __future__ import annotations
+
 from itertools import chain
 from itertools import groupby
 from itertools import zip_longest

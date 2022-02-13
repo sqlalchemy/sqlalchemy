@@ -10,6 +10,9 @@ This system allows specification of classes and expressions used in
 :func:`_orm.relationship` using strings.
 
 """
+
+from __future__ import annotations
+
 import re
 from typing import MutableMapping
 from typing import Union

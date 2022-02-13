@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import operator
 
 MD_INDEX = 0  # integer index in cursor.description

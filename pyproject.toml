@@ -40,6 +40,7 @@ markers = [
 
 [tool.pyright]
 include = [
+    "lib/sqlalchemy/event/",
     "lib/sqlalchemy/events.py",
     "lib/sqlalchemy/exc.py",
     "lib/sqlalchemy/log.py",
@@ -77,6 +78,7 @@ strict = true
 # strict checking
 [[tool.mypy.overrides]]
 module = [
+    "sqlalchemy.event.*",
     "sqlalchemy.events",
     "sqlalchemy.exc",
     "sqlalchemy.inspection",
