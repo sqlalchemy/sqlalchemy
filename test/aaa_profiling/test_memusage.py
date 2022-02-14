@@ -538,7 +538,7 @@ class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
 
         go()
 
-        metadata.drop_all()
+        metadata.drop_all(self.engine)
         del m1, m2
         assert_no_mappers()
 
