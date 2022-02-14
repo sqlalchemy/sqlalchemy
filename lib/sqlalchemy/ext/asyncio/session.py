@@ -554,7 +554,7 @@ class AsyncSession(ReversibleProxy):
 
         """
 
-        return AsyncSessionTransaction(self)
+        return AsyncSessionTransaction(self, **kw)
 
     def begin_nested(self, **kw):
         """Return an :class:`_asyncio.AsyncSessionTransaction` object
@@ -567,7 +567,7 @@ class AsyncSession(ReversibleProxy):
 
         """
 
-        return AsyncSessionTransaction(self, nested=True)
+        return AsyncSessionTransaction(self, nested=True, **kw)
 
     async def rollback(self):
         """Rollback the current transaction in progress."""
