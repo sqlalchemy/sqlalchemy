@@ -219,7 +219,7 @@ from within the mutable extension::
         data = Column(MutableDict.as_mutable(JSONEncodedDict))
 
     @event.listens_for(MyDataClass.data, "modified")
-    def modified_json(instance):
+    def modified_json(instance, initiator):
         print("json value modified:", instance.data)
 
 .. _mutable_composites:
