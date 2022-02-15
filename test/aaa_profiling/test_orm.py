@@ -1225,7 +1225,9 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
         @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
-                q.all()
+                # test counts assume objects remain in the session
+                # from previous run
+                r = q.all()  # noqa F841
 
         go()
 
@@ -1239,7 +1241,9 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
         @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
-                q.all()
+                # test counts assume objects remain in the session
+                # from previous run
+                r = q.all()  # noqa F841
 
         go()
 
@@ -1251,7 +1255,9 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
         @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
-                q.all()
+                # test counts assume objects remain in the session
+                # from previous run
+                r = q.all()  # noqa F841
 
         go()
 
@@ -1263,7 +1269,9 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
         @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
-                q.all()
+                # test counts assume objects remain in the session
+                # from previous run
+                r = q.all()  # noqa F841
 
         go()
 
@@ -1276,7 +1284,9 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
         @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
-                q.all()
+                # test counts assume objects remain in the session
+                # from previous run
+                r = q.all()  # noqa F841
 
         go()
 
@@ -1289,7 +1299,9 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
         @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
-                q.all()
+                # test counts assume objects remain in the session
+                # from previous run
+                r = q.all()  # noqa F841
 
         go()
 
@@ -1301,7 +1313,9 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
         @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
-                q.all()
+                # test counts assume objects remain in the session
+                # from previous run
+                r = q.all()  # noqa F841
 
         go()
 
@@ -1314,7 +1328,9 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
         @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
-                q.all()
+                # test counts assume objects remain in the session
+                # from previous run
+                r = q.all()  # noqa F841
 
         go()
 
@@ -1326,6 +1342,8 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
         @profiling.function_call_count(warmup=1)
         def go():
             for i in range(100):
-                q.all()
+                # test counts assume objects remain in the session
+                # from previous run
+                r = q.all()  # noqa F841
 
         go()
