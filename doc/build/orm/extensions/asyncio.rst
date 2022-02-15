@@ -29,7 +29,7 @@ The asyncio extension requires at least Python version 3.6. It also depends
 upon the `greenlet <https://pypi.org/project/greenlet/>`_ library. This
 dependency is installed by default on common machine platforms including::
 
-    x86_64 aarch64 ppc64le amd64 win32
+    x86_64 aarch64 arm64 ppc64le amd64 win32
 
 For the above platforms, ``greenlet`` is known to supply pre-built wheel files.
 To ensure the ``greenlet`` dependency is present on other platforms, the
