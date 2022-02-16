@@ -12,6 +12,8 @@ basic add/delete mutation.
 
 """
 
+from __future__ import annotations
+
 from . import attributes
 from . import exc as orm_exc
 from . import interfaces

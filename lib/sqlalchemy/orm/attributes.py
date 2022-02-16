@@ -13,6 +13,9 @@ defines a large part of the ORM's interactivity.
 
 
 """
+
+from __future__ import annotations
+
 from collections import namedtuple
 import operator
 from typing import Any

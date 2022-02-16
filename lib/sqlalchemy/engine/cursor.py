@@ -9,6 +9,8 @@
 :class:`.BaseCursorResult`, :class:`.CursorResult`."""
 
 
+from __future__ import annotations
+
 import collections
 import functools
 

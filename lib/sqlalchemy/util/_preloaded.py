@@ -9,6 +9,8 @@
 runtime.
 
 """
+from __future__ import annotations
+
 import sys
 from types import ModuleType
 import typing

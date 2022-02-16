@@ -13,6 +13,8 @@ as the base class for their own corresponding classes.
 
 """
 
+from __future__ import annotations
+
 import functools
 import random
 import re

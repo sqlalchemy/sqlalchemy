@@ -17,6 +17,8 @@ and :class:`_pool.Pool` objects, corresponds to a logger specific to that
 instance only.
 
 """
+from __future__ import annotations
+
 import logging
 import sys
 from typing import Any

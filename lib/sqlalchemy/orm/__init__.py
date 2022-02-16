@@ -13,6 +13,8 @@ documentation for an overview of how this module is used.
 
 """
 
+from __future__ import annotations
+
 from . import exc as exc
 from . import mapper as mapperlib
 from . import strategy_options as strategy_options

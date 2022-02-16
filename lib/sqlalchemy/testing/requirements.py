@@ -15,6 +15,8 @@ to provide specific inclusion/exclusions.
 
 """
 
+from __future__ import annotations
+
 import platform
 
 from . import config

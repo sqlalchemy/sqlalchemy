@@ -4,8 +4,10 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+from __future__ import annotations
 
 import asyncio  # noqa
+import typing
 
 have_greenlet = False
 greenlet_error = None
@@ -28,7 +30,7 @@ else:
         _util_async_run_coroutine_function as _util_async_run_coroutine_function,  # noqa F401, E501
     )
 
-if not have_greenlet:
+if not typing.TYPE_CHECKING and not have_greenlet:
 
     def _not_implemented():
         # this conditional is to prevent pylance from considering

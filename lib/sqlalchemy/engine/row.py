@@ -7,6 +7,8 @@
 
 """Define row constructs including :class:`.Row`."""
 
+from __future__ import annotations
+
 import collections.abc as collections_abc
 import operator
 import typing

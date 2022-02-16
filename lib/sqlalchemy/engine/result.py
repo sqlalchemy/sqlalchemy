@@ -6,6 +6,9 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """Define generic result set constructs."""
+
+from __future__ import annotations
+
 import collections.abc as collections_abc
 import functools
 import itertools

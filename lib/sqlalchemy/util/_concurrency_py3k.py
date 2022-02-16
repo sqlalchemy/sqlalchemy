@@ -157,8 +157,7 @@ class AsyncAdaptedLock:
     def __enter__(self):
         # await is used to acquire the lock only after the first calling
         # coroutine has created the mutex.
-        await_fallback(self.mutex.acquire())
-        return self
+        return await_fallback(self.mutex.acquire())
 
     def __exit__(self, *arg, **kw):
         self.mutex.release()

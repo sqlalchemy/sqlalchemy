@@ -10,6 +10,8 @@ that exist as configurational elements, but don't participate
 as actively in the load/persist ORM loop.
 
 """
+from __future__ import annotations
+
 import inspect
 import itertools
 import operator

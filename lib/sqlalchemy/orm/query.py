@@ -18,6 +18,8 @@ ORM session, whereas the ``Select`` construct interacts directly with the
 database to return iterable result sets.
 
 """
+from __future__ import annotations
+
 import collections.abc as collections_abc
 import itertools
 import operator

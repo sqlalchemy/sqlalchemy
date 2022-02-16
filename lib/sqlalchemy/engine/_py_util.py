@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections import abc as collections_abc
 
 from .. import exc

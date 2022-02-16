@@ -5,6 +5,8 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+from __future__ import annotations
+
 import typing
 from typing import Any
 from typing import Collection
@@ -59,7 +61,7 @@ SynonymProperty = Synonym
     "for entities to be matched up to a query that is established "
     "via :meth:`.Query.from_statement` and now does nothing.",
 )
-def contains_alias(alias) -> "AliasOption":
+def contains_alias(alias) -> AliasOption:
     r"""Return a :class:`.MapperOption` that will indicate to the
     :class:`_query.Query`
     that the main table has been aliased.
@@ -74,7 +76,7 @@ def contains_alias(alias) -> "AliasOption":
 
 @overload
 def mapped_column(
-    __type: Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"],
+    __type: Union[Type[TypeEngine[_T]], TypeEngine[_T]],
     *args: SchemaEventTarget,
     nullable: Literal[None] = ...,
     primary_key: Literal[None] = ...,
@@ -87,7 +89,7 @@ def mapped_column(
 @overload
 def mapped_column(
     __name: str,
-    __type: Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"],
+    __type: Union[Type[TypeEngine[_T]], TypeEngine[_T]],
     *args: SchemaEventTarget,
     nullable: Literal[None] = ...,
     primary_key: Literal[None] = ...,
@@ -100,7 +102,7 @@ def mapped_column(
 @overload
 def mapped_column(
     __name: str,
-    __type: Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"],
+    __type: Union[Type[TypeEngine[_T]], TypeEngine[_T]],
     *args: SchemaEventTarget,
     nullable: Literal[True] = ...,
     primary_key: Literal[None] = ...,
@@ -112,7 +114,7 @@ def mapped_column(
 
 @overload
 def mapped_column(
-    __type: Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"],
+    __type: Union[Type[TypeEngine[_T]], TypeEngine[_T]],
     *args: SchemaEventTarget,
     nullable: Literal[True] = ...,
     primary_key: Literal[None] = ...,
@@ -125,7 +127,7 @@ def mapped_column(
 @overload
 def mapped_column(
     __name: str,
-    __type: Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"],
+    __type: Union[Type[TypeEngine[_T]], TypeEngine[_T]],
     *args: SchemaEventTarget,
     nullable: Literal[False] = ...,
     primary_key: Literal[None] = ...,
@@ -137,7 +139,7 @@ def mapped_column(
 
 @overload
 def mapped_column(
-    __type: Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"],
+    __type: Union[Type[TypeEngine[_T]], TypeEngine[_T]],
     *args: SchemaEventTarget,
     nullable: Literal[False] = ...,
     primary_key: Literal[None] = ...,
@@ -149,7 +151,7 @@ def mapped_column(
 
 @overload
 def mapped_column(
-    __type: Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"],
+    __type: Union[Type[TypeEngine[_T]], TypeEngine[_T]],
     *args: SchemaEventTarget,
     nullable: bool = ...,
     primary_key: Literal[True] = ...,
@@ -162,7 +164,7 @@ def mapped_column(
 @overload
 def mapped_column(
     __name: str,
-    __type: Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"],
+    __type: Union[Type[TypeEngine[_T]], TypeEngine[_T]],
     *args: SchemaEventTarget,
     nullable: bool = ...,
     primary_key: Literal[True] = ...,

@@ -7,6 +7,8 @@
 
 """Topological sorting algorithms."""
 
+from __future__ import annotations
+
 from .. import util
 from ..exc import CircularDependencyError
 

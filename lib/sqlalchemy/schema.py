@@ -9,6 +9,8 @@
 
 """
 
+from __future__ import annotations
+
 from .sql.base import SchemaVisitor as SchemaVisitor
 from .sql.ddl import _CreateDropBase as _CreateDropBase
 from .sql.ddl import _DDLCompiles as _DDLCompiles

@@ -22,6 +22,8 @@ To generate user-defined SQL strings, see
 :doc:`/ext/compiler`.
 
 """
+from __future__ import annotations
+
 import collections
 import collections.abc as collections_abc
 import contextlib

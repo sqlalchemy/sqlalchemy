@@ -24,6 +24,8 @@ methods such as get_table_names, get_columns, etc.
    use the key 'name'. So for most return values, each record will have a
    'name' attribute..
 """
+from __future__ import annotations
+
 import contextlib
 from typing import List
 from typing import Optional

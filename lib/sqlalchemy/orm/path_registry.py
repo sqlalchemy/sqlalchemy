@@ -8,6 +8,8 @@
 
 """
 
+from __future__ import annotations
+
 from functools import reduce
 from itertools import chain
 import logging

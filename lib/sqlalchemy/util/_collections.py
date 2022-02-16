@@ -6,6 +6,8 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """Collection classes and helpers."""
+from __future__ import annotations
+
 import collections.abc as collections_abc
 import operator
 import threading
