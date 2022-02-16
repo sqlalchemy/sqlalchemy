@@ -40,6 +40,7 @@ markers = [
 
 [tool.pyright]
 include = [
+    "lib/sqlalchemy/pool/",
     "lib/sqlalchemy/event/",
     "lib/sqlalchemy/events.py",
     "lib/sqlalchemy/exc.py",
@@ -50,6 +51,9 @@ include = [
     "lib/sqlalchemy/util/",
 ]
 
+reportPrivateUsage = "none"
+reportUnusedClass = "none"
+reportUnusedFunction = "none"
 
 
 [tool.mypy]
@@ -78,6 +82,7 @@ strict = true
 # strict checking
 [[tool.mypy.overrides]]
 module = [
+    "sqlalchemy.pool.*",
     "sqlalchemy.event.*",
     "sqlalchemy.events",
     "sqlalchemy.exc",

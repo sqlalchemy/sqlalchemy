@@ -322,7 +322,7 @@ class PoolTest(PoolTestBase):
         is_(rec.connection, rec.dbapi_connection)
         is_(rec.driver_connection, rec.dbapi_connection)
 
-        fairy = pool._ConnectionFairy(rec.dbapi_connection, rec, False)
+        fairy = pool._ConnectionFairy(p1, rec.dbapi_connection, rec, False)
 
         is_not_none(fairy.dbapi_connection)
         is_(fairy.connection, fairy.dbapi_connection)
@@ -346,12 +346,13 @@ class PoolTest(PoolTestBase):
 
         rec = pool._ConnectionRecord(p1)
 
+        assert rec.dbapi_connection is not None
         is_not_none(rec.dbapi_connection)
 
         is_(rec.connection, rec.dbapi_connection)
         is_(rec.driver_connection, mock_dc)
 
-        fairy = pool._ConnectionFairy(rec.dbapi_connection, rec, False)
+        fairy = pool._ConnectionFairy(p1, rec.dbapi_connection, rec, False)
 
         is_not_none(fairy.dbapi_connection)
         is_(fairy.connection, fairy.dbapi_connection)

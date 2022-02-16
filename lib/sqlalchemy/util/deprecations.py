@@ -14,21 +14,30 @@ import re
 from typing import Any
 from typing import Callable
 from typing import cast
+from typing import Dict
+from typing import Match
 from typing import Optional
+from typing import Sequence
+from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TypeVar
+from typing import Union
 
 from . import compat
 from .langhelpers import _hash_limit_string
 from .langhelpers import _warnings_warn
 from .langhelpers import decorator
+from .langhelpers import dynamic_property
 from .langhelpers import inject_docstring_text
 from .langhelpers import inject_param_text
-from .typing import ReadOnlyInstanceDescriptor
 from .. import exc
 
 _T = TypeVar("_T", bound=Any)
+
+
+# https://mypy.readthedocs.io/en/stable/generics.html#declaring-decorators
+_F = TypeVar("_F", bound=Callable[..., Any])
 
 
 def _warn_with_version(
@@ -52,7 +61,13 @@ def warn_deprecated(
     )
 
 
-def warn_deprecated_limited(msg, args, version, stacklevel=3, code=None):
+def warn_deprecated_limited(
+    msg: str,
+    args: Sequence[Any],
+    version: str,
+    stacklevel: int = 3,
+    code: Optional[str] = None,
+) -> None:
     """Issue a deprecation warning with a parameterized string,
     limiting the number of registrations.
 
@@ -64,10 +79,12 @@ def warn_deprecated_limited(msg, args, version, stacklevel=3, code=None):
     )
 
 
-def deprecated_cls(version, message, constructor="__init__"):
+def deprecated_cls(
+    version: str, message: str, constructor: str = "__init__"
+) -> Callable[[Type[_T]], Type[_T]]:
     header = ".. deprecated:: %s %s" % (version, (message or ""))
 
-    def decorate(cls):
+    def decorate(cls: Type[_T]) -> Type[_T]:
         return _decorate_cls_with_warning(
             cls,
             constructor,
@@ -84,9 +101,9 @@ def deprecated_property(
     version: str,
     message: Optional[str] = None,
     add_deprecation_to_docstring: bool = True,
-    warning: Optional[str] = None,
+    warning: Optional[Type[exc.SADeprecationWarning]] = None,
     enable_warnings: bool = True,
-) -> Callable[[Callable[..., _T]], ReadOnlyInstanceDescriptor[_T]]:
+) -> Callable[[Callable[..., _T]], dynamic_property[_T]]:
     """the @deprecated decorator with a @property.
 
     E.g.::
@@ -113,9 +130,9 @@ def deprecated_property(
     great!   now it is.
 
     """
-    return cast(
-        Callable[[Callable[..., _T]], ReadOnlyInstanceDescriptor[_T]],
-        lambda fn: property(
+
+    def decorate(fn: Callable[..., _T]) -> dynamic_property[_T]:
+        return dynamic_property(
             deprecated(
                 version,
                 message=message,
@@ -123,17 +140,18 @@ def deprecated_property(
                 warning=warning,
                 enable_warnings=enable_warnings,
             )(fn)
-        ),
-    )
+        )
+
+    return decorate
 
 
 def deprecated(
-    version,
-    message=None,
-    add_deprecation_to_docstring=True,
-    warning=None,
-    enable_warnings=True,
-):
+    version: str,
+    message: Optional[str] = None,
+    add_deprecation_to_docstring: bool = True,
+    warning: Optional[Type[exc.SADeprecationWarning]] = None,
+    enable_warnings: bool = True,
+) -> Callable[[_F], _F]:
     """Decorates a function and issues a deprecation warning on use.
 
     :param version:
@@ -166,7 +184,9 @@ def deprecated(
 
     message += " (deprecated since: %s)" % version
 
-    def decorate(fn):
+    def decorate(fn: _F) -> _F:
+        assert message is not None
+        assert warning is not None
         return _decorate_with_warning(
             fn,
             warning,
@@ -179,13 +199,17 @@ def deprecated(
     return decorate
 
 
-def moved_20(message, **kw):
+def moved_20(
+    message: str, **kw: Any
+) -> Callable[[Callable[..., _T]], Callable[..., _T]]:
     return deprecated(
         "2.0", message=message, warning=exc.MovedIn20Warning, **kw
     )
 
 
-def became_legacy_20(api_name, alternative=None, **kw):
+def became_legacy_20(
+    api_name: str, alternative: Optional[str] = None, **kw: Any
+) -> Callable[[_F], _F]:
     type_reg = re.match("^:(attr|func|meth):", api_name)
     if type_reg:
         type_ = {"attr": "attribute", "func": "function", "meth": "method"}[
@@ -221,10 +245,7 @@ def became_legacy_20(api_name, alternative=None, **kw):
     return deprecated("2.0", message=message, warning=warning_cls, **kw)
 
 
-_C = TypeVar("_C", bound=Callable[..., Any])
-
-
-def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_C], _C]:
+def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_F], _F]:
     """Decorates a function to warn on use of certain parameters.
 
     e.g. ::
@@ -240,18 +261,19 @@ def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_C], _C]:
 
     """
 
-    messages = {}
-    versions = {}
-    version_warnings = {}
+    messages: Dict[str, str] = {}
+    versions: Dict[str, str] = {}
+    version_warnings: Dict[str, Type[exc.SADeprecationWarning]] = {}
 
     for param, (version, message) in specs.items():
         versions[param] = version
         messages[param] = _sanitize_restructured_text(message)
         version_warnings[param] = exc.SADeprecationWarning
 
-    def decorate(fn):
+    def decorate(fn: _F) -> _F:
         spec = compat.inspect_getfullargspec(fn)
 
+        check_defaults: Union[Set[str], Tuple[()]]
         if spec.defaults is not None:
             defaults = dict(
                 zip(
@@ -268,7 +290,7 @@ def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_C], _C]:
         check_any_kw = spec.varkw
 
         @decorator
-        def warned(fn, *args, **kwargs):
+        def warned(fn: _F, *args: Any, **kwargs: Any) -> _F:
             for m in check_defaults:
                 if (defaults[m] is None and kwargs[m] is not None) or (
                     defaults[m] is not None and kwargs[m] != defaults[m]
@@ -283,7 +305,7 @@ def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_C], _C]:
             if check_any_kw in messages and set(kwargs).difference(
                 check_defaults
             ):
-
+                assert check_any_kw is not None
                 _warn_with_version(
                     messages[check_any_kw],
                     versions[check_any_kw],
@@ -299,7 +321,7 @@ def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_C], _C]:
                         version_warnings[m],
                         stacklevel=3,
                     )
-            return fn(*args, **kwargs)
+            return fn(*args, **kwargs)  # type: ignore[no-any-return]
 
         doc = fn.__doc__ is not None and fn.__doc__ or ""
         if doc:
@@ -311,15 +333,15 @@ def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_C], _C]:
                     for param, (version, message) in specs.items()
                 },
             )
-        decorated = warned(fn)
+        decorated = cast(_F, warned)(fn)
         decorated.__doc__ = doc
-        return decorated
+        return decorated  # type: ignore[no-any-return]
 
     return decorate
 
 
-def _sanitize_restructured_text(text):
-    def repl(m):
+def _sanitize_restructured_text(text: str) -> str:
+    def repl(m: Match[str]) -> str:
         type_, name = m.group(1, 2)
         if type_ in ("func", "meth"):
             name += "()"
@@ -330,8 +352,13 @@ def _sanitize_restructured_text(text):
 
 
 def _decorate_cls_with_warning(
-    cls, constructor, wtype, message, version, docstring_header=None
-):
+    cls: Type[_T],
+    constructor: str,
+    wtype: Type[exc.SADeprecationWarning],
+    message: str,
+    version: str,
+    docstring_header: Optional[str] = None,
+) -> Type[_T]:
     doc = cls.__doc__ is not None and cls.__doc__ or ""
     if docstring_header is not None:
 
@@ -361,6 +388,7 @@ def _decorate_cls_with_warning(
 
         if constructor is not None:
             assert constructor_fn is not None
+            assert wtype is not None
             setattr(
                 cls,
                 constructor,
@@ -372,8 +400,13 @@ def _decorate_cls_with_warning(
 
 
 def _decorate_with_warning(
-    func, wtype, message, version, docstring_header=None, enable_warnings=True
-):
+    func: _F,
+    wtype: Type[exc.SADeprecationWarning],
+    message: str,
+    version: str,
+    docstring_header: Optional[str] = None,
+    enable_warnings: bool = True,
+) -> _F:
     """Wrap a function with a warnings.warn and augmented docstring."""
 
     message = _sanitize_restructured_text(message)
@@ -387,13 +420,13 @@ def _decorate_with_warning(
         doc_only = ""
 
     @decorator
-    def warned(fn, *args, **kwargs):
+    def warned(fn: _F, *args: Any, **kwargs: Any) -> _F:
         skip_warning = not enable_warnings or kwargs.pop(
             "_sa_skip_warning", False
         )
         if not skip_warning:
             _warn_with_version(message, version, wtype, stacklevel=3)
-        return fn(*args, **kwargs)
+        return fn(*args, **kwargs)  # type: ignore[no-any-return]
 
     doc = func.__doc__ is not None and func.__doc__ or ""
     if docstring_header is not None:
@@ -403,9 +436,9 @@ def _decorate_with_warning(
 
         doc = inject_docstring_text(doc, docstring_header, 1)
 
-    decorated = warned(func)
+    decorated = cast(_F, warned)(func)
     decorated.__doc__ = doc
     decorated._sa_warn = lambda: _warn_with_version(
         message, version, wtype, stacklevel=3
     )
-    return decorated
+    return decorated  # type: ignore[no-any-return]

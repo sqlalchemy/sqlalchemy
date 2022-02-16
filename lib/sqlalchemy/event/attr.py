@@ -68,6 +68,7 @@ _T = TypeVar("_T", bound=Any)
 
 if typing.TYPE_CHECKING:
     from .base import _Dispatch
+    from .base import _DispatchCommon
     from .base import _HasEventsDispatch
     from .base import _JoinedDispatcher
 
@@ -280,6 +281,38 @@ class _InstanceLevelDispatch(RefCollection[_ET], Collection[_ListenerFnType]):
     def __bool__(self) -> bool:
         raise NotImplementedError()
 
+    def exec_once(self, *args: Any, **kw: Any) -> None:
+        raise NotImplementedError()
+
+    def exec_once_unless_exception(self, *args: Any, **kw: Any) -> None:
+        raise NotImplementedError()
+
+    def _exec_w_sync_on_first_run(self, *args: Any, **kw: Any) -> None:
+        raise NotImplementedError()
+
+    def __call__(self, *args: Any, **kw: Any) -> None:
+        raise NotImplementedError()
+
+    def insert(self, event_key: _EventKey[_ET], propagate: bool) -> None:
+        raise NotImplementedError()
+
+    def append(self, event_key: _EventKey[_ET], propagate: bool) -> None:
+        raise NotImplementedError()
+
+    def remove(self, event_key: _EventKey[_ET]) -> None:
+        raise NotImplementedError()
+
+    def for_modify(
+        self, obj: _DispatchCommon[_ET]
+    ) -> _InstanceLevelDispatch[_ET]:
+        """Return an event collection which can be modified.
+
+        For _ClsLevelDispatch at the class level of
+        a dispatcher, this returns self.
+
+        """
+        return self
+
 
 class _EmptyListener(_InstanceLevelDispatch[_ET]):
     """Serves as a proxy interface to the events
@@ -306,7 +339,9 @@ class _EmptyListener(_InstanceLevelDispatch[_ET]):
         self.parent_listeners = parent._clslevel[target_cls]
         self.name = parent.name
 
-    def for_modify(self, obj: _Dispatch[_ET]) -> _ListenerCollection[_ET]:
+    def for_modify(
+        self, obj: _DispatchCommon[_ET]
+    ) -> _ListenerCollection[_ET]:
         """Return an event collection which can be modified.
 
         For _EmptyListener at the instance level of
@@ -315,6 +350,8 @@ class _EmptyListener(_InstanceLevelDispatch[_ET]):
         and returns it.
 
         """
+        obj = cast("_Dispatch[_ET]", obj)
+
         assert obj._instance_cls is not None
         result = _ListenerCollection(self.parent, obj._instance_cls)
         if getattr(obj, self.name) is self:
@@ -512,7 +549,9 @@ class _ListenerCollection(_CompoundListener[_ET]):
         self.listeners = collections.deque()
         self.propagate = set()
 
-    def for_modify(self, obj: _Dispatch[_ET]) -> _ListenerCollection[_ET]:
+    def for_modify(
+        self, obj: _DispatchCommon[_ET]
+    ) -> _ListenerCollection[_ET]:
         """Return an event collection which can be modified.
 
         For _ListenerCollection at the instance level of
@@ -599,7 +638,7 @@ class _JoinedListener(_CompoundListener[_ET]):
     ) -> _ListenerFnType:
         return self.local._adjust_fn_spec(fn, named)
 
-    def for_modify(self, obj: _JoinedDispatcher[_ET]) -> _JoinedListener[_ET]:
+    def for_modify(self, obj: _DispatchCommon[_ET]) -> _JoinedListener[_ET]:
         self.local = self.parent_listeners = self.local.for_modify(obj)
         return self
 
