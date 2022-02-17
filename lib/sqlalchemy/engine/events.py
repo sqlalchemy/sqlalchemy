@@ -6,6 +6,8 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 
+from __future__ import annotations
+
 from .base import Engine
 from .interfaces import ConnectionEventsTarget
 from .interfaces import Dialect

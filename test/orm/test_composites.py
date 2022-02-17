@@ -6,8 +6,8 @@ from sqlalchemy import String
 from sqlalchemy import testing
 from sqlalchemy import update
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm import Composite
 from sqlalchemy.orm import composite
-from sqlalchemy.orm import CompositeProperty
 from sqlalchemy.orm import configure_mappers
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
@@ -1105,7 +1105,7 @@ class ComparatorTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
 
         if custom:
 
-            class CustomComparator(sa.orm.CompositeProperty.Comparator):
+            class CustomComparator(sa.orm.Composite.Comparator):
                 def near(self, other, d):
                     clauses = self.__clause_element__().clauses
                     diff_x = clauses[0] - other.x
@@ -1163,7 +1163,7 @@ class ComparatorTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         Edge = self.classes.Edge
         start_prop = Edge.start.property
 
-        assert start_prop.comparator_factory is CompositeProperty.Comparator
+        assert start_prop.comparator_factory is Composite.Comparator
 
     def test_custom_comparator_factory(self):
         self._fixture(True)

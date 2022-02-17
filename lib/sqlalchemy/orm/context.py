@@ -4,17 +4,22 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+
+from __future__ import annotations
+
 import itertools
+from typing import List
 
 from . import attributes
 from . import interfaces
 from . import loading
 from .base import _is_aliased_class
+from .interfaces import ORMColumnDescription
 from .interfaces import ORMColumnsClauseRole
 from .path_registry import PathRegistry
 from .util import _entity_corresponds_to
 from .util import _ORMJoin
-from .util import aliased
+from .util import AliasedClass
 from .util import Bundle
 from .util import ORMAdapter
 from .. import exc as sa_exc
@@ -1570,7 +1575,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
         # when we are here, it means join() was called with an indicator
         # as to an exact left side, which means a path to a
-        # RelationshipProperty was given, e.g.:
+        # Relationship was given, e.g.:
         #
         # join(RightEntity, LeftEntity.right)
         #
@@ -1725,7 +1730,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
                     need_adapter = True
 
                 # make the right hand side target into an ORM entity
-                right = aliased(right_mapper, right_selectable)
+                right = AliasedClass(right_mapper, right_selectable)
 
                 util.warn_deprecated(
                     "An alias is being generated automatically against "
@@ -1750,7 +1755,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
             # test/orm/inheritance/test_relationships.py.  There are also
             # general overlap cases with many-to-many tables where automatic
             # aliasing is desirable.
-            right = aliased(right, flat=True)
+            right = AliasedClass(right, flat=True)
             need_adapter = True
 
             util.warn(
@@ -1910,7 +1915,7 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
 def _column_descriptions(
     query_or_select_stmt, compile_state=None, legacy=False
-):
+) -> List[ORMColumnDescription]:
     if compile_state is None:
         compile_state = ORMSelectCompileState._create_entities_collection(
             query_or_select_stmt, legacy=legacy

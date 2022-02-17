@@ -10,6 +10,8 @@
 
 """Defines operators used in SQL expressions."""
 
+from __future__ import annotations
+
 from operator import add as _uncast_add
 from operator import and_ as _uncast_and_
 from operator import contains as _uncast_contains

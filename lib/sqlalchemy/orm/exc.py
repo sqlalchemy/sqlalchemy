@@ -6,6 +6,9 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """SQLAlchemy ORM exceptions."""
+
+from __future__ import annotations
+
 from .. import exc as sa_exc
 from .. import util
 from ..exc import MultipleResultsFound  # noqa

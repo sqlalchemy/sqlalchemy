@@ -9,11 +9,16 @@
 
 """
 
+from __future__ import annotations
+
 import operator
 import typing
 from typing import Any
+from typing import Callable
 from typing import Generic
+from typing import Optional
 from typing import overload
+from typing import Tuple
 from typing import TypeVar
 from typing import Union
 
@@ -22,14 +27,18 @@ from .. import exc as sa_exc
 from .. import inspection
 from .. import util
 from ..sql.elements import SQLCoreOperations
-from ..util import typing as compat_typing
 from ..util.langhelpers import TypingOnly
+from ..util.typing import Concatenate
+from ..util.typing import ParamSpec
 
 
 if typing.TYPE_CHECKING:
     from .attributes import InstrumentedAttribute
 
 _T = TypeVar("_T", bound=Any)
+
+
+_IdentityKeyType = Tuple[type, Tuple[Any, ...], Optional[str]]
 
 
 PASSIVE_NO_RESULT = util.symbol(
@@ -236,16 +245,16 @@ _DEFER_FOR_STATE = util.symbol("DEFER_FOR_STATE")
 _RAISE_FOR_STATE = util.symbol("RAISE_FOR_STATE")
 
 
-_Fn = typing.TypeVar("_Fn", bound=typing.Callable)
-_Args = compat_typing.ParamSpec("_Args")
-_Self = typing.TypeVar("_Self")
+_Fn = TypeVar("_Fn", bound=Callable)
+_Args = ParamSpec("_Args")
+_Self = TypeVar("_Self")
 
 
 def _assertions(
-    *assertions,
-) -> typing.Callable[
-    [typing.Callable[compat_typing.Concatenate[_Fn, _Args], _Self]],
-    typing.Callable[compat_typing.Concatenate[_Fn, _Args], _Self],
+    *assertions: Any,
+) -> Callable[
+    [Callable[Concatenate[_Self, _Fn, _Args], _Self]],
+    Callable[Concatenate[_Self, _Fn, _Args], _Self],
 ]:
     @util.decorator
     def generate(
@@ -605,8 +614,8 @@ class SQLORMOperations(SQLCoreOperations[_T], TypingOnly):
             ...
 
 
-class Mapped(Generic[_T], util.TypingOnly):
-    """Represent an ORM mapped attribute for typing purposes.
+class Mapped(Generic[_T], TypingOnly):
+    """Represent an ORM mapped attribute on a mapped class.
 
     This class represents the complete descriptor interface for any class
     attribute that will have been :term:`instrumented` by the ORM
@@ -650,7 +659,7 @@ class Mapped(Generic[_T], util.TypingOnly):
             ...
 
         @classmethod
-        def _empty_constructor(cls, arg1: Any) -> "SQLORMOperations[_T]":
+        def _empty_constructor(cls, arg1: Any) -> "Mapped[_T]":
             ...
 
         @overload

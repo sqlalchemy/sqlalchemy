@@ -14,6 +14,8 @@ This is a semi-private module; the main configurational API of the ORM is
 available in :class:`~sqlalchemy.orm.`.
 
 """
+from __future__ import annotations
+
 from collections import deque
 from functools import reduce
 from itertools import chain
@@ -580,7 +582,16 @@ class Mapper(
             self.version_id_prop = version_id_col
             self.version_id_col = None
         else:
-            self.version_id_col = version_id_col
+            self.version_id_col = (
+                coercions.expect(
+                    roles.ColumnArgumentOrKeyRole,
+                    version_id_col,
+                    argname="version_id_col",
+                )
+                if version_id_col is not None
+                else None
+            )
+
         if version_id_generator is False:
             self.version_id_generator = False
         elif version_id_generator is None:
@@ -2473,7 +2484,7 @@ class Mapper(
     @HasMemoized.memoized_attribute
     @util.preload_module("sqlalchemy.orm.descriptor_props")
     def synonyms(self):
-        """Return a namespace of all :class:`.SynonymProperty`
+        """Return a namespace of all :class:`.Synonym`
         properties maintained by this :class:`_orm.Mapper`.
 
         .. seealso::
@@ -2485,7 +2496,7 @@ class Mapper(
         """
         descriptor_props = util.preloaded.orm_descriptor_props
 
-        return self._filter_properties(descriptor_props.SynonymProperty)
+        return self._filter_properties(descriptor_props.Synonym)
 
     @property
     def entity_namespace(self):
@@ -2508,7 +2519,7 @@ class Mapper(
     @util.preload_module("sqlalchemy.orm.relationships")
     @HasMemoized.memoized_attribute
     def relationships(self):
-        """A namespace of all :class:`.RelationshipProperty` properties
+        """A namespace of all :class:`.Relationship` properties
         maintained by this :class:`_orm.Mapper`.
 
         .. warning::
@@ -2531,13 +2542,13 @@ class Mapper(
 
         """
         return self._filter_properties(
-            util.preloaded.orm_relationships.RelationshipProperty
+            util.preloaded.orm_relationships.Relationship
         )
 
     @HasMemoized.memoized_attribute
     @util.preload_module("sqlalchemy.orm.descriptor_props")
     def composites(self):
-        """Return a namespace of all :class:`.CompositeProperty`
+        """Return a namespace of all :class:`.Composite`
         properties maintained by this :class:`_orm.Mapper`.
 
         .. seealso::
@@ -2548,7 +2559,7 @@ class Mapper(
 
         """
         return self._filter_properties(
-            util.preloaded.orm_descriptor_props.CompositeProperty
+            util.preloaded.orm_descriptor_props.Composite
         )
 
     def _filter_properties(self, type_):

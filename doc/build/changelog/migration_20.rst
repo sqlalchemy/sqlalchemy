@@ -182,7 +182,7 @@ and pylance.  Given a program as below::
     from sqlalchemy.dialects.mysql import VARCHAR
 
 
-    type_ = String(255).with_variant(VARCHAR(255, charset='utf8mb4'), "mysql")
+    type_ = String(255).with_variant(VARCHAR(255, charset='utf8mb4'), "mysql", "mariadb")
 
     if typing.TYPE_CHECKING:
         reveal_type(type_)
@@ -191,6 +191,9 @@ A type checker like pyright will now report the type as::
 
     info: Type of "type_" is "String"
 
+In addition, as illustrated above, multiple dialect names may be passed for
+single type, in particular this is helpful for the pair of ``"mysql"`` and
+``"mariadb"`` dialects which are considered separately as of SQLAlchemy 1.4.
 
 :ticket:`6980`
 
@@ -317,6 +320,25 @@ such as gevent.
 :ticket:`7433`
 
 
+.. _change_7490:
+
+The SQLite dialect uses QueuePool for file-based databases
+------------------------------------------------------------
+
+The SQLite dialect now defaults to :class:`_pool.QueuePool` when a file
+based database is used. This is set along with setting the
+``check_same_thread`` parameter to ``False``. It has been observed that the
+previous approach of defaulting to :class:`_pool.NullPool`, which does not
+hold onto database connections after they are released, did in fact have a
+measurable negative performance impact. As always, the pool class is
+customizable via the :paramref:`_sa.create_engine.poolclass` parameter.
+
+.. seealso::
+
+    :ref:`pysqlite_threading_pooling`
+
+
+:ticket:`7490`
 
 .. _migration_20_overview:
 

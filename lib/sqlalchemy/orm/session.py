@@ -6,9 +6,20 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 """Provides the Session class and related utilities."""
 
+from __future__ import annotations
+
 import contextlib
 import itertools
 import sys
+import typing
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import overload
+from typing import Tuple
+from typing import Type
+from typing import Union
 import weakref
 
 from . import attributes
@@ -20,12 +31,15 @@ from . import persistence
 from . import query
 from . import state as statelib
 from .base import _class_to_mapper
+from .base import _IdentityKeyType
 from .base import _none_set
 from .base import _state_mapper
 from .base import instance_str
 from .base import object_mapper
 from .base import object_state
 from .base import state_str
+from .query import Query
+from .state import InstanceState
 from .state_changes import _StateChange
 from .state_changes import _StateChangeState
 from .state_changes import _StateChangeStates
@@ -34,14 +48,26 @@ from .. import engine
 from .. import exc as sa_exc
 from .. import sql
 from .. import util
+from ..engine import Connection
+from ..engine import Engine
 from ..engine.util import TransactionalContext
 from ..inspection import inspect
 from ..sql import coercions
 from ..sql import dml
 from ..sql import roles
 from ..sql import visitors
+from ..sql._typing import _ColumnsClauseElement
 from ..sql.base import CompileState
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
+from ..util.typing import Literal
+
+if typing.TYPE_CHECKING:
+    from .mapper import Mapper
+    from ..engine import Row
+    from ..sql._typing import _ExecuteOptions
+    from ..sql._typing import _ExecuteParams
+    from ..sql.base import Executable
+    from ..sql.schema import Table
 
 __all__ = [
     "Session",
@@ -78,23 +104,60 @@ class _SessionClassMethods:
         "removed in a future release.  Please refer to "
         ":func:`.session.close_all_sessions`.",
     )
-    def close_all(cls):
+    def close_all(cls) -> None:
         """Close *all* sessions in memory."""
 
         close_all_sessions()
 
     @classmethod
+    @overload
+    def identity_key(
+        cls,
+        class_: type,
+        ident: Tuple[Any, ...],
+        *,
+        identity_token: Optional[str],
+    ) -> _IdentityKeyType:
+        ...
+
+    @classmethod
+    @overload
+    def identity_key(cls, *, instance: Any) -> _IdentityKeyType:
+        ...
+
+    @classmethod
+    @overload
+    def identity_key(
+        cls, class_: type, *, row: "Row", identity_token: Optional[str]
+    ) -> _IdentityKeyType:
+        ...
+
+    @classmethod
     @util.preload_module("sqlalchemy.orm.util")
-    def identity_key(cls, *args, **kwargs):
+    def identity_key(
+        cls,
+        class_=None,
+        ident=None,
+        *,
+        instance=None,
+        row=None,
+        identity_token=None,
+    ) -> _IdentityKeyType:
         """Return an identity key.
 
         This is an alias of :func:`.util.identity_key`.
 
         """
-        return util.preloaded.orm_util.identity_key(*args, **kwargs)
+        return util.preloaded.orm_util.identity_key(
+            class_,
+            ident,
+            instance=instance,
+            row=row,
+            identity_token=identity_token,
+        )
 
     @classmethod
-    def object_session(cls, instance):
+    def object_session(cls, instance: Any) -> "Session":
         """Return the :class:`.Session` to which an object belongs.
 
         This is an alias of :func:`.object_session`.
@@ -142,15 +205,26 @@ class ORMExecuteState(util.MemoizedSlots):
         "_update_execution_options",
     )
 
+    session: "Session"
+    statement: "Executable"
+    parameters: "_ExecuteParams"
+    execution_options: "_ExecuteOptions"
+    local_execution_options: "_ExecuteOptions"
+    bind_arguments: Dict[str, Any]
+    _compile_state_cls: Type[context.ORMCompileState]
+    _starting_event_idx: Optional[int]
+    _events_todo: List[Any]
+    _update_execution_options: Optional["_ExecuteOptions"]
+
     def __init__(
         self,
-        session,
-        statement,
-        parameters,
-        execution_options,
-        bind_arguments,
-        compile_state_cls,
-        events_todo,
+        session: "Session",
+        statement: "Executable",
+        parameters: "_ExecuteParams",
+        execution_options: "_ExecuteOptions",
+        bind_arguments: Dict[str, Any],
+        compile_state_cls: Type[context.ORMCompileState],
+        events_todo: List[Any],
     ):
         self.session = session
         self.statement = statement
@@ -834,7 +908,7 @@ class SessionTransaction(_StateChange, TransactionalContext):
         (SessionTransactionState.ACTIVE, SessionTransactionState.PREPARED),
         SessionTransactionState.CLOSED,
     )
-    def commit(self, _to_root=False):
+    def commit(self, _to_root: bool = False) -> None:
         if self._state is not SessionTransactionState.PREPARED:
             with self._expect_state(SessionTransactionState.PREPARED):
                 self._prepare_impl()
@@ -981,18 +1055,42 @@ class Session(_SessionClassMethods):
 
     _is_asyncio = False
 
+    identity_map: identity.IdentityMap
+    _new: Dict["InstanceState", Any]
+    _deleted: Dict["InstanceState", Any]
+    bind: Optional[Union[Engine, Connection]]
+    __binds: Dict[
+        Union[type, "Mapper", "Table"],
+        Union[engine.Engine, engine.Connection],
+    ]
+    _flusing: bool
+    _warn_on_events: bool
+    _transaction: Optional[SessionTransaction]
+    _nested_transaction: Optional[SessionTransaction]
+    hash_key: int
+    autoflush: bool
+    expire_on_commit: bool
+    enable_baked_queries: bool
+    twophase: bool
+    _query_cls: Type[Query]
+
     def __init__(
         self,
-        bind=None,
-        autoflush=True,
-        future=True,
-        expire_on_commit=True,
-        twophase=False,
-        binds=None,
-        enable_baked_queries=True,
-        info=None,
-        query_cls=None,
-        autocommit=False,
+        bind: Optional[Union[engine.Engine, engine.Connection]] = None,
+        autoflush: bool = True,
+        future: Literal[True] = True,
+        expire_on_commit: bool = True,
+        twophase: bool = False,
+        binds: Optional[
+            Dict[
+                Union[type, "Mapper", "Table"],
+                Union[engine.Engine, engine.Connection],
+            ]
+        ] = None,
+        enable_baked_queries: bool = True,
+        info: Optional[Dict[Any, Any]] = None,
+        query_cls: Optional[Type[query.Query]] = None,
+        autocommit: Literal[False] = False,
     ):
         r"""Construct a new Session.
 
@@ -1054,7 +1152,8 @@ class Session(_SessionClassMethods):
            :class:`.sessionmaker` function, and is not sent directly to the
            constructor for ``Session``.
 
-        :param enable_baked_queries: defaults to ``True``.  A flag consumed
+        :param enable_baked_queries: legacy; defaults to ``True``.
+           A parameter consumed
            by the :mod:`sqlalchemy.ext.baked` extension to determine if
            "baked queries" should be cached, as is the normal operation
            of this extension.  When set to ``False``, caching as used by
@@ -1331,7 +1430,7 @@ class Session(_SessionClassMethods):
         else:
             self._transaction.rollback(_to_root=True)
 
-    def commit(self):
+    def commit(self) -> None:
         """Flush pending changes and commit the current transaction.
 
         If no transaction is in progress, the method will first
@@ -1353,7 +1452,7 @@ class Session(_SessionClassMethods):
 
         self._transaction.commit(_to_root=True)
 
-    def prepare(self):
+    def prepare(self) -> None:
         """Prepare the current transaction in progress for two phase commit.
 
         If no transaction is in progress, this method raises an
@@ -1370,7 +1469,11 @@ class Session(_SessionClassMethods):
 
         self._transaction.prepare()
 
-    def connection(self, bind_arguments=None, execution_options=None):
+    def connection(
+        self,
+        bind_arguments: Optional[Dict[str, Any]] = None,
+        execution_options: Optional["_ExecuteOptions"] = None,
+    ) -> "Connection":
         r"""Return a :class:`_engine.Connection` object corresponding to this
         :class:`.Session` object's transactional state.
 
@@ -1425,12 +1528,12 @@ class Session(_SessionClassMethods):
 
     def execute(
         self,
-        statement,
-        params=None,
-        execution_options=util.EMPTY_DICT,
-        bind_arguments=None,
-        _parent_execute_state=None,
-        _add_event=None,
+        statement: "Executable",
+        params: Optional["_ExecuteParams"] = None,
+        execution_options: "_ExecuteOptions" = util.EMPTY_DICT,
+        bind_arguments: Optional[Dict[str, Any]] = None,
+        _parent_execute_state: Optional[Any] = None,
+        _add_event: Optional[Any] = None,
     ):
         r"""Execute a SQL expression construct.
 
@@ -1936,7 +2039,9 @@ class Session(_SessionClassMethods):
             % (", ".join(context),),
         )
 
-    def query(self, *entities, **kwargs):
+    def query(
+        self, *entities: "_ColumnsClauseElement", **kwargs: Any
+    ) -> "Query":
         """Return a new :class:`_query.Query` object corresponding to this
         :class:`_orm.Session`.
 
@@ -2391,7 +2496,7 @@ class Session(_SessionClassMethods):
             if persistent_to_deleted is not None:
                 persistent_to_deleted(self, state)
 
-    def add(self, instance, _warn=True):
+    def add(self, instance: Any, _warn: bool = True) -> None:
         """Place an object in the ``Session``.
 
         Its state will be persisted to the database on the next flush

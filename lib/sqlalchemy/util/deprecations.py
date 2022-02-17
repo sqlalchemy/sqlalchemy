@@ -8,11 +8,15 @@
 """Helpers related to deprecation of functions, methods, classes, other
 functionality."""
 
+from __future__ import annotations
+
 import re
 from typing import Any
 from typing import Callable
 from typing import cast
 from typing import Optional
+from typing import Tuple
+from typing import Type
 from typing import TypeVar
 
 from . import compat
@@ -27,14 +31,22 @@ from .. import exc
 _T = TypeVar("_T", bound=Any)
 
 
-def _warn_with_version(msg, version, type_, stacklevel, code=None):
+def _warn_with_version(
+    msg: str,
+    version: str,
+    type_: Type[exc.SADeprecationWarning],
+    stacklevel: int,
+    code: Optional[str] = None,
+) -> None:
     warn = type_(msg, code=code)
     warn.deprecated_since = version
 
     _warnings_warn(warn, stacklevel=stacklevel + 1)
 
 
-def warn_deprecated(msg, version, stacklevel=3, code=None):
+def warn_deprecated(
+    msg: str, version: str, stacklevel: int = 3, code: Optional[str] = None
+) -> None:
     _warn_with_version(
         msg, version, exc.SADeprecationWarning, stacklevel, code=code
     )
@@ -209,7 +221,10 @@ def became_legacy_20(api_name, alternative=None, **kw):
     return deprecated("2.0", message=message, warning=warning_cls, **kw)
 
 
-def deprecated_params(**specs):
+_C = TypeVar("_C", bound=Callable[..., Any])
+
+
+def deprecated_params(**specs: Tuple[str, str]) -> Callable[[_C], _C]:
     """Decorates a function to warn on use of certain parameters.
 
     e.g. ::

@@ -17,6 +17,8 @@ and :class:`_pool.Pool` objects, corresponds to a logger specific to that
 instance only.
 
 """
+from __future__ import annotations
+
 import logging
 import sys
 from typing import Any
@@ -74,6 +76,8 @@ def class_logger(cls: Type[_IT]) -> Type[_IT]:
 
 
 class Identified:
+    __slots__ = ()
+
     logging_name: Optional[str] = None
 
     logger: Union[logging.Logger, "InstanceLogger"]
@@ -115,6 +119,8 @@ class InstanceLogger:
     }
 
     _echo: _EchoFlagType
+
+    __slots__ = ("echo", "logger")
 
     def __init__(self, echo: _EchoFlagType, name: str):
         self.echo = echo

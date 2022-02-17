@@ -52,7 +52,7 @@ v1 = Vertex(start=Point(3, 4), end=Point(5, 6))
 
 # I'm not even sure composites support this but it should work from a
 # typing perspective
-stmt = select(v1).where(Vertex.start.in_([Point(3, 4)]))
+stmt = select(Vertex).where(Vertex.start.in_([Point(3, 4)]))
 
 p1: Point = v1.start
 p2: Point = v1.end

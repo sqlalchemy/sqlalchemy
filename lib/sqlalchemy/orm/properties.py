@@ -12,38 +12,63 @@ mapped attributes.
 
 """
 
+from __future__ import annotations
+
 from typing import Any
+from typing import cast
+from typing import List
+from typing import Optional
+from typing import Set
 from typing import TypeVar
 
 from . import attributes
 from . import strategy_options
-from .descriptor_props import CompositeProperty
+from .base import SQLCoreOperations
+from .descriptor_props import Composite
 from .descriptor_props import ConcreteInheritedProperty
-from .descriptor_props import SynonymProperty
+from .descriptor_props import Synonym
+from .interfaces import _IntrospectsAnnotations
+from .interfaces import _MapsColumns
+from .interfaces import MapperProperty
 from .interfaces import PropComparator
 from .interfaces import StrategizedProperty
-from .relationships import RelationshipProperty
+from .relationships import Relationship
+from .util import _extract_mapped_subtype
 from .util import _orm_full_deannotate
+from .. import exc as sa_exc
+from .. import ForeignKey
 from .. import log
 from .. import sql
 from .. import util
 from ..sql import coercions
+from ..sql import operators
 from ..sql import roles
+from ..sql import sqltypes
+from ..sql.schema import Column
+from ..util.typing import de_optionalize_union_types
+from ..util.typing import de_stringify_annotation
+from ..util.typing import is_fwd_ref
+from ..util.typing import NoneType
 
 _T = TypeVar("_T", bound=Any)
 _PT = TypeVar("_PT", bound=Any)
 
 __all__ = [
     "ColumnProperty",
-    "CompositeProperty",
+    "Composite",
     "ConcreteInheritedProperty",
-    "RelationshipProperty",
-    "SynonymProperty",
+    "Relationship",
+    "Synonym",
 ]
 
 
 @log.class_logger
-class ColumnProperty(StrategizedProperty[_T]):
+class ColumnProperty(
+    _MapsColumns[_T],
+    StrategizedProperty[_T],
+    _IntrospectsAnnotations,
+    log.Identified,
+):
     """Describes an object attribute that corresponds to a table column.
 
     Public constructor is the :func:`_orm.column_property` function.
@@ -65,7 +90,6 @@ class ColumnProperty(StrategizedProperty[_T]):
         "active_history",
         "expire_on_flush",
         "doc",
-        "strategy_key",
         "_creation_order",
         "_is_polymorphic_discriminator",
         "_mapped_by_synonym",
@@ -84,8 +108,8 @@ class ColumnProperty(StrategizedProperty[_T]):
             coercions.expect(roles.LabeledColumnExprRole, c) for c in columns
         ]
         self.columns = [
-            coercions.expect(
-                roles.LabeledColumnExprRole, _orm_full_deannotate(c)
+            _orm_full_deannotate(
+                coercions.expect(roles.LabeledColumnExprRole, c)
             )
             for c in columns
         ]
@@ -129,6 +153,27 @@ class ColumnProperty(StrategizedProperty[_T]):
         )
         if self.raiseload:
             self.strategy_key += (("raiseload", True),)
+
+    def declarative_scan(
+        self, registry, cls, key, annotation, is_dataclass_field
+    ):
+        column = self.columns[0]
+        if column.key is None:
+            column.key = key
+        if column.name is None:
+            column.name = key
+
+    @property
+    def mapper_property_to_assign(self) -> Optional["MapperProperty[_T]"]:
+        return self
+
+    @property
+    def columns_to_assign(self) -> List[Column]:
+        return [
+            c
+            for c in self.columns
+            if isinstance(c, Column) and c.table is None
+        ]
 
     def _memoized_attr__renders_in_subqueries(self):
         return ("deferred", True) not in self.strategy_key or (
@@ -197,7 +242,7 @@ class ColumnProperty(StrategizedProperty[_T]):
         )
 
     def do_init(self):
-        super(ColumnProperty, self).do_init()
+        super().do_init()
 
         if len(self.columns) > 1 and set(self.parent.primary_key).issuperset(
             self.columns
@@ -364,3 +409,135 @@ class ColumnProperty(StrategizedProperty[_T]):
         if not self.parent or not self.key:
             return object.__repr__(self)
         return str(self.parent.class_.__name__) + "." + self.key
+
+
+class MappedColumn(
+    SQLCoreOperations[_T],
+    operators.ColumnOperators[SQLCoreOperations],
+    _IntrospectsAnnotations,
+    _MapsColumns[_T],
+):
+    """Maps a single :class:`_schema.Column` on a class.
+
+    :class:`_orm.MappedColumn` is a specialization of the
+    :class:`_orm.ColumnProperty` class and is oriented towards declarative
+    configuration.
+
+    To construct :class:`_orm.MappedColumn` objects, use the
+    :func:`_orm.mapped_column` constructor function.
+
+    .. versionadded:: 2.0
+
+
+    """
+
+    __slots__ = (
+        "column",
+        "_creation_order",
+        "foreign_keys",
+        "_has_nullable",
+        "deferred",
+    )
+
+    deferred: bool
+    column: Column[_T]
+    foreign_keys: Optional[Set[ForeignKey]]
+
+    def __init__(self, *arg, **kw):
+        self.deferred = kw.pop("deferred", False)
+        self.column = cast("Column[_T]", Column(*arg, **kw))
+        self.foreign_keys = self.column.foreign_keys
+        self._has_nullable = "nullable" in kw
+        util.set_creation_order(self)
+
+    def _copy(self, **kw):
+        new = self.__class__.__new__(self.__class__)
+        new.column = self.column._copy(**kw)
+        new.deferred = self.deferred
+        new.foreign_keys = new.column.foreign_keys
+        new._has_nullable = self._has_nullable
+        util.set_creation_order(new)
+        return new
+
+    @property
+    def mapper_property_to_assign(self) -> Optional["MapperProperty[_T]"]:
+        if self.deferred:
+            return ColumnProperty(self.column, deferred=True)
+        else:
+            return None
+
+    @property
+    def columns_to_assign(self) -> List[Column]:
+        return [self.column]
+
+    def __clause_element__(self):
+        return self.column
+
+    def operate(self, op, *other, **kwargs):
+        return op(self.__clause_element__(), *other, **kwargs)
+
+    def reverse_operate(self, op, other, **kwargs):
+        col = self.__clause_element__()
+        return op(col._bind_param(op, other), col, **kwargs)
+
+    def declarative_scan(
+        self, registry, cls, key, annotation, is_dataclass_field
+    ):
+        column = self.column
+        if column.key is None:
+            column.key = key
+        if column.name is None:
+            column.name = key
+
+        sqltype = column.type
+
+        argument = _extract_mapped_subtype(
+            annotation,
+            cls,
+            key,
+            MappedColumn,
+            sqltype._isnull and not self.column.foreign_keys,
+            is_dataclass_field,
+        )
+        if argument is None:
+            return
+
+        self._init_column_for_annotation(cls, registry, argument)
+
+    @util.preload_module("sqlalchemy.orm.decl_base")
+    def declarative_scan_for_composite(
+        self, registry, cls, key, param_name, param_annotation
+    ):
+        decl_base = util.preloaded.orm_decl_base
+        decl_base._undefer_column_name(param_name, self.column)
+        self._init_column_for_annotation(cls, registry, param_annotation)
+
+    def _init_column_for_annotation(self, cls, registry, argument):
+        sqltype = self.column.type
+
+        nullable = False
+
+        if hasattr(argument, "__origin__"):
+            nullable = NoneType in argument.__args__
+
+        if not self._has_nullable:
+            self.column.nullable = nullable
+
+        if sqltype._isnull and not self.column.foreign_keys:
+            sqltype = None
+            our_type = de_optionalize_union_types(argument)
+
+            if is_fwd_ref(our_type):
+                our_type = de_stringify_annotation(cls, our_type)
+
+            if registry.type_annotation_map:
+                sqltype = registry.type_annotation_map.get(our_type)
+            if sqltype is None:
+                sqltype = sqltypes._type_map_get(our_type)
+
+            if sqltype is None:
+                raise sa_exc.ArgumentError(
+                    f"Could not locate SQLAlchemy Core "
+                    f"type for Python type: {our_type}"
+                )
+            self.column.type = sqltype

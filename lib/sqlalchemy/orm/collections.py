@@ -102,18 +102,22 @@ The owning object and :class:`.CollectionAttributeImpl` are also reachable
 through the adapter, allowing for some very sophisticated behavior.
 
 """
+from __future__ import annotations
 
 import operator
 import threading
+import typing
 import weakref
 
-from sqlalchemy.util.compat import inspect_getfullargspec
-from . import base
 from .. import exc as sa_exc
 from .. import util
-from ..sql import coercions
-from ..sql import expression
-from ..sql import roles
+from ..util.compat import inspect_getfullargspec
+
+if typing.TYPE_CHECKING:
+    from .mapped_collection import attribute_mapped_collection
+    from .mapped_collection import column_mapped_collection
+    from .mapped_collection import mapped_collection
+    from .mapped_collection import MappedCollection  # noqa: F401
 
 __all__ = [
     "collection",
@@ -124,180 +128,6 @@ __all__ = [
 ]
 
 __instrumentation_mutex = threading.Lock()
-
-
-class _PlainColumnGetter:
-    """Plain column getter, stores collection of Column objects
-    directly.
-
-    Serializes to a :class:`._SerializableColumnGetterV2`
-    which has more expensive __call__() performance
-    and some rare caveats.
-
-    """
-
-    def __init__(self, cols):
-        self.cols = cols
-        self.composite = len(cols) > 1
-
-    def __reduce__(self):
-        return _SerializableColumnGetterV2._reduce_from_cols(self.cols)
-
-    def _cols(self, mapper):
-        return self.cols
-
-    def __call__(self, value):
-        state = base.instance_state(value)
-        m = base._state_mapper(state)
-
-        key = [
-            m._get_state_attr_by_column(state, state.dict, col)
-            for col in self._cols(m)
-        ]
-
-        if self.composite:
-            return tuple(key)
-        else:
-            return key[0]
-
-
-class _SerializableColumnGetter:
-    """Column-based getter used in version 0.7.6 only.
-
-    Remains here for pickle compatibility with 0.7.6.
-
-    """
-
-    def __init__(self, colkeys):
-        self.colkeys = colkeys
-        self.composite = len(colkeys) > 1
-
-    def __reduce__(self):
-        return _SerializableColumnGetter, (self.colkeys,)
-
-    def __call__(self, value):
-        state = base.instance_state(value)
-        m = base._state_mapper(state)
-        key = [
-            m._get_state_attr_by_column(
-                state, state.dict, m.mapped_table.columns[k]
-            )
-            for k in self.colkeys
-        ]
-        if self.composite:
-            return tuple(key)
-        else:
-            return key[0]
-
-
-class _SerializableColumnGetterV2(_PlainColumnGetter):
-    """Updated serializable getter which deals with
-    multi-table mapped classes.
-
-    Two extremely unusual cases are not supported.
-    Mappings which have tables across multiple metadata
-    objects, or which are mapped to non-Table selectables
-    linked across inheriting mappers may fail to function
-    here.
-
-    """
-
-    def __init__(self, colkeys):
-        self.colkeys = colkeys
-        self.composite = len(colkeys) > 1
-
-    def __reduce__(self):
-        return self.__class__, (self.colkeys,)
-
-    @classmethod
-    def _reduce_from_cols(cls, cols):
-        def _table_key(c):
-            if not isinstance(c.table, expression.TableClause):
-                return None
-            else:
-                return c.table.key
-
-        colkeys = [(c.key, _table_key(c)) for c in cols]
-        return _SerializableColumnGetterV2, (colkeys,)
-
-    def _cols(self, mapper):
-        cols = []
-        metadata = getattr(mapper.local_table, "metadata", None)
-        for (ckey, tkey) in self.colkeys:
-            if tkey is None or metadata is None or tkey not in metadata:
-                cols.append(mapper.local_table.c[ckey])
-            else:
-                cols.append(metadata.tables[tkey].c[ckey])
-        return cols
-
-
-def column_mapped_collection(mapping_spec):
-    """A dictionary-based collection type with column-based keying.
-
-    Returns a :class:`.MappedCollection` factory with a keying function
-    generated from mapping_spec, which may be a Column or a sequence
-    of Columns.
-
-    The key value must be immutable for the lifetime of the object.  You
-    can not, for example, map on foreign key values if those key values will
-    change during the session, i.e. from None to a database-assigned integer
-    after a session flush.
-
-    """
-    cols = [
-        coercions.expect(roles.ColumnArgumentRole, q, argname="mapping_spec")
-        for q in util.to_list(mapping_spec)
-    ]
-    keyfunc = _PlainColumnGetter(cols)
-    return lambda: MappedCollection(keyfunc)
-
-
-class _SerializableAttrGetter:
-    def __init__(self, name):
-        self.name = name
-        self.getter = operator.attrgetter(name)
-
-    def __call__(self, target):
-        return self.getter(target)
-
-    def __reduce__(self):
-        return _SerializableAttrGetter, (self.name,)
-
-
-def attribute_mapped_collection(attr_name):
-    """A dictionary-based collection type with attribute-based keying.
-
-    Returns a :class:`.MappedCollection` factory with a keying based on the
-    'attr_name' attribute of entities in the collection, where ``attr_name``
-    is the string name of the attribute.
-
-    .. warning:: the key value must be assigned to its final value
-       **before** it is accessed by the attribute mapped collection.
-       Additionally, changes to the key attribute are **not tracked**
-       automatically, which means the key in the dictionary is not
-       automatically synchronized with the key value on the target object
-       itself.  See the section :ref:`key_collections_mutations`
-       for an example.
-
-    """
-    getter = _SerializableAttrGetter(attr_name)
-    return lambda: MappedCollection(getter)
-
-
-def mapped_collection(keyfunc):
-    """A dictionary-based collection type with arbitrary keying.
-
-    Returns a :class:`.MappedCollection` factory with a keying function
-    generated from keyfunc, a callable that takes an entity and returns a
-    key value.
-
-    The key value must be immutable for the lifetime of the object.  You
-    can not, for example, map on foreign key values if those key values will
-    change during the session, i.e. from None to a database-assigned integer
-    after a session flush.
-
-    """
-    return lambda: MappedCollection(keyfunc)
 
 
 class collection:
@@ -1620,63 +1450,24 @@ __interfaces = {
 }
 
 
-class MappedCollection(dict):
-    """A basic dictionary-based collection class.
+def __go(lcls):
 
-    Extends dict with the minimal bag semantics that collection
-    classes require. ``set`` and ``remove`` are implemented in terms
-    of a keying function: any callable that takes an object and
-    returns an object for use as a dictionary key.
+    global mapped_collection, column_mapped_collection
+    global attribute_mapped_collection, MappedCollection
 
-    """
+    from .mapped_collection import mapped_collection
+    from .mapped_collection import column_mapped_collection
+    from .mapped_collection import attribute_mapped_collection
+    from .mapped_collection import MappedCollection
 
-    def __init__(self, keyfunc):
-        """Create a new collection with keying provided by keyfunc.
-
-        keyfunc may be any callable that takes an object and returns an object
-        for use as a dictionary key.
-
-        The keyfunc will be called every time the ORM needs to add a member by
-        value-only (such as when loading instances from the database) or
-        remove a member.  The usual cautions about dictionary keying apply-
-        ``keyfunc(object)`` should return the same output for the life of the
-        collection.  Keying based on mutable properties can result in
-        unreachable instances "lost" in the collection.
-
-        """
-        self.keyfunc = keyfunc
-
-    @collection.appender
-    @collection.internally_instrumented
-    def set(self, value, _sa_initiator=None):
-        """Add an item by value, consulting the keyfunc for the key."""
-
-        key = self.keyfunc(value)
-        self.__setitem__(key, value, _sa_initiator)
-
-    @collection.remover
-    @collection.internally_instrumented
-    def remove(self, value, _sa_initiator=None):
-        """Remove an item by value, consulting the keyfunc for the key."""
-
-        key = self.keyfunc(value)
-        # Let self[key] raise if key is not in this collection
-        # testlib.pragma exempt:__ne__
-        if self[key] != value:
-            raise sa_exc.InvalidRequestError(
-                "Can not remove '%s': collection holds '%s' for key '%s'. "
-                "Possible cause: is the MappedCollection key function "
-                "based on mutable properties or properties that only obtain "
-                "values after flush?" % (value, self[key], key)
-            )
-        self.__delitem__(key, _sa_initiator)
+    # ensure instrumentation is associated with
+    # these built-in classes; if a user-defined class
+    # subclasses these and uses @internally_instrumented,
+    # the superclass is otherwise not instrumented.
+    # see [ticket:2406].
+    _instrument_class(InstrumentedList)
+    _instrument_class(InstrumentedSet)
+    _instrument_class(MappedCollection)
 
 
-# ensure instrumentation is associated with
-# these built-in classes; if a user-defined class
-# subclasses these and uses @internally_instrumented,
-# the superclass is otherwise not instrumented.
-# see [ticket:2406].
-_instrument_class(MappedCollection)
-_instrument_class(InstrumentedList)
-_instrument_class(InstrumentedSet)
+__go(locals())

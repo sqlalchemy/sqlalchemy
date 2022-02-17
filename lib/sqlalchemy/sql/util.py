@@ -8,6 +8,8 @@
 """High level utilities which build upon other modules here.
 
 """
+from __future__ import annotations
+
 from collections import deque
 from itertools import chain
 import typing

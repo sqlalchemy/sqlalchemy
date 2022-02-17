@@ -24,11 +24,15 @@ methods such as get_table_names, get_columns, etc.
    use the key 'name'. So for most return values, each record will have a
    'name' attribute..
 """
+from __future__ import annotations
 
 import contextlib
+from typing import List
+from typing import Optional
 
 from .base import Connection
 from .base import Engine
+from .interfaces import ReflectedColumn
 from .. import exc
 from .. import inspection
 from .. import sql
@@ -433,7 +437,9 @@ class Inspector(inspection.Inspectable["Inspector"]):
                 conn, view_name, schema, info_cache=self.info_cache
             )
 
-    def get_columns(self, table_name, schema=None, **kw):
+    def get_columns(
+        self, table_name: str, schema: Optional[str] = None, **kw
+    ) -> List[ReflectedColumn]:
         """Return information about columns in `table_name`.
 
         Given a string `table_name` and an optional string `schema`, return

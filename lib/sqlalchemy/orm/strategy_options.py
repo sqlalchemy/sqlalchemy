@@ -8,6 +8,8 @@
 
 """
 
+from __future__ import annotations
+
 import typing
 from typing import Any
 from typing import cast
@@ -1808,7 +1810,7 @@ class _AttributeStrategyLoad(_LoadElement):
         assert pwpi
         if not pwpi.is_aliased_class:
             pwpi = inspect(
-                orm_util.with_polymorphic(
+                orm_util.AliasedInsp._with_polymorphic_factory(
                     pwpi.mapper.base_mapper,
                     pwpi.mapper,
                     aliased=True,

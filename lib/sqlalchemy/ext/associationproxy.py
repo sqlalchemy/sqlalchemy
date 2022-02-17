@@ -361,7 +361,7 @@ class AssociationProxyInstance:
         prop = orm.class_mapper(owning_class).get_property(target_collection)
 
         # this was never asserted before but this should be made clear.
-        if not isinstance(prop, orm.RelationshipProperty):
+        if not isinstance(prop, orm.Relationship):
             raise NotImplementedError(
                 "association proxy to a non-relationship "
                 "intermediary is not supported"
@@ -717,8 +717,8 @@ class AssociationProxyInstance:
         """Produce a proxied 'any' expression using EXISTS.
 
         This expression will be a composed product
-        using the :meth:`.RelationshipProperty.Comparator.any`
-        and/or :meth:`.RelationshipProperty.Comparator.has`
+        using the :meth:`.Relationship.Comparator.any`
+        and/or :meth:`.Relationship.Comparator.has`
         operators of the underlying proxied attributes.
 
         """
@@ -737,8 +737,8 @@ class AssociationProxyInstance:
         """Produce a proxied 'has' expression using EXISTS.
 
         This expression will be a composed product
-        using the :meth:`.RelationshipProperty.Comparator.any`
-        and/or :meth:`.RelationshipProperty.Comparator.has`
+        using the :meth:`.Relationship.Comparator.any`
+        and/or :meth:`.Relationship.Comparator.has`
         operators of the underlying proxied attributes.
 
         """
@@ -859,9 +859,9 @@ class ObjectAssociationProxyInstance(AssociationProxyInstance):
         """Produce a proxied 'contains' expression using EXISTS.
 
         This expression will be a composed product
-        using the :meth:`.RelationshipProperty.Comparator.any`,
-        :meth:`.RelationshipProperty.Comparator.has`,
-        and/or :meth:`.RelationshipProperty.Comparator.contains`
+        using the :meth:`.Relationship.Comparator.any`,
+        :meth:`.Relationship.Comparator.has`,
+        and/or :meth:`.Relationship.Comparator.contains`
         operators of the underlying proxied attributes.
         """
 

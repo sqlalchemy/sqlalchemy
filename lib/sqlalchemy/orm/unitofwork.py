@@ -13,6 +13,8 @@ organizes them in order of dependency, and executes.
 
 """
 
+from __future__ import annotations
+
 from . import attributes
 from . import exc as orm_exc
 from . import util as orm_util

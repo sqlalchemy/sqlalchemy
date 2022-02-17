@@ -9,6 +9,8 @@
 within INSERT and UPDATE statements.
 
 """
+from __future__ import annotations
+
 import functools
 import operator
 

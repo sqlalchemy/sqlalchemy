@@ -2528,7 +2528,6 @@ class SchemaTest(fixtures.TestBase, AssertsCompiledSQL):
         assert t2.c.x.references(t1.c.x)
 
     def test_create_drop_schema(self):
-
         self.assert_compile(
             schema.CreateSchema("sa_schema"), "CREATE SCHEMA sa_schema"
         )

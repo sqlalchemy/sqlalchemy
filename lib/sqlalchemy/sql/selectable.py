@@ -11,15 +11,16 @@ SQL tables and derived rowsets.
 
 """
 
+from __future__ import annotations
+
 import collections
+from enum import Enum
 import itertools
 from operator import attrgetter
 import typing
 from typing import Any as TODO_Any
 from typing import Optional
 from typing import Tuple
-from typing import Type
-from typing import Union
 
 from . import cache_key
 from . import coercions
@@ -28,6 +29,7 @@ from . import roles
 from . import traversals
 from . import type_api
 from . import visitors
+from ._typing import _ColumnsClauseElement
 from .annotation import Annotated
 from .annotation import SupportsCloneAnnotations
 from .base import _clone
@@ -847,8 +849,11 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         return self.alias(name=name)
 
 
-LABEL_STYLE_NONE = util.symbol(
-    "LABEL_STYLE_NONE",
+class SelectLabelStyle(Enum):
+    """Label style constants that may be passed to
+    :meth:`_sql.Select.set_label_style`."""
+
+    LABEL_STYLE_NONE = 0
     """Label style indicating no automatic labeling should be applied to the
     columns clause of a SELECT statement.
 
@@ -867,11 +872,9 @@ LABEL_STYLE_NONE = util.symbol(
 
     .. versionadded:: 1.4
 
-""",  # noqa E501
-)
+    """  # noqa E501
 
-LABEL_STYLE_TABLENAME_PLUS_COL = util.symbol(
-    "LABEL_STYLE_TABLENAME_PLUS_COL",
+    LABEL_STYLE_TABLENAME_PLUS_COL = 1
     """Label style indicating all columns should be labeled as
     ``<tablename>_<columnname>`` when generating the columns clause of a SELECT
     statement, to disambiguate same-named columns referenced from different
@@ -897,12 +900,9 @@ LABEL_STYLE_TABLENAME_PLUS_COL = util.symbol(
 
     .. versionadded:: 1.4
 
-""",  # noqa E501
-)
+    """  # noqa: E501
 
-
-LABEL_STYLE_DISAMBIGUATE_ONLY = util.symbol(
-    "LABEL_STYLE_DISAMBIGUATE_ONLY",
+    LABEL_STYLE_DISAMBIGUATE_ONLY = 2
     """Label style indicating that columns with a name that conflicts with
     an existing name should be labeled with a semi-anonymizing label
     when generating the columns clause of a SELECT statement.
@@ -924,17 +924,24 @@ LABEL_STYLE_DISAMBIGUATE_ONLY = util.symbol(
 
     .. versionadded:: 1.4
 
-""",  # noqa: E501,
-)
+    """  # noqa: E501
 
+    LABEL_STYLE_DEFAULT = LABEL_STYLE_DISAMBIGUATE_ONLY
+    """The default label style, refers to
+    :data:`_sql.LABEL_STYLE_DISAMBIGUATE_ONLY`.
+
+    .. versionadded:: 1.4
+
+    """
+
+
+(
+    LABEL_STYLE_NONE,
+    LABEL_STYLE_TABLENAME_PLUS_COL,
+    LABEL_STYLE_DISAMBIGUATE_ONLY,
+) = list(SelectLabelStyle)
 
 LABEL_STYLE_DEFAULT = LABEL_STYLE_DISAMBIGUATE_ONLY
-"""The default label style, refers to
-:data:`_sql.LABEL_STYLE_DISAMBIGUATE_ONLY`.
-
-.. versionadded:: 1.4
-
-"""
 
 
 class Join(roles.DMLTableRole, FromClause):
@@ -2870,10 +2877,12 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
         else:
             return self
 
-    def get_label_style(self):
+    def get_label_style(self) -> SelectLabelStyle:
         return self._label_style
 
-    def set_label_style(self, label_style):
+    def set_label_style(
+        self, label_style: SelectLabelStyle
+    ) -> "SelectStatementGrouping":
         return SelectStatementGrouping(
             self.element.set_label_style(label_style)
         )
@@ -3018,7 +3027,7 @@ class GenerativeSelect(SelectBase):
         )
         return self
 
-    def get_label_style(self):
+    def get_label_style(self) -> SelectLabelStyle:
         """
         Retrieve the current label style.
 
@@ -3027,14 +3036,16 @@ class GenerativeSelect(SelectBase):
         """
         return self._label_style
 
-    def set_label_style(self, style):
+    def set_label_style(
+        self: SelfGenerativeSelect, style: SelectLabelStyle
+    ) -> SelfGenerativeSelect:
         """Return a new selectable with the specified label style.
 
         There are three "label styles" available,
-        :data:`_sql.LABEL_STYLE_DISAMBIGUATE_ONLY`,
-        :data:`_sql.LABEL_STYLE_TABLENAME_PLUS_COL`, and
-        :data:`_sql.LABEL_STYLE_NONE`.   The default style is
-        :data:`_sql.LABEL_STYLE_TABLENAME_PLUS_COL`.
+        :attr:`_sql.SelectLabelStyle.LABEL_STYLE_DISAMBIGUATE_ONLY`,
+        :attr:`_sql.SelectLabelStyle.LABEL_STYLE_TABLENAME_PLUS_COL`, and
+        :attr:`_sql.SelectLabelStyle.LABEL_STYLE_NONE`.   The default style is
+        :attr:`_sql.SelectLabelStyle.LABEL_STYLE_TABLENAME_PLUS_COL`.
 
         In modern SQLAlchemy, there is not generally a need to change the
         labeling style, as per-expression labels are more effectively used by
@@ -4131,7 +4142,7 @@ class Select(
         stmt.__dict__.update(kw)
         return stmt
 
-    def __init__(self, *entities: Union[roles.ColumnsClauseRole, Type]):
+    def __init__(self, *entities: _ColumnsClauseElement):
         r"""Construct a new :class:`_expression.Select`.
 
         The public constructor for :class:`_expression.Select` is the

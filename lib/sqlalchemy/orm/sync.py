@@ -10,6 +10,8 @@ between instances based on join conditions.
 
 """
 
+from __future__ import annotations
+
 from . import attributes
 from . import exc
 from . import util as orm_util

@@ -23,6 +23,8 @@ https://techspot.zzzeek.org/2008/01/23/expression-transformations/ .
 
 """
 
+from __future__ import annotations
+
 from collections import deque
 import itertools
 import operator

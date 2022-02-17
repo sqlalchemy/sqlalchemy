@@ -563,26 +563,6 @@ class DeclarativeMultiBaseTest(
         eq_(a1, Address(email="two"))
         eq_(a1.user, User(name="u1"))
 
-    def test_mapped_column_construct(self):
-        class User(Base, fixtures.ComparableEntity):
-            __tablename__ = "users"
-
-            id = mapped_column("id", Integer, primary_key=True)
-            name = mapped_column(String(50))
-
-        Base.metadata.create_all(testing.db)
-
-        u1 = User(id=1, name="u1")
-        sess = fixture_session()
-        sess.add(u1)
-        sess.flush()
-        sess.expunge_all()
-
-        eq_(
-            sess.query(User).all(),
-            [User(name="u1", id=1)],
-        )
-
     def test_back_populates_setup(self):
         class User(Base):
             __tablename__ = "users"
@@ -1534,28 +1514,25 @@ class DeclarativeMultiBaseTest(
 
         yield go
 
+    @testing.combinations(Column, mapped_column, argnames="_column")
     def test_add_prop_auto(
-        self, require_metaclass, assert_user_address_mapping
+        self, require_metaclass, assert_user_address_mapping, _column
     ):
         class User(Base, fixtures.ComparableEntity):
 
             __tablename__ = "users"
-            id = Column(
-                "id", Integer, primary_key=True, test_needs_autoincrement=True
-            )
+            id = Column("id", Integer, primary_key=True)
 
-        User.name = Column("name", String(50))
+        User.name = _column("name", String(50))
         User.addresses = relationship("Address", backref="user")
 
         class Address(Base, fixtures.ComparableEntity):
 
             __tablename__ = "addresses"
-            id = Column(
-                Integer, primary_key=True, test_needs_autoincrement=True
-            )
+            id = _column(Integer, primary_key=True)
 
-        Address.email = Column(String(50), key="_email")
-        Address.user_id = Column(
+        Address.email = _column(String(50), key="_email")
+        Address.user_id = _column(
             "user_id", Integer, ForeignKey("users.id"), key="_user_id"
         )
 
@@ -1565,15 +1542,14 @@ class DeclarativeMultiBaseTest(
 
         assert_user_address_mapping(User, Address)
 
-    def test_add_prop_manual(self, assert_user_address_mapping):
+    @testing.combinations(Column, mapped_column, argnames="_column")
+    def test_add_prop_manual(self, assert_user_address_mapping, _column):
         class User(Base, fixtures.ComparableEntity):
 
             __tablename__ = "users"
-            id = Column(
-                "id", Integer, primary_key=True, test_needs_autoincrement=True
-            )
+            id = _column("id", Integer, primary_key=True)
 
-        add_mapped_attribute(User, "name", Column("name", String(50)))
+        add_mapped_attribute(User, "name", _column("name", String(50)))
         add_mapped_attribute(
             User, "addresses", relationship("Address", backref="user")
         )
@@ -1581,17 +1557,17 @@ class DeclarativeMultiBaseTest(
         class Address(Base, fixtures.ComparableEntity):
 
             __tablename__ = "addresses"
-            id = Column(
-                Integer, primary_key=True, test_needs_autoincrement=True
-            )
+            id = _column(Integer, primary_key=True)
 
         add_mapped_attribute(
-            Address, "email", Column(String(50), key="_email")
+            Address, "email", _column(String(50), key="_email")
         )
         add_mapped_attribute(
             Address,
             "user_id",
-            Column("user_id", Integer, ForeignKey("users.id"), key="_user_id"),
+            _column(
+                "user_id", Integer, ForeignKey("users.id"), key="_user_id"
+            ),
         )
 
         eq_(Address.__table__.c["id"].name, "id")
@@ -1612,7 +1588,7 @@ class DeclarativeMultiBaseTest(
 
         assert ASub.brap.property is A.data.property
         assert isinstance(
-            ASub.brap.original_property, descriptor_props.SynonymProperty
+            ASub.brap.original_property, descriptor_props.Synonym
         )
 
     def test_alt_name_attr_subclass_relationship_inline(self):
@@ -1634,7 +1610,7 @@ class DeclarativeMultiBaseTest(
 
         assert ASub.brap.property is A.b.property
         assert isinstance(
-            ASub.brap.original_property, descriptor_props.SynonymProperty
+            ASub.brap.original_property, descriptor_props.Synonym
         )
         ASub(brap=B())
 
@@ -1647,9 +1623,7 @@ class DeclarativeMultiBaseTest(
 
         A.brap = A.data
         assert A.brap.property is A.data.property
-        assert isinstance(
-            A.brap.original_property, descriptor_props.SynonymProperty
-        )
+        assert isinstance(A.brap.original_property, descriptor_props.Synonym)
 
     def test_alt_name_attr_subclass_relationship_attrset(
         self, require_metaclass
@@ -1668,9 +1642,7 @@ class DeclarativeMultiBaseTest(
             id = Column("id", Integer, primary_key=True)
 
         assert A.brap.property is A.b.property
-        assert isinstance(
-            A.brap.original_property, descriptor_props.SynonymProperty
-        )
+        assert isinstance(A.brap.original_property, descriptor_props.Synonym)
         A(brap=B())
 
     def test_eager_order_by(self):

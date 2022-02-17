@@ -8,6 +8,8 @@
 """ORM event interfaces.
 
 """
+from __future__ import annotations
+
 import weakref
 
 from . import instrumentation
@@ -1363,7 +1365,7 @@ class SessionEvents(event.Events):
 
     """
 
-    _target_class_doc = "SomeSessionOrFactory"
+    _target_class_doc = "SomeSessionClassOrObject"
 
     _dispatch_target = Session
 
@@ -1431,15 +1433,31 @@ class SessionEvents(event.Events):
         event_key.base_listen(**kw)
 
     def do_orm_execute(self, orm_execute_state):
-        """Intercept statement executions that occur in terms of a :class:`.Session`.
+        """Intercept statement executions that occur on behalf of an
+        ORM :class:`.Session` object.
 
-        This event is invoked for all top-level SQL statements invoked
-        from the :meth:`_orm.Session.execute` method.   As of SQLAlchemy 1.4,
-        all ORM queries emitted on behalf of a :class:`_orm.Session` will
-        flow through this method, so this event hook provides the single
-        point at which ORM queries of all types may be intercepted before
-        they are invoked, and additionally to replace their execution with
-        a different process.
+        This event is invoked for all top-level SQL statements invoked from the
+        :meth:`_orm.Session.execute` method, as well as related methods such as
+        :meth:`_orm.Session.scalars` and :meth:`_orm.Session.scalar`. As of
+        SQLAlchemy 1.4, all ORM queries emitted on behalf of a
+        :class:`_orm.Session` will flow through this method, so this event hook
+        provides the single point at which ORM queries of all types may be
+        intercepted before they are invoked, and additionally to replace their
+        execution with a different process.
+
+        .. note::  The :meth:`_orm.SessionEvents.do_orm_execute` event hook
+           is triggered **for ORM statement executions only**, meaning those
+           invoked via the :meth:`_orm.Session.execute` and similar methods on
+           the :class:`_orm.Session` object. It does **not** trigger for
+           statements that are invoked by SQLAlchemy Core only, i.e. statements
+           invoked directly using :meth:`_engine.Connection.execute` or
+           otherwise originating from an :class:`_engine.Engine` object without
+           any :class:`_orm.Session` involved. To intercept **all** SQL
+           executions regardless of whether the Core or ORM APIs are in use,
+           see the event hooks at
+           :class:`.ConnectionEvents`, such as
+           :meth:`.ConnectionEvents.before_execute` and
+           :meth:`.ConnectionEvents.before_cursor_execute`.
 
         This event is a ``do_`` event, meaning it has the capability to replace
         the operation that the :meth:`_orm.Session.execute` method normally

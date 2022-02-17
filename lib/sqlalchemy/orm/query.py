@@ -18,10 +18,17 @@ ORM session, whereas the ``Select`` construct interacts directly with the
 database to return iterable result sets.
 
 """
+from __future__ import annotations
+
 import collections.abc as collections_abc
 import itertools
 import operator
-import typing
+from typing import Any
+from typing import Generic
+from typing import Iterable
+from typing import List
+from typing import Optional
+from typing import TypeVar
 
 from . import exc as orm_exc
 from . import interfaces
@@ -35,8 +42,9 @@ from .context import LABEL_STYLE_LEGACY_ORM
 from .context import ORMCompileState
 from .context import ORMFromStatementCompileState
 from .context import QueryContext
+from .interfaces import ORMColumnDescription
 from .interfaces import ORMColumnsClauseRole
-from .util import aliased
+from .util import AliasedClass
 from .util import object_mapper
 from .util import with_parent
 from .. import exc as sa_exc
@@ -45,16 +53,19 @@ from .. import inspection
 from .. import log
 from .. import sql
 from .. import util
+from ..engine import Result
 from ..sql import coercions
 from ..sql import expression
 from ..sql import roles
 from ..sql import Select
 from ..sql import util as sql_util
 from ..sql import visitors
+from ..sql._typing import _FromClauseElement
 from ..sql.annotation import SupportsCloneAnnotations
 from ..sql.base import _entity_namespace_key
 from ..sql.base import _generative
 from ..sql.base import Executable
+from ..sql.expression import Exists
 from ..sql.selectable import _MemoizedSelectEntities
 from ..sql.selectable import _SelectFromElements
 from ..sql.selectable import ForUpdateArg
@@ -67,9 +78,12 @@ from ..sql.selectable import SelectBase
 from ..sql.selectable import SelectStatementGrouping
 from ..sql.visitors import InternalTraversal
 
-__all__ = ["Query", "QueryContext", "aliased"]
 
-SelfQuery = typing.TypeVar("SelfQuery", bound="Query")
+__all__ = ["Query", "QueryContext"]
+
+_T = TypeVar("_T", bound=Any)
+
+SelfQuery = TypeVar("SelfQuery", bound="Query")
 
 
 @inspection._self_inspects
@@ -80,7 +94,9 @@ class Query(
     HasPrefixes,
     HasSuffixes,
     HasHints,
+    log.Identified,
     Executable,
+    Generic[_T],
 ):
 
     """ORM-level SQL construction object.
@@ -1040,7 +1056,7 @@ class Query(
 
             for prop in mapper.iterate_properties:
                 if (
-                    isinstance(prop, relationships.RelationshipProperty)
+                    isinstance(prop, relationships.Relationship)
                     and prop.mapper is entity_zero.mapper
                 ):
                     property = prop  # noqa
@@ -1064,7 +1080,7 @@ class Query(
 
         if alias is not None:
             # TODO: deprecate
-            entity = aliased(entity, alias)
+            entity = AliasedClass(entity, alias)
 
         self._raw_columns = list(self._raw_columns)
 
@@ -1992,7 +2008,9 @@ class Query(
 
     @_generative
     @_assertions(_no_clauseelement_condition)
-    def select_from(self: SelfQuery, *from_obj) -> SelfQuery:
+    def select_from(
+        self: SelfQuery, *from_obj: _FromClauseElement
+    ) -> SelfQuery:
         r"""Set the FROM clause of this :class:`.Query` explicitly.
 
         :meth:`.Query.select_from` is often used in conjunction with
@@ -2144,7 +2162,7 @@ class Query(
             self._distinct = True
         return self
 
-    def all(self):
+    def all(self) -> List[_T]:
         """Return the results represented by this :class:`_query.Query`
         as a list.
 
@@ -2183,7 +2201,7 @@ class Query(
         self._statement = statement
         return self
 
-    def first(self):
+    def first(self) -> Optional[_T]:
         """Return the first result of this ``Query`` or
         None if the result doesn't contain any row.
 
@@ -2209,7 +2227,7 @@ class Query(
         else:
             return self.limit(1)._iter().first()
 
-    def one_or_none(self):
+    def one_or_none(self) -> Optional[_T]:
         """Return at most one result or raise an exception.
 
         Returns ``None`` if the query selects
@@ -2235,7 +2253,7 @@ class Query(
         """
         return self._iter().one_or_none()
 
-    def one(self):
+    def one(self) -> _T:
         """Return exactly one result or raise an exception.
 
         Raises ``sqlalchemy.orm.exc.NoResultFound`` if the query selects
@@ -2255,7 +2273,7 @@ class Query(
         """
         return self._iter().one()
 
-    def scalar(self):
+    def scalar(self) -> Any:
         """Return the first element of the first result or None
         if no rows present.  If multiple rows are returned,
         raises MultipleResultsFound.
@@ -2283,7 +2301,7 @@ class Query(
         except orm_exc.NoResultFound:
             return None
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable[_T]:
         return self._iter().__iter__()
 
     def _iter(self):
@@ -2309,7 +2327,7 @@ class Query(
 
         return result
 
-    def __str__(self):
+    def __str__(self) -> str:
         statement = self._statement_20()
 
         try:
@@ -2327,7 +2345,7 @@ class Query(
         return fn(clause=statement, **kw)
 
     @property
-    def column_descriptions(self):
+    def column_descriptions(self) -> List[ORMColumnDescription]:
         """Return metadata about the columns which would be
         returned by this :class:`_query.Query`.
 
@@ -2368,7 +2386,7 @@ class Query(
 
         return _column_descriptions(self, legacy=True)
 
-    def instances(self, result_proxy, context=None):
+    def instances(self, result_proxy: Result, context=None) -> Any:
         """Return an ORM result given a :class:`_engine.CursorResult` and
         :class:`.QueryContext`.
 
@@ -2400,6 +2418,7 @@ class Query(
         if result._attributes.get("filtered", False):
             result = result.unique()
 
+        # TODO: isn't this supposed to be a list?
         return result
 
     @util.became_legacy_20(
@@ -2436,7 +2455,7 @@ class Query(
 
         return loading.merge_result(self, iterator, load)
 
-    def exists(self):
+    def exists(self) -> Exists:
         """A convenience method that turns a query into an EXISTS subquery
         of the form EXISTS (SELECT 1 FROM ... WHERE ...).
 

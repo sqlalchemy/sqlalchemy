@@ -12,6 +12,8 @@ processors.
 They all share one common characteristic: None is passed through unchanged.
 
 """
+from __future__ import annotations
+
 from ._py_processors import str_to_datetime_processor_factory  # noqa
 
 try:

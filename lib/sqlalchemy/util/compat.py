@@ -6,6 +6,7 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
 """Handle Python version/platform incompatibilities."""
+
 from __future__ import annotations
 
 import base64
@@ -39,7 +40,6 @@ arm = "aarch" in platform.machine().lower()
 has_refcount_gc = bool(cpython)
 
 dottedgetter = operator.attrgetter
-next = next  # noqa
 
 
 class FullArgSpec(typing.NamedTuple):
@@ -137,6 +137,9 @@ def cmp(a, b):
 
 def _formatannotation(annotation, base_module=None):
     """vendored from python 3.7"""
+
+    if isinstance(annotation, str):
+        return f'"{annotation}"'
 
     if getattr(annotation, "__module__", None) == "typing":
         return f'"{repr(annotation).replace("typing.", "").replace("~", "")}"'

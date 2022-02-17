@@ -4,8 +4,17 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+from __future__ import annotations
 
+import typing
+
+from sqlalchemy.util.langhelpers import TypingOnly
 from .. import util
+
+
+if typing.TYPE_CHECKING:
+    from .elements import ClauseElement
+    from .selectable import FromClause
 
 
 class SQLRole:
@@ -284,3 +293,25 @@ class DDLReferredColumnRole(DDLConstraintColumnRole):
     _role_name = (
         "String column name or Column object for DDL foreign key constraint"
     )
+
+
+class HasClauseElement(TypingOnly):
+    """indicates a class that has a __clause_element__() method"""
+
+    __slots__ = ()
+
+    if typing.TYPE_CHECKING:
+
+        def __clause_element__(self) -> "ClauseElement":
+            ...
+
+
+class HasFromClauseElement(HasClauseElement, TypingOnly):
+    """indicates a class that has a __clause_element__() method"""
+
+    __slots__ = ()
+
+    if typing.TYPE_CHECKING:
+
+        def __clause_element__(self) -> "FromClause":
+            ...

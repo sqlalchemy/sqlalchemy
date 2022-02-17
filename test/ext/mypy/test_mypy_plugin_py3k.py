@@ -3,16 +3,54 @@ import re
 import shutil
 import sys
 import tempfile
+from typing import Any
+from typing import cast
+from typing import List
+from typing import Tuple
 
+import sqlalchemy
 from sqlalchemy import testing
 from sqlalchemy.testing import config
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 
 
+def _file_combinations(dirname):
+    path = os.path.join(os.path.dirname(__file__), dirname)
+    files = []
+    for f in os.listdir(path):
+        if f.endswith(".py"):
+            files.append(os.path.join(os.path.dirname(__file__), dirname, f))
+
+    for extra_dir in testing.config.options.mypy_extra_test_paths:
+        if extra_dir and os.path.isdir(extra_dir):
+            for f in os.listdir(os.path.join(extra_dir, dirname)):
+                if f.endswith(".py"):
+                    files.append(os.path.join(extra_dir, dirname, f))
+    return files
+
+
+def _incremental_dirs():
+    path = os.path.join(os.path.dirname(__file__), "incremental")
+    files = []
+    for d in os.listdir(path):
+        if os.path.isdir(os.path.join(path, d)):
+            files.append(
+                os.path.join(os.path.dirname(__file__), "incremental", d)
+            )
+
+    for extra_dir in testing.config.options.mypy_extra_test_paths:
+        if extra_dir and os.path.isdir(extra_dir):
+            for d in os.listdir(os.path.join(extra_dir, "incremental")):
+                if os.path.isdir(os.path.join(path, d)):
+                    files.append(os.path.join(extra_dir, "incremental", d))
+    return files
+
+
 @testing.add_to_marker.mypy
 class MypyPluginTest(fixtures.TestBase):
-    __requires__ = ("sqlalchemy2_stubs",)
+    __tags__ = ("mypy",)
+    __requires__ = ("no_sqlalchemy2_stubs",)
 
     @testing.fixture(scope="function")
     def per_func_cachedir(self):
@@ -25,22 +63,50 @@ class MypyPluginTest(fixtures.TestBase):
             yield item
 
     def _cachedir(self):
+        sqlalchemy_path = os.path.dirname(os.path.dirname(sqlalchemy.__file__))
+
+        # for a pytest from my local ./lib/ , i need mypy_path.
+        # for a tox run where sqlalchemy is in site_packages, mypy complains
+        # "../python3.10/site-packages is in the MYPYPATH. Please remove it."
+        # previously when we used sqlalchemy2-stubs, it would just be
+        # installed as a dependency, which is why mypy_path wasn't needed
+        # then, but I like to be able to run the test suite from the local
+        # ./lib/ as well.
+
+        if "site-packages" not in sqlalchemy_path:
+            mypy_path = f"mypy_path={sqlalchemy_path}"
+        else:
+            mypy_path = ""
+
         with tempfile.TemporaryDirectory() as cachedir:
             with open(
                 os.path.join(cachedir, "sqla_mypy_config.cfg"), "w"
             ) as config_file:
                 config_file.write(
-                    """
+                    f"""
                     [mypy]\n
                     plugins = sqlalchemy.ext.mypy.plugin\n
+                    show_error_codes = True\n
+                    {mypy_path}
+                    disable_error_code = no-untyped-call
+
+                    [mypy-sqlalchemy.*]
+                    ignore_errors = True
+
                     """
                 )
             with open(
                 os.path.join(cachedir, "plain_mypy_config.cfg"), "w"
             ) as config_file:
                 config_file.write(
-                    """
+                    f"""
                     [mypy]\n
+                    show_error_codes = True\n
+                    {mypy_path}
+                    disable_error_code = var-annotated,no-untyped-call
+                    [mypy-sqlalchemy.*]
+                    ignore_errors = True
+
                     """
                 )
             yield cachedir
@@ -70,24 +136,12 @@ class MypyPluginTest(fixtures.TestBase):
 
         return run
 
-    def _incremental_dirs():
-        path = os.path.join(os.path.dirname(__file__), "incremental")
-        files = []
-        for d in os.listdir(path):
-            if os.path.isdir(os.path.join(path, d)):
-                files.append(
-                    os.path.join(os.path.dirname(__file__), "incremental", d)
-                )
-
-        for extra_dir in testing.config.options.mypy_extra_test_paths:
-            if extra_dir and os.path.isdir(extra_dir):
-                for d in os.listdir(os.path.join(extra_dir, "incremental")):
-                    if os.path.isdir(os.path.join(path, d)):
-                        files.append(os.path.join(extra_dir, "incremental", d))
-        return files
-
     @testing.combinations(
-        *[(pathname,) for pathname in _incremental_dirs()], argnames="pathname"
+        *[
+            (pathname, testing.exclusions.closed())
+            for pathname in _incremental_dirs()
+        ],
+        argnames="pathname",
     )
     @testing.requires.patch_library
     def test_incremental(self, mypy_runner, per_func_cachedir, pathname):
@@ -131,33 +185,33 @@ class MypyPluginTest(fixtures.TestBase):
                 % (patchfile, result[0]),
             )
 
-    def _file_combinations():
-        path = os.path.join(os.path.dirname(__file__), "files")
-        files = []
-        for f in os.listdir(path):
-            if f.endswith(".py"):
-                files.append(
-                    os.path.join(os.path.dirname(__file__), "files", f)
-                )
-
-        for extra_dir in testing.config.options.mypy_extra_test_paths:
-            if extra_dir and os.path.isdir(extra_dir):
-                for f in os.listdir(os.path.join(extra_dir, "files")):
-                    if f.endswith(".py"):
-                        files.append(os.path.join(extra_dir, "files", f))
-        return files
-
     @testing.combinations(
-        *[(filename,) for filename in _file_combinations()], argnames="path"
+        *(
+            cast(
+                List[Tuple[Any, ...]],
+                [
+                    ("w_plugin", os.path.basename(path), path, True)
+                    for path in _file_combinations("plugin_files")
+                ],
+            )
+            + cast(
+                List[Tuple[Any, ...]],
+                [
+                    ("plain", os.path.basename(path), path, False)
+                    for path in _file_combinations("plain_files")
+                ],
+            )
+        ),
+        argnames="filename,path,use_plugin",
+        id_="isaa",
     )
-    def test_mypy(self, mypy_runner, path):
-        filename = os.path.basename(path)
-        use_plugin = True
+    def test_files(self, mypy_runner, filename, path, use_plugin):
 
-        expected_errors = []
-        expected_re = re.compile(r"\s*# EXPECTED(_MYPY)?: (.+)")
+        expected_messages = []
+        expected_re = re.compile(r"\s*# EXPECTED(_MYPY)?(_RE)?(_TYPE)?: (.+)")
         py_ver_re = re.compile(r"^#\s*PYTHON_VERSION\s?>=\s?(\d+\.\d+)")
         with open(path) as file_:
+            current_assert_messages = []
             for num, line in enumerate(file_, 1):
                 m = py_ver_re.match(line)
                 if m:
@@ -174,38 +228,79 @@ class MypyPluginTest(fixtures.TestBase):
                 m = expected_re.match(line)
                 if m:
                     is_mypy = bool(m.group(1))
-                    expected_msg = m.group(2)
-                    expected_msg = re.sub(r"# noqa ?.*", "", m.group(2))
-                    expected_errors.append(
-                        (num, is_mypy, expected_msg.strip())
+                    is_re = bool(m.group(2))
+                    is_type = bool(m.group(3))
+
+                    expected_msg = re.sub(r"# noqa ?.*", "", m.group(4))
+                    if is_type:
+                        is_mypy = is_re = True
+                        expected_msg = f'Revealed type is "{expected_msg}"'
+                    current_assert_messages.append(
+                        (is_mypy, is_re, expected_msg.strip())
                     )
+                elif current_assert_messages:
+                    expected_messages.extend(
+                        (num, is_mypy, is_re, expected_msg)
+                        for (
+                            is_mypy,
+                            is_re,
+                            expected_msg,
+                        ) in current_assert_messages
+                    )
+                    current_assert_messages[:] = []
 
         result = mypy_runner(path, use_plugin=use_plugin)
 
-        if expected_errors:
+        if expected_messages:
             eq_(result[2], 1, msg=result)
 
-            print(result[0])
+            output = []
 
-            errors = []
-            for e in result[0].split("\n"):
+            raw_lines = result[0].split("\n")
+            while raw_lines:
+                e = raw_lines.pop(0)
                 if re.match(r".+\.py:\d+: error: .*", e):
-                    errors.append(e)
+                    output.append(("error", e))
+                elif re.match(
+                    r".+\.py:\d+: note: +(?:Possible overload|def ).*", e
+                ):
+                    while raw_lines:
+                        ol = raw_lines.pop(0)
+                        if not re.match(r".+\.py:\d+: note: +def \[.*", ol):
+                            break
+                elif re.match(
+                    r".+\.py:\d+: note: .*(?:perhaps|suggestion)", e, re.I
+                ):
+                    pass
+                elif re.match(r".+\.py:\d+: note: .*", e):
+                    output.append(("note", e))
 
-            for num, is_mypy, msg in expected_errors:
+            for num, is_mypy, is_re, msg in expected_messages:
                 msg = msg.replace("'", '"')
                 prefix = "[SQLAlchemy Mypy plugin] " if not is_mypy else ""
-                for idx, errmsg in enumerate(errors):
-                    if (
-                        f"{filename}:{num + 1}: error: {prefix}{msg}"
+                for idx, (typ, errmsg) in enumerate(output):
+                    if is_re:
+                        if re.match(
+                            fr".*{filename}\:{num}\: {typ}\: {prefix}{msg}",  # noqa E501
+                            errmsg,
+                        ):
+                            break
+                    elif (
+                        f"{filename}:{num}: {typ}: {prefix}{msg}"
                         in errmsg.replace("'", '"')
                     ):
                         break
                 else:
                     continue
-                del errors[idx]
+                del output[idx]
 
-            assert not errors, "errors remain: %s" % "\n".join(errors)
+            if output:
+                print("messages from mypy that were not consumed:")
+                print("\n".join(msg for _, msg in output))
+                assert False, "errors and/or notes remain, see stdout"
 
         else:
+            if result[2] != 0:
+                print(result[0])
+
             eq_(result[2], 0, msg=result)

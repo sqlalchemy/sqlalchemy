@@ -1,3 +1,4 @@
+import asyncio
 import threading
 
 from sqlalchemy import exc
@@ -7,7 +8,6 @@ from sqlalchemy.testing import expect_raises
 from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_true
-from sqlalchemy.util import asyncio
 from sqlalchemy.util import await_fallback
 from sqlalchemy.util import await_only
 from sqlalchemy.util import greenlet_spawn

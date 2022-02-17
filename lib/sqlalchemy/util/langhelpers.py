@@ -9,6 +9,7 @@
 modules, classes, hierarchies, attributes, functions, and methods.
 
 """
+from __future__ import annotations
 
 import collections
 from functools import update_wrapper
@@ -30,6 +31,7 @@ from typing import FrozenSet
 from typing import Generic
 from typing import Iterator
 from typing import List
+from typing import Mapping
 from typing import Optional
 from typing import overload
 from typing import Sequence
@@ -52,6 +54,30 @@ _MP = TypeVar("_MP", bound="memoized_property[Any]")
 _MA = TypeVar("_MA", bound="HasMemoized.memoized_attribute[Any]")
 _HP = TypeVar("_HP", bound="hybridproperty")
 _HM = TypeVar("_HM", bound="hybridmethod")
+
+
+if compat.py310:
+
+    def get_annotations(obj: Any) -> Mapping[str, Any]:
+        return inspect.get_annotations(obj)
+
+else:
+
+    def get_annotations(obj: Any) -> Mapping[str, Any]:
+        # it's been observed that cls.__annotations__ can be non present.
+        # it's not clear what causes this, running under tox py37/38 it
+        # happens, running straight pytest it doesnt
+
+        # https://docs.python.org/3/howto/annotations.html#annotations-howto
+        if isinstance(obj, type):
+            ann = obj.__dict__.get("__annotations__", None)
+        else:
+            ann = getattr(obj, "__annotations__", None)
+
+        if ann is None:
+            return _collections.EMPTY_DICT
+        else:
+            return cast("Mapping[str, Any]", ann)
 
 
 def md5_hex(x: Any) -> str:
@@ -427,7 +453,9 @@ def get_func_kwargs(func):
     return compat.inspect_getfullargspec(func)[0]
 
 
-def get_callable_argspec(fn, no_self=False, _is_init=False):
+def get_callable_argspec(
+    fn: Callable[..., Any], no_self: bool = False, _is_init: bool = False
+) -> compat.FullArgSpec:
     """Return the argument signature for any callable.
 
     All pure-Python callables are accepted, including
@@ -471,10 +499,12 @@ def get_callable_argspec(fn, no_self=False, _is_init=False):
             fn.__init__, no_self=no_self, _is_init=True
         )
     elif hasattr(fn, "__func__"):
-        return compat.inspect_getfullargspec(fn.__func__)
+        return compat.inspect_getfullargspec(fn.__func__)  # type: ignore[attr-defined] # noqa E501
     elif hasattr(fn, "__call__"):
-        if inspect.ismethod(fn.__call__):
-            return get_callable_argspec(fn.__call__, no_self=no_self)
+        if inspect.ismethod(fn.__call__):  # type: ignore [operator]
+            return get_callable_argspec(
+                fn.__call__, no_self=no_self  # type: ignore [operator]
+            )
         else:
             raise TypeError("Can't inspect callable: %s" % fn)
     else:
@@ -1496,7 +1526,12 @@ class hybridmethod:
 class _symbol(int):
     name: str
 
-    def __new__(cls, name, doc=None, canonical=None):
+    def __new__(
+        cls,
+        name: str,
+        doc: Optional[str] = None,
+        canonical: Optional[int] = None,
+    ) -> "_symbol":
         """Construct a new named symbol."""
         assert isinstance(name, str)
         if canonical is None:
@@ -1545,7 +1580,12 @@ class symbol:
     symbols: Dict[str, "_symbol"] = {}
     _lock = threading.Lock()
 
-    def __new__(cls, name, doc=None, canonical=None):
+    def __new__(  # type: ignore[misc]
+        cls,
+        name: str,
+        doc: Optional[str] = None,
+        canonical: Optional[int] = None,
+    ) -> _symbol:
         with cls._lock:
             sym = cls.symbols.get(name)
             if sym is None:
@@ -1705,13 +1745,15 @@ def _warnings_warn(message, category=None, stacklevel=2):
         warnings.warn(message, stacklevel=stacklevel + 1)
 
 
-def only_once(fn, retry_on_exception):
+def only_once(
+    fn: Callable[..., _T], retry_on_exception: bool
+) -> Callable[..., Optional[_T]]:
     """Decorate the given function to be a no-op after it is called exactly
     once."""
 
     once = [fn]
 
-    def go(*arg, **kw):
+    def go(*arg: Any, **kw: Any) -> Optional[_T]:
         # strong reference fn so that it isn't garbage collected,
         # which interferes with the event system's expectations
         strong_fn = fn  # noqa
@@ -1723,6 +1765,8 @@ def only_once(fn, retry_on_exception):
                 if retry_on_exception:
                     once.insert(0, once_fn)
                 raise
+
+        return None
 
     return go
 
@@ -1911,7 +1955,7 @@ def add_parameter_text(params, text):
     return decorate
 
 
-def _dedent_docstring(text):
+def _dedent_docstring(text: str) -> str:
     split_text = text.split("\n", 1)
     if len(split_text) == 1:
         return text
@@ -1923,8 +1967,10 @@ def _dedent_docstring(text):
         return textwrap.dedent(text)
 
 
-def inject_docstring_text(doctext, injecttext, pos):
-    doctext = _dedent_docstring(doctext or "")
+def inject_docstring_text(
+    given_doctext: Optional[str], injecttext: str, pos: int
+) -> str:
+    doctext: str = _dedent_docstring(given_doctext or "")
     lines = doctext.split("\n")
     if len(lines) == 1:
         lines.append("")
@@ -1944,7 +1990,7 @@ def inject_docstring_text(doctext, injecttext, pos):
 _param_reg = re.compile(r"(\s+):param (.+?):")
 
 
-def inject_param_text(doctext, inject_params):
+def inject_param_text(doctext: str, inject_params: Dict[str, str]) -> str:
     doclines = collections.deque(doctext.splitlines())
     lines = []
 
@@ -1987,7 +2033,7 @@ def inject_param_text(doctext, inject_params):
     return "\n".join(lines)
 
 
-def repr_tuple_names(names):
+def repr_tuple_names(names: List[str]) -> Optional[str]:
     """Trims a list of strings from the middle and return a string of up to
     four elements. Strings greater than 11 characters will be truncated"""
     if len(names) == 0:

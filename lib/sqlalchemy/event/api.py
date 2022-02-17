@@ -8,8 +8,15 @@
 """Public API functions for the event system.
 
 """
+from __future__ import annotations
+
+from typing import Any
+from typing import Callable
+
 from .base import _registrars
+from .registry import _ET
 from .registry import _EventKey
+from .registry import _ListenerFnType
 from .. import exc
 from .. import util
 
@@ -18,7 +25,9 @@ CANCEL = util.symbol("CANCEL")
 NO_RETVAL = util.symbol("NO_RETVAL")
 
 
-def _event_key(target, identifier, fn):
+def _event_key(
+    target: _ET, identifier: str, fn: _ListenerFnType
+) -> _EventKey[_ET]:
     for evt_cls in _registrars[identifier]:
         tgt = evt_cls._accept_with(target)
         if tgt is not None:
@@ -29,7 +38,9 @@ def _event_key(target, identifier, fn):
         )
 
 
-def listen(target, identifier, fn, *args, **kw):
+def listen(
+    target: Any, identifier: str, fn: Callable[..., Any], *args: Any, **kw: Any
+) -> None:
     """Register a listener function for the given target.
 
     The :func:`.listen` function is part of the primary interface for the
@@ -113,7 +124,9 @@ def listen(target, identifier, fn, *args, **kw):
     _event_key(target, identifier, fn).listen(*args, **kw)
 
 
-def listens_for(target, identifier, *args, **kw):
+def listens_for(
+    target: Any, identifier: str, *args: Any, **kw: Any
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorate a function as a listener for the given target + identifier.
 
     The :func:`.listens_for` decorator is part of the primary interface for the
@@ -154,14 +167,14 @@ def listens_for(target, identifier, *args, **kw):
 
     """
 
-    def decorate(fn):
+    def decorate(fn: Callable[..., Any]) -> Callable[..., Any]:
         listen(target, identifier, fn, *args, **kw)
         return fn
 
     return decorate
 
 
-def remove(target, identifier, fn):
+def remove(target: Any, identifier: str, fn: Callable[..., Any]) -> None:
     """Remove an event listener.
 
     The arguments here should match exactly those which were sent to
@@ -211,7 +224,7 @@ def remove(target, identifier, fn):
     _event_key(target, identifier, fn).remove()
 
 
-def contains(target, identifier, fn):
+def contains(target: Any, identifier: str, fn: Callable[..., Any]) -> bool:
     """Return True if the given target/ident/fn is set up to listen."""
 
     return _event_key(target, identifier, fn).contains()

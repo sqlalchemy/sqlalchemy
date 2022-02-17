@@ -8,6 +8,8 @@
 """sqlalchemy.orm.interfaces.LoaderStrategy
    implementations, and related MapperOptions."""
 
+from __future__ import annotations
+
 import collections
 import itertools
 
@@ -34,7 +36,7 @@ from .interfaces import StrategizedProperty
 from .session import _state_session
 from .state import InstanceState
 from .util import _none_set
-from .util import aliased
+from .util import AliasedClass
 from .. import event
 from .. import exc as sa_exc
 from .. import inspect
@@ -564,7 +566,7 @@ class AbstractRelationshipLoader(LoaderStrategy):
 
 
 @log.class_logger
-@relationships.RelationshipProperty.strategy_for(do_nothing=True)
+@relationships.Relationship.strategy_for(do_nothing=True)
 class DoNothingLoader(LoaderStrategy):
     """Relationship loader that makes no change to the object's state.
 
@@ -576,10 +578,10 @@ class DoNothingLoader(LoaderStrategy):
 
 
 @log.class_logger
-@relationships.RelationshipProperty.strategy_for(lazy="noload")
-@relationships.RelationshipProperty.strategy_for(lazy=None)
+@relationships.Relationship.strategy_for(lazy="noload")
+@relationships.Relationship.strategy_for(lazy=None)
 class NoLoader(AbstractRelationshipLoader):
-    """Provide loading behavior for a :class:`.RelationshipProperty`
+    """Provide loading behavior for a :class:`.Relationship`
     with "lazy=None".
 
     """
@@ -617,13 +619,13 @@ class NoLoader(AbstractRelationshipLoader):
 
 
 @log.class_logger
-@relationships.RelationshipProperty.strategy_for(lazy=True)
-@relationships.RelationshipProperty.strategy_for(lazy="select")
-@relationships.RelationshipProperty.strategy_for(lazy="raise")
-@relationships.RelationshipProperty.strategy_for(lazy="raise_on_sql")
-@relationships.RelationshipProperty.strategy_for(lazy="baked_select")
+@relationships.Relationship.strategy_for(lazy=True)
+@relationships.Relationship.strategy_for(lazy="select")
+@relationships.Relationship.strategy_for(lazy="raise")
+@relationships.Relationship.strategy_for(lazy="raise_on_sql")
+@relationships.Relationship.strategy_for(lazy="baked_select")
 class LazyLoader(AbstractRelationshipLoader, util.MemoizedSlots):
-    """Provide loading behavior for a :class:`.RelationshipProperty`
+    """Provide loading behavior for a :class:`.Relationship`
     with "lazy=True", that is loads when first accessed.
 
     """
@@ -1214,7 +1216,7 @@ class PostLoader(AbstractRelationshipLoader):
         )
 
 
-@relationships.RelationshipProperty.strategy_for(lazy="immediate")
+@relationships.Relationship.strategy_for(lazy="immediate")
 class ImmediateLoader(PostLoader):
     __slots__ = ()
 
@@ -1250,7 +1252,7 @@ class ImmediateLoader(PostLoader):
 
 
 @log.class_logger
-@relationships.RelationshipProperty.strategy_for(lazy="subquery")
+@relationships.Relationship.strategy_for(lazy="subquery")
 class SubqueryLoader(PostLoader):
     __slots__ = ("join_depth",)
 
@@ -1906,10 +1908,10 @@ class SubqueryLoader(PostLoader):
 
 
 @log.class_logger
-@relationships.RelationshipProperty.strategy_for(lazy="joined")
-@relationships.RelationshipProperty.strategy_for(lazy=False)
+@relationships.Relationship.strategy_for(lazy="joined")
+@relationships.Relationship.strategy_for(lazy=False)
 class JoinedLoader(AbstractRelationshipLoader):
-    """Provide loading behavior for a :class:`.RelationshipProperty`
+    """Provide loading behavior for a :class:`.Relationship`
     using joined eager loading.
 
     """
@@ -2628,7 +2630,7 @@ class JoinedLoader(AbstractRelationshipLoader):
 
 
 @log.class_logger
-@relationships.RelationshipProperty.strategy_for(lazy="selectin")
+@relationships.Relationship.strategy_for(lazy="selectin")
 class SelectInLoader(PostLoader, util.MemoizedSlots):
     __slots__ = (
         "join_depth",
@@ -2721,7 +2723,7 @@ class SelectInLoader(PostLoader, util.MemoizedSlots):
         )
 
     def _init_for_join(self):
-        self._parent_alias = aliased(self.parent.class_)
+        self._parent_alias = AliasedClass(self.parent.class_)
         pa_insp = inspect(self._parent_alias)
         pk_cols = [
             pa_insp._adapt_element(col) for col in self.parent.primary_key

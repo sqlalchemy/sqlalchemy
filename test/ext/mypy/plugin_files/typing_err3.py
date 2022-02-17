@@ -49,6 +49,5 @@ class Address(Base):
     @declared_attr
     # EXPECTED_MYPY: Invalid type comment or annotation
     def thisisweird(cls) -> Column(String):
-        # with the bad annotation mypy seems to not go into the
-        # function body
+        # EXPECTED_MYPY: No overload variant of "Column" matches argument type "bool" # noqa
         return Column(False)

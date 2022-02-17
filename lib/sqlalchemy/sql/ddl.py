@@ -9,7 +9,14 @@ Provides the hierarchy of DDL-defining schema items as well as routines
 to invoke them for a create/drop call.
 
 """
+from __future__ import annotations
+
 import typing
+from typing import Callable
+from typing import List
+from typing import Optional
+from typing import Sequence
+from typing import Tuple
 
 from . import roles
 from .base import _generative
@@ -19,6 +26,11 @@ from .elements import ClauseElement
 from .. import exc
 from .. import util
 from ..util import topological
+
+
+if typing.TYPE_CHECKING:
+    from .schema import ForeignKeyConstraint
+    from .schema import Table
 
 
 class _DDLCompiles(ClauseElement):
@@ -1007,10 +1019,10 @@ class SchemaDropper(DDLBase):
 
 
 def sort_tables(
-    tables,
-    skip_fn=None,
-    extra_dependencies=None,
-):
+    tables: Sequence["Table"],
+    skip_fn: Optional[Callable[["ForeignKeyConstraint"], bool]] = None,
+    extra_dependencies: Optional[Sequence[Tuple["Table", "Table"]]] = None,
+) -> List["Table"]:
     """Sort a collection of :class:`_schema.Table` objects based on
     dependency.
 
@@ -1051,7 +1063,7 @@ def sort_tables(
     :param tables: a sequence of :class:`_schema.Table` objects.
 
     :param skip_fn: optional callable which will be passed a
-     :class:`_schema.ForeignKey` object; if it returns True, this
+     :class:`_schema.ForeignKeyConstraint` object; if it returns True, this
      constraint will not be considered as a dependency.  Note this is
      **different** from the same parameter in
      :func:`.sort_tables_and_constraints`, which is

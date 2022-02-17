@@ -16,11 +16,18 @@ are exposed when inspecting mappings.
 
 """
 
+from __future__ import annotations
+
 import collections
 import typing
 from typing import Any
 from typing import cast
+from typing import List
+from typing import Optional
+from typing import Tuple
+from typing import Type
 from typing import TypeVar
+from typing import Union
 
 from . import exc as orm_exc
 from . import path_registry
@@ -41,8 +48,15 @@ from .. import util
 from ..sql import operators
 from ..sql import roles
 from ..sql import visitors
+from ..sql._typing import _ColumnsClauseElement
 from ..sql.base import ExecutableOption
 from ..sql.cache_key import HasCacheKey
+from ..sql.schema import Column
+from ..sql.type_api import TypeEngine
+from ..util.typing import TypedDict
+
+if typing.TYPE_CHECKING:
+    from .decl_api import RegistryType
 
 _T = TypeVar("_T", bound=Any)
 
@@ -85,6 +99,54 @@ class ORMFromClauseRole(roles.StrictFromClauseRole):
     _role_name = "ORM mapped entity, aliased entity, or FROM expression"
 
 
+class ORMColumnDescription(TypedDict):
+    name: str
+    type: Union[Type, TypeEngine]
+    aliased: bool
+    expr: _ColumnsClauseElement
+    entity: Optional[_ColumnsClauseElement]
+
+
+class _IntrospectsAnnotations:
+    __slots__ = ()
+
+    def declarative_scan(
+        self,
+        registry: "RegistryType",
+        cls: type,
+        key: str,
+        annotation: Optional[type],
+        is_dataclass_field: Optional[bool],
+    ) -> None:
+        """Perform class-specific initializaton at early declarative scanning
+        time.
+
+        .. versionadded:: 2.0
+
+        """
+
+
+class _MapsColumns(_MappedAttribute[_T]):
+    """interface for declarative-capable construct that delivers one or more
+    Column objects to the declarative process to be part of a Table.
+    """
+
+    __slots__ = ()
+
+    @property
+    def mapper_property_to_assign(self) -> Optional["MapperProperty[_T]"]:
+        """return a MapperProperty to be assigned to the declarative mapping"""
+        raise NotImplementedError()
+
+    @property
+    def columns_to_assign(self) -> List[Column]:
+        """A list of Column objects that should be declaratively added to the
+        new Table object.
+
+        """
+        raise NotImplementedError()
+
+
 @inspection._self_inspects
 class MapperProperty(
     HasCacheKey, _MappedAttribute[_T], InspectionAttr, util.MemoizedSlots
@@ -96,7 +158,7 @@ class MapperProperty(
     an instance of :class:`.ColumnProperty`,
     and a reference to another class produced by :func:`_orm.relationship`,
     represented in the mapping as an instance of
-    :class:`.RelationshipProperty`.
+    :class:`.Relationship`.
 
     """
 
@@ -118,7 +180,7 @@ class MapperProperty(
 
     This collection is checked before the 'cascade_iterator' method is called.
 
-    The collection typically only applies to a RelationshipProperty.
+    The collection typically only applies to a Relationship.
 
     """
 
@@ -132,7 +194,7 @@ class MapperProperty(
     def _links_to_entity(self):
         """True if this MapperProperty refers to a mapped entity.
 
-        Should only be True for RelationshipProperty, False for all others.
+        Should only be True for Relationship, False for all others.
 
         """
         raise NotImplementedError()
@@ -189,7 +251,7 @@ class MapperProperty(
         Note that the 'cascade' collection on this MapperProperty is
         checked first for the given type before cascade_iterator is called.
 
-        This method typically only applies to RelationshipProperty.
+        This method typically only applies to Relationship.
 
         """
 
@@ -323,7 +385,7 @@ class PropComparator(
     be redefined at both the Core and ORM level.  :class:`.PropComparator`
     is the base class of operator redefinition for ORM-level operations,
     including those of :class:`.ColumnProperty`,
-    :class:`.RelationshipProperty`, and :class:`.CompositeProperty`.
+    :class:`.Relationship`, and :class:`.Composite`.
 
     User-defined subclasses of :class:`.PropComparator` may be created. The
     built-in Python comparison and math operator methods, such as
@@ -339,19 +401,19 @@ class PropComparator(
 
         from sqlalchemy.orm.properties import \
                                 ColumnProperty,\
-                                CompositeProperty,\
-                                RelationshipProperty
+                                Composite,\
+                                Relationship
 
         class MyColumnComparator(ColumnProperty.Comparator):
             def __eq__(self, other):
                 return self.__clause_element__() == other
 
-        class MyRelationshipComparator(RelationshipProperty.Comparator):
+        class MyRelationshipComparator(Relationship.Comparator):
             def any(self, expression):
                 "define the 'any' operation"
                 # ...
 
-        class MyCompositeComparator(CompositeProperty.Comparator):
+        class MyCompositeComparator(Composite.Comparator):
             def __gt__(self, other):
                 "redefine the 'greater than' operation"
 
@@ -386,9 +448,9 @@ class PropComparator(
 
         :class:`.ColumnProperty.Comparator`
 
-        :class:`.RelationshipProperty.Comparator`
+        :class:`.Relationship.Comparator`
 
-        :class:`.CompositeProperty.Comparator`
+        :class:`.Composite.Comparator`
 
         :class:`.ColumnOperators`
 
@@ -552,7 +614,7 @@ class PropComparator(
         given criterion.
 
         The usual implementation of ``any()`` is
-        :meth:`.RelationshipProperty.Comparator.any`.
+        :meth:`.Relationship.Comparator.any`.
 
         :param criterion: an optional ClauseElement formulated against the
           member class' table or attributes.
@@ -570,7 +632,7 @@ class PropComparator(
         given criterion.
 
         The usual implementation of ``has()`` is
-        :meth:`.RelationshipProperty.Comparator.has`.
+        :meth:`.Relationship.Comparator.has`.
 
         :param criterion: an optional ClauseElement formulated against the
           member class' table or attributes.
@@ -606,9 +668,12 @@ class StrategizedProperty(MapperProperty[_T]):
         "strategy",
         "_wildcard_token",
         "_default_path_loader_key",
+        "strategy_key",
     )
     inherit_cache = True
     strategy_wildcard_key = None
+
+    strategy_key: Tuple[Any, ...]
 
     def _memoized_attr__wildcard_token(self):
         return (

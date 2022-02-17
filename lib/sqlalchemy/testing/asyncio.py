@@ -17,6 +17,8 @@
 # would run in the real world.
 
 
+from __future__ import annotations
+
 from functools import wraps
 import inspect
 

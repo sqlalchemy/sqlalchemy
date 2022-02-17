@@ -11,6 +11,8 @@
 """
 
 
+from __future__ import annotations
+
 from ._dml_constructors import delete as delete
 from ._dml_constructors import insert as insert
 from ._dml_constructors import update as update
@@ -136,6 +138,7 @@ from .selectable import ScalarSelect as ScalarSelect
 from .selectable import Select as Select
 from .selectable import Selectable as Selectable
 from .selectable import SelectBase as SelectBase
+from .selectable import SelectLabelStyle as SelectLabelStyle
 from .selectable import Subquery as Subquery
 from .selectable import TableClause as TableClause
 from .selectable import TableSample as TableSample

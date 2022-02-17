@@ -4,8 +4,10 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+from __future__ import annotations
 
 import asyncio  # noqa
+import typing
 
 have_greenlet = False
 greenlet_error = None
@@ -16,17 +18,19 @@ except ImportError as e:
     pass
 else:
     have_greenlet = True
-    from ._concurrency_py3k import await_only
-    from ._concurrency_py3k import await_fallback
-    from ._concurrency_py3k import greenlet_spawn
-    from ._concurrency_py3k import is_exit_exception
-    from ._concurrency_py3k import AsyncAdaptedLock
-    from ._concurrency_py3k import _util_async_run  # noqa F401
+    from ._concurrency_py3k import await_only as await_only
+    from ._concurrency_py3k import await_fallback as await_fallback
+    from ._concurrency_py3k import greenlet_spawn as greenlet_spawn
+    from ._concurrency_py3k import is_exit_exception as is_exit_exception
+    from ._concurrency_py3k import AsyncAdaptedLock as AsyncAdaptedLock
     from ._concurrency_py3k import (
-        _util_async_run_coroutine_function,
-    )  # noqa F401, E501
+        _util_async_run as _util_async_run,
+    )  # noqa F401
+    from ._concurrency_py3k import (
+        _util_async_run_coroutine_function as _util_async_run_coroutine_function,  # noqa F401, E501
+    )
 
-if not have_greenlet:
+if not typing.TYPE_CHECKING and not have_greenlet:
 
     def _not_implemented():
         # this conditional is to prevent pylance from considering

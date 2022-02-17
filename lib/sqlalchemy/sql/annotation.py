@@ -11,6 +11,8 @@ associations.
 
 """
 
+from __future__ import annotations
+
 from . import operators
 from .base import HasCacheKey
 from .traversals import anon_map

@@ -22,6 +22,8 @@ To generate user-defined SQL strings, see
 :doc:`/ext/compiler`.
 
 """
+from __future__ import annotations
+
 import collections
 import collections.abc as collections_abc
 import contextlib
@@ -889,7 +891,7 @@ class SQLCompiler(Compiled):
     def _apply_numbered_params(self):
         poscount = itertools.count(1)
         self.string = re.sub(
-            r"\[_POSITION\]", lambda m: str(util.next(poscount)), self.string
+            r"\[_POSITION\]", lambda m: str(next(poscount)), self.string
         )
 
     @util.memoized_property

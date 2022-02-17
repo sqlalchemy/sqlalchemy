@@ -15,6 +15,8 @@ to provide specific inclusion/exclusions.
 
 """
 
+from __future__ import annotations
+
 import platform
 
 from . import config
@@ -1324,6 +1326,18 @@ class SuiteRequirements(Requirements):
                 return True
 
         return exclusions.only_if(check)
+
+    @property
+    def no_sqlalchemy2_stubs(self):
+        def check(config):
+            try:
+                __import__("sqlalchemy-stubs.ext.mypy")
+            except ImportError:
+                return False
+            else:
+                return True
+
+        return exclusions.skip_if(check)
 
     @property
     def python38(self):

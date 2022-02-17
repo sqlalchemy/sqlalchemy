@@ -5,6 +5,8 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
+from __future__ import annotations
+
 import re
 import sys
 
@@ -20,6 +22,7 @@ from .util import drop_all_tables_from_metadata
 from .. import event
 from .. import util
 from ..orm import declarative_base
+from ..orm import DeclarativeBase
 from ..orm import registry
 from ..schema import sort_tables_and_constraints
 
@@ -81,6 +84,21 @@ class TestBase:
         reg = registry(metadata=metadata)
         yield reg
         reg.dispose()
+
+    @config.fixture
+    def decl_base(self, metadata):
+        _md = metadata
+
+        class Base(DeclarativeBase):
+            metadata = _md
+            type_annotation_map = {
+                str: sa.String().with_variant(
+                    sa.String(50), "mysql", "mariadb"
+                )
+            }
+
+        yield Base
+        Base.registry.dispose()
 
     @config.fixture()
     def future_connection(self, future_engine, connection):

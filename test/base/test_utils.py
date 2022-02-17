@@ -31,6 +31,7 @@ from sqlalchemy.util import compat
 from sqlalchemy.util import get_callable_argspec
 from sqlalchemy.util import langhelpers
 from sqlalchemy.util import WeakSequence
+from sqlalchemy.util._collections import merge_lists_w_ordering
 
 
 class WeakSequenceTest(fixtures.TestBase):
@@ -64,6 +65,49 @@ class WeakSequenceTest(fixtures.TestBase):
         gc_collect()
         eq_(len(w), 2)
         eq_(len(w._storage), 2)
+
+
+class MergeListsWOrderingTest(fixtures.TestBase):
+    @testing.combinations(
+        (
+            ["__tablename__", "id", "x", "created_at"],
+            ["id", "name", "data", "y", "created_at"],
+            ["__tablename__", "id", "name", "data", "y", "x", "created_at"],
+        ),
+        (["a", "b", "c", "d", "e", "f"], [], ["a", "b", "c", "d", "e", "f"]),
+        ([], ["a", "b", "c", "d", "e", "f"], ["a", "b", "c", "d", "e", "f"]),
+        ([], [], []),
+        (["a", "b", "c"], ["a", "b", "c"], ["a", "b", "c"]),
+        (
+            ["a", "b", "c"],
+            ["a", "b", "c", "d", "e"],
+            ["a", "b", "c", "d", "e"],
+        ),
+        (["a", "b", "c", "d"], ["c", "d", "e"], ["a", "b", "c", "d", "e"]),
+        (
+            ["a", "c", "e", "g"],
+            ["b", "d", "f", "g"],
+            ["a", "c", "e", "b", "d", "f", "g"],  # no overlaps until "g"
+        ),
+        (
+            ["a", "b", "e", "f", "g"],
+            ["b", "c", "d", "e"],
+            ["a", "b", "c", "d", "e", "f", "g"],
+        ),
+        (
+            ["a", "b", "c", "e", "f"],
+            ["c", "d", "f", "g"],
+            ["a", "b", "c", "d", "e", "f", "g"],
+        ),
+        (
+            ["c", "d", "f", "g"],
+            ["a", "b", "c", "e", "f"],
+            ["a", "b", "c", "e", "d", "f", "g"],
+        ),
+        argnames="a,b,expected",
+    )
+    def test_merge_lists(self, a, b, expected):
+        eq_(merge_lists_w_ordering(a, b), expected)
 
 
 class OrderedDictTest(fixtures.TestBase):

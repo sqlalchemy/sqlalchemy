@@ -12,6 +12,8 @@ basic add/delete mutation.
 
 """
 
+from __future__ import annotations
+
 from . import attributes
 from . import exc as orm_exc
 from . import interfaces
@@ -28,7 +30,7 @@ from ..engine import result
 
 
 @log.class_logger
-@relationships.RelationshipProperty.strategy_for(lazy="dynamic")
+@relationships.Relationship.strategy_for(lazy="dynamic")
 class DynaLoader(strategies.AbstractRelationshipLoader):
     def init_class_attribute(self, mapper):
         self.is_class_level = True
