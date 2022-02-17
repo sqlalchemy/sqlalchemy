@@ -8,10 +8,16 @@ Support for :pep:`484` typing annotations as well as the
 
 .. topic:: SQLAlchemy Mypy Plugin Status Update
 
-   The SQLAlchemy Mypy plugin, while it has technically never left the
-   "alpha" stage, should **now be considered as legacy**.  SQLAlchemy 2.0
-   will allow for construction of declarative mappings in place which will
-   support proper typing directly, without the need for plugins.
+   **Updated February 17, 2022**
+
+   The SQLAlchemy Mypy plugin, while it has technically never left the "alpha"
+   stage, should **now be considered as legacy, even though it is still
+   necessary for full Mypy support when using SQLAlchemy 1.4**. SQLAlchemy
+   version 2.0, when released, will include new constructs that will allow for
+   construction of declarative mappings in place which will support proper
+   typing directly, without the need for plugins. This new feature is **not
+   part of SQLAlchemy 1.4, it is only in SQLAlchemy 2.0, which is not released
+   yet as of Feb 17, 2022**.
 
    The Mypy plugin itself does not solve the issue of supplying correct typing
    with other typing tools such as Pylance/Pyright, Pytype, Pycharm, etc, which
@@ -23,11 +29,27 @@ Support for :pep:`484` typing annotations as well as the
    patterns which are reported regularly.
 
    For these reasons, new non-regression issues reported against the Mypy
-   plugin are unlikely to be fixed; the plugin will be supplied with SQLAlchemy
-   2.0 as well but will be legacy support only.     SQLAlchemy 2.0 code that
-   makes use of upcoming declarative APIs, which are slightly adjusted from
-   the existing APIs, will enjoy full compliance with pep-484 as well as
-   working correctly within IDEs and other typing tools.
+   plugin are unlikely to be fixed. When SQLAlchemy 2.0 is released, it will
+   continue to include the plugin, which will have been updated to continue to
+   function as well as it does in SQLAlchemy 1.4, when running under SQLAlchemy
+   2.0. **Existing code that passes Mypy checks using the plugin with
+   SQLAlchemy 1.4 installed will continue to pass all checks in SQLAlchemy 2.0
+   without any changes required, provided the plugin is still used. The
+   upcoming API to be released with SQLAlchemy 2.0 is fully backwards
+   compatible with the SQLAlchemy 1.4 API and Mypy plugin behavior.**
+
+   End-user code that passes all checks under SQLAlchemy 1.4 with the Mypy
+   plugin will be able to incrementally migrate to the new structures, once
+   that code is running exclusively on SQLAlchemy 2.0. The change consists of
+   altering how the :func:`_orm.declarative_base` construct is produced, and
+   then the replacement of inline Declarative :class:`_schema.Column`
+   structures with a fully cross-compatible ``mapped_column()`` construct. Both
+   constructs can coexist on any declaratively mapped class.
+
+   Code that is running exclusively on **not-released-yet** SQLAlchemy version
+   2.0 and has fully migrated to the new declarative constructs will enjoy full
+   compliance with pep-484 as well as working correctly within IDEs and other
+   typing tools, without the need for plugins.
 
 
 Installation
