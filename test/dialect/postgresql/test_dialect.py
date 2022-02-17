@@ -368,11 +368,11 @@ class ExecuteManyMode:
                 mock.call(
                     mock.ANY,
                     stmt,
-                    (
+                    [
                         {"x": "x1", "y": "y1"},
                         {"x": "x2", "y": "y2"},
                         {"x": "x3", "y": "y3"},
-                    ),
+                    ],
                     **expected_kwargs,
                 )
             ],
@@ -417,11 +417,11 @@ class ExecuteManyMode:
                 mock.call(
                     mock.ANY,
                     stmt,
-                    (
+                    [
                         {"x": "x1", "y": "y1"},
                         {"x": "x2", "y": "y2"},
                         {"x": "x3", "y": "y3"},
-                    ),
+                    ],
                     **expected_kwargs,
                 )
             ],
@@ -470,11 +470,11 @@ class ExecuteManyMode:
                 mock.call(
                     mock.ANY,
                     stmt,
-                    (
+                    [
                         {"x": "x1", "y": "y1"},
                         {"x": "x2", "y": "y2"},
                         {"x": "x3", "y": "y3"},
-                    ),
+                    ],
                     **expected_kwargs,
                 )
             ],
@@ -524,10 +524,10 @@ class ExecuteManyMode:
                     mock.call(
                         mock.ANY,
                         stmt,
-                        (
+                        [
                             {"xval": "x1", "yval": "y5"},
                             {"xval": "x3", "yval": "y6"},
-                        ),
+                        ],
                         **expected_kwargs,
                     )
                 ],
@@ -714,11 +714,11 @@ class ExecutemanyValuesInsertsTest(ExecuteManyMode, fixtures.TablesTest):
                 mock.call(
                     mock.ANY,
                     "INSERT INTO data (id, x, y, z) VALUES %s",
-                    (
+                    [
                         {"id": 1, "y": "y1", "z": 1},
                         {"id": 2, "y": "y2", "z": 2},
                         {"id": 3, "y": "y3", "z": 3},
-                    ),
+                    ],
                     template="(%(id)s, (SELECT 5 \nFROM data), %(y)s, %(z)s)",
                     fetch=False,
                     page_size=connection.dialect.executemany_values_page_size,

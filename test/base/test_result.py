@@ -1,7 +1,6 @@
 from sqlalchemy import exc
 from sqlalchemy import testing
 from sqlalchemy.engine import result
-from sqlalchemy.engine.row import Row
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
@@ -727,27 +726,6 @@ class ResultTest(fixtures.TestBase):
 
         # still slices
         eq_(m1.fetchone(), {"b": 1, "c": 2})
-
-    def test_alt_row_fetch(self):
-        class AppleRow(Row):
-            def apple(self):
-                return "apple"
-
-        result = self._fixture(alt_row=AppleRow)
-
-        row = result.all()[0]
-        eq_(row.apple(), "apple")
-
-    def test_alt_row_transform(self):
-        class AppleRow(Row):
-            def apple(self):
-                return "apple"
-
-        result = self._fixture(alt_row=AppleRow)
-
-        row = result.columns("c", "a").all()[2]
-        eq_(row.apple(), "apple")
-        eq_(row, (2, 1))
 
     def test_scalar_none_iterate(self):
         result = self._fixture(

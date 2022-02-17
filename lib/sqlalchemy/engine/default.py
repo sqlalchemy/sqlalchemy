@@ -19,12 +19,30 @@ import functools
 import random
 import re
 from time import perf_counter
+import typing
+from typing import Any
+from typing import Callable
+from typing import cast
+from typing import Dict
+from typing import List
+from typing import Mapping
+from typing import MutableMapping
+from typing import MutableSequence
+from typing import Optional
+from typing import Sequence
+from typing import Set
+from typing import Tuple
+from typing import Type
 import weakref
 
 from . import characteristics
 from . import cursor as _cursor
 from . import interfaces
 from .base import Connection
+from .interfaces import CacheStats
+from .interfaces import DBAPICursor
+from .interfaces import Dialect
+from .interfaces import ExecutionContext
 from .. import event
 from .. import exc
 from .. import pool
@@ -32,25 +50,49 @@ from .. import types as sqltypes
 from .. import util
 from ..sql import compiler
 from ..sql import expression
+from ..sql.compiler import DDLCompiler
+from ..sql.compiler import SQLCompiler
 from ..sql.elements import quoted_name
+
+if typing.TYPE_CHECKING:
+    from .interfaces import _AnyMultiExecuteParams
+    from .interfaces import _CoreMultiExecuteParams
+    from .interfaces import _CoreSingleExecuteParams
+    from .interfaces import _DBAPIAnyExecuteParams
+    from .interfaces import _DBAPIMultiExecuteParams
+    from .interfaces import _DBAPISingleExecuteParams
+    from .interfaces import _ExecuteOptions
+    from .result import _ProcessorType
+    from .row import Row
+    from .url import URL
+    from ..event import _ListenerFnType
+    from ..pool import Pool
+    from ..pool import PoolProxiedConnection
+    from ..sql import Executable
+    from ..sql.compiler import Compiled
+    from ..sql.compiler import ResultColumnsEntry
+    from ..sql.schema import Column
+    from ..sql.type_api import TypeEngine
 
 # When we're handed literal SQL, ensure it's a SELECT query
 SERVER_SIDE_CURSOR_RE = re.compile(r"\s*SELECT", re.I | re.UNICODE)
 
 
-CACHE_HIT = util.symbol("CACHE_HIT")
-CACHE_MISS = util.symbol("CACHE_MISS")
-CACHING_DISABLED = util.symbol("CACHING_DISABLED")
-NO_CACHE_KEY = util.symbol("NO_CACHE_KEY")
-NO_DIALECT_SUPPORT = util.symbol("NO_DIALECT_SUPPORT")
+(
+    CACHE_HIT,
+    CACHE_MISS,
+    CACHING_DISABLED,
+    NO_CACHE_KEY,
+    NO_DIALECT_SUPPORT,
+) = list(CacheStats)
 
 
-class DefaultDialect(interfaces.Dialect):
+class DefaultDialect(Dialect):
     """Default implementation of Dialect"""
 
     statement_compiler = compiler.SQLCompiler
     ddl_compiler = compiler.DDLCompiler
-    type_compiler = compiler.GenericTypeCompiler
+    type_compiler = compiler.GenericTypeCompiler  # type: ignore
     preparer = compiler.IdentifierPreparer
     supports_alter = True
     supports_comments = False
@@ -61,8 +103,8 @@ class DefaultDialect(interfaces.Dialect):
 
     bind_typing = interfaces.BindTyping.NONE
 
-    include_set_input_sizes = None
-    exclude_set_input_sizes = None
+    include_set_input_sizes: Optional[Set[Any]] = None
+    exclude_set_input_sizes: Optional[Set[Any]] = None
 
     # the first value we'd get for an autoincrement
     # column.
@@ -70,7 +112,7 @@ class DefaultDialect(interfaces.Dialect):
 
     # most DBAPIs happy with this for execute().
     # not cx_oracle.
-    execute_sequence_format = tuple
+    execute_sequence_format = tuple  # type: ignore
 
     supports_schemas = True
     supports_views = True
@@ -97,16 +139,16 @@ class DefaultDialect(interfaces.Dialect):
         {"isolation_level": characteristics.IsolationLevelCharacteristic()}
     )
 
-    engine_config_types = util.immutabledict(
-        [
-            ("pool_timeout", util.asint),
-            ("echo", util.bool_or_str("debug")),
-            ("echo_pool", util.bool_or_str("debug")),
-            ("pool_recycle", util.asint),
-            ("pool_size", util.asint),
-            ("max_overflow", util.asint),
-            ("future", util.asbool),
-        ]
+    engine_config_types: Mapping[str, Any] = util.immutabledict(
+        {
+            "pool_timeout": util.asint,
+            "echo": util.bool_or_str("debug"),
+            "echo_pool": util.bool_or_str("debug"),
+            "pool_recycle": util.asint,
+            "pool_size": util.asint,
+            "max_overflow": util.asint,
+            "future": util.asbool,
+        }
     )
 
     # if the NUMERIC type
@@ -119,19 +161,21 @@ class DefaultDialect(interfaces.Dialect):
     # length at which to truncate
     # any identifier.
     max_identifier_length = 9999
-    _user_defined_max_identifier_length = None
+    _user_defined_max_identifier_length: Optional[int] = None
 
-    isolation_level = None
+    isolation_level: Optional[str] = None
 
     # sub-categories of max_identifier_length.
     # currently these accommodate for MySQL which allows alias names
     # of 255 but DDL names only of 64.
-    max_index_name_length = None
-    max_constraint_name_length = None
+    max_index_name_length: Optional[int] = None
+    max_constraint_name_length: Optional[int] = None
 
     supports_sane_rowcount = True
     supports_sane_multi_rowcount = True
-    colspecs = {}
+    colspecs: MutableMapping[
+        Type["TypeEngine[Any]"], Type["TypeEngine[Any]"]
+    ] = {}
     default_paramstyle = "named"
 
     supports_default_values = False
@@ -160,60 +204,12 @@ class DefaultDialect(interfaces.Dialect):
 
     default_schema_name = None
 
-    construct_arguments = None
-    """Optional set of argument specifiers for various SQLAlchemy
-    constructs, typically schema items.
-
-    To implement, establish as a series of tuples, as in::
-
-        construct_arguments = [
-            (schema.Index, {
-                "using": False,
-                "where": None,
-                "ops": None
-            })
-        ]
-
-    If the above construct is established on the PostgreSQL dialect,
-    the :class:`.Index` construct will now accept the keyword arguments
-    ``postgresql_using``, ``postgresql_where``, nad ``postgresql_ops``.
-    Any other argument specified to the constructor of :class:`.Index`
-    which is prefixed with ``postgresql_`` will raise :class:`.ArgumentError`.
-
-    A dialect which does not include a ``construct_arguments`` member will
-    not participate in the argument validation system.  For such a dialect,
-    any argument name is accepted by all participating constructs, within
-    the namespace of arguments prefixed with that dialect name.  The rationale
-    here is so that third-party dialects that haven't yet implemented this
-    feature continue to function in the old way.
-
-    .. versionadded:: 0.9.2
-
-    .. seealso::
-
-        :class:`.DialectKWArgs` - implementing base class which consumes
-        :attr:`.DefaultDialect.construct_arguments`
-
-
-    """
-
     # indicates symbol names are
     # UPPERCASEd if they are case insensitive
     # within the database.
     # if this is True, the methods normalize_name()
     # and denormalize_name() must be provided.
     requires_name_normalize = False
-
-    reflection_options = ()
-
-    dbapi_exception_translation_map = util.immutabledict()
-    """mapping used in the extremely unusual case that a DBAPI's
-    published exceptions don't actually have the __name__ that they
-    are linked towards.
-
-    .. versionadded:: 1.0.5
-
-    """
 
     is_async = False
 
@@ -363,10 +359,10 @@ class DefaultDialect(interfaces.Dialect):
         return self.supports_sane_rowcount
 
     @classmethod
-    def get_pool_class(cls, url):
+    def get_pool_class(cls, url: URL) -> Type[Pool]:
         return getattr(cls, "poolclass", pool.QueuePool)
 
-    def get_dialect_pool_class(self, url):
+    def get_dialect_pool_class(self, url: URL) -> Type[Pool]:
         return self.get_pool_class(url)
 
     @classmethod
@@ -377,7 +373,7 @@ class DefaultDialect(interfaces.Dialect):
         except ImportError:
             pass
 
-    def _builtin_onconnect(self):
+    def _builtin_onconnect(self) -> Optional[_ListenerFnType]:
         if self._on_connect_isolation_level is not None:
 
             def builtin_connect(dbapi_conn, conn_rec):
@@ -734,7 +730,7 @@ class StrCompileDialect(DefaultDialect):
 
     statement_compiler = compiler.StrSQLCompiler
     ddl_compiler = compiler.DDLCompiler
-    type_compiler = compiler.StrSQLTypeCompiler
+    type_compiler = compiler.StrSQLTypeCompiler  # type: ignore
     preparer = compiler.IdentifierPreparer
 
     supports_statement_cache = True
@@ -758,24 +754,26 @@ class StrCompileDialect(DefaultDialect):
     }
 
 
-class DefaultExecutionContext(interfaces.ExecutionContext):
+class DefaultExecutionContext(ExecutionContext):
     isinsert = False
     isupdate = False
     isdelete = False
     is_crud = False
     is_text = False
     isddl = False
+
     executemany = False
-    compiled = None
-    statement = None
-    result_column_struct = None
-    returned_default_rows = None
-    execution_options = util.immutabledict()
+    compiled: Optional[Compiled] = None
+    result_column_struct: Optional[
+        Tuple[List[ResultColumnsEntry], bool, bool, bool]
+    ] = None
+    returned_default_rows: Optional[List[Row]] = None
+
+    execution_options: _ExecuteOptions = util.EMPTY_DICT
 
     cursor_fetch_strategy = _cursor._DEFAULT_FETCH
 
-    cache_stats = None
-    invoked_statement = None
+    invoked_statement: Optional[Executable] = None
 
     _is_implicit_returning = False
     _is_explicit_returning = False
@@ -786,21 +784,37 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
     # a hook for SQLite's translation of
     # result column names
     # NOTE: pyhive is using this hook, can't remove it :(
-    _translate_colname = None
+    _translate_colname: Optional[Callable[[str], str]] = None
 
-    _expanded_parameters = util.immutabledict()
+    _expanded_parameters: Mapping[str, List[str]] = util.immutabledict()
+    """used by set_input_sizes().
+
+    This collection comes from ``ExpandedState.parameter_expansion``.
+
+    """
 
     cache_hit = NO_CACHE_KEY
+
+    root_connection: Connection
+    _dbapi_connection: PoolProxiedConnection
+    dialect: Dialect
+    unicode_statement: str
+    cursor: DBAPICursor
+    compiled_parameters: _CoreMultiExecuteParams
+    parameters: _DBAPIMultiExecuteParams
+    extracted_parameters: _CoreSingleExecuteParams
+
+    _empty_dict_params = cast("Mapping[str, Any]", util.EMPTY_DICT)
 
     @classmethod
     def _init_ddl(
         cls,
-        dialect,
-        connection,
-        dbapi_connection,
-        execution_options,
-        compiled_ddl,
-    ):
+        dialect: Dialect,
+        connection: Connection,
+        dbapi_connection: PoolProxiedConnection,
+        execution_options: _ExecuteOptions,
+        compiled_ddl: DDLCompiler,
+    ) -> ExecutionContext:
         """Initialize execution context for a DDLElement construct."""
 
         self = cls.__new__(cls)
@@ -832,23 +846,23 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         if dialect.positional:
             self.parameters = [dialect.execute_sequence_format()]
         else:
-            self.parameters = [{}]
+            self.parameters = [self._empty_dict_params]
 
         return self
 
     @classmethod
     def _init_compiled(
         cls,
-        dialect,
-        connection,
-        dbapi_connection,
-        execution_options,
-        compiled,
-        parameters,
-        invoked_statement,
-        extracted_parameters,
-        cache_hit=CACHING_DISABLED,
-    ):
+        dialect: Dialect,
+        connection: Connection,
+        dbapi_connection: PoolProxiedConnection,
+        execution_options: _ExecuteOptions,
+        compiled: SQLCompiler,
+        parameters: _CoreMultiExecuteParams,
+        invoked_statement: Executable,
+        extracted_parameters: _CoreSingleExecuteParams,
+        cache_hit: CacheStats = CacheStats.CACHING_DISABLED,
+    ) -> ExecutionContext:
         """Initialize execution context for a Compiled construct."""
 
         self = cls.__new__(cls)
@@ -868,6 +882,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             compiled._textual_ordered_columns,
             compiled._loose_column_name_matching,
         )
+
         self.isinsert = compiled.isinsert
         self.isupdate = compiled.isupdate
         self.isdelete = compiled.isdelete
@@ -910,6 +925,10 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         processors = compiled._bind_processors
 
+        flattened_processors: Mapping[
+            str, _ProcessorType
+        ] = processors  # type: ignore[assignment]
+
         if compiled.literal_execute_params or compiled.post_compile_params:
             if self.executemany:
                 raise exc.InvalidRequestError(
@@ -924,14 +943,15 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             # re-assign self.unicode_statement
             self.unicode_statement = expanded_state.statement
 
-            # used by set_input_sizes() which is needed for Oracle
             self._expanded_parameters = expanded_state.parameter_expansion
 
-            processors = dict(processors)
-            processors.update(expanded_state.processors)
+            flattened_processors = dict(processors)  # type: ignore
+            flattened_processors.update(expanded_state.processors)
             positiontup = expanded_state.positiontup
         elif compiled.positional:
             positiontup = self.compiled.positiontup
+        else:
+            positiontup = None
 
         if compiled.schema_translate_map:
             schema_translate_map = self.execution_options.get(
@@ -949,42 +969,49 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         # Convert the dictionary of bind parameter values
         # into a dict or list to be sent to the DBAPI's
         # execute() or executemany() method.
-        parameters = []
+
         if compiled.positional:
+            core_positional_parameters: MutableSequence[Sequence[Any]] = []
+            assert positiontup is not None
             for compiled_params in self.compiled_parameters:
-                param = [
-                    processors[key](compiled_params[key])
-                    if key in processors
+                l_param: List[Any] = [
+                    flattened_processors[key](compiled_params[key])
+                    if key in flattened_processors
                     else compiled_params[key]
                     for key in positiontup
                 ]
-                parameters.append(dialect.execute_sequence_format(param))
+                core_positional_parameters.append(
+                    dialect.execute_sequence_format(l_param)
+                )
+
+            self.parameters = core_positional_parameters
         else:
+            core_dict_parameters: MutableSequence[Dict[str, Any]] = []
             for compiled_params in self.compiled_parameters:
 
-                param = {
-                    key: processors[key](compiled_params[key])
-                    if key in processors
+                d_param: Dict[str, Any] = {
+                    key: flattened_processors[key](compiled_params[key])
+                    if key in flattened_processors
                     else compiled_params[key]
                     for key in compiled_params
                 }
 
-                parameters.append(param)
+                core_dict_parameters.append(d_param)
 
-        self.parameters = dialect.execute_sequence_format(parameters)
+            self.parameters = core_dict_parameters
 
         return self
 
     @classmethod
     def _init_statement(
         cls,
-        dialect,
-        connection,
-        dbapi_connection,
-        execution_options,
-        statement,
-        parameters,
-    ):
+        dialect: Dialect,
+        connection: Connection,
+        dbapi_connection: PoolProxiedConnection,
+        execution_options: _ExecuteOptions,
+        statement: str,
+        parameters: _DBAPIMultiExecuteParams,
+    ) -> ExecutionContext:
         """Initialize execution context for a string SQL statement."""
 
         self = cls.__new__(cls)
@@ -999,7 +1026,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             if self.dialect.positional:
                 self.parameters = [dialect.execute_sequence_format()]
             else:
-                self.parameters = [{}]
+                self.parameters = [self._empty_dict_params]
         elif isinstance(parameters[0], dialect.execute_sequence_format):
             self.parameters = parameters
         elif isinstance(parameters[0], dict):
@@ -1018,8 +1045,12 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
     @classmethod
     def _init_default(
-        cls, dialect, connection, dbapi_connection, execution_options
-    ):
+        cls,
+        dialect: Dialect,
+        connection: Connection,
+        dbapi_connection: PoolProxiedConnection,
+        execution_options: _ExecuteOptions,
+    ) -> ExecutionContext:
         """Initialize execution context for a ColumnDefault construct."""
 
         self = cls.__new__(cls)
@@ -1032,7 +1063,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         self.cursor = self.create_cursor()
         return self
 
-    def _get_cache_stats(self):
+    def _get_cache_stats(self) -> str:
         if self.compiled is None:
             return "raw sql"
 
@@ -1040,19 +1071,22 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
 
         ch = self.cache_hit
 
+        gen_time = self.compiled._gen_time
+        assert gen_time is not None
+
         if ch is NO_CACHE_KEY:
-            return "no key %.5fs" % (now - self.compiled._gen_time,)
+            return "no key %.5fs" % (now - gen_time,)
         elif ch is CACHE_HIT:
-            return "cached since %.4gs ago" % (now - self.compiled._gen_time,)
+            return "cached since %.4gs ago" % (now - gen_time,)
         elif ch is CACHE_MISS:
-            return "generated in %.5fs" % (now - self.compiled._gen_time,)
+            return "generated in %.5fs" % (now - gen_time,)
         elif ch is CACHING_DISABLED:
-            return "caching disabled %.5fs" % (now - self.compiled._gen_time,)
+            return "caching disabled %.5fs" % (now - gen_time,)
         elif ch is NO_DIALECT_SUPPORT:
             return "dialect %s+%s does not support caching %.5fs" % (
                 self.dialect.name,
                 self.dialect.driver,
-                now - self.compiled._gen_time,
+                now - gen_time,
             )
         else:
             return "unknown"
@@ -1073,11 +1107,13 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         return self.root_connection.engine
 
     @util.memoized_property
-    def postfetch_cols(self):
+    def postfetch_cols(self) -> Optional[Sequence[Column[Any]]]:  # type: ignore[override]  # mypy#4125 # noqa E501
+        assert isinstance(self.compiled, SQLCompiler)
         return self.compiled.postfetch
 
     @util.memoized_property
-    def prefetch_cols(self):
+    def prefetch_cols(self) -> Optional[Sequence[Column[Any]]]:  # type: ignore[override]  # mypy#4125 # noqa E501
+        assert isinstance(self.compiled, SQLCompiler)
         if self.isinsert:
             return self.compiled.insert_prefetch
         elif self.isupdate:
@@ -1086,8 +1122,9 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             return ()
 
     @util.memoized_property
-    def returning_cols(self):
-        self.compiled.returning
+    def returning_cols(self) -> Optional[Sequence[Column[Any]]]:
+        assert isinstance(self.compiled, SQLCompiler)
+        return self.compiled.returning
 
     @util.memoized_property
     def no_parameters(self):
@@ -1564,7 +1601,7 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
             str(compiled), type_, parameters=parameters
         )
 
-    current_parameters = None
+    current_parameters: Optional[_CoreSingleExecuteParams] = None
     """A dictionary of parameters applied to the current row.
 
     This attribute is only available in the context of a user-defined default

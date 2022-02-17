@@ -40,6 +40,14 @@ markers = [
 
 [tool.pyright]
 include = [
+    "lib/sqlalchemy/engine/base.py",
+    "lib/sqlalchemy/engine/events.py",
+    "lib/sqlalchemy/engine/interfaces.py",
+    "lib/sqlalchemy/engine/_py_row.py",
+    "lib/sqlalchemy/engine/result.py",
+    "lib/sqlalchemy/engine/row.py",
+    "lib/sqlalchemy/engine/util.py",
+    "lib/sqlalchemy/engine/url.py",
     "lib/sqlalchemy/pool/",
     "lib/sqlalchemy/event/",
     "lib/sqlalchemy/events.py",
@@ -79,9 +87,19 @@ strict = true
 # the whole library 100% strictly typed, so we have to tune this based on
 # the type of module or package we are dealing with
 
+[[tool.mypy.overrides]]
+# ad-hoc ignores
+module = [
+    "sqlalchemy.engine.reflection",  # interim, should be strict
+]
+
+ignore_errors = true
+
 # strict checking
 [[tool.mypy.overrides]]
 module = [
+    "sqlalchemy.connectors.*",
+    "sqlalchemy.engine.*",
     "sqlalchemy.pool.*",
     "sqlalchemy.event.*",
     "sqlalchemy.events",
@@ -95,11 +113,16 @@ strict = true
 
 # partial checking, internals can be untyped
 [[tool.mypy.overrides]]
-module="sqlalchemy.util.*"
+
+module = [
+    "sqlalchemy.util.*",
+    "sqlalchemy.engine.cursor",
+    "sqlalchemy.engine.default",
+]
+
+
 ignore_errors = false
 
-# util is for internal use so we can get by without everything
-# being typed
 allow_untyped_defs = true
 check_untyped_defs = false
 allow_untyped_calls = true

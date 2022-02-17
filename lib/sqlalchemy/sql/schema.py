@@ -174,7 +174,13 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
     _use_schema_map = True
 
 
-class Table(DialectKWArgs, SchemaItem, TableClause):
+class HasSchemaAttr(SchemaItem):
+    """schema item that includes a top-level schema name"""
+
+    schema: Optional[str]
+
+
+class Table(DialectKWArgs, HasSchemaAttr, TableClause):
     r"""Represent a table in a database.
 
     e.g.::
@@ -2850,7 +2856,7 @@ class IdentityOptions:
         self.order = order
 
 
-class Sequence(IdentityOptions, DefaultGenerator):
+class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
     """Represents a named database sequence.
 
     The :class:`.Sequence` object represents the name and configurational
@@ -4330,7 +4336,7 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
 DEFAULT_NAMING_CONVENTION = util.immutabledict({"ix": "ix_%(column_0_label)s"})
 
 
-class MetaData(SchemaItem):
+class MetaData(HasSchemaAttr):
     """A collection of :class:`_schema.Table`
     objects and their associated schema
     constructs.

@@ -61,6 +61,11 @@ if typing.TYPE_CHECKING:
     from .selectable import Select
     from .sqltypes import Boolean  # noqa
     from .type_api import TypeEngine
+    from ..engine import Compiled
+    from ..engine import Connection
+    from ..engine import Dialect
+    from ..engine import Engine
+
 
 _NUMERIC = Union[complex, "Decimal"]
 
@@ -145,7 +150,12 @@ class CompilerElement(Visitable):
 
     @util.preload_module("sqlalchemy.engine.default")
     @util.preload_module("sqlalchemy.engine.url")
-    def compile(self, bind=None, dialect=None, **kw):
+    def compile(
+        self,
+        bind: Optional[Union[Engine, Connection]] = None,
+        dialect: Optional[Dialect] = None,
+        **kw: Any,
+    ) -> Compiled:
         """Compile this SQL expression.
 
         The return value is a :class:`~.Compiled` object.

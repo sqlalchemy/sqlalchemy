@@ -1612,15 +1612,15 @@ class CursorResultTest(fixtures.TablesTest):
 
         eq_(dict(row._mapping), {"a": "av", "b": "bv", "count": "cv"})
 
-        with assertions.expect_raises_message(
+        with assertions.expect_raises(
             TypeError,
-            "TypeError: tuple indices must be integers or slices, not str",
+            "tuple indices must be integers or slices, not str",
         ):
             eq_(row["a"], "av")
 
         with assertions.expect_raises_message(
             TypeError,
-            "TypeError: tuple indices must be integers or slices, not str",
+            "tuple indices must be integers or slices, not str",
         ):
             eq_(row["count"], "cv")
 
@@ -3197,8 +3197,7 @@ class GenerativeResultTest(fixtures.TablesTest):
         all_ = result.columns(*columns).all()
         eq_(all_, expected)
 
-        # ensure Row / LegacyRow comes out with .columns
-        assert type(all_[0]) is result._process_row
+        assert type(all_[0]) is Row
 
     def test_columns_twice(self, connection):
         users = self.tables.users
@@ -3216,8 +3215,7 @@ class GenerativeResultTest(fixtures.TablesTest):
         )
         eq_(all_, [("jack", 1)])
 
-        # ensure Row / LegacyRow comes out with .columns
-        assert type(all_[0]) is result._process_row
+        assert type(all_[0]) is Row
 
     def test_columns_plus_getter(self, connection):
         users = self.tables.users

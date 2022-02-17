@@ -963,7 +963,7 @@ class OracleDialect_cx_oracle(OracleDialect):
             return (0, 0, 0)
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         import cx_Oracle
 
         return cx_Oracle

@@ -115,7 +115,7 @@ where we acquired the :class:`_future.Connection` object:
     [...] ()
     <sqlalchemy.engine.cursor.CursorResult object at 0x...>
     INSERT INTO some_table (x, y) VALUES (?, ?)
-    [...] ((1, 1), (2, 4))
+    [...] [(1, 1), (2, 4)]
     <sqlalchemy.engine.cursor.CursorResult object at 0x...>
     COMMIT
 
@@ -149,7 +149,7 @@ may be referred towards as **begin once**:
     ...     )
     {opensql}BEGIN (implicit)
     INSERT INTO some_table (x, y) VALUES (?, ?)
-    [...] ((6, 8), (9, 10))
+    [...] [(6, 8), (9, 10)]
     <sqlalchemy.engine.cursor.CursorResult object at 0x...>
     COMMIT
 
@@ -374,7 +374,7 @@ be invoked against each parameter set individually:
     ...     conn.commit()
     {opensql}BEGIN (implicit)
     INSERT INTO some_table (x, y) VALUES (?, ?)
-    [...] ((11, 12), (13, 14))
+    [...] [(11, 12), (13, 14)]
     <sqlalchemy.engine.cursor.CursorResult object at 0x...>
     COMMIT
 
@@ -508,7 +508,7 @@ our data:
     ...     session.commit()
     {opensql}BEGIN (implicit)
     UPDATE some_table SET y=? WHERE x=?
-    [...] ((11, 9), (15, 13))
+    [...] [(11, 9), (15, 13)]
     COMMIT{stop}
 
 Above, we invoked an UPDATE statement using the bound-parameter, "executemany"

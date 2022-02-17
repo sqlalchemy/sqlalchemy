@@ -15,9 +15,11 @@ from typing import Dict
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Mapping
 from typing import NoReturn
 from typing import Optional
 from typing import Set
+from typing import Tuple
 from typing import TypeVar
 from typing import Union
 
@@ -65,13 +67,15 @@ class immutabledict(ImmutableDictBase[_KT, _VT]):
         dict.__init__(new, *args)
         return new
 
-    def __init__(self, *args):
+    def __init__(self, *args: Union[Mapping[_KT, _VT], Tuple[_KT, _VT]]):
         pass
 
     def __reduce__(self):
         return immutabledict, (dict(self),)
 
-    def union(self, __d=None):
+    def union(
+        self, __d: Optional[Mapping[_KT, _VT]] = None
+    ) -> immutabledict[_KT, _VT]:
         if not __d:
             return self
 
@@ -80,7 +84,9 @@ class immutabledict(ImmutableDictBase[_KT, _VT]):
         dict.update(new, __d)
         return new
 
-    def _union_w_kw(self, __d=None, **kw):
+    def _union_w_kw(
+        self, __d: Optional[Mapping[_KT, _VT]] = None, **kw: _VT
+    ) -> immutabledict[_KT, _VT]:
         # not sure if C version works correctly w/ this yet
         if not __d and not kw:
             return self
@@ -92,7 +98,9 @@ class immutabledict(ImmutableDictBase[_KT, _VT]):
         dict.update(new, kw)  # type: ignore
         return new
 
-    def merge_with(self, *dicts):
+    def merge_with(
+        self, *dicts: Optional[Mapping[_KT, _VT]]
+    ) -> immutabledict[_KT, _VT]:
         new = None
         for d in dicts:
             if d:
@@ -105,7 +113,7 @@ class immutabledict(ImmutableDictBase[_KT, _VT]):
 
         return new
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "immutabledict(%s)" % dict.__repr__(self)
 
 

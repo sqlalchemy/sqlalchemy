@@ -44,7 +44,7 @@ class PGDialect_psycopg2cffi(PGDialect_psycopg2):
     )
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return __import__("psycopg2cffi")
 
     @util.memoized_property

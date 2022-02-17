@@ -1111,7 +1111,7 @@ class TestGetDialect(fixtures.TestBase):
 
 class MockDialect(DefaultDialect):
     @classmethod
-    def dbapi(cls, **kw):
+    def import_dbapi(cls, **kw):
         return MockDBAPI()
 
 

@@ -75,6 +75,18 @@ class _UnpickleDispatch:
 class _DispatchCommon(Generic[_ET]):
     __slots__ = ()
 
+    _instance_cls: Optional[Type[_ET]]
+
+    def _join(self, other: _DispatchCommon[_ET]) -> _JoinedDispatcher[_ET]:
+        raise NotImplementedError()
+
+    def __getattr__(self, name: str) -> _InstanceLevelDispatch[_ET]:
+        raise NotImplementedError()
+
+    @property
+    def _events(self) -> Type[_HasEventsDispatch[_ET]]:
+        raise NotImplementedError()
+
 
 class _Dispatch(_DispatchCommon[_ET]):
     """Mirror the event listening definitions of an Events class with
@@ -169,7 +181,7 @@ class _Dispatch(_DispatchCommon[_ET]):
         instance_cls = instance.__class__
         return self._for_class(instance_cls)
 
-    def _join(self, other: _Dispatch[_ET]) -> _JoinedDispatcher[_ET]:
+    def _join(self, other: _DispatchCommon[_ET]) -> _JoinedDispatcher[_ET]:
         """Create a 'join' of this :class:`._Dispatch` and another.
 
         This new dispatcher will dispatch events to both
@@ -372,11 +384,13 @@ class _JoinedDispatcher(_DispatchCommon[_ET]):
 
     __slots__ = "local", "parent", "_instance_cls"
 
-    local: _Dispatch[_ET]
-    parent: _Dispatch[_ET]
+    local: _DispatchCommon[_ET]
+    parent: _DispatchCommon[_ET]
     _instance_cls: Optional[Type[_ET]]
 
-    def __init__(self, local: _Dispatch[_ET], parent: _Dispatch[_ET]):
+    def __init__(
+        self, local: _DispatchCommon[_ET], parent: _DispatchCommon[_ET]
+    ):
         self.local = local
         self.parent = parent
         self._instance_cls = self.local._instance_cls
@@ -416,7 +430,7 @@ class dispatcher(Generic[_ET]):
         ...
 
     @overload
-    def __get__(self, obj: Any, cls: Type[Any]) -> _Dispatch[_ET]:
+    def __get__(self, obj: Any, cls: Type[Any]) -> _DispatchCommon[_ET]:
         ...
 
     def __get__(self, obj: Any, cls: Type[Any]) -> Any:

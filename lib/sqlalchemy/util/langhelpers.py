@@ -317,15 +317,17 @@ _P = compat_typing.ParamSpec("_P")
 
 
 class PluginLoader:
-    def __init__(self, group, auto_fn=None):
+    def __init__(
+        self, group: str, auto_fn: Optional[Callable[..., Any]] = None
+    ):
         self.group = group
-        self.impls = {}
+        self.impls: Dict[str, Any] = {}
         self.auto_fn = auto_fn
 
     def clear(self):
         self.impls.clear()
 
-    def load(self, name):
+    def load(self, name: str) -> Any:
         if name in self.impls:
             return self.impls[name]()
 
@@ -344,7 +346,7 @@ class PluginLoader:
             "Can't load plugin: %s:%s" % (self.group, name)
         )
 
-    def register(self, name, modulepath, objname):
+    def register(self, name: str, modulepath: str, objname: str) -> None:
         def load():
             mod = __import__(modulepath)
             for token in modulepath.split(".")[1:]:
@@ -444,7 +446,7 @@ def get_cls_kwargs(
     return _set
 
 
-def get_func_kwargs(func):
+def get_func_kwargs(func: Callable[..., Any]) -> List[str]:
     """Return the set of legal kwargs for the given `func`.
 
     Uses getargspec so is safe to call for methods, functions,
@@ -1125,22 +1127,13 @@ def as_interface(obj, cls=None, methods=None, required=None):
     )
 
 
-Selfdynamic_property = TypeVar(
-    "Selfdynamic_property", bound="dynamic_property[Any]"
-)
-
 Selfmemoized_property = TypeVar(
     "Selfmemoized_property", bound="memoized_property[Any]"
 )
 
 
-class dynamic_property(Generic[_T]):
-    """A read-only @property that is evaluated each time.
-
-    This is mostly the same as @property except we can type it
-    alongside memoized_property
-
-    """
+class memoized_property(Generic[_T]):
+    """A read-only @property that is only evaluated once."""
 
     fget: Callable[..., _T]
     __doc__: Optional[str]
@@ -1150,27 +1143,6 @@ class dynamic_property(Generic[_T]):
         self.fget = fget  # type: ignore[assignment]
         self.__doc__ = doc or fget.__doc__
         self.__name__ = fget.__name__
-
-    @overload
-    def __get__(
-        self: Selfdynamic_property, obj: None, cls: Any
-    ) -> Selfdynamic_property:
-        ...
-
-    @overload
-    def __get__(self, obj: Any, cls: Any) -> _T:
-        ...
-
-    def __get__(
-        self: Selfdynamic_property, obj: Any, cls: Any
-    ) -> Union[Selfdynamic_property, _T]:
-        if obj is None:
-            return self
-        return self.fget(obj)  # type: ignore[no-any-return]
-
-
-class memoized_property(dynamic_property[_T]):
-    """A read-only @property that is only evaluated once."""
 
     @overload
     def __get__(
@@ -1231,24 +1203,27 @@ def memoized_instancemethod(fn):
 
 
 class HasMemoized:
-    """A class that maintains the names of memoized elements in a
+    """A mixin class that maintains the names of memoized elements in a
     collection for easy cache clearing, generative, etc.
 
     """
 
-    __slots__ = ()
+    if not typing.TYPE_CHECKING:
+        # support classes that want to have __slots__ with an explicit
+        # slot for __dict__.  not sure if that requires base __slots__ here.
+        __slots__ = ()
 
     _memoized_keys: FrozenSet[str] = frozenset()
 
-    def _reset_memoizations(self):
+    def _reset_memoizations(self) -> None:
         for elem in self._memoized_keys:
             self.__dict__.pop(elem, None)
 
-    def _assert_no_memoizations(self):
+    def _assert_no_memoizations(self) -> None:
         for elem in self._memoized_keys:
             assert elem not in self.__dict__
 
-    def _set_memoized_attribute(self, key, value):
+    def _set_memoized_attribute(self, key: str, value: Any) -> None:
         self.__dict__[key] = value
         self._memoized_keys |= {key}
 
@@ -1342,7 +1317,7 @@ class MemoizedSlots:
 
 
 # from paste.deploy.converters
-def asbool(obj):
+def asbool(obj: Any) -> bool:
     if isinstance(obj, str):
         obj = obj.strip().lower()
         if obj in ["true", "yes", "on", "y", "t", "1"]:
@@ -1354,13 +1329,13 @@ def asbool(obj):
     return bool(obj)
 
 
-def bool_or_str(*text):
+def bool_or_str(*text: str) -> Callable[[str], Union[str, bool]]:
     """Return a callable that will evaluate a string as
     boolean, or one of a set of "alternate" string values.
 
     """
 
-    def bool_or_value(obj):
+    def bool_or_value(obj: str) -> Union[str, bool]:
         if obj in text:
             return obj
         else:
@@ -1369,7 +1344,7 @@ def bool_or_str(*text):
     return bool_or_value
 
 
-def asint(value):
+def asint(value: Any) -> Optional[int]:
     """Coerce to integer."""
 
     if value is None:
@@ -1377,7 +1352,13 @@ def asint(value):
     return int(value)
 
 
-def coerce_kw_type(kw, key, type_, flexi_bool=True, dest=None):
+def coerce_kw_type(
+    kw: Dict[str, Any],
+    key: str,
+    type_: Type[Any],
+    flexi_bool: bool = True,
+    dest: Optional[Dict[str, Any]] = None,
+) -> None:
     r"""If 'key' is present in dict 'kw', coerce its value to type 'type\_' if
     necessary.  If 'flexi_bool' is True, the string '0' is considered false
     when coercing to boolean.
@@ -1397,7 +1378,7 @@ def coerce_kw_type(kw, key, type_, flexi_bool=True, dest=None):
             dest[key] = type_(kw[key])
 
 
-def constructor_key(obj, cls):
+def constructor_key(obj: Any, cls: Type[Any]) -> Tuple[Any, ...]:
     """Produce a tuple structure that is cacheable using the __dict__ of
     obj to retrieve values
 
@@ -1408,7 +1389,7 @@ def constructor_key(obj, cls):
     )
 
 
-def constructor_copy(obj, cls, *args, **kw):
+def constructor_copy(obj: _T, cls: Type[_T], *args: Any, **kw: Any) -> _T:
     """Instantiate cls using the __dict__ of obj as constructor arguments.
 
     Uses inspect to match the named arguments of ``cls``.
@@ -1422,7 +1403,7 @@ def constructor_copy(obj, cls, *args, **kw):
     return cls(*args, **kw)
 
 
-def counter():
+def counter() -> Callable[[], int]:
     """Return a threadsafe counter function."""
 
     lock = threading.Lock()
@@ -1436,47 +1417,51 @@ def counter():
     return _next
 
 
-def duck_type_collection(specimen, default=None):
+def duck_type_collection(
+    specimen: Union[object, Type[Any]], default: Optional[Type[Any]] = None
+) -> Type[Any]:
     """Given an instance or class, guess if it is or is acting as one of
     the basic collection types: list, set and dict.  If the __emulates__
     property is present, return that preferentially.
     """
-
-    if hasattr(specimen, "__emulates__"):
-        # canonicalize set vs sets.Set to a standard: the builtin set
-        if specimen.__emulates__ is not None and issubclass(
-            specimen.__emulates__, set
-        ):
-            return set
-        else:
-            return specimen.__emulates__
-
-    isa = isinstance(specimen, type) and issubclass or isinstance
-    if isa(specimen, list):
-        return list
-    elif isa(specimen, set):
-        return set
-    elif isa(specimen, dict):
-        return dict
-
-    if hasattr(specimen, "append"):
-        return list
-    elif hasattr(specimen, "add"):
-        return set
-    elif hasattr(specimen, "set"):
-        return dict
+    if typing.TYPE_CHECKING:
+        return object
     else:
-        return default
+        if hasattr(specimen, "__emulates__"):
+            # canonicalize set vs sets.Set to a standard: the builtin set
+            if specimen.__emulates__ is not None and issubclass(
+                specimen.__emulates__, set
+            ):
+                return set
+            else:
+                return specimen.__emulates__
+
+        isa = isinstance(specimen, type) and issubclass or isinstance
+        if isa(specimen, list):
+            return list
+        elif isa(specimen, set):
+            return set
+        elif isa(specimen, dict):
+            return dict
+
+        if hasattr(specimen, "append"):
+            return list
+        elif hasattr(specimen, "add"):
+            return set
+        elif hasattr(specimen, "set"):
+            return dict
+        else:
+            return default
 
 
-def assert_arg_type(arg, argtype, name):
+def assert_arg_type(arg: Any, argtype: Type[Any], name: str) -> Any:
     if isinstance(arg, argtype):
         return arg
     else:
         if isinstance(argtype, tuple):
             raise exc.ArgumentError(
                 "Argument '%s' is expected to be one of type %s, got '%s'"
-                % (name, " or ".join("'%s'" % a for a in argtype), type(arg))
+                % (name, " or ".join("'%s'" % a for a in argtype), type(arg))  # type: ignore  # noqa E501
             )
         else:
             raise exc.ArgumentError(

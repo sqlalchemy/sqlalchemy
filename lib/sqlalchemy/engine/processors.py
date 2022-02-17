@@ -14,9 +14,20 @@ They all share one common characteristic: None is passed through unchanged.
 """
 from __future__ import annotations
 
-from ._py_processors import str_to_datetime_processor_factory  # noqa
+import typing
 
-try:
+from ._py_processors import str_to_datetime_processor_factory  # noqa
+from ..util._has_cy import HAS_CYEXTENSION
+
+if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
+    from ._py_processors import int_to_boolean  # noqa
+    from ._py_processors import str_to_date  # noqa
+    from ._py_processors import str_to_datetime  # noqa
+    from ._py_processors import str_to_time  # noqa
+    from ._py_processors import to_decimal_processor_factory  # noqa
+    from ._py_processors import to_float  # noqa
+    from ._py_processors import to_str  # noqa
+else:
     from sqlalchemy.cyextension.processors import (
         DecimalResultProcessor,
     )  # noqa
@@ -34,12 +45,3 @@ try:
         # Decimal('5.00000') whereas the C implementation will
         # return Decimal('5'). These are equivalent of course.
         return DecimalResultProcessor(target_class, "%%.%df" % scale).process
-
-except ImportError:
-    from ._py_processors import int_to_boolean  # noqa
-    from ._py_processors import str_to_date  # noqa
-    from ._py_processors import str_to_datetime  # noqa
-    from ._py_processors import str_to_time  # noqa
-    from ._py_processors import to_decimal_processor_factory  # noqa
-    from ._py_processors import to_float  # noqa
-    from ._py_processors import to_str  # noqa

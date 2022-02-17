@@ -87,6 +87,93 @@ class ConnectionlessDeprecationTest(fixtures.TestBase):
 
 
 class CreateEngineTest(fixtures.TestBase):
+    @testing.requires.sqlite
+    def test_dbapi_clsmethod_renamed(self):
+        """The dbapi() class method is renamed to import_dbapi(),
+        so that the .dbapi attribute can be exclusively an instance
+        attribute.
+
+        """
+
+        from sqlalchemy.dialects.sqlite import pysqlite
+        from sqlalchemy.dialects import registry
+
+        canary = mock.Mock()
+
+        class MyDialect(pysqlite.SQLiteDialect_pysqlite):
+            @classmethod
+            def dbapi(cls):
+                canary()
+                return __import__("sqlite3")
+
+        tokens = __name__.split(".")
+
+        global dialect
+        dialect = MyDialect
+
+        registry.register(
+            "mockdialect1.sqlite", ".".join(tokens[0:-1]), tokens[-1]
+        )
+
+        with expect_deprecated(
+            r"The dbapi\(\) classmethod on dialect classes has "
+            r"been renamed to import_dbapi\(\).  Implement an "
+            r"import_dbapi\(\) classmethod directly on class "
+            r".*MyDialect.* to remove this warning; the old "
+            r".dbapi\(\) classmethod may be maintained for backwards "
+            r"compatibility."
+        ):
+            e = create_engine("mockdialect1+sqlite://")
+
+        eq_(canary.mock_calls, [mock.call()])
+        sqlite3 = __import__("sqlite3")
+        is_(e.dialect.dbapi, sqlite3)
+
+    @testing.requires.sqlite
+    def test_no_warning_for_dual_dbapi_clsmethod(self):
+        """The dbapi() class method is renamed to import_dbapi(),
+        so that the .dbapi attribute can be exclusively an instance
+        attribute.
+
+        Dialect classes will likely have both a dbapi() classmethod
+        as well as an import_dbapi() class method to maintain
+        cross-compatibility.  Make sure these updated classes don't get a
+        warning and that the new method is used.
+
+        """
+
+        from sqlalchemy.dialects.sqlite import pysqlite
+        from sqlalchemy.dialects import registry
+
+        canary = mock.Mock()
+
+        class MyDialect(pysqlite.SQLiteDialect_pysqlite):
+            @classmethod
+            def dbapi(cls):
+                canary.dbapi()
+                return __import__("sqlite3")
+
+            @classmethod
+            def import_dbapi(cls):
+                canary.import_dbapi()
+                return __import__("sqlite3")
+
+        tokens = __name__.split(".")
+
+        global dialect
+        dialect = MyDialect
+
+        registry.register(
+            "mockdialect2.sqlite", ".".join(tokens[0:-1]), tokens[-1]
+        )
+
+        # no warning
+        e = create_engine("mockdialect2+sqlite://")
+
+        eq_(canary.mock_calls, [mock.call.import_dbapi()])
+        sqlite3 = __import__("sqlite3")
+        is_(e.dialect.dbapi, sqlite3)
+
     def test_strategy_keyword_mock(self):
         def executor(x, y):
             pass

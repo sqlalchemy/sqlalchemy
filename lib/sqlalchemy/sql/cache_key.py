@@ -7,10 +7,12 @@
 
 from __future__ import annotations
 
-from collections import namedtuple
 import enum
 from itertools import zip_longest
+import typing
+from typing import Any
 from typing import Callable
+from typing import NamedTuple
 from typing import Union
 
 from .visitors import anon_map
@@ -20,6 +22,10 @@ from .. import util
 from ..inspection import inspect
 from ..util import HasMemoized
 from ..util.typing import Literal
+
+
+if typing.TYPE_CHECKING:
+    from .elements import BindParameter
 
 
 class CacheConst(enum.Enum):
@@ -345,7 +351,7 @@ class MemoizedHasCacheKey(HasCacheKey, HasMemoized):
         return HasCacheKey._generate_cache_key(self)
 
 
-class CacheKey(namedtuple("CacheKey", ["key", "bindparams"])):
+class CacheKey(NamedTuple):
     """The key used to identify a SQL statement construct in the
     SQL compilation cache.
 
@@ -354,6 +360,9 @@ class CacheKey(namedtuple("CacheKey", ["key", "bindparams"])):
         :ref:`sql_caching`
 
     """
+
+    key: Tuple[Any, ...]
+    bindparams: Sequence[BindParameter]
 
     def __hash__(self):
         """CacheKey itself is not hashable - hash the .key portion"""

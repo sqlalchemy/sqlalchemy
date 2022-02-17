@@ -465,7 +465,7 @@ class SQLiteDialect_pysqlite(SQLiteDialect):
     driver = "pysqlite"
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         from sqlite3 import dbapi2 as sqlite
 
         return sqlite

@@ -28,7 +28,6 @@ from . import compat
 from .langhelpers import _hash_limit_string
 from .langhelpers import _warnings_warn
 from .langhelpers import decorator
-from .langhelpers import dynamic_property
 from .langhelpers import inject_docstring_text
 from .langhelpers import inject_param_text
 from .. import exc
@@ -103,7 +102,7 @@ def deprecated_property(
     add_deprecation_to_docstring: bool = True,
     warning: Optional[Type[exc.SADeprecationWarning]] = None,
     enable_warnings: bool = True,
-) -> Callable[[Callable[..., _T]], dynamic_property[_T]]:
+) -> Callable[[Callable[..., Any]], property]:
     """the @deprecated decorator with a @property.
 
     E.g.::
@@ -131,8 +130,8 @@ def deprecated_property(
 
     """
 
-    def decorate(fn: Callable[..., _T]) -> dynamic_property[_T]:
-        return dynamic_property(
+    def decorate(fn: Callable[..., Any]) -> property:
+        return property(
             deprecated(
                 version,
                 message=message,

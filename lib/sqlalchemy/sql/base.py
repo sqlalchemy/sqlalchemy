@@ -19,11 +19,12 @@ from itertools import zip_longest
 import operator
 import re
 import typing
+from typing import Optional
+from typing import Sequence
 from typing import TypeVar
 
 from . import roles
 from . import visitors
-from ._typing import _ImmutableExecuteOptions
 from .cache_key import HasCacheKey  # noqa
 from .cache_key import MemoizedHasCacheKey  # noqa
 from .traversals import HasCopyInternals  # noqa
@@ -32,7 +33,7 @@ from .visitors import ExtendedInternalTraversal
 from .visitors import InternalTraversal
 from .. import exc
 from .. import util
-from ..util import HasMemoized
+from ..util import HasMemoized as HasMemoized
 from ..util import hybridmethod
 from ..util import typing as compat_typing
 from ..util._has_cy import HAS_CYEXTENSION
@@ -41,6 +42,16 @@ if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
     from ._py_util import prefix_anon_map  # noqa
 else:
     from sqlalchemy.cyextension.util import prefix_anon_map  # noqa
+
+if typing.TYPE_CHECKING:
+    from ..engine import Connection
+    from ..engine import Result
+    from ..engine.interfaces import _CoreMultiExecuteParams
+    from ..engine.interfaces import _ExecuteOptions
+    from ..engine.interfaces import _ExecuteOptionsParameter
+    from ..engine.interfaces import _ImmutableExecuteOptions
+    from ..engine.interfaces import CacheStats
+
 
 coercions = None
 elements = None
@@ -855,6 +866,32 @@ class Executable(roles.StatementRole, Generative):
     is_text = False
     is_delete = False
     is_dml = False
+
+    if typing.TYPE_CHECKING:
+
+        def _compile_w_cache(
+            self,
+            dialect: Dialect,
+            compiled_cache: Optional[_CompiledCacheType] = None,
+            column_keys: Optional[Sequence[str]] = None,
+            for_executemany: bool = False,
+            schema_translate_map: Optional[_SchemaTranslateMapType] = None,
+            **kw: Any,
+        ) -> Tuple[Compiled, _SingleExecuteParams, CacheStats]:
+            ...
+
+        def _execute_on_connection(
+            self,
+            connection: Connection,
+            distilled_params: _CoreMultiExecuteParams,
+            execution_options: _ExecuteOptionsParameter,
+            _force: bool = False,
+        ) -> Result:
+            ...
+
+    @property
+    def _all_selected_columns(self):
+        raise NotImplementedError()
 
     @property
     def _effective_plugin_target(self):

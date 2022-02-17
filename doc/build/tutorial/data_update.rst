@@ -101,7 +101,7 @@ that literal values would normally go:
     ...   )
     {opensql}BEGIN (implicit)
     UPDATE user_account SET name=? WHERE user_account.name = ?
-    [...] (('ed', 'jack'), ('mary', 'wendy'), ('jake', 'jim'))
+    [...] [('ed', 'jack'), ('mary', 'wendy'), ('jake', 'jim')]
     <sqlalchemy.engine.cursor.CursorResult object at 0x...>
     COMMIT{stop}
 

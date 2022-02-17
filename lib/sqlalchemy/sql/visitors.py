@@ -28,6 +28,8 @@ from __future__ import annotations
 from collections import deque
 import itertools
 import operator
+import typing
+from typing import Any
 from typing import List
 from typing import Tuple
 
@@ -35,12 +37,13 @@ from .. import exc
 from .. import util
 from ..util import langhelpers
 from ..util import symbol
+from ..util._has_cy import HAS_CYEXTENSION
 from ..util.langhelpers import _symbol
 
-try:
-    from sqlalchemy.cyextension.util import cache_anon_map as anon_map  # noqa
-except ImportError:
+if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
     from ._py_util import cache_anon_map as anon_map  # noqa
+else:
+    from sqlalchemy.cyextension.util import cache_anon_map as anon_map  # noqa
 
 __all__ = [
     "iterate",
@@ -554,7 +557,7 @@ class ExternalTraversal:
 
     __traverse_options__ = {}
 
-    def traverse_single(self, obj, **kw):
+    def traverse_single(self, obj: Visitable, **kw: Any) -> Any:
         for v in self.visitor_iterator:
             meth = getattr(v, "visit_%s" % obj.__visit_name__, None)
             if meth:

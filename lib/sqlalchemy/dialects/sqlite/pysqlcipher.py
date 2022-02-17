@@ -105,7 +105,7 @@ class SQLiteDialect_pysqlcipher(SQLiteDialect_pysqlite):
     pragmas = ("kdf_iter", "cipher", "cipher_page_size", "cipher_use_hmac")
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         try:
             import sqlcipher3 as sqlcipher
         except ImportError:

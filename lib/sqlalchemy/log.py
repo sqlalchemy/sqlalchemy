@@ -255,19 +255,19 @@ class echo_property:
 
     @overload
     def __get__(
-        self, instance: "Literal[None]", owner: "echo_property"
-    ) -> "echo_property":
+        self, instance: Literal[None], owner: Type[Identified]
+    ) -> echo_property:
         ...
 
     @overload
     def __get__(
-        self, instance: Identified, owner: "echo_property"
+        self, instance: Identified, owner: Type[Identified]
     ) -> _EchoFlagType:
         ...
 
     def __get__(
-        self, instance: Optional[Identified], owner: "echo_property"
-    ) -> Union["echo_property", _EchoFlagType]:
+        self, instance: Optional[Identified], owner: Type[Identified]
+    ) -> Union[echo_property, _EchoFlagType]:
         if instance is None:
             return self
         else:
