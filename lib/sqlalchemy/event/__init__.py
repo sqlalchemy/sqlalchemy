@@ -14,6 +14,10 @@ from .api import listens_for as listens_for
 from .api import NO_RETVAL as NO_RETVAL
 from .api import remove as remove
 from .attr import RefCollection as RefCollection
+from .base import _Dispatch as _Dispatch
 from .base import dispatcher as dispatcher
 from .base import Events as Events
-from .legacy import _legacy_signature
+from .legacy import _legacy_signature as _legacy_signature
+from .registry import _EventKey as _EventKey
+from .registry import _ListenerFnType as _ListenerFnType
+from .registry import EventTarget as EventTarget

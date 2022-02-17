@@ -43,16 +43,16 @@ from . import names
 from . import util
 
 try:
-    import sqlalchemy_stubs  # noqa
+    __import__("sqlalchemy-stubs")
 except ImportError:
     pass
 else:
-    import sqlalchemy
-
     raise ImportError(
-        f"The SQLAlchemy mypy plugin in SQLAlchemy "
-        f"{sqlalchemy.__version__} does not work with sqlalchemy-stubs or "
-        "sqlalchemy2-stubs installed"
+        "The SQLAlchemy mypy plugin in SQLAlchemy "
+        "2.0 does not work with sqlalchemy-stubs or "
+        "sqlalchemy2-stubs installed, as well as with any other third party "
+        "SQLAlchemy stubs.  Please uninstall all SQLAlchemy stubs "
+        "packages."
     )
 
 

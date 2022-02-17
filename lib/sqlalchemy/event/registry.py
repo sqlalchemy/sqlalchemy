@@ -22,7 +22,6 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import cast
-from typing import ClassVar
 from typing import Deque
 from typing import Dict
 from typing import Generic
@@ -35,7 +34,6 @@ import weakref
 
 from .. import exc
 from .. import util
-from ..util.typing import Protocol
 
 if typing.TYPE_CHECKING:
     from .attr import RefCollection
@@ -46,7 +44,10 @@ _ListenerFnKeyType = Union[int, Tuple[int, int]]
 _EventKeyTupleType = Tuple[int, str, _ListenerFnKeyType]
 
 
-class _EventTargetType(Protocol):
+_ET = TypeVar("_ET", bound="EventTarget")
+
+
+class EventTarget:
     """represents an event target, that is, something we can listen on
     either with that target as a class or as an instance.
 
@@ -55,10 +56,10 @@ class _EventTargetType(Protocol):
 
     """
 
-    dispatch: ClassVar[dispatcher[Any]]
+    __slots__ = ()
 
+    dispatch: dispatcher[Any]
 
-_ET = TypeVar("_ET", bound=_EventTargetType)
 
 _RefCollectionToListenerType = Dict[
     "weakref.ref[RefCollection[Any]]",
@@ -104,7 +105,7 @@ def _collection_gced(ref: weakref.ref[Any]) -> None:
     if not _collection_to_key or ref not in _collection_to_key:
         return
 
-    ref = cast("weakref.ref[RefCollection[_EventTargetType]]", ref)
+    ref = cast("weakref.ref[RefCollection[EventTarget]]", ref)
 
     listener_to_key = _collection_to_key.pop(ref)
     for key in listener_to_key.values():

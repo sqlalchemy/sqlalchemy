@@ -32,6 +32,7 @@ from typing import Generic
 from typing import Iterator
 from typing import List
 from typing import Mapping
+from typing import NoReturn
 from typing import Optional
 from typing import overload
 from typing import Sequence
@@ -103,9 +104,14 @@ class safe_reraise:
             with safe_reraise():
                 sess.rollback()
 
+    TODO: is this context manager getting us anything in Python 3?
+    Not sure of the coroutine issue stated above; we would assume this was
+    when using eventlet / gevent.  not sure if our own greenlet integration
+    is impacted.
+
     """
 
-    __slots__ = ("warn_only", "_exc_info")
+    __slots__ = ("_exc_info",)
 
     _exc_info: Union[
         None,
@@ -117,9 +123,6 @@ class safe_reraise:
         Tuple[None, None, None],
     ]
 
-    def __init__(self, warn_only: bool = False):
-        self.warn_only = warn_only
-
     def __enter__(self) -> None:
         self._exc_info = sys.exc_info()
 
@@ -128,15 +131,14 @@ class safe_reraise:
         type_: Optional[Type[BaseException]],
         value: Optional[BaseException],
         traceback: Optional[types.TracebackType],
-    ) -> None:
+    ) -> NoReturn:
         assert self._exc_info is not None
         # see #2703 for notes
         if type_ is None:
             exc_type, exc_value, exc_tb = self._exc_info
             assert exc_value is not None
             self._exc_info = None  # remove potential circular references
-            if not self.warn_only:
-                raise exc_value.with_traceback(exc_tb)
+            raise exc_value.with_traceback(exc_tb)
         else:
             self._exc_info = None  # remove potential circular references
             assert value is not None
@@ -1123,13 +1125,22 @@ def as_interface(obj, cls=None, methods=None, required=None):
     )
 
 
+Selfdynamic_property = TypeVar(
+    "Selfdynamic_property", bound="dynamic_property[Any]"
+)
+
 Selfmemoized_property = TypeVar(
     "Selfmemoized_property", bound="memoized_property[Any]"
 )
 
 
-class memoized_property(Generic[_T]):
-    """A read-only @property that is only evaluated once."""
+class dynamic_property(Generic[_T]):
+    """A read-only @property that is evaluated each time.
+
+    This is mostly the same as @property except we can type it
+    alongside memoized_property
+
+    """
 
     fget: Callable[..., _T]
     __doc__: Optional[str]
@@ -1139,6 +1150,27 @@ class memoized_property(Generic[_T]):
         self.fget = fget  # type: ignore[assignment]
         self.__doc__ = doc or fget.__doc__
         self.__name__ = fget.__name__
+
+    @overload
+    def __get__(
+        self: Selfdynamic_property, obj: None, cls: Any
+    ) -> Selfdynamic_property:
+        ...
+
+    @overload
+    def __get__(self, obj: Any, cls: Any) -> _T:
+        ...
+
+    def __get__(
+        self: Selfdynamic_property, obj: Any, cls: Any
+    ) -> Union[Selfdynamic_property, _T]:
+        if obj is None:
+            return self
+        return self.fget(obj)  # type: ignore[no-any-return]
+
+
+class memoized_property(dynamic_property[_T]):
+    """A read-only @property that is only evaluated once."""
 
     @overload
     def __get__(
@@ -1158,7 +1190,16 @@ class memoized_property(Generic[_T]):
         obj.__dict__[self.__name__] = result = self.fget(obj)
         return result  # type: ignore
 
-    def _reset(self, obj):
+    if typing.TYPE_CHECKING:
+        # __set__ can't actually be implemented because it would
+        # cause __get__ to be called in all cases
+        def __set__(self, instance: Any, value: Any) -> None:
+            ...
+
+        def __delete__(self, instance: Any) -> None:
+            ...
+
+    def _reset(self, obj: Any) -> None:
         memoized_property.reset(obj, self.__name__)
 
     @classmethod
@@ -1628,6 +1669,39 @@ class symbol:
         raise exc.ArgumentError("Invalid value for '%s': %r" % (name, arg))
 
 
+def parse_user_argument_for_enum(
+    arg: Any,
+    choices: Dict[_T, List[Any]],
+    name: str,
+) -> Optional[_T]:
+    """Given a user parameter, parse the parameter into a chosen value
+    from a list of choice objects, typically Enum values.
+
+    The user argument can be a string name that matches the name of a
+    symbol, or the symbol object itself, or any number of alternate choices
+    such as True/False/ None etc.
+
+    :param arg: the user argument.
+    :param choices: dictionary of enum values to lists of possible
+        entries for each.
+    :param name: name of the argument.   Used in an :class:`.ArgumentError`
+        that is raised if the parameter doesn't match any available argument.
+
+    """
+    # TODO: use whatever built in thing Enum provides for this,
+    # if applicable
+    for enum_value, choice in choices.items():
+        if arg is enum_value:
+            return enum_value
+        elif arg in choice:
+            return enum_value
+
+    if arg is None:
+        return None
+
+    raise exc.ArgumentError("Invalid value for '%s': %r" % (name, arg))
+
+
 _creation_order = 1
 
 
@@ -1644,7 +1718,7 @@ def set_creation_order(instance):
     _creation_order += 1
 
 
-def warn_exception(func, *args, **kwargs):
+def warn_exception(func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
     """executes the given function, catches all exceptions and converts to
     a warning.
 
@@ -1678,7 +1752,9 @@ class _hash_limit_string(str):
 
     _hash: int
 
-    def __new__(cls, value, num, args):
+    def __new__(
+        cls, value: str, num: int, args: Sequence[Any]
+    ) -> _hash_limit_string:
         interpolated = (value % args) + (
             " (this warning may be suppressed after %d occurrences)" % num
         )
@@ -1686,14 +1762,14 @@ class _hash_limit_string(str):
         self._hash = hash("%s_%d" % (value, hash(interpolated) % num))
         return self
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return self._hash
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         return hash(self) == hash(other)
 
 
-def warn(msg, code=None):
+def warn(msg: str, code: Optional[str] = None) -> None:
     """Issue a warning.
 
     If msg is a string, :class:`.exc.SAWarning` is used as
@@ -1706,7 +1782,7 @@ def warn(msg, code=None):
         _warnings_warn(msg, exc.SAWarning)
 
 
-def warn_limited(msg, args):
+def warn_limited(msg: str, args: Sequence[Any]) -> None:
     """Issue a warning with a parameterized string, limiting the number
     of registrations.
 
@@ -1716,7 +1792,11 @@ def warn_limited(msg, args):
     _warnings_warn(msg, exc.SAWarning)
 
 
-def _warnings_warn(message, category=None, stacklevel=2):
+def _warnings_warn(
+    message: Union[str, Warning],
+    category: Optional[Type[Warning]] = None,
+    stacklevel: int = 2,
+) -> None:
 
     # adjust the given stacklevel to be outside of SQLAlchemy
     try:
@@ -1736,7 +1816,7 @@ def _warnings_warn(message, category=None, stacklevel=2):
         while frame is not None and re.match(
             r"^(?:sqlalchemy\.|alembic\.)", frame.f_globals.get("__name__", "")
         ):
-            frame = frame.f_back
+            frame = frame.f_back  # type: ignore[assignment]
             stacklevel += 1
 
     if category is not None:
@@ -1775,7 +1855,11 @@ _SQLA_RE = re.compile(r"sqlalchemy/([a-z_]+/){0,2}[a-z_]+\.py")
 _UNITTEST_RE = re.compile(r"unit(?:2|test2?/)")
 
 
-def chop_traceback(tb, exclude_prefix=_UNITTEST_RE, exclude_suffix=_SQLA_RE):
+def chop_traceback(
+    tb: List[str],
+    exclude_prefix: re.Pattern[str] = _UNITTEST_RE,
+    exclude_suffix: re.Pattern[str] = _SQLA_RE,
+) -> List[str]:
     """Chop extraneous lines off beginning and end of a traceback.
 
     :param tb:

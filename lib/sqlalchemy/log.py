@@ -75,12 +75,15 @@ def class_logger(cls: Type[_IT]) -> Type[_IT]:
     return cls
 
 
+_IdentifiedLoggerType = Union[logging.Logger, "InstanceLogger"]
+
+
 class Identified:
     __slots__ = ()
 
     logging_name: Optional[str] = None
 
-    logger: Union[logging.Logger, "InstanceLogger"]
+    logger: _IdentifiedLoggerType
 
     _echo: _EchoFlagType
 

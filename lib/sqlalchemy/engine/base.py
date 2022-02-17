@@ -1771,15 +1771,15 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             if not self._is_disconnect:
                 if cursor:
                     self._safe_close_cursor(cursor)
-                with util.safe_reraise(warn_only=True):
-                    # "autorollback" was mostly relevant in 1.x series.
-                    # It's very unlikely to reach here, as the connection
-                    # does autobegin so when we are here, we are usually
-                    # in an explicit / semi-explicit transaction.
-                    # however we have a test which manufactures this
-                    # scenario in any case using an event handler.
-                    if not self.in_transaction():
-                        self._rollback_impl()
+                # "autorollback" was mostly relevant in 1.x series.
+                # It's very unlikely to reach here, as the connection
+                # does autobegin so when we are here, we are usually
+                # in an explicit / semi-explicit transaction.
+                # however we have a test which manufactures this
+                # scenario in any case using an event handler.
+                # test/engine/test_execute.py-> test_actual_autorollback
+                if not self.in_transaction():
+                    self._rollback_impl()
 
             if newraise:
                 raise newraise.with_traceback(exc_info[2]) from e
@@ -2318,11 +2318,15 @@ class Engine(
 
     _schema_translate_map = None
 
+    dialect: Dialect
+    pool: Pool
+    url: URL
+
     def __init__(
         self,
-        pool: "Pool",
-        dialect: "Dialect",
-        url: "URL",
+        pool: Pool,
+        dialect: Dialect,
+        url: URL,
         logging_name: Optional[str] = None,
         echo: Union[None, str, bool] = None,
         query_cache_size: int = 500,
