@@ -40,7 +40,6 @@ markers = [
 
 [tool.pyright]
 
-
 reportPrivateUsage = "none"
 reportUnusedClass = "none"
 reportUnusedFunction = "none"

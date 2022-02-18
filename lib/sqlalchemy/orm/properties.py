@@ -30,13 +30,14 @@ from . import strategy_options
 from .descriptor_props import Composite
 from .descriptor_props import ConcreteInheritedProperty
 from .descriptor_props import Synonym
+from .interfaces import _AttributeOptions
+from .interfaces import _DEFAULT_ATTRIBUTE_OPTIONS
 from .interfaces import _IntrospectsAnnotations
 from .interfaces import _MapsColumns
 from .interfaces import MapperProperty
 from .interfaces import PropComparator
 from .interfaces import StrategizedProperty
 from .relationships import Relationship
-from .util import _extract_mapped_subtype
 from .util import _orm_full_deannotate
 from .. import exc as sa_exc
 from .. import ForeignKey
@@ -45,6 +46,7 @@ from .. import util
 from ..sql import coercions
 from ..sql import roles
 from ..sql import sqltypes
+from ..sql.base import _NoArg
 from ..sql.elements import SQLCoreOperations
 from ..sql.schema import Column
 from ..sql.schema import SchemaConst
@@ -131,6 +133,7 @@ class ColumnProperty(
         self,
         column: _ORMColumnExprArgument[_T],
         *additional_columns: _ORMColumnExprArgument[Any],
+        attribute_options: Optional[_AttributeOptions] = None,
         group: Optional[str] = None,
         deferred: bool = False,
         raiseload: bool = False,
@@ -141,7 +144,9 @@ class ColumnProperty(
         doc: Optional[str] = None,
         _instrument: bool = True,
     ):
-        super(ColumnProperty, self).__init__()
+        super(ColumnProperty, self).__init__(
+            attribute_options=attribute_options
+        )
         columns = (column,) + additional_columns
         self._orig_columns = [
             coercions.expect(roles.LabeledColumnExprRole, c) for c in columns
@@ -193,6 +198,7 @@ class ColumnProperty(
         cls: Type[Any],
         key: str,
         annotation: Optional[_AnnotationScanType],
+        extracted_mapped_annotation: Optional[_AnnotationScanType],
         is_dataclass_field: bool,
     ) -> None:
         column = self.columns[0]
@@ -487,13 +493,38 @@ class MappedColumn(
         "foreign_keys",
         "_has_nullable",
         "deferred",
+        "_attribute_options",
+        "_has_dataclass_arguments",
     )
 
     deferred: bool
     column: Column[_T]
     foreign_keys: Optional[Set[ForeignKey]]
+    _attribute_options: _AttributeOptions
 
     def __init__(self, *arg: Any, **kw: Any):
+        self._attribute_options = attr_opts = kw.pop(
+            "attribute_options", _DEFAULT_ATTRIBUTE_OPTIONS
+        )
+
+        self._has_dataclass_arguments = False
+
+        if attr_opts is not None and attr_opts != _DEFAULT_ATTRIBUTE_OPTIONS:
+            if attr_opts.dataclasses_default_factory is not _NoArg.NO_ARG:
+                self._has_dataclass_arguments = True
+                kw["default"] = attr_opts.dataclasses_default_factory
+            elif attr_opts.dataclasses_default is not _NoArg.NO_ARG:
+                kw["default"] = attr_opts.dataclasses_default
+
+            if (
+                attr_opts.dataclasses_init is not _NoArg.NO_ARG
+                or attr_opts.dataclasses_repr is not _NoArg.NO_ARG
+            ):
+                self._has_dataclass_arguments = True
+
+        if "default" in kw and kw["default"] is _NoArg.NO_ARG:
+            kw.pop("default")
+
         self.deferred = kw.pop("deferred", False)
         self.column = cast("Column[_T]", Column(*arg, **kw))
         self.foreign_keys = self.column.foreign_keys
@@ -509,13 +540,19 @@ class MappedColumn(
         new.deferred = self.deferred
         new.foreign_keys = new.column.foreign_keys
         new._has_nullable = self._has_nullable
+        new._attribute_options = self._attribute_options
+        new._has_dataclass_arguments = self._has_dataclass_arguments
         util.set_creation_order(new)
         return new
 
     @property
     def mapper_property_to_assign(self) -> Optional["MapperProperty[_T]"]:
         if self.deferred:
-            return ColumnProperty(self.column, deferred=True)
+            return ColumnProperty(
+                self.column,
+                deferred=True,
+                attribute_options=self._attribute_options,
+            )
         else:
             return None
 
@@ -543,6 +580,7 @@ class MappedColumn(
         cls: Type[Any],
         key: str,
         annotation: Optional[_AnnotationScanType],
+        extracted_mapped_annotation: Optional[_AnnotationScanType],
         is_dataclass_field: bool,
     ) -> None:
         column = self.column
@@ -553,18 +591,15 @@ class MappedColumn(
 
         sqltype = column.type
 
-        argument = _extract_mapped_subtype(
-            annotation,
-            cls,
-            key,
-            MappedColumn,
-            sqltype._isnull and not self.column.foreign_keys,
-            is_dataclass_field,
-        )
-        if argument is None:
-            return
+        if extracted_mapped_annotation is None:
+            if sqltype._isnull and not self.column.foreign_keys:
+                self._raise_for_required(key, cls)
+            else:
+                return
 
-        self._init_column_for_annotation(cls, registry, argument)
+        self._init_column_for_annotation(
+            cls, registry, extracted_mapped_annotation
+        )
 
     @util.preload_module("sqlalchemy.orm.decl_base")
     def declarative_scan_for_composite(

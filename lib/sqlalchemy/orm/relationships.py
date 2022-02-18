@@ -49,6 +49,7 @@ from .base import class_mapper
 from .base import LoaderCallableStatus
 from .base import PassiveFlag
 from .base import state_str
+from .interfaces import _AttributeOptions
 from .interfaces import _IntrospectsAnnotations
 from .interfaces import MANYTOMANY
 from .interfaces import MANYTOONE
@@ -56,7 +57,6 @@ from .interfaces import ONETOMANY
 from .interfaces import PropComparator
 from .interfaces import RelationshipDirection
 from .interfaces import StrategizedProperty
-from .util import _extract_mapped_subtype
 from .util import _orm_annotate
 from .util import _orm_deannotate
 from .util import CascadeOptions
@@ -355,6 +355,7 @@ class Relationship(
         post_update: bool = False,
         cascade: str = "save-update, merge",
         viewonly: bool = False,
+        attribute_options: Optional[_AttributeOptions] = None,
         lazy: _LazyLoadArgumentType = "select",
         passive_deletes: Union[Literal["all"], bool] = False,
         passive_updates: bool = True,
@@ -380,7 +381,7 @@ class Relationship(
         _local_remote_pairs: Optional[_ColumnPairs] = None,
         _legacy_inactive_history_style: bool = False,
     ):
-        super(Relationship, self).__init__()
+        super(Relationship, self).__init__(attribute_options=attribute_options)
 
         self.uselist = uselist
         self.argument = argument
@@ -1701,18 +1702,19 @@ class Relationship(
         cls: Type[Any],
         key: str,
         annotation: Optional[_AnnotationScanType],
+        extracted_mapped_annotation: Optional[_AnnotationScanType],
         is_dataclass_field: bool,
     ) -> None:
-        argument = _extract_mapped_subtype(
-            annotation,
-            cls,
-            key,
-            Relationship,
-            self.argument is None,
-            is_dataclass_field,
-        )
-        if argument is None:
-            return
+        argument = extracted_mapped_annotation
+
+        if extracted_mapped_annotation is None:
+
+            if self.argument is None:
+                self._raise_for_required(key, cls)
+            else:
+                return
+
+        argument = extracted_mapped_annotation
 
         if hasattr(argument, "__origin__"):
 

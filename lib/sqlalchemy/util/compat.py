@@ -230,7 +230,11 @@ def inspect_formatargspec(
 
 def dataclass_fields(cls: Type[Any]) -> Iterable[dataclasses.Field[Any]]:
     """Return a sequence of all dataclasses.Field objects associated
-    with a class."""
+    with a class as an already processed dataclass.
+
+    The class must **already be a dataclass** for Field objects to be returned.
+
+    """
 
     if dataclasses.is_dataclass(cls):
         return dataclasses.fields(cls)
@@ -240,7 +244,12 @@ def dataclass_fields(cls: Type[Any]) -> Iterable[dataclasses.Field[Any]]:
 
 def local_dataclass_fields(cls: Type[Any]) -> Iterable[dataclasses.Field[Any]]:
     """Return a sequence of all dataclasses.Field objects associated with
-    a class, excluding those that originate from a superclass."""
+    an already processed dataclass, excluding those that originate from a
+    superclass.
+
+    The class must **already be a dataclass** for Field objects to be returned.
+
+    """
 
     if dataclasses.is_dataclass(cls):
         super_fields: Set[dataclasses.Field[Any]] = set()

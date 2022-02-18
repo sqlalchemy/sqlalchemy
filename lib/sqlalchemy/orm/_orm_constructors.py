@@ -21,9 +21,9 @@ from typing import Union
 
 from . import mapperlib as mapperlib
 from ._typing import _O
-from .base import Mapped
 from .descriptor_props import Composite
 from .descriptor_props import Synonym
+from .interfaces import _AttributeOptions
 from .properties import ColumnProperty
 from .properties import MappedColumn
 from .query import AliasOption
@@ -37,6 +37,8 @@ from .util import LoaderCriteriaOption
 from .. import sql
 from .. import util
 from ..exc import InvalidRequestError
+from ..sql._typing import _no_kw
+from ..sql.base import _NoArg
 from ..sql.base import SchemaEventTarget
 from ..sql.schema import SchemaConst
 from ..sql.selectable import FromClause
@@ -105,6 +107,10 @@ def mapped_column(
         Union[_TypeEngineArgument[Any], SchemaEventTarget]
     ] = None,
     *args: SchemaEventTarget,
+    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
+    default: Optional[Any] = _NoArg.NO_ARG,
+    default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
     nullable: Optional[
         Union[bool, Literal[SchemaConst.NULL_UNSPECIFIED]]
     ] = SchemaConst.NULL_UNSPECIFIED,
@@ -113,7 +119,6 @@ def mapped_column(
     name: Optional[str] = None,
     type_: Optional[_TypeEngineArgument[Any]] = None,
     autoincrement: Union[bool, Literal["auto", "ignore_fk"]] = "auto",
-    default: Optional[Any] = None,
     doc: Optional[str] = None,
     key: Optional[str] = None,
     index: Optional[bool] = None,
@@ -300,6 +305,12 @@ def mapped_column(
         type_=type_,
         autoincrement=autoincrement,
         default=default,
+        attribute_options=_AttributeOptions(
+            init,
+            repr,
+            default,
+            default_factory,
+        ),
         doc=doc,
         key=key,
         index=index,
@@ -325,6 +336,10 @@ def column_property(
     deferred: bool = False,
     raiseload: bool = False,
     comparator_factory: Optional[Type[PropComparator[_T]]] = None,
+    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
+    default: Optional[Any] = _NoArg.NO_ARG,
+    default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
     active_history: bool = False,
     expire_on_flush: bool = True,
     info: Optional[_InfoType] = None,
@@ -416,6 +431,12 @@ def column_property(
     return ColumnProperty(
         column,
         *additional_columns,
+        attribute_options=_AttributeOptions(
+            init,
+            repr,
+            default,
+            default_factory,
+        ),
         group=group,
         deferred=deferred,
         raiseload=raiseload,
@@ -429,25 +450,61 @@ def column_property(
 
 @overload
 def composite(
-    class_: Type[_CC],
+    _class_or_attr: Type[_CC],
     *attrs: _CompositeAttrType[Any],
-    **kwargs: Any,
+    group: Optional[str] = None,
+    deferred: bool = False,
+    raiseload: bool = False,
+    comparator_factory: Optional[Type[Composite.Comparator[_T]]] = None,
+    active_history: bool = False,
+    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
+    default: Optional[Any] = _NoArg.NO_ARG,
+    default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
+    info: Optional[_InfoType] = None,
+    doc: Optional[str] = None,
+    **__kw: Any,
 ) -> Composite[_CC]:
     ...
 
 
 @overload
 def composite(
+    _class_or_attr: _CompositeAttrType[Any],
     *attrs: _CompositeAttrType[Any],
-    **kwargs: Any,
+    group: Optional[str] = None,
+    deferred: bool = False,
+    raiseload: bool = False,
+    comparator_factory: Optional[Type[Composite.Comparator[_T]]] = None,
+    active_history: bool = False,
+    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
+    default: Optional[Any] = _NoArg.NO_ARG,
+    default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
+    info: Optional[_InfoType] = None,
+    doc: Optional[str] = None,
+    **__kw: Any,
 ) -> Composite[Any]:
     ...
 
 
 def composite(
-    class_: Any = None,
+    _class_or_attr: Union[
+        None, Type[_CC], Callable[..., _CC], _CompositeAttrType[Any]
+    ] = None,
     *attrs: _CompositeAttrType[Any],
-    **kwargs: Any,
+    group: Optional[str] = None,
+    deferred: bool = False,
+    raiseload: bool = False,
+    comparator_factory: Optional[Type[Composite.Comparator[_T]]] = None,
+    active_history: bool = False,
+    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
+    default: Optional[Any] = _NoArg.NO_ARG,
+    default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
+    info: Optional[_InfoType] = None,
+    doc: Optional[str] = None,
+    **__kw: Any,
 ) -> Composite[Any]:
     r"""Return a composite column-based property for use with a Mapper.
 
@@ -497,7 +554,26 @@ def composite(
         :attr:`.MapperProperty.info` attribute of this object.
 
     """
-    return Composite(class_, *attrs, **kwargs)
+    if __kw:
+        raise _no_kw()
+
+    return Composite(
+        _class_or_attr,
+        *attrs,
+        attribute_options=_AttributeOptions(
+            init,
+            repr,
+            default,
+            default_factory,
+        ),
+        group=group,
+        deferred=deferred,
+        raiseload=raiseload,
+        comparator_factory=comparator_factory,
+        active_history=active_history,
+        info=info,
+        doc=doc,
+    )
 
 
 def with_loader_criteria(
@@ -700,6 +776,10 @@ def relationship(
     post_update: bool = False,
     cascade: str = "save-update, merge",
     viewonly: bool = False,
+    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
+    default: Union[_NoArg, _T] = _NoArg.NO_ARG,
+    default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
     lazy: _LazyLoadArgumentType = "select",
     passive_deletes: Union[Literal["all"], bool] = False,
     passive_updates: bool = True,
@@ -1532,6 +1612,12 @@ def relationship(
         post_update=post_update,
         cascade=cascade,
         viewonly=viewonly,
+        attribute_options=_AttributeOptions(
+            init,
+            repr,
+            default,
+            default_factory,
+        ),
         lazy=lazy,
         passive_deletes=passive_deletes,
         passive_updates=passive_updates,
@@ -1559,6 +1645,10 @@ def synonym(
     map_column: Optional[bool] = None,
     descriptor: Optional[Any] = None,
     comparator_factory: Optional[Type[PropComparator[_T]]] = None,
+    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
+    default: Union[_NoArg, _T] = _NoArg.NO_ARG,
+    default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
     info: Optional[_InfoType] = None,
     doc: Optional[str] = None,
 ) -> Synonym[Any]:
@@ -1670,6 +1760,12 @@ def synonym(
         map_column=map_column,
         descriptor=descriptor,
         comparator_factory=comparator_factory,
+        attribute_options=_AttributeOptions(
+            init,
+            repr,
+            default,
+            default_factory,
+        ),
         doc=doc,
         info=info,
     )
@@ -1784,7 +1880,17 @@ def backref(name: str, **kwargs: Any) -> _ORMBackrefArgument:
 def deferred(
     column: _ORMColumnExprArgument[_T],
     *additional_columns: _ORMColumnExprArgument[Any],
-    **kw: Any,
+    group: Optional[str] = None,
+    raiseload: bool = False,
+    comparator_factory: Optional[Type[PropComparator[_T]]] = None,
+    init: Union[_NoArg, bool] = _NoArg.NO_ARG,
+    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
+    default: Optional[Any] = _NoArg.NO_ARG,
+    default_factory: Union[_NoArg, Callable[[], _T]] = _NoArg.NO_ARG,
+    active_history: bool = False,
+    expire_on_flush: bool = True,
+    info: Optional[_InfoType] = None,
+    doc: Optional[str] = None,
 ) -> ColumnProperty[_T]:
     r"""Indicate a column-based mapped attribute that by default will
     not load unless accessed.
@@ -1803,21 +1909,41 @@ def deferred(
 
         :ref:`deferred_raiseload`
 
-    :param \**kw: additional keyword arguments passed to
-     :class:`.ColumnProperty`.
+    Additional arguments are the same as that of :func:`_orm.column_property`.
 
     .. seealso::
 
         :ref:`deferred`
 
     """
-    kw["deferred"] = True
-    return ColumnProperty(column, *additional_columns, **kw)
+    return ColumnProperty(
+        column,
+        *additional_columns,
+        attribute_options=_AttributeOptions(
+            init,
+            repr,
+            default,
+            default_factory,
+        ),
+        group=group,
+        deferred=True,
+        raiseload=raiseload,
+        comparator_factory=comparator_factory,
+        active_history=active_history,
+        expire_on_flush=expire_on_flush,
+        info=info,
+        doc=doc,
+    )
 
 
 def query_expression(
     default_expr: _ORMColumnExprArgument[_T] = sql.null(),
-) -> Mapped[_T]:
+    *,
+    repr: Union[_NoArg, bool] = _NoArg.NO_ARG,  # noqa: A002
+    expire_on_flush: bool = True,
+    info: Optional[_InfoType] = None,
+    doc: Optional[str] = None,
+) -> ColumnProperty[_T]:
     """Indicate an attribute that populates from a query-time SQL expression.
 
     :param default_expr: Optional SQL expression object that will be used in
@@ -1840,7 +1966,18 @@ def query_expression(
         :ref:`mapper_querytime_expression`
 
     """
-    prop = ColumnProperty(default_expr)
+    prop = ColumnProperty(
+        default_expr,
+        attribute_options=_AttributeOptions(
+            _NoArg.NO_ARG,
+            repr,
+            _NoArg.NO_ARG,
+            _NoArg.NO_ARG,
+        ),
+        expire_on_flush=expire_on_flush,
+        info=info,
+        doc=doc,
+    )
     prop.strategy_key = (("query_expression", True),)
     return prop
 
