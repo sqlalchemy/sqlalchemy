@@ -1,7 +1,6 @@
 # coding: utf-8
 
 
-from sqlalchemy import DOUBLE
 from sqlalchemy import exc
 from sqlalchemy import FLOAT
 from sqlalchemy import ForeignKey
@@ -804,7 +803,7 @@ class TypeReflectionTest(fixtures.TestBase):
         connection,
     ):
         specs = [
-            (DOUBLE_PRECISION(), DOUBLE()),
+            (DOUBLE_PRECISION(), FLOAT()),
             # when binary_precision is supported
             # (DOUBLE_PRECISION(), oracle.FLOAT(binary_precision=126)),
             (BINARY_DOUBLE(), BINARY_DOUBLE()),
