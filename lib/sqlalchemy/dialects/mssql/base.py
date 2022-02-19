@@ -1625,7 +1625,6 @@ class MSExecutionContext(default.DefaultExecutionContext):
     _select_lastrowid = False
     _lastrowid = None
     _rowcount = None
-    _result_strategy = None
 
     def _opt_encode(self, statement):
 
@@ -1756,14 +1755,6 @@ class MSExecutionContext(default.DefaultExecutionContext):
                 )
             except Exception:
                 pass
-
-    def get_result_cursor_strategy(self, result):
-        if self._result_strategy:
-            return self._result_strategy
-        else:
-            return super(MSExecutionContext, self).get_result_cursor_strategy(
-                result
-            )
 
     def fire_sequence(self, seq, type_):
         return self._execute_scalar(
