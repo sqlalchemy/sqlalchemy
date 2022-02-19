@@ -1312,7 +1312,6 @@ class InvalidateDuringResultTest(fixtures.TestBase):
     )
     @testing.fails_if(
         [
-            "+mariadbconnector",
             "+mysqlconnector",
             "+mysqldb",
             "+cymysql",
