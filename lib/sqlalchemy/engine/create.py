@@ -12,11 +12,13 @@ from typing import Union
 
 from . import base
 from . import url as _url
+from .interfaces import DBAPIConnection
 from .mock import create_mock_engine
 from .. import event
 from .. import exc
-from .. import pool as poollib
 from .. import util
+from ..pool import _AdhocProxiedConnection
+from ..pool import ConnectionPoolEntry
 from ..sql import compiler
 
 
@@ -603,10 +605,13 @@ def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> "base.Engine":
         if builtin_on_connect:
             event.listen(pool, "connect", builtin_on_connect)
 
-        def first_connect(dbapi_connection, connection_record):
+        def first_connect(
+            dbapi_connection: DBAPIConnection,
+            connection_record: ConnectionPoolEntry,
+        ):
             c = base.Connection(
                 engine,
-                connection=poollib._AdhocProxiedConnection(
+                connection=_AdhocProxiedConnection(
                     dbapi_connection, connection_record
                 ),
                 _has_events=False,

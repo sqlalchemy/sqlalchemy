@@ -17,6 +17,7 @@ instances of ``_Dispatch``.
 """
 from __future__ import annotations
 
+import typing
 from typing import Any
 from typing import cast
 from typing import Dict
@@ -71,7 +72,11 @@ class _UnpickleDispatch:
             raise AttributeError("No class with a 'dispatch' member present.")
 
 
-class _Dispatch(Generic[_ET]):
+class _DispatchCommon(Generic[_ET]):
+    __slots__ = ()
+
+
+class _Dispatch(_DispatchCommon[_ET]):
     """Mirror the event listening definitions of an Events class with
     listener collections.
 
@@ -218,6 +223,11 @@ class _HasEventsDispatch(Generic[_ET]):
 
     """
 
+    if typing.TYPE_CHECKING:
+
+        def __getattr__(self, name: str) -> _InstanceLevelDispatch[_ET]:
+            ...
+
     def __init_subclass__(cls) -> None:
         """Intercept new Event subclasses and create associated _Dispatch
         classes."""
@@ -357,7 +367,7 @@ class Events(_HasEventsDispatch[_ET]):
         cls.dispatch._clear()
 
 
-class _JoinedDispatcher(Generic[_ET]):
+class _JoinedDispatcher(_DispatchCommon[_ET]):
     """Represent a connection between two _Dispatch objects."""
 
     __slots__ = "local", "parent", "_instance_cls"
@@ -402,11 +412,11 @@ class dispatcher(Generic[_ET]):
     @overload
     def __get__(
         self, obj: Literal[None], cls: Type[Any]
-    ) -> Type[_HasEventsDispatch[_ET]]:
+    ) -> Type[_Dispatch[_ET]]:
         ...
 
     @overload
-    def __get__(self, obj: Any, cls: Type[Any]) -> _HasEventsDispatch[_ET]:
+    def __get__(self, obj: Any, cls: Type[Any]) -> _Dispatch[_ET]:
         ...
 
     def __get__(self, obj: Any, cls: Type[Any]) -> Any:

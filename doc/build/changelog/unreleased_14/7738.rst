@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, mariadb, regression
+    :tickets: 7738
+
+    Fixed regression in mariadbconnector dialect as of mariadb connector 1.0.10
+    where the DBAPI no longer pre-buffers cursor.lastrowid. The dialect now
+    fetches this value proactively for situations where it applies.

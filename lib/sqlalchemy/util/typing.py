@@ -80,25 +80,6 @@ class _TypeToInstance(Generic[_T]):
         ...
 
 
-class ReadOnlyInstanceDescriptor(Protocol[_T]):
-    """protocol representing an instance-only descriptor"""
-
-    @overload
-    def __get__(
-        self, instance: None, owner: Any
-    ) -> "ReadOnlyInstanceDescriptor[_T]":
-        ...
-
-    @overload
-    def __get__(self, instance: object, owner: Any) -> _T:
-        ...
-
-    def __get__(
-        self, instance: object, owner: Any
-    ) -> Union["ReadOnlyInstanceDescriptor[_T]", _T]:
-        ...
-
-
 def de_stringify_annotation(
     cls: Type[Any], annotation: Union[str, Type[Any]]
 ) -> Union[str, Type[Any]]:

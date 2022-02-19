@@ -22,6 +22,8 @@ from .base import _AdhocProxiedConnection
 from .base import _ConnectionFairy
 from .base import _ConnectionRecord
 from .base import _finalize_fairy
+from .base import ConnectionPoolEntry as ConnectionPoolEntry
+from .base import ManagesConnection as ManagesConnection
 from .base import Pool as Pool
 from .base import PoolProxiedConnection as PoolProxiedConnection
 from .base import reset_commit as reset_commit

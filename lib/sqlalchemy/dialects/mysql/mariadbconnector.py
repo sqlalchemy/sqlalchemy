@@ -39,11 +39,20 @@ mariadb_cpy_minimum_version = (1, 0, 1)
 
 
 class MySQLExecutionContext_mariadbconnector(MySQLExecutionContext):
+    _lastrowid = None
+
     def create_server_side_cursor(self):
         return self._dbapi_connection.cursor(buffered=False)
 
     def create_default_cursor(self):
         return self._dbapi_connection.cursor(buffered=True)
+
+    def post_exec(self):
+        if self.isinsert and self.compiled.postfetch_lastrowid:
+            self._lastrowid = self.cursor.lastrowid
+
+    def get_lastrowid(self):
+        return self._lastrowid
 
 
 class MySQLCompiler_mariadbconnector(MySQLCompiler):

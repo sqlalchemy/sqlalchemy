@@ -32,7 +32,11 @@ if typing.TYPE_CHECKING:
     from .sql.compiler import Compiled
     from .sql.elements import ClauseElement
 
-_version_token = None
+if typing.TYPE_CHECKING:
+    _version_token: str
+else:
+    # set by __init__.py
+    _version_token = None
 
 
 class HasDescriptionCode:

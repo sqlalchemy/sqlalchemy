@@ -558,14 +558,18 @@ API Documentation - Available Pool Implementations
 
 .. autoclass:: StaticPool
 
+.. autoclass:: ManagesConnection
+    :members:
+
+.. autoclass:: ConnectionPoolEntry
+    :members:
+    :inherited-members:
+
 .. autoclass:: PoolProxiedConnection
     :members:
+    :inherited-members:
 
 .. autoclass:: _ConnectionFairy
-    :members:
-
-    .. autoattribute:: _connection_record
 
 .. autoclass:: _ConnectionRecord
-    :members:
 

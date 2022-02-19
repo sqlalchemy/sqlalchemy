@@ -59,7 +59,7 @@ class DBAPIConnection(Protocol):
     def commit(self) -> None:
         ...
 
-    def cursor(self) -> "DBAPICursor":
+    def cursor(self) -> DBAPICursor:
         ...
 
     def rollback(self) -> None:
@@ -657,6 +657,9 @@ class Dialect:
 
     """
 
+    is_async: bool
+    """Whether or not this dialect is intended for asyncio use."""
+
     def create_connect_args(
         self, url: "URL"
     ) -> Tuple[Tuple[str], Mapping[str, Any]]:
@@ -1091,7 +1094,7 @@ class Dialect:
 
         raise NotImplementedError()
 
-    def do_close(self, dbapi_connection: PoolProxiedConnection) -> None:
+    def do_close(self, dbapi_connection: DBAPIConnection) -> None:
         """Provide an implementation of ``connection.close()``, given a DBAPI
         connection.
 
@@ -1102,6 +1105,11 @@ class Dialect:
 
         """
 
+        raise NotImplementedError()
+
+    def do_ping(self, dbapi_connection: DBAPIConnection) -> bool:
+        """ping the DBAPI connection and return True if the connection is
+        usable."""
         raise NotImplementedError()
 
     def do_set_input_sizes(
@@ -1679,7 +1687,7 @@ class Dialect:
 
         """
 
-    def get_driver_connection(self, connection: PoolProxiedConnection) -> Any:
+    def get_driver_connection(self, connection: DBAPIConnection) -> Any:
         """Returns the connection object as returned by the external driver
         package.
 

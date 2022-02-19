@@ -662,15 +662,9 @@ class Mapped(Generic[_T], TypingOnly):
         def _empty_constructor(cls, arg1: Any) -> "Mapped[_T]":
             ...
 
-        @overload
-        def __set__(self, instance: Any, value: _T) -> None:
-            ...
-
-        @overload
-        def __set__(self, instance: Any, value: SQLCoreOperations) -> None:
-            ...
-
-        def __set__(self, instance, value):
+        def __set__(
+            self, instance: Any, value: Union[SQLCoreOperations[_T], _T]
+        ):
             ...
 
         def __delete__(self, instance: Any):
