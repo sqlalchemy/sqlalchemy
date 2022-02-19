@@ -1565,7 +1565,6 @@ class DefaultExecutionContext(interfaces.ExecutionContext):
         return self._setup_ins_pk_from_empty()
 
     def _setup_ins_pk_from_lastrowid(self):
-
         getter = self.compiled._inserted_primary_key_from_lastrowid_getter
 
         lastrowid = self.get_lastrowid()
