@@ -52,7 +52,7 @@ offsets, either explicitly or via array slices::
 
         posts = relationship(Post, lazy="dynamic")
 
-    jack = session.query(User).get(id)
+    jack = session.get(User, id)
 
     # filter Jack's blog posts
     posts = jack.posts.filter(Post.headline=='this is a post')

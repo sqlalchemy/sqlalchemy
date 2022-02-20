@@ -107,7 +107,7 @@ so that the flush process may handle that related object appropriately.
 This case usually only arises if an object is removed from one :class:`.Session`
 and added to another::
 
-    >>> user1 = sess1.query(User).filter_by(id=1).first()
+    >>> user1 = sess1.scalars(select(User).filter_by(id=1)).first()
     >>> address1 = user1.addresses[0]
     >>> sess1.close()   # user1, address1 no longer associated with sess1
     >>> user1.addresses.remove(address1)  # address1 no longer associated with user1
@@ -141,7 +141,7 @@ with ``delete`` cascade configured::
 If using the above mapping, we have a ``User`` object and two
 related ``Address`` objects::
 
-    >>> user1 = sess.query(User).filter_by(id=1).first()
+    >>> user1 = sess1.scalars(select(User).filter_by(id=1)).first()
     >>> address1, address2 = user1.addresses
 
 If we mark ``user1`` for deletion, after the flush operation proceeds,

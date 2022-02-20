@@ -50,7 +50,7 @@ attributes that will represent sets of columns via the ``Point`` class::
 
     from sqlalchemy import Column, Integer
     from sqlalchemy.orm import composite
-    from sqlalchemy.ext.declarative import declarative_base
+    from sqlalchemy.orm import declarative_base
 
     Base = declarative_base()
 
@@ -81,20 +81,15 @@ using the ``.start`` and ``.end`` attributes against ad-hoc ``Point`` instances:
 
     >>> v = Vertex(start=Point(3, 4), end=Point(5, 6))
     >>> session.add(v)
-    >>> q = session.query(Vertex).filter(Vertex.start == Point(3, 4))
-    {sql}>>> print(q.first().start)
+    >>> q = select(Vertex).filter(Vertex.start == Point(3, 4))
+    {sql}>>> print(session.scalars(q).first().start)
     BEGIN (implicit)
     INSERT INTO vertices (x1, y1, x2, y2) VALUES (?, ?, ?, ?)
-    (3, 4, 5, 6)
-    SELECT vertices.id AS vertices_id,
-            vertices.x1 AS vertices_x1,
-            vertices.y1 AS vertices_y1,
-            vertices.x2 AS vertices_x2,
-            vertices.y2 AS vertices_y2
+    [generated in ...] (3, 4, 5, 6)
+    SELECT vertices.id, vertices.x1, vertices.y1, vertices.x2, vertices.y2
     FROM vertices
     WHERE vertices.x1 = ? AND vertices.y1 = ?
-     LIMIT ? OFFSET ?
-    (3, 4, 1, 0)
+    [generated in ...] (3, 4)
     {stop}Point(x=3, y=4)
 
 .. autofunction:: composite
@@ -214,7 +209,11 @@ We can then use the above mapping as::
     s.add(hv)
     s.commit()
 
-    hv = s.query(HasVertex).filter(
-        HasVertex.vertex == Vertex(Point(1, 2), Point(3, 4))).first()
+    hv = s.scalars(
+        select(HasVertex).filter(
+            HasVertex.vertex == Vertex(Point(1, 2), Point(3, 4))
+        )
+    ).first()
     print(hv.vertex.start)
     print(hv.vertex.end)
+
