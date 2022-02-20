@@ -155,6 +155,10 @@ class DefaultRequirements(SuiteRequirements):
         return only_on(["postgresql", "mysql", "mariadb", "oracle"])
 
     @property
+    def constraint_comment_reflection(self):
+        return only_on(["postgresql"])
+
+    @property
     def unbounded_varchar(self):
         """Target database must support VARCHAR with no length"""
 
