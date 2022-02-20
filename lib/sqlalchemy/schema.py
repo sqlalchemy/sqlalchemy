@@ -26,12 +26,14 @@ from .sql.ddl import DDLBase as DDLBase
 from .sql.ddl import DDLElement as DDLElement
 from .sql.ddl import DropColumnComment as DropColumnComment
 from .sql.ddl import DropConstraint as DropConstraint
+from .sql.ddl import DropConstraintComment as DropConstraintComment
 from .sql.ddl import DropIndex as DropIndex
 from .sql.ddl import DropSchema as DropSchema
 from .sql.ddl import DropSequence as DropSequence
 from .sql.ddl import DropTable as DropTable
 from .sql.ddl import DropTableComment as DropTableComment
 from .sql.ddl import SetColumnComment as SetColumnComment
+from .sql.ddl import SetConstraintComment as SetConstraintComment
 from .sql.ddl import SetTableComment as SetTableComment
 from .sql.ddl import sort_tables as sort_tables
 from .sql.ddl import (

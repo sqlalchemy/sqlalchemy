@@ -2209,6 +2209,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         link_to_name: bool = False,
         match: Optional[str] = None,
         info: Optional[Dict[Any, Any]] = None,
+        comment: Optional[str] = None,
         **dialect_kw: Any,
     ):
         r"""
@@ -2269,6 +2270,9 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
             .. versionadded:: 1.0.0
 
+        :param comment: Optional string that will render an SQL comment on
+          foreign key constraint creation.
+
         :param \**dialect_kw:  Additional keyword arguments are dialect
             specific, and passed in the form ``<dialectname>_<argname>``.  The
             arguments are ultimately handled by a corresponding
@@ -2311,6 +2315,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         self.initially = initially
         self.link_to_name = link_to_name
         self.match = match
+        self.comment = comment
         if info:
             self.info = info
         self._unvalidated_dialect_kw = dialect_kw
@@ -2352,6 +2357,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             initially=self.initially,
             link_to_name=self.link_to_name,
             match=self.match,
+            comment=self.comment,
             **self._unvalidated_dialect_kw,
         )
         return self._schema_item_copy(fk)
@@ -2631,6 +2637,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
                 deferrable=self.deferrable,
                 initially=self.initially,
                 match=self.match,
+                comment=self.comment,
                 **self._unvalidated_dialect_kw,
             )
             self.constraint._append_element(column, self)
@@ -3230,6 +3237,7 @@ class Constraint(DialectKWArgs, SchemaItem):
         initially=None,
         _create_rule=None,
         info=None,
+        comment=None,
         _type_bound=False,
         **dialect_kw,
     ):
@@ -3250,6 +3258,10 @@ class Constraint(DialectKWArgs, SchemaItem):
             :attr:`.SchemaItem.info` attribute of this object.
 
             .. versionadded:: 1.0.0
+
+
+        :param comment: Optional string that will render an SQL comment on
+          foreign key constraint creation.
 
         :param \**dialect_kw:  Additional keyword arguments are dialect
             specific, and passed in the form ``<dialectname>_<argname>``.  See
@@ -3274,6 +3286,7 @@ class Constraint(DialectKWArgs, SchemaItem):
         self._type_bound = _type_bound
         util.set_creation_order(self)
         self._validate_dialect_kwargs(dialect_kw)
+        self.comment = comment
 
     @property
     def table(self):
@@ -3636,6 +3649,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         match=None,
         table=None,
         info=None,
+        comment=None,
         **dialect_kw,
     ):
         r"""Construct a composite-capable FOREIGN KEY.
@@ -3700,6 +3714,9 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
 
             .. versionadded:: 1.0.0
 
+        :param comment: Optional string that will render an SQL comment on
+          foreign key constraint creation.
+
         :param \**dialect_kw:  Additional keyword arguments are dialect
           specific, and passed in the form ``<dialectname>_<argname>``.  See
           the documentation regarding an individual dialect at
@@ -3715,6 +3732,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
             deferrable=deferrable,
             initially=initially,
             info=info,
+            comment=comment,
             **dialect_kw,
         )
         self.onupdate = onupdate

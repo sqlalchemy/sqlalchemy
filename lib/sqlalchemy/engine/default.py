@@ -54,6 +54,7 @@ class DefaultDialect(interfaces.Dialect):
     preparer = compiler.IdentifierPreparer
     supports_alter = True
     supports_comments = False
+    supports_constraint_comments = False
     inline_comments = False
     supports_statement_cache = True
 

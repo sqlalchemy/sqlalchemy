@@ -661,6 +661,18 @@ class DropColumnComment(_CreateDropBase):
     __visit_name__ = "drop_column_comment"
 
 
+class SetConstraintComment(_CreateDropBase):
+    """Represent a COMMENT ON CONSTRAINT IS statement."""
+
+    __visit_name__ = "set_constraint_comment"
+
+
+class DropConstraintComment(_CreateDropBase):
+    """Represent a COMMENT ON CONSTRAINT IS NULL statement."""
+
+    __visit_name__ = "drop_constraint_comment"
+
+
 class DDLBase(SchemaVisitor):
     def __init__(self, connection):
         self.connection = connection
@@ -805,6 +817,13 @@ class SchemaGenerator(DDLBase):
             for column in table.columns:
                 if column.comment is not None:
                     self.connection.execute(SetColumnComment(column))
+
+            if self.dialect.supports_constraint_comments:
+                for constraint in table.constraints:
+                    if constraint.comment is not None:
+                        self.connection.execute(
+                            SetConstraintComment(constraint)
+                        )
 
         table.dispatch.after_create(
             table,

@@ -3214,6 +3214,7 @@ class PGDialect(default.DefaultDialect):
     postfetch_lastrowid = False
 
     supports_comments = True
+    supports_constraint_comments = True
     supports_default_values = True
 
     supports_default_metavalue = True
@@ -4008,16 +4009,22 @@ class PGDialect(default.DefaultDialect):
         cols = [r[0] for r in c.fetchall()]
 
         PK_CONS_SQL = """
-        SELECT conname
-           FROM  pg_catalog.pg_constraint r
-           WHERE r.conrelid = :table_oid AND r.contype = 'p'
-           ORDER BY 1
+            SELECT conname,
+                  pgd.description as comment
+            FROM pg_catalog.pg_constraint r
+               LEFT JOIN pg_catalog.pg_description pgd
+                   ON pgd.objoid = r.oid
+            WHERE r.conrelid = :table_oid AND r.contype = 'p'
+            ORDER BY 1
         """
         t = sql.text(PK_CONS_SQL).columns(conname=sqltypes.Unicode)
         c = connection.execute(t, dict(table_oid=table_oid))
-        name = c.scalar()
+        name, comment = c.one_or_none() or (None, None)
+        pkey_d = {"constrained_columns": cols, "name": name}
+        if comment is not None:
+            pkey_d["comment"] = comment
 
-        return {"constrained_columns": cols, "name": name}
+        return pkey_d
 
     @reflection.cache
     def get_foreign_keys(
@@ -4036,15 +4043,16 @@ class PGDialect(default.DefaultDialect):
         FK_SQL = """
           SELECT r.conname,
                 pg_catalog.pg_get_constraintdef(r.oid, true) as condef,
-                n.nspname as conschema
-          FROM  pg_catalog.pg_constraint r,
-                pg_namespace n,
-                pg_class c
+                n.nspname as conschema,
+                pgd.description as comment
+          FROM pg_catalog.pg_constraint r
+              JOIN pg_class c ON c.oid = confrelid
+              JOIN pg_namespace n ON n.oid = c.relnamespace
+              LEFT JOIN pg_catalog.pg_description pgd
+                  ON pgd.objoid = r.oid
 
           WHERE r.conrelid = :table AND
-                r.contype = 'f' AND
-                c.oid = confrelid AND
-                n.oid = c.relnamespace
+                r.contype = 'f'
           ORDER BY 1
         """
         # https://www.postgresql.org/docs/9.0/static/sql-createtable.html
@@ -4064,7 +4072,7 @@ class PGDialect(default.DefaultDialect):
         )
         c = connection.execute(t, dict(table=table_oid))
         fkeys = []
-        for conname, condef, conschema in c.fetchall():
+        for conname, condef, conschema, comment in c.fetchall():
             m = re.search(FK_REGEX, condef).groups()
 
             (
@@ -4131,6 +4139,8 @@ class PGDialect(default.DefaultDialect):
                 "referred_columns": referred_columns,
                 "options": options,
             }
+            if comment is not None:
+                fkey_d["comment"] = comment
             fkeys.append(fkey_d)
         return fkeys
 
@@ -4375,12 +4385,15 @@ class PGDialect(default.DefaultDialect):
                 cons.conname as name,
                 cons.conkey as key,
                 a.attnum as col_num,
-                a.attname as col_name
+                a.attname as col_name,
+                pgd.description as comment
             FROM
                 pg_catalog.pg_constraint cons
                 join pg_attribute a
                   on cons.conrelid = a.attrelid AND
                     a.attnum = ANY(cons.conkey)
+                left join pg_catalog.pg_description pgd
+                  on pgd.objoid = cons.oid
             WHERE
                 cons.conrelid = :table_oid AND
                 cons.contype = 'u'
@@ -4393,10 +4406,19 @@ class PGDialect(default.DefaultDialect):
         for row in c.fetchall():
             uc = uniques[row.name]
             uc["key"] = row.key
+            uc["comment"] = row.comment
             uc["cols"][row.col_num] = row.col_name
 
         return [
-            {"name": name, "column_names": [uc["cols"][i] for i in uc["key"]]}
+            {
+                "name": name,
+                "column_names": [uc["cols"][i] for i in uc["key"]],
+                **(
+                    {"comment": uc["comment"]}
+                    if uc["comment"] is not None
+                    else {}
+                ),
+            }
             for name, uc in uniques.items()
         ]
 
@@ -4430,9 +4452,12 @@ class PGDialect(default.DefaultDialect):
         CHECK_SQL = """
             SELECT
                 cons.conname as name,
-                pg_get_constraintdef(cons.oid) as src
+                pg_get_constraintdef(cons.oid) as src,
+                pgd.description as comment
             FROM
                 pg_catalog.pg_constraint cons
+                LEFT JOIN pg_catalog.pg_description pgd
+                     ON pgd.objoid = cons.oid
             WHERE
                 cons.conrelid = :table_oid AND
                 cons.contype = 'c'
@@ -4441,7 +4466,7 @@ class PGDialect(default.DefaultDialect):
         c = connection.execute(sql.text(CHECK_SQL), dict(table_oid=table_oid))
 
         ret = []
-        for name, src in c:
+        for name, src, comment in c:
             # samples:
             # "CHECK (((a > 1) AND (a < 5)))"
             # "CHECK (((a = 1) OR ((a > 2) AND (a < 5))))"
@@ -4462,6 +4487,9 @@ class PGDialect(default.DefaultDialect):
             entry = {"name": name, "sqltext": sqltext}
             if m and m.group(2):
                 entry["dialect_options"] = {"not_valid": True}
+
+            if comment is not None:
+                entry["comment"] = comment
 
             ret.append(entry)
         return ret

@@ -77,6 +77,25 @@ New Features and Improvements
 This section covers new features and improvements in SQLAlchemy 2.0 which
 are not otherwise part of the major 1.4->2.0 migration path.
 
+.. _change_5667:
+
+-- Support for comments on named constraints
+----------------------------------------------------------------------------
+
+The Core receives support for string comments associated with named constraints.
+These are specified via the :paramref:`.Constraint.comment` arguments
+
+Table(
+   'example', metadata,
+   Column('id', Integer),
+   CheckConstraint('id < 100', name="id_cons", comment="Id value can't exceed
+   100")
+)
+
+Current backend support includes Postgresql.
+
+:ticket:`5677`
+
 .. _ticket_6842:
 
 Dialect support for psycopg 3 (a.k.a. "psycopg")

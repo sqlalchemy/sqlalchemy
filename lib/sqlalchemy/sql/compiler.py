@@ -4622,6 +4622,37 @@ class DDLCompiler(Compiled):
             drop.element, use_table=True
         )
 
+    def visit_set_constraint_comment(self, create, **kw):
+        constraint = create.element
+        if constraint.name is not None:
+            formatted_name = self.preparer.format_constraint(constraint)
+        else:
+            raise exc.CompileError(
+                "Can't emit COMMENT ON for constraint %r; "
+                "it has no name" % create.element
+            )
+        return "COMMENT ON CONSTRAINT %s ON %s IS %s" % (
+            formatted_name,
+            self.preparer.format_table(create.element.table),
+            self.sql_compiler.render_literal_value(
+                create.element.comment, sqltypes.String()
+            ),
+        )
+
+    def visit_drop_constraint_comment(self, drop, **kw):
+        constraint = drop.element
+        if constraint.name is not None:
+            formatted_name = self.preparer.format_constraint(constraint)
+        else:
+            raise exc.CompileError(
+                "Can't emit COMMENT ON for constraint %r; "
+                "it has no name" % drop.element
+            )
+        return "COMMENT ON CONSTRAINT %s ON %s IS NULL" % (
+            formatted_name,
+            self.preparer.format_table(drop.element.table),
+        )
+
     def get_identity_options(self, identity_options):
         text = []
         if identity_options.increment is not None:

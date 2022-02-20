@@ -274,7 +274,21 @@ class ReflectedColumn(TypedDict):
     object"""
 
 
-class ReflectedCheckConstraint(TypedDict):
+class ReflectedConstraint(TypedDict):
+    """Dictionary representing the reflected elements corresponding to
+    :class:`.Constraint`
+
+    A base class for all constraints
+    """
+
+    name: Optional[str]
+    """constraint name"""
+
+    comment: NotRequired[Optional[str]]
+    """comment for the constraint, if present"""
+
+
+class ReflectedCheckConstraint(ReflectedConstraint):
     """Dictionary representing the reflected elements corresponding to
     :class:`.CheckConstraint`.
 
@@ -282,9 +296,6 @@ class ReflectedCheckConstraint(TypedDict):
     :meth:`.Inspector.get_check_constraints` method.
 
     """
-
-    name: Optional[str]
-    """constraint name"""
 
     sqltext: str
     """the check constraint's SQL expression"""
@@ -294,7 +305,7 @@ class ReflectedCheckConstraint(TypedDict):
     object"""
 
 
-class ReflectedUniqueConstraint(TypedDict):
+class ReflectedUniqueConstraint(ReflectedConstraint):
     """Dictionary representing the reflected elements corresponding to
     :class:`.UniqueConstraint`.
 
@@ -302,9 +313,6 @@ class ReflectedUniqueConstraint(TypedDict):
     :meth:`.Inspector.get_unique_constraints` method.
 
     """
-
-    name: Optional[str]
-    """constraint name"""
 
     column_names: List[str]
     """column names which comprise the constraint"""
@@ -314,7 +322,7 @@ class ReflectedUniqueConstraint(TypedDict):
     object"""
 
 
-class ReflectedPrimaryKeyConstraint(TypedDict):
+class ReflectedPrimaryKeyConstraint(ReflectedConstraint):
     """Dictionary representing the reflected elements corresponding to
     :class:`.PrimaryKeyConstraint`.
 
@@ -334,7 +342,7 @@ class ReflectedPrimaryKeyConstraint(TypedDict):
     object"""
 
 
-class ReflectedForeignKeyConstraint(TypedDict):
+class ReflectedForeignKeyConstraint(ReflectedConstraint):
     """Dictionary representing the reflected elements corresponding to
     :class:`.ForeignKeyConstraint`.
 
@@ -342,9 +350,6 @@ class ReflectedForeignKeyConstraint(TypedDict):
     the :meth:`.Inspector.get_foreign_keys` method.
 
     """
-
-    name: Optional[str]
-    """constraint name"""
 
     constrained_columns: List[str]
     """local column names which comprise the constraint"""
@@ -626,6 +631,9 @@ class Dialect:
     """Indicates the dialect supports comment DDL that's inline with the
     definition of a Table or Column.  If False, this implies that ALTER must
     be used to set table and column comments."""
+
+    supports_constraint_comments: bool
+    """Indicates if the dialect supports comment DDL on constraints."""
 
     _has_events = False
 
