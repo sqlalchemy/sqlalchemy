@@ -23,10 +23,10 @@ addopts = "--tb native -v -r sfxX --maxfail=250 -p warnings -p logging --strict-
 python_files = "test/*test_*.py"
 minversion = "6.2"
 filterwarnings = [
-    "ignore::sqlalchemy.exc.SAPendingDeprecationWarning",
-    "error::sqlalchemy.exc.SADeprecationWarning",
-    "error::sqlalchemy.exc.SAWarning",
-    "always::sqlalchemy.exc.SATestSuiteWarning",
+    # NOTE: additional SQLAlchemy specific filters in
+    # sqlalchemy/testing/warnings.py.   SQLAlchemy modules cannot be named
+    # here as pytest loads them immediately, which breaks coverage as well
+    # as sys.path adjustments in conftest.py
     "error::DeprecationWarning:test",
     "error::DeprecationWarning:sqlalchemy"
 ]
