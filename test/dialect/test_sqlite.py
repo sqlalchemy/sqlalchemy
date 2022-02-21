@@ -41,6 +41,7 @@ from sqlalchemy.dialects.sqlite import pysqlite as pysqlite_dialect
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.schema import CreateTable
 from sqlalchemy.schema import FetchedValue
+from sqlalchemy.sql.elements import quoted_name
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -2386,6 +2387,55 @@ class ConstraintReflectionTest(fixtures.TestBase):
                 {"sqltext": "q == 1 OR (q > 2 AND q < 5)", "name": "cq"},
             ],
         )
+
+    @testing.combinations(
+        ("plain_name", "plain_name"),
+        ("name with spaces", "name with spaces"),
+        ("plainname", "plainname"),
+        ("[Code]", "[Code]"),
+        (quoted_name("[Code]", quote=False), "Code"),
+        argnames="colname,expected",
+    )
+    @testing.combinations(
+        "uq", "uq_inline", "pk", "ix", argnames="constraint_type"
+    )
+    def test_constraint_cols(
+        self, colname, expected, constraint_type, connection, metadata
+    ):
+        if constraint_type == "uq_inline":
+            t = Table("t", metadata, Column(colname, Integer))
+            connection.exec_driver_sql(
+                """
+            CREATE TABLE t (%s INTEGER UNIQUE)
+            """
+                % connection.dialect.identifier_preparer.quote(colname)
+            )
+        else:
+            t = Table("t", metadata, Column(colname, Integer))
+            if constraint_type == "uq":
+                constraint = UniqueConstraint(t.c[colname])
+            elif constraint_type == "pk":
+                constraint = PrimaryKeyConstraint(t.c[colname])
+            elif constraint_type == "ix":
+                constraint = Index("some_index", t.c[colname])
+            else:
+                assert False
+
+            t.append_constraint(constraint)
+
+            t.create(connection)
+
+        if constraint_type in ("uq", "uq_inline"):
+            const = inspect(connection).get_unique_constraints("t")[0]
+            eq_(const["column_names"], [expected])
+        elif constraint_type == "pk":
+            const = inspect(connection).get_pk_constraint("t")
+            eq_(const["constrained_columns"], [expected])
+        elif constraint_type == "ix":
+            const = inspect(connection).get_indexes("t")[0]
+            eq_(const["column_names"], [expected])
+        else:
+            assert False
 
 
 class SavepointTest(fixtures.TablesTest):
