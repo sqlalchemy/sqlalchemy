@@ -2414,7 +2414,8 @@ class SQLiteDialect(default.DefaultDialect):
         def parse_uqs():
             UNIQUE_PATTERN = r'(?:CONSTRAINT "?(.+?)"? +)?UNIQUE *\((.+?)\)'
             INLINE_UNIQUE_PATTERN = (
-                r'(?:(".+?")|([a-z0-9]+)) ' r"+[a-z0-9_ ]+? +UNIQUE"
+                r'(?:(".+?")|(?:[\[`])?([a-z0-9_]+)(?:[\]`])?) '
+                r"+[a-z0-9_ ]+? +UNIQUE"
             )
 
             for match in re.finditer(UNIQUE_PATTERN, table_data, re.I):
