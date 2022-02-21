@@ -833,6 +833,8 @@ class _ClassScanMapperConfig(_MapperConfig):
                     "for the MetaData instance when using a "
                     "declarative base class."
                 )
+            elif isinstance(value, Column):
+                _undefer_column_name(k, self.column_copies.get(value, value))
             elif isinstance(value, _IntrospectsAnnotations):
                 annotation, is_dataclass = self.collected_annotations.get(
                     k, (None, None)
@@ -865,7 +867,9 @@ class _ClassScanMapperConfig(_MapperConfig):
                     del our_stuff[key]
 
             elif isinstance(c, Column):
-                _undefer_column_name(key, c)
+                # undefer previously occurred here, and now occurs earlier.
+                # ensure every column we get here has been named
+                assert c.name is not None
                 name_to_prop_key[c.name].add(key)
                 declared_columns.add(c)
                 # if the column is the same name as the key,

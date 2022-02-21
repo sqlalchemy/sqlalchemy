@@ -425,6 +425,48 @@ class PointTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
         e = Edge()
         eq_(e.start, None)
 
+    def test_no_name_declarative(self, decl_base):
+        """test #7751"""
+
+        class Point:
+            def __init__(self, x, y):
+                self.x = x
+                self.y = y
+
+            def __composite_values__(self):
+                return self.x, self.y
+
+            def __repr__(self):
+                return "Point(x=%r, y=%r)" % (self.x, self.y)
+
+            def __eq__(self, other):
+                return (
+                    isinstance(other, Point)
+                    and other.x == self.x
+                    and other.y == self.y
+                )
+
+            def __ne__(self, other):
+                return not self.__eq__(other)
+
+        class Vertex(decl_base):
+            __tablename__ = "vertices"
+
+            id = Column(Integer, primary_key=True)
+            x1 = Column(Integer)
+            y1 = Column(Integer)
+            x2 = Column(Integer)
+            y2 = Column(Integer)
+
+            start = composite(Point, x1, y1)
+            end = composite(Point, x2, y2)
+
+        self.assert_compile(
+            select(Vertex),
+            "SELECT vertices.id, vertices.x1, vertices.y1, vertices.x2, "
+            "vertices.y2 FROM vertices",
+        )
+
 
 class NestedTest(fixtures.MappedTest, testing.AssertsCompiledSQL):
     @classmethod
