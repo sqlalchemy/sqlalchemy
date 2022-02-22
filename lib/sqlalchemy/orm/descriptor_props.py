@@ -12,6 +12,7 @@ as actively in the load/persist ORM loop.
 """
 from __future__ import annotations
 
+from dataclasses import is_dataclass
 import inspect
 import itertools
 import operator
@@ -248,12 +249,10 @@ class Composite(
         self.descriptor = property(fget, fset, fdel)
 
     @util.preload_module("sqlalchemy.orm.properties")
-    @util.preload_module("sqlalchemy.orm.decl_base")
     def declarative_scan(
         self, registry, cls, key, annotation, is_dataclass_field
     ):
         MappedColumn = util.preloaded.orm_properties.MappedColumn
-        decl_base = util.preloaded.orm_decl_base
 
         argument = _extract_mapped_subtype(
             annotation,
@@ -273,6 +272,17 @@ class Composite(
                     f"class argument"
                 )
             self.composite_class = argument
+
+        if is_dataclass(self.composite_class):
+            self._setup_for_dataclass(registry, cls, key)
+
+    @util.preload_module("sqlalchemy.orm.properties")
+    @util.preload_module("sqlalchemy.orm.decl_base")
+    def _setup_for_dataclass(self, registry, cls, key):
+        MappedColumn = util.preloaded.orm_properties.MappedColumn
+
+        decl_base = util.preloaded.orm_decl_base
+
         insp = inspect.signature(self.composite_class)
         for param, attr in itertools.zip_longest(
             insp.parameters.values(), self.attrs
@@ -289,7 +299,7 @@ class Composite(
             elif isinstance(attr, schema.Column):
                 decl_base._undefer_column_name(param.name, attr)
 
-        if not hasattr(cls, "__composite_values__"):
+        if not hasattr(self.composite_class, "__composite_values__"):
             getter = operator.attrgetter(
                 *[p.name for p in insp.parameters.values()]
             )
