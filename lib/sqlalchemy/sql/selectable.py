@@ -19,6 +19,7 @@ import itertools
 from operator import attrgetter
 import typing
 from typing import Any as TODO_Any
+from typing import NamedTuple
 from typing import Optional
 from typing import Tuple
 
@@ -1809,6 +1810,10 @@ class CTE(
 SelfHasCTE = typing.TypeVar("SelfHasCTE", bound="HasCTE")
 
 
+class _CTEOpts(NamedTuple):
+    nesting: bool
+
+
 class HasCTE(roles.HasCTERole):
     """Mixin that declares a class to include CTE support.
 
@@ -1818,20 +1823,36 @@ class HasCTE(roles.HasCTERole):
 
     _has_ctes_traverse_internals = [
         ("_independent_ctes", InternalTraversal.dp_clauseelement_list),
+        ("_independent_ctes_opts", InternalTraversal.dp_plain_obj),
     ]
 
     _independent_ctes = ()
+    _independent_ctes_opts = ()
 
     @_generative
-    def add_cte(self: SelfHasCTE, cte) -> SelfHasCTE:
-        """Add a :class:`_sql.CTE` to this statement object that will be
-        independently rendered even if not referenced in the statement
-        otherwise.
+    def add_cte(self: SelfHasCTE, *ctes, nest_here=False) -> SelfHasCTE:
+        r"""Add one or more :class:`_sql.CTE` constructs to this statement.
 
-        This feature is useful for the use case of embedding a DML statement
-        such as an INSERT or UPDATE as a CTE inline with a primary statement
-        that may draw from its results indirectly; while PostgreSQL is known
-        to support this usage, it may not be supported by other backends.
+        This method will associate the given :class:`_sql.CTE` constructs with
+        the parent statement such that they will each be unconditionally
+        rendered in the WITH clause of the final statement, even if not
+        referenced elsewhere within the statement or any sub-selects.
+
+        The optional :paramref:`.HasCTE.add_cte.nest_here` parameter when set
+        to True will have the effect that each given :class:`_sql.CTE` will
+        render in a WITH clause rendered directly along with this statement,
+        rather than being moved to the top of the ultimate rendered statement,
+        even if this statement is rendered as a subquery within a larger
+        statement.
+
+        This method has two general uses. One is to embed CTE statements that
+        serve some purpose without being referenced explicitly, such as the use
+        case of embedding a DML statement such as an INSERT or UPDATE as a CTE
+        inline with a primary statement that may draw from its results
+        indirectly.  The other is to provide control over the exact placement
+        of a particular series of CTE constructs that should remain rendered
+        directly in terms of a particular statement that may be nested in a
+        larger statement.
 
         E.g.::
 
@@ -1885,9 +1906,32 @@ class HasCTE(roles.HasCTERole):
 
         .. versionadded:: 1.4.21
 
+        :param \*ctes: zero or more :class:`.CTE` constructs.
+
+         .. versionchanged:: 2.0  Multiple CTE instances are accepted
+
+        :param nest_here: if True, the given CTE or CTEs will be rendered
+         as though they specified the :paramref:`.HasCTE.cte.nesting` flag
+         to ``True`` when they were added to this :class:`.HasCTE`.
+         Assuming the given CTEs are not referenced in an outer-enclosing
+         statement as well, the CTEs given should render at the level of
+         this statement when this flag is given.
+
+         .. versionadded:: 2.0
+
+         .. seealso::
+
+            :paramref:`.HasCTE.cte.nesting`
+
+
         """
-        cte = coercions.expect(roles.IsCTERole, cte)
-        self._independent_ctes += (cte,)
+        opt = _CTEOpts(
+            nest_here,
+        )
+        for cte in ctes:
+            cte = coercions.expect(roles.IsCTERole, cte)
+            self._independent_ctes += (cte,)
+            self._independent_ctes_opts += (opt,)
         return self
 
     def cte(self, name=None, recursive=False, nesting=False):
@@ -1931,9 +1975,17 @@ class HasCTE(roles.HasCTERole):
          conjunction with UNION ALL in order to derive rows
          from those already selected.
         :param nesting: if ``True``, will render the CTE locally to the
-         actual statement.
+         statement in which it is referenced.   For more complex scenarios,
+         the :meth:`.HasCTE.add_cte` method using the
+         :paramref:`.HasCTE.add_cte.nest_here`
+         parameter may also be used to more carefully
+         control the exact placement of a particular CTE.
 
          .. versionadded:: 1.4.24
+
+         .. seealso::
+
+            :meth:`.HasCTE.add_cte`
 
         The following examples include two from PostgreSQL's documentation at
         https://www.postgresql.org/docs/current/static/queries-with.html,
@@ -2083,6 +2135,28 @@ class HasCTE(roles.HasCTERole):
                     SELECT value_a.n AS n FROM value_a)
             SELECT value_a.n AS a, value_b.n AS b
             FROM value_a, value_b
+
+        The same CTE can be set up using the :meth:`.HasCTE.add_cte` method
+        as follows (SQLAlchemy 2.0 and above)::
+
+            value_a = select(
+                literal("root").label("n")
+            ).cte("value_a")
+
+            # A nested CTE with the same name as the root one
+            value_a_nested = select(
+                literal("nesting").label("n")
+            ).cte("value_a")
+
+            # Nesting CTEs takes ascendency locally
+            # over the CTEs at a higher level
+            value_b = (
+                select(value_a_nested.c.n).
+                add_cte(value_a_nested, nest_here=True).
+                cte("value_b")
+            )
+
+            value_ab = select(value_a.c.n.label("a"), value_b.c.n.label("b"))
 
         Example 5, Non-Linear CTE (SQLAlchemy 1.4.28 and above)::
 
