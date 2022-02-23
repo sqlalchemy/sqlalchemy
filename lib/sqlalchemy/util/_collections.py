@@ -511,7 +511,7 @@ class LRUCache(typing.MutableMapping[_KT, _VT]):
 
     capacity: int
     threshold: float
-    size_alert: Callable[["LRUCache[_KT, _VT]"], None]
+    size_alert: Optional[Callable[["LRUCache[_KT, _VT]"], None]]
 
     def __init__(self, capacity=100, threshold=0.5, size_alert=None):
         self.capacity = capacity
