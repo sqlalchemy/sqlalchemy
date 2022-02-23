@@ -756,7 +756,7 @@ class Result(_WithKeys, ResultInternal):
         :meth:`_engine.Result.fetchone` that return one row at a time.   Data
         from the underlying cursor or other data source will be buffered up to
         this many rows in memory, and the buffered collection will then be
-        yielded out one row at at time or as many rows are requested. Each time
+        yielded out one row at a time or as many rows are requested. Each time
         the buffer clears, it will be refreshed to this many rows or as many
         rows remain if fewer remain.
 
