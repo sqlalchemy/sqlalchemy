@@ -1707,7 +1707,7 @@ class ReflectionTest(
         )
 
     def test_reflect_check_warning(self):
-        rows = [("some name", "NOTCHECK foobar")]
+        rows = [("some name", "NOTCHECK foobar", None)]
         conn = mock.Mock(
             execute=lambda *arg, **kw: mock.MagicMock(
                 fetchall=lambda: rows, __iter__=lambda self: iter(rows)
@@ -1723,10 +1723,10 @@ class ReflectionTest(
 
     def test_reflect_extra_newlines(self):
         rows = [
-            ("some name", "CHECK (\n(a \nIS\n NOT\n\n NULL\n)\n)"),
-            ("some other name", "CHECK ((b\nIS\nNOT\nNULL))"),
-            ("some CRLF name", "CHECK ((c\r\n\r\nIS\r\nNOT\r\nNULL))"),
-            ("some name", "CHECK (c != 'hi\nim a name\n')"),
+            ("some name", "CHECK (\n(a \nIS\n NOT\n\n NULL\n)\n)", None),
+            ("some other name", "CHECK ((b\nIS\nNOT\nNULL))", None),
+            ("some CRLF name", "CHECK ((c\r\n\r\nIS\r\nNOT\r\nNULL))", None),
+            ("some name", "CHECK (c != 'hi\nim a name\n')", None),
         ]
         conn = mock.Mock(
             execute=lambda *arg, **kw: mock.MagicMock(
@@ -1756,7 +1756,7 @@ class ReflectionTest(
             )
 
     def test_reflect_with_not_valid_check_constraint(self):
-        rows = [("some name", "CHECK ((a IS NOT NULL)) NOT VALID")]
+        rows = [("some name", "CHECK ((a IS NOT NULL)) NOT VALID", None)]
         conn = mock.Mock(
             execute=lambda *arg, **kw: mock.MagicMock(
                 fetchall=lambda: rows, __iter__=lambda self: iter(rows)
