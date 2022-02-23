@@ -22,6 +22,7 @@ from .. import future
 from .. import inspect
 from .. import sql
 from .. import util
+from ..sql import ClauseElement
 from ..sql import coercions
 from ..sql import expression
 from ..sql import roles
@@ -494,8 +495,8 @@ class ORMFromStatementCompileState(ORMCompileState):
                 entity.setup_compile_state(self)
 
             # we did the setup just to get primary columns.
-            self.statement = expression.TextualSelect(
-                self.statement, self.primary_columns, positional=False
+            self.statement = _AdHocColumnsStatement(
+                self.statement, self.primary_columns
             )
         else:
             # allow TextualSelect with implicit columns as well
@@ -520,6 +521,65 @@ class ORMFromStatementCompileState(ORMCompileState):
 
     def _get_current_adapter(self):
         return None
+
+
+class _AdHocColumnsStatement(ClauseElement):
+    """internal object created to somewhat act like a SELECT when we
+    are selecting columns from a DML RETURNING.
+
+
+    """
+
+    __visit_name__ = None
+
+    def __init__(self, text, columns):
+        self.element = text
+        self.column_args = [
+            coercions.expect(roles.ColumnsClauseRole, c) for c in columns
+        ]
+
+    def _generate_cache_key(self):
+        raise NotImplementedError()
+
+    def _gen_cache_key(self, anon_map, bindparams):
+        raise NotImplementedError()
+
+    def _compiler_dispatch(
+        self, compiler, compound_index=None, asfrom=False, **kw
+    ):
+        """provide a fixed _compiler_dispatch method."""
+
+        toplevel = not compiler.stack
+        entry = (
+            compiler._default_stack_entry if toplevel else compiler.stack[-1]
+        )
+
+        populate_result_map = (
+            toplevel
+            # these two might not be needed
+            or (
+                compound_index == 0
+                and entry.get("need_result_map_for_compound", False)
+            )
+            or entry.get("need_result_map_for_nested", False)
+        )
+
+        if populate_result_map:
+            compiler._ordered_columns = (
+                compiler._textual_ordered_columns
+            ) = False
+
+            # enable looser result column matching.  this is shown to be
+            # needed by test_query.py::TextTest
+            compiler._loose_column_name_matching = True
+
+            for c in self.column_args:
+                compiler.process(
+                    c,
+                    within_columns_clause=True,
+                    add_to_result_map=compiler._add_to_result_map,
+                )
+        return compiler.process(self.element, **kw)
 
 
 @sql.base.CompileState.plugin_for("orm", "select")
