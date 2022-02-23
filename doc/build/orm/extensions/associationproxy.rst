@@ -15,6 +15,7 @@ the construction of sophisticated collections and dictionary
 views of virtually any geometry, persisted to the database using
 standard, transparently configured relational patterns.
 
+.. _associationproxy_scalar_collections:
 
 Simplifying Scalar Collections
 ------------------------------
@@ -57,13 +58,13 @@ with ``User`` requires traversal from each collection element to the ``.keyword`
 attribute, which can be awkward::
 
     >>> user = User('jek')
-    >>> user.kw.append(Keyword('cheese inspector'))
+    >>> user.kw.append(Keyword('cheese-inspector'))
     >>> print(user.kw)
     [<__main__.Keyword object at 0x12bf830>]
     >>> print(user.kw[0].keyword)
-    cheese inspector
+    cheese-inspector
     >>> print([keyword.keyword for keyword in user.kw])
-    ['cheese inspector']
+    ['cheese-inspector']
 
 The ``association_proxy`` is applied to the ``User`` class to produce
 a "view" of the ``kw`` relationship, which only exposes the string
@@ -88,9 +89,9 @@ which is both readable and writable.  New ``Keyword`` objects are created
 for us transparently::
 
     >>> user = User('jek')
-    >>> user.keywords.append('cheese inspector')
+    >>> user.keywords.append('cheese-inspector')
     >>> user.keywords
-    ['cheese inspector']
+    ['cheese-inspector']
     >>> user.keywords.append('snack ninja')
     >>> user.kw
     [<__main__.Keyword object at 0x12cdd30>, <__main__.Keyword object at 0x12cde30>]
@@ -120,11 +121,11 @@ assignment event) is intercepted by the association proxy, it instantiates a
 new instance of the "intermediary" object using its constructor, passing as a
 single argument the given value. In our example above, an operation like::
 
-    user.keywords.append('cheese inspector')
+    user.keywords.append('cheese-inspector')
 
 Is translated by the association proxy into the operation::
 
-    user.kw.append(Keyword('cheese inspector'))
+    user.kw.append(Keyword('cheese-inspector'))
 
 The example works here because we have designed the constructor for ``Keyword``
 to accept a single positional argument, ``keyword``.   For those cases where a
@@ -214,9 +215,10 @@ collection of ``User`` to the ``.keyword`` attribute present on each
         def __repr__(self):
             return 'Keyword(%s)' % repr(self.keyword)
 
-With the above configuration, we can operate upon the ``.keywords``
-collection of each ``User`` object, and the usage of ``UserKeyword``
-is concealed::
+With the above configuration, we can operate upon the ``.keywords`` collection
+of each ``User`` object, each of which exposes a collection of ``Keyword``
+objects that are obtained from the underyling ``UserKeyword`` elements::
+
 
     >>> user = User('log')
     >>> for kw in (Keyword('new_from_blammo'), Keyword('its_big')):
@@ -225,22 +227,32 @@ is concealed::
     >>> print(user.keywords)
     [Keyword('new_from_blammo'), Keyword('its_big')]
 
-Where above, each ``.keywords.append()`` operation is equivalent to::
+This example is in contrast to the example illustrated previously at
+:ref:`associationproxy_scalar_collections`, where the association proxy exposed
+a collection of strings, rather than a collection of composed objects.
+In this case, each ``.keywords.append()`` operation is equivalent to::
 
     >>> user.user_keywords.append(UserKeyword(Keyword('its_heavy')))
 
-The ``UserKeyword`` association object has two attributes here which are populated;
-the ``.keyword`` attribute is populated directly as a result of passing
-the ``Keyword`` object as the first argument.   The ``.user`` argument is then
-assigned as the ``UserKeyword`` object is appended to the ``User.user_keywords``
-collection, where the bidirectional relationship configured between ``User.user_keywords``
-and ``UserKeyword.user`` results in a population of the ``UserKeyword.user`` attribute.
-The ``special_key`` argument above is left at its default value of ``None``.
+The ``UserKeyword`` association object has two attributes that are both
+populated within the scope of the ``append()`` operation of the association
+proxy; ``.keyword``, which refers to the
+``Keyword` object, and ``.user``, which refers to the ``User``.
+The ``.keyword`` attribute is populated first, as the association proxy
+generates a new ``UserKeyword`` object in response to the ``.append()``
+operation, assigning the given ``Keyword`` instance to the ``.keyword``
+attribute. Then, as the ``UserKeyword`` object is appended to the
+``User.user_keywords`` collection, the ``UserKeyword.user`` attribute,
+configured as ``back_populates`` for ``User.user_keywords``, is initialized
+upon the given ``UserKeyword`` instance to refer to the parent ``User``
+receiving the append operation.  The ``special_key``
+argument above is left at its default value of ``None``.
 
 For those cases where we do want ``special_key`` to have a value, we
-create the ``UserKeyword`` object explicitly.  Below we assign all three
-attributes, where the assignment of ``.user`` has the effect of the ``UserKeyword``
-being appended to the ``User.user_keywords`` collection::
+create the ``UserKeyword`` object explicitly.  Below we assign all
+three attributes, wherein the assignment of ``.user`` during
+construction, has the effect of appending the new ``UserKeyword`` to
+the ``User.user_keywords`` collection (via the relationship)::
 
     >>> UserKeyword(Keyword('its_wood'), user, special_key='my special key')
 
@@ -275,7 +287,7 @@ when new elements are added to the dictionary::
 
     from sqlalchemy import Column, Integer, String, ForeignKey
     from sqlalchemy.ext.associationproxy import association_proxy
-    from sqlalchemy.orm import backref, declarative_base, relationship    
+    from sqlalchemy.orm import backref, declarative_base, relationship
     from sqlalchemy.orm.collections import attribute_mapped_collection
 
     Base = declarative_base()
@@ -350,7 +362,7 @@ present on ``UserKeyword``::
 
     from sqlalchemy import Column, Integer, String, ForeignKey
     from sqlalchemy.ext.associationproxy import association_proxy
-    from sqlalchemy.orm import backref, declarative_base, relationship 
+    from sqlalchemy.orm import backref, declarative_base, relationship
     from sqlalchemy.orm.collections import attribute_mapped_collection
 
     Base = declarative_base()
