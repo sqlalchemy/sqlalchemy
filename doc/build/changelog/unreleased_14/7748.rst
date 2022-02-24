@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, oracle, regression
+    :tickets: 7748
+
+    Added support to parse "DPI" error codes from cx_Oracle exception objects
+    such as ``DPI-1080`` and ``DPI-1010``, both of which now indicate a
+    disconnect scenario as of cx_Oracle 8.3.
