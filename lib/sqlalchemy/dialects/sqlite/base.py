@@ -2535,7 +2535,7 @@ class SQLiteDialect(default.DefaultDialect):
         )
 
         CHECK_PATTERN = r"(?:CONSTRAINT (.+) +)?" r"CHECK *\( *(.+) *\),? *"
-        check_constraints = []
+        cks = []
         # NOTE: we aren't using re.S here because we actually are
         # taking advantage of each CHECK constraint being all on one
         # line in the table definition in order to delineate.  This
@@ -2548,10 +2548,10 @@ class SQLiteDialect(default.DefaultDialect):
             if name:
                 name = re.sub(r'^"|"$', "", name)
 
-            check_constraints.append({"sqltext": match.group(2), "name": name})
-
-        if check_constraints:
-            return check_constraints
+            cks.append({"sqltext": match.group(2), "name": name})
+        cks.sort(key=lambda d: d["name"] or "~")  # sort None as last
+        if cks:
+            return cks
         else:
             return ReflectionDefaults.check_constraints()
 

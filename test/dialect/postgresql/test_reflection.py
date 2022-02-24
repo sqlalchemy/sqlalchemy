@@ -32,6 +32,7 @@ from sqlalchemy.dialects.postgresql import TSRANGE
 from sqlalchemy.engine import ObjectKind
 from sqlalchemy.engine import ObjectScope
 from sqlalchemy.schema import CreateIndex
+from sqlalchemy.sql import ddl as sa_ddl
 from sqlalchemy.sql.schema import CheckConstraint
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import fixtures
@@ -1496,6 +1497,7 @@ class ReflectionTest(
                     "initially": "DEFERRED",
                     "match": "FULL",
                 },
+                "comment": None,
             },
             "company_industry_id_fkey": {
                 "name": "company_industry_id_fkey",
@@ -1504,6 +1506,7 @@ class ReflectionTest(
                 "referred_table": "industry",
                 "referred_schema": None,
                 "options": {"onupdate": "CASCADE", "ondelete": "CASCADE"},
+                "comment": None,
             },
         }
         metadata.create_all(connection)
@@ -1928,7 +1931,7 @@ class ReflectionTest(
         )
 
     def test_reflect_check_warning(self):
-        rows = [("foo", "some name", "NOTCHECK foobar")]
+        rows = [("foo", "some name", "NOTCHECK foobar", None)]
         conn = mock.Mock(
             execute=lambda *arg, **kw: mock.MagicMock(
                 fetchall=lambda: rows, __iter__=lambda self: iter(rows)
@@ -1941,10 +1944,20 @@ class ReflectionTest(
 
     def test_reflect_extra_newlines(self):
         rows = [
-            ("foo", "some name", "CHECK (\n(a \nIS\n NOT\n\n NULL\n)\n)"),
-            ("foo", "some other name", "CHECK ((b\nIS\nNOT\nNULL))"),
-            ("foo", "some CRLF name", "CHECK ((c\r\n\r\nIS\r\nNOT\r\nNULL))"),
-            ("foo", "some name", "CHECK (c != 'hi\nim a name\n')"),
+            (
+                "foo",
+                "some name",
+                "CHECK (\n(a \nIS\n NOT\n\n NULL\n)\n)",
+                None,
+            ),
+            ("foo", "some other name", "CHECK ((b\nIS\nNOT\nNULL))", None),
+            (
+                "foo",
+                "some CRLF name",
+                "CHECK ((c\r\n\r\nIS\r\nNOT\r\nNULL))",
+                None,
+            ),
+            ("foo", "some name", "CHECK (c != 'hi\nim a name\n')", None),
         ]
         conn = mock.Mock(
             execute=lambda *arg, **kw: mock.MagicMock(
@@ -1960,18 +1973,30 @@ class ReflectionTest(
                 {
                     "name": "some name",
                     "sqltext": "a \nIS\n NOT\n\n NULL\n",
+                    "comment": None,
                 },
-                {"name": "some other name", "sqltext": "b\nIS\nNOT\nNULL"},
+                {
+                    "name": "some other name",
+                    "sqltext": "b\nIS\nNOT\nNULL",
+                    "comment": None,
+                },
                 {
                     "name": "some CRLF name",
                     "sqltext": "c\r\n\r\nIS\r\nNOT\r\nNULL",
+                    "comment": None,
                 },
-                {"name": "some name", "sqltext": "c != 'hi\nim a name\n'"},
+                {
+                    "name": "some name",
+                    "sqltext": "c != 'hi\nim a name\n'",
+                    "comment": None,
+                },
             ],
         )
 
     def test_reflect_with_not_valid_check_constraint(self):
-        rows = [("foo", "some name", "CHECK ((a IS NOT NULL)) NOT VALID")]
+        rows = [
+            ("foo", "some name", "CHECK ((a IS NOT NULL)) NOT VALID", None)
+        ]
         conn = mock.Mock(
             execute=lambda *arg, **kw: mock.MagicMock(
                 fetchall=lambda: rows, __iter__=lambda self: iter(rows)
@@ -1987,6 +2012,7 @@ class ReflectionTest(
                     "name": "some name",
                     "sqltext": "a IS NOT NULL",
                     "dialect_options": {"not_valid": True},
+                    "comment": None,
                 }
             ],
         )
@@ -2068,6 +2094,68 @@ class ReflectionTest(
             ],
             [["b"]],
         )
+
+    def test_reflection_constraint_comments(self, connection, metadata):
+        t = Table(
+            "foo",
+            metadata,
+            Column("id", Integer),
+            Column("foo_id", ForeignKey("foo.id", name="fk_1")),
+            Column("foo_other_id", ForeignKey("foo.id", name="fk_2")),
+            CheckConstraint("id>0", name="ch_1"),
+            CheckConstraint("id<1000", name="ch_2"),
+            PrimaryKeyConstraint("id", name="foo_pk"),
+            UniqueConstraint("id", "foo_id", name="un_1"),
+            UniqueConstraint("id", "foo_other_id", name="un_2"),
+        )
+        metadata.create_all(connection)
+
+        def check(elements, exp):
+            elements = {c["name"]: c["comment"] for c in elements}
+            eq_(elements, exp)
+
+        def all_none():
+            insp = inspect(connection)
+            is_(insp.get_pk_constraint("foo")["comment"], None)
+            check(
+                insp.get_check_constraints("foo"), {"ch_1": None, "ch_2": None}
+            )
+            check(
+                insp.get_unique_constraints("foo"),
+                {"un_1": None, "un_2": None},
+            )
+            check(insp.get_foreign_keys("foo"), {"fk_1": None, "fk_2": None})
+
+        all_none()
+
+        c = next(c for c in t.constraints if c.name == "ch_1")
+        u = next(c for c in t.constraints if c.name == "un_1")
+        f = next(c for c in t.foreign_key_constraints if c.name == "fk_1")
+        p = t.primary_key
+        c.comment = "cc comment"
+        u.comment = "uc comment"
+        f.comment = "fc comment"
+        p.comment = "pk comment"
+        for cst in [c, u, f, p]:
+            connection.execute(sa_ddl.SetConstraintComment(cst))
+
+        insp = inspect(connection)
+        eq_(insp.get_pk_constraint("foo")["comment"], "pk comment")
+        check(
+            insp.get_check_constraints("foo"),
+            {"ch_1": "cc comment", "ch_2": None},
+        )
+        check(
+            insp.get_unique_constraints("foo"),
+            {"un_1": "uc comment", "un_2": None},
+        )
+        check(
+            insp.get_foreign_keys("foo"), {"fk_1": "fc comment", "fk_2": None}
+        )
+
+        for cst in [c, u, f, p]:
+            connection.execute(sa_ddl.DropConstraintComment(cst))
+        all_none()
 
 
 class CustomTypeReflectionTest(fixtures.TestBase):

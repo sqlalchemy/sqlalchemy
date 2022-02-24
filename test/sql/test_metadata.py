@@ -237,6 +237,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             deferrable="Z",
             initially="Q",
             link_to_name=True,
+            comment="foo",
         )
 
         fk1 = ForeignKey(c1, **kw)
@@ -259,6 +260,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
             name="name",
             initially=True,
             deferrable=True,
+            comment="foo",
             _create_rule=r,
         )
         c2 = c._copy()
@@ -266,6 +268,7 @@ class MetaDataTest(fixtures.TestBase, ComparesTables):
         eq_(str(c2.sqltext), "foo bar")
         eq_(c2.initially, True)
         eq_(c2.deferrable, True)
+        eq_(c2.comment, "foo")
         assert c2._create_rule is r
 
     def test_col_replace_w_constraint(self):
@@ -3576,6 +3579,35 @@ class ConstraintTest(fixtures.TestBase):
 
         for c in t3.constraints:
             assert c.table is t3
+
+    def test_ColumnCollectionConstraint_copy(self):
+        m = MetaData()
+
+        t = Table("tbl", m, Column("a", Integer), Column("b", Integer))
+        t2 = Table("t2", m, Column("a", Integer), Column("b", Integer))
+
+        kw = {
+            "comment": "baz",
+            "name": "ccc",
+            "initially": "foo",
+            "deferrable": "bar",
+        }
+
+        UniqueConstraint(t.c.a, **kw)
+        CheckConstraint(t.c.a > 5, **kw)
+        ForeignKeyConstraint([t.c.a], [t2.c.a], **kw)
+        PrimaryKeyConstraint(t.c.a, **kw)
+
+        m2 = MetaData()
+
+        t3 = t.to_metadata(m2)
+
+        eq_(len(t3.constraints), 4)
+
+        for c in t3.constraints:
+            assert c.table is t3
+            for k, v in kw.items():
+                eq_(getattr(c, k), v)
 
     def test_check_constraint_copy(self):
         m = MetaData()

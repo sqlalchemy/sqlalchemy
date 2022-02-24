@@ -974,6 +974,9 @@ class Inspector(inspection.Inspectable["Inspector"]):
         * ``name`` -
           optional name of the primary key constraint.
 
+        * ``comment`` -
+          optional comment on the primary key constraint.
+
         :param table_name: string name of the table.  For special quoting,
          use :class:`.quoted_name`.
 
@@ -1072,6 +1075,9 @@ class Inspector(inspection.Inspectable["Inspector"]):
 
         * ``name`` -
           optional name of the foreign key constraint.
+
+        * ``comment`` -
+          optional comment on the foreign key constraint
 
         :param table_name: string name of the table.  For special quoting,
          use :class:`.quoted_name`.
@@ -1273,6 +1279,9 @@ class Inspector(inspection.Inspectable["Inspector"]):
         * ``column_names`` -
           list of column names in order
 
+        * ``comment`` -
+          optional comment on the constraint
+
         :param table_name: string name of the table.  For special quoting,
          use :class:`.quoted_name`.
 
@@ -1461,6 +1470,9 @@ class Inspector(inspection.Inspectable["Inspector"]):
         * ``dialect_options`` -
           may or may not be present; a dictionary with additional
           dialect-specific options for this CHECK constraint
+
+        * ``comment`` -
+          optional comment on the constraint
 
           .. versionadded:: 1.3.8
 
@@ -1785,8 +1797,9 @@ class Inspector(inspection.Inspectable["Inspector"]):
                 if pk in cols_by_orig_name and pk not in exclude_columns
             ]
 
-            # update pk constraint name
+            # update pk constraint name and comment
             table.primary_key.name = pk_cons.get("name")
+            table.primary_key.comment = pk_cons.get("comment", None)
 
             # tell the PKConstraint to re-initialize
             # its column collection
@@ -1867,6 +1880,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
                     refspec,
                     conname,
                     link_to_name=True,
+                    comment=fkey_d.get("comment"),
                     **options,
                 )
             )
@@ -1948,6 +1962,7 @@ class Inspector(inspection.Inspectable["Inspector"]):
         for const_d in constraints:
             conname = const_d["name"]
             columns = const_d["column_names"]
+            comment = const_d.get("comment")
             duplicates = const_d.get("duplicates_index")
             if include_columns and not set(columns).issubset(include_columns):
                 continue
@@ -1971,7 +1986,9 @@ class Inspector(inspection.Inspectable["Inspector"]):
                 else:
                     constrained_cols.append(constrained_col)
             table.append_constraint(
-                sa_schema.UniqueConstraint(*constrained_cols, name=conname)
+                sa_schema.UniqueConstraint(
+                    *constrained_cols, name=conname, comment=comment
+                )
             )
 
     def _reflect_check_constraints(

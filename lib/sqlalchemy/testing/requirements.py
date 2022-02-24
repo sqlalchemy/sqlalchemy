@@ -625,6 +625,13 @@ class SuiteRequirements(Requirements):
 
     @property
     def comment_reflection(self):
+        """Indicates if the database support table comment reflection"""
+        return exclusions.closed()
+
+    @property
+    def constraint_comment_reflection(self):
+        """indicates if the database support constraint on constraints
+        and their reflection"""
         return exclusions.closed()
 
     @property

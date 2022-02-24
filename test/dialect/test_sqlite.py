@@ -2372,8 +2372,8 @@ class ConstraintReflectionTest(fixtures.TestBase):
         eq_(
             inspector.get_check_constraints("cp"),
             [
-                {"sqltext": "q > 1 AND q < 6", "name": None},
                 {"sqltext": "q == 1 OR (q > 2 AND q < 5)", "name": "cq"},
+                {"sqltext": "q > 1 AND q < 6", "name": None},
             ],
         )
 

@@ -5160,6 +5160,12 @@ class DDLCompiler(Compiled):
             drop.element, use_table=True
         )
 
+    def visit_set_constraint_comment(self, create, **kw):
+        raise exc.UnsupportedCompilationError(self, type(create))
+
+    def visit_drop_constraint_comment(self, drop, **kw):
+        raise exc.UnsupportedCompilationError(self, type(drop))
+
     def get_identity_options(self, identity_options):
         text = []
         if identity_options.increment is not None:

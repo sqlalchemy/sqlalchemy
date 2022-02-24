@@ -2428,6 +2428,36 @@ class PGDDLCompiler(compiler.DDLCompiler):
             create, prefix=prefix, **kw
         )
 
+    def _can_comment_on_constraint(self, ddl_instance):
+        constraint = ddl_instance.element
+        if constraint.name is None:
+            raise exc.CompileError(
+                f"Can't emit COMMENT ON for constraint {constraint!r}: "
+                "it has no name"
+            )
+        if constraint.table is None:
+            raise exc.CompileError(
+                f"Can't emit COMMENT ON for constraint {constraint!r}: "
+                "it has no associated table"
+            )
+
+    def visit_set_constraint_comment(self, create, **kw):
+        self._can_comment_on_constraint(create)
+        return "COMMENT ON CONSTRAINT %s ON %s IS %s" % (
+            self.preparer.format_constraint(create.element),
+            self.preparer.format_table(create.element.table),
+            self.sql_compiler.render_literal_value(
+                create.element.comment, sqltypes.String()
+            ),
+        )
+
+    def visit_drop_constraint_comment(self, drop, **kw):
+        self._can_comment_on_constraint(drop)
+        return "COMMENT ON CONSTRAINT %s ON %s IS NULL" % (
+            self.preparer.format_constraint(drop.element),
+            self.preparer.format_table(drop.element.table),
+        )
+
 
 class PGTypeCompiler(compiler.GenericTypeCompiler):
     def visit_TSVECTOR(self, type_, **kw):
@@ -2873,6 +2903,7 @@ class PGDialect(default.DefaultDialect):
     postfetch_lastrowid = False
 
     supports_comments = True
+    supports_constraint_comments = True
     supports_default_values = True
 
     supports_default_metavalue = True
@@ -3697,6 +3728,12 @@ class PGDialect(default.DefaultDialect):
                 sql.func.generate_subscripts(
                     pg_catalog.pg_constraint.c.conkey, 1
                 ).label("ord"),
+                pg_catalog.pg_description.c.description,
+            )
+            .outerjoin(
+                pg_catalog.pg_description,
+                pg_catalog.pg_description.c.objoid
+                == pg_catalog.pg_constraint.c.oid,
             )
             .where(
                 pg_catalog.pg_constraint.c.contype == bindparam("contype"),
@@ -3709,6 +3746,7 @@ class PGDialect(default.DefaultDialect):
             select(
                 con_sq.c.conrelid,
                 con_sq.c.conname,
+                con_sq.c.description,
                 pg_catalog.pg_attribute.c.attname,
             )
             .select_from(pg_catalog.pg_attribute)
@@ -3728,6 +3766,7 @@ class PGDialect(default.DefaultDialect):
                 attr_sq.c.conrelid,
                 sql.func.array_agg(attr_sq.c.attname).label("cols"),
                 attr_sq.c.conname,
+                sql.func.min(attr_sq.c.description).label("description"),
             )
             .group_by(attr_sq.c.conrelid, attr_sq.c.conname)
             .order_by(attr_sq.c.conrelid, attr_sq.c.conname)
@@ -3751,16 +3790,16 @@ class PGDialect(default.DefaultDialect):
             )
 
             result_by_oid = defaultdict(list)
-            for oid, cols, constraint_name in result:
-                result_by_oid[oid].append((cols, constraint_name))
+            for oid, cols, constraint_name, comment in result:
+                result_by_oid[oid].append((cols, constraint_name, comment))
 
             for oid, tablename in batch:
                 for_oid = result_by_oid.get(oid, ())
                 if for_oid:
-                    for cols, constraint in for_oid:
-                        yield tablename, cols, constraint
+                    for cols, constraint, comment in for_oid:
+                        yield tablename, cols, constraint, comment
                 else:
-                    yield tablename, None, None
+                    yield tablename, None, None, None
 
     @reflection.cache
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
@@ -3790,11 +3829,12 @@ class PGDialect(default.DefaultDialect):
                 {
                     "constrained_columns": [] if cols is None else cols,
                     "name": pk_name,
+                    "comment": comment,
                 }
                 if pk_name is not None
                 else default(),
             )
-            for (table_name, cols, pk_name) in result
+            for table_name, cols, pk_name, comment in result
         )
 
     @reflection.cache
@@ -3836,6 +3876,7 @@ class PGDialect(default.DefaultDialect):
                     else_=None,
                 ),
                 pg_namespace_ref.c.nspname,
+                pg_catalog.pg_description.c.description,
             )
             .select_from(pg_catalog.pg_class)
             .outerjoin(
@@ -3853,6 +3894,11 @@ class PGDialect(default.DefaultDialect):
             .outerjoin(
                 pg_namespace_ref,
                 pg_class_ref.c.relnamespace == pg_namespace_ref.c.oid,
+            )
+            .outerjoin(
+                pg_catalog.pg_description,
+                pg_catalog.pg_description.c.objoid
+                == pg_catalog.pg_constraint.c.oid,
             )
             .order_by(
                 pg_catalog.pg_class.c.relname,
@@ -3901,7 +3947,7 @@ class PGDialect(default.DefaultDialect):
 
         fkeys = defaultdict(list)
         default = ReflectionDefaults.foreign_keys
-        for table_name, conname, condef, conschema in result:
+        for table_name, conname, condef, conschema, comment in result:
             # ensure that each table has an entry, even if it has
             # no foreign keys
             if conname is None:
@@ -3973,6 +4019,7 @@ class PGDialect(default.DefaultDialect):
                 "referred_table": referred_table,
                 "referred_columns": referred_columns,
                 "options": options,
+                "comment": comment,
             }
             table_fks.append(fkey_d)
         return fkeys.items()
@@ -4242,7 +4289,7 @@ class PGDialect(default.DefaultDialect):
         # each table can have multiple unique constraints
         uniques = defaultdict(list)
         default = ReflectionDefaults.unique_constraints
-        for (table_name, cols, con_name) in result:
+        for table_name, cols, con_name, comment in result:
             # ensure a list is created for each table. leave it empty if
             # the table has no unique cosntraint
             if con_name is None:
@@ -4253,6 +4300,7 @@ class PGDialect(default.DefaultDialect):
                 {
                     "column_names": cols,
                     "name": con_name,
+                    "comment": comment,
                 }
             )
         return uniques.items()
@@ -4339,6 +4387,7 @@ class PGDialect(default.DefaultDialect):
                     ),
                     else_=None,
                 ),
+                pg_catalog.pg_description.c.description,
             )
             .select_from(pg_catalog.pg_class)
             .outerjoin(
@@ -4348,6 +4397,15 @@ class PGDialect(default.DefaultDialect):
                     == pg_catalog.pg_constraint.c.conrelid,
                     pg_catalog.pg_constraint.c.contype == "c",
                 ),
+            )
+            .outerjoin(
+                pg_catalog.pg_description,
+                pg_catalog.pg_description.c.objoid
+                == pg_catalog.pg_constraint.c.oid,
+            )
+            .order_by(
+                pg_catalog.pg_class.c.relname,
+                pg_catalog.pg_constraint.c.conname,
             )
             .where(self._pg_class_relkind_condition(relkinds))
         )
@@ -4369,7 +4427,7 @@ class PGDialect(default.DefaultDialect):
 
         check_constraints = defaultdict(list)
         default = ReflectionDefaults.check_constraints
-        for table_name, check_name, src in result:
+        for table_name, check_name, src, comment in result:
             # only two cases for check_name and src: both null or both defined
             if check_name is None and src is None:
                 check_constraints[(schema, table_name)] = default()
@@ -4391,7 +4449,11 @@ class PGDialect(default.DefaultDialect):
                 sqltext = re.compile(
                     r"^[\s\n]*\((.+)\)[\s\n]*$", flags=re.DOTALL
                 ).sub(r"\1", m.group(1))
-            entry = {"name": check_name, "sqltext": sqltext}
+            entry = {
+                "name": check_name,
+                "sqltext": sqltext,
+                "comment": comment,
+            }
             if m and m.group(2):
                 entry["dialect_options"] = {"not_valid": True}
 

@@ -2392,6 +2392,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         link_to_name: bool = False,
         match: Optional[str] = None,
         info: Optional[_InfoType] = None,
+        comment: Optional[str] = None,
         _unresolvable: bool = False,
         **dialect_kw: Any,
     ):
@@ -2453,6 +2454,11 @@ class ForeignKey(DialectKWArgs, SchemaItem):
 
             .. versionadded:: 1.0.0
 
+        :param comment: Optional string that will render an SQL comment on
+          foreign key constraint creation.
+
+            .. versionadded:: 2.0
+
         :param \**dialect_kw:  Additional keyword arguments are dialect
             specific, and passed in the form ``<dialectname>_<argname>``.  The
             arguments are ultimately handled by a corresponding
@@ -2499,6 +2505,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         self.initially = initially
         self.link_to_name = link_to_name
         self.match = match
+        self.comment = comment
         if info:
             self.info = info
         self._unvalidated_dialect_kw = dialect_kw
@@ -2539,6 +2546,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
             initially=self.initially,
             link_to_name=self.link_to_name,
             match=self.match,
+            comment=self.comment,
             **self._unvalidated_dialect_kw,
         )
         return self._schema_item_copy(fk)
@@ -2857,6 +2865,7 @@ class ForeignKey(DialectKWArgs, SchemaItem):
                 deferrable=self.deferrable,
                 initially=self.initially,
                 match=self.match,
+                comment=self.comment,
                 **self._unvalidated_dialect_kw,
             )
             self.constraint._append_element(column, self)
@@ -3594,6 +3603,7 @@ class Constraint(DialectKWArgs, HasConditionalDDL, SchemaItem):
         deferrable: Optional[bool] = None,
         initially: Optional[str] = None,
         info: Optional[_InfoType] = None,
+        comment: Optional[str] = None,
         _create_rule: Optional[Any] = None,
         _type_bound: bool = False,
         **dialect_kw: Any,
@@ -3615,6 +3625,11 @@ class Constraint(DialectKWArgs, HasConditionalDDL, SchemaItem):
             :attr:`.SchemaItem.info` attribute of this object.
 
             .. versionadded:: 1.0.0
+
+        :param comment: Optional string that will render an SQL comment on
+          foreign key constraint creation.
+
+            .. versionadded:: 2.0
 
         :param \**dialect_kw:  Additional keyword arguments are dialect
             specific, and passed in the form ``<dialectname>_<argname>``.  See
@@ -3639,6 +3654,7 @@ class Constraint(DialectKWArgs, HasConditionalDDL, SchemaItem):
         self._type_bound = _type_bound
         util.set_creation_order(self)
         self._validate_dialect_kwargs(dialect_kw)
+        self.comment = comment
 
     def _should_create_for_compiler(
         self, compiler: DDLCompiler, **kw: Any
@@ -3921,6 +3937,7 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
                 _copy_expression(expr, self.parent, target_table)
                 for expr in self._columns
             ],
+            comment=self.comment,
             **constraint_kwargs,
         )
         return self._schema_item_copy(c)
@@ -4049,6 +4066,7 @@ class CheckConstraint(ColumnCollectionConstraint):
             deferrable=self.deferrable,
             _create_rule=self._create_rule,
             table=target_table,
+            comment=self.comment,
             _autoattach=False,
             _type_bound=self._type_bound,
         )
@@ -4085,6 +4103,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
         match: Optional[str] = None,
         table: Optional[Table] = None,
         info: Optional[_InfoType] = None,
+        comment: Optional[str] = None,
         **dialect_kw: Any,
     ) -> None:
         r"""Construct a composite-capable FOREIGN KEY.
@@ -4149,6 +4168,11 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
 
             .. versionadded:: 1.0.0
 
+        :param comment: Optional string that will render an SQL comment on
+          foreign key constraint creation.
+
+            .. versionadded:: 2.0
+
         :param \**dialect_kw:  Additional keyword arguments are dialect
           specific, and passed in the form ``<dialectname>_<argname>``.  See
           the documentation regarding an individual dialect at
@@ -4164,6 +4188,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
             deferrable=deferrable,
             initially=initially,
             info=info,
+            comment=comment,
             **dialect_kw,
         )
         self.onupdate = onupdate
@@ -4360,6 +4385,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
             initially=self.initially,
             link_to_name=self.link_to_name,
             match=self.match,
+            comment=self.comment,
         )
         for self_fk, other_fk in zip(self.elements, fkc.elements):
             self_fk._schema_item_copy(other_fk)

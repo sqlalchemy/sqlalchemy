@@ -3013,6 +3013,7 @@ class MySQLDialect(default.DefaultDialect):
             {"name": spec["name"], "sqltext": spec["sqltext"]}
             for spec in parsed_state.ck_constraints
         ]
+        cks.sort(key=lambda d: d["name"] or "~")  # sort None as last
         return cks if cks else ReflectionDefaults.check_constraints()
 
     @reflection.cache

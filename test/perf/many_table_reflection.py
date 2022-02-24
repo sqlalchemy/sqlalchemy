@@ -100,7 +100,7 @@ def generate_meta(schema_name, table_number, min_cols, max_cols, dialect_name):
 def log(fn):
     @wraps(fn)
     def wrap(*a, **kw):
-        print("Running ", fn.__name__, "...", flush=True, end="")
+        print("Running", fn.__name__, "...", flush=True, end="")
         try:
             r = fn(*a, **kw)
         except NotImplementedError:

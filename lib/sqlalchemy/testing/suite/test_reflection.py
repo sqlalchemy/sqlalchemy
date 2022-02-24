@@ -415,35 +415,29 @@ class ComponentReflectionTest(ComparesTables, fixtures.TablesTest):
             schema_prefix = ""
 
         if testing.requires.self_referential_foreign_keys.enabled:
-            users = Table(
-                "users",
-                metadata,
-                Column("user_id", sa.INT, primary_key=True),
-                Column("test1", sa.CHAR(5), nullable=False),
-                Column("test2", sa.Float(), nullable=False),
-                Column(
-                    "parent_user_id",
-                    sa.Integer,
-                    sa.ForeignKey(
-                        "%susers.user_id" % schema_prefix, name="user_id_fk"
-                    ),
+            parent_id_args = (
+                ForeignKey(
+                    "%susers.user_id" % schema_prefix, name="user_id_fk"
                 ),
-                sa.CheckConstraint("test2 > 0", name="test2_gt_zero"),
-                schema=schema,
-                test_needs_fk=True,
             )
         else:
-            users = Table(
-                "users",
-                metadata,
-                Column("user_id", sa.INT, primary_key=True),
-                Column("test1", sa.CHAR(5), nullable=False),
-                Column("test2", sa.Float(), nullable=False),
-                Column("parent_user_id", sa.Integer),
-                sa.CheckConstraint("test2 > 0", name="test2_gt_zero"),
-                schema=schema,
-                test_needs_fk=True,
-            )
+            parent_id_args = ()
+        users = Table(
+            "users",
+            metadata,
+            Column("user_id", sa.INT, primary_key=True),
+            Column("test1", sa.CHAR(5), nullable=False),
+            Column("test2", sa.Float(), nullable=False),
+            Column("parent_user_id", sa.Integer, *parent_id_args),
+            sa.CheckConstraint(
+                "test2 > 0",
+                name="zz_test2_gt_zero",
+                comment="users check constraint",
+            ),
+            sa.CheckConstraint("test2 <= 1000"),
+            schema=schema,
+            test_needs_fk=True,
+        )
 
         Table(
             "dingalings",
@@ -452,10 +446,16 @@ class ComponentReflectionTest(ComparesTables, fixtures.TablesTest):
             Column(
                 "address_id",
                 sa.Integer,
-                sa.ForeignKey(
+                ForeignKey(
                     "%semail_addresses.address_id" % schema_prefix,
-                    name="email_add_id_fg",
+                    name="zz_email_add_id_fg",
+                    comment="di fk comment",
                 ),
+            ),
+            Column(
+                "id_user",
+                sa.Integer,
+                ForeignKey("%susers.user_id" % schema_prefix),
             ),
             Column("data", sa.String(30), unique=True),
             sa.CheckConstraint(
@@ -463,7 +463,10 @@ class ComponentReflectionTest(ComparesTables, fixtures.TablesTest):
                 name="address_id_gt_zero",
             ),
             sa.UniqueConstraint(
-                "address_id", "dingaling_id", name="zz_dingalings_multiple"
+                "address_id",
+                "dingaling_id",
+                name="zz_dingalings_multiple",
+                comment="di unique comment",
             ),
             schema=schema,
             test_needs_fk=True,
@@ -472,11 +475,11 @@ class ComponentReflectionTest(ComparesTables, fixtures.TablesTest):
             "email_addresses",
             metadata,
             Column("address_id", sa.Integer),
-            Column(
-                "remote_user_id", sa.Integer, sa.ForeignKey(users.c.user_id)
-            ),
+            Column("remote_user_id", sa.Integer, ForeignKey(users.c.user_id)),
             Column("email_address", sa.String(20), index=True),
-            sa.PrimaryKeyConstraint("address_id", name="email_ad_pk"),
+            sa.PrimaryKeyConstraint(
+                "address_id", name="email_ad_pk", comment="ea pk comment"
+            ),
             schema=schema,
             test_needs_fk=True,
         )
@@ -799,6 +802,7 @@ class ComponentReflectionTest(ComparesTables, fixtures.TablesTest):
             (schema, "dingalings_v"): [
                 col("dingaling_id", auto="omit", nullable=mock.ANY),
                 col("address_id"),
+                col("id_user"),
                 col("data"),
             ]
         }
@@ -831,6 +835,7 @@ class ComponentReflectionTest(ComparesTables, fixtures.TablesTest):
             (schema, "dingalings"): [
                 pk("dingaling_id"),
                 col("address_id"),
+                col("id_user"),
                 col("data"),
             ],
             (schema, "email_addresses"): [
@@ -873,8 +878,12 @@ class ComponentReflectionTest(ComparesTables, fixtures.TablesTest):
         kind=ObjectKind.ANY,
         filter_names=None,
     ):
-        def pk(*cols, name=mock.ANY):
-            return {"constrained_columns": list(cols), "name": name}
+        def pk(*cols, name=mock.ANY, comment=None):
+            return {
+                "constrained_columns": list(cols),
+                "name": name,
+                "comment": comment,
+            }
 
         empty = pk(name=None)
         if testing.requires.materialized_views_reflect_pk.enabled:
@@ -890,7 +899,9 @@ class ComponentReflectionTest(ComparesTables, fixtures.TablesTest):
         tables = {
             (schema, "users"): pk("user_id"),
             (schema, "dingalings"): pk("dingaling_id"),
-            (schema, "email_addresses"): pk("address_id", name="email_ad_pk"),
+            (schema, "email_addresses"): pk(
+                "address_id", name="email_ad_pk", comment="ea pk comment"
+            ),
             (schema, "comment_test"): pk("id"),
             (schema, "no_constraints"): empty,
             (schema, "local_table"): pk("id"),
@@ -926,7 +937,14 @@ class ComponentReflectionTest(ComparesTables, fixtures.TablesTest):
                     or config.db.dialect.default_schema_name == other
                 )
 
-        def fk(cols, ref_col, ref_table, ref_schema=schema, name=mock.ANY):
+        def fk(
+            cols,
+            ref_col,
+            ref_table,
+            ref_schema=schema,
+            name=mock.ANY,
+            comment=None,
+        ):
             return {
                 "constrained_columns": cols,
                 "referred_columns": ref_col,
@@ -936,6 +954,7 @@ class ComponentReflectionTest(ComparesTables, fixtures.TablesTest):
                 if ref_schema is not None
                 else tt(),
                 "referred_table": ref_table,
+                "comment": comment,
             }
 
         materialized = {(schema, "dingalings_v"): []}
@@ -950,12 +969,14 @@ class ComponentReflectionTest(ComparesTables, fixtures.TablesTest):
                 fk(["parent_user_id"], ["user_id"], "users", name="user_id_fk")
             ],
             (schema, "dingalings"): [
+                fk(["id_user"], ["user_id"], "users"),
                 fk(
                     ["address_id"],
                     ["address_id"],
                     "email_addresses",
-                    name="email_add_id_fg",
-                )
+                    name="zz_email_add_id_fg",
+                    comment="di fk comment",
+                ),
             ],
             (schema, "email_addresses"): [
                 fk(["remote_user_id"], ["user_id"], "users")
@@ -1053,6 +1074,7 @@ class ComponentReflectionTest(ComparesTables, fixtures.TablesTest):
             ],
             (schema, "dingalings"): [
                 *idx("data", name=mock.ANY, unique=True, duplicates=True),
+                *idx("id_user", name=mock.ANY, fk=True),
                 *idx(
                     "address_id",
                     "dingaling_id",
@@ -1118,13 +1140,16 @@ class ComponentReflectionTest(ComparesTables, fixtures.TablesTest):
         filter_names=None,
         all_=False,
     ):
-        def uc(*cols, name, duplicates_index=None, is_index=False):
+        def uc(
+            *cols, name, duplicates_index=None, is_index=False, comment=None
+        ):
             req = testing.requires.unique_index_reflect_as_unique_constraints
             if is_index and not req.enabled:
                 return ()
             res = {
                 "column_names": list(cols),
                 "name": name,
+                "comment": comment,
             }
             if duplicates_index:
                 res["duplicates_index"] = duplicates_index
@@ -1154,6 +1179,7 @@ class ComponentReflectionTest(ComparesTables, fixtures.TablesTest):
                     "dingaling_id",
                     name="zz_dingalings_multiple",
                     duplicates_index="zz_dingalings_multiple",
+                    comment="di unique comment",
                 ),
             ],
             (schema, "email_addresses"): [],
@@ -1196,8 +1222,8 @@ class ComponentReflectionTest(ComparesTables, fixtures.TablesTest):
                 )
                 return self in res
 
-        def cc(text, name):
-            return {"sqltext": tt(text), "name": name}
+        def cc(text, name, comment=None):
+            return {"sqltext": tt(text), "name": name, "comment": comment}
 
         # print({1: "test2 > (0)::double precision"} == {1: tt("test2 > 0")})
         # assert 0
@@ -1209,7 +1235,14 @@ class ComponentReflectionTest(ComparesTables, fixtures.TablesTest):
         }
         self._resolve_views(views, materialized)
         tables = {
-            (schema, "users"): [cc("test2 > 0", "test2_gt_zero")],
+            (schema, "users"): [
+                cc("test2 <= 1000", mock.ANY),
+                cc(
+                    "test2 > 0",
+                    "zz_test2_gt_zero",
+                    comment="users check constraint",
+                ),
+            ],
             (schema, "dingalings"): [
                 cc(
                     "address_id > 0 and address_id < 1000",
@@ -1764,6 +1797,7 @@ class ComponentReflectionTest(ComparesTables, fixtures.TablesTest):
             dupe = refl.pop("duplicates_index", None)
             if dupe:
                 names_that_duplicate_index.add(dupe)
+            eq_(refl.pop("comment", None), None)
             eq_(orig, refl)
 
         reflected_metadata = MetaData()
@@ -2459,7 +2493,7 @@ class ComponentReflectionTestExtra(fixtures.TestBase):
             "table",
             metadata,
             Column("id", Integer, primary_key=True),
-            Column("x_id", Integer, sa.ForeignKey("x.id", name="xid")),
+            Column("x_id", Integer, ForeignKey("x.id", name="xid")),
             Column("test", String(10)),
             test_needs_fk=True,
         )

@@ -1,0 +1,11 @@
+.. change::
+    :tags: schema, postgresql
+    :tickets: 5677
+
+    Added support for comments on :class:`.Constraint` objects, including
+    DDL and reflection; the field is added to the base :class:`.Constraint`
+    class and corresponding constructors, however PostgreSQL is the only
+    included backend to support the feature right now.
+    See parameters such as :paramref:`.ForeignKeyConstraint.comment`,
+    :paramref:`.UniqueConstraint.comment` or
+    :paramref:`.CheckConstraint.comment`.
