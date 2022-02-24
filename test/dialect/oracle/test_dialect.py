@@ -58,7 +58,7 @@ class DialectTest(fixtures.TestBase):
                 exc.InvalidRequestError,
                 "cx_Oracle version 5.2 and above are supported",
                 cx_oracle.OracleDialect_cx_oracle,
-                dbapi=Mock(),
+                dbapi=mock.Mock(),
             )
 
         with mock.patch(
@@ -66,12 +66,60 @@ class DialectTest(fixtures.TestBase):
             "_parse_cx_oracle_ver",
             lambda self, vers: (5, 3, 1),
         ):
-            cx_oracle.OracleDialect_cx_oracle(dbapi=Mock())
+            cx_oracle.OracleDialect_cx_oracle(dbapi=mock.Mock())
 
 
 class DialectWBackendTest(fixtures.TestBase):
     __backend__ = True
     __only_on__ = "oracle"
+
+    @testing.combinations(
+        (
+            "db is not connected",
+            None,
+            True,
+        ),
+        (
+            "ORA-1234 fake error",
+            1234,
+            False,
+        ),
+        (
+            "ORA-03114: not connected to ORACLE",
+            3114,
+            True,
+        ),
+        (
+            "DPI-1010: not connected",
+            None,
+            True,
+        ),
+        (
+            "DPI-1010: make sure we read the code",
+            None,
+            True,
+        ),
+        (
+            "DPI-1080: connection was closed by ORA-3113",
+            None,
+            True,
+        ),
+        (
+            "DPI-1234: some other DPI error",
+            None,
+            False,
+        ),
+    )
+    @testing.only_on("oracle+cx_oracle")
+    def test_is_disconnect(self, message, code, expected):
+
+        dialect = testing.db.dialect
+
+        exception_obj = dialect.dbapi.InterfaceError()
+        exception_obj.args = (Exception(message),)
+        exception_obj.args[0].code = code
+
+        eq_(dialect.is_disconnect(exception_obj, None, None), expected)
 
     def test_hypothetical_not_implemented_isolation_level(self):
         engine = engines.testing_engine()

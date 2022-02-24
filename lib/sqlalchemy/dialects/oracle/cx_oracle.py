@@ -1318,7 +1318,14 @@ class OracleDialect_cx_oracle(OracleDialect):
         ) and "not connected" in str(e):
             return True
 
-        if hasattr(error, "code"):
+        if hasattr(error, "code") and error.code in {
+            28,
+            3114,
+            3113,
+            3135,
+            1033,
+            2396,
+        }:
             # ORA-00028: your session has been killed
             # ORA-03114: not connected to ORACLE
             # ORA-03113: end-of-file on communication channel
@@ -1326,9 +1333,15 @@ class OracleDialect_cx_oracle(OracleDialect):
             # ORA-01033: ORACLE initialization or shutdown in progress
             # ORA-02396: exceeded maximum idle time, please connect again
             # TODO: Others ?
-            return error.code in (28, 3114, 3113, 3135, 1033, 2396)
-        else:
-            return False
+            return True
+
+        if re.match(r"^(?:DPI-1010|DPI-1080)", str(e)):
+            # DPI-1010: not connected
+            # DPI-1080: connection was closed by ORA-3113
+            # TODO: others?
+            return True
+
+        return False
 
     def create_xid(self):
         """create a two-phase transaction ID.
