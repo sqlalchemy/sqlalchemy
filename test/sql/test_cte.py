@@ -1601,6 +1601,51 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             },
         )
 
+    def test_textual_select_uses_independent_cte_one(self):
+        """test #7760"""
+        products = table("products", column("id"), column("price"))
+
+        upd_cte = (
+            products.update().values(price=10).where(products.c.price > 50)
+        ).cte()
+
+        stmt = (
+            text(
+                "SELECT products.id, products.price "
+                "FROM products WHERE products.price < :price_2"
+            )
+            .columns(products.c.id, products.c.price)
+            .bindparams(price_2=45)
+            .add_cte(upd_cte)
+        )
+
+        self.assert_compile(
+            stmt,
+            "WITH anon_1 AS (UPDATE products SET price=:param_1 "
+            "WHERE products.price > :price_1) "
+            "SELECT products.id, products.price "
+            "FROM products WHERE products.price < :price_2",
+            checkparams={"param_1": 10, "price_1": 50, "price_2": 45},
+        )
+
+    def test_textual_select_uses_independent_cte_two(self):
+
+        foo = table("foo", column("id"))
+        bar = table("bar", column("id"), column("attr"), column("foo_id"))
+        s1 = select(foo.c.id)
+        s2 = text(
+            "SELECT bar.id, bar.attr FROM bar "
+            "WHERE bar.foo_id IN (SELECT id FROM baz)"
+        ).columns(bar.c.id, bar.c.attr)
+        s3 = s2.add_cte(s1.cte(name="baz"))
+
+        self.assert_compile(
+            s3,
+            "WITH baz AS (SELECT foo.id AS id FROM foo) "
+            "SELECT bar.id, bar.attr FROM bar WHERE bar.foo_id IN "
+            "(SELECT id FROM baz)",
+        )
+
     def test_insert_uses_independent_cte(self):
         products = table("products", column("id"), column("price"))
 

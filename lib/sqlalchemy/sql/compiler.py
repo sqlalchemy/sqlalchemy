@@ -1596,6 +1596,17 @@ class SQLCompiler(Compiled):
         toplevel = not self.stack
         entry = self._default_stack_entry if toplevel else self.stack[-1]
 
+        new_entry = {
+            "correlate_froms": set(),
+            "asfrom_froms": set(),
+            "selectable": taf,
+        }
+        self.stack.append(new_entry)
+
+        if taf._independent_ctes:
+            for cte in taf._independent_ctes:
+                cte._compiler_dispatch(self, **kw)
+
         populate_result_map = (
             toplevel
             or (
@@ -1623,7 +1634,12 @@ class SQLCompiler(Compiled):
                     add_to_result_map=self._add_to_result_map,
                 )
 
-        return self.process(taf.element, **kw)
+        text = self.process(taf.element, **kw)
+        if self.ctes:
+            nesting_level = len(self.stack) if not toplevel else None
+            text = self._render_cte_clause(nesting_level=nesting_level) + text
+
+        return text
 
     def visit_null(self, expr, **kw):
         return "NULL"
