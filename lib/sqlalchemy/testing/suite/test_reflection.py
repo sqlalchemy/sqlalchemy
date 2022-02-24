@@ -405,63 +405,65 @@ class ComponentReflectionTest(fixtures.TablesTest):
             comment=r"""the test % ' " \ table comment""",
         )
         # Test constraint comments
-        if testing.requires.foreign_key_constraint_reflection:
-            Table(
-                "fk_constraint_comment_test_1",
-                metadata,
-                Column("id", sa.Integer, primary_key=True),
-                schema=schema,
-                test_needs_fk=True,
-            )
-            Table(
-                "fk_constraint_comment_test_2",
-                metadata,
-                Column("id", sa.Integer, primary_key=True),
-                Column(
-                    "another_id",
-                    sa.Integer,
-                    sa.ForeignKey(
-                        "%sfk_constraint_comment_test_1.id" % schema_prefix,
-                        comment="Comment",
-                        name="another_id_fk",
+        if testing.requires.constraint_comment_reflection.enabled:
+            if testing.requires.foreign_key_constraint_reflection.enabled:
+                Table(
+                    "fk_constraint_comment_test_1",
+                    metadata,
+                    Column("id", sa.Integer, primary_key=True),
+                    schema=schema,
+                    test_needs_fk=True,
+                )
+                Table(
+                    "fk_constraint_comment_test_2",
+                    metadata,
+                    Column("id", sa.Integer, primary_key=True),
+                    Column(
+                        "another_id",
+                        sa.Integer,
+                        sa.ForeignKey(
+                            "%sfk_constraint_comment_test_1.id"
+                            % schema_prefix,
+                            comment="Comment",
+                            name="another_id_fk",
+                        ),
                     ),
-                ),
-                schema=schema,
-                test_needs_fk=True,
-            )
-        if testing.requires.primary_key_constraint_reflection:
-            Table(
-                "pk_constraint_comment_test",
-                metadata,
-                Column("id", sa.Integer, primary_key=True),
-                sa.PrimaryKeyConstraint(
-                    "id", name="id_pk", comment="id_pk comment"
-                ),
-                schema=schema,
-            )
+                    schema=schema,
+                    test_needs_fk=True,
+                )
+            if testing.requires.primary_key_constraint_reflection.enabled:
+                Table(
+                    "pk_constraint_comment_test",
+                    metadata,
+                    Column("id", sa.Integer, primary_key=True),
+                    sa.PrimaryKeyConstraint(
+                        "id", name="id_pk", comment="id_pk comment"
+                    ),
+                    schema=schema,
+                )
 
-        if testing.requires.check_constraint_reflection:
-            Table(
-                "check_constraint_comment_test",
-                metadata,
-                Column("id", sa.Integer, primary_key=True),
-                sa.CheckConstraint(
-                    "id < 100", name="cc1", comment="id_cc comment"
-                ),
-                schema=schema,
-            )
+            if testing.requires.check_constraint_reflection.enabled:
+                Table(
+                    "check_constraint_comment_test",
+                    metadata,
+                    Column("id", sa.Integer, primary_key=True),
+                    sa.CheckConstraint(
+                        "id < 100", name="cc1", comment="id_cc comment"
+                    ),
+                    schema=schema,
+                )
 
-        if testing.requires.unique_constraint_reflection:
-            Table(
-                "unique_constraint_comment_test",
-                metadata,
-                Column("id", sa.Integer, primary_key=True),
-                Column("data", sa.String(30)),
-                sa.UniqueConstraint(
-                    "data", name="uc1", comment="id_uc comment"
-                ),
-                schema=schema,
-            )
+            if testing.requires.unique_constraint_reflection.enabled:
+                Table(
+                    "unique_constraint_comment_test",
+                    metadata,
+                    Column("id", sa.Integer, primary_key=True),
+                    Column("data", sa.String(30)),
+                    sa.UniqueConstraint(
+                        "data", name="uc1", comment="id_uc comment"
+                    ),
+                    schema=schema,
+                )
 
         if testing.requires.cross_schema_fk_reflection.enabled:
             if schema is None:
@@ -746,7 +748,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
     def _test_get_constraint_comments(self, schema=None):
         insp = inspect(self.bind)
 
-        if testing.requires.foreign_key_constraint_reflection:
+        if testing.requires.foreign_key_constraint_reflection.enabled:
             fkeys = insp.get_foreign_keys(
                 "fk_constraint_comment_test_2", schema=schema
             )
@@ -757,7 +759,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
             eq_(named_fkey["comment"], "Comment")
             eq_(named_fkey["referred_columns"], ["id"])
 
-        if testing.requires.primary_key_constraint_reflection:
+        if testing.requires.primary_key_constraint_reflection.enabled:
             cons = insp.get_pk_constraint(
                 "pk_constraint_comment_test", schema=schema
             )
@@ -765,7 +767,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
             eq_(pkeys, ["id"])
             eq_(cons["comment"], "id_pk comment")
 
-        if testing.requires.check_constraint_reflection:
+        if testing.requires.check_constraint_reflection.enabled:
             ccs = insp.get_check_constraints(
                 "check_constraint_comment_test", schema=schema
             )
@@ -780,7 +782,7 @@ class ComponentReflectionTest(fixtures.TablesTest):
                 ],
             )
 
-        if testing.requires.unique_constraint_reflection:
+        if testing.requires.unique_constraint_reflection.enabled:
             ucs = insp.get_unique_constraints(
                 "unique_constraint_comment_test", schema=schema
             )
