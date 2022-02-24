@@ -1403,7 +1403,7 @@ def text(text):
     For SQL statements where a colon is required verbatim, as within
     an inline string, use a backslash to escape::
 
-        t = text("SELECT * FROM users WHERE name='\:username'")
+        t = text(r"SELECT * FROM users WHERE name='\:username'")
 
     The :class:`_expression.TextClause`
     construct includes methods which can
