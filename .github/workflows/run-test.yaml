@@ -32,6 +32,9 @@ jobs:
           - "3.8"
           - "3.9"
           - "3.10"
+          # waiting on https://foss.heptapod.net/pypy/pypy/-/issues/3690
+          # which also seems to be in 3.9
+          # - "pypy-3.9"
         build-type:
           - "cext"
           - "nocext"
@@ -41,8 +44,8 @@ jobs:
 
         include:
           # autocommit tests fail on the ci for some reason
-          - python-version: "pypy-3.7"
-            pytest-args: "-k 'not test_autocommit_on and not test_turn_autocommit_off_via_default_iso_level and not test_autocommit_isolation_level'"
+          # - python-version: "pypy-3.9"
+          #   pytest-args: "-k 'not test_autocommit_on and not test_turn_autocommit_off_via_default_iso_level and not test_autocommit_isolation_level'"
           # add aiosqlite on linux
           - os: "ubuntu-latest"
             pytest-args: "--dbdriver pysqlite --dbdriver aiosqlite"
@@ -54,11 +57,11 @@ jobs:
           - os: "macos-latest"
             architecture: x86
           # pypy does not have cext
-          - python-version: "pypy-3.7"
-            build-type: "cext"
-          - os: "windows-latest"
-            python-version: "pypy-3.7"
-            architecture: x86
+          # - python-version: "pypy-3.9"
+          #   build-type: "cext"
+          # - os: "windows-latest"
+          #   python-version: "pypy-3.9"
+          #   architecture: x86
 
       fail-fast: false
 
