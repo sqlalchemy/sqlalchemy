@@ -578,7 +578,30 @@ class Float(Numeric):
         Construct a Float.
 
         :param precision: the numeric precision for use in DDL ``CREATE
-           TABLE``.
+           TABLE``. Backends **should** attempt to ensure this precision
+           indicates a number of digits for the generic
+           :class:`_sqltypes.Float` datatype.
+
+           .. note:: For the Oracle backend, the
+              :paramref:`_sqltypes.Float.precision` parameter is not accepted
+              when rendering DDL, as Oracle does not support float precision
+              specified as a number of decimal places. Instead, use the
+              Oracle-specific :class:`_oracle.FLOAT` datatype and specify the
+              :paramref:`_oracle.FLOAT.binary_precision` parameter. This is new
+              in version 2.0 of SQLAlchemy.
+
+              To create a database agnostic :class:`_types.Float` that
+              separately specifies binary precision for Oracle, use
+              :meth:`_types.TypeEngine.with_variant` as follows::
+
+                    from sqlalchemy import Column
+                    from sqlalchemy import Float
+                    from sqlalchemy.dialects import oracle
+
+                    Column(
+                        "float_data",
+                        Float(5).with_variant(oracle.FLOAT(binary_precision=16), "oracle")
+                    )
 
         :param asdecimal: the same flag as that of :class:`.Numeric`, but
           defaults to ``False``.   Note that setting this flag to ``True``
@@ -595,7 +618,7 @@ class Float(Numeric):
 
          .. versionadded:: 0.9.0
 
-        """
+        """  # noqa: E501
         self.precision = precision
         self.asdecimal = asdecimal
         self.decimal_return_scale = decimal_return_scale
@@ -609,6 +632,20 @@ class Float(Numeric):
             return processors.to_float
         else:
             return None
+
+
+class Double(Float):
+    """A type for double ``FLOAT`` floating point types.
+
+    Typically generates a ``DOUBLE`` or ``DOUBLE_PRECISION`` in DDL,
+    and otherwise acts like a normal :class:`.Float` on the Python
+    side.
+
+    .. versionadded:: 2.0
+
+    """
+
+    __visit_name__ = "double"
 
 
 class DateTime(_LookupExpressionAdapter, TypeEngine[dt.datetime]):
@@ -2769,35 +2806,93 @@ class TupleType(TypeEngine[Tuple[Any]]):
 
 class REAL(Float):
 
-    """The SQL REAL type."""
+    """The SQL REAL type.
+
+    .. seealso::
+
+        :class:`_types.Float` - documentation for the base type.
+
+    """
 
     __visit_name__ = "REAL"
 
 
 class FLOAT(Float):
 
-    """The SQL FLOAT type."""
+    """The SQL FLOAT type.
+
+    .. seealso::
+
+        :class:`_types.Float` - documentation for the base type.
+
+    """
 
     __visit_name__ = "FLOAT"
 
 
+class DOUBLE(Double):
+    """The SQL DOUBLE type.
+
+    .. versionadded:: 2.0
+
+    .. seealso::
+
+        :class:`_types.Double` - documentation for the base type.
+
+    """
+
+    __visit_name__ = "DOUBLE"
+
+
+class DOUBLE_PRECISION(Double):
+    """The SQL DOUBLE PRECISION type.
+
+    .. versionadded:: 2.0
+
+    .. seealso::
+
+        :class:`_types.Double` - documentation for the base type.
+
+    """
+
+    __visit_name__ = "DOUBLE_PRECISION"
+
+
 class NUMERIC(Numeric):
 
-    """The SQL NUMERIC type."""
+    """The SQL NUMERIC type.
+
+    .. seealso::
+
+        :class:`_types.Numeric` - documentation for the base type.
+
+    """
 
     __visit_name__ = "NUMERIC"
 
 
 class DECIMAL(Numeric):
 
-    """The SQL DECIMAL type."""
+    """The SQL DECIMAL type.
+
+    .. seealso::
+
+        :class:`_types.Numeric` - documentation for the base type.
+
+    """
 
     __visit_name__ = "DECIMAL"
 
 
 class INTEGER(Integer):
 
-    """The SQL INT or INTEGER type."""
+    """The SQL INT or INTEGER type.
+
+    .. seealso::
+
+        :class:`_types.Integer` - documentation for the base type.
+
+    """
 
     __visit_name__ = "INTEGER"
 
@@ -2807,14 +2902,26 @@ INT = INTEGER
 
 class SMALLINT(SmallInteger):
 
-    """The SQL SMALLINT type."""
+    """The SQL SMALLINT type.
+
+    .. seealso::
+
+        :class:`_types.SmallInteger` - documentation for the base type.
+
+    """
 
     __visit_name__ = "SMALLINT"
 
 
 class BIGINT(BigInteger):
 
-    """The SQL BIGINT type."""
+    """The SQL BIGINT type.
+
+    .. seealso::
+
+        :class:`_types.BigInteger` - documentation for the base type.
+
+    """
 
     __visit_name__ = "BIGINT"
 

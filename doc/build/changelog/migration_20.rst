@@ -340,6 +340,49 @@ customizable via the :paramref:`_sa.create_engine.poolclass` parameter.
 
 :ticket:`7490`
 
+.. _change_5465_oracle:
+
+New Oracle FLOAT type with binary precision; decimal precision not accepted directly
+------------------------------------------------------------------------------------
+
+A new datatype :class:`_oracle.FLOAT` has been added to the Oracle dialect, to
+accompany the addition of :class:`_sqltypes.Double` and database-specific
+:class:`_sqltypes.DOUBLE`, :class:`_sqltypes.DOUBLE_PRECISION` and
+:class:`_sqltypes.REAL` datatypes. Oracle's ``FLOAT`` accepts a so-called
+"binary precision" parameter that per Oracle documentation is roughly a
+standard "precision" value divided by 0.3103::
+
+    from sqlalchemy.dialects import oracle
+
+    Table(
+        "some_table", metadata,
+        Column("value", oracle.FLOAT(126))
+    )
+
+A binary precision value of 126 is synonymous with using the
+:class:`_sqltypes.DOUBLE_PRECISION` datatype, and a value of 63 is equivalent
+to using the :class:`_sqltypes.REAL` datatype.  Other precision values are
+specific to the :class:`_oracle.FLOAT` type itself.
+
+The SQLAlchemy :class:`_sqltypes.Float` datatype also accepts a "precision"
+parameter, but this is decimal precision which is not accepted by
+Oracle.  Rather than attempting to guess the conversion, the Oracle dialect
+will now raise an informative error if :class:`_sqltypes.Float` is used with
+a precision value against the Oracle backend.  To specify a
+:class:`_sqltypes.Float` datatype with an explicit precision value for
+supporting backends, while also supporting other backends, use
+the :meth:`_types.TypeEngine.with_variant` method as follows::
+
+    from sqlalchemy.types import Float
+    from sqlalchemy.dialects import oracle
+
+    Table(
+        "some_table", metadata,
+        Column("value", Float(5).with_variant(oracle.FLOAT(16), "oracle"))
+    )
+
+
+
 .. _migration_20_overview:
 
 1.x -> 2.x Migration Overview

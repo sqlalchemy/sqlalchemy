@@ -23,6 +23,7 @@ from sqlalchemy import DateTime
 from sqlalchemy import DECIMAL
 from sqlalchemy import dialects
 from sqlalchemy import distinct
+from sqlalchemy import Double
 from sqlalchemy import Enum
 from sqlalchemy import exc
 from sqlalchemy import FLOAT
@@ -277,6 +278,7 @@ class AdaptTest(fixtures.TestBase):
         eq_(types.Numeric(asdecimal=False).python_type, float)
         eq_(types.LargeBinary().python_type, bytes)
         eq_(types.Float().python_type, float)
+        eq_(types.Double().python_type, float)
         eq_(types.Interval().python_type, datetime.timedelta)
         eq_(types.Date().python_type, datetime.date)
         eq_(types.DateTime().python_type, datetime.datetime)
@@ -3454,6 +3456,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             dialects.postgresql.FLOAT(), "FLOAT", allow_dialect_select=True
         )
+
+    def test_default_compile_double(self):
+        self.assert_compile(Double(), "DOUBLE")
 
     def test_default_compile_mysql_integer(self):
         self.assert_compile(
