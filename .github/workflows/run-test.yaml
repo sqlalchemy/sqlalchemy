@@ -34,7 +34,9 @@ jobs:
           - "3.8"
           - "3.9"
           - "3.10"
-          - "pypy-3.7"
+          # waiting on https://foss.heptapod.net/pypy/pypy/-/issues/3690
+          # which also seems to be in 3.9
+          # - "pypy-3.9"
         build-type:
           - "cext"
           - "nocext"
