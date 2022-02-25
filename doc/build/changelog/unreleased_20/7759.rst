@@ -1,0 +1,12 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 7759
+
+    Added new parameter :paramref:`.HasCTE.add_cte.nest_here` to
+    :meth:`.HasCTE.add_cte` which will "nest" a given :class:`.CTE` at the
+    level of the parent statement. This parameter is equivalent to using the
+    :paramref:`.HasCTE.cte.nesting` parameter, but may be more intuitive in
+    some scenarios as it allows the nesting attribute to be set simultaneously
+    along with the explicit level of the CTE.
+
+    The :meth:`.HasCTE.add_cte` method also accepts multiple CTE objects.
