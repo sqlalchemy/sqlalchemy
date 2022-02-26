@@ -1310,6 +1310,20 @@ class EnumSetTest(
             [("", ""), ("", ""), ("two", "two"), (None, None)],
         )
 
+    @testing.combinations(
+        ([""]),
+        (["a"]),
+        (["a", "b"]),
+        (["a", "b", "c"]),
+        argnames="value",
+    )
+    def test_set_repr(self, value):
+        val = ", ".join((f"'{i}'" for i in value))
+        eq_(
+            repr(Column("e", mysql.SET(*value, retrieve_as_bitwise=True))),
+            f"Column('e', SET({val}), table=None)",
+        )
+
 
 def colspec(c):
     return testing.db.dialect.ddl_compiler(
