@@ -1453,7 +1453,10 @@ class Enum(Emulated, String, TypeEngine[Union[str, enum.Enum]], SchemaType):
     def __repr__(self):
         return util.generic_repr(
             self,
-            additional_kw=[("native_enum", True)],
+            additional_kw=[
+                ("native_enum", True),
+                ("create_constraint", False),
+            ],
             to_inspect=[Enum, SchemaType],
         )
 
