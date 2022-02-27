@@ -74,9 +74,6 @@ pooling mechanism issues a ``rollback()`` call on the DBAPI connection so that
 any transactional state or locks are removed, and the connection is ready for
 its next use.
 
-.. deprecated:: 2.0 The :class:`_engine.CursorResult` object is replaced in SQLAlchemy
-   2.0 with a newly refined object known as :class:`_future.Result`.
-
 Our example above illustrated the execution of a textual SQL string, which
 should be invoked by using the :func:`_expression.text` construct to indicate that
 we'd like to use textual SQL.  The :meth:`_engine.Connection.execute` method can of
