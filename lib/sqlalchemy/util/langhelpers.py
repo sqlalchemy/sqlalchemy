@@ -1418,40 +1418,38 @@ def counter() -> Callable[[], int]:
 
 
 def duck_type_collection(
-    specimen: Union[object, Type[Any]], default: Optional[Type[Any]] = None
-) -> Type[Any]:
+    specimen: Any, default: Optional[Type[Any]] = None
+) -> Optional[Type[Any]]:
     """Given an instance or class, guess if it is or is acting as one of
     the basic collection types: list, set and dict.  If the __emulates__
     property is present, return that preferentially.
     """
-    if typing.TYPE_CHECKING:
-        return object
-    else:
-        if hasattr(specimen, "__emulates__"):
-            # canonicalize set vs sets.Set to a standard: the builtin set
-            if specimen.__emulates__ is not None and issubclass(
-                specimen.__emulates__, set
-            ):
-                return set
-            else:
-                return specimen.__emulates__
 
-        isa = isinstance(specimen, type) and issubclass or isinstance
-        if isa(specimen, list):
-            return list
-        elif isa(specimen, set):
+    if hasattr(specimen, "__emulates__"):
+        # canonicalize set vs sets.Set to a standard: the builtin set
+        if specimen.__emulates__ is not None and issubclass(
+            specimen.__emulates__, set
+        ):
             return set
-        elif isa(specimen, dict):
-            return dict
-
-        if hasattr(specimen, "append"):
-            return list
-        elif hasattr(specimen, "add"):
-            return set
-        elif hasattr(specimen, "set"):
-            return dict
         else:
-            return default
+            return specimen.__emulates__  # type: ignore
+
+    isa = isinstance(specimen, type) and issubclass or isinstance
+    if isa(specimen, list):
+        return list
+    elif isa(specimen, set):
+        return set
+    elif isa(specimen, dict):
+        return dict
+
+    if hasattr(specimen, "append"):
+        return list
+    elif hasattr(specimen, "add"):
+        return set
+    elif hasattr(specimen, "set"):
+        return dict
+    else:
+        return default
 
 
 def assert_arg_type(arg: Any, argtype: Type[Any], name: str) -> Any:

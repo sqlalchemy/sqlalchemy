@@ -42,6 +42,7 @@ from .util import _orm_annotate
 from .util import _orm_deannotate
 from .util import CascadeOptions
 from .. import exc as sa_exc
+from .. import Exists
 from .. import log
 from .. import schema
 from .. import sql
@@ -52,6 +53,7 @@ from ..sql import expression
 from ..sql import operators
 from ..sql import roles
 from ..sql import visitors
+from ..sql.elements import SQLCoreOperations
 from ..sql.util import _deep_deannotate
 from ..sql.util import _shallow_annotate
 from ..sql.util import adapt_criterion_to_null
@@ -534,7 +536,11 @@ class Relationship(
                     )
                 )
 
-        def _criterion_exists(self, criterion=None, **kwargs):
+        def _criterion_exists(
+            self,
+            criterion: Optional[SQLCoreOperations[Any]] = None,
+            **kwargs: Any,
+        ) -> Exists[bool]:
             if getattr(self, "_of_type", None):
                 info = inspect(self._of_type)
                 target_mapper, to_selectable, is_aliased_class = (
@@ -1327,7 +1333,7 @@ class Relationship(
         return self.entity
 
     @util.memoized_property
-    def mapper(self) -> "Mapper":
+    def mapper(self) -> Mapper[_T]:
         """Return the targeted :class:`_orm.Mapper` for this
         :class:`.Relationship`.
 

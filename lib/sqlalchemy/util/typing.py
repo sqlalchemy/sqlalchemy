@@ -19,12 +19,19 @@ from . import compat
 
 _T = TypeVar("_T", bound=Any)
 
+Self = TypeVar("Self", bound=Any)
+
 if compat.py310:
     # why they took until py310 to put this in stdlib is beyond me,
     # I've been wanting it since py27
     from types import NoneType
 else:
     NoneType = type(None)  # type: ignore
+
+if typing.TYPE_CHECKING or compat.py38:
+    from typing import SupportsIndex as SupportsIndex
+else:
+    from typing_extensions import SupportsIndex as SupportsIndex
 
 if typing.TYPE_CHECKING or compat.py310:
     from typing import Annotated as Annotated

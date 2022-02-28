@@ -11,14 +11,17 @@
 
 from __future__ import annotations
 
+from enum import Enum
 import operator
 import typing
 from typing import Any
 from typing import Callable
+from typing import Dict
 from typing import Generic
 from typing import Optional
 from typing import overload
 from typing import Tuple
+from typing import Type
 from typing import TypeVar
 from typing import Union
 
@@ -29,11 +32,13 @@ from .. import util
 from ..sql.elements import SQLCoreOperations
 from ..util.langhelpers import TypingOnly
 from ..util.typing import Concatenate
+from ..util.typing import Literal
 from ..util.typing import ParamSpec
-
+from ..util.typing import Self
 
 if typing.TYPE_CHECKING:
     from .attributes import InstrumentedAttribute
+    from .mapper import Mapper
 
 _T = TypeVar("_T", bound=Any)
 
@@ -223,16 +228,22 @@ MANYTOMANY = util.symbol(
     """,
 )
 
-NOT_EXTENSION = util.symbol(
-    "NOT_EXTENSION",
+
+class InspectionAttrExtensionType(Enum):
+    """Symbols indicating the type of extension that a
+    :class:`.InspectionAttr` is part of."""
+
+
+class NotExtension(InspectionAttrExtensionType):
+    NOT_EXTENSION = "not_extension"
     """Symbol indicating an :class:`InspectionAttr` that's
     not part of sqlalchemy.ext.
 
     Is assigned to the :attr:`.InspectionAttr.extension_type`
     attribute.
 
-    """,
-)
+    """
+
 
 _never_set = frozenset([NEVER_SET])
 
@@ -455,7 +466,7 @@ def _inspect_mapped_class(class_, configure=False):
         return mapper
 
 
-def class_mapper(class_, configure=True):
+def class_mapper(class_: Type[_T], configure: bool = True) -> Mapper[_T]:
     """Given a class, return the primary :class:`_orm.Mapper` associated
     with the key.
 
@@ -546,17 +557,15 @@ class InspectionAttr:
     """True if this object is an instance of
     :class:`_expression.ClauseElement`."""
 
-    extension_type = NOT_EXTENSION
+    extension_type: InspectionAttrExtensionType = NotExtension.NOT_EXTENSION
     """The extension type, if any.
-    Defaults to :data:`.interfaces.NOT_EXTENSION`
+    Defaults to :attr:`.interfaces.NotExtension.NOT_EXTENSION`
 
     .. seealso::
 
-        :data:`.HYBRID_METHOD`
+        :class:`.HybridExtensionType`
 
-        :data:`.HYBRID_PROPERTY`
-
-        :data:`.ASSOCIATION_PROXY`
+        :class:`.AssociationProxyExtensionType`
 
     """
 
@@ -571,7 +580,7 @@ class InspectionAttrInfo(InspectionAttr):
     """
 
     @util.memoized_property
-    def info(self):
+    def info(self) -> Dict[Any, Any]:
         """Info dictionary associated with the object, allowing user-defined
         data to be associated with this :class:`.InspectionAttr`.
 
@@ -614,7 +623,35 @@ class SQLORMOperations(SQLCoreOperations[_T], TypingOnly):
             ...
 
 
-class Mapped(Generic[_T], TypingOnly):
+class ORMDescriptor(Generic[_T], TypingOnly):
+    """Represent any Python descriptor that provides a SQL expression
+    construct at the class level."""
+
+    __slots__ = ()
+
+    if typing.TYPE_CHECKING:
+
+        @overload
+        def __get__(self: Self, instance: Any, owner: Literal[None]) -> Self:
+            ...
+
+        @overload
+        def __get__(
+            self, instance: Literal[None], owner: Any
+        ) -> SQLORMOperations[_T]:
+            ...
+
+        @overload
+        def __get__(self, instance: object, owner: Any) -> _T:
+            ...
+
+        def __get__(
+            self, instance: object, owner: Any
+        ) -> Union[SQLORMOperations[_T], _T]:
+            ...
+
+
+class Mapped(ORMDescriptor[_T], TypingOnly):
     """Represent an ORM mapped attribute on a mapped class.
 
     This class represents the complete descriptor interface for any class
@@ -646,7 +683,7 @@ class Mapped(Generic[_T], TypingOnly):
         @overload
         def __get__(
             self, instance: None, owner: Any
-        ) -> "InstrumentedAttribute[_T]":
+        ) -> InstrumentedAttribute[_T]:
             ...
 
         @overload
@@ -655,11 +692,11 @@ class Mapped(Generic[_T], TypingOnly):
 
         def __get__(
             self, instance: object, owner: Any
-        ) -> Union["InstrumentedAttribute[_T]", _T]:
+        ) -> Union[InstrumentedAttribute[_T], _T]:
             ...
 
         @classmethod
-        def _empty_constructor(cls, arg1: Any) -> "Mapped[_T]":
+        def _empty_constructor(cls, arg1: Any) -> Mapped[_T]:
             ...
 
         def __set__(

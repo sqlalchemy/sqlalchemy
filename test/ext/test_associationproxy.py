@@ -1,3 +1,4 @@
+from collections import abc
 import copy
 import pickle
 from unittest.mock import call
@@ -256,6 +257,23 @@ class _CollectionOperations(fixtures.MappedTest):
         )
         cls.mapper_registry.map_imperatively(Child, children_table)
 
+    def test_abc(self):
+        Parent = self.classes.Parent
+
+        p1 = Parent("x")
+
+        collection_class = self.collection_class or list
+
+        for abc_ in (abc.Set, abc.MutableMapping, abc.MutableSequence):
+            if issubclass(collection_class, abc_):
+                break
+        else:
+            abc_ = None
+
+        if abc_:
+            p1 = Parent("x")
+            assert isinstance(p1.children, abc_)
+
     def roundtrip(self, obj):
         if obj not in self.session:
             self.session.add(obj)
@@ -511,6 +529,10 @@ class CustomDictTest(_CollectionOperations):
         self.assert_(p1._children["a"] == ch)
 
         p1.children["b"] = "proxied"
+
+        eq_(list(p1.children.keys()), ["a", "b"])
+        eq_(list(p1.children.items()), [("a", "regular"), ("b", "proxied")])
+        eq_(list(p1.children.values()), ["regular", "proxied"])
 
         self.assert_("proxied" in list(p1.children.values()))
         self.assert_("b" in p1.children)
@@ -2364,7 +2386,8 @@ class DictOfTupleUpdateTest(fixtures.MappedTest):
         a1 = self.classes.A()
         assert_raises_message(
             ValueError,
-            "dictionary update sequence requires " "2-element tuples",
+            "dictionary update sequence element #1 has length 5; "
+            "2 is required",
             a1.elements.update,
             (("B", 3), "elem2"),
         )
@@ -2373,7 +2396,7 @@ class DictOfTupleUpdateTest(fixtures.MappedTest):
         a1 = self.classes.A()
         assert_raises_message(
             TypeError,
-            "update expected at most 1 arguments, got 2",
+            "update expected at most 1 arguments?, got 2",
             a1.elements.update,
             (("B", 3), "elem2"),
             (("C", 4), "elem3"),

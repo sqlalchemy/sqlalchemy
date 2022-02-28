@@ -107,6 +107,7 @@ from __future__ import annotations
 import operator
 import threading
 import typing
+from typing import Any
 import weakref
 
 from .. import exc as sa_exc
@@ -1239,13 +1240,13 @@ def _dict_decorators():
 _set_binop_bases = (set, frozenset)
 
 
-def _set_binops_check_strict(self, obj):
+def _set_binops_check_strict(self: Any, obj: Any) -> bool:
     """Allow only set, frozenset and self.__class__-derived
     objects in binops."""
     return isinstance(obj, _set_binop_bases + (self.__class__,))
 
 
-def _set_binops_check_loose(self, obj):
+def _set_binops_check_loose(self: Any, obj: Any) -> bool:
     """Allow anything set-like to participate in set binops."""
     return (
         isinstance(obj, _set_binop_bases + (self.__class__,))

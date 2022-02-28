@@ -100,6 +100,7 @@ ignore_errors = true
 module = [
     "sqlalchemy.connectors.*",
     "sqlalchemy.engine.*",
+    "sqlalchemy.ext.associationproxy",
     "sqlalchemy.pool.*",
     "sqlalchemy.event.*",
     "sqlalchemy.events",

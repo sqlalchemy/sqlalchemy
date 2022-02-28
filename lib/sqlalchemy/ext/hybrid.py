@@ -807,45 +807,51 @@ from typing import TypeVar
 
 from .. import util
 from ..orm import attributes
+from ..orm import InspectionAttrExtensionType
 from ..orm import interfaces
+from ..orm import ORMDescriptor
+
 
 _T = TypeVar("_T", bound=Any)
 
-HYBRID_METHOD = util.symbol("HYBRID_METHOD")
-"""Symbol indicating an :class:`InspectionAttr` that's
-   of type :class:`.hybrid_method`.
 
-   Is assigned to the :attr:`.InspectionAttr.extension_type`
-   attribute.
+class HybridExtensionType(InspectionAttrExtensionType):
 
-   .. seealso::
-
-    :attr:`_orm.Mapper.all_orm_attributes`
-
-"""
-
-HYBRID_PROPERTY = util.symbol("HYBRID_PROPERTY")
-"""Symbol indicating an :class:`InspectionAttr` that's
+    HYBRID_METHOD = "HYBRID_METHOD"
+    """Symbol indicating an :class:`InspectionAttr` that's
     of type :class:`.hybrid_method`.
 
-   Is assigned to the :attr:`.InspectionAttr.extension_type`
-   attribute.
+    Is assigned to the :attr:`.InspectionAttr.extension_type`
+    attribute.
 
-   .. seealso::
+    .. seealso::
 
-    :attr:`_orm.Mapper.all_orm_attributes`
+        :attr:`_orm.Mapper.all_orm_attributes`
 
-"""
+    """
+
+    HYBRID_PROPERTY = "HYBRID_PROPERTY"
+    """Symbol indicating an :class:`InspectionAttr` that's
+        of type :class:`.hybrid_method`.
+
+    Is assigned to the :attr:`.InspectionAttr.extension_type`
+    attribute.
+
+    .. seealso::
+
+        :attr:`_orm.Mapper.all_orm_attributes`
+
+    """
 
 
-class hybrid_method(interfaces.InspectionAttrInfo):
+class hybrid_method(interfaces.InspectionAttrInfo, ORMDescriptor[_T]):
     """A decorator which allows definition of a Python object method with both
     instance-level and class-level behavior.
 
     """
 
     is_attribute = True
-    extension_type = HYBRID_METHOD
+    extension_type = HybridExtensionType.HYBRID_METHOD
 
     def __init__(self, func, expr=None):
         """Create a new :class:`.hybrid_method`.
@@ -890,7 +896,7 @@ class hybrid_property(interfaces.InspectionAttrInfo):
     """
 
     is_attribute = True
-    extension_type = HYBRID_PROPERTY
+    extension_type = HybridExtensionType.HYBRID_PROPERTY
 
     def __init__(
         self,

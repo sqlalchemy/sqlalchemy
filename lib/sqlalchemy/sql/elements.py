@@ -44,6 +44,7 @@ from .base import SingletonConstant
 from .cache_key import MemoizedHasCacheKey
 from .cache_key import NO_CACHE
 from .coercions import _document_text_coercion  # noqa
+from .operators import ColumnOperators
 from .traversals import HasCopyInternals
 from .visitors import cloned_traverse
 from .visitors import InternalTraversal
@@ -57,6 +58,7 @@ from ..util.langhelpers import TypingOnly
 if typing.TYPE_CHECKING:
     from decimal import Decimal
 
+    from .operators import OperatorType
     from .selectable import FromClause
     from .selectable import Select
     from .sqltypes import Boolean  # noqa
@@ -586,13 +588,25 @@ class CompilerColumnElement(
     __slots__ = ()
 
 
-class SQLCoreOperations(Generic[_T], TypingOnly):
+class SQLCoreOperations(
+    Generic[_T], ColumnOperators["SQLCoreOperations"], TypingOnly
+):
     __slots__ = ()
 
     # annotations for comparison methods
     # these are from operators->Operators / ColumnOperators,
     # redefined with the specific types returned by ColumnElement hierarchies
     if typing.TYPE_CHECKING:
+
+        def operate(
+            self, op: OperatorType, *other: Any, **kwargs: Any
+        ) -> ColumnElement:
+            ...
+
+        def reverse_operate(
+            self, op: OperatorType, other: Any, **kwargs: Any
+        ) -> ColumnElement:
+            ...
 
         def op(
             self,
@@ -620,34 +634,34 @@ class SQLCoreOperations(Generic[_T], TypingOnly):
         def __invert__(self) -> "UnaryExpression[_T]":
             ...
 
-        def __lt__(self, other: Any) -> "BinaryExpression[bool]":
+        def __lt__(self, other: Any) -> "ColumnElement[bool]":
             ...
 
-        def __le__(self, other: Any) -> "BinaryExpression[bool]":
+        def __le__(self, other: Any) -> "ColumnElement[bool]":
             ...
 
-        def __eq__(self, other: Any) -> "BinaryExpression[bool]":
+        def __eq__(self, other: Any) -> "ColumnElement[bool]":  # type: ignore[override]  # noqa: E501
             ...
 
-        def __ne__(self, other: Any) -> "BinaryExpression[bool]":
+        def __ne__(self, other: Any) -> "ColumnElement[bool]":  # type: ignore[override]  # noqa: E501
             ...
 
-        def is_distinct_from(self, other: Any) -> "BinaryExpression[bool]":
+        def is_distinct_from(self, other: Any) -> "ColumnElement[bool]":
             ...
 
-        def is_not_distinct_from(self, other: Any) -> "BinaryExpression[bool]":
+        def is_not_distinct_from(self, other: Any) -> "ColumnElement[bool]":
             ...
 
-        def __gt__(self, other: Any) -> "BinaryExpression[bool]":
+        def __gt__(self, other: Any) -> "ColumnElement[bool]":
             ...
 
-        def __ge__(self, other: Any) -> "BinaryExpression[bool]":
+        def __ge__(self, other: Any) -> "ColumnElement[bool]":
             ...
 
         def __neg__(self) -> "UnaryExpression[_T]":
             ...
 
-        def __contains__(self, other: Any) -> "BinaryExpression[bool]":
+        def __contains__(self, other: Any) -> "ColumnElement[bool]":
             ...
 
         def __getitem__(self, index: Any) -> "ColumnElement":
@@ -656,14 +670,14 @@ class SQLCoreOperations(Generic[_T], TypingOnly):
         @overload
         def concat(
             self: "SQLCoreOperations[_ST]", other: Any
-        ) -> "BinaryExpression[_ST]":
+        ) -> "ColumnElement[_ST]":
             ...
 
         @overload
-        def concat(self, other: Any) -> "BinaryExpression":
+        def concat(self, other: Any) -> "ColumnElement":
             ...
 
-        def concat(self, other: Any) -> "BinaryExpression":
+        def concat(self, other: Any) -> "ColumnElement":
             ...
 
         def like(self, other: Any, escape=None) -> "BinaryExpression[bool]":
@@ -702,30 +716,26 @@ class SQLCoreOperations(Generic[_T], TypingOnly):
 
         def startswith(
             self, other: Any, escape=None, autoescape=False
-        ) -> "BinaryExpression[bool]":
+        ) -> "ColumnElement[bool]":
             ...
 
         def endswith(
             self, other: Any, escape=None, autoescape=False
-        ) -> "BinaryExpression[bool]":
+        ) -> "ColumnElement[bool]":
             ...
 
-        def contains(
-            self, other: Any, escape=None, autoescape=False
-        ) -> "BinaryExpression[bool]":
+        def contains(self, other: Any, **kw: Any) -> "ColumnElement[bool]":
             ...
 
-        def match(self, other: Any, **kwargs) -> "BinaryExpression[bool]":
+        def match(self, other: Any, **kwargs) -> "ColumnElement[bool]":
             ...
 
-        def regexp_match(
-            self, pattern, flags=None
-        ) -> "BinaryExpression[bool]":
+        def regexp_match(self, pattern, flags=None) -> "ColumnElement[bool]":
             ...
 
         def regexp_replace(
             self, pattern, replacement, flags=None
-        ) -> "BinaryExpression":
+        ) -> "ColumnElement":
             ...
 
         def desc(self) -> "UnaryExpression[_T]":
@@ -745,7 +755,7 @@ class SQLCoreOperations(Generic[_T], TypingOnly):
 
         def between(
             self, cleft, cright, symmetric=False
-        ) -> "BinaryExpression[bool]":
+        ) -> "ColumnElement[bool]":
             ...
 
         def distinct(self: "SQLCoreOperations[_T]") -> "UnaryExpression[_T]":
@@ -766,166 +776,166 @@ class SQLCoreOperations(Generic[_T], TypingOnly):
         def __add__(
             self: "Union[_SQO[_NT], _SQO[Optional[_NT]]]",
             other: "Union[_SQO[Optional[_NT]], _SQO[_NT], _NT]",
-        ) -> "BinaryExpression[_NT]":
+        ) -> "ColumnElement[_NT]":
             ...
 
         @overload
         def __add__(
             self: "Union[_SQO[_NT], _SQO[Optional[_NT]]]",
             other: Any,
-        ) -> "BinaryExpression[_NUMERIC]":
+        ) -> "ColumnElement[_NUMERIC]":
             ...
 
         @overload
         def __add__(
             self: "Union[_SQO[_ST], _SQO[Optional[_ST]]]",
             other: Any,
-        ) -> "BinaryExpression[_ST]":
+        ) -> "ColumnElement[_ST]":
             ...
 
-        def __add__(self, other: Any) -> "BinaryExpression":
-            ...
-
-        @overload
-        def __radd__(self, other: Any) -> "BinaryExpression[_NUMERIC]":
+        def __add__(self, other: Any) -> "ColumnElement":
             ...
 
         @overload
-        def __radd__(self, other: Any) -> "BinaryExpression":
+        def __radd__(self, other: Any) -> "ColumnElement[_NUMERIC]":
             ...
 
-        def __radd__(self, other: Any) -> "BinaryExpression":
+        @overload
+        def __radd__(self, other: Any) -> "ColumnElement":
+            ...
+
+        def __radd__(self, other: Any) -> "ColumnElement":
             ...
 
         @overload
         def __sub__(
             self: "SQLCoreOperations[_NT]",
             other: "Union[SQLCoreOperations[_NT], _NT]",
-        ) -> "BinaryExpression[_NT]":
+        ) -> "ColumnElement[_NT]":
             ...
 
         @overload
-        def __sub__(self, other: Any) -> "BinaryExpression":
+        def __sub__(self, other: Any) -> "ColumnElement":
             ...
 
-        def __sub__(self, other: Any) -> "BinaryExpression":
+        def __sub__(self, other: Any) -> "ColumnElement":
             ...
 
         @overload
         def __rsub__(
             self: "SQLCoreOperations[_NT]", other: Any
-        ) -> "BinaryExpression[_NUMERIC]":
+        ) -> "ColumnElement[_NUMERIC]":
             ...
 
         @overload
-        def __rsub__(self, other: Any) -> "BinaryExpression":
+        def __rsub__(self, other: Any) -> "ColumnElement":
             ...
 
-        def __rsub__(self, other: Any) -> "BinaryExpression":
+        def __rsub__(self, other: Any) -> "ColumnElement":
             ...
 
         @overload
         def __mul__(
             self: "SQLCoreOperations[_NT]", other: Any
-        ) -> "BinaryExpression[_NUMERIC]":
+        ) -> "ColumnElement[_NUMERIC]":
             ...
 
         @overload
-        def __mul__(self, other: Any) -> "BinaryExpression":
+        def __mul__(self, other: Any) -> "ColumnElement":
             ...
 
-        def __mul__(self, other: Any) -> "BinaryExpression":
+        def __mul__(self, other: Any) -> "ColumnElement":
             ...
 
         @overload
         def __rmul__(
             self: "SQLCoreOperations[_NT]", other: Any
-        ) -> "BinaryExpression[_NUMERIC]":
+        ) -> "ColumnElement[_NUMERIC]":
             ...
 
         @overload
-        def __rmul__(self, other: Any) -> "BinaryExpression":
+        def __rmul__(self, other: Any) -> "ColumnElement":
             ...
 
-        def __rmul__(self, other: Any) -> "BinaryExpression":
+        def __rmul__(self, other: Any) -> "ColumnElement":
             ...
 
         @overload
         def __mod__(
             self: "SQLCoreOperations[_NT]", other: Any
-        ) -> "BinaryExpression[_NUMERIC]":
+        ) -> "ColumnElement[_NUMERIC]":
             ...
 
         @overload
-        def __mod__(self, other: Any) -> "BinaryExpression":
+        def __mod__(self, other: Any) -> "ColumnElement":
             ...
 
-        def __mod__(self, other: Any) -> "BinaryExpression":
+        def __mod__(self, other: Any) -> "ColumnElement":
             ...
 
         @overload
         def __rmod__(
             self: "SQLCoreOperations[_NT]", other: Any
-        ) -> "BinaryExpression[_NUMERIC]":
+        ) -> "ColumnElement[_NUMERIC]":
             ...
 
         @overload
-        def __rmod__(self, other: Any) -> "BinaryExpression":
+        def __rmod__(self, other: Any) -> "ColumnElement":
             ...
 
-        def __rmod__(self, other: Any) -> "BinaryExpression":
+        def __rmod__(self, other: Any) -> "ColumnElement":
             ...
 
         @overload
         def __truediv__(
             self: "SQLCoreOperations[_NT]", other: Any
-        ) -> "BinaryExpression[_NUMERIC]":
+        ) -> "ColumnElement[_NUMERIC]":
             ...
 
         @overload
-        def __truediv__(self, other: Any) -> "BinaryExpression":
+        def __truediv__(self, other: Any) -> "ColumnElement":
             ...
 
-        def __truediv__(self, other: Any) -> "BinaryExpression":
+        def __truediv__(self, other: Any) -> "ColumnElement":
             ...
 
         @overload
         def __rtruediv__(
             self: "SQLCoreOperations[_NT]", other: Any
-        ) -> "BinaryExpression[_NUMERIC]":
+        ) -> "ColumnElement[_NUMERIC]":
             ...
 
         @overload
-        def __rtruediv__(self, other: Any) -> "BinaryExpression":
+        def __rtruediv__(self, other: Any) -> "ColumnElement":
             ...
 
-        def __rtruediv__(self, other: Any) -> "BinaryExpression":
+        def __rtruediv__(self, other: Any) -> "ColumnElement":
             ...
 
         @overload
         def __floordiv__(
             self: "SQLCoreOperations[_NT]", other: Any
-        ) -> "BinaryExpression[_NUMERIC]":
+        ) -> "ColumnElement[_NUMERIC]":
             ...
 
         @overload
-        def __floordiv__(self, other: Any) -> "BinaryExpression":
+        def __floordiv__(self, other: Any) -> "ColumnElement":
             ...
 
-        def __floordiv__(self, other: Any) -> "BinaryExpression":
+        def __floordiv__(self, other: Any) -> "ColumnElement":
             ...
 
         @overload
         def __rfloordiv__(
             self: "SQLCoreOperations[_NT]", other: Any
-        ) -> "BinaryExpression[_NUMERIC]":
+        ) -> "ColumnElement[_NUMERIC]":
             ...
 
         @overload
-        def __rfloordiv__(self, other: Any) -> "BinaryExpression":
+        def __rfloordiv__(self, other: Any) -> "ColumnElement":
             ...
 
-        def __rfloordiv__(self, other: Any) -> "BinaryExpression":
+        def __rfloordiv__(self, other: Any) -> "ColumnElement":
             ...
 
 

@@ -35,6 +35,7 @@ from .elements import FunctionFilter
 from .elements import Label
 from .elements import Null
 from .elements import Over
+from .elements import SQLCoreOperations
 from .elements import TextClause
 from .elements import True_
 from .elements import Tuple
@@ -1228,7 +1229,7 @@ def nulls_last(column):
     return UnaryExpression._create_nulls_last(column)
 
 
-def or_(*clauses):
+def or_(*clauses: SQLCoreOperations) -> BooleanClauseList:
     """Produce a conjunction of expressions joined by ``OR``.
 
     E.g.::

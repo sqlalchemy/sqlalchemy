@@ -179,10 +179,10 @@ class Operators(Generic[_OP_RETURN]):
         precedence: int = 0,
         is_comparison: bool = False,
         return_type: Optional[
-            Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"]
+            Union[Type["TypeEngine[Any]"], "TypeEngine[Any]"]
         ] = None,
         python_impl=None,
-    ) -> Callable[[Any], _OP_RETURN]:
+    ) -> Callable[[Any], Any]:
         """Produce a generic operator function.
 
         e.g.::
@@ -270,7 +270,7 @@ class Operators(Generic[_OP_RETURN]):
 
     def bool_op(
         self, opstring: Any, precedence: int = 0, python_impl=None
-    ) -> Callable[[Any], _OP_RETURN]:
+    ) -> Callable[[Any], Any]:
         """Return a custom boolean operator.
 
         This method is shorthand for calling
@@ -1021,9 +1021,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
             endswith_op, other, escape=escape, autoescape=autoescape
         )
 
-    def contains(
-        self, other: Any, escape=None, autoescape=False
-    ) -> "ColumnOperators":
+    def contains(self, other: Any, **kw: Any) -> "ColumnOperators":
         r"""Implement the 'contains' operator.
 
         Produces a LIKE expression that tests against a match for the middle
@@ -1101,9 +1099,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
 
 
         """
-        return self.operate(
-            contains_op, other, escape=escape, autoescape=autoescape
-        )
+        return self.operate(contains_op, other, **kw)
 
     def match(self, other: Any, **kwargs) -> "ColumnOperators":
         """Implements a database-specific 'match' operator.

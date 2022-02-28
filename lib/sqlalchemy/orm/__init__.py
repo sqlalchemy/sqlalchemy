@@ -43,7 +43,11 @@ from ._orm_constructors import with_polymorphic as with_polymorphic
 from .attributes import AttributeEvent as AttributeEvent
 from .attributes import InstrumentedAttribute as InstrumentedAttribute
 from .attributes import QueryableAttribute as QueryableAttribute
+from .base import class_mapper as class_mapper
+from .base import InspectionAttrExtensionType as InspectionAttrExtensionType
 from .base import Mapped as Mapped
+from .base import NotExtension as NotExtension
+from .base import ORMDescriptor as ORMDescriptor
 from .context import QueryContext as QueryContext
 from .decl_api import add_mapped_attribute as add_mapped_attribute
 from .decl_api import as_declarative as as_declarative
@@ -75,13 +79,11 @@ from .interfaces import InspectionAttrInfo as InspectionAttrInfo
 from .interfaces import MANYTOMANY as MANYTOMANY
 from .interfaces import MANYTOONE as MANYTOONE
 from .interfaces import MapperProperty as MapperProperty
-from .interfaces import NOT_EXTENSION as NOT_EXTENSION
 from .interfaces import ONETOMANY as ONETOMANY
 from .interfaces import PropComparator as PropComparator
 from .interfaces import UserDefinedOption as UserDefinedOption
 from .loading import merge_frozen_result as merge_frozen_result
 from .loading import merge_result as merge_result
-from .mapper import class_mapper as class_mapper
 from .mapper import configure_mappers as configure_mappers
 from .mapper import Mapper as Mapper
 from .mapper import reconstructor as reconstructor

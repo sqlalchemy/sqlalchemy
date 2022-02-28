@@ -19,9 +19,11 @@ import itertools
 from operator import attrgetter
 import typing
 from typing import Any as TODO_Any
+from typing import Any
 from typing import NamedTuple
 from typing import Optional
 from typing import Tuple
+from typing import TypeVar
 
 from . import cache_key
 from . import coercions
@@ -71,6 +73,8 @@ from .. import util
 
 
 and_ = BooleanClauseList.and_
+
+_T = TypeVar("_T", bound=Any)
 
 
 class _OffsetLimitParam(BindParameter):
@@ -5528,7 +5532,7 @@ class ScalarSelect(roles.InElementRole, Generative, Grouping):
         return self
 
 
-class Exists(UnaryExpression):
+class Exists(UnaryExpression[_T]):
     """Represent an ``EXISTS`` clause.
 
     See :func:`_sql.exists` for a description of usage.

@@ -21,6 +21,7 @@ from functools import reduce
 from itertools import chain
 import sys
 import threading
+from typing import Any
 from typing import Generic
 from typing import Type
 from typing import TypeVar
@@ -112,6 +113,9 @@ class Mapper(
 
     _dispose_called = False
     _ready_for_configure = False
+
+    class_: Type[_MC]
+    """The class to which this :class:`_orm.Mapper` is mapped."""
 
     @util.deprecated_params(
         non_primary=(
@@ -1984,10 +1988,12 @@ class Mapper(
         else:
             return False
 
-    def has_property(self, key):
+    def has_property(self, key: str) -> bool:
         return key in self._props
 
-    def get_property(self, key, _configure_mappers=True):
+    def get_property(
+        self, key: str, _configure_mappers: bool = True
+    ) -> MapperProperty[Any]:
         """return a MapperProperty associated with the given key."""
 
         if _configure_mappers:
@@ -2715,7 +2721,7 @@ class Mapper(
         else:
             return _state_mapper(state) is s
 
-    def isa(self, other):
+    def isa(self, other: Mapper[Any]) -> bool:
         """Return True if the this mapper inherits from the given mapper."""
 
         m = self

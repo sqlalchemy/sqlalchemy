@@ -88,7 +88,10 @@ sections, are listed here.
 
             :attr:`.SchemaItem.info`
 
-.. autodata:: NOT_EXTENSION
+.. autoclass:: InspectionAttrExtensionType
+
+.. autoclass:: NotExtension
+    :members:
 
 .. autofunction:: merge_result
 
