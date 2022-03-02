@@ -498,6 +498,7 @@ class _ClassScanMapperConfig(_MapperConfig):
         mapper_args_fn = None
         table_args = inherited_table_args = None
         tablename = None
+        fixed_table = "__table__" in clsdict_view
 
         attribute_is_overridden = self._cls_attr_override_checker(self.cls)
 
@@ -666,7 +667,8 @@ class _ClassScanMapperConfig(_MapperConfig):
                             is_dataclass,
                         )
                         if obj is None:
-                            collected_attributes[name] = MappedColumn()
+                            if not fixed_table:
+                                collected_attributes[name] = MappedColumn()
                         else:
                             collected_attributes[name] = obj
                     else:
@@ -701,7 +703,11 @@ class _ClassScanMapperConfig(_MapperConfig):
                         annotation,
                         False,
                     )
-                    if obj is None and _is_mapped_annotation(annotation, cls):
+                    if (
+                        obj is None
+                        and not fixed_table
+                        and _is_mapped_annotation(annotation, cls)
+                    ):
                         collected_attributes[name] = MappedColumn()
                     elif name in clsdict_view:
                         collected_attributes[name] = obj

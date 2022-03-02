@@ -160,6 +160,39 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_true(User.__table__.c.data.nullable)
         assert isinstance(User.__table__.c.created_at.type, DateTime)
 
+    def test_anno_w_fixed_table(self, decl_base):
+        users = Table(
+            "users",
+            decl_base.metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50), nullable=False),
+            Column("data", String(50)),
+            Column("x", Integer),
+            Column("y", Integer),
+            Column("created_at", DateTime),
+        )
+
+        class User(decl_base):
+            __table__ = users
+
+            id: Mapped[int]
+            name: Mapped[str]
+            data: Mapped[Optional[str]]
+            x: Mapped[int]
+            y: Mapped[int]
+            created_at: Mapped[datetime.datetime]
+
+        self.assert_compile(
+            select(User),
+            "SELECT users.id, users.name, users.data, users.x, "
+            "users.y, users.created_at FROM users",
+        )
+        eq_(User.__mapper__.primary_key, (User.__table__.c.id,))
+        is_false(User.__table__.c.id.nullable)
+        is_false(User.__table__.c.name.nullable)
+        is_true(User.__table__.c.data.nullable)
+        assert isinstance(User.__table__.c.created_at.type, DateTime)
+
     def test_construct_lhs_type_missing(self, decl_base):
         class MyClass:
             pass
@@ -420,6 +453,32 @@ class MixinTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
         # ordering of cols is TODO
         eq_(A.__table__.c.keys(), ["id", "y", "name", "x"])
+
+        self.assert_compile(select(A), "SELECT a.id, a.y, a.name, a.x FROM a")
+
+    def test_mapped_column_omit_fn_fixed_table(self, decl_base):
+        class MixinOne:
+            name: Mapped[str]
+            x: Mapped[int]
+            y: Mapped[int]
+
+        a = Table(
+            "a",
+            decl_base.metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50), nullable=False),
+            Column("data", String(50)),
+            Column("x", Integer),
+            Column("y", Integer),
+        )
+
+        class A(MixinOne, decl_base):
+            __table__ = a
+            id: Mapped[int]
+
+        self.assert_compile(
+            select(A), "SELECT a.id, a.name, a.data, a.x, a.y FROM a"
+        )
 
     def test_mc_duplication_plain(self, decl_base):
         class MixinOne:
