@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from ..engine.interfaces import DBAPICursor
     from ..engine.interfaces import Dialect
     from ..event import _Dispatch
+    from ..event import _DispatchCommon
     from ..event import _ListenerFnType
     from ..event import dispatcher
 
@@ -132,7 +133,7 @@ class Pool(log.Identified, event.EventTarget):
         events: Optional[List[Tuple[_ListenerFnType, str]]] = None,
         dialect: Optional[Union[_ConnDialect, Dialect]] = None,
         pre_ping: bool = False,
-        _dispatch: Optional[_Dispatch[Pool]] = None,
+        _dispatch: Optional[_DispatchCommon[Pool]] = None,
     ):
         """
         Construct a Pool.
@@ -443,78 +444,72 @@ class ManagesConnection:
 
     """
 
-    @property
-    def driver_connection(self) -> Optional[Any]:
-        """The "driver level" connection object as used by the Python
-        DBAPI or database driver.
+    driver_connection: Optional[Any]
+    """The "driver level" connection object as used by the Python
+    DBAPI or database driver.
 
-        For traditional :pep:`249` DBAPI implementations, this object will
-        be the same object as that of
-        :attr:`.ManagesConnection.dbapi_connection`.   For an asyncio database
-        driver, this will be the ultimate "connection" object used by that
-        driver, such as the ``asyncpg.Connection`` object which will not have
-        standard pep-249 methods.
+    For traditional :pep:`249` DBAPI implementations, this object will
+    be the same object as that of
+    :attr:`.ManagesConnection.dbapi_connection`.   For an asyncio database
+    driver, this will be the ultimate "connection" object used by that
+    driver, such as the ``asyncpg.Connection`` object which will not have
+    standard pep-249 methods.
 
-        .. versionadded:: 1.4.24
+    .. versionadded:: 1.4.24
 
-        .. seealso::
+    .. seealso::
 
-            :attr:`.ManagesConnection.dbapi_connection`
+        :attr:`.ManagesConnection.dbapi_connection`
 
-            :ref:`faq_dbapi_connection`
+        :ref:`faq_dbapi_connection`
 
-        """
-        raise NotImplementedError()
+    """
 
-    @util.dynamic_property
-    def info(self) -> Dict[str, Any]:
-        """Info dictionary associated with the underlying DBAPI connection
-        referred to by this :class:`.ManagesConnection` instance, allowing
-        user-defined data to be associated with the connection.
+    info: Dict[str, Any]
+    """Info dictionary associated with the underlying DBAPI connection
+    referred to by this :class:`.ManagesConnection` instance, allowing
+    user-defined data to be associated with the connection.
 
-        The data in this dictionary is persistent for the lifespan
-        of the DBAPI connection itself, including across pool checkins
-        and checkouts.  When the connection is invalidated
-        and replaced with a new one, this dictionary is cleared.
+    The data in this dictionary is persistent for the lifespan
+    of the DBAPI connection itself, including across pool checkins
+    and checkouts.  When the connection is invalidated
+    and replaced with a new one, this dictionary is cleared.
 
-        For a :class:`.PoolProxiedConnection` instance that's not associated
-        with a :class:`.ConnectionPoolEntry`, such as if it were detached, the
-        attribute returns a dictionary that is local to that
-        :class:`.ConnectionPoolEntry`. Therefore the
-        :attr:`.ManagesConnection.info` attribute will always provide a Python
-        dictionary.
+    For a :class:`.PoolProxiedConnection` instance that's not associated
+    with a :class:`.ConnectionPoolEntry`, such as if it were detached, the
+    attribute returns a dictionary that is local to that
+    :class:`.ConnectionPoolEntry`. Therefore the
+    :attr:`.ManagesConnection.info` attribute will always provide a Python
+    dictionary.
 
-        .. seealso::
+    .. seealso::
 
-            :attr:`.ManagesConnection.record_info`
+        :attr:`.ManagesConnection.record_info`
 
 
-        """
-        raise NotImplementedError()
+    """
 
-    @util.dynamic_property
-    def record_info(self) -> Optional[Dict[str, Any]]:
-        """Persistent info dictionary associated with this
-        :class:`.ManagesConnection`.
+    record_info: Optional[Dict[str, Any]]
+    """Persistent info dictionary associated with this
+    :class:`.ManagesConnection`.
 
-        Unlike the :attr:`.ManagesConnection.info` dictionary, the lifespan
-        of this dictionary is that of the :class:`.ConnectionPoolEntry`
-        which owns it; therefore this dictionary will persist across
-        reconnects and connection invalidation for a particular entry
-        in the connection pool.
+    Unlike the :attr:`.ManagesConnection.info` dictionary, the lifespan
+    of this dictionary is that of the :class:`.ConnectionPoolEntry`
+    which owns it; therefore this dictionary will persist across
+    reconnects and connection invalidation for a particular entry
+    in the connection pool.
 
-        For a :class:`.PoolProxiedConnection` instance that's not associated
-        with a :class:`.ConnectionPoolEntry`, such as if it were detached, the
-        attribute returns None. Contrast to the :attr:`.ManagesConnection.info`
-        dictionary which is never None.
+    For a :class:`.PoolProxiedConnection` instance that's not associated
+    with a :class:`.ConnectionPoolEntry`, such as if it were detached, the
+    attribute returns None. Contrast to the :attr:`.ManagesConnection.info`
+    dictionary which is never None.
 
 
-        .. seealso::
+    .. seealso::
 
-            :attr:`.ManagesConnection.info`
+        :attr:`.ManagesConnection.info`
 
-        """
-        raise NotImplementedError()
+    """
 
     def invalidate(
         self, e: Optional[BaseException] = None, soft: bool = False
@@ -618,7 +613,7 @@ class _ConnectionRecord(ConnectionPoolEntry):
     dbapi_connection: Optional[DBAPIConnection]
 
     @property
-    def driver_connection(self) -> Optional[Any]:
+    def driver_connection(self) -> Optional[Any]:  # type: ignore[override]  # mypy#4125  # noqa E501
         if self.dbapi_connection is None:
             return None
         else:
@@ -637,11 +632,11 @@ class _ConnectionRecord(ConnectionPoolEntry):
     _soft_invalidate_time: float = 0
 
     @util.memoized_property
-    def info(self) -> Dict[str, Any]:
+    def info(self) -> Dict[str, Any]:  # type: ignore[override]  # mypy#4125
         return {}
 
     @util.memoized_property
-    def record_info(self) -> Optional[Dict[str, Any]]:
+    def record_info(self) -> Optional[Dict[str, Any]]:  # type: ignore[override]  # mypy#4125  # noqa E501
         return {}
 
     @classmethod
@@ -1048,7 +1043,7 @@ class _AdhocProxiedConnection(PoolProxiedConnection):
 
     """
 
-    __slots__ = ("dbapi_connection", "_connection_record")
+    __slots__ = ("dbapi_connection", "_connection_record", "_is_valid")
 
     dbapi_connection: DBAPIConnection
     _connection_record: ConnectionPoolEntry
@@ -1060,9 +1055,10 @@ class _AdhocProxiedConnection(PoolProxiedConnection):
     ):
         self.dbapi_connection = dbapi_connection
         self._connection_record = connection_record
+        self._is_valid = True
 
     @property
-    def driver_connection(self) -> Any:
+    def driver_connection(self) -> Any:  # type: ignore[override]  # mypy#4125
         return self._connection_record.driver_connection
 
     @property
@@ -1071,10 +1067,21 @@ class _AdhocProxiedConnection(PoolProxiedConnection):
 
     @property
     def is_valid(self) -> bool:
-        raise AttributeError("is_valid not implemented by this proxy")
+        """Implement is_valid state attribute.
 
-    @util.dynamic_property
-    def record_info(self) -> Optional[Dict[str, Any]]:
+        for the adhoc proxied connection it's assumed the connection is valid
+        as there is no "invalidate" routine.
+
+        """
+        return self._is_valid
+
+    def invalidate(
+        self, e: Optional[BaseException] = None, soft: bool = False
+    ) -> None:
+        self._is_valid = False
+
+    @property
+    def record_info(self) -> Optional[Dict[str, Any]]:  # type: ignore[override]  # mypy#4125  # noqa E501
         return self._connection_record.record_info
 
     def cursor(self, *args: Any, **kwargs: Any) -> DBAPICursor:
@@ -1140,7 +1147,7 @@ class _ConnectionFairy(PoolProxiedConnection):
     _connection_record: Optional[_ConnectionRecord]
 
     @property
-    def driver_connection(self) -> Optional[Any]:
+    def driver_connection(self) -> Optional[Any]:  # type: ignore[override]  # mypy#4125  # noqa E501
         if self._connection_record is None:
             return None
         return self._connection_record.driver_connection
@@ -1305,17 +1312,17 @@ class _ConnectionFairy(PoolProxiedConnection):
 
     @property
     def is_detached(self) -> bool:
-        return self._connection_record is not None
+        return self._connection_record is None
 
     @util.memoized_property
-    def info(self) -> Dict[str, Any]:
+    def info(self) -> Dict[str, Any]:  # type: ignore[override]  # mypy#4125
         if self._connection_record is None:
             return {}
         else:
             return self._connection_record.info
 
-    @util.dynamic_property
-    def record_info(self) -> Optional[Dict[str, Any]]:
+    @property
+    def record_info(self) -> Optional[Dict[str, Any]]:  # type: ignore[override]  # mypy#4125  # noqa E501
         if self._connection_record is None:
             return None
         else:

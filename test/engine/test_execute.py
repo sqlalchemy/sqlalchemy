@@ -2285,6 +2285,40 @@ class EngineEventsTest(fixtures.TestBase):
             [call(c2, {"c1": "opt_c1"}), call(c4, {"c3": "opt_c3"})],
         )
 
+    def test_execution_options_modify_inplace(self):
+        engine = engines.testing_engine()
+
+        @event.listens_for(engine, "set_engine_execution_options")
+        def engine_tracker(conn, opt):
+            opt["engine_tracked"] = True
+
+        @event.listens_for(engine, "set_connection_execution_options")
+        def conn_tracker(conn, opt):
+            opt["conn_tracked"] = True
+
+        with mock.patch.object(
+            engine.dialect, "set_connection_execution_options"
+        ) as conn_opt, mock.patch.object(
+            engine.dialect, "set_engine_execution_options"
+        ) as engine_opt:
+            e2 = engine.execution_options(e1="opt_e1")
+            c1 = engine.connect()
+            c2 = c1.execution_options(c1="opt_c1")
+
+        is_not(e2, engine)
+        is_(c1, c2)
+
+        eq_(e2._execution_options, {"e1": "opt_e1", "engine_tracked": True})
+        eq_(c2._execution_options, {"c1": "opt_c1", "conn_tracked": True})
+        eq_(
+            engine_opt.mock_calls,
+            [mock.call(e2, {"e1": "opt_e1", "engine_tracked": True})],
+        )
+        eq_(
+            conn_opt.mock_calls,
+            [mock.call(c1, {"c1": "opt_c1", "conn_tracked": True})],
+        )
+
     @testing.requires.sequences
     @testing.provide_metadata
     def test_cursor_execute(self):

@@ -13,7 +13,7 @@ from typing import Type
 from typing import TypeVar
 from typing import Union
 
-from typing_extensions import NotRequired  # noqa
+from typing_extensions import NotRequired as NotRequired  # noqa
 
 from . import compat
 

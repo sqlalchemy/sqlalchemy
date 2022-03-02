@@ -18,10 +18,18 @@ from __future__ import annotations
 
 import collections.abc as collections_abc
 import re
+from typing import Any
+from typing import cast
 from typing import Dict
+from typing import Iterable
+from typing import List
+from typing import Mapping
 from typing import NamedTuple
 from typing import Optional
+from typing import overload
+from typing import Sequence
 from typing import Tuple
+from typing import Type
 from typing import Union
 from urllib.parse import parse_qsl
 from urllib.parse import quote_plus
@@ -86,19 +94,19 @@ class URL(NamedTuple):
     host: Optional[str]
     port: Optional[int]
     database: Optional[str]
-    query: Dict[str, Union[str, Tuple[str]]]
+    query: util.immutabledict[str, Union[Tuple[str, ...], str]]
 
     @classmethod
     def create(
         cls,
-        drivername,
-        username=None,
-        password=None,
-        host=None,
-        port=None,
-        database=None,
-        query=util.EMPTY_DICT,
-    ):
+        drivername: str,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        host: Optional[str] = None,
+        port: Optional[int] = None,
+        database: Optional[str] = None,
+        query: Mapping[str, Union[Sequence[str], str]] = util.EMPTY_DICT,
+    ) -> URL:
         """Create a new :class:`_engine.URL` object.
 
         :param drivername: the name of the database backend. This name will
@@ -146,7 +154,7 @@ class URL(NamedTuple):
         )
 
     @classmethod
-    def _assert_port(cls, port):
+    def _assert_port(cls, port: Optional[int]) -> Optional[int]:
         if port is None:
             return None
         try:
@@ -155,24 +163,48 @@ class URL(NamedTuple):
             raise TypeError("Port argument must be an integer or None")
 
     @classmethod
-    def _assert_str(cls, v, paramname):
+    def _assert_str(cls, v: str, paramname: str) -> str:
         if not isinstance(v, str):
             raise TypeError("%s must be a string" % paramname)
         return v
 
     @classmethod
-    def _assert_none_str(cls, v, paramname):
+    def _assert_none_str(
+        cls, v: Optional[str], paramname: str
+    ) -> Optional[str]:
         if v is None:
             return v
 
         return cls._assert_str(v, paramname)
 
     @classmethod
-    def _str_dict(cls, dict_):
+    def _str_dict(
+        cls,
+        dict_: Optional[
+            Union[
+                Sequence[Tuple[str, Union[Sequence[str], str]]],
+                Mapping[str, Union[Sequence[str], str]],
+            ]
+        ],
+    ) -> util.immutabledict[str, Union[Tuple[str, ...], str]]:
         if dict_ is None:
             return util.EMPTY_DICT
 
-        def _assert_value(val):
+        @overload
+        def _assert_value(
+            val: str,
+        ) -> str:
+            ...
+
+        @overload
+        def _assert_value(
+            val: Sequence[str],
+        ) -> Union[str, Tuple[str, ...]]:
+            ...
+
+        def _assert_value(
+            val: Union[str, Sequence[str]],
+        ) -> Union[str, Tuple[str, ...]]:
             if isinstance(val, str):
                 return val
             elif isinstance(val, collections_abc.Sequence):
@@ -183,11 +215,12 @@ class URL(NamedTuple):
                     "sequences of strings"
                 )
 
-        def _assert_str(v):
+        def _assert_str(v: str) -> str:
             if not isinstance(v, str):
                 raise TypeError("Query dictionary keys must be strings")
             return v
 
+        dict_items: Iterable[Tuple[str, Union[Sequence[str], str]]]
         if isinstance(dict_, collections_abc.Sequence):
             dict_items = dict_
         else:
@@ -204,14 +237,14 @@ class URL(NamedTuple):
 
     def set(
         self,
-        drivername=None,
-        username=None,
-        password=None,
-        host=None,
-        port=None,
-        database=None,
-        query=None,
-    ):
+        drivername: Optional[str] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        host: Optional[str] = None,
+        port: Optional[int] = None,
+        database: Optional[str] = None,
+        query: Optional[Mapping[str, Union[Sequence[str], str]]] = None,
+    ) -> URL:
         """return a new :class:`_engine.URL` object with modifications.
 
         Values are used if they are non-None.  To set a value to ``None``
@@ -237,7 +270,7 @@ class URL(NamedTuple):
 
         """
 
-        kw = {}
+        kw: Dict[str, Any] = {}
         if drivername is not None:
             kw["drivername"] = drivername
         if username is not None:
@@ -255,7 +288,7 @@ class URL(NamedTuple):
 
         return self._assert_replace(**kw)
 
-    def _assert_replace(self, **kw):
+    def _assert_replace(self, **kw: Any) -> URL:
         """argument checks before calling _replace()"""
 
         if "drivername" in kw:
@@ -270,7 +303,9 @@ class URL(NamedTuple):
 
         return self._replace(**kw)
 
-    def update_query_string(self, query_string, append=False):
+    def update_query_string(
+        self, query_string: str, append: bool = False
+    ) -> URL:
         """Return a new :class:`_engine.URL` object with the :attr:`_engine.URL.query`
         parameter dictionary updated by the given query string.
 
@@ -301,7 +336,11 @@ class URL(NamedTuple):
         """  # noqa: E501
         return self.update_query_pairs(parse_qsl(query_string), append=append)
 
-    def update_query_pairs(self, key_value_pairs, append=False):
+    def update_query_pairs(
+        self,
+        key_value_pairs: Iterable[Tuple[str, Union[str, List[str]]]],
+        append: bool = False,
+    ) -> URL:
         """Return a new :class:`_engine.URL` object with the
         :attr:`_engine.URL.query`
         parameter dictionary updated by the given sequence of key/value pairs
@@ -335,23 +374,27 @@ class URL(NamedTuple):
         """  # noqa: E501
 
         existing_query = self.query
-        new_keys = {}
+        new_keys: Dict[str, Union[str, List[str]]] = {}
 
         for key, value in key_value_pairs:
             if key in new_keys:
                 new_keys[key] = util.to_list(new_keys[key])
-                new_keys[key].append(value)
+                cast("List[str]", new_keys[key]).append(cast(str, value))
             else:
-                new_keys[key] = value
+                new_keys[key] = (
+                    list(value) if isinstance(value, (list, tuple)) else value
+                )
 
+        new_query: Mapping[str, Union[str, Sequence[str]]]
         if append:
             new_query = {}
 
             for k in new_keys:
                 if k in existing_query:
-                    new_query[k] = util.to_list(
-                        existing_query[k]
-                    ) + util.to_list(new_keys[k])
+                    new_query[k] = tuple(
+                        util.to_list(existing_query[k])
+                        + util.to_list(new_keys[k])
+                    )
                 else:
                     new_query[k] = new_keys[k]
 
@@ -362,10 +405,19 @@ class URL(NamedTuple):
                 }
             )
         else:
-            new_query = self.query.union(new_keys)
+            new_query = self.query.union(
+                {
+                    k: tuple(v) if isinstance(v, list) else v
+                    for k, v in new_keys.items()
+                }
+            )
         return self.set(query=new_query)
 
-    def update_query_dict(self, query_parameters, append=False):
+    def update_query_dict(
+        self,
+        query_parameters: Mapping[str, Union[str, List[str]]],
+        append: bool = False,
+    ) -> URL:
         """Return a new :class:`_engine.URL` object with the
         :attr:`_engine.URL.query` parameter dictionary updated by the given
         dictionary.
@@ -410,7 +462,7 @@ class URL(NamedTuple):
         """  # noqa: E501
         return self.update_query_pairs(query_parameters.items(), append=append)
 
-    def difference_update_query(self, names):
+    def difference_update_query(self, names: Iterable[str]) -> URL:
         """
         Remove the given names from the :attr:`_engine.URL.query` dictionary,
         returning the new :class:`_engine.URL`.
@@ -459,7 +511,7 @@ class URL(NamedTuple):
         )
 
     @util.memoized_property
-    def normalized_query(self):
+    def normalized_query(self) -> Mapping[str, Sequence[str]]:
         """Return the :attr:`_engine.URL.query` dictionary with values normalized
         into sequences.
 
@@ -494,7 +546,7 @@ class URL(NamedTuple):
         "be removed in a future release.  Please use the "
         ":meth:`_engine.URL.render_as_string` method.",
     )
-    def __to_string__(self, hide_password=True):
+    def __to_string__(self, hide_password: bool = True) -> str:
         """Render this :class:`_engine.URL` object as a string.
 
         :param hide_password: Defaults to True.   The password is not shown
@@ -503,7 +555,7 @@ class URL(NamedTuple):
         """
         return self.render_as_string(hide_password=hide_password)
 
-    def render_as_string(self, hide_password=True):
+    def render_as_string(self, hide_password: bool = True) -> str:
         """Render this :class:`_engine.URL` object as a string.
 
         This method is used when the ``__str__()`` or ``__repr__()``
@@ -542,13 +594,13 @@ class URL(NamedTuple):
             )
         return s
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.render_as_string(hide_password=False)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.render_as_string()
 
-    def __copy__(self):
+    def __copy__(self) -> URL:
         return self.__class__.create(
             self.drivername,
             self.username,
@@ -561,13 +613,13 @@ class URL(NamedTuple):
             self.query,
         )
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo: Any) -> URL:
         return self.__copy__()
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(str(self))
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         return (
             isinstance(other, URL)
             and self.drivername == other.drivername
@@ -579,10 +631,10 @@ class URL(NamedTuple):
             and self.port == other.port
         )
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return not self == other
 
-    def get_backend_name(self):
+    def get_backend_name(self) -> str:
         """Return the backend name.
 
         This is the name that corresponds to the database backend in
@@ -595,7 +647,7 @@ class URL(NamedTuple):
         else:
             return self.drivername.split("+")[0]
 
-    def get_driver_name(self):
+    def get_driver_name(self) -> str:
         """Return the backend name.
 
         This is the name that corresponds to the DBAPI driver in
@@ -613,7 +665,9 @@ class URL(NamedTuple):
         else:
             return self.drivername.split("+")[1]
 
-    def _instantiate_plugins(self, kwargs):
+    def _instantiate_plugins(
+        self, kwargs: Mapping[str, Any]
+    ) -> Tuple[URL, List[Any], Dict[str, Any]]:
         plugin_names = util.to_list(self.query.get("plugin", ()))
         plugin_names += kwargs.get("plugins", [])
 
@@ -635,7 +689,7 @@ class URL(NamedTuple):
 
         return u, loaded_plugins, kwargs
 
-    def _get_entrypoint(self):
+    def _get_entrypoint(self) -> Type[Dialect]:
         """Return the "entry point" dialect class.
 
         This is normally the dialect itself except in the case when the
@@ -657,9 +711,9 @@ class URL(NamedTuple):
         ):
             return cls.dialect
         else:
-            return cls
+            return cast("Type[Dialect]", cls)
 
-    def get_dialect(self, _is_async=False):
+    def get_dialect(self, _is_async: bool = False) -> Type[Dialect]:
         """Return the SQLAlchemy :class:`_engine.Dialect` class corresponding
         to this URL's driver name.
 
@@ -671,7 +725,9 @@ class URL(NamedTuple):
             dialect_cls = entrypoint.get_dialect_cls(self)
         return dialect_cls
 
-    def translate_connect_args(self, names=None, **kw):
+    def translate_connect_args(
+        self, names: Optional[List[str]] = None, **kw: Any
+    ) -> Dict[str, Any]:
         r"""Translate url attributes into a dictionary of connection arguments.
 
         Returns attributes of this url (`host`, `database`, `username`,
@@ -711,11 +767,12 @@ class URL(NamedTuple):
         return translated
 
 
-def make_url(name_or_url):
-    """Given a string or unicode instance, produce a new URL instance.
+def make_url(name_or_url: Union[str, URL]) -> URL:
+    """Given a string, produce a new URL instance.
 
     The given string is parsed according to the RFC 1738 spec.  If an
     existing URL object is passed, just returns the object.
+
     """
 
     if isinstance(name_or_url, str):
@@ -724,7 +781,7 @@ def make_url(name_or_url):
         return name_or_url
 
 
-def _parse_rfc1738_args(name):
+def _parse_rfc1738_args(name: str) -> URL:
     pattern = re.compile(
         r"""
             (?P<name>[\w\+]+)://
@@ -748,13 +805,14 @@ def _parse_rfc1738_args(name):
     m = pattern.match(name)
     if m is not None:
         components = m.groupdict()
+        query: Optional[Dict[str, Union[str, List[str]]]]
         if components["query"] is not None:
             query = {}
 
             for key, value in parse_qsl(components["query"]):
                 if key in query:
                     query[key] = util.to_list(query[key])
-                    query[key].append(value)
+                    cast("List[str]", query[key]).append(value)
                 else:
                     query[key] = value
         else:
@@ -775,7 +833,7 @@ def _parse_rfc1738_args(name):
         if components["port"]:
             components["port"] = int(components["port"])
 
-        return URL.create(name, **components)
+        return URL.create(name, **components)  # type: ignore
 
     else:
         raise exc.ArgumentError(
@@ -783,18 +841,8 @@ def _parse_rfc1738_args(name):
         )
 
 
-def _rfc_1738_quote(text):
+def _rfc_1738_quote(text: str) -> str:
     return re.sub(r"[:@/]", lambda m: "%%%X" % ord(m.group(0)), text)
 
 
 _rfc_1738_unquote = unquote
-
-
-def _parse_keyvalue_args(name):
-    m = re.match(r"(\w+)://(.*)", name)
-    if m is not None:
-        (name, args) = m.group(1, 2)
-        opts = dict(parse_qsl(args))
-        return URL(name, *opts)
-    else:
-        return None

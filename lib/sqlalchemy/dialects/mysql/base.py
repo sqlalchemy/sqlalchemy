@@ -2434,7 +2434,7 @@ class MySQLDialect(default.DefaultDialect):
 
     @classmethod
     def _is_mariadb_from_url(cls, url):
-        dbapi = cls.dbapi()
+        dbapi = cls.import_dbapi()
         dialect = cls(dbapi=dbapi)
 
         cargs, cparams = dialect.create_connect_args(url)

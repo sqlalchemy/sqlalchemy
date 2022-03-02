@@ -426,7 +426,7 @@ class PGDialect_pg8000(PGDialect):
             return (99, 99, 99)
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return __import__("pg8000")
 
     def create_connect_args(self, url):

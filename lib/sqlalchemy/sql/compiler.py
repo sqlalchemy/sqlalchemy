@@ -27,6 +27,7 @@ from __future__ import annotations
 import collections
 import collections.abc as collections_abc
 import contextlib
+from enum import IntEnum
 import itertools
 import operator
 import re
@@ -35,9 +36,13 @@ import typing
 from typing import Any
 from typing import Dict
 from typing import List
+from typing import Mapping
 from typing import MutableMapping
+from typing import NamedTuple
 from typing import Optional
+from typing import Sequence
 from typing import Tuple
+from typing import Union
 
 from . import base
 from . import coercions
@@ -51,12 +56,17 @@ from . import sqltypes
 from .base import NO_ARG
 from .base import prefix_anon_map
 from .elements import quoted_name
+from .schema import Column
+from .type_api import TypeEngine
 from .. import exc
 from .. import util
+from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
     from .selectable import CTE
     from .selectable import FromClause
+    from ..engine.interfaces import _CoreSingleExecuteParams
+    from ..engine.result import _ProcessorType
 
 _FromHintsType = Dict["FromClause", str]
 
@@ -271,42 +281,71 @@ COMPOUND_KEYWORDS = {
 }
 
 
-RM_RENDERED_NAME = 0
-RM_NAME = 1
-RM_OBJECTS = 2
-RM_TYPE = 3
+class ResultColumnsEntry(NamedTuple):
+    """Tracks a column expression that is expected to be represented
+    in the result rows for this statement.
+
+    This normally refers to the columns clause of a SELECT statement
+    but may also refer to a RETURNING clause, as well as for dialect-specific
+    emulations.
+
+    """
+
+    keyname: str
+    """string name that's expected in cursor.description"""
+
+    name: str
+    """column name, may be labeled"""
+
+    objects: List[Any]
+    """list of objects that should be able to locate this column
+    in a RowMapping.  This is typically string names and aliases
+    as well as Column objects.
+
+    """
+
+    type: TypeEngine[Any]
+    """Datatype to be associated with this column.   This is where
+    the "result processing" logic directly links the compiled statement
+    to the rows that come back from the cursor.
+
+    """
 
 
-ExpandedState = collections.namedtuple(
-    "ExpandedState",
-    [
-        "statement",
-        "additional_parameters",
-        "processors",
-        "positiontup",
-        "parameter_expansion",
-    ],
-)
+# integer indexes into ResultColumnsEntry used by cursor.py.
+# some profiling showed integer access faster than named tuple
+RM_RENDERED_NAME: Literal[0] = 0
+RM_NAME: Literal[1] = 1
+RM_OBJECTS: Literal[2] = 2
+RM_TYPE: Literal[3] = 3
 
 
-NO_LINTING = util.symbol("NO_LINTING", "Disable all linting.", canonical=0)
+class ExpandedState(NamedTuple):
+    statement: str
+    additional_parameters: _CoreSingleExecuteParams
+    processors: Mapping[str, _ProcessorType]
+    positiontup: Optional[Sequence[str]]
+    parameter_expansion: Mapping[str, List[str]]
 
-COLLECT_CARTESIAN_PRODUCTS = util.symbol(
-    "COLLECT_CARTESIAN_PRODUCTS",
-    "Collect data on FROMs and cartesian products and gather "
-    "into 'self.from_linter'",
-    canonical=1,
-)
 
-WARN_LINTING = util.symbol(
-    "WARN_LINTING", "Emit warnings for linters that find problems", canonical=2
-)
+class Linting(IntEnum):
+    NO_LINTING = 0
+    "Disable all linting."
 
-FROM_LINTING = util.symbol(
-    "FROM_LINTING",
-    "Warn for cartesian products; "
-    "combines COLLECT_CARTESIAN_PRODUCTS and WARN_LINTING",
-    canonical=COLLECT_CARTESIAN_PRODUCTS | WARN_LINTING,
+    COLLECT_CARTESIAN_PRODUCTS = 1
+    """Collect data on FROMs and cartesian products and gather into
+    'self.from_linter'"""
+
+    WARN_LINTING = 2
+    "Emit warnings for linters that find problems"
+
+    FROM_LINTING = COLLECT_CARTESIAN_PRODUCTS | WARN_LINTING
+    """Warn for cartesian products; combines COLLECT_CARTESIAN_PRODUCTS
+    and WARN_LINTING"""
+
+
+NO_LINTING, COLLECT_CARTESIAN_PRODUCTS, WARN_LINTING, FROM_LINTING = tuple(
+    Linting
 )
 
 
@@ -389,7 +428,7 @@ class Compiled:
 
     _cached_metadata = None
 
-    _result_columns = None
+    _result_columns: Optional[List[ResultColumnsEntry]] = None
 
     schema_translate_map = None
 
@@ -418,7 +457,8 @@ class Compiled:
     """
 
     cache_key = None
-    _gen_time = None
+
+    _gen_time: float
 
     def __init__(
         self,
@@ -573,15 +613,43 @@ class SQLCompiler(Compiled):
 
     extract_map = EXTRACT_MAP
 
+    _result_columns: List[ResultColumnsEntry]
+
     compound_keywords = COMPOUND_KEYWORDS
 
-    isdelete = isinsert = isupdate = False
+    isdelete: bool = False
+    isinsert: bool = False
+    isupdate: bool = False
     """class-level defaults which can be set at the instance
     level to define if this Compiled instance represents
     INSERT/UPDATE/DELETE
     """
 
-    isplaintext = False
+    postfetch: Optional[List[Column[Any]]]
+    """list of columns that can be post-fetched after INSERT or UPDATE to
+    receive server-updated values"""
+
+    insert_prefetch: Optional[List[Column[Any]]]
+    """list of columns for which default values should be evaluated before
+    an INSERT takes place"""
+
+    update_prefetch: Optional[List[Column[Any]]]
+    """list of columns for which onupdate default values should be evaluated
+    before an UPDATE takes place"""
+
+    returning: Optional[List[Column[Any]]]
+    """list of columns that will be delivered to cursor.description or
+    dialect equivalent via the RETURNING clause on an INSERT, UPDATE, or DELETE
+
+    """
+
+    isplaintext: bool = False
+
+    result_columns: List[ResultColumnsEntry]
+    """relates label names in the final SQL to a tuple of local
+    column/label name, ColumnElement object (if any) and
+    TypeEngine. CursorResult uses this for type processing and
+    column targeting"""
 
     returning = None
     """holds the "returning" collection of columns if
@@ -589,18 +657,18 @@ class SQLCompiler(Compiled):
     either implicitly or explicitly
     """
 
-    returning_precedes_values = False
+    returning_precedes_values: bool = False
     """set to True classwide to generate RETURNING
     clauses before the VALUES or WHERE clause (i.e. MSSQL)
     """
 
-    render_table_with_column_in_update_from = False
+    render_table_with_column_in_update_from: bool = False
     """set to True classwide to indicate the SET clause
     in a multi-table UPDATE statement should qualify
     columns with the table name (i.e. MySQL only)
     """
 
-    ansi_bind_rules = False
+    ansi_bind_rules: bool = False
     """SQL 92 doesn't allow bind parameters to be used
     in the columns clause of a SELECT, nor does it allow
     ambiguous expressions like "? = ?".  A compiler
@@ -608,33 +676,33 @@ class SQLCompiler(Compiled):
     driver/DB enforces this
     """
 
-    _textual_ordered_columns = False
+    _textual_ordered_columns: bool = False
     """tell the result object that the column names as rendered are important,
     but they are also "ordered" vs. what is in the compiled object here.
     """
 
-    _ordered_columns = True
+    _ordered_columns: bool = True
     """
     if False, means we can't be sure the list of entries
     in _result_columns is actually the rendered order.  Usually
     True unless using an unordered TextualSelect.
     """
 
-    _loose_column_name_matching = False
+    _loose_column_name_matching: bool = False
     """tell the result object that the SQL statement is textual, wants to match
     up to Column objects, and may be using the ._tq_label in the SELECT rather
     than the base name.
 
     """
 
-    _numeric_binds = False
+    _numeric_binds: bool = False
     """
     True if paramstyle is "numeric".  This paramstyle is trickier than
     all the others.
 
     """
 
-    _render_postcompile = False
+    _render_postcompile: bool = False
     """
     whether to render out POSTCOMPILE params during the compile phase.
 
@@ -684,7 +752,7 @@ class SQLCompiler(Compiled):
 
     """
 
-    positiontup = None
+    positiontup: Optional[Sequence[str]] = None
     """for a compiled construct that uses a positional paramstyle, will be
     a sequence of strings, indicating the names of bound parameters in order.
 
@@ -699,7 +767,7 @@ class SQLCompiler(Compiled):
 
     """
 
-    inline = False
+    inline: bool = False
 
     def __init__(
         self,
@@ -760,10 +828,6 @@ class SQLCompiler(Compiled):
         # stack which keeps track of nested SELECT statements
         self.stack = []
 
-        # relates label names in the final SQL to a tuple of local
-        # column/label name, ColumnElement object (if any) and
-        # TypeEngine. CursorResult uses this for type processing and
-        # column targeting
         self._result_columns = []
 
         # true if the paramstyle is positional
@@ -910,7 +974,9 @@ class SQLCompiler(Compiled):
         )
 
     @util.memoized_property
-    def _bind_processors(self):
+    def _bind_processors(
+        self,
+    ) -> MutableMapping[str, Union[_ProcessorType, Sequence[_ProcessorType]]]:
         return dict(
             (key, value)
             for key, value in (
@@ -1098,8 +1164,10 @@ class SQLCompiler(Compiled):
         return self.construct_params(_check=False)
 
     def _process_parameters_for_postcompile(
-        self, parameters=None, _populate_self=False
-    ):
+        self,
+        parameters: Optional[_CoreSingleExecuteParams] = None,
+        _populate_self: bool = False,
+    ) -> ExpandedState:
         """handle special post compile parameters.
 
         These include:
@@ -3070,7 +3138,13 @@ class SQLCompiler(Compiled):
     def get_render_as_alias_suffix(self, alias_name_text):
         return " AS " + alias_name_text
 
-    def _add_to_result_map(self, keyname, name, objects, type_):
+    def _add_to_result_map(
+        self,
+        keyname: str,
+        name: str,
+        objects: List[Any],
+        type_: TypeEngine[Any],
+    ) -> None:
         if keyname is None or keyname == "*":
             self._ordered_columns = False
             self._textual_ordered_columns = True
@@ -3080,7 +3154,9 @@ class SQLCompiler(Compiled):
                 "from a tuple() object.  If this is an ORM query, "
                 "consider using the Bundle object."
             )
-        self._result_columns.append((keyname, name, objects, type_))
+        self._result_columns.append(
+            ResultColumnsEntry(keyname, name, objects, type_)
+        )
 
     def _label_returning_column(self, stmt, column, column_clause_args=None):
         """Render a column with necessary labels inside of a RETURNING clause.

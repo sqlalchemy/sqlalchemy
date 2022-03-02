@@ -21,9 +21,6 @@ from . import coercions
 from . import operators
 from . import roles
 from . import visitors
-from ._typing import _ExecuteParams
-from ._typing import _MultiExecuteParams
-from ._typing import _SingleExecuteParams
 from .annotation import _deep_annotate  # noqa
 from .annotation import _deep_deannotate  # noqa
 from .annotation import _shallow_annotate  # noqa
@@ -54,6 +51,10 @@ from .. import exc
 from .. import util
 
 if typing.TYPE_CHECKING:
+    from ..engine.interfaces import _AnyExecuteParams
+    from ..engine.interfaces import _AnyMultiExecuteParams
+    from ..engine.interfaces import _AnySingleExecuteParams
+    from ..engine.interfaces import _CoreSingleExecuteParams
     from ..engine.row import Row
 
 
@@ -550,12 +551,12 @@ class _repr_params(_repr_base):
 
     def __init__(
         self,
-        params: _ExecuteParams,
+        params: Optional[_AnyExecuteParams],
         batches: int,
         max_chars: int = 300,
         ismulti: Optional[bool] = None,
     ):
-        self.params: _ExecuteParams = params
+        self.params = params
         self.ismulti = ismulti
         self.batches = batches
         self.max_chars = max_chars
@@ -575,7 +576,10 @@ class _repr_params(_repr_base):
             return self.trunc(self.params)
 
         if self.ismulti:
-            multi_params = cast(_MultiExecuteParams, self.params)
+            multi_params = cast(
+                "_AnyMultiExecuteParams",
+                self.params,
+            )
 
             if len(self.params) > self.batches:
                 msg = (
@@ -595,10 +599,18 @@ class _repr_params(_repr_base):
                 return self._repr_multi(multi_params, typ)
         else:
             return self._repr_params(
-                cast(_SingleExecuteParams, self.params), typ
+                cast(
+                    "_AnySingleExecuteParams",
+                    self.params,
+                ),
+                typ,
             )
 
-    def _repr_multi(self, multi_params: _MultiExecuteParams, typ) -> str:
+    def _repr_multi(
+        self,
+        multi_params: _AnyMultiExecuteParams,
+        typ,
+    ) -> str:
         if multi_params:
             if isinstance(multi_params[0], list):
                 elem_type = self._LIST
@@ -622,13 +634,19 @@ class _repr_params(_repr_base):
         else:
             return "(%s)" % elements
 
-    def _repr_params(self, params: _SingleExecuteParams, typ: int) -> str:
+    def _repr_params(
+        self,
+        params: Optional[_AnySingleExecuteParams],
+        typ: int,
+    ) -> str:
         trunc = self.trunc
         if typ is self._DICT:
             return "{%s}" % (
                 ", ".join(
                     "%r: %s" % (key, trunc(value))
-                    for key, value in params.items()
+                    for key, value in cast(
+                        "_CoreSingleExecuteParams", params
+                    ).items()
                 )
             )
         elif typ is self._TUPLE:

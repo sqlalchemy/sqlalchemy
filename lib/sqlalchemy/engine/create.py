@@ -7,7 +7,12 @@
 
 from __future__ import annotations
 
+import inspect
+import typing
 from typing import Any
+from typing import cast
+from typing import Dict
+from typing import Optional
 from typing import Union
 
 from . import base
@@ -20,6 +25,9 @@ from .. import util
 from ..pool import _AdhocProxiedConnection
 from ..pool import ConnectionPoolEntry
 from ..sql import compiler
+
+if typing.TYPE_CHECKING:
+    from .base import Engine
 
 
 @util.deprecated_params(
@@ -46,7 +54,7 @@ from ..sql import compiler
         "is deprecated and will be removed in a future release. ",
     ),
 )
-def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> "base.Engine":
+def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> Engine:
     """Create a new :class:`_engine.Engine` instance.
 
     The standard calling form is to send the :ref:`URL <database_urls>` as the
@@ -452,7 +460,8 @@ def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> "base.Engine":
     if "strategy" in kwargs:
         strat = kwargs.pop("strategy")
         if strat == "mock":
-            return create_mock_engine(url, **kwargs)
+            # this case is deprecated
+            return create_mock_engine(url, **kwargs)  # type: ignore
         else:
             raise exc.ArgumentError("unknown strategy: %r" % strat)
 
@@ -472,14 +481,14 @@ def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> "base.Engine":
 
     if kwargs.pop("_coerce_config", False):
 
-        def pop_kwarg(key, default=None):
+        def pop_kwarg(key: str, default: Optional[Any] = None) -> Any:
             value = kwargs.pop(key, default)
             if key in dialect_cls.engine_config_types:
                 value = dialect_cls.engine_config_types[key](value)
             return value
 
     else:
-        pop_kwarg = kwargs.pop
+        pop_kwarg = kwargs.pop  # type: ignore
 
     dialect_args = {}
     # consume dialect arguments from kwargs
@@ -490,10 +499,29 @@ def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> "base.Engine":
     dbapi = kwargs.pop("module", None)
     if dbapi is None:
         dbapi_args = {}
-        for k in util.get_func_kwargs(dialect_cls.dbapi):
+
+        if "import_dbapi" in dialect_cls.__dict__:
+            dbapi_meth = dialect_cls.import_dbapi
+
+        elif hasattr(dialect_cls, "dbapi") and inspect.ismethod(
+            dialect_cls.dbapi
+        ):
+            util.warn_deprecated(
+                "The dbapi() classmethod on dialect classes has been "
+                "renamed to import_dbapi().  Implement an import_dbapi() "
+                f"classmethod directly on class {dialect_cls} to remove this "
+                "warning; the old .dbapi() classmethod may be maintained for "
+                "backwards compatibility.",
+                "2.0",
+            )
+            dbapi_meth = dialect_cls.dbapi
+        else:
+            dbapi_meth = dialect_cls.import_dbapi
+
+        for k in util.get_func_kwargs(dbapi_meth):
             if k in kwargs:
                 dbapi_args[k] = pop_kwarg(k)
-        dbapi = dialect_cls.dbapi(**dbapi_args)
+        dbapi = dbapi_meth(**dbapi_args)
 
     dialect_args["dbapi"] = dbapi
 
@@ -509,18 +537,23 @@ def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> "base.Engine":
     dialect = dialect_cls(**dialect_args)
 
     # assemble connection arguments
-    (cargs, cparams) = dialect.create_connect_args(u)
+    (cargs_tup, cparams) = dialect.create_connect_args(u)
     cparams.update(pop_kwarg("connect_args", {}))
-    cargs = list(cargs)  # allow mutability
+    cargs = list(cargs_tup)  # allow mutability
 
     # look for existing pool or create
     pool = pop_kwarg("pool", None)
     if pool is None:
 
-        def connect(connection_record=None):
+        def connect(
+            connection_record: Optional[ConnectionPoolEntry] = None,
+        ) -> DBAPIConnection:
             if dialect._has_events:
                 for fn in dialect.dispatch.do_connect:
-                    connection = fn(dialect, connection_record, cargs, cparams)
+                    connection = cast(
+                        DBAPIConnection,
+                        fn(dialect, connection_record, cargs, cparams),
+                    )
                     if connection is not None:
                         return connection
             return dialect.connect(*cargs, **cparams)
@@ -596,7 +629,11 @@ def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> "base.Engine":
         do_on_connect = dialect.on_connect_url(u)
         if do_on_connect:
 
-            def on_connect(dbapi_connection, connection_record):
+            def on_connect(
+                dbapi_connection: DBAPIConnection,
+                connection_record: ConnectionPoolEntry,
+            ) -> None:
+                assert do_on_connect is not None
                 do_on_connect(dbapi_connection)
 
             event.listen(pool, "connect", on_connect)
@@ -608,7 +645,7 @@ def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> "base.Engine":
         def first_connect(
             dbapi_connection: DBAPIConnection,
             connection_record: ConnectionPoolEntry,
-        ):
+        ) -> None:
             c = base.Connection(
                 engine,
                 connection=_AdhocProxiedConnection(
@@ -654,7 +691,9 @@ def create_engine(url: Union[str, "_url.URL"], **kwargs: Any) -> "base.Engine":
     return engine
 
 
-def engine_from_config(configuration, prefix="sqlalchemy.", **kwargs):
+def engine_from_config(
+    configuration: Dict[str, Any], prefix: str = "sqlalchemy.", **kwargs: Any
+) -> Engine:
     """Create a new Engine instance using a configuration dictionary.
 
     The dictionary is typically produced from a config file.

@@ -16,16 +16,30 @@ They all share one common characteristic: None is passed through unchanged.
 from __future__ import annotations
 
 import datetime
+from decimal import Decimal
 import re
+import typing
+from typing import Any
+from typing import Callable
+from typing import Optional
+from typing import Type
+from typing import TypeVar
+from typing import Union
+
+_DT = TypeVar(
+    "_DT", bound=Union[datetime.datetime, datetime.time, datetime.date]
+)
 
 
-def str_to_datetime_processor_factory(regexp, type_):
+def str_to_datetime_processor_factory(
+    regexp: typing.Pattern[str], type_: Callable[..., _DT]
+) -> Callable[[Optional[str]], Optional[_DT]]:
     rmatch = regexp.match
     # Even on python2.6 datetime.strptime is both slower than this code
     # and it does not support microseconds.
     has_named_groups = bool(regexp.groupindex)
 
-    def process(value):
+    def process(value: Optional[str]) -> Optional[_DT]:
         if value is None:
             return None
         else:
@@ -59,10 +73,12 @@ def str_to_datetime_processor_factory(regexp, type_):
     return process
 
 
-def to_decimal_processor_factory(target_class, scale):
+def to_decimal_processor_factory(
+    target_class: Type[Decimal], scale: int
+) -> Callable[[Optional[float]], Optional[Decimal]]:
     fstring = "%%.%df" % scale
 
-    def process(value):
+    def process(value: Optional[float]) -> Optional[Decimal]:
         if value is None:
             return None
         else:
@@ -71,21 +87,21 @@ def to_decimal_processor_factory(target_class, scale):
     return process
 
 
-def to_float(value):
+def to_float(value: Optional[Union[int, float]]) -> Optional[float]:
     if value is None:
         return None
     else:
         return float(value)
 
 
-def to_str(value):
+def to_str(value: Optional[Any]) -> Optional[str]:
     if value is None:
         return None
     else:
         return str(value)
 
 
-def int_to_boolean(value):
+def int_to_boolean(value: Optional[int]) -> Optional[bool]:
     if value is None:
         return None
     else:

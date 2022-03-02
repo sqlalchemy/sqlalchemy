@@ -9,24 +9,41 @@
 
 from __future__ import annotations
 
+from abc import ABC
 import collections.abc as collections_abc
 import operator
 import typing
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import Iterator
+from typing import List
+from typing import Mapping
+from typing import NoReturn
+from typing import Optional
+from typing import overload
+from typing import Sequence
+from typing import Tuple
+from typing import Union
 
 from ..sql import util as sql_util
 from ..util._has_cy import HAS_CYEXTENSION
 
 if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
-    from ._py_row import BaseRow
+    from ._py_row import BaseRow as BaseRow
     from ._py_row import KEY_INTEGER_ONLY
     from ._py_row import KEY_OBJECTS_ONLY
 else:
-    from sqlalchemy.cyextension.resultproxy import BaseRow
+    from sqlalchemy.cyextension.resultproxy import BaseRow as BaseRow
     from sqlalchemy.cyextension.resultproxy import KEY_INTEGER_ONLY
     from sqlalchemy.cyextension.resultproxy import KEY_OBJECTS_ONLY
 
+if typing.TYPE_CHECKING:
+    from .result import _KeyType
+    from .result import RMKeyView
 
-class Row(BaseRow, collections_abc.Sequence):
+
+class Row(BaseRow, typing.Sequence[Any]):
     """Represent a single result row.
 
     The :class:`.Row` object represents a row of a database result.  It is
@@ -58,14 +75,14 @@ class Row(BaseRow, collections_abc.Sequence):
 
     _default_key_style = KEY_INTEGER_ONLY
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value: Any) -> NoReturn:
         raise AttributeError("can't set attribute")
 
-    def __delattr__(self, name):
+    def __delattr__(self, name: str) -> NoReturn:
         raise AttributeError("can't delete attribute")
 
     @property
-    def _mapping(self):
+    def _mapping(self) -> RowMapping:
         """Return a :class:`.RowMapping` for this :class:`.Row`.
 
         This object provides a consistent Python mapping (i.e. dictionary)
@@ -87,31 +104,44 @@ class Row(BaseRow, collections_abc.Sequence):
             self._data,
         )
 
-    def _special_name_accessor(name):
-        """Handle ambiguous names such as "count" and "index" """
+    def _filter_on_values(
+        self, filters: Optional[Sequence[Optional[Callable[[Any], Any]]]]
+    ) -> Row:
+        return Row(
+            self._parent,
+            filters,
+            self._keymap,
+            self._key_style,
+            self._data,
+        )
 
-        @property
-        def go(self):
-            if self._parent._has_key(name):
-                return self.__getattr__(name)
-            else:
+    if not typing.TYPE_CHECKING:
 
-                def meth(*arg, **kw):
-                    return getattr(collections_abc.Sequence, name)(
-                        self, *arg, **kw
-                    )
+        def _special_name_accessor(name: str) -> Any:
+            """Handle ambiguous names such as "count" and "index" """
 
-                return meth
+            @property
+            def go(self: Row) -> Any:
+                if self._parent._has_key(name):
+                    return self.__getattr__(name)
+                else:
 
-        return go
+                    def meth(*arg: Any, **kw: Any) -> Any:
+                        return getattr(collections_abc.Sequence, name)(
+                            self, *arg, **kw
+                        )
 
-    count = _special_name_accessor("count")
-    index = _special_name_accessor("index")
+                    return meth
 
-    def __contains__(self, key):
+            return go
+
+        count = _special_name_accessor("count")
+        index = _special_name_accessor("index")
+
+    def __contains__(self, key: Any) -> bool:
         return key in self._data
 
-    def _op(self, other, op):
+    def _op(self, other: Any, op: Callable[[Any, Any], bool]) -> bool:
         return (
             op(tuple(self), tuple(other))
             if isinstance(other, Row)
@@ -120,29 +150,44 @@ class Row(BaseRow, collections_abc.Sequence):
 
     __hash__ = BaseRow.__hash__
 
-    def __lt__(self, other):
+    if typing.TYPE_CHECKING:
+
+        @overload
+        def __getitem__(self, index: int) -> Any:
+            ...
+
+        @overload
+        def __getitem__(self, index: slice) -> Sequence[Any]:
+            ...
+
+        def __getitem__(
+            self, index: Union[int, slice]
+        ) -> Union[Any, Sequence[Any]]:
+            ...
+
+    def __lt__(self, other: Any) -> bool:
         return self._op(other, operator.lt)
 
-    def __le__(self, other):
+    def __le__(self, other: Any) -> bool:
         return self._op(other, operator.le)
 
-    def __ge__(self, other):
+    def __ge__(self, other: Any) -> bool:
         return self._op(other, operator.ge)
 
-    def __gt__(self, other):
+    def __gt__(self, other: Any) -> bool:
         return self._op(other, operator.gt)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         return self._op(other, operator.eq)
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return self._op(other, operator.ne)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(sql_util._repr_row(self))
 
     @property
-    def _fields(self):
+    def _fields(self) -> Tuple[str, ...]:
         """Return a tuple of string keys as represented by this
         :class:`.Row`.
 
@@ -162,7 +207,7 @@ class Row(BaseRow, collections_abc.Sequence):
         """
         return tuple([k for k in self._parent.keys if k is not None])
 
-    def _asdict(self):
+    def _asdict(self) -> Dict[str, Any]:
         """Return a new dict which maps field names to their corresponding
         values.
 
@@ -179,49 +224,51 @@ class Row(BaseRow, collections_abc.Sequence):
         """
         return dict(self._mapping)
 
-    def _replace(self):
-        raise NotImplementedError()
-
-    @property
-    def _field_defaults(self):
-        raise NotImplementedError()
-
 
 BaseRowProxy = BaseRow
 RowProxy = Row
 
 
-class ROMappingView(
-    collections_abc.KeysView,
-    collections_abc.ValuesView,
-    collections_abc.ItemsView,
-):
-    __slots__ = ("_items",)
+class ROMappingView(ABC):
+    __slots__ = ()
 
-    def __init__(self, mapping, items):
+    _items: Sequence[Any]
+    _mapping: Mapping[str, Any]
+
+    def __init__(self, mapping: Mapping[str, Any], items: Sequence[Any]):
         self._mapping = mapping
         self._items = items
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._items)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{0.__class__.__name__}({0._mapping!r})".format(self)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         return iter(self._items)
 
-    def __contains__(self, item):
+    def __contains__(self, item: Any) -> bool:
         return item in self._items
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         return list(other) == list(self)
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         return list(other) != list(self)
 
 
-class RowMapping(BaseRow, collections_abc.Mapping):
+class ROMappingKeysValuesView(
+    ROMappingView, typing.KeysView[str], typing.ValuesView[Any]
+):
+    __slots__ = ("_items",)
+
+
+class ROMappingItemsView(ROMappingView, typing.ItemsView[str, Any]):
+    __slots__ = ("_items",)
+
+
+class RowMapping(BaseRow, typing.Mapping[str, Any]):
     """A ``Mapping`` that maps column names and objects to :class:`.Row` values.
 
     The :class:`.RowMapping` is available from a :class:`.Row` via the
@@ -251,31 +298,39 @@ class RowMapping(BaseRow, collections_abc.Mapping):
 
     _default_key_style = KEY_OBJECTS_ONLY
 
-    __getitem__ = BaseRow._get_by_key_impl_mapping
+    if typing.TYPE_CHECKING:
 
-    def _values_impl(self):
+        def __getitem__(self, key: _KeyType) -> Any:
+            ...
+
+    else:
+        __getitem__ = BaseRow._get_by_key_impl_mapping
+
+    def _values_impl(self) -> List[Any]:
         return list(self._data)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         return (k for k in self._parent.keys if k is not None)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._data)
 
-    def __contains__(self, key):
+    def __contains__(self, key: object) -> bool:
         return self._parent._has_key(key)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return repr(dict(self))
 
-    def items(self):
+    def items(self) -> ROMappingItemsView:
         """Return a view of key/value tuples for the elements in the
         underlying :class:`.Row`.
 
         """
-        return ROMappingView(self, [(key, self[key]) for key in self.keys()])
+        return ROMappingItemsView(
+            self, [(key, self[key]) for key in self.keys()]
+        )
 
-    def keys(self):
+    def keys(self) -> RMKeyView:
         """Return a view of 'keys' for string column names represented
         by the underlying :class:`.Row`.
 
@@ -283,9 +338,9 @@ class RowMapping(BaseRow, collections_abc.Mapping):
 
         return self._parent.keys
 
-    def values(self):
+    def values(self) -> ROMappingKeysValuesView:
         """Return a view of values for the values represented in the
         underlying :class:`.Row`.
 
         """
-        return ROMappingView(self, self._values_impl())
+        return ROMappingKeysValuesView(self, self._values_impl())

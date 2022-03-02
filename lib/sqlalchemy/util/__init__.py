@@ -94,7 +94,6 @@ from .langhelpers import decode_slice as decode_slice
 from .langhelpers import decorator as decorator
 from .langhelpers import dictlike_iteritems as dictlike_iteritems
 from .langhelpers import duck_type_collection as duck_type_collection
-from .langhelpers import dynamic_property as dynamic_property
 from .langhelpers import ellipses_string as ellipses_string
 from .langhelpers import EnsureKWArg as EnsureKWArg
 from .langhelpers import format_argspec_init as format_argspec_init

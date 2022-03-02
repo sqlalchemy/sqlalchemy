@@ -7,8 +7,6 @@ cdef int MD_INDEX = 0  # integer index in cursor.description
 KEY_INTEGER_ONLY = 0
 KEY_OBJECTS_ONLY = 1
 
-sqlalchemy_engine_row = None
-
 cdef class BaseRow:
     cdef readonly object _parent
     cdef readonly tuple _data
@@ -53,19 +51,6 @@ cdef class BaseRow:
         self._keymap = self._parent._keymap
         self._key_style = state["_key_style"]
 
-    def _filter_on_values(self, filters):
-        global sqlalchemy_engine_row
-        if sqlalchemy_engine_row is None:
-            from sqlalchemy.engine.row import Row as sqlalchemy_engine_row
-
-        return sqlalchemy_engine_row(
-            self._parent,
-            filters,
-            self._keymap,
-            self._key_style,
-            self._data,
-        )
-
     def _values_impl(self):
         return list(self)
 
@@ -78,18 +63,8 @@ cdef class BaseRow:
     def __hash__(self):
         return hash(self._data)
 
-    def _get_by_int_impl(self, key):
-        return self._data[key]
-
-    cpdef _get_by_key_impl(self, key):
-        # keep two isinstance since it's noticeably faster in the int case
-        if isinstance(key, int) or isinstance(key, slice):
-            return self._data[key]
-
-        self._parent._raise_for_nonint(key)
-
-    def __getitem__(self, key):
-        return self._get_by_key_impl(key)
+    def __getitem__(self, index):
+        return self._data[index]
 
     cpdef _get_by_key_impl_mapping(self, key):
         try:

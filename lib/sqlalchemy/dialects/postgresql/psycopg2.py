@@ -612,7 +612,7 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
         )
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         import psycopg2
 
         return psycopg2

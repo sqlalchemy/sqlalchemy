@@ -281,7 +281,7 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
                 register_hstore(info, connection.connection)
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         import psycopg
 
         return psycopg
@@ -592,7 +592,7 @@ class PGDialectAsync_psycopg(PGDialect_psycopg):
     supports_statement_cache = True
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         import psycopg
         from psycopg.pq import ExecStatus
 

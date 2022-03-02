@@ -538,7 +538,7 @@ class MSDialect_pyodbc(PyODBCConnector, MSDialect):
             # 2008.  Before we had the VARCHAR cast above, pyodbc would also
             # fail on this query.
             return super(MSDialect_pyodbc, self)._get_server_version_info(
-                connection, allow_chars=False
+                connection
             )
         else:
             version = []
