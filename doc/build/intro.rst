@@ -206,6 +206,12 @@ Python prompt like this:
      >>> sqlalchemy.__version__ # doctest: +SKIP
      1.4.0
 
+Next Steps
+----------
+
+With SQLAlchemy installed, new and old users alike can
+:ref:`Proceed to the SQLAlchemy Tutorial <unified_tutorial>`.
+
 .. _migration:
 
 1.3 to 1.4 Migration
