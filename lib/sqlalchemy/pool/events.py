@@ -51,8 +51,14 @@ class PoolEvents(event.Events):
                 return target
         elif isinstance(target, Engine):
             return target.pool
-        else:
+        elif isinstance(target, Pool):
             return target
+        elif hasattr(target, "dispatch") and hasattr(
+            target.dispatch._events, "_no_async_engine_events"
+        ):
+            target.dispatch._events._no_async_engine_events()
+        else:
+            return None
 
     @classmethod
     def _listen(cls, event_key, **kw):

@@ -716,8 +716,14 @@ class DialectEvents(event.Events):
                 return target
         elif isinstance(target, Engine):
             return target.dialect
-        else:
+        elif isinstance(target, Dialect):
             return target
+        elif hasattr(target, "dispatch") and hasattr(
+            target.dispatch._events, "_no_async_engine_events"
+        ):
+            target.dispatch._events._no_async_engine_events()
+        else:
+            return None
 
     def do_connect(self, dialect, conn_rec, cargs, cparams):
         """Receive connection arguments before a connection is made.

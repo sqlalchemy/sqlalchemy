@@ -654,6 +654,28 @@ class AsyncEventTest(EngineFixture):
                 event.listen(conn, "before_cursor_execute", mock.Mock())
 
     @async_test
+    async def test_no_async_listeners_dialect_event(self, async_engine):
+        with testing.expect_raises_message(
+            NotImplementedError,
+            "asynchronous events are not implemented "
+            "at this time.  Apply synchronous listeners to the "
+            "AsyncEngine.sync_engine or "
+            "AsyncConnection.sync_connection attributes.",
+        ):
+            event.listen(async_engine, "do_execute", mock.Mock())
+
+    @async_test
+    async def test_no_async_listeners_pool_event(self, async_engine):
+        with testing.expect_raises_message(
+            NotImplementedError,
+            "asynchronous events are not implemented "
+            "at this time.  Apply synchronous listeners to the "
+            "AsyncEngine.sync_engine or "
+            "AsyncConnection.sync_connection attributes.",
+        ):
+            event.listen(async_engine, "checkout", mock.Mock())
+
+    @async_test
     async def test_sync_before_cursor_execute_engine(self, async_engine):
         canary = mock.Mock()
 
