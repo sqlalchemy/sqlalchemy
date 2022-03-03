@@ -59,7 +59,7 @@ class PoolEvents(event.Events[Pool]):
     @classmethod
     def _accept_with(
         cls, target: Union[Pool, Type[Pool], Engine, Type[Engine]]
-    ) -> Union[Pool, Type[Pool]]:
+    ) -> Optional[Union[Pool, Type[Pool]]]:
         if not typing.TYPE_CHECKING:
             Engine = util.preloaded.engine.Engine
 
@@ -71,9 +71,14 @@ class PoolEvents(event.Events[Pool]):
                 return target
         elif isinstance(target, Engine):
             return target.pool
-        else:
-            assert isinstance(target, Pool)
+        elif isinstance(target, Pool):
             return target
+        elif hasattr(target, "dispatch") and hasattr(
+            target.dispatch._events, "_no_async_engine_events"
+        ):
+            target.dispatch._events._no_async_engine_events()
+        else:
+            return None
 
     @classmethod
     def _listen(  # type: ignore[override]   # would rather keep **kw
