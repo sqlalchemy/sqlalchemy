@@ -16,16 +16,11 @@ SQLAlchemy Documentation
 
   .. container::
 
-    A high level view and getting set up.
+    New to SQLAlchemy?   Start here:
 
-    :doc:`Overview <intro>` |
-    :ref:`Installation Guide <installation>` |
-    :doc:`Frequently Asked Questions <faq/index>` |
-    :doc:`Migration from 1.4 <changelog/migration_20>` |
-    :doc:`Glossary <glossary>` |
-    :doc:`Error Messages <errors>` |
-    :doc:`Changelog catalog <changelog/index>`
+    * **For Python Beginners:** :ref:`Installation Guide <installation>` - basic guidance on installing with pip and similar
 
+    * **For Python Veterans:** :doc:`SQLAlchemy Overview <intro>` - brief architectural overview
 
 .. container:: left_right_container
 
@@ -35,25 +30,29 @@ SQLAlchemy Documentation
 
         Tutorials
 
-  ..  the paragraph below for "sqlalchemy 2.0" seems to be too wide to be
-      easily readable.  suggest some kind of layout change that can keep the
-      paragraph width more narrow even if there is just one row on the page.
+  .. container::
+
+    The SQLAlchemy 2.0 series represents a major rework of the classic 1.x
+    SQLAlchemy APIs that have evolved over more than 15 years. The new tutorial
+    is recommended for all new users as well as veterans of older SQLAlchemy
+    versions alike.
+
+    * **For all users:** :doc:`/tutorial/index` - SQLAlchemy 2.0's main tutorial
+
+
+.. container:: left_right_container
+
+  .. container:: leftmost
+
+      .. rst-class:: h2
+
+        Migration Notes
 
   .. container::
 
-    **SQLAlchemy 2.0**
-
-    The SQLAlchemy 2.0 series represents a major rework of the classic 1.x
-    SQLAlchemy APIs that have evolved over more than 15 years.   The
-    SQLAlchemy tutorial provides a holistic view of the library, integrating
-    Core and ORM features in a narrative style that is optimized towards
-    establishing a solid understanding of the foundations upon which
-    SQLAlchemy is built on.  The tutorials are recommended for all new users
-    as well as veterans of older SQLAlchemy versions alike.
-
-    * :doc:`/tutorial/index` - SQLAlchemy 2.0's main tutorial
-
     * :doc:`Migrating to SQLAlchemy 2.0 <changelog/migration_20>` - Complete background on migrating from 1.3 or 1.4 to 2.0
+    * :doc:`Changelog catalog <changelog/index>` - Detailed changelogs for all SQLAlchemy Versions
+
 
 .. container:: left_right_container
 
@@ -145,3 +144,18 @@ SQLAlchemy Documentation
 
       :doc:`More Dialects ... <dialects/index>`
 
+.. container:: left_right_container
+
+  .. container:: leftmost
+
+      .. rst-class:: h2
+
+        Supplementary
+
+  .. container::
+
+    * :doc:`Frequently Asked Questions <faq/index>` - A collection of common problems and solutions
+    * :doc:`Glossary <glossary>` - Terms used in SQLAlchemy's documentation
+    * :doc:`Error Message Guide <errors>` - Explainations of many SQLAlchemy Errors
+    * :doc:`Complete table of of contents <contents>`
+    * :doc:`Index <index>`
