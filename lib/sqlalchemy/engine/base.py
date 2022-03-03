@@ -621,7 +621,6 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         if self.invalidated:
             return
 
-        # MARKMARK
         if self.closed:
             raise exc.ResourceClosedError("This Connection is closed")
 
