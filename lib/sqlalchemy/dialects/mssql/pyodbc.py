@@ -179,6 +179,33 @@ at both the pyodbc and engine levels::
         isolation_level="AUTOCOMMIT"
     )
 
+Avoiding sending large string parameters as TEXT/NTEXT
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+By default, for historical reasons, Microsoft's ODBC drivers for SQL Server
+send long string parameters (greater than 4000 SBCS characters or 2000 Unicode
+characters) as TEXT/NTEXT values. TEXT and NTEXT have been deprecated for many
+years and are starting to cause compatibility issues with newer versions of
+SQL_Server/Azure. For example, see `this
+issue <https://github.com/mkleehammer/pyodbc/issues/835>`_.
+
+Starting with ODBC Driver 18 for SQL Server we can override the legacy
+behavior and pass long strings as varchar(max)/nvarchar(max) using the
+``LongAsMax=Yes`` connection string parameter::
+
+    connection_url = sa.engine.URL.create(
+        "mssql+pyodbc",
+        username="scott",
+        password="tiger",
+        host="mssqlserver.example.com",
+        database="mydb",
+        query={
+            "driver": "ODBC Driver 18 for SQL Server",
+            "LongAsMax": "Yes",
+        },
+    )
+
+
 Pyodbc Pooling / connection close behavior
 ------------------------------------------
 
