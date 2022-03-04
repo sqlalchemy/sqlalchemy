@@ -1312,6 +1312,24 @@ class EnumSetTest(
             [("", ""), ("", ""), ("two", "two"), (None, None)],
         )
 
+    @testing.combinations(
+        (
+            [""],
+            {"retrieve_as_bitwise": True},
+            "SET('', retrieve_as_bitwise=True)",
+        ),
+        (["a"], {}, "SET('a')"),
+        (["a", "b", "c"], {}, "SET('a', 'b', 'c')"),
+        (
+            ["a", "b", "c"],
+            {"collation": "utf8_bin"},
+            "SET('a', 'b', 'c', collation='utf8_bin')",
+        ),
+        argnames="value,kw,expected",
+    )
+    def test_set_repr(self, value, kw, expected):
+        eq_(repr(mysql.SET(*value, **kw)), expected)
+
 
 def colspec(c):
     return testing.db.dialect.ddl_compiler(

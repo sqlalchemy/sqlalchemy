@@ -2507,6 +2507,13 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             "inherit_schema=True, native_enum=False)",
         )
 
+    def test_repr_two(self):
+        e = Enum("x", "y", name="somename", create_constraint=True)
+        eq_(
+            repr(e),
+            "Enum('x', 'y', name='somename', create_constraint=True)",
+        )
+
     def test_length_native(self):
         e = Enum("x", "y", "long", length=42)
 
