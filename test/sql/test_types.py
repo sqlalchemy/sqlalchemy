@@ -82,6 +82,7 @@ from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_deprecated_20
 from sqlalchemy.testing import expect_raises
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
@@ -3463,6 +3464,23 @@ class ExpressionTest(
 
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
+
+    def test_compile_err_formatting(self):
+        with expect_raises_message(
+            exc.CompileError,
+            r"Don't know how to render literal SQL value: \(1, 2, 3\)",
+        ):
+            func.foo((1, 2, 3)).compile(compile_kwargs={"literal_binds": True})
+
+    def test_strict_bool_err_formatting(self):
+        typ = Boolean()
+
+        dialect = default.DefaultDialect()
+        with expect_raises_message(
+            TypeError,
+            r"Not a boolean value: \(5,\)",
+        ):
+            typ.bind_processor(dialect)((5,))
 
     @testing.requires.unbounded_varchar
     def test_string_plain(self):
