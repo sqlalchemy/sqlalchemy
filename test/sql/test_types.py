@@ -2521,13 +2521,30 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             "Enum('x', 'y', native_enum=False, length=255)",
         )
 
+    def test_repr_four(self):
+        with expect_warnings(
+            "Enum 'length' argument is currently ignored unless native_enum"
+        ):
+            e = Enum("x", "y", length=255)
+        # length is currently ignored if native_enum is not False
+        eq_(
+            repr(e),
+            "Enum('x', 'y')",
+        )
+
     def test_length_native(self):
-        e = Enum("x", "y", "long", length=42)
+        with expect_warnings(
+            "Enum 'length' argument is currently ignored unless native_enum"
+        ):
+            e = Enum("x", "y", "long", length=42)
 
         eq_(e.length, len("long"))
 
         # no error is raised
-        e = Enum("x", "y", "long", length=1)
+        with expect_warnings(
+            "Enum 'length' argument is currently ignored unless native_enum"
+        ):
+            e = Enum("x", "y", "long", length=1)
         eq_(e.length, len("long"))
 
     def test_length_raises(self):
