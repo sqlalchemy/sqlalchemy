@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, sql
+    :tickets: 7721
+
+    Fixed type-related error messages that would fail for values that were
+    tuples, due to string formatting syntax, including compile of unsupported
+    literal values and invalid boolean values.

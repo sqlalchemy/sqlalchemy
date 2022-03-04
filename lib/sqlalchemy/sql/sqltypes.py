@@ -1756,10 +1756,10 @@ class Boolean(Emulated, TypeEngine[bool], SchemaType):
     def _strict_as_bool(self, value):
         if value not in self._strict_bools:
             if not isinstance(value, int):
-                raise TypeError("Not a boolean value: %r" % value)
+                raise TypeError("Not a boolean value: %r" % (value,))
             else:
                 raise ValueError(
-                    "Value %r is not None, True, or False" % value
+                    "Value %r is not None, True, or False" % (value,)
                 )
         return value
 
@@ -3088,7 +3088,7 @@ class NullType(TypeEngine):
     def literal_processor(self, dialect):
         def process(value):
             raise exc.CompileError(
-                "Don't know how to render literal SQL value: %r" % value
+                "Don't know how to render literal SQL value: %r" % (value,)
             )
 
         return process
@@ -3182,7 +3182,7 @@ def _resolve_value_to_type(value):
             insp.__class__ in inspection._registrars
         ):
             raise exc.ArgumentError(
-                "Object %r is not legal as a SQL literal value" % value
+                "Object %r is not legal as a SQL literal value" % (value,)
             )
         return NULLTYPE
     else:
