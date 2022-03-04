@@ -2514,6 +2514,13 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             "Enum('x', 'y', name='somename', create_constraint=True)",
         )
 
+    def test_repr_three(self):
+        e = Enum("x", "y", native_enum=False, length=255)
+        eq_(
+            repr(e),
+            "Enum('x', 'y', native_enum=False, length=255)",
+        )
+
     def test_length_native(self):
         e = Enum("x", "y", "long", length=42)
 

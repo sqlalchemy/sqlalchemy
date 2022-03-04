@@ -1520,9 +1520,9 @@ class Enum(Emulated, String, SchemaType):
             _expect_unicode = convert_unicode
 
         if self.enums:
-            length = max(len(x) for x in self.enums)
+            self._default_length = length = max(len(x) for x in self.enums)
         else:
-            length = 0
+            self._default_length = length = 0
         if not self.native_enum and length_arg is not NO_ARG:
             if length_arg < length:
                 raise ValueError(
@@ -1675,6 +1675,7 @@ class Enum(Emulated, String, SchemaType):
             additional_kw=[
                 ("native_enum", True),
                 ("create_constraint", False),
+                ("length", self._default_length),
             ],
             to_inspect=[Enum, SchemaType],
         )
