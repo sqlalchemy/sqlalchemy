@@ -1219,8 +1219,9 @@ class Enum(Emulated, String, TypeEngine[Union[str, enum.Enum]], SchemaType):
 
         :param native_enum: Use the database's native ENUM type when
            available. Defaults to True. When False, uses VARCHAR + check
-           constraint for all backends. The VARCHAR length can be controlled
-           with :paramref:`.Enum.length`
+           constraint for all backends. When False, the VARCHAR length can be
+           controlled with :paramref:`.Enum.length`; currently "length" is
+           ignored if native_enum=True.
 
         :param length: Allows specifying a custom length for the VARCHAR
            when :paramref:`.Enum.native_enum` is False. By default it uses the
@@ -1314,7 +1315,7 @@ class Enum(Emulated, String, TypeEngine[Union[str, enum.Enum]], SchemaType):
         self._sort_key_function = kw.pop("sort_key_function", NO_ARG)
         length_arg = kw.pop("length", NO_ARG)
         self._omit_aliases = kw.pop("omit_aliases", True)
-
+        _disable_warnings = kw.pop("_disable_warnings", False)
         values, objects = self._parse_into_values(enums, kw)
         self._setup_for_values(values, objects, kw)
 
@@ -1324,14 +1325,24 @@ class Enum(Emulated, String, TypeEngine[Union[str, enum.Enum]], SchemaType):
             self._default_length = length = max(len(x) for x in self.enums)
         else:
             self._default_length = length = 0
-        if not self.native_enum and length_arg is not NO_ARG:
-            if length_arg < length:
-                raise ValueError(
-                    "When provided, length must be larger or equal"
-                    " than the length of the longest enum value. %s < %s"
-                    % (length_arg, length)
-                )
-            length = length_arg
+
+        if length_arg is not NO_ARG:
+            if self.native_enum:
+                if not _disable_warnings:
+                    util.warn(
+                        "Enum 'length' argument is currently ignored unless "
+                        "native_enum is specified as False, including for DDL "
+                        "that renders VARCHAR in any case.  This may change "
+                        "in a future release."
+                    )
+            else:
+                if not _disable_warnings and length_arg < length:
+                    raise ValueError(
+                        "When provided, length must be larger or equal"
+                        " than the length of the longest enum value. %s < %s"
+                        % (length_arg, length)
+                    )
+                length = length_arg
 
         self._valid_lookup[None] = self._object_lookup[None] = None
 
@@ -1471,11 +1482,14 @@ class Enum(Emulated, String, TypeEngine[Union[str, enum.Enum]], SchemaType):
                 "an `enums` attribute."
             )
 
-        return util.constructor_copy(self, self._generic_type_affinity, *args)
+        return util.constructor_copy(
+            self, self._generic_type_affinity, *args, _disable_warnings=True
+        )
 
     def adapt_to_emulated(self, impltype, **kw):
         kw.setdefault("validate_strings", self.validate_strings)
         kw.setdefault("name", self.name)
+        kw["_disable_warnings"] = True
         kw.setdefault("schema", self.schema)
         kw.setdefault("inherit_schema", self.inherit_schema)
         kw.setdefault("metadata", self.metadata)
@@ -1490,6 +1504,7 @@ class Enum(Emulated, String, TypeEngine[Union[str, enum.Enum]], SchemaType):
 
     def adapt(self, impltype, **kw):
         kw["_enums"] = self._enums_argument
+        kw["_disable_warnings"] = True
         return super(Enum, self).adapt(impltype, **kw)
 
     def _should_create_constraint(self, compiler, **kw):
