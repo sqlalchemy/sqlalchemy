@@ -20,7 +20,8 @@ exclude-modules = '^sqlalchemy\.testing'
 
 [tool.pytest.ini_options]
 addopts = "--tb native -v -r sfxX --maxfail=250 -p warnings -p logging --strict-markers"
-python_files = "test/*test_*.py"
+norecursedirs = "examples build doc lib"
+python_files = "test_*.py"
 minversion = "6.2"
 filterwarnings = [
     # NOTE: additional SQLAlchemy specific filters in
