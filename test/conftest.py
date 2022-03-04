@@ -32,7 +32,11 @@ if not sys.flags.no_user_site:
     # We check no_user_site to honor the use of this flag.
     sys.path.insert(
         0,
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"),
+        os.path.abspath(
+            os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "..", "lib"
+            )
+        ),
     )
 
 # use bootstrapping so that test plugins are loaded
