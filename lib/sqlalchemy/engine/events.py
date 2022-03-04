@@ -779,7 +779,7 @@ class DialectEvents(event.Events[Dialect]):
     @classmethod
     def _accept_with(
         cls, target: Union[Engine, Type[Engine], Dialect, Type[Dialect]]
-    ) -> Union[Dialect, Type[Dialect]]:
+    ) -> Optional[Union[Dialect, Type[Dialect]]]:
         if isinstance(target, type):
             if issubclass(target, Engine):
                 return Dialect
@@ -787,8 +787,14 @@ class DialectEvents(event.Events[Dialect]):
                 return target
         elif isinstance(target, Engine):
             return target.dialect
-        else:
+        elif isinstance(target, Dialect):
             return target
+        elif hasattr(target, "dispatch") and hasattr(
+            target.dispatch._events, "_no_async_engine_events"
+        ):
+            target.dispatch._events._no_async_engine_events()
+        else:
+            return None
 
     def do_connect(
         self,
