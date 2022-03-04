@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, tests
+    :tickets: 7045
+
+    Made corrections to the default pytest configuration so that test discovery
+    runs correctly; previously, a configuration error had the effect of
+    discovery locating the wrong files if a super-directory of the current
+    directory were named "test".
