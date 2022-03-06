@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, mariadb, regression
-    :tickets: 7738
-
-    Fixed regression in mariadbconnector dialect as of mariadb connector 1.0.10
-    where the DBAPI no longer pre-buffers cursor.lastrowid, leading to errors
-    when inserting objects with the ORM as well as causing non-availability of
-    the :attr:`_result.CursorResult.inserted_primary_key` attribute. The
-    dialect now fetches this value proactively for situations where it applies.
