@@ -14,6 +14,10 @@ This document details individual issue-level changes made throughout
 
 
 .. changelog::
+    :version: 1.4.33
+    :include_notes_from: unreleased_14
+
+.. changelog::
     :version: 1.4.32
     :released: March 6, 2022
 
