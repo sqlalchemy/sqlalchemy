@@ -15,7 +15,209 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.32
-    :include_notes_from: unreleased_14
+    :released: March 6, 2022
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 7721
+
+        Fixed type-related error messages that would fail for values that were
+        tuples, due to string formatting syntax, including compile of unsupported
+        literal values and invalid boolean values.
+
+    .. change::
+        :tags: bug, sql, mysql
+        :tickets: 7720, 7789, 7598
+
+        Fixed issues in MySQL :class:`_mysql.SET` datatype as well as the generic
+        :class:`.Enum` datatype where the ``__repr__()`` method would not render
+        all optional parameters in the string output, impacting the use of these
+        types in Alembic autogenerate. Pull request for MySQL courtesy Yuki
+        Nishimine.
+
+
+    .. change::
+        :tags: bug, sqlite
+        :tickets: 7736
+
+        Fixed issue where SQLite unique constraint reflection would fail to detect
+        a column-inline UNIQUE constraint where the column name had an underscore
+        in its name.
+
+    .. change::
+        :tags: usecase, sqlite
+        :tickets: 7736
+
+        Added support for reflecting SQLite inline unique constraints where
+        the column names are formatted with SQLite "escape quotes" ``[]``
+        or `````, which are discarded by the database when producing the
+        column name.
+
+    .. change::
+        :tags: bug, oracle
+        :tickets: 7676
+
+        Fixed issue in Oracle dialect where using a column name that requires
+        quoting when written as a bound parameter, such as ``"_id"``, would not
+        correctly track a Python generated default value due to the bound-parameter
+        rewriting missing this value, causing an Oracle error to be raised.
+
+    .. change::
+        :tags: bug, tests
+        :tickets: 7599
+
+        Improvements to the test suite's integration with pytest such that the
+        "warnings" plugin, if manually enabled, will not interfere with the test
+        suite, such that third parties can enable the warnings plugin or make use
+        of the ``-W`` parameter and SQLAlchemy's test suite will continue to pass.
+        Additionally, modernized the detection of the "pytest-xdist" plugin so that
+        plugins can be globally disabled using PYTEST_DISABLE_PLUGIN_AUTOLOAD=1
+        without breaking the test suite if xdist were still installed. Warning
+        filters that promote deprecation warnings to errors are now localized to
+        SQLAlchemy-specific warnings, or within SQLAlchemy-specific sources for
+        general Python deprecation warnings, so that non-SQLAlchemy deprecation
+        warnings emitted from pytest plugins should also not impact the test suite.
+
+
+    .. change::
+        :tags: bug, sql
+
+        The :class:`_sqltypes.Enum` datatype now emits a warning if the
+        :paramref:`_sqltypes.Enum.length` argument is specified without also
+        specifying :paramref:`_sqltypes.Enum.native_enum` as False, as the
+        parameter is otherwise silently ignored in this case, despite the fact that
+        the :class:`_sqltypes.Enum` datatype will still render VARCHAR DDL on
+        backends that don't have a native ENUM datatype such as SQLite. This
+        behavior may change in a future release so that "length" is honored for all
+        non-native "enum" types regardless of the "native_enum" setting.
+
+
+    .. change::
+        :tags: bug, mysql, regression
+        :tickets: 7518
+
+        Fixed regression caused by :ticket:`7518` where changing the syntax "SHOW
+        VARIABLES" to "SELECT @@" broke compatibility with MySQL versions older
+        than 5.6, including early 5.0 releases. While these are very old MySQL
+        versions, a change in compatibility was not planned, so version-specific
+        logic has been restored to fall back to "SHOW VARIABLES" for MySQL server
+        versions < 5.6.
+
+    .. change::
+        :tags: bug, asyncio
+
+        Fixed issues where a descriptive error message was not raised for some
+        classes of event listening with an async engine, which should instead be a
+        sync engine instance.
+
+    .. change::
+        :tags: bug, mariadb, regression
+        :tickets: 7738
+
+        Fixed regression in mariadbconnector dialect as of mariadb connector 1.0.10
+        where the DBAPI no longer pre-buffers cursor.lastrowid, leading to errors
+        when inserting objects with the ORM as well as causing non-availability of
+        the :attr:`_result.CursorResult.inserted_primary_key` attribute. The
+        dialect now fetches this value proactively for situations where it applies.
+
+    .. change::
+        :tags: usecase, postgresql
+        :tickets: 7600
+
+        Added compiler support for the PostgreSQL ``NOT VALID`` phrase when rendering
+        DDL for the :class:`.CheckConstraint`, :class:`.ForeignKeyConstraint`
+        and :class:`.ForeignKey` schema constructs.  Pull request courtesy
+        Gilbert Gilb's.
+
+        .. seealso::
+
+            :ref:`postgresql_constraint_options`
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 7594
+
+        Fixed regression where the ORM exception that is to be raised when an
+        INSERT silently fails to actually insert a row (such as from a trigger)
+        would not be reached, due to a runtime exception raised ahead of time due
+        to the missing primary key value, thus raising an uninformative exception
+        rather than the correct one. For 1.4 and above, a new
+        :class:`_ormexc.FlushError` is added for this case that's raised earlier
+        than the previous "null identity" exception was for 1.3, as a situation
+        where the number of rows actually INSERTed does not match what was expected
+        is a more critical situation in 1.4 as it prevents batching of multiple
+        objects from working correctly. This is separate from the case where a
+        newly fetched primary key is fetched as NULL, which continues to raise the
+        existing "null identity" exception.
+
+    .. change::
+        :tags: bug, tests
+        :tickets: 7045
+
+        Made corrections to the default pytest configuration regarding how test
+        discovery is configured, to fix issue where the test suite would not
+        configure warnings correctly and also attempt to load example suites as
+        tests, in the specific case where the SQLAlchemy checkout were located in
+        an absolute path that had a super-directory named "test".
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7697
+
+        Fixed issue where using a fully qualified path for the classname in
+        :func:`_orm.relationship` that nonetheless contained an incorrect name for
+        path tokens that were not the first token, would fail to raise an
+        informative error and would instead fail randomly at a later step.
+
+    .. change::
+        :tags: bug, oracle, regression
+        :tickets: 7748
+
+        Added support to parse "DPI" error codes from cx_Oracle exception objects
+        such as ``DPI-1080`` and ``DPI-1010``, both of which now indicate a
+        disconnect scenario as of cx_Oracle 8.3.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 7760
+
+        Fixed issue where the :meth:`.HasCTE.add_cte` method as called upon a
+        :class:`.TextualSelect` instance was not being accommodated by the SQL
+        compiler. The fix additionally adds more "SELECT"-like compiler behavior to
+        :class:`.TextualSelect` including that DML CTEs such as UPDATE and INSERT
+        may be accommodated.
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 7612
+
+        Adjusted the logging for key SQLAlchemy components including
+        :class:`_engine.Engine`, :class:`_engine.Connection` to establish an
+        appropriate stack level parameter, so that the Python logging tokens
+        ``funcName`` and ``lineno`` when used in custom logging formatters will
+        report the correct information, which can be useful when filtering log
+        output; supported on Python 3.8 and above. Pull request courtesy Markus
+        Gerstel.
+
+    .. change::
+        :tags: bug, asyncio
+        :tickets: 7667
+
+        Fixed issue where the :meth:`_asyncio.AsyncSession.execute` method failed
+        to raise an informative exception if the
+        :paramref:`_engine.Connection.execution_options.stream_results` execution
+        option were used, which is incompatible with a sync-style
+        :class:`_result.Result` object when using an asyncio calling style, as the
+        operation to fetch more rows would need to be awaited. An exception is now
+        raised in this scenario in the same way one was already raised when the
+        :paramref:`_engine.Connection.execution_options.stream_results` option
+        would be used with the :meth:`_asyncio.AsyncConnection.execute` method.
+
+        Additionally, for improved stability with state-sensitive database drivers
+        such as asyncmy, the cursor is now closed when this error condition is
+        raised; previously with the asyncmy dialect, the connection would go into
+        an invalid state with unconsumed server side results remaining.
+
 
 .. changelog::
     :version: 1.4.31

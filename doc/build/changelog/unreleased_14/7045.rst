@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, tests
-    :tickets: 7045
-
-    Made corrections to the default pytest configuration regarding how test
-    discovery is configured, to fix issue where the test suite would not
-    configure warnings correctly and also attempt to load example suites as
-    tests, in the specific case where the SQLAlchemy checkout were located in
-    an absolute path that had a super-directory named "test".
