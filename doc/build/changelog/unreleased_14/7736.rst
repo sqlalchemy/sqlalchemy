@@ -2,8 +2,8 @@
     :tags: bug, sqlite
     :tickets: 7736
 
-    Fixed issue where SQLite unique constraint reflection would not work
-    for an inline UNIQUE constraint where the column name had an underscore
+    Fixed issue where SQLite unique constraint reflection would fail to detect
+    a column-inline UNIQUE constraint where the column name had an underscore
     in its name.
 
 .. change::
@@ -12,5 +12,5 @@
 
     Added support for reflecting SQLite inline unique constraints where
     the column names are formatted with SQLite "escape quotes" ``[]``
-    or `` ` ``, which are discarded by the database when producing the
+    or `````, which are discarded by the database when producing the
     column name.
