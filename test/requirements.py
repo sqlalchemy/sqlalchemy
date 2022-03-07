@@ -484,6 +484,16 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def compat_savepoints(self):
+        """Target database must support savepoints, or a compat
+        recipe e.g. for sqlite will be used"""
+
+        return skip_if(
+            ["sybase", ("mysql", "<", (5, 0, 3))],
+            "savepoints not supported",
+        )
+
+    @property
     def savepoints_w_release(self):
         return self.savepoints + skip_if(
             ["oracle", "mssql"],
