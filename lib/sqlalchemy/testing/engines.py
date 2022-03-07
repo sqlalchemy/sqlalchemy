@@ -276,10 +276,12 @@ def testing_engine(
     future=None,
     asyncio=False,
     transfer_staticpool=False,
+    _sqlite_savepoint=False,
 ):
     """Produce an engine configured by --options with optional overrides."""
 
     if asyncio:
+        assert not _sqlite_savepoint
         from sqlalchemy.ext.asyncio import (
             create_async_engine as create_engine,
         )
@@ -294,9 +296,11 @@ def testing_engine(
     if not options:
         use_reaper = True
         scope = "function"
+        sqlite_savepoint = False
     else:
         use_reaper = options.pop("use_reaper", True)
         scope = options.pop("scope", "function")
+        sqlite_savepoint = options.pop("sqlite_savepoint", False)
 
     url = url or config.db.url
 
@@ -311,6 +315,16 @@ def testing_engine(
         default_opt.update(options)
 
     engine = create_engine(url, **options)
+
+    if sqlite_savepoint and engine.name == "sqlite":
+        # apply SQLite savepoint workaround
+        @event.listens_for(engine, "connect")
+        def do_connect(dbapi_connection, connection_record):
+            dbapi_connection.isolation_level = None
+
+        @event.listens_for(engine, "begin")
+        def do_begin(conn):
+            conn.exec_driver_sql("BEGIN")
 
     if transfer_staticpool:
         from sqlalchemy.pool import StaticPool
