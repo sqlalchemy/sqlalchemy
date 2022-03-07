@@ -37,6 +37,7 @@ from .interfaces import InspectionAttr
 from .interfaces import MapperProperty
 from .interfaces import ORMEntityColumnsClauseRole
 from .interfaces import ORMFromClauseRole
+from .interfaces import StrategizedProperty
 from .path_registry import PathRegistry
 from .. import event
 from .. import exc as sa_exc
@@ -3089,8 +3090,11 @@ class Mapper(
 
         assert self.inherits
 
-        polymorphic_prop = self._columntoproperty[self.polymorphic_on]
-        keep_props = set([polymorphic_prop] + self._identity_key_props)
+        if self.polymorphic_on is not None:
+            polymorphic_prop = self._columntoproperty[self.polymorphic_on]
+            keep_props = set([polymorphic_prop] + self._identity_key_props)
+        else:
+            keep_props = set(self._identity_key_props)
 
         disable_opt = strategy_options.Load(entity)
         enable_opt = strategy_options.Load(entity)
@@ -3099,6 +3103,9 @@ class Mapper(
             if prop.parent is self or prop in keep_props:
                 # "enable" options, to turn on the properties that we want to
                 # load by default (subject to options from the query)
+                if not isinstance(prop, StrategizedProperty):
+                    continue
+
                 enable_opt.set_generic_strategy(
                     # convert string name to an attribute before passing
                     # to loader strategy
