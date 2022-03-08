@@ -37,6 +37,7 @@ from ..sql.compiler import TypeCompiler  # noqa
 from ..util import immutabledict
 from ..util.concurrency import await_only
 from ..util.typing import _TypeToInstance
+from ..util.typing import Literal
 from ..util.typing import NotRequired
 from ..util.typing import Protocol
 from ..util.typing import TypedDict
@@ -220,6 +221,16 @@ _ExecuteOptionsParameter = Mapping[str, Any]
 _SchemaTranslateMapType = Mapping[str, str]
 
 _ImmutableExecuteOptions = immutabledict[str, Any]
+
+_ParamStyle = Literal["qmark", "numeric", "named", "format", "pyformat"]
+
+_IsolationLevel = Literal[
+    "SERIALIZABLE",
+    "REPEATABLE READ",
+    "READ COMMITTED",
+    "READ UNCOMMITTED",
+    "AUTOCOMMIT",
+]
 
 
 class ReflectedIdentity(TypedDict):
@@ -622,7 +633,7 @@ class Dialect(EventTarget):
 
     """
 
-    default_isolation_level: str
+    default_isolation_level: _IsolationLevel
     """the isolation that is implicitly present on new connections"""
 
     execution_ctx_cls: Type["ExecutionContext"]
@@ -1647,7 +1658,7 @@ class Dialect(EventTarget):
         raise NotImplementedError()
 
     def set_isolation_level(
-        self, dbapi_connection: DBAPIConnection, level: str
+        self, dbapi_connection: DBAPIConnection, level: _IsolationLevel
     ) -> None:
         """Given a DBAPI connection, set its isolation level.
 
@@ -1680,7 +1691,9 @@ class Dialect(EventTarget):
 
         raise NotImplementedError()
 
-    def get_isolation_level(self, dbapi_connection: DBAPIConnection) -> str:
+    def get_isolation_level(
+        self, dbapi_connection: DBAPIConnection
+    ) -> _IsolationLevel:
         """Given a DBAPI connection, return its isolation level.
 
         When working with a :class:`_engine.Connection` object,
@@ -1713,7 +1726,9 @@ class Dialect(EventTarget):
 
         raise NotImplementedError()
 
-    def get_default_isolation_level(self, dbapi_conn: DBAPIConnection) -> str:
+    def get_default_isolation_level(
+        self, dbapi_conn: DBAPIConnection
+    ) -> _IsolationLevel:
         """Given a DBAPI connection, return its isolation level, or
         a default isolation level if one cannot be retrieved.
 
@@ -1735,7 +1750,7 @@ class Dialect(EventTarget):
 
     def get_isolation_level_values(
         self, dbapi_conn: DBAPIConnection
-    ) -> List[str]:
+    ) -> List[_IsolationLevel]:
         """return a sequence of string isolation level names that are accepted
         by this dialect.
 
@@ -1778,7 +1793,7 @@ class Dialect(EventTarget):
         raise NotImplementedError()
 
     def _assert_and_set_isolation_level(
-        self, dbapi_conn: DBAPIConnection, level: str
+        self, dbapi_conn: DBAPIConnection, level: _IsolationLevel
     ) -> None:
         raise NotImplementedError()
 

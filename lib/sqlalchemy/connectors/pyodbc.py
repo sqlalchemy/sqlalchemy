@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from types import ModuleType
+import typing
 from typing import Any
 from typing import Dict
 from typing import List
@@ -26,6 +27,9 @@ from ..engine import Connection
 from ..engine import interfaces
 from ..engine import URL
 from ..sql.type_api import TypeEngine
+
+if typing.TYPE_CHECKING:
+    from ..engine.interfaces import _IsolationLevel
 
 
 class PyODBCConnector(Connector):
@@ -208,13 +212,15 @@ class PyODBCConnector(Connector):
 
     def get_isolation_level_values(
         self, dbapi_connection: interfaces.DBAPIConnection
-    ) -> List[str]:
+    ) -> List[_IsolationLevel]:
         return super().get_isolation_level_values(dbapi_connection) + [  # type: ignore  # noqa E501
             "AUTOCOMMIT"
         ]
 
     def set_isolation_level(
-        self, dbapi_connection: interfaces.DBAPIConnection, level: str
+        self,
+        dbapi_connection: interfaces.DBAPIConnection,
+        level: _IsolationLevel,
     ) -> None:
         # adjust for ConnectionFairy being present
         # allows attribute set e.g. "connection.autocommit = True"

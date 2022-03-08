@@ -56,11 +56,7 @@ class ResetStyle(Enum):
 
 _ResetStyleArgType = Union[
     ResetStyle,
-    Literal[True],
-    Literal[None],
-    Literal[False],
-    Literal["commit"],
-    Literal["rollback"],
+    Literal[True, None, False, "commit", "rollback"],
 ]
 reset_rollback, reset_commit, reset_none = list(ResetStyle)
 
