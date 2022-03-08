@@ -18,7 +18,9 @@ import re
 import typing
 from typing import Any
 from typing import Callable
+from typing import Dict
 from typing import Generic
+from typing import List
 from typing import Optional
 from typing import overload
 from typing import Sequence
@@ -47,6 +49,7 @@ from .coercions import _document_text_coercion  # noqa
 from .operators import ColumnOperators
 from .traversals import HasCopyInternals
 from .visitors import cloned_traverse
+from .visitors import ExternallyTraversible
 from .visitors import InternalTraversal
 from .visitors import traverse
 from .visitors import Visitable
@@ -68,6 +71,8 @@ if typing.TYPE_CHECKING:
     from ..engine import Connection
     from ..engine import Dialect
     from ..engine import Engine
+    from ..engine.base import _CompiledCacheType
+    from ..engine.base import _SchemaTranslateMapType
 
 
 _NUMERIC = Union[complex, "Decimal"]
@@ -238,6 +243,7 @@ class ClauseElement(
     SupportsWrappingAnnotations,
     MemoizedHasCacheKey,
     HasCopyInternals,
+    ExternallyTraversible,
     CompilerElement,
 ):
     """Base class for elements of a programmatically constructed SQL
@@ -398,7 +404,9 @@ class ClauseElement(
         """
         return self._replace_params(True, optionaldict, kwargs)
 
-    def params(self, *optionaldict, **kwargs):
+    def params(
+        self, *optionaldict: Dict[str, Any], **kwargs: Any
+    ) -> ClauseElement:
         """Return a copy with :func:`_expression.bindparam` elements
         replaced.
 
@@ -415,7 +423,12 @@ class ClauseElement(
         """
         return self._replace_params(False, optionaldict, kwargs)
 
-    def _replace_params(self, unique, optionaldict, kwargs):
+    def _replace_params(
+        self,
+        unique: bool,
+        optionaldict: Optional[Dict[str, Any]],
+        kwargs: Dict[str, Any],
+    ) -> ClauseElement:
 
         if len(optionaldict) == 1:
             kwargs.update(optionaldict[0])
@@ -487,12 +500,12 @@ class ClauseElement(
 
     def _compile_w_cache(
         self,
-        dialect,
-        compiled_cache=None,
-        column_keys=None,
-        for_executemany=False,
-        schema_translate_map=None,
-        **kw,
+        dialect: Dialect,
+        compiled_cache: Optional[_CompiledCacheType] = None,
+        column_keys: Optional[List[str]] = None,
+        for_executemany: bool = False,
+        schema_translate_map: Optional[_SchemaTranslateMapType] = None,
+        **kw: Any,
     ):
         if compiled_cache is not None and dialect._supports_statement_cache:
             elem_cache_key = self._generate_cache_key()
@@ -1383,7 +1396,7 @@ class ColumnElement(
         """
         return Cast(self, type_)
 
-    def label(self, name):
+    def label(self, name: Optional[str]) -> Label[_T]:
         """Produce a column label, i.e. ``<columnname> AS <name>``.
 
         This is a shortcut to the :func:`_expression.label` function.
@@ -1607,6 +1620,9 @@ class BindParameter(roles.InElementRole, ColumnElement[_T]):
         ("callable", InternalTraversal.dp_plain_dict),
         ("value", InternalTraversal.dp_plain_obj),
     ]
+
+    key: str
+    type: TypeEngine
 
     _is_crud = False
     _is_bind_parameter = True

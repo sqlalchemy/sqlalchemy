@@ -21,9 +21,9 @@ from . import coercions
 from . import operators
 from . import roles
 from . import visitors
-from .annotation import _deep_annotate  # noqa
-from .annotation import _deep_deannotate  # noqa
-from .annotation import _shallow_annotate  # noqa
+from .annotation import _deep_annotate as _deep_annotate
+from .annotation import _deep_deannotate as _deep_deannotate
+from .annotation import _shallow_annotate as _shallow_annotate
 from .base import _expand_cloned
 from .base import _from_objects
 from .base import ColumnSet

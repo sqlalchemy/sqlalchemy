@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 from typing import Any
+from typing import Sequence
 from typing import TypeVar
 
 from . import annotation
@@ -838,6 +839,8 @@ class Function(FunctionElement):
     name: str
 
     identifier: str
+
+    packagenames: Sequence[str]
 
     type: TypeEngine = sqltypes.NULLTYPE
     """A :class:`_types.TypeEngine` object which refers to the SQL return

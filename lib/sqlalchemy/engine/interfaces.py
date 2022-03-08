@@ -54,9 +54,10 @@ if TYPE_CHECKING:
     from ..sql.compiler import IdentifierPreparer
     from ..sql.compiler import Linting
     from ..sql.compiler import SQLCompiler
+    from ..sql.elements import BindParameter
     from ..sql.elements import ClauseElement
     from ..sql.schema import Column
-    from ..sql.schema import ColumnDefault
+    from ..sql.schema import DefaultGenerator
     from ..sql.schema import Sequence as Sequence_SchemaItem
     from ..sql.sqltypes import Integer
     from ..sql.type_api import TypeEngine
@@ -812,6 +813,9 @@ class Dialect(EventTarget):
         :ref:`engine_thirdparty_caching`
 
     """
+
+    _supports_statement_cache: bool
+    """internal evaluation for supports_statement_cache"""
 
     bind_typing = BindTyping.NONE
     """define a means of passing typing information to the database and/or
@@ -2269,7 +2273,7 @@ class ExecutionContext:
         compiled: SQLCompiler,
         parameters: _CoreMultiExecuteParams,
         invoked_statement: Executable,
-        extracted_parameters: _CoreSingleExecuteParams,
+        extracted_parameters: Optional[Sequence[BindParameter[Any]]],
         cache_hit: CacheStats = CacheStats.CACHING_DISABLED,
     ) -> ExecutionContext:
         raise NotImplementedError()
@@ -2299,7 +2303,7 @@ class ExecutionContext:
     def _exec_default(
         self,
         column: Optional[Column[Any]],
-        default: ColumnDefault,
+        default: DefaultGenerator,
         type_: Optional[TypeEngine[Any]],
     ) -> Any:
         raise NotImplementedError()

@@ -35,13 +35,13 @@ from .elements import _NONE_NAME
 from .elements import quoted_name
 from .elements import Slice
 from .elements import TypeCoerce as type_coerce  # noqa
-from .traversals import InternalTraversal
 from .type_api import Emulated
 from .type_api import NativeForEmulated  # noqa
 from .type_api import to_instance
 from .type_api import TypeDecorator
 from .type_api import TypeEngine
 from .type_api import Variant  # noqa
+from .visitors import InternalTraversal
 from .. import event
 from .. import exc
 from .. import inspection

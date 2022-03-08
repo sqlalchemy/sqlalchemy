@@ -7,43 +7,46 @@
 
 """Visitor/traversal interface and library functions.
 
-SQLAlchemy schema and expression constructs rely on a Python-centric
-version of the classic "visitor" pattern as the primary way in which
-they apply functionality.  The most common use of this pattern
-is statement compilation, where individual expression classes match
-up to rendering methods that produce a string result.   Beyond this,
-the visitor system is also used to inspect expressions for various
-information and patterns, as well as for the purposes of applying
-transformations to expressions.
-
-Examples of how the visit system is used can be seen in the source code
-of for example the ``sqlalchemy.sql.util`` and the ``sqlalchemy.sql.compiler``
-modules.  Some background on clause adaption is also at
-https://techspot.zzzeek.org/2008/01/23/expression-transformations/ .
 
 """
 
 from __future__ import annotations
 
 from collections import deque
+from enum import Enum
 import itertools
 import operator
 import typing
 from typing import Any
+from typing import Callable
+from typing import cast
+from typing import ClassVar
+from typing import Collection
+from typing import Dict
+from typing import Iterable
+from typing import Iterator
 from typing import List
+from typing import Mapping
+from typing import Optional
 from typing import Tuple
+from typing import Type
+from typing import TypeVar
+from typing import Union
 
 from .. import exc
 from .. import util
 from ..util import langhelpers
-from ..util import symbol
 from ..util._has_cy import HAS_CYEXTENSION
-from ..util.langhelpers import _symbol
+from ..util.typing import Protocol
+from ..util.typing import Self
 
 if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
-    from ._py_util import cache_anon_map as anon_map  # noqa
+    from ._py_util import prefix_anon_map as prefix_anon_map
+    from ._py_util import cache_anon_map as anon_map
 else:
-    from sqlalchemy.cyextension.util import cache_anon_map as anon_map  # noqa
+    from sqlalchemy.cyextension.util import prefix_anon_map as prefix_anon_map
+    from sqlalchemy.cyextension.util import cache_anon_map as anon_map
+
 
 __all__ = [
     "iterate",
@@ -54,56 +57,22 @@ __all__ = [
     "Visitable",
     "ExternalTraversal",
     "InternalTraversal",
+    "anon_map",
 ]
 
-_TraverseInternalsType = List[Tuple[str, _symbol]]
 
-
-class HasTraverseInternals:
-    """base for classes that have a "traverse internals" element,
-    which defines all kinds of ways of traversing the elements of an object.
-
-    """
-
-    __slots__ = ()
-
-    _traverse_internals: _TraverseInternalsType
-
-    @util.preload_module("sqlalchemy.sql.traversals")
-    def get_children(self, omit_attrs=(), **kw):
-        r"""Return immediate child :class:`.visitors.Visitable`
-        elements of this :class:`.visitors.Visitable`.
-
-        This is used for visit traversal.
-
-        \**kw may contain flags that change the collection that is
-        returned, for example to return a subset of items in order to
-        cut down on larger traversals, or to return child items from a
-        different context (such as schema-level collections instead of
-        clause-level).
-
-        """
-
-        traversals = util.preloaded.sql_traversals
-
-        try:
-            traverse_internals = self._traverse_internals
-        except AttributeError:
-            # user-defined classes may not have a _traverse_internals
-            return []
-
-        dispatch = traversals._get_children.run_generated_dispatch
-        return itertools.chain.from_iterable(
-            meth(obj, **kw)
-            for attrname, obj, meth in dispatch(
-                self, traverse_internals, "_generated_get_children_traversal"
-            )
-            if attrname not in omit_attrs and obj is not None
-        )
+class _CompilerDispatchType(Protocol):
+    def __call__(_self, self: Visitable, visitor: Any, **kw: Any) -> Any:
+        ...
 
 
 class Visitable:
     """Base class for visitable objects.
+
+    :class:`.Visitable` is used to implement the SQL compiler dispatch
+    functions.    Other forms of traversal such as for cache key generation
+    are implemented separately using the :class:`.HasTraverseInternals`
+    interface.
 
     .. versionchanged:: 2.0  The :class:`.Visitable` class was named
        :class:`.Traversible` in the 1.4 series; the name is changed back
@@ -117,32 +86,20 @@ class Visitable:
 
     __visit_name__: str
 
+    _original_compiler_dispatch: _CompilerDispatchType
+
+    if typing.TYPE_CHECKING:
+
+        def _compiler_dispatch(self, visitor: Any, **kw: Any) -> str:
+            ...
+
     def __init_subclass__(cls) -> None:
         if "__visit_name__" in cls.__dict__:
             cls._generate_compiler_dispatch()
         super().__init_subclass__()
 
     @classmethod
-    def _generate_compiler_dispatch(cls):
-        """Assign dispatch attributes to various kinds of
-        "visitable" classes.
-
-        Attributes include:
-
-        * The ``_compiler_dispatch`` method, corresponding to
-          ``__visit_name__``. This is called "external traversal" because the
-          caller of each visit() method is responsible for sub-traversing the
-          inner elements of each object. This is appropriate for string
-          compilers and other traversals that need to call upon the inner
-          elements in a specific pattern.
-
-        * internal traversal collections ``_children_traversal``,
-          ``_cache_key_traversal``, ``_copy_internals_traversal``, generated
-          from an optional ``_traverse_internals`` collection of symbols which
-          comes from the :class:`.InternalTraversal` list of symbols. This is
-          called "internal traversal".
-
-        """
+    def _generate_compiler_dispatch(cls) -> None:
         visit_name = cls.__visit_name__
 
         if "_compiler_dispatch" in cls.__dict__:
@@ -161,7 +118,9 @@ class Visitable:
         name = "visit_%s" % visit_name
         getter = operator.attrgetter(name)
 
-        def _compiler_dispatch(self, visitor, **kw):
+        def _compiler_dispatch(
+            self: Visitable, visitor: Any, **kw: Any
+        ) -> str:
             """Look for an attribute named "visit_<visit_name>" on the
             visitor, and call it with the same kw params.
 
@@ -169,105 +128,20 @@ class Visitable:
             try:
                 meth = getter(visitor)
             except AttributeError as err:
-                return visitor.visit_unsupported_compilation(self, err, **kw)
+                return visitor.visit_unsupported_compilation(self, err, **kw)  # type: ignore  # noqa E501
             else:
-                return meth(self, **kw)
+                return meth(self, **kw)  # type: ignore  # noqa E501
 
-        cls._compiler_dispatch = (
+        cls._compiler_dispatch = (  # type: ignore
             cls._original_compiler_dispatch
         ) = _compiler_dispatch
 
-    def __class_getitem__(cls, key):
+    def __class_getitem__(cls, key: str) -> Any:
         # allow generic classes in py3.9+
         return cls
 
 
-class _HasTraversalDispatch:
-    r"""Define infrastructure for the :class:`.InternalTraversal` class.
-
-    .. versionadded:: 2.0
-
-    """
-
-    __slots__ = ()
-
-    def __init_subclass__(cls) -> None:
-        cls._generate_traversal_dispatch()
-        super().__init_subclass__()
-
-    def dispatch(self, visit_symbol):
-        """Given a method from :class:`._HasTraversalDispatch`, return the
-        corresponding method on a subclass.
-
-        """
-        name = self._dispatch_lookup[visit_symbol]
-        return getattr(self, name, None)
-
-    def run_generated_dispatch(
-        self, target, internal_dispatch, generate_dispatcher_name
-    ):
-        try:
-            dispatcher = target.__class__.__dict__[generate_dispatcher_name]
-        except KeyError:
-            # most of the dispatchers are generated up front
-            # in sqlalchemy/sql/__init__.py ->
-            # traversals.py-> _preconfigure_traversals().
-            # this block will generate any remaining dispatchers.
-            dispatcher = self.generate_dispatch(
-                target.__class__, internal_dispatch, generate_dispatcher_name
-            )
-        return dispatcher(target, self)
-
-    def generate_dispatch(
-        self, target_cls, internal_dispatch, generate_dispatcher_name
-    ):
-        dispatcher = self._generate_dispatcher(
-            internal_dispatch, generate_dispatcher_name
-        )
-        # assert isinstance(target_cls, type)
-        setattr(target_cls, generate_dispatcher_name, dispatcher)
-        return dispatcher
-
-    @classmethod
-    def _generate_traversal_dispatch(cls):
-        lookup = {}
-        clsdict = cls.__dict__
-        for key, sym in clsdict.items():
-            if key.startswith("dp_"):
-                visit_key = key.replace("dp_", "visit_")
-                sym_name = sym.name
-                assert sym_name not in lookup, sym_name
-                lookup[sym] = lookup[sym_name] = visit_key
-        if hasattr(cls, "_dispatch_lookup"):
-            lookup.update(cls._dispatch_lookup)
-        cls._dispatch_lookup = lookup
-
-    def _generate_dispatcher(self, internal_dispatch, method_name):
-        names = []
-        for attrname, visit_sym in internal_dispatch:
-            meth = self.dispatch(visit_sym)
-            if meth:
-                visit_name = ExtendedInternalTraversal._dispatch_lookup[
-                    visit_sym
-                ]
-                names.append((attrname, visit_name))
-
-        code = (
-            ("    return [\n")
-            + (
-                ", \n".join(
-                    "        (%r, self.%s, visitor.%s)"
-                    % (attrname, attrname, visit_name)
-                    for attrname, visit_name in names
-                )
-            )
-            + ("\n    ]\n")
-        )
-        meth_text = ("def %s(self, visitor):\n" % method_name) + code + "\n"
-        return langhelpers._exec_code_in_env(meth_text, {}, method_name)
-
-
-class InternalTraversal(_HasTraversalDispatch):
+class InternalTraversal(Enum):
     r"""Defines visitor symbols used for internal traversal.
 
     The :class:`.InternalTraversal` class is used in two ways.  One is that
@@ -306,18 +180,16 @@ class InternalTraversal(_HasTraversalDispatch):
 
     """
 
-    __slots__ = ()
-
-    dp_has_cache_key = symbol("HC")
+    dp_has_cache_key = "HC"
     """Visit a :class:`.HasCacheKey` object."""
 
-    dp_has_cache_key_list = symbol("HL")
+    dp_has_cache_key_list = "HL"
     """Visit a list of :class:`.HasCacheKey` objects."""
 
-    dp_clauseelement = symbol("CE")
+    dp_clauseelement = "CE"
     """Visit a :class:`_expression.ClauseElement` object."""
 
-    dp_fromclause_canonical_column_collection = symbol("FC")
+    dp_fromclause_canonical_column_collection = "FC"
     """Visit a :class:`_expression.FromClause` object in the context of the
     ``columns`` attribute.
 
@@ -329,30 +201,30 @@ class InternalTraversal(_HasTraversalDispatch):
 
     """
 
-    dp_clauseelement_tuples = symbol("CTS")
+    dp_clauseelement_tuples = "CTS"
     """Visit a list of tuples which contain :class:`_expression.ClauseElement`
     objects.
 
     """
 
-    dp_clauseelement_list = symbol("CL")
+    dp_clauseelement_list = "CL"
     """Visit a list of :class:`_expression.ClauseElement` objects.
 
     """
 
-    dp_clauseelement_tuple = symbol("CT")
+    dp_clauseelement_tuple = "CT"
     """Visit a tuple of :class:`_expression.ClauseElement` objects.
 
     """
 
-    dp_executable_options = symbol("EO")
+    dp_executable_options = "EO"
 
-    dp_with_context_options = symbol("WC")
+    dp_with_context_options = "WC"
 
-    dp_fromclause_ordered_set = symbol("CO")
+    dp_fromclause_ordered_set = "CO"
     """Visit an ordered set of :class:`_expression.FromClause` objects. """
 
-    dp_string = symbol("S")
+    dp_string = "S"
     """Visit a plain string value.
 
     Examples include table and column names, bound parameter keys, special
@@ -363,10 +235,10 @@ class InternalTraversal(_HasTraversalDispatch):
 
     """
 
-    dp_string_list = symbol("SL")
+    dp_string_list = "SL"
     """Visit a list of strings."""
 
-    dp_anon_name = symbol("AN")
+    dp_anon_name = "AN"
     """Visit a potentially "anonymized" string value.
 
     The string value is considered to be significant for cache key
@@ -374,7 +246,7 @@ class InternalTraversal(_HasTraversalDispatch):
 
     """
 
-    dp_boolean = symbol("B")
+    dp_boolean = "B"
     """Visit a boolean value.
 
     The boolean value is considered to be significant for cache key
@@ -382,7 +254,7 @@ class InternalTraversal(_HasTraversalDispatch):
 
     """
 
-    dp_operator = symbol("O")
+    dp_operator = "O"
     """Visit an operator.
 
     The operator is a function from the :mod:`sqlalchemy.sql.operators`
@@ -393,7 +265,7 @@ class InternalTraversal(_HasTraversalDispatch):
 
     """
 
-    dp_type = symbol("T")
+    dp_type = "T"
     """Visit a :class:`.TypeEngine` object
 
     The type object is considered to be significant for cache key
@@ -401,7 +273,7 @@ class InternalTraversal(_HasTraversalDispatch):
 
     """
 
-    dp_plain_dict = symbol("PD")
+    dp_plain_dict = "PD"
     """Visit a dictionary with string keys.
 
     The keys of the dictionary should be strings, the values should
@@ -410,22 +282,22 @@ class InternalTraversal(_HasTraversalDispatch):
 
     """
 
-    dp_dialect_options = symbol("DO")
+    dp_dialect_options = "DO"
     """Visit a dialect options structure."""
 
-    dp_string_clauseelement_dict = symbol("CD")
+    dp_string_clauseelement_dict = "CD"
     """Visit a dictionary of string keys to :class:`_expression.ClauseElement`
     objects.
 
     """
 
-    dp_string_multi_dict = symbol("MD")
+    dp_string_multi_dict = "MD"
     """Visit a dictionary of string keys to values which may either be
     plain immutable/hashable or :class:`.HasCacheKey` objects.
 
     """
 
-    dp_annotations_key = symbol("AK")
+    dp_annotations_key = "AK"
     """Visit the _annotations_cache_key element.
 
     This is a dictionary of additional information about a ClauseElement
@@ -436,7 +308,7 @@ class InternalTraversal(_HasTraversalDispatch):
 
     """
 
-    dp_plain_obj = symbol("PO")
+    dp_plain_obj = "PO"
     """Visit a plain python object.
 
     The value should be immutable and hashable, such as an integer.
@@ -444,7 +316,7 @@ class InternalTraversal(_HasTraversalDispatch):
 
     """
 
-    dp_named_ddl_element = symbol("DD")
+    dp_named_ddl_element = "DD"
     """Visit a simple named DDL element.
 
     The current object used by this method is the :class:`.Sequence`.
@@ -454,57 +326,56 @@ class InternalTraversal(_HasTraversalDispatch):
 
     """
 
-    dp_prefix_sequence = symbol("PS")
+    dp_prefix_sequence = "PS"
     """Visit the sequence represented by :class:`_expression.HasPrefixes`
     or :class:`_expression.HasSuffixes`.
 
     """
 
-    dp_table_hint_list = symbol("TH")
+    dp_table_hint_list = "TH"
     """Visit the ``_hints`` collection of a :class:`_expression.Select`
     object.
 
     """
 
-    dp_setup_join_tuple = symbol("SJ")
+    dp_setup_join_tuple = "SJ"
 
-    dp_memoized_select_entities = symbol("ME")
+    dp_memoized_select_entities = "ME"
 
-    dp_statement_hint_list = symbol("SH")
+    dp_statement_hint_list = "SH"
     """Visit the ``_statement_hints`` collection of a
     :class:`_expression.Select`
     object.
 
     """
 
-    dp_unknown_structure = symbol("UK")
+    dp_unknown_structure = "UK"
     """Visit an unknown structure.
 
     """
 
-    dp_dml_ordered_values = symbol("DML_OV")
+    dp_dml_ordered_values = "DML_OV"
     """Visit the values() ordered tuple list of an
     :class:`_expression.Update` object."""
 
-    dp_dml_values = symbol("DML_V")
+    dp_dml_values = "DML_V"
     """Visit the values() dictionary of a :class:`.ValuesBase`
     (e.g. Insert or Update) object.
 
     """
 
-    dp_dml_multi_values = symbol("DML_MV")
+    dp_dml_multi_values = "DML_MV"
     """Visit the values() multi-valued list of dictionaries of an
     :class:`_expression.Insert` object.
 
     """
 
-    dp_propagate_attrs = symbol("PA")
+    dp_propagate_attrs = "PA"
     """Visit the propagate attrs dict.  This hardcodes to the particular
     elements we care about right now."""
 
-
-class ExtendedInternalTraversal(InternalTraversal):
-    """Defines additional symbols that are useful in caching applications.
+    """Symbols that follow are additional symbols that are useful in
+    caching applications.
 
     Traversals for :class:`_expression.ClauseElement` objects only need to use
     those symbols present in :class:`.InternalTraversal`.  However, for
@@ -513,9 +384,7 @@ class ExtendedInternalTraversal(InternalTraversal):
 
     """
 
-    __slots__ = ()
-
-    dp_ignore = symbol("IG")
+    dp_ignore = "IG"
     """Specify an object that should be ignored entirely.
 
     This currently applies function call argument caching where some
@@ -523,27 +392,233 @@ class ExtendedInternalTraversal(InternalTraversal):
 
     """
 
-    dp_inspectable = symbol("IS")
+    dp_inspectable = "IS"
     """Visit an inspectable object where the return value is a
     :class:`.HasCacheKey` object."""
 
-    dp_multi = symbol("M")
+    dp_multi = "M"
     """Visit an object that may be a :class:`.HasCacheKey` or may be a
     plain hashable object."""
 
-    dp_multi_list = symbol("MT")
+    dp_multi_list = "MT"
     """Visit a tuple containing elements that may be :class:`.HasCacheKey` or
     may be a plain hashable object."""
 
-    dp_has_cache_key_tuples = symbol("HT")
+    dp_has_cache_key_tuples = "HT"
     """Visit a list of tuples which contain :class:`.HasCacheKey`
     objects.
 
     """
 
-    dp_inspectable_list = symbol("IL")
+    dp_inspectable_list = "IL"
     """Visit a list of inspectable objects which upon inspection are
     HasCacheKey objects."""
+
+
+_TraverseInternalsType = List[Tuple[str, InternalTraversal]]
+"""a structure that defines how a HasTraverseInternals should be
+traversed.
+
+This structure consists of a list of (attributename, internaltraversal)
+tuples, where the "attributename" refers to the name of an attribute on an
+instance of the HasTraverseInternals object, and "internaltraversal" refers
+to an :class:`.InternalTraversal` enumeration symbol defining what kind
+of data this attribute stores, which indicates to the traverser how it should
+be handled.
+
+"""
+
+
+class HasTraverseInternals:
+    """base for classes that have a "traverse internals" element,
+    which defines all kinds of ways of traversing the elements of an object.
+
+    Compared to :class:`.Visitable`, which relies upon an external visitor to
+    define how the object is travered (i.e. the :class:`.SQLCompiler`), the
+    :class:`.HasTraverseInternals` interface allows classes to define their own
+    traversal, that is, what attributes are accessed and in what order.
+
+    """
+
+    __slots__ = ()
+
+    _traverse_internals: _TraverseInternalsType
+
+    @util.preload_module("sqlalchemy.sql.traversals")
+    def get_children(
+        self, omit_attrs: Tuple[str, ...] = (), **kw: Any
+    ) -> Iterable[HasTraverseInternals]:
+        r"""Return immediate child :class:`.visitors.HasTraverseInternals`
+        elements of this :class:`.visitors.HasTraverseInternals`.
+
+        This is used for visit traversal.
+
+        \**kw may contain flags that change the collection that is
+        returned, for example to return a subset of items in order to
+        cut down on larger traversals, or to return child items from a
+        different context (such as schema-level collections instead of
+        clause-level).
+
+        """
+
+        traversals = util.preloaded.sql_traversals
+
+        try:
+            traverse_internals = self._traverse_internals
+        except AttributeError:
+            # user-defined classes may not have a _traverse_internals
+            return []
+
+        dispatch = traversals._get_children.run_generated_dispatch
+        return itertools.chain.from_iterable(
+            meth(obj, **kw)
+            for attrname, obj, meth in dispatch(
+                self, traverse_internals, "_generated_get_children_traversal"
+            )
+            if attrname not in omit_attrs and obj is not None
+        )
+
+
+class _InternalTraversalDispatchType(Protocol):
+    def __call__(s, self: object, visitor: HasTraversalDispatch) -> Any:
+        ...
+
+
+class HasTraversalDispatch:
+    r"""Define infrastructure for classes that perform internal traversals
+
+    .. versionadded:: 2.0
+
+    """
+
+    __slots__ = ()
+
+    _dispatch_lookup: ClassVar[Dict[Union[InternalTraversal, str], str]] = {}
+
+    def dispatch(self, visit_symbol: InternalTraversal) -> Callable[..., Any]:
+        """Given a method from :class:`.HasTraversalDispatch`, return the
+        corresponding method on a subclass.
+
+        """
+        name = _dispatch_lookup[visit_symbol]
+        return getattr(self, name, None)  # type: ignore
+
+    def run_generated_dispatch(
+        self,
+        target: object,
+        internal_dispatch: _TraverseInternalsType,
+        generate_dispatcher_name: str,
+    ) -> Any:
+        dispatcher: _InternalTraversalDispatchType
+        try:
+            dispatcher = target.__class__.__dict__[generate_dispatcher_name]
+        except KeyError:
+            # traversals.py -> _preconfigure_traversals()
+            # may be used to run these ahead of time, but
+            # is not enabled right now.
+            # this block will generate any remaining dispatchers.
+            dispatcher = self.generate_dispatch(
+                target.__class__, internal_dispatch, generate_dispatcher_name
+            )
+        return dispatcher(target, self)
+
+    def generate_dispatch(
+        self,
+        target_cls: Type[object],
+        internal_dispatch: _TraverseInternalsType,
+        generate_dispatcher_name: str,
+    ) -> _InternalTraversalDispatchType:
+        dispatcher = self._generate_dispatcher(
+            internal_dispatch, generate_dispatcher_name
+        )
+        # assert isinstance(target_cls, type)
+        setattr(target_cls, generate_dispatcher_name, dispatcher)
+        return dispatcher
+
+    def _generate_dispatcher(
+        self, internal_dispatch: _TraverseInternalsType, method_name: str
+    ) -> _InternalTraversalDispatchType:
+        names = []
+        for attrname, visit_sym in internal_dispatch:
+            meth = self.dispatch(visit_sym)
+            if meth:
+                visit_name = _dispatch_lookup[visit_sym]
+                names.append((attrname, visit_name))
+
+        code = (
+            ("    return [\n")
+            + (
+                ", \n".join(
+                    "        (%r, self.%s, visitor.%s)"
+                    % (attrname, attrname, visit_name)
+                    for attrname, visit_name in names
+                )
+            )
+            + ("\n    ]\n")
+        )
+        meth_text = ("def %s(self, visitor):\n" % method_name) + code + "\n"
+        return cast(
+            _InternalTraversalDispatchType,
+            langhelpers._exec_code_in_env(meth_text, {}, method_name),
+        )
+
+
+ExtendedInternalTraversal = InternalTraversal
+
+
+def _generate_traversal_dispatch() -> None:
+    lookup = _dispatch_lookup
+
+    for sym in InternalTraversal:
+        key = sym.name
+        if key.startswith("dp_"):
+            visit_key = key.replace("dp_", "visit_")
+            sym_name = sym.value
+            assert sym_name not in lookup, sym_name
+            lookup[sym] = lookup[sym_name] = visit_key
+
+
+_dispatch_lookup = HasTraversalDispatch._dispatch_lookup
+_generate_traversal_dispatch()
+
+
+class ExternallyTraversible(HasTraverseInternals, Visitable):
+    __slots__ = ()
+
+    _annotations: Collection[Any] = ()
+
+    if typing.TYPE_CHECKING:
+
+        def get_children(
+            self, omit_attrs: Tuple[str, ...] = (), **kw: Any
+        ) -> Iterable[ExternallyTraversible]:
+            ...
+
+    def _clone(self: Self, **kw: Any) -> Self:
+        """clone this element"""
+        raise NotImplementedError()
+
+    def _copy_internals(
+        self: Self, omit_attrs: Tuple[str, ...] = (), **kw: Any
+    ) -> Self:
+        """Reassign internal elements to be clones of themselves.
+
+        Called during a copy-and-traverse operation on newly
+        shallow-copied elements to create a deep copy.
+
+        The given clone function should be used, which may be applying
+        additional transformations to the element (i.e. replacement
+        traversal, cloned traversal, annotations).
+
+        """
+        raise NotImplementedError()
+
+
+_ET = TypeVar("_ET", bound=ExternallyTraversible)
+_TraverseCallableType = Callable[[_ET], None]
+_TraverseTransformCallableType = Callable[
+    [ExternallyTraversible], Optional[ExternallyTraversible]
+]
 
 
 class ExternalTraversal:
@@ -555,7 +630,8 @@ class ExternalTraversal:
 
     """
 
-    __traverse_options__ = {}
+    __traverse_options__: Dict[str, Any] = {}
+    _next: Optional[ExternalTraversal]
 
     def traverse_single(self, obj: Visitable, **kw: Any) -> Any:
         for v in self.visitor_iterator:
@@ -563,20 +639,22 @@ class ExternalTraversal:
             if meth:
                 return meth(obj, **kw)
 
-    def iterate(self, obj):
+    def iterate(
+        self, obj: ExternallyTraversible
+    ) -> Iterator[ExternallyTraversible]:
         """Traverse the given expression structure, returning an iterator
         of all elements.
 
         """
         return iterate(obj, self.__traverse_options__)
 
-    def traverse(self, obj):
+    def traverse(self, obj: ExternallyTraversible) -> ExternallyTraversible:
         """Traverse and visit the given expression structure."""
 
         return traverse(obj, self.__traverse_options__, self._visitor_dict)
 
     @util.memoized_property
-    def _visitor_dict(self):
+    def _visitor_dict(self) -> Dict[str, _TraverseCallableType[Any]]:
         visitors = {}
 
         for name in dir(self):
@@ -585,16 +663,16 @@ class ExternalTraversal:
         return visitors
 
     @property
-    def visitor_iterator(self):
+    def visitor_iterator(self) -> Iterator[ExternalTraversal]:
         """Iterate through this visitor and each 'chained' visitor."""
 
-        v = self
+        v: Optional[ExternalTraversal] = self
         while v:
             yield v
             v = getattr(v, "_next", None)
 
-    def chain(self, visitor):
-        """'Chain' an additional ClauseVisitor onto this ClauseVisitor.
+    def chain(self, visitor: ExternalTraversal) -> ExternalTraversal:
+        """'Chain' an additional ExternalTraversal onto this ExternalTraversal
 
         The chained visitor will receive all visit events after this one.
 
@@ -614,14 +692,16 @@ class CloningExternalTraversal(ExternalTraversal):
 
     """
 
-    def copy_and_process(self, list_):
+    def copy_and_process(
+        self, list_: List[ExternallyTraversible]
+    ) -> List[ExternallyTraversible]:
         """Apply cloned traversal to the given list of elements, and return
         the new list.
 
         """
         return [self.traverse(x) for x in list_]
 
-    def traverse(self, obj):
+    def traverse(self, obj: ExternallyTraversible) -> ExternallyTraversible:
         """Traverse and visit the given expression structure."""
 
         return cloned_traverse(
@@ -638,7 +718,9 @@ class ReplacingExternalTraversal(CloningExternalTraversal):
 
     """
 
-    def replace(self, elem):
+    def replace(
+        self, elem: ExternallyTraversible
+    ) -> Optional[ExternallyTraversible]:
         """Receive pre-copied elements during a cloning traversal.
 
         If the method returns a new element, the element is used
@@ -647,14 +729,18 @@ class ReplacingExternalTraversal(CloningExternalTraversal):
         """
         return None
 
-    def traverse(self, obj):
+    def traverse(self, obj: ExternallyTraversible) -> ExternallyTraversible:
         """Traverse and visit the given expression structure."""
 
-        def replace(elem):
+        def replace(
+            elem: ExternallyTraversible,
+        ) -> Optional[ExternallyTraversible]:
             for v in self.visitor_iterator:
-                e = v.replace(elem)
+                e = cast(ReplacingExternalTraversal, v).replace(elem)
                 if e is not None:
                     return e
+
+            return None
 
         return replacement_traverse(obj, self.__traverse_options__, replace)
 
@@ -667,7 +753,9 @@ CloningVisitor = CloningExternalTraversal
 ReplacingCloningVisitor = ReplacingExternalTraversal
 
 
-def iterate(obj, opts=util.immutabledict()):
+def iterate(
+    obj: ExternallyTraversible, opts: Mapping[str, Any] = util.EMPTY_DICT
+) -> Iterator[ExternallyTraversible]:
     r"""Traverse the given expression structure, returning an iterator.
 
     Traversal is configured to be breadth-first.
@@ -702,7 +790,11 @@ def iterate(obj, opts=util.immutabledict()):
             stack.append(t.get_children(**opts))
 
 
-def traverse_using(iterator, obj, visitors):
+def traverse_using(
+    iterator: Iterable[ExternallyTraversible],
+    obj: ExternallyTraversible,
+    visitors: Mapping[str, _TraverseCallableType[Any]],
+) -> ExternallyTraversible:
     """Visit the given expression structure using the given iterator of
     objects.
 
@@ -734,7 +826,11 @@ def traverse_using(iterator, obj, visitors):
     return obj
 
 
-def traverse(obj, opts, visitors):
+def traverse(
+    obj: ExternallyTraversible,
+    opts: Mapping[str, Any],
+    visitors: Mapping[str, _TraverseCallableType[Any]],
+) -> ExternallyTraversible:
     """Traverse and visit the given expression structure using the default
     iterator.
 
@@ -767,7 +863,11 @@ def traverse(obj, opts, visitors):
     return traverse_using(iterate(obj, opts), obj, visitors)
 
 
-def cloned_traverse(obj, opts, visitors):
+def cloned_traverse(
+    obj: ExternallyTraversible,
+    opts: Mapping[str, Any],
+    visitors: Mapping[str, _TraverseTransformCallableType],
+) -> ExternallyTraversible:
     """Clone the given expression structure, allowing modifications by
     visitors.
 
@@ -794,20 +894,24 @@ def cloned_traverse(obj, opts, visitors):
 
     """
 
-    cloned = {}
+    cloned: Dict[int, ExternallyTraversible] = {}
     stop_on = set(opts.get("stop_on", []))
 
-    def deferred_copy_internals(obj):
+    def deferred_copy_internals(
+        obj: ExternallyTraversible,
+    ) -> ExternallyTraversible:
         return cloned_traverse(obj, opts, visitors)
 
-    def clone(elem, **kw):
+    def clone(elem: ExternallyTraversible, **kw: Any) -> ExternallyTraversible:
         if elem in stop_on:
             return elem
         else:
             if id(elem) not in cloned:
 
                 if "replace" in kw:
-                    newelem = kw["replace"](elem)
+                    newelem = cast(
+                        Optional[ExternallyTraversible], kw["replace"](elem)
+                    )
                     if newelem is not None:
                         cloned[id(elem)] = newelem
                         return newelem
@@ -823,11 +927,15 @@ def cloned_traverse(obj, opts, visitors):
         obj = clone(
             obj, deferred_copy_internals=deferred_copy_internals, **opts
         )
-    clone = None  # remove gc cycles
+    clone = None  # type: ignore[assignment]  # remove gc cycles
     return obj
 
 
-def replacement_traverse(obj, opts, replace):
+def replacement_traverse(
+    obj: ExternallyTraversible,
+    opts: Mapping[str, Any],
+    replace: _TraverseTransformCallableType,
+) -> ExternallyTraversible:
     """Clone the given expression structure, allowing element
     replacement by a given replacement function.
 
@@ -854,10 +962,12 @@ def replacement_traverse(obj, opts, replace):
     cloned = {}
     stop_on = {id(x) for x in opts.get("stop_on", [])}
 
-    def deferred_copy_internals(obj):
+    def deferred_copy_internals(
+        obj: ExternallyTraversible,
+    ) -> ExternallyTraversible:
         return replacement_traverse(obj, opts, replace)
 
-    def clone(elem, **kw):
+    def clone(elem: ExternallyTraversible, **kw: Any) -> ExternallyTraversible:
         if (
             id(elem) in stop_on
             or "no_replacement_traverse" in elem._annotations
@@ -888,5 +998,5 @@ def replacement_traverse(obj, opts, replace):
         obj = clone(
             obj, deferred_copy_internals=deferred_copy_internals, **opts
         )
-    clone = None  # remove gc cycles
+    clone = None  # type: ignore[assignment]  # remove gc cycles
     return obj

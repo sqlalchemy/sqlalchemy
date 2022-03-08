@@ -3,10 +3,11 @@ from __future__ import annotations
 import sys
 import typing
 from typing import Any
-from typing import Callable  # noqa
 from typing import cast
 from typing import Dict
 from typing import ForwardRef
+from typing import Iterable
+from typing import Tuple
 from typing import Type
 from typing import TypeVar
 from typing import Union
@@ -16,6 +17,11 @@ from typing_extensions import NotRequired as NotRequired  # noqa
 from . import compat
 
 _T = TypeVar("_T", bound=Any)
+_KT = TypeVar("_KT")
+_KT_co = TypeVar("_KT_co", covariant=True)
+_KT_contra = TypeVar("_KT_contra", contravariant=True)
+_VT = TypeVar("_VT")
+_VT_co = TypeVar("_VT_co", covariant=True)
 
 Self = TypeVar("Self", bound=Any)
 
@@ -44,6 +50,18 @@ else:
     from typing_extensions import Literal as Literal  # noqa F401
     from typing_extensions import Protocol as Protocol  # noqa F401
     from typing_extensions import TypedDict as TypedDict  # noqa F401
+
+# copied from TypeShed, required in order to implement
+# MutableMapping.update()
+
+
+class SupportsKeysAndGetItem(Protocol[_KT, _VT_co]):
+    def keys(self) -> Iterable[_KT]:
+        ...
+
+    def __getitem__(self, __k: _KT) -> _VT_co:
+        ...
+
 
 # work around https://github.com/microsoft/pyright/issues/3025
 _LiteralStar = Literal["*"]
@@ -120,7 +138,9 @@ def make_union_type(*types):
     return cast(Any, Union).__getitem__(types)
 
 
-def expand_unions(type_, include_union=False, discard_none=False):
+def expand_unions(
+    type_: Type[Any], include_union: bool = False, discard_none: bool = False
+) -> Tuple[Type[Any], ...]:
     """Return a type as as a tuple of individual types, expanding for
     ``Union`` types."""
 

@@ -604,18 +604,20 @@ class CursorResultMetaData(ResultMetaData):
         cls,
         result_columns: List[ResultColumnsEntry],
         loose_column_name_matching: bool = False,
-    ) -> Dict[Union[str, object], Tuple[str, List[Any], TypeEngine[Any], int]]:
+    ) -> Dict[
+        Union[str, object], Tuple[str, Tuple[Any, ...], TypeEngine[Any], int]
+    ]:
         """when matching cursor.description to a set of names that are present
         in a Compiled object, as is the case with TextualSelect, get all the
         names we expect might match those in cursor.description.
         """
 
         d: Dict[
-            Union[str, object], Tuple[str, List[Any], TypeEngine[Any], int]
+            Union[str, object],
+            Tuple[str, Tuple[Any, ...], TypeEngine[Any], int],
         ] = {}
         for ridx, elem in enumerate(result_columns):
             key = elem[RM_RENDERED_NAME]
-
             if key in d:
                 # conflicting keyname - just add the column-linked objects
                 # to the existing record.  if there is a duplicate column

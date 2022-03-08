@@ -17,6 +17,7 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import Iterable
 from typing import Iterator
 from typing import List
 from typing import NoReturn
@@ -326,7 +327,7 @@ class SimpleResultMetaData(ResultMetaData):
 
 def result_tuple(
     fields: Sequence[str], extra: Optional[Any] = None
-) -> Callable[[_RawRowType], Row]:
+) -> Callable[[Iterable[Any]], Row]:
     parent = SimpleResultMetaData(fields, extra)
     return functools.partial(
         Row, parent, parent._processors, parent._keymap, Row._default_key_style

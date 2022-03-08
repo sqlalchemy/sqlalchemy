@@ -59,6 +59,7 @@ from ..util.typing import Literal
 from ..util.typing import Protocol
 from ..util.typing import Self
 from ..util.typing import SupportsIndex
+from ..util.typing import SupportsKeysAndGetItem
 
 if typing.TYPE_CHECKING:
     from ..orm.attributes import InstrumentedAttribute
@@ -1660,7 +1661,9 @@ class _AssociationDict(_AssociationCollection[_VT], MutableMapping[_KT, _VT]):
         return (item[0], self._get(item[1]))
 
     @overload
-    def update(self, __m: Mapping[_KT, _VT], **kwargs: _VT) -> None:
+    def update(
+        self, __m: SupportsKeysAndGetItem[_KT, _VT], **kwargs: _VT
+    ) -> None:
         ...
 
     @overload

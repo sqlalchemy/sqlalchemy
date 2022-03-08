@@ -7,14 +7,22 @@
 from __future__ import annotations
 
 import typing
+from typing import Any
+from typing import Iterable
+from typing import Mapping
+from typing import Optional
+from typing import Sequence
 
-from sqlalchemy.util.langhelpers import TypingOnly
 from .. import util
-
+from ..util import TypingOnly
+from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
+    from .base import ColumnCollection
     from .elements import ClauseElement
+    from .elements import Label
     from .selectable import FromClause
+    from .selectable import Subquery
 
 
 class SQLRole:
@@ -35,7 +43,7 @@ class SQLRole:
 
 class UsesInspection:
     __slots__ = ()
-    _post_inspect = None
+    _post_inspect: Literal[None] = None
     uses_inspection = True
 
 
@@ -96,7 +104,7 @@ class ColumnsClauseRole(AllowsLambdaRole, UsesInspection, ColumnListRole):
     _role_name = "Column expression or FROM clause"
 
     @property
-    def _select_iterable(self):
+    def _select_iterable(self) -> Sequence[ColumnsClauseRole]:
         raise NotImplementedError()
 
 
@@ -150,6 +158,9 @@ class ExpressionElementRole(SQLRole):
     __slots__ = ()
     _role_name = "SQL expression element"
 
+    def label(self, name: Optional[str]) -> Label[Any]:
+        raise NotImplementedError()
+
 
 class ConstExprRole(ExpressionElementRole):
     __slots__ = ()
@@ -187,7 +198,7 @@ class FromClauseRole(ColumnsClauseRole, JoinTargetRole):
     _is_subquery = False
 
     @property
-    def _hide_froms(self):
+    def _hide_froms(self) -> Iterable[FromClause]:
         raise NotImplementedError()
 
 
@@ -195,8 +206,10 @@ class StrictFromClauseRole(FromClauseRole):
     __slots__ = ()
     # does not allow text() or select() objects
 
+    c: ColumnCollection
+
     @property
-    def description(self):
+    def description(self) -> str:
         raise NotImplementedError()
 
 
@@ -204,7 +217,9 @@ class AnonymizedFromClauseRole(StrictFromClauseRole):
     __slots__ = ()
     # calls .alias() as a post processor
 
-    def _anonymous_fromclause(self, name=None, flat=False):
+    def _anonymous_fromclause(
+        self, name: Optional[str] = None, flat: bool = False
+    ) -> FromClause:
         raise NotImplementedError()
 
 
@@ -220,14 +235,14 @@ class StatementRole(SQLRole):
     __slots__ = ()
     _role_name = "Executable SQL or text() construct"
 
-    _propagate_attrs = util.immutabledict()
+    _propagate_attrs: Mapping[str, Any] = util.immutabledict()
 
 
 class SelectStatementRole(StatementRole, ReturnsRowsRole):
     __slots__ = ()
     _role_name = "SELECT construct or equivalent text() construct"
 
-    def subquery(self):
+    def subquery(self) -> Subquery:
         raise NotImplementedError(
             "All SelectStatementRole objects should implement a "
             ".subquery() method."

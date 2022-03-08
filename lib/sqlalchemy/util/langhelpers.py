@@ -305,9 +305,11 @@ def _update_argspec_defaults_into_env(spec, env):
         return spec
 
 
-def _exec_code_in_env(code, env, fn_name):
+def _exec_code_in_env(
+    code: Union[str, types.CodeType], env: Dict[str, Any], fn_name: str
+) -> Callable[..., Any]:
     exec(code, env)
-    return env[fn_name]
+    return env[fn_name]  # type: ignore[no-any-return]
 
 
 _PF = TypeVar("_PF")
@@ -1181,7 +1183,7 @@ class memoized_property(Generic[_T]):
         obj.__dict__.pop(name, None)
 
 
-def memoized_instancemethod(fn):
+def memoized_instancemethod(fn: _F) -> _F:
     """Decorate a method memoize its return value.
 
     Best applied to no-arg methods: memoization is not sensitive to
@@ -1201,7 +1203,7 @@ def memoized_instancemethod(fn):
         self.__dict__[fn.__name__] = memo
         return result
 
-    return update_wrapper(oneshot, fn)
+    return update_wrapper(oneshot, fn)  # type: ignore
 
 
 class HasMemoized:

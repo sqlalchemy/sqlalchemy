@@ -33,6 +33,7 @@ if typing.TYPE_CHECKING:
     from .engine.interfaces import _DBAPIAnyExecuteParams
     from .engine.interfaces import Dialect
     from .sql.compiler import Compiled
+    from .sql.compiler import TypeCompiler
     from .sql.elements import ClauseElement
 
 if typing.TYPE_CHECKING:
@@ -221,8 +222,8 @@ class UnsupportedCompilationError(CompileError):
 
     def __init__(
         self,
-        compiler: "Compiled",
-        element_type: Type["ClauseElement"],
+        compiler: Union[Compiled, TypeCompiler],
+        element_type: Type[ClauseElement],
         message: Optional[str] = None,
     ):
         super(UnsupportedCompilationError, self).__init__(

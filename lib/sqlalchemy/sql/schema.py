@@ -51,7 +51,7 @@ from . import visitors
 from .base import DedupeColumnCollection
 from .base import DialectKWArgs
 from .base import Executable
-from .base import SchemaEventTarget
+from .base import SchemaEventTarget as SchemaEventTarget
 from .coercions import _document_text_coercion
 from .elements import ClauseElement
 from .elements import ColumnClause
@@ -2675,6 +2675,10 @@ class DefaultGenerator(Executable, SchemaItem):
 
     def __init__(self, for_update=False):
         self.for_update = for_update
+
+    @util.memoized_property
+    def is_callable(self):
+        raise NotImplementedError()
 
     def _set_parent(self, column, **kw):
         self.column = column

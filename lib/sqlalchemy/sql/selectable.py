@@ -53,7 +53,6 @@ from .base import Generative
 from .base import HasCompileState
 from .base import HasMemoized
 from .base import Immutable
-from .base import prefix_anon_map
 from .coercions import _document_text_coercion
 from .elements import _anonymous_label
 from .elements import BindParameter
@@ -69,9 +68,9 @@ from .elements import literal_column
 from .elements import TableValuedColumn
 from .elements import UnaryExpression
 from .visitors import InternalTraversal
+from .visitors import prefix_anon_map
 from .. import exc
 from .. import util
-
 
 and_ = BooleanClauseList.and_
 
@@ -855,6 +854,12 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         return self.alias(name=name)
 
 
+class NamedFromClause(FromClause):
+    named_with_column = True
+
+    name: str
+
+
 class SelectLabelStyle(Enum):
     """Label style constants that may be passed to
     :meth:`_sql.Select.set_label_style`."""
@@ -1317,14 +1322,15 @@ class NoInit:
 #        -> Lateral -> FromClause, but we accept SelectBase
 #           w/ non-deprecated coercion
 #        -> TableSample -> only for FromClause
-class AliasedReturnsRows(NoInit, FromClause):
+class AliasedReturnsRows(NoInit, NamedFromClause):
     """Base class of aliases against tables, subqueries, and other
     selectables."""
 
     _is_from_container = True
-    named_with_column = True
 
     _supports_derived_columns = False
+
+    element: ClauseElement
 
     _traverse_internals = [
         ("element", InternalTraversal.dp_clauseelement),
@@ -1422,6 +1428,8 @@ class Alias(roles.DMLTableRole, AliasedReturnsRows):
     __visit_name__ = "alias"
 
     inherit_cache = True
+
+    element: FromClause
 
     @classmethod
     def _factory(cls, selectable, name=None, flat=False):
@@ -1689,6 +1697,8 @@ class CTE(
         + HasSuffixes._has_suffixes_traverse_internals
     )
 
+    element: HasCTE
+
     @classmethod
     def _factory(cls, selectable, name=None, recursive=False):
         r"""Return a new :class:`_expression.CTE`,
@@ -1819,7 +1829,7 @@ class _CTEOpts(NamedTuple):
     nesting: bool
 
 
-class HasCTE(roles.HasCTERole):
+class HasCTE(roles.HasCTERole, ClauseElement):
     """Mixin that declares a class to include CTE support.
 
     .. versionadded:: 1.1
@@ -2247,6 +2257,8 @@ class Subquery(AliasedReturnsRows):
 
     inherit_cache = True
 
+    element: Select
+
     @classmethod
     def _factory(cls, selectable, name=None):
         """Return a :class:`.Subquery` object."""
@@ -2331,7 +2343,7 @@ class FromGrouping(GroupedElement, FromClause):
         self.element = state["element"]
 
 
-class TableClause(roles.DMLTableRole, Immutable, FromClause):
+class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
     """Represents a minimal "table" construct.
 
     This is a lightweight table object that has only a name, a
@@ -2370,8 +2382,6 @@ class TableClause(roles.DMLTableRole, Immutable, FromClause):
         ),
         ("name", InternalTraversal.dp_string),
     ]
-
-    named_with_column = True
 
     _is_table = True
 
@@ -2542,7 +2552,7 @@ class ForUpdateArg(ClauseElement):
 SelfValues = typing.TypeVar("SelfValues", bound="Values")
 
 
-class Values(Generative, FromClause):
+class Values(Generative, NamedFromClause):
     """Represent a ``VALUES`` construct that can be used as a FROM element
     in a statement.
 
@@ -2553,7 +2563,6 @@ class Values(Generative, FromClause):
 
     """
 
-    named_with_column = True
     __visit_name__ = "values"
 
     _data = ()

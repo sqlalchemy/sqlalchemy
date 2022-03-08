@@ -13,6 +13,10 @@ from __future__ import annotations
 
 import collections.abc as collections_abc
 import typing
+from typing import Any
+from typing import List
+from typing import MutableMapping
+from typing import Optional
 
 from . import coercions
 from . import roles
@@ -40,8 +44,8 @@ from .. import util
 
 class DMLState(CompileState):
     _no_parameters = True
-    _dict_parameters = None
-    _multi_parameters = None
+    _dict_parameters: Optional[MutableMapping[str, Any]] = None
+    _multi_parameters: Optional[List[MutableMapping[str, Any]]] = None
     _ordered_values = None
     _parameter_ordering = None
     _has_multi_parameters = False

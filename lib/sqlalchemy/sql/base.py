@@ -19,8 +19,10 @@ from itertools import zip_longest
 import operator
 import re
 import typing
+from typing import MutableMapping
 from typing import Optional
 from typing import Sequence
+from typing import Set
 from typing import TypeVar
 
 from . import roles
@@ -36,14 +38,9 @@ from .. import util
 from ..util import HasMemoized as HasMemoized
 from ..util import hybridmethod
 from ..util import typing as compat_typing
-from ..util._has_cy import HAS_CYEXTENSION
-
-if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
-    from ._py_util import prefix_anon_map  # noqa
-else:
-    from sqlalchemy.cyextension.util import prefix_anon_map  # noqa
 
 if typing.TYPE_CHECKING:
+    from .elements import ColumnElement
     from ..engine import Connection
     from ..engine import Result
     from ..engine.interfaces import _CoreMultiExecuteParams
@@ -62,6 +59,8 @@ NO_ARG = util.symbol("NO_ARG")
 # if I use sqlalchemy.util.typing, which has the exact same
 # symbols, mypy reports: "error: _Fn? not callable"
 _Fn = typing.TypeVar("_Fn", bound=typing.Callable)
+
+_AmbiguousTableNameMap = MutableMapping[str, str]
 
 
 class Immutable:
@@ -86,6 +85,10 @@ class SingletonConstant(Immutable):
     """Represent SQL constants like NULL, TRUE, FALSE"""
 
     _is_singleton_constant = True
+
+    _singleton: SingletonConstant
+
+    proxy_set: Set[ColumnElement]
 
     def __new__(cls, *arg, **kw):
         return cls._singleton
@@ -518,6 +521,8 @@ class CompileState:
     __slots__ = ("statement", "_ambiguous_table_name_map")
 
     plugins = {}
+
+    _ambiguous_table_name_map: Optional[_AmbiguousTableNameMap]
 
     @classmethod
     def create_for_statement(cls, statement, compiler, **kw):

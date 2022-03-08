@@ -7,7 +7,16 @@
 
 from __future__ import annotations
 
+import typing
+from typing import Any
 from typing import Dict
+from typing import Tuple
+from typing import Union
+
+from ..util.typing import Literal
+
+if typing.TYPE_CHECKING:
+    from .cache_key import CacheConst
 
 
 class prefix_anon_map(Dict[str, str]):
@@ -22,16 +31,18 @@ class prefix_anon_map(Dict[str, str]):
 
     """
 
-    def __missing__(self, key):
+    def __missing__(self, key: str) -> str:
         (ident, derived) = key.split(" ", 1)
         anonymous_counter = self.get(derived, 1)
-        self[derived] = anonymous_counter + 1
+        self[derived] = anonymous_counter + 1  # type: ignore
         value = f"{derived}_{anonymous_counter}"
         self[key] = value
         return value
 
 
-class cache_anon_map(Dict[int, str]):
+class cache_anon_map(
+    Dict[Union[int, "Literal[CacheConst.NO_CACHE]"], Union[Literal[True], str]]
+):
     """A map that creates new keys for missing key access.
 
     Produces an incrementing sequence given a series of unique keys.
@@ -45,11 +56,13 @@ class cache_anon_map(Dict[int, str]):
 
     _index = 0
 
-    def get_anon(self, object_):
+    def get_anon(self, object_: Any) -> Tuple[str, bool]:
 
         idself = id(object_)
         if idself in self:
-            return self[idself], True
+            s_val = self[idself]
+            assert s_val is not True
+            return s_val, True
         else:
             # inline of __missing__
             self[idself] = id_ = str(self._index)
@@ -57,7 +70,7 @@ class cache_anon_map(Dict[int, str]):
 
             return id_, False
 
-    def __missing__(self, key):
+    def __missing__(self, key: int) -> str:
         self[key] = val = str(self._index)
         self._index += 1
         return val

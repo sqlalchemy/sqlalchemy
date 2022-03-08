@@ -40,30 +40,12 @@ markers = [
 ]
 
 [tool.pyright]
-include = [
-    "lib/sqlalchemy/engine/base.py",
-    "lib/sqlalchemy/engine/events.py",
-    "lib/sqlalchemy/engine/interfaces.py",
-    "lib/sqlalchemy/engine/_py_row.py",
-    "lib/sqlalchemy/engine/result.py",
-    "lib/sqlalchemy/engine/row.py",
-    "lib/sqlalchemy/engine/util.py",
-    "lib/sqlalchemy/engine/url.py",
-    "lib/sqlalchemy/pool/",
-    "lib/sqlalchemy/event/",
-    "lib/sqlalchemy/events.py",
-    "lib/sqlalchemy/exc.py",
-    "lib/sqlalchemy/log.py",
-    "lib/sqlalchemy/inspection.py",
-    "lib/sqlalchemy/schema.py",
-    "lib/sqlalchemy/types.py",
-    "lib/sqlalchemy/util/",
-]
+
 
 reportPrivateUsage = "none"
 reportUnusedClass = "none"
 reportUnusedFunction = "none"
-
+reportTypedDictNotRequiredAccess = "warning"
 
 [tool.mypy]
 mypy_path = "./lib/"
@@ -99,6 +81,11 @@ ignore_errors = true
 # strict checking
 [[tool.mypy.overrides]]
 module = [
+    "sqlalchemy.sql.annotation",
+    "sqlalchemy.sql.cache_key",
+    "sqlalchemy.sql.roles",
+    "sqlalchemy.sql.visitors",
+    "sqlalchemy.sql._py_util",
     "sqlalchemy.connectors.*",
     "sqlalchemy.engine.*",
     "sqlalchemy.ext.associationproxy",
@@ -117,6 +104,12 @@ strict = true
 [[tool.mypy.overrides]]
 
 module = [
+    "sqlalchemy.sql.coercions",
+    "sqlalchemy.sql.compiler",
+    #"sqlalchemy.sql.crud",
+    #"sqlalchemy.sql.default_comparator",
+    "sqlalchemy.sql.naming",
+    "sqlalchemy.sql.traversals",
     "sqlalchemy.util.*",
     "sqlalchemy.engine.cursor",
     "sqlalchemy.engine.default",
