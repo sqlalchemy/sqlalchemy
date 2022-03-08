@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, orm
+    :tickets: 7799
+
+    Fixed issue where the :func:`_orm.polymorphic_selectin` loader option would
+    not work with joined inheritance mappers that don't have a fixed
+    "polymorphic_on" column.   Additionally added test support for a wider
+    variety of usage patterns with this construct.
