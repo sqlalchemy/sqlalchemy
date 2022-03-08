@@ -1664,6 +1664,8 @@ class SQLCompiler(Compiled):
             nesting_level = len(self.stack) if not toplevel else None
             text = self._render_cte_clause(nesting_level=nesting_level) + text
 
+        self.stack.pop(-1)
+
         return text
 
     def visit_null(self, expr, **kw):
