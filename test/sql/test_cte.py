@@ -1649,6 +1649,27 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             "(SELECT id FROM baz)",
         )
 
+    def test_textual_select_stack_correction(self):
+        """test #7798 , regression from #7760"""
+
+        foo = table("foo", column("id"))
+        bar = table("bar", column("id"), column("attr"), column("foo_id"))
+
+        s1 = text("SELECT id FROM foo").columns(foo.c.id)
+        s2 = text(
+            "SELECT bar.id, bar.attr FROM bar WHERE br.id IN "
+            "(SELECT id FROM baz)"
+        ).columns(bar.c.id, bar.c.attr)
+        s3 = bar.insert().from_select(list(s2.selected_columns), s2)
+        s4 = s3.add_cte(s1.cte(name="baz"))
+
+        self.assert_compile(
+            s4,
+            "WITH baz AS (SELECT id FROM foo) INSERT INTO bar (id, attr) "
+            "SELECT bar.id, bar.attr FROM bar WHERE br.id IN "
+            "(SELECT id FROM baz)",
+        )
+
     def test_insert_uses_independent_cte(self):
         products = table("products", column("id"), column("price"))
 
