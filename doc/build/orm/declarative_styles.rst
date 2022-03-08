@@ -478,5 +478,12 @@ A mapping using ``@attr.s``, in conjunction with imperative table::
 with the :meth:`_orm.registry.map_imperatively` function.  See the section
 :ref:`orm_imperative_dataclasses` for a similar example.
 
+.. note:: The ``attrs`` ``slots=True`` option, which enables ``__slots__`` on
+   a mapped class, cannot be used with SQLAlchemy mappings without fully
+   implementing alternative
+   :ref:`attribute instrumentation <examples_instrumentation>`, as mapped
+   classes normally rely upon direct access to ``__dict__`` for state storage.
+   Behavior is undefined when this option is present.
+
 .. _dataclasses: https://docs.python.org/3/library/dataclasses.html
 .. _attrs: https://pypi.org/project/attrs/
