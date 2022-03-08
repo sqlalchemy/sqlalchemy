@@ -757,7 +757,9 @@ class AliasedInsp(
             # are not even the thing we are mapping, such as embedded
             # selectables in subqueries or CTEs.  See issue #6060
             adapt_from_selectables=[
-                m.selectable for m in self.with_polymorphic_mappers
+                m.selectable
+                for m in self.with_polymorphic_mappers
+                if not adapt_on_names
             ],
         )
 
@@ -810,6 +812,7 @@ class AliasedInsp(
         polymorphic_on=None,
         aliased=False,
         innerjoin=False,
+        adapt_on_names=False,
         _use_mapper_path=False,
     ):
 
@@ -830,6 +833,7 @@ class AliasedInsp(
             base,
             selectable,
             with_polymorphic_mappers=mappers,
+            adapt_on_names=adapt_on_names,
             with_polymorphic_discriminator=polymorphic_on,
             use_mapper_path=_use_mapper_path,
             represents_outer_join=not innerjoin,
