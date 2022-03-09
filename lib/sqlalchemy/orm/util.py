@@ -709,7 +709,9 @@ class AliasedInsp(
             # are not even the thing we are mapping, such as embedded
             # selectables in subqueries or CTEs.  See issue #6060
             adapt_from_selectables=[
-                m.selectable for m in self.with_polymorphic_mappers
+                m.selectable
+                for m in self.with_polymorphic_mappers
+                if not adapt_on_names
             ],
         )
 
@@ -1338,6 +1340,7 @@ def with_polymorphic(
     flat=False,
     polymorphic_on=None,
     aliased=False,
+    adapt_on_names=False,
     innerjoin=False,
     _use_mapper_path=False,
     _existing_alias=None,
@@ -1402,6 +1405,15 @@ def with_polymorphic(
 
     :param innerjoin: if True, an INNER JOIN will be used.  This should
        only be specified if querying for one specific subtype only
+
+    :param adapt_on_names: Passes through the
+      :paramref:`_orm.aliased.adapt_on_names`
+      parameter to the aliased object.  This may be useful in situations where
+      the given selectable is not directly related to the existing mapped
+      selectable.
+
+      .. versionadded:: 1.4.33
+
     """
     primary_mapper = _class_to_mapper(base)
 
@@ -1429,6 +1441,7 @@ def with_polymorphic(
     return AliasedClass(
         base,
         selectable,
+        adapt_on_names=adapt_on_names,
         with_polymorphic_mappers=mappers,
         with_polymorphic_discriminator=polymorphic_on,
         use_mapper_path=_use_mapper_path,
