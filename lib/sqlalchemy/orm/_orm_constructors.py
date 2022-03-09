@@ -2110,6 +2110,7 @@ def with_polymorphic(
     flat=False,
     polymorphic_on=None,
     aliased=False,
+    adapt_on_names=False,
     innerjoin=False,
     _use_mapper_path=False,
 ):
@@ -2173,6 +2174,15 @@ def with_polymorphic(
 
     :param innerjoin: if True, an INNER JOIN will be used.  This should
        only be specified if querying for one specific subtype only
+
+    :param adapt_on_names: Passes through the
+      :paramref:`_orm.aliased.adapt_on_names`
+      parameter to the aliased object.  This may be useful in situations where
+      the given selectable is not directly related to the existing mapped
+      selectable.
+
+      .. versionadded:: 1.4.33
+
     """
     return AliasedInsp._with_polymorphic_factory(
         base,
@@ -2180,6 +2190,7 @@ def with_polymorphic(
         selectable=selectable,
         flat=flat,
         polymorphic_on=polymorphic_on,
+        adapt_on_names=adapt_on_names,
         aliased=aliased,
         innerjoin=innerjoin,
         _use_mapper_path=_use_mapper_path,
