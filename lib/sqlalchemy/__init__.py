@@ -9,12 +9,8 @@ from __future__ import annotations
 
 from . import util as _util
 from .engine import AdaptedConnection as AdaptedConnection
-from .engine import BaseCursorResult as BaseCursorResult
 from .engine import BaseRow as BaseRow
 from .engine import BindTyping as BindTyping
-from .engine import BufferedColumnResultProxy as BufferedColumnResultProxy
-from .engine import BufferedColumnRow as BufferedColumnRow
-from .engine import BufferedRowResultProxy as BufferedRowResultProxy
 from .engine import ChunkedIteratorResult as ChunkedIteratorResult
 from .engine import Compiled as Compiled
 from .engine import Connection as Connection
@@ -28,7 +24,6 @@ from .engine import engine_from_config as engine_from_config
 from .engine import ExceptionContext as ExceptionContext
 from .engine import ExecutionContext as ExecutionContext
 from .engine import FrozenResult as FrozenResult
-from .engine import FullyBufferedResultProxy as FullyBufferedResultProxy
 from .engine import Inspector as Inspector
 from .engine import IteratorResult as IteratorResult
 from .engine import make_url as make_url

@@ -2983,7 +2983,7 @@ class HandleErrorTest(fixtures.TestBase):
             the_conn.append(connection)
 
         with mock.patch(
-            "sqlalchemy.engine.cursor.BaseCursorResult.__init__",
+            "sqlalchemy.engine.cursor.CursorResult.__init__",
             Mock(side_effect=tsa.exc.InvalidRequestError("duplicate col")),
         ):
             with engine.connect() as conn:
@@ -3019,7 +3019,7 @@ class HandleErrorTest(fixtures.TestBase):
         conn = engine.connect()
 
         with mock.patch(
-            "sqlalchemy.engine.cursor.BaseCursorResult.__init__",
+            "sqlalchemy.engine.cursor.CursorResult.__init__",
             Mock(side_effect=tsa.exc.InvalidRequestError("duplicate col")),
         ):
             assert_raises(

@@ -1880,6 +1880,7 @@ class MergedResult(IteratorResult):
     """
 
     closed = False
+    rowcount: Optional[int]
 
     def __init__(
         self, cursor_metadata: ResultMetaData, results: Sequence[Result]

@@ -34,6 +34,7 @@ import re
 from time import perf_counter
 import typing
 from typing import Any
+from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Mapping
@@ -629,11 +630,11 @@ class SQLCompiler(Compiled):
     """list of columns that can be post-fetched after INSERT or UPDATE to
     receive server-updated values"""
 
-    insert_prefetch: Optional[List[Column[Any]]]
+    insert_prefetch: Sequence[Column[Any]] = ()
     """list of columns for which default values should be evaluated before
     an INSERT takes place"""
 
-    update_prefetch: Optional[List[Column[Any]]]
+    update_prefetch: Sequence[Column[Any]] = ()
     """list of columns for which onupdate default values should be evaluated
     before an UPDATE takes place"""
 
@@ -738,8 +739,6 @@ class SQLCompiler(Compiled):
     has_out_parameters = False
     """if True, there are bindparam() objects that have the isoutparam
     flag set."""
-
-    insert_prefetch = update_prefetch = ()
 
     postfetch_lastrowid = False
     """if True, and this in insert, use cursor.lastrowid to populate
@@ -1340,7 +1339,7 @@ class SQLCompiler(Compiled):
         )
 
     @util.memoized_property
-    def _within_exec_param_key_getter(self):
+    def _within_exec_param_key_getter(self) -> Callable[[Any], str]:
         getter = self._key_getters_for_crud_column[2]
         if self.escaped_bind_names:
 

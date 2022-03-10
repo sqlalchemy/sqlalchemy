@@ -34,6 +34,7 @@ import weakref
 
 from ._has_cy import HAS_CYEXTENSION
 from .typing import Literal
+from .typing import Protocol
 
 if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
     from ._py_collections import immutabledict as immutabledict
@@ -62,7 +63,7 @@ else:
 _T = TypeVar("_T", bound=Any)
 _KT = TypeVar("_KT", bound=Any)
 _VT = TypeVar("_VT", bound=Any)
-
+_T_co = TypeVar("_T_co", covariant=True)
 
 EMPTY_SET: FrozenSet[Any] = frozenset()
 
@@ -597,7 +598,17 @@ class LRUCache(typing.MutableMapping[_KT, _VT]):
             self._mutex.release()
 
 
-class ScopedRegistry:
+class _CreateFuncType(Protocol[_T_co]):
+    def __call__(self) -> _T_co:
+        ...
+
+
+class _ScopeFuncType(Protocol):
+    def __call__(self) -> Any:
+        ...
+
+
+class ScopedRegistry(Generic[_T]):
     """A Registry that can store one or multiple instances of a single
     class on the basis of a "scope" function.
 
@@ -614,6 +625,10 @@ class ScopedRegistry:
 
     __slots__ = "createfunc", "scopefunc", "registry"
 
+    createfunc: _CreateFuncType[_T]
+    scopefunc: _ScopeFuncType
+    registry: Any
+
     def __init__(self, createfunc, scopefunc):
         """Construct a new :class:`.ScopedRegistry`.
 
@@ -629,24 +644,24 @@ class ScopedRegistry:
         self.scopefunc = scopefunc
         self.registry = {}
 
-    def __call__(self):
+    def __call__(self) -> _T:
         key = self.scopefunc()
         try:
-            return self.registry[key]
+            return self.registry[key]  # type: ignore[no-any-return]
         except KeyError:
-            return self.registry.setdefault(key, self.createfunc())
+            return self.registry.setdefault(key, self.createfunc())  # type: ignore[no-any-return] # noqa: E501
 
-    def has(self):
+    def has(self) -> bool:
         """Return True if an object is present in the current scope."""
 
         return self.scopefunc() in self.registry
 
-    def set(self, obj):
+    def set(self, obj: _T) -> None:
         """Set the value for the current scope."""
 
         self.registry[self.scopefunc()] = obj
 
-    def clear(self):
+    def clear(self) -> None:
         """Clear the current scope, if any."""
 
         try:
@@ -655,32 +670,32 @@ class ScopedRegistry:
             pass
 
 
-class ThreadLocalRegistry(ScopedRegistry):
+class ThreadLocalRegistry(ScopedRegistry[_T]):
     """A :class:`.ScopedRegistry` that uses a ``threading.local()``
     variable for storage.
 
     """
 
-    def __init__(self, createfunc):
+    def __init__(self, createfunc: Callable[[], _T]):
         self.createfunc = createfunc
         self.registry = threading.local()
 
-    def __call__(self):
+    def __call__(self) -> _T:
         try:
-            return self.registry.value
+            return self.registry.value  # type: ignore[no-any-return]
         except AttributeError:
             val = self.registry.value = self.createfunc()
-            return val
+            return val  # type: ignore[no-any-return]
 
-    def has(self):
+    def has(self) -> bool:
         return hasattr(self.registry, "value")
 
-    def set(self, obj):
+    def set(self, obj: _T) -> None:
         self.registry.value = obj
 
-    def clear(self):
+    def clear(self) -> None:
         try:
-            del self.registry.value  # type: ignore
+            del self.registry.value
         except AttributeError:
             pass
 
