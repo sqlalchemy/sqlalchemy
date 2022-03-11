@@ -115,6 +115,9 @@ class DocTest(fixtures.TestBase):
     def test_orm_queryguide(self):
         self._run_doctest("orm/queryguide.rst")
 
+    def test_orm_quickstart(self):
+        self._run_doctest("orm/quickstart.rst")
+
 
 # unicode checker courtesy pytest
 

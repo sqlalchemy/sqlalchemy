@@ -38,6 +38,8 @@ SQLAlchemy Documentation
     Core and ORM working styles more closely than ever.   The new tutorial introduces
     both concepts in parallel.
 
+    * **For a quick glance:** :doc:`/orm/quickstart` - a glimpse at what working with the ORM looks like
+
     * **For all users:** :doc:`/tutorial/index` - The new SQLAlchemy 1.4/2.0 Tutorial
 
   .. container::

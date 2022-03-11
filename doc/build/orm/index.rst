@@ -12,6 +12,7 @@ tutorial.
     :maxdepth: 2
 
     tutorial
+    quickstart
     mapper_config
     relationships
     loading_objects

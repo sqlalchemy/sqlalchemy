@@ -40,6 +40,7 @@ caveats.  It's intended that usually, you'd re-associate detached objects with
 another :class:`.Session` when you want to work with them again, so that they
 can resume their normal task of representing database state.
 
+.. _session_basics:
 
 Basics of Using a Session
 =========================
@@ -457,6 +458,7 @@ required after a flush fails, even though the underlying transaction will have
 been rolled back already - this is so that the overall nesting pattern of
 so-called "subtransactions" is consistently maintained.
 
+.. _session_expiring:
 
 Expiring / Refreshing
 ---------------------
