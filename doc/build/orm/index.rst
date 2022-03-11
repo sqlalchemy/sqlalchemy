@@ -11,6 +11,7 @@ tutorial.
 .. toctree::
     :maxdepth: 2
 
+    quickstart
     tutorial
     mapper_config
     relationships
@@ -20,7 +21,3 @@ tutorial.
     extensions/index
     examples
 
-.. toctree::
-   :hidden:
-
-    quickstart
