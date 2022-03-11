@@ -525,6 +525,11 @@ than that, however understanding that it has a :meth:`_orm.Session.execute`
 method that's used the same way as :meth:`_future.Connection.execute` will
 get us started with the examples that follow later.
 
+.. seealso::
+
+    :ref:`session_basics` - presents basic creational and usage patterns with
+    the :class:`_orm.Session` object.
+
 
 
 

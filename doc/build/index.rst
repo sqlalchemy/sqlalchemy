@@ -37,7 +37,9 @@ SQLAlchemy Documentation
     is recommended for all new users as well as veterans of older SQLAlchemy
     versions alike.
 
-    * **For all users:** :doc:`/tutorial/index` - SQLAlchemy 2.0's main tutorial
+    * **For a quick glance:** :doc:`/orm/quickstart` - a glimpse at what working with the ORM looks like
+
+    * **For all users:** :doc:`/tutorial/index` - SQLAlchemy 2.0's main tutorial, for complete learning
 
 
 .. container:: left_right_container
