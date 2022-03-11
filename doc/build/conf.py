@@ -36,6 +36,7 @@ extensions = [
     "zzzeeksphinx",
     "changelog",
     "sphinx_paramlinks",
+    "sphinx_copybutton",
 ]
 needs_extensions = {"zzzeeksphinx": "1.2.1"}
 
@@ -43,6 +44,12 @@ needs_extensions = {"zzzeeksphinx": "1.2.1"}
 # not sure why abspath() is needed here, some users
 # have reported this.
 templates_path = [os.path.abspath("templates")]
+
+# https://sphinx-copybutton.readthedocs.io/en/latest/use.html#strip-and-configure-input-prompts-for-code-cells
+copybutton_prompt_text = (
+    r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "
+)
+copybutton_prompt_is_regexp = True
 
 nitpicky = False
 
