@@ -502,9 +502,7 @@ are three general approaches to this:
     # engine.dispose() first
 
 4. An event handler can be applied to the connection pool that tests for
-   connections being shared across process boundaries, and invalidates them.
-   This approach, **when combined with an explicit call to dispose() as
-   mentioned above in options 2 or 3**, should cover all cases::
+   connections being shared across process boundaries, and invalidates them::
 
     from sqlalchemy import event
     from sqlalchemy import exc
@@ -532,22 +530,15 @@ are three general approaches to this:
    originated in a different parent process as an "invalid" connection,
    coercing the pool to recycle the connection record to make a new connection.
 
-   When using the above recipe, **ensure the dispose approach from #2 is also
-   used**, as if the connection pool is exhausted in the parent process
-   when the fork occurs, an empty pool will be copied into
-   the child process which will then hang because it has no connections.
-
 The above strategies will accommodate the case of an :class:`_engine.Engine`
-being shared among processes.  However, for the case of a transaction-active
-:class:`.Session` or :class:`_engine.Connection` being shared, there's no automatic
-fix for this; an application needs to ensure a new child process only
-initiate new :class:`_engine.Connection` objects and transactions, as well as ORM
-:class:`.Session` objects.  For a :class:`.Session` object, technically
-this is only needed if the session is currently transaction-bound, however
-the scope of a single :class:`.Session` is in any case intended to be
-kept within a single call stack in any case (e.g. not a global object, not
-shared between processes or threads).
-
+being shared among processes. The above steps alone are not sufficient for the
+case of sharing a specific :class:`_engine.Connection` over a process boundary;
+prefer to keep the scope of a particular :class:`_engine.Connection` local to a
+single process (and thread). It's additionally not supported to share any kind
+of ongoing transactional state directly across a process boundary, such as an
+ORM :class:`_orm.Session` object that's begun a transaction and references
+active :class:`_orm.Connection` instances; again prefer to create new
+:class:`_orm.Session` objects in new processes.
 
 
 API Documentation - Available Pool Implementations
