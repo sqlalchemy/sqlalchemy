@@ -479,19 +479,34 @@ are three general approaches to this:
     engine = create_engine("mysql://user:pass@host/dbname", poolclass=NullPool)
 
 
-2. Call :meth:`_engine.Engine.dispose` on any given :class:`_engine.Engine` as
-   soon one is within the new process.  In Python multiprocessing, constructs
-   such as ``multiprocessing.Pool`` include "initializer" hooks which are a
-   place that this can be performed; otherwise at the top of where
-   ``os.fork()`` or where the ``Process`` object begins the child fork, a
-   single call to :meth:`_engine.Engine.dispose` will ensure any remaining
-   connections are flushed. **This is the recommended approach**::
+2. Call :meth:`_engine.Engine.dispose` on any given :class:`_engine.Engine`
+   **directly before** the new process is started, so that the new process
+   will create new connections, as well as not attempt to close connections that
+   were shared from the parent which can impact the parent's subsequent
+   use of those connections.  **This is the recommended approach**::
 
     engine = create_engine("mysql://user:pass@host/dbname")
 
     def run_in_process():
-        # process starts.  ensure engine.dispose() is called just once
-        # at the beginning
+        with engine.connect() as conn:
+            conn.execute(text("..."))
+
+    # before process starts, ensure engine.dispose() is called
+    engine.dispose()
+    p = Process(target=run_in_process)
+    p.start()
+
+3. Alternatively, if the :class:`_engine.Engine` is only to be used in
+   child processes, and will not be used from the parent process subsequent
+   to the creation of child forks, the dispose may be within the child process
+   right as it begins::
+
+    engine = create_engine("mysql+mysqldb://user:pass@host/dbname")
+
+    def run_in_process():
+        # process starts. ensure engine.dispose() is called just once
+        # at the beginning.  note this cause parent process connections
+        # to be closed for most drivers
         engine.dispose()
 
         with engine.connect() as conn:
@@ -500,10 +515,14 @@ are three general approaches to this:
     p = Process(target=run_in_process)
     p.start()
 
-3. An event handler can be applied to the connection pool that tests for
+    # after child process starts, "engine" above should not be used within
+    # the parent process for connectivity, without calling
+    # engine.dispose() first
+
+4. An event handler can be applied to the connection pool that tests for
    connections being shared across process boundaries, and invalidates them.
    This approach, **when combined with an explicit call to dispose() as
-   mentioned above**, should cover all cases::
+   mentioned above in options 2 or 3**, should cover all cases::
 
     from sqlalchemy import event
     from sqlalchemy import exc
