@@ -23,6 +23,7 @@ from typing import Tuple
 from typing import Type
 from typing import Union
 
+from .interfaces import _IsolationLevel
 from .interfaces import BindTyping
 from .interfaces import ConnectionEventsTarget
 from .interfaces import DBAPICursor
@@ -510,7 +511,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             self._handle_dbapi_exception(e, None, None, None, None)
 
     @property
-    def default_isolation_level(self) -> str:
+    def default_isolation_level(self) -> Optional[_IsolationLevel]:
         """The default isolation level assigned to this
         :class:`_engine.Connection`.
 

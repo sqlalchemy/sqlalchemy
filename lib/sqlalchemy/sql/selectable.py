@@ -62,6 +62,7 @@ from .elements import ClauseElement
 from .elements import ClauseList
 from .elements import ColumnClause
 from .elements import ColumnElement
+from .elements import DQLDMLClauseElement
 from .elements import GroupedElement
 from .elements import Grouping
 from .elements import literal_column
@@ -85,7 +86,7 @@ class _OffsetLimitParam(BindParameter):
         return self.effective_value
 
 
-class ReturnsRows(roles.ReturnsRowsRole, ClauseElement):
+class ReturnsRows(roles.ReturnsRowsRole, DQLDMLClauseElement):
     """The base-most class for Core constructs that have some concept of
     columns that can represent rows.
 

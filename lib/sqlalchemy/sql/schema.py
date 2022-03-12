@@ -1131,6 +1131,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
     __visit_name__ = "column"
 
     inherit_cache = True
+    key: str
 
     @overload
     def __init__(

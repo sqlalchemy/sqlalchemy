@@ -141,7 +141,7 @@ class AdaptTest(fixtures.TestBase):
     def test_uppercase_importable(self, typ):
         if typ.__name__ == typ.__name__.upper():
             assert getattr(sa, typ.__name__) is typ
-            assert typ.__name__ in types.__all__
+            assert typ.__name__ in dir(types)
 
     @testing.combinations(
         ((d.name, d) for d in _all_dialects()), argnames="dialect", id_="ia"

@@ -125,8 +125,8 @@ module = [
 
 ignore_errors = false
 
+# mostly strict without requiring totally untyped things to be
+# typed
+strict = true
 allow_untyped_defs = true
-check_untyped_defs = false
 allow_untyped_calls = true
-
-

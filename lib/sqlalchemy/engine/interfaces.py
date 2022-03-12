@@ -36,7 +36,6 @@ from ..sql.compiler import TypeCompiler as TypeCompiler
 from ..sql.compiler import TypeCompiler  # noqa
 from ..util import immutabledict
 from ..util.concurrency import await_only
-from ..util.typing import _TypeToInstance
 from ..util.typing import Literal
 from ..util.typing import NotRequired
 from ..util.typing import Protocol
@@ -58,6 +57,8 @@ if TYPE_CHECKING:
     from ..sql.elements import ClauseElement
     from ..sql.schema import Column
     from ..sql.schema import ColumnDefault
+    from ..sql.schema import Sequence as Sequence_SchemaItem
+    from ..sql.sqltypes import Integer
     from ..sql.type_api import TypeEngine
 
 ConnectArgsType = Tuple[Tuple[str], MutableMapping[str, Any]]
@@ -156,6 +157,8 @@ class DBAPICursor(Protocol):
 
     arraysize: int
 
+    lastrowid: int
+
     def close(self) -> None:
         ...
 
@@ -196,6 +199,7 @@ class DBAPICursor(Protocol):
 
 
 _CoreSingleExecuteParams = Mapping[str, Any]
+_MutableCoreSingleExecuteParams = MutableMapping[str, Any]
 _CoreMultiExecuteParams = Sequence[_CoreSingleExecuteParams]
 _CoreAnyExecuteParams = Union[
     _CoreMultiExecuteParams, _CoreSingleExecuteParams
@@ -605,7 +609,7 @@ class Dialect(EventTarget):
     ddl_compiler: Type[DDLCompiler]
     """a :class:`.Compiled` class used to compile DDL statements"""
 
-    type_compiler: _TypeToInstance[TypeCompiler]
+    type_compiler: Union[Type[TypeCompiler], TypeCompiler]
     """a :class:`.Compiled` class used to compile SQL type objects"""
 
     preparer: Type[IdentifierPreparer]
@@ -633,7 +637,7 @@ class Dialect(EventTarget):
 
     """
 
-    default_isolation_level: _IsolationLevel
+    default_isolation_level: Optional[_IsolationLevel]
     """the isolation that is implicitly present on new connections"""
 
     execution_ctx_cls: Type["ExecutionContext"]
@@ -652,6 +656,13 @@ class Dialect(EventTarget):
 
     max_identifier_length: int
     """The maximum length of identifier names."""
+
+    supports_server_side_cursors: bool
+    """indicates if the dialect supports server side cursors"""
+
+    server_side_cursors: bool
+    """deprecated; indicates if the dialect should attempt to use server
+    side cursors by default"""
 
     supports_sane_rowcount: bool
     """Indicate whether the dialect properly implements rowcount for
@@ -2300,6 +2311,11 @@ class ExecutionContext:
         raise NotImplementedError()
 
     def _setup_result_proxy(self) -> Result:
+        raise NotImplementedError()
+
+    def fire_sequence(self, seq: Sequence_SchemaItem, type_: Integer) -> int:
+        """given a :class:`.Sequence`, invoke it and return the next int
+        value"""
         raise NotImplementedError()
 
     def create_cursor(self) -> DBAPICursor:

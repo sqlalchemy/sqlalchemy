@@ -11,6 +11,7 @@ from itertools import filterfalse
 from typing import AbstractSet
 from typing import Any
 from typing import cast
+from typing import Collection
 from typing import Dict
 from typing import Iterable
 from typing import Iterator
@@ -67,7 +68,9 @@ class immutabledict(ImmutableDictBase[_KT, _VT]):
         dict.__init__(new, *args)
         return new
 
-    def __init__(self, *args: Union[Mapping[_KT, _VT], Tuple[_KT, _VT]]):
+    def __init__(
+        self, *args: Union[Mapping[_KT, _VT], Iterable[Tuple[_KT, _VT]]]
+    ):
         pass
 
     def __reduce__(self):
@@ -369,6 +372,8 @@ class IdentitySet:
 
     def difference(self, iterable):
         result = self.__new__(self.__class__)
+        other: Collection[Any]
+
         if isinstance(iterable, self.__class__):
             other = iterable._members
         else:
@@ -394,6 +399,9 @@ class IdentitySet:
 
     def intersection(self, iterable):
         result = self.__new__(self.__class__)
+
+        other: Collection[Any]
+
         if isinstance(iterable, self.__class__):
             other = iterable._members
         else:
@@ -466,7 +474,7 @@ class IdentitySet:
 
 
 def unique_list(seq, hashfunc=None):
-    seen = set()
+    seen: Set[Any] = set()
     seen_add = seen.add
     if not hashfunc:
         return [x for x in seq if x not in seen and not seen_add(x)]

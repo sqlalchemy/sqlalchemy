@@ -58,12 +58,13 @@ from ..util.langhelpers import TypingOnly
 if typing.TYPE_CHECKING:
     from decimal import Decimal
 
+    from .compiler import Compiled
+    from .compiler import SQLCompiler
     from .operators import OperatorType
     from .selectable import FromClause
     from .selectable import Select
     from .sqltypes import Boolean  # noqa
     from .type_api import TypeEngine
-    from ..engine import Compiled
     from ..engine import Connection
     from ..engine import Dialect
     from ..engine import Engine
@@ -573,6 +574,25 @@ class ClauseElement(
             )
 
 
+class DQLDMLClauseElement(ClauseElement):
+    """represents a :class:`.ClauseElement` that compiles to a DQL or DML
+    expression, not DDL.
+
+    .. versionadded:: 2.0
+
+    """
+
+    if typing.TYPE_CHECKING:
+
+        def compile(  # noqa: A001
+            self,
+            bind: Optional[Union[Engine, Connection]] = None,
+            dialect: Optional[Dialect] = None,
+            **kw: Any,
+        ) -> SQLCompiler:
+            ...
+
+
 class CompilerColumnElement(
     roles.DMLColumnRole,
     roles.DDLConstraintColumnRole,
@@ -955,7 +975,7 @@ class ColumnElement(
     roles.DDLExpressionRole,
     SQLCoreOperations[_T],
     operators.ColumnOperators[SQLCoreOperations],
-    ClauseElement,
+    DQLDMLClauseElement,
 ):
     """Represent a column-oriented SQL expression suitable for usage in the
     "columns" clause, WHERE clause etc. of a statement.
@@ -1820,7 +1840,7 @@ class BindParameter(roles.InElementRole, ColumnElement[_T]):
         )
 
 
-class TypeClause(ClauseElement):
+class TypeClause(DQLDMLClauseElement):
     """Handle a type keyword in a SQL statement.
 
     Used by the ``Case`` statement.
@@ -1849,7 +1869,7 @@ class TextClause(
     roles.BinaryElementRole,
     roles.InElementRole,
     Executable,
-    ClauseElement,
+    DQLDMLClauseElement,
 ):
     """Represent a literal SQL text fragment.
 
@@ -2285,7 +2305,7 @@ class ClauseList(
     roles.OrderByRole,
     roles.ColumnsClauseRole,
     roles.DMLColumnRole,
-    ClauseElement,
+    DQLDMLClauseElement,
 ):
     """Describe a list of clauses, separated by an operator.
 
@@ -3205,7 +3225,7 @@ class IndexExpression(BinaryExpression):
     inherit_cache = True
 
 
-class GroupedElement(ClauseElement):
+class GroupedElement(DQLDMLClauseElement):
     """Represent any parenthesized expression"""
 
     __visit_name__ = "grouping"

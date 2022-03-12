@@ -679,7 +679,7 @@ def create_proxy_methods(
 
     def decorate(cls):
         def instrument(name, clslevel=False):
-            fn = cast(Callable[..., Any], getattr(target_cls, name))
+            fn = cast(types.FunctionType, getattr(target_cls, name))
             spec = compat.inspect_getfullargspec(fn)
             env = {"__name__": fn.__module__}
 
@@ -709,7 +709,7 @@ def create_proxy_methods(
                 )
 
             proxy_fn = cast(
-                Callable[..., Any], _exec_code_in_env(code, env, fn.__name__)
+                types.FunctionType, _exec_code_in_env(code, env, fn.__name__)
             )
             proxy_fn.__defaults__ = getattr(fn, "__func__", fn).__defaults__
             proxy_fn.__doc__ = inject_docstring_text(
@@ -721,9 +721,9 @@ def create_proxy_methods(
             )
 
             if clslevel:
-                proxy_fn = classmethod(proxy_fn)
-
-            return proxy_fn
+                return classmethod(proxy_fn)
+            else:
+                return proxy_fn
 
         def makeprop(name):
             attr = target_cls.__dict__.get(name, None)
@@ -824,7 +824,7 @@ def generic_repr(obj, additional_kw=(), to_inspect=None, omit_kwarg=()):
     missing = object()
 
     pos_args = []
-    kw_args = _collections.OrderedDict()
+    kw_args: _collections.OrderedDict[str, Any] = _collections.OrderedDict()
     vargs = None
     for i, insp in enumerate(to_inspect):
         try:
@@ -855,7 +855,7 @@ def generic_repr(obj, additional_kw=(), to_inspect=None, omit_kwarg=()):
                         )
                     ]
                 )
-    output = []
+    output: List[str] = []
 
     output.extend(repr(getattr(obj, arg, None)) for arg in pos_args)
 
@@ -1007,7 +1007,7 @@ def monkeypatch_proxied_specials(
             if not hasattr(maybe_fn, "__call__"):
                 continue
             maybe_fn = getattr(maybe_fn, "__func__", maybe_fn)
-            fn = cast(Callable[..., Any], maybe_fn)
+            fn = cast(types.FunctionType, maybe_fn)
 
         except AttributeError:
             continue
@@ -1024,7 +1024,9 @@ def monkeypatch_proxied_specials(
             "return %(name)s.%(method)s%(d_args)s" % locals()
         )
 
-        env = from_instance is not None and {name: from_instance} or {}
+        env: Dict[str, types.FunctionType] = (
+            from_instance is not None and {name: from_instance} or {}
+        )
         exec(py, env)
         try:
             env[method].__defaults__ = fn.__defaults__
@@ -1482,6 +1484,7 @@ def dictlike_iteritems(dictlike):
 
         def iterator():
             for key in dictlike.iterkeys():
+                assert getter is not None
                 yield key, getter(key)
 
         return iterator()
@@ -1989,7 +1992,7 @@ def quoted_token_parser(value):
     # 0 = outside of quotes
     # 1 = inside of quotes
     state = 0
-    result = [[]]
+    result: List[List[str]] = [[]]
     idx = 0
     lv = len(value)
     while idx < lv:
