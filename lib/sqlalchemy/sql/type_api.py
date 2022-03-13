@@ -29,26 +29,19 @@ from .. import exc
 from .. import util
 
 # these are back-assigned by sqltypes.
-if not typing.TYPE_CHECKING:
-    BOOLEANTYPE = None
-    INTEGERTYPE = None
-    NULLTYPE = None
-    STRINGTYPE = None
-    MATCHTYPE = None
-    INDEXABLE = None
-    TABLEVALUE = None
-    _resolve_value_to_type = None
-
 if typing.TYPE_CHECKING:
     from .elements import ColumnElement
     from .operators import OperatorType
-    from .sqltypes import _resolve_value_to_type
-    from .sqltypes import Boolean as BOOLEANTYPE  # noqa
-    from .sqltypes import Indexable as INDEXABLE  # noqa
-    from .sqltypes import MatchType as MATCHTYPE  # noqa
-    from .sqltypes import NULLTYPE
+    from .sqltypes import _resolve_value_to_type as _resolve_value_to_type
+    from .sqltypes import BOOLEANTYPE as BOOLEANTYPE
+    from .sqltypes import Indexable as INDEXABLE
+    from .sqltypes import INTEGERTYPE as INTEGERTYPE
+    from .sqltypes import MATCHTYPE as MATCHTYPE
+    from .sqltypes import NULLTYPE as NULLTYPE
+
 
 _T = TypeVar("_T", bound=Any)
+_TE = TypeVar("_TE", bound="TypeEngine[Any]")
 _CT = TypeVar("_CT", bound=Any)
 
 # replace with pep-673 when applicable
@@ -95,7 +88,7 @@ class TypeEngine(Visitable, Generic[_T]):
     """
 
     class Comparator(
-        ColumnOperators["ColumnElement"],
+        ColumnOperators,
         Generic[_CT],
     ):
         """Base class for custom comparison operations defined at the
@@ -539,7 +532,7 @@ class TypeEngine(Visitable, Generic[_T]):
         return util.method_is_overridden(self, TypeEngine.bind_expression)
 
     @staticmethod
-    def _to_instance(cls_or_self):
+    def _to_instance(cls_or_self: Union[Type[_TE], _TE]) -> _TE:
         return to_instance(cls_or_self)
 
     def compare_values(self, x, y):

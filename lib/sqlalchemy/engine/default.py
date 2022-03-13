@@ -33,6 +33,7 @@ from typing import Sequence
 from typing import Set
 from typing import Tuple
 from typing import Type
+from typing import TYPE_CHECKING
 import weakref
 
 from . import characteristics
@@ -46,11 +47,11 @@ from .interfaces import ExecutionContext
 from .. import event
 from .. import exc
 from .. import pool
-from .. import TupleType
 from .. import types as sqltypes
 from .. import util
 from ..sql import compiler
 from ..sql import expression
+from ..sql._typing import is_tuple_type
 from ..sql.compiler import DDLCompiler
 from ..sql.compiler import SQLCompiler
 from ..sql.elements import quoted_name
@@ -80,6 +81,7 @@ if typing.TYPE_CHECKING:
     from ..sql.dml import DMLState
     from ..sql.elements import BindParameter
     from ..sql.schema import Column
+    from ..sql.schema import ColumnDefault
     from ..sql.type_api import TypeEngine
 
 # When we're handed literal SQL, ensure it's a SELECT query
@@ -224,12 +226,6 @@ class DefaultDialect(Dialect):
     requires_name_normalize = False
 
     is_async = False
-
-    CACHE_HIT = CACHE_HIT
-    CACHE_MISS = CACHE_MISS
-    CACHING_DISABLED = CACHING_DISABLED
-    NO_CACHE_KEY = NO_CACHE_KEY
-    NO_DIALECT_SUPPORT = NO_DIALECT_SUPPORT
 
     # TODO: this is not to be part of 2.0.  implement rudimentary binary
     # literals for SQLite, PostgreSQL, MySQL only within
@@ -1128,13 +1124,15 @@ class DefaultExecutionContext(ExecutionContext):
         return self.root_connection.engine
 
     @util.memoized_property
-    def postfetch_cols(self) -> Optional[Sequence[Column[Any]]]:  # type: ignore[override]  # mypy#4125 # noqa E501
-        assert isinstance(self.compiled, SQLCompiler)
+    def postfetch_cols(self) -> Optional[Sequence[Column[Any]]]:
+        if TYPE_CHECKING:
+            assert isinstance(self.compiled, SQLCompiler)
         return self.compiled.postfetch
 
     @util.memoized_property
-    def prefetch_cols(self) -> Optional[Sequence[Column[Any]]]:  # type: ignore[override]  # mypy#4125 # noqa E501
-        assert isinstance(self.compiled, SQLCompiler)
+    def prefetch_cols(self) -> Optional[Sequence[Column[Any]]]:
+        if TYPE_CHECKING:
+            assert isinstance(self.compiled, SQLCompiler)
         if self.isinsert:
             return self.compiled.insert_prefetch
         elif self.isupdate:
@@ -1144,7 +1142,8 @@ class DefaultExecutionContext(ExecutionContext):
 
     @util.memoized_property
     def returning_cols(self) -> Optional[Sequence[Column[Any]]]:
-        assert isinstance(self.compiled, SQLCompiler)
+        if TYPE_CHECKING:
+            assert isinstance(self.compiled, SQLCompiler)
         return self.compiled.returning
 
     @util.memoized_property
@@ -1538,9 +1537,8 @@ class DefaultExecutionContext(ExecutionContext):
                 continue
 
             if key in self._expanded_parameters:
-                if bindparam.type._is_tuple_type:
-                    tup_type = cast(TupleType, bindparam.type)
-                    num = len(tup_type.types)
+                if is_tuple_type(bindparam.type):
+                    num = len(bindparam.type.types)
                     dbtypes = inputsizes[bindparam]
                     generic_inputsizes.extend(
                         (
@@ -1550,7 +1548,7 @@ class DefaultExecutionContext(ExecutionContext):
                                 else paramname
                             ),
                             dbtypes[idx % num],
-                            tup_type.types[idx % num],
+                            bindparam.type.types[idx % num],
                         )
                         for idx, paramname in enumerate(
                             self._expanded_parameters[key]
@@ -1758,10 +1756,14 @@ class DefaultExecutionContext(ExecutionContext):
         # get_update_default()
         for c in insert_prefetch:
             if c.default and not c.default.is_sequence and c.default.is_scalar:
+                if TYPE_CHECKING:
+                    assert isinstance(c.default, ColumnDefault)
                 scalar_defaults[c] = c.default.arg
 
         for c in update_prefetch:
             if c.onupdate and c.onupdate.is_scalar:
+                if TYPE_CHECKING:
+                    assert isinstance(c.onupdate, ColumnDefault)
                 scalar_defaults[c] = c.onupdate.arg
 
         for param in self.compiled_parameters:
@@ -1793,6 +1795,8 @@ class DefaultExecutionContext(ExecutionContext):
 
         for c in compiled.insert_prefetch:
             if c.default and not c.default.is_sequence and c.default.is_scalar:
+                if TYPE_CHECKING:
+                    assert isinstance(c.default, ColumnDefault)
                 val = c.default.arg
             else:
                 val = self.get_insert_default(c)

@@ -13,16 +13,20 @@
 from __future__ import annotations
 
 import collections.abc as collections_abc
+from enum import Enum
 from functools import reduce
 import itertools
 from itertools import zip_longest
 import operator
 import re
 import typing
+from typing import Any
+from typing import Iterable
+from typing import List
 from typing import MutableMapping
 from typing import Optional
 from typing import Sequence
-from typing import Set
+from typing import Tuple
 from typing import TypeVar
 
 from . import roles
@@ -38,23 +42,33 @@ from .. import util
 from ..util import HasMemoized as HasMemoized
 from ..util import hybridmethod
 from ..util import typing as compat_typing
+from ..util.typing import Self
 
 if typing.TYPE_CHECKING:
+    from .elements import BindParameter
     from .elements import ColumnElement
     from ..engine import Connection
     from ..engine import Result
+    from ..engine.base import _CompiledCacheType
     from ..engine.interfaces import _CoreMultiExecuteParams
     from ..engine.interfaces import _ExecuteOptions
     from ..engine.interfaces import _ExecuteOptionsParameter
     from ..engine.interfaces import _ImmutableExecuteOptions
+    from ..engine.interfaces import _SchemaTranslateMapType
     from ..engine.interfaces import CacheStats
-
+    from ..engine.interfaces import Compiled
+    from ..engine.interfaces import Dialect
 
 coercions = None
 elements = None
 type_api = None
 
-NO_ARG = util.symbol("NO_ARG")
+
+class _NoArg(Enum):
+    NO_ARG = 0
+
+
+NO_ARG = _NoArg.NO_ARG
 
 # if I use sqlalchemy.util.typing, which has the exact same
 # symbols, mypy reports: "error: _Fn? not callable"
@@ -74,10 +88,12 @@ class Immutable:
     def params(self, *optionaldict, **kwargs):
         raise NotImplementedError("Immutable objects do not support copying")
 
-    def _clone(self, **kw):
+    def _clone(self: Self, **kw: Any) -> Self:
         return self
 
-    def _copy_internals(self, **kw):
+    def _copy_internals(
+        self, omit_attrs: Iterable[str] = (), **kw: Any
+    ) -> None:
         pass
 
 
@@ -87,8 +103,6 @@ class SingletonConstant(Immutable):
     _is_singleton_constant = True
 
     _singleton: SingletonConstant
-
-    proxy_set: Set[ColumnElement]
 
     def __new__(cls, *arg, **kw):
         return cls._singleton
@@ -877,12 +891,15 @@ class Executable(roles.StatementRole, Generative):
         def _compile_w_cache(
             self,
             dialect: Dialect,
-            compiled_cache: Optional[_CompiledCacheType] = None,
-            column_keys: Optional[Sequence[str]] = None,
+            *,
+            compiled_cache: Optional[_CompiledCacheType],
+            column_keys: List[str],
             for_executemany: bool = False,
             schema_translate_map: Optional[_SchemaTranslateMapType] = None,
             **kw: Any,
-        ) -> Tuple[Compiled, _SingleExecuteParams, CacheStats]:
+        ) -> Tuple[
+            Compiled, Optional[Sequence[BindParameter[Any]]], CacheStats
+        ]:
             ...
 
         def _execute_on_connection(

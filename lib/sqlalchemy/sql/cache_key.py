@@ -11,15 +11,14 @@ import enum
 from itertools import zip_longest
 import typing
 from typing import Any
-from typing import cast
 from typing import Dict
 from typing import Iterator
 from typing import List
+from typing import MutableMapping
 from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
-from typing import Type
 from typing import Union
 
 from .visitors import anon_map
@@ -91,7 +90,7 @@ class HasCacheKey:
     __slots__ = ()
 
     _cache_key_traversal: Union[
-        _TraverseInternalsType, Literal[CacheConst.NO_CACHE]
+        _TraverseInternalsType, Literal[CacheConst.NO_CACHE], Literal[None]
     ] = NO_CACHE
 
     _is_has_cache_key = True
@@ -147,11 +146,8 @@ class HasCacheKey:
             _cache_key_traversal = getattr(cls, "_cache_key_traversal", None)
             if _cache_key_traversal is None:
                 try:
-                    # check for _traverse_internals, which is part of
-                    # HasTraverseInternals
-                    _cache_key_traversal = cast(
-                        "Type[HasTraverseInternals]", cls
-                    )._traverse_internals
+                    assert issubclass(cls, HasTraverseInternals)
+                    _cache_key_traversal = cls._traverse_internals
                 except AttributeError:
                     cls._generated_cache_key_traversal = NO_CACHE
                     return NO_CACHE
@@ -417,7 +413,7 @@ class CacheKey(NamedTuple):
 
     def to_offline_string(
         self,
-        statement_cache: _CompiledCacheType,
+        statement_cache: MutableMapping[Any, str],
         statement: ClauseElement,
         parameters: _CoreSingleExecuteParams,
     ) -> str:

@@ -54,7 +54,6 @@ from ..orm.base import SQLORMOperations
 from ..sql import operators
 from ..sql import or_
 from ..sql.elements import SQLCoreOperations
-from ..sql.operators import ColumnOperators
 from ..util.typing import Literal
 from ..util.typing import Protocol
 from ..util.typing import Self
@@ -492,9 +491,7 @@ _SelfAssociationProxyInstance = TypeVar(
 )
 
 
-class AssociationProxyInstance(
-    SQLORMOperations[_T], ColumnOperators[SQLORMOperations[_T]]
-):
+class AssociationProxyInstance(SQLORMOperations[_T]):
     """A per-class object that serves class- and object-specific results.
 
     This is used by :class:`.AssociationProxy` when it is invoked

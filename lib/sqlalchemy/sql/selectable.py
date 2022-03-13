@@ -20,9 +20,11 @@ from operator import attrgetter
 import typing
 from typing import Any as TODO_Any
 from typing import Any
+from typing import Iterable
 from typing import NamedTuple
 from typing import Optional
 from typing import Tuple
+from typing import TYPE_CHECKING
 from typing import TypeVar
 
 from . import cache_key
@@ -454,7 +456,12 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
     __visit_name__ = "fromclause"
     named_with_column = False
-    _hide_froms = []
+
+    @property
+    def _hide_froms(self) -> Iterable[FromClause]:
+        return ()
+
+    _is_clone_of: Optional[FromClause]
 
     schema = None
     """Define the 'schema' attribute for this :class:`_expression.FromClause`.
@@ -667,7 +674,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         return self._cloned_set.intersection(other._cloned_set)
 
     @property
-    def description(self):
+    def description(self) -> str:
         """A brief description of this :class:`_expression.FromClause`.
 
         Used primarily for error message formatting.
@@ -703,7 +710,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         return self.columns
 
     @util.memoized_property
-    def columns(self):
+    def columns(self) -> ColumnCollection:
         """A named-based collection of :class:`_expression.ColumnElement`
         objects maintained by this :class:`_expression.FromClause`.
 
@@ -787,19 +794,24 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         for key in ["_columns", "columns", "primary_key", "foreign_keys"]:
             self.__dict__.pop(key, None)
 
-    c = property(
-        attrgetter("columns"),
-        doc="""
-        A named-based collection of :class:`_expression.ColumnElement`
-        objects maintained by this :class:`_expression.FromClause`.
+    # this is awkward.   maybe there's a better way
+    if TYPE_CHECKING:
+        c: ColumnCollection
+    else:
+        c = property(
+            attrgetter("columns"),
+            doc="""
+            A named-based collection of :class:`_expression.ColumnElement`
+            objects maintained by this :class:`_expression.FromClause`.
 
-        The :attr:`_sql.FromClause.c` attribute is an alias for the
-        :attr:`_sql.FromClause.columns` attribute.
+            The :attr:`_sql.FromClause.c` attribute is an alias for the
+            :attr:`_sql.FromClause.columns` attribute.
 
-        :return: a :class:`.ColumnCollection`
+            :return: a :class:`.ColumnCollection`
 
-        """,
-    )
+            """,
+        )
+
     _select_iterable = property(attrgetter("columns"))
 
     def _init_collections(self):
@@ -1015,7 +1027,7 @@ class Join(roles.DMLTableRole, FromClause):
         self.full = full
 
     @property
-    def description(self):
+    def description(self) -> str:
         return "Join object on %s(%d) and %s(%d)" % (
             self.left.description,
             id(self.left),
@@ -1289,7 +1301,7 @@ class Join(roles.DMLTableRole, FromClause):
             )
 
     @property
-    def _hide_froms(self):
+    def _hide_froms(self) -> Iterable[FromClause]:
         return itertools.chain(
             *[_from_objects(x.left, x.right) for x in self._cloned_set]
         )
@@ -1370,7 +1382,7 @@ class AliasedReturnsRows(NoInit, NamedFromClause):
         self.element._refresh_for_new_column(column)
 
     @property
-    def description(self):
+    def description(self) -> str:
         name = self.name
         if isinstance(name, _anonymous_label):
             name = "anon_1"
@@ -2301,6 +2313,8 @@ class FromGrouping(GroupedElement, FromClause):
 
     _traverse_internals = [("element", InternalTraversal.dp_clauseelement)]
 
+    element: FromClause
+
     def __init__(self, element):
         self.element = coercions.expect(roles.FromClauseRole, element)
 
@@ -2329,7 +2343,7 @@ class FromGrouping(GroupedElement, FromClause):
         return FromGrouping(self.element._anonymous_fromclause(**kw))
 
     @property
-    def _hide_froms(self):
+    def _hide_froms(self) -> Iterable[FromClause]:
         return self.element._hide_froms
 
     @property
@@ -2425,7 +2439,7 @@ class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
         pass
 
     @util.memoized_property
-    def description(self):
+    def description(self) -> str:
         return self.name
 
     def append_column(self, c, **kw):

@@ -13,10 +13,12 @@ import re
 import typing
 from typing import Any
 from typing import Any as TODO_Any
+from typing import Callable
 from typing import Dict
 from typing import List
 from typing import NoReturn
 from typing import Optional
+from typing import overload
 from typing import Type
 from typing import TypeVar
 
@@ -46,9 +48,14 @@ if typing.TYPE_CHECKING:
     from . import traversals
     from .elements import ClauseElement
     from .elements import ColumnClause
+    from .elements import ColumnElement
+    from .elements import SQLCoreOperations
+
 
 _SR = TypeVar("_SR", bound=roles.SQLRole)
+_F = TypeVar("_F", bound=Callable[..., Any])
 _StringOnlyR = TypeVar("_StringOnlyR", bound=roles.StringRole)
+_T = TypeVar("_T", bound=Any)
 
 
 def _is_literal(element):
@@ -104,7 +111,9 @@ def _deep_is_literal(element):
     )
 
 
-def _document_text_coercion(paramname, meth_rst, param_rst):
+def _document_text_coercion(
+    paramname: str, meth_rst: str, param_rst: str
+) -> Callable[[_F], _F]:
     return util.add_parameter_text(
         paramname,
         (
@@ -132,15 +141,50 @@ def _expression_collection_was_a_list(attrname, fnname, args):
     return args
 
 
-# TODO; would like to have overloads here, however mypy is being extremely
-# pedantic about them. not sure why pylance is OK with them.
+@overload
+def expect(
+    role: Type[roles.TruncatedLabelRole],
+    element: Any,
+    *,
+    apply_propagate_attrs: Optional[ClauseElement] = None,
+    argname: Optional[str] = None,
+    post_inspect: bool = False,
+    **kw: Any,
+) -> str:
+    ...
+
+
+@overload
+def expect(
+    role: Type[roles.ExpressionElementRole[_T]],
+    element: Any,
+    *,
+    apply_propagate_attrs: Optional[ClauseElement] = None,
+    argname: Optional[str] = None,
+    post_inspect: bool = False,
+    **kw: Any,
+) -> ColumnElement[_T]:
+    ...
+
+
+@overload
+def expect(
+    role: Type[_SR],
+    element: Any,
+    *,
+    apply_propagate_attrs: Optional[ClauseElement] = None,
+    argname: Optional[str] = None,
+    post_inspect: bool = False,
+    **kw: Any,
+) -> TODO_Any:
+    ...
 
 
 def expect(
     role: Type[_SR],
     element: Any,
     *,
-    apply_propagate_attrs: Optional["ClauseElement"] = None,
+    apply_propagate_attrs: Optional[ClauseElement] = None,
     argname: Optional[str] = None,
     post_inspect: bool = False,
     **kw: Any,
@@ -220,12 +264,16 @@ def expect(
                 resolved = element
     else:
         resolved = element
-    if (
-        apply_propagate_attrs is not None
-        and not apply_propagate_attrs._propagate_attrs
-        and resolved._propagate_attrs
-    ):
-        apply_propagate_attrs._propagate_attrs = resolved._propagate_attrs
+
+    if apply_propagate_attrs is not None:
+        if typing.TYPE_CHECKING:
+            assert isinstance(resolved, (SQLCoreOperations, ClauseElement))
+
+        if (
+            not apply_propagate_attrs._propagate_attrs
+            and resolved._propagate_attrs
+        ):
+            apply_propagate_attrs._propagate_attrs = resolved._propagate_attrs
 
     if impl._role_class in resolved.__class__.__mro__:
         if impl._post_coercion:
@@ -620,8 +668,8 @@ class InElementImpl(RoleImpl):
             element, str
         ):
             non_literal_expressions: Dict[
-                Optional[operators.ColumnOperators[Any]],
-                operators.ColumnOperators[Any],
+                Optional[operators.ColumnOperators],
+                operators.ColumnOperators,
             ] = {}
             element = list(element)
             for o in element:

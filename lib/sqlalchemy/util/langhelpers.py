@@ -39,6 +39,7 @@ from typing import Sequence
 from typing import Set
 from typing import Tuple
 from typing import Type
+from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 import warnings
@@ -50,6 +51,7 @@ from ._has_cy import HAS_CYEXTENSION
 from .. import exc
 
 _T = TypeVar("_T")
+_T_co = TypeVar("_T_co", covariant=True)
 _F = TypeVar("_F", bound=Callable[..., Any])
 _MP = TypeVar("_MP", bound="memoized_property[Any]")
 _MA = TypeVar("_MA", bound="HasMemoized.memoized_attribute[Any]")
@@ -1131,44 +1133,42 @@ def as_interface(obj, cls=None, methods=None, required=None):
     )
 
 
-Selfmemoized_property = TypeVar(
-    "Selfmemoized_property", bound="memoized_property[Any]"
-)
+_GFD = TypeVar("_GFD", bound="generic_fn_descriptor[Any]")
 
 
-class memoized_property(Generic[_T]):
-    """A read-only @property that is only evaluated once."""
+class generic_fn_descriptor(Generic[_T_co]):
+    """Descriptor which proxies a function when the attribute is not
+    present in dict
 
-    fget: Callable[..., _T]
+    This superclass is organized in a particular way with "memoized" and
+    "non-memoized" implementation classes that are hidden from type checkers,
+    as Mypy seems to not be able to handle seeing multiple kinds of descriptor
+    classes used for the same attribute.
+
+    """
+
+    fget: Callable[..., _T_co]
     __doc__: Optional[str]
     __name__: str
 
-    def __init__(self, fget: Callable[..., _T], doc: Optional[str] = None):
+    def __init__(self, fget: Callable[..., _T_co], doc: Optional[str] = None):
         self.fget = fget  # type: ignore[assignment]
         self.__doc__ = doc or fget.__doc__
         self.__name__ = fget.__name__
 
     @overload
-    def __get__(
-        self: Selfmemoized_property, obj: None, cls: Any
-    ) -> Selfmemoized_property:
+    def __get__(self: _GFD, obj: None, cls: Any) -> _GFD:
         ...
 
     @overload
-    def __get__(self, obj: Any, cls: Any) -> _T:
+    def __get__(self, obj: object, cls: Any) -> _T_co:
         ...
 
-    def __get__(
-        self: Selfmemoized_property, obj: Any, cls: Any
-    ) -> Union[Selfmemoized_property, _T]:
-        if obj is None:
-            return self
-        obj.__dict__[self.__name__] = result = self.fget(obj)
-        return result  # type: ignore
+    def __get__(self: _GFD, obj: Any, cls: Any) -> Union[_GFD, _T_co]:
+        raise NotImplementedError()
 
     if typing.TYPE_CHECKING:
-        # __set__ can't actually be implemented because it would
-        # cause __get__ to be called in all cases
+
         def __set__(self, instance: Any, value: Any) -> None:
             ...
 
@@ -1176,11 +1176,64 @@ class memoized_property(Generic[_T]):
             ...
 
     def _reset(self, obj: Any) -> None:
-        memoized_property.reset(obj, self.__name__)
+        raise NotImplementedError()
 
     @classmethod
     def reset(cls, obj: Any, name: str) -> None:
+        raise NotImplementedError()
+
+
+class _non_memoized_property(generic_fn_descriptor[_T_co]):
+    """a plain descriptor that proxies a function.
+
+    primary rationale is to provide a plain attribute that's
+    compatible with memoized_property which is also recognized as equivalent
+    by mypy.
+
+    """
+
+    if not TYPE_CHECKING:
+
+        def __get__(self, obj, cls):
+            if obj is None:
+                return self
+            return self.fget(obj)
+
+
+class _memoized_property(generic_fn_descriptor[_T_co]):
+    """A read-only @property that is only evaluated once."""
+
+    if not TYPE_CHECKING:
+
+        def __get__(self, obj, cls):
+            if obj is None:
+                return self
+            obj.__dict__[self.__name__] = result = self.fget(obj)
+            return result
+
+    def _reset(self, obj):
+        _memoized_property.reset(obj, self.__name__)
+
+    @classmethod
+    def reset(cls, obj, name):
         obj.__dict__.pop(name, None)
+
+
+# despite many attempts to get Mypy to recognize an overridden descriptor
+# where one is memoized and the other isn't, there seems to be no reliable
+# way other than completely deceiving the type checker into thinking there
+# is just one single descriptor type everywhere.  Otherwise, if a superclass
+# has non-memoized and subclass has memoized, that requires
+# "class memoized(non_memoized)".  but then if a superclass has memoized and
+# superclass has non-memoized, the class hierarchy of the descriptors
+# would need to be reversed; "class non_memoized(memoized)".  so there's no
+# way to achieve this.
+if TYPE_CHECKING:
+    memoized_property = generic_fn_descriptor
+    non_memoized_property = generic_fn_descriptor
+else:
+    memoized_property = _memoized_property
+    non_memoized_property = _non_memoized_property
 
 
 def memoized_instancemethod(fn: _F) -> _F:
@@ -1231,7 +1284,7 @@ class HasMemoized:
         self.__dict__[key] = value
         self._memoized_keys |= {key}
 
-    class memoized_attribute(Generic[_T]):
+    class memoized_attribute(memoized_property[_T]):
         """A read-only @property that is only evaluated once."""
 
         fget: Callable[..., _T]
@@ -1895,6 +1948,7 @@ class TypingOnly:
                     "__doc__",
                     "__slots__",
                     "__orig_bases__",
+                    "__annotations__",
                 }
             )
             if remaining:
@@ -2014,7 +2068,7 @@ def quoted_token_parser(value):
     return ["".join(token) for token in result]
 
 
-def add_parameter_text(params, text):
+def add_parameter_text(params: Any, text: str) -> Callable[[_F], _F]:
     params = _collections.to_list(params)
 
     def decorate(fn):

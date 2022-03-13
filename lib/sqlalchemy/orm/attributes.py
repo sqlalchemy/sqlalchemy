@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from collections import namedtuple
 import operator
+import typing
 from typing import Any
 from typing import List
 from typing import NamedTuple
@@ -65,6 +66,9 @@ from ..sql import roles
 from ..sql import traversals
 from ..sql import visitors
 
+if typing.TYPE_CHECKING:
+    from ..sql.elements import ColumnElement
+
 _T = TypeVar("_T")
 
 
@@ -84,6 +88,7 @@ class QueryableAttribute(
     roles.JoinTargetRole,
     roles.OnClauseRole,
     roles.ColumnsClauseRole,
+    roles.ExpressionElementRole[_T],
     sql_base.Immutable,
     sql_base.MemoizedHasCacheKey,
 ):
@@ -265,7 +270,7 @@ class QueryableAttribute(
     def _annotations(self):
         return self.__clause_element__()._annotations
 
-    def __clause_element__(self):
+    def __clause_element__(self) -> ColumnElement[_T]:
         return self.expression
 
     @property

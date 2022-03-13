@@ -10,8 +10,8 @@ from __future__ import annotations
 import typing
 from typing import Any
 from typing import Collection
+from typing import Dict
 from typing import List
-from typing import Mapping
 from typing import Optional
 from typing import overload
 from typing import Set
@@ -713,14 +713,59 @@ def with_loader_criteria(
 
 @overload
 def relationship(
-    argument: Optional[_RelationshipArgumentType[_T]],
-    secondary=None,
+    argument: str,
+    secondary=...,
     *,
-    uselist: Literal[False] = None,
-    collection_class: Literal[None] = None,
-    primaryjoin=None,
-    secondaryjoin=None,
-    back_populates=None,
+    uselist: bool = ...,
+    collection_class: Literal[None] = ...,
+    primaryjoin=...,
+    secondaryjoin=...,
+    back_populates=...,
+    **kw: Any,
+) -> Relationship[Any]:
+    ...
+
+
+@overload
+def relationship(
+    argument: str,
+    secondary=...,
+    *,
+    uselist: bool = ...,
+    collection_class: Type[Set] = ...,
+    primaryjoin=...,
+    secondaryjoin=...,
+    back_populates=...,
+    **kw: Any,
+) -> Relationship[Set[Any]]:
+    ...
+
+
+@overload
+def relationship(
+    argument: str,
+    secondary=...,
+    *,
+    uselist: bool = ...,
+    collection_class: Type[List] = ...,
+    primaryjoin=...,
+    secondaryjoin=...,
+    back_populates=...,
+    **kw: Any,
+) -> Relationship[List[Any]]:
+    ...
+
+
+@overload
+def relationship(
+    argument: Optional[_RelationshipArgumentType[_T]],
+    secondary=...,
+    *,
+    uselist: Literal[False] = ...,
+    collection_class: Literal[None] = ...,
+    primaryjoin=...,
+    secondaryjoin=...,
+    back_populates=...,
     **kw: Any,
 ) -> Relationship[_T]:
     ...
@@ -729,13 +774,13 @@ def relationship(
 @overload
 def relationship(
     argument: Optional[_RelationshipArgumentType[_T]],
-    secondary=None,
+    secondary=...,
     *,
-    uselist: Literal[True] = None,
-    collection_class: Literal[None] = None,
-    primaryjoin=None,
-    secondaryjoin=None,
-    back_populates=None,
+    uselist: Literal[True] = ...,
+    collection_class: Literal[None] = ...,
+    primaryjoin=...,
+    secondaryjoin=...,
+    back_populates=...,
     **kw: Any,
 ) -> Relationship[List[_T]]:
     ...
@@ -744,13 +789,13 @@ def relationship(
 @overload
 def relationship(
     argument: Optional[_RelationshipArgumentType[_T]],
-    secondary=None,
+    secondary=...,
     *,
-    uselist: Union[Literal[None], Literal[True]] = None,
-    collection_class: Type[List] = None,
-    primaryjoin=None,
-    secondaryjoin=None,
-    back_populates=None,
+    uselist: Union[Literal[None], Literal[True]] = ...,
+    collection_class: Type[List] = ...,
+    primaryjoin=...,
+    secondaryjoin=...,
+    back_populates=...,
     **kw: Any,
 ) -> Relationship[List[_T]]:
     ...
@@ -759,13 +804,13 @@ def relationship(
 @overload
 def relationship(
     argument: Optional[_RelationshipArgumentType[_T]],
-    secondary=None,
+    secondary=...,
     *,
-    uselist: Union[Literal[None], Literal[True]] = None,
-    collection_class: Type[Set] = None,
-    primaryjoin=None,
-    secondaryjoin=None,
-    back_populates=None,
+    uselist: Union[Literal[None], Literal[True]] = ...,
+    collection_class: Type[Set] = ...,
+    primaryjoin=...,
+    secondaryjoin=...,
+    back_populates=...,
     **kw: Any,
 ) -> Relationship[Set[_T]]:
     ...
@@ -774,26 +819,26 @@ def relationship(
 @overload
 def relationship(
     argument: Optional[_RelationshipArgumentType[_T]],
-    secondary=None,
+    secondary=...,
     *,
-    uselist: Union[Literal[None], Literal[True]] = None,
-    collection_class: Type[Mapping[Any, Any]] = None,
-    primaryjoin=None,
-    secondaryjoin=None,
-    back_populates=None,
+    uselist: Union[Literal[None], Literal[True]] = ...,
+    collection_class: Type[Dict[Any, Any]] = ...,
+    primaryjoin=...,
+    secondaryjoin=...,
+    back_populates=...,
     **kw: Any,
-) -> Relationship[Mapping[Any, _T]]:
+) -> Relationship[Dict[Any, _T]]:
     ...
 
 
 @overload
 def relationship(
     argument: _RelationshipArgumentType[_T],
-    secondary=None,
+    secondary=...,
     *,
-    uselist: Literal[None] = None,
-    collection_class: Literal[None] = None,
-    primaryjoin=None,
+    uselist: Literal[None] = ...,
+    collection_class: Literal[None] = ...,
+    primaryjoin=...,
     secondaryjoin=None,
     back_populates=None,
     **kw: Any,
@@ -803,14 +848,14 @@ def relationship(
 
 @overload
 def relationship(
-    argument: Optional[_RelationshipArgumentType[_T]] = None,
-    secondary=None,
+    argument: Optional[_RelationshipArgumentType[_T]] = ...,
+    secondary=...,
     *,
-    uselist: Literal[True] = None,
-    collection_class: Any = None,
-    primaryjoin=None,
-    secondaryjoin=None,
-    back_populates=None,
+    uselist: Literal[True] = ...,
+    collection_class: Any = ...,
+    primaryjoin=...,
+    secondaryjoin=...,
+    back_populates=...,
     **kw: Any,
 ) -> Relationship[Any]:
     ...
@@ -818,14 +863,14 @@ def relationship(
 
 @overload
 def relationship(
-    argument: Literal[None] = None,
-    secondary=None,
+    argument: Literal[None] = ...,
+    secondary=...,
     *,
-    uselist: Optional[bool] = None,
-    collection_class: Any = None,
-    primaryjoin=None,
-    secondaryjoin=None,
-    back_populates=None,
+    uselist: Optional[bool] = ...,
+    collection_class: Any = ...,
+    primaryjoin=...,
+    secondaryjoin=...,
+    back_populates=...,
     **kw: Any,
 ) -> Relationship[Any]:
     ...

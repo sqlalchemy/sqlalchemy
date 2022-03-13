@@ -18,7 +18,6 @@ import json
 import pickle
 from typing import Any
 from typing import Sequence
-from typing import Text as typing_Text
 from typing import Tuple
 from typing import TypeVar
 from typing import Union
@@ -132,7 +131,7 @@ class Indexable:
     comparator_factory = Comparator
 
 
-class String(Concatenable, TypeEngine[typing_Text]):
+class String(Concatenable, TypeEngine[str]):
 
     """The base for all string and character types.
 
@@ -2793,10 +2792,12 @@ class ARRAY(
             self.item_type._set_parent_with_dispatch(parent)
 
 
-class TupleType(TypeEngine[Tuple[Any]]):
+class TupleType(TypeEngine[Tuple[Any, ...]]):
     """represent the composite type of a Tuple."""
 
     _is_tuple_type = True
+
+    types: List[TypeEngine[Any]]
 
     def __init__(self, *types):
         self._fully_typed = NULLTYPE not in types
@@ -2805,7 +2806,7 @@ class TupleType(TypeEngine[Tuple[Any]]):
             for item_type in types
         ]
 
-    def _resolve_values_to_types(self, value):
+    def _resolve_values_to_types(self, value: Any) -> TupleType:
         if self._fully_typed:
             return self
         else:

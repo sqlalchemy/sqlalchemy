@@ -18,11 +18,11 @@ from typing import Any
 from typing import Callable
 from typing import cast
 from typing import Dict
+from typing import FrozenSet
 from typing import Mapping
 from typing import Optional
 from typing import overload
 from typing import Sequence
-from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TypeVar
@@ -53,7 +53,9 @@ class SupportsAnnotations(ExternallyTraversible):
     __slots__ = ()
 
     _annotations: util.immutabledict[str, Any] = EMPTY_ANNOTATIONS
-    proxy_set: Set[SupportsAnnotations]
+
+    proxy_set: util.generic_fn_descriptor[FrozenSet[Any]]
+
     _is_immutable: bool
 
     def _annotate(self, values: _AnnotationDict) -> SupportsAnnotations:

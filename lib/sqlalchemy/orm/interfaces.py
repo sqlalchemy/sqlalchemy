@@ -367,9 +367,7 @@ class MapperProperty(
 
 
 @inspection._self_inspects
-class PropComparator(
-    SQLORMOperations[_T], operators.ColumnOperators[SQLORMOperations]
-):
+class PropComparator(SQLORMOperations[_T]):
     r"""Defines SQL operations for ORM mapped attributes.
 
     SQLAlchemy allows for operators to
@@ -519,7 +517,7 @@ class PropComparator(
         else:
             return self._adapt_to_entity._adapt_element
 
-    @property
+    @util.non_memoized_property
     def info(self):
         return self.property.info
 

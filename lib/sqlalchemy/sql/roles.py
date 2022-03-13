@@ -8,21 +8,26 @@ from __future__ import annotations
 
 import typing
 from typing import Any
+from typing import Generic
 from typing import Iterable
-from typing import Mapping
 from typing import Optional
-from typing import Sequence
+from typing import TypeVar
 
 from .. import util
 from ..util import TypingOnly
 from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
+    from ._typing import _PropagateAttrsType
     from .base import ColumnCollection
     from .elements import ClauseElement
+    from .elements import ColumnElement
     from .elements import Label
     from .selectable import FromClause
     from .selectable import Subquery
+
+
+_T = TypeVar("_T", bound=Any)
 
 
 class SQLRole:
@@ -104,7 +109,7 @@ class ColumnsClauseRole(AllowsLambdaRole, UsesInspection, ColumnListRole):
     _role_name = "Column expression or FROM clause"
 
     @property
-    def _select_iterable(self) -> Sequence[ColumnsClauseRole]:
+    def _select_iterable(self) -> Iterable[ColumnsClauseRole]:
         raise NotImplementedError()
 
 
@@ -154,24 +159,24 @@ class WhereHavingRole(OnClauseRole):
     _role_name = "SQL expression for WHERE/HAVING role"
 
 
-class ExpressionElementRole(SQLRole):
+class ExpressionElementRole(Generic[_T], SQLRole):
     __slots__ = ()
     _role_name = "SQL expression element"
 
-    def label(self, name: Optional[str]) -> Label[Any]:
+    def label(self, name: Optional[str]) -> Label[_T]:
         raise NotImplementedError()
 
 
-class ConstExprRole(ExpressionElementRole):
+class ConstExprRole(ExpressionElementRole[_T]):
     __slots__ = ()
     _role_name = "Constant True/False/None expression"
 
 
-class LabeledColumnExprRole(ExpressionElementRole):
+class LabeledColumnExprRole(ExpressionElementRole[_T]):
     __slots__ = ()
 
 
-class BinaryElementRole(ExpressionElementRole):
+class BinaryElementRole(ExpressionElementRole[_T]):
     __slots__ = ()
     _role_name = "SQL expression element or literal value"
 
@@ -235,7 +240,7 @@ class StatementRole(SQLRole):
     __slots__ = ()
     _role_name = "Executable SQL or text() construct"
 
-    _propagate_attrs: Mapping[str, Any] = util.immutabledict()
+    _propagate_attrs: _PropagateAttrsType = util.immutabledict()
 
 
 class SelectStatementRole(StatementRole, ReturnsRowsRole):
@@ -317,7 +322,18 @@ class HasClauseElement(TypingOnly):
 
     if typing.TYPE_CHECKING:
 
-        def __clause_element__(self) -> "ClauseElement":
+        def __clause_element__(self) -> ClauseElement:
+            ...
+
+
+class HasColumnElementClauseElement(TypingOnly):
+    """indicates a class that has a __clause_element__() method"""
+
+    __slots__ = ()
+
+    if typing.TYPE_CHECKING:
+
+        def __clause_element__(self) -> ColumnElement[Any]:
             ...
 
 
@@ -328,5 +344,5 @@ class HasFromClauseElement(HasClauseElement, TypingOnly):
 
     if typing.TYPE_CHECKING:
 
-        def __clause_element__(self) -> "FromClause":
+        def __clause_element__(self) -> FromClause:
             ...

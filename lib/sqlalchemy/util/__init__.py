@@ -98,6 +98,7 @@ from .langhelpers import ellipses_string as ellipses_string
 from .langhelpers import EnsureKWArg as EnsureKWArg
 from .langhelpers import format_argspec_init as format_argspec_init
 from .langhelpers import format_argspec_plus as format_argspec_plus
+from .langhelpers import generic_fn_descriptor as generic_fn_descriptor
 from .langhelpers import generic_repr as generic_repr
 from .langhelpers import get_annotations as get_annotations
 from .langhelpers import get_callable_argspec as get_callable_argspec
@@ -120,6 +121,7 @@ from .langhelpers import methods_equivalent as methods_equivalent
 from .langhelpers import (
     monkeypatch_proxied_specials as monkeypatch_proxied_specials,
 )
+from .langhelpers import non_memoized_property as non_memoized_property
 from .langhelpers import NoneType as NoneType
 from .langhelpers import only_once as only_once
 from .langhelpers import (

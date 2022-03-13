@@ -866,7 +866,7 @@ def traverse(
 def cloned_traverse(
     obj: ExternallyTraversible,
     opts: Mapping[str, Any],
-    visitors: Mapping[str, _TraverseTransformCallableType],
+    visitors: Mapping[str, _TraverseCallableType[Any]],
 ) -> ExternallyTraversible:
     """Clone the given expression structure, allowing modifications by
     visitors.

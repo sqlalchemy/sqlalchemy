@@ -17,6 +17,7 @@ from typing import Any
 from typing import Callable
 from typing import Deque
 from typing import Dict
+from typing import Iterable
 from typing import Set
 from typing import Tuple
 from typing import Type
@@ -226,7 +227,9 @@ class HasCopyInternals(HasTraverseInternals):
     def _clone(self, **kw):
         raise NotImplementedError()
 
-    def _copy_internals(self, omit_attrs=(), **kw):
+    def _copy_internals(
+        self, omit_attrs: Iterable[str] = (), **kw: Any
+    ) -> None:
         """Reassign internal elements to be clones of themselves.
 
         Called during a copy-and-traverse operation on newly

@@ -24,7 +24,6 @@ from typing import Iterator
 from typing import List
 from typing import Optional
 from typing import overload
-from typing import Sequence
 from typing import Set
 from typing import Tuple
 from typing import TypeVar
@@ -412,27 +411,13 @@ def coerce_generator_arg(arg):
         return arg
 
 
-@overload
-def to_list(x: Sequence[_T], default: Optional[List[_T]] = None) -> List[_T]:
-    ...
-
-
-@overload
-def to_list(
-    x: Optional[Sequence[_T]], default: Optional[List[_T]] = None
-) -> Optional[List[_T]]:
-    ...
-
-
-def to_list(
-    x: Optional[Sequence[_T]], default: Optional[List[_T]] = None
-) -> Optional[List[_T]]:
+def to_list(x: Any, default: Optional[List[Any]] = None) -> List[Any]:
     if x is None:
-        return default
+        return default  # type: ignore
     if not isinstance(x, collections_abc.Iterable) or isinstance(
         x, (str, bytes)
     ):
-        return [cast(_T, x)]
+        return [x]
     elif isinstance(x, list):
         return x
     else:

@@ -46,6 +46,7 @@ reportPrivateUsage = "none"
 reportUnusedClass = "none"
 reportUnusedFunction = "none"
 reportTypedDictNotRequiredAccess = "warning"
+#reportIncompatibleMethodOverride = "error"
 
 [tool.mypy]
 mypy_path = "./lib/"
@@ -83,6 +84,8 @@ ignore_errors = true
 module = [
     "sqlalchemy.sql.annotation",
     "sqlalchemy.sql.cache_key",
+    "sqlalchemy.sql._elements_constructors",
+    "sqlalchemy.sql.operators",
     "sqlalchemy.sql.roles",
     "sqlalchemy.sql.visitors",
     "sqlalchemy.sql._py_util",
@@ -100,13 +103,14 @@ module = [
 ignore_errors = false
 strict = true
 
-# partial checking, internals can be untyped
+# partial checking
 [[tool.mypy.overrides]]
 
 module = [
+    #"sqlalchemy.sql.*",
+    "sqlalchemy.sql.elements",
     "sqlalchemy.sql.coercions",
     "sqlalchemy.sql.compiler",
-    #"sqlalchemy.sql.crud",
     #"sqlalchemy.sql.default_comparator",
     "sqlalchemy.sql.naming",
     "sqlalchemy.sql.traversals",

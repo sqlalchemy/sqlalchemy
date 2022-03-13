@@ -2671,6 +2671,7 @@ class DefaultGenerator(Executable, SchemaItem):
 
     is_sequence = False
     is_server_default = False
+    is_scalar = False
     column = None
 
     def __init__(self, for_update=False):

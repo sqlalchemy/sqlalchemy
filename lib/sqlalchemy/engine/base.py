@@ -39,7 +39,7 @@ from .. import util
 from ..sql import compiler
 from ..sql import util as sql_util
 
-_CompiledCacheType = MutableMapping[Any, Any]
+_CompiledCacheType = MutableMapping[Any, "Compiled"]
 
 if typing.TYPE_CHECKING:
     from . import Result
@@ -1410,7 +1410,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             "schema_translate_map", None
         )
 
-        compiled_cache: _CompiledCacheType = execution_options.get(
+        compiled_cache: Optional[_CompiledCacheType] = execution_options.get(
             "compiled_cache", self.engine._compiled_cache
         )
 

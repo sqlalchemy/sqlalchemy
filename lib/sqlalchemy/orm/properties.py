@@ -41,7 +41,6 @@ from .. import log
 from .. import sql
 from .. import util
 from ..sql import coercions
-from ..sql import operators
 from ..sql import roles
 from ..sql import sqltypes
 from ..sql.schema import Column
@@ -413,7 +412,6 @@ class ColumnProperty(
 
 class MappedColumn(
     SQLCoreOperations[_T],
-    operators.ColumnOperators[SQLCoreOperations],
     _IntrospectsAnnotations,
     _MapsColumns[_T],
 ):

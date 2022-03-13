@@ -520,7 +520,6 @@ class SessionBindTest(fixtures.MappedTest):
         meta = MetaData()
         test_table.to_metadata(meta)
 
-        assert meta.tables["test_table"].bind is None
         cls.mapper_registry.map_imperatively(Foo, meta.tables["test_table"])
 
     def test_session_bind(self):

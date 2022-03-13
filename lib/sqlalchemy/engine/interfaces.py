@@ -561,6 +561,12 @@ class Dialect(EventTarget):
 
     """
 
+    CACHE_HIT = CacheStats.CACHE_HIT
+    CACHE_MISS = CacheStats.CACHE_MISS
+    CACHING_DISABLED = CacheStats.CACHING_DISABLED
+    NO_CACHE_KEY = CacheStats.NO_CACHE_KEY
+    NO_DIALECT_SUPPORT = CacheStats.NO_DIALECT_SUPPORT
+
     dispatch: dispatcher[Dialect]
 
     name: str
@@ -2243,11 +2249,11 @@ class ExecutionContext:
     executemany: bool
     """True if the parameters have determined this to be an executemany"""
 
-    prefetch_cols: Optional[Sequence[Column[Any]]]
+    prefetch_cols: util.generic_fn_descriptor[Optional[Sequence[Column[Any]]]]
     """a list of Column objects for which a client-side default
       was fired off.  Applies to inserts and updates."""
 
-    postfetch_cols: Optional[Sequence[Column[Any]]]
+    postfetch_cols: util.generic_fn_descriptor[Optional[Sequence[Column[Any]]]]
     """a list of Column objects for which a server-side default or
       inline SQL expression value was fired off.  Applies to inserts
       and updates."""

@@ -32,6 +32,11 @@ if compat.py310:
 else:
     NoneType = type(None)  # type: ignore
 
+if compat.py310:
+    from typing import TypeGuard as TypeGuard
+else:
+    from typing_extensions import TypeGuard as TypeGuard
+
 if typing.TYPE_CHECKING or compat.py38:
     from typing import SupportsIndex as SupportsIndex
 else:

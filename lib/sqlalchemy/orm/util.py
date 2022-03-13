@@ -64,6 +64,7 @@ from ..util.typing import is_origin_of
 if typing.TYPE_CHECKING:
     from .mapper import Mapper
     from ..engine import Row
+    from ..sql._typing import _PropagateAttrsType
     from ..sql.selectable import Alias
 
 _T = TypeVar("_T", bound=Any)
@@ -1238,7 +1239,7 @@ class Bundle(
 
     is_bundle = True
 
-    _propagate_attrs = util.immutabledict()
+    _propagate_attrs: _PropagateAttrsType = util.immutabledict()
 
     def __init__(self, name, *exprs, **kw):
         r"""Construct a new :class:`.Bundle`.
