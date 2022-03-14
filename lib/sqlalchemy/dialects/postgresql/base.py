@@ -2130,6 +2130,12 @@ ischema_names = {
     "daterange": _ranges.DATERANGE,
     "tsrange": _ranges.TSRANGE,
     "tstzrange": _ranges.TSTZRANGE,
+    "int4multirange": _ranges.INT4MULTIRANGE,
+    "int8multirange": _ranges.INT8MULTIRANGE,
+    "nummultirange": _ranges.NUMMULTIRANGE,
+    "datemultirange": _ranges.DATEMULTIRANGE,
+    "tsmultirange": _ranges.TSMULTIRANGE,
+    "tstzmultirange": _ranges.TSTZMULTIRANGE,
     "integer": INTEGER,
     "bigint": BIGINT,
     "smallint": SMALLINT,
@@ -2907,6 +2913,24 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_JSONB(self, type_, **kw):
         return "JSONB"
+
+    def visit_INT4MULTIRANGE(self, type_, **kw):
+        return "INT4MULTIRANGE"
+
+    def visit_INT8MULTIRANGE(self, type_, **kw):
+        return "INT8MULTIRANGE"
+
+    def visit_NUMMULTIRANGE(self, type_, **kw):
+        return "NUMMULTIRANGE"
+
+    def visit_DATEMULTIRANGE(self, type_, **kw):
+        return "DATEMULTIRANGE"
+
+    def visit_TSMULTIRANGE(self, type_, **kw):
+        return "TSMULTIRANGE"
+
+    def visit_TSTZMULTIRANGE(self, type_, **kw):
+        return "TSTZMULTIRANGE"
 
     def visit_INT4RANGE(self, type_, **kw):
         return "INT4RANGE"

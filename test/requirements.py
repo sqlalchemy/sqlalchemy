@@ -1345,6 +1345,10 @@ class DefaultRequirements(SuiteRequirements):
         )
 
     @property
+    def psycopg_only_compatibility(self):
+        return only_on(["postgresql+psycopg"])
+
+    @property
     def psycopg_or_pg8000_compatibility(self):
         return only_on([self.psycopg_compatibility, "postgresql+pg8000"])
 

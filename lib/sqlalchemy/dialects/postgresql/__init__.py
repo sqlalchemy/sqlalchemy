@@ -53,11 +53,17 @@ from .hstore import HSTORE
 from .hstore import hstore
 from .json import JSON
 from .json import JSONB
+from .ranges import DATEMULTIRANGE
 from .ranges import DATERANGE
+from .ranges import INT4MULTIRANGE
 from .ranges import INT4RANGE
+from .ranges import INT8MULTIRANGE
 from .ranges import INT8RANGE
+from .ranges import NUMMULTIRANGE
 from .ranges import NUMRANGE
+from .ranges import TSMULTIRANGE
 from .ranges import TSRANGE
+from .ranges import TSTZMULTIRANGE
 from .ranges import TSTZRANGE
 from ...util import compat
 
@@ -104,9 +110,15 @@ __all__ = (
     "INT8RANGE",
     "NUMRANGE",
     "DATERANGE",
+    "INT4MULTIRANGE",
+    "INT8MULTIRANGE",
+    "NUMMULTIRANGE",
+    "DATEMULTIRANGE",
     "TSVECTOR",
     "TSRANGE",
     "TSTZRANGE",
+    "TSMULTIRANGE",
+    "TSTZMULTIRANGE",
     "JSON",
     "JSONB",
     "Any",

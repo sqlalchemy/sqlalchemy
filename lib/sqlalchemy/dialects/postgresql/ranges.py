@@ -136,3 +136,39 @@ class TSTZRANGE(RangeOperators, sqltypes.TypeEngine):
     """Represent the PostgreSQL TSTZRANGE type."""
 
     __visit_name__ = "TSTZRANGE"
+
+
+class INT4MULTIRANGE(RangeOperators, sqltypes.TypeEngine):
+    """Represent the PostgreSQL INT4MULTIRANGE type."""
+
+    __visit_name__ = "INT4MULTIRANGE"
+
+
+class INT8MULTIRANGE(RangeOperators, sqltypes.TypeEngine):
+    """Represent the PostgreSQL INT8MULTIRANGE type."""
+
+    __visit_name__ = "INT8MULTIRANGE"
+
+
+class NUMMULTIRANGE(RangeOperators, sqltypes.TypeEngine):
+    """Represent the PostgreSQL NUMMULTIRANGE type."""
+
+    __visit_name__ = "NUMMULTIRANGE"
+
+
+class DATEMULTIRANGE(RangeOperators, sqltypes.TypeEngine):
+    """Represent the PostgreSQL DATEMULTIRANGE type."""
+
+    __visit_name__ = "DATEMULTIRANGE"
+
+
+class TSMULTIRANGE(RangeOperators, sqltypes.TypeEngine):
+    """Represent the PostgreSQL TSRANGE type."""
+
+    __visit_name__ = "TSMULTIRANGE"
+
+
+class TSTZMULTIRANGE(RangeOperators, sqltypes.TypeEngine):
+    """Represent the PostgreSQL TSTZRANGE type."""
+
+    __visit_name__ = "TSTZMULTIRANGE"

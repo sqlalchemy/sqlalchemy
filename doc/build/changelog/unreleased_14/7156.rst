@@ -1,0 +1,6 @@
+.. change::
+    :tags: postgresql, usecase
+    :tickets: 7156
+
+    Adds support for PostgreSQL MultiRange types, introduced
+    in PostgreSQL 14.
