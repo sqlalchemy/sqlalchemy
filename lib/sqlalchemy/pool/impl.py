@@ -20,6 +20,7 @@ from typing import List
 from typing import Optional
 from typing import Set
 from typing import Type
+from typing import TYPE_CHECKING
 from typing import Union
 import weakref
 
@@ -390,7 +391,10 @@ class SingletonThreadPool(Pool):
 
     def _do_get(self) -> ConnectionPoolEntry:
         try:
-            c = cast(ConnectionPoolEntry, self._conn.current())
+            if TYPE_CHECKING:
+                c = cast(ConnectionPoolEntry, self._conn.current())
+            else:
+                c = self._conn.current()
             if c:
                 return c
         except AttributeError:

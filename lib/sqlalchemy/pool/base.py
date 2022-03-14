@@ -637,7 +637,11 @@ class _ConnectionRecord(ConnectionPoolEntry):
 
     @classmethod
     def checkout(cls, pool: Pool) -> _ConnectionFairy:
-        rec = cast(_ConnectionRecord, pool._do_get())
+        if TYPE_CHECKING:
+            rec = cast(_ConnectionRecord, pool._do_get())
+        else:
+            rec = pool._do_get()
+
         try:
             dbapi_connection = rec.get_connection()
         except Exception as err:

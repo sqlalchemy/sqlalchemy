@@ -48,6 +48,7 @@ from typing import Sequence
 from typing import Set
 from typing import Tuple
 from typing import Type
+from typing import TYPE_CHECKING
 from typing import Union
 
 from . import base
@@ -1767,7 +1768,9 @@ class SQLCompiler(Compiled):
             else:
                 schema_prefix = ""
 
-            tablename = cast("NamedFromClause", table).name
+            if TYPE_CHECKING:
+                assert isinstance(table, NamedFromClause)
+            tablename = table.name
 
             if (
                 not effective_schema
