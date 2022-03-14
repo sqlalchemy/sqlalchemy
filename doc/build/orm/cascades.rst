@@ -122,6 +122,106 @@ for granted; it simplifies code by allowing a single call to
 that :class:`.Session` at once.   While it can be disabled, there
 is usually not a need to do so.
 
+.. _backref_cascade:
+
+Behavior of save-update cascade with bi-directional relationships
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``save-update`` cascade takes place **uni-directionally** in the context of
+a bi-directional relationship, i.e. when using
+:ref:`backref / back_populates <relationships_backref>` to create two separate
+:func:`_orm.relationship` objects which refer to each other.
+
+An object that's not associated with a :class:`_orm.Session`, when assigned to
+an attribute or collection on a parent object that is associated with a
+:class:`_orm.Session`, will be automatically added to that same
+:class:`_orm.Session`. However, the same operation in reverse will not have
+this effect; an object that's not associated with a :class:`_orm.Session`, upon
+which a child object that is associated with a :class:`_orm.Session` is
+assigned, will not result in an automatic addition of that parent object to the
+:class:`_orm.Session`.  The overall subject of this behavior is known
+as "cascade backrefs", and represents a change in behavior that was standardized
+as of SQLAlchemy 2.0.
+
+To illustrate, given a mapping of ``Order`` objects which relate
+bi-directionally to a series of ``Item`` objects via relationships
+``Order.items`` and ``Item.order``::
+
+    mapper_registry.map_imperatively(Order, order_table, properties={
+        'items' : relationship(Item, back_populates='order')
+    })
+
+    mapper_registry.map_imperatively(Item, item_table, properties={
+        'order' : relationship(Order, back_populates='items')
+    })
+
+If an ``Order`` is already associated with a :class:`_orm.Session`, and
+an ``Item`` object is then created and appended to the ``Order.items``
+collection of that ``Order``, the ``Item`` will be automatically cascaded
+into that same :class:`_orm.Session`::
+
+    >>> o1 = Order()
+    >>> session.add(o1)
+    >>> o1 in session
+    True
+
+    >>> i1 = Item()
+    >>> o1.items.append(i1)
+    >>> o1 is i1.order
+    True
+    >>> i1 in session
+    True
+
+Above, the bidirectional nature of ``Order.items`` and ``Item.order`` means
+that appending to ``Order.items`` also assigns to ``Item.order``. At the same
+time, the ``save-update`` cascade allowed for the ``Item`` object to be added
+to the same :class:`_orm.Session` which the parent ``Order`` was already
+associated.
+
+However, if the operation above is performed in the **reverse** direction,
+where ``Item.order`` is assigned rather than appending directly to
+``Order.item``, the cascade operation into the :class:`_orm.Session` will
+**not** take place automatically, even though the object assignments
+``Order.items`` and ``Item.order`` will be in the same state as in the
+previous example::
+
+    >>> o1 = Order()
+    >>> session.add(o1)
+    >>> o1 in session
+    True
+
+    >>> i1 = Item()
+    >>> i1.order = o1
+    >>> i1 in order.items
+    True
+    >>> i1 in session
+    False
+
+In the above case, after the ``Item`` object is created and all the desired
+state is set upon it, it should then be added to the :class:`_orm.Session`
+explicitly::
+
+    >>> session.add(i1)
+
+In older versions of SQLAlchemy, the save-update cascade would occur
+bidirectionally in all cases. It was then made optional using an option known
+as ``cascade_backrefs``. Finally, in SQLAlchemy 1.4 the old behavior was
+deprecated and the ``cascade_backrefs`` option was removed in SQLAlchemy 2.0.
+The rationale is that users generally do not find it intuitive that assigning
+to an attribute on an object, illustrated above as the assignment of
+``i1.order = o1``, would alter the persistence state of that object ``i1`` such
+that it's now pending within a :class:`_orm.Session`, and there would
+frequently be subsequent issues where autoflush would prematurely flush the
+object and cause errors, in those cases where the given object was still being
+constructed and wasn't in a ready state to be flushed. The option to select between
+uni-directional and bi-directional behvaiors was also removed, as this option
+created two slightly different ways of working, adding to the overall learning
+curve of the ORM as well as to the documentation and user support burden.
+
+.. seealso::
+
+    :ref:`change_5150` - background on the change in behavior for
+    "cascade backrefs"
 
 .. _cascade_delete:
 
