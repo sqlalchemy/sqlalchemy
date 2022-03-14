@@ -6,6 +6,7 @@ from contextlib import nullcontext
 from io import StringIO
 import re
 import threading
+from unittest import mock
 from unittest.mock import call
 from unittest.mock import Mock
 from unittest.mock import patch
@@ -272,6 +273,56 @@ class ExecuteTest(fixtures.TablesTest):
             (3, "horse"),
             (4, "sally"),
         ]
+
+    def test_raw_tuple_params(self, connection):
+        """test #7820
+
+        There was an apparent improvement in the distill params
+        methodology used in exec_driver_sql which allows raw tuples to
+        pass through.  In 1.4 there seems to be a _distill_cursor_params()
+        function that says it can handle this kind of parameter, but it isn't
+        used and when I tried to substitute it in for exec_driver_sql(),
+        things still fail.
+
+        In any case, add coverage here for the use case of passing
+        direct tuple params to exec_driver_sql including as the first
+        param, to note that it isn't mis-interpreted the way it is
+        in 1.x.
+
+        """
+
+        with patch.object(connection.dialect, "do_execute") as do_exec:
+            connection.exec_driver_sql(
+                "UPDATE users SET user_name = 'query_one' WHERE "
+                "user_id = %s OR user_id IN %s",
+                (3, (1, 2)),
+            )
+
+            connection.exec_driver_sql(
+                "UPDATE users SET user_name = 'query_two' WHERE "
+                "user_id IN %s OR user_id = %s",
+                ((1, 2), 3),
+            )
+
+        eq_(
+            do_exec.mock_calls,
+            [
+                call(
+                    mock.ANY,
+                    "UPDATE users SET user_name = 'query_one' "
+                    "WHERE user_id = %s OR user_id IN %s",
+                    connection.dialect.execute_sequence_format((3, (1, 2))),
+                    mock.ANY,
+                ),
+                call(
+                    mock.ANY,
+                    "UPDATE users SET user_name = 'query_two' "
+                    "WHERE user_id IN %s OR user_id = %s",
+                    connection.dialect.execute_sequence_format(((1, 2), 3)),
+                    mock.ANY,
+                ),
+            ],
+        )
 
     def test_non_dict_mapping(self, connection):
         """ensure arbitrary Mapping works for execute()"""
