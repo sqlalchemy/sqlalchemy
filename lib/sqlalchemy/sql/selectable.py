@@ -4773,7 +4773,8 @@ class _MemoizedSelectEntities(
     def _clone(self, **kw):
         c = self.__class__.__new__(self.__class__)
         c.__dict__ = {k: v for k, v in self.__dict__.items()}
-        c._is_clone_of = self
+
+        c._is_clone_of = self.__dict__.get("_is_clone_of", self)
         return c
 
     @classmethod

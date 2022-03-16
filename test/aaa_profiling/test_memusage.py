@@ -355,6 +355,17 @@ class MemUsageTest(EnsureZeroed):
 
         go()
 
+    def test_clone_expression(self):
+
+        root_expr = column("x", Integer) == 12
+        expr = [root_expr]
+
+        @profile_memory()
+        def go():
+            expr[0] = cloned_traverse(expr[0], {}, {})
+
+        go()
+
 
 class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
 
