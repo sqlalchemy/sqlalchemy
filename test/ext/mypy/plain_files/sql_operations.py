@@ -49,7 +49,7 @@ if typing.TYPE_CHECKING:
     # EXPECTED_TYPE: sqlalchemy..*BinaryExpression\[builtins.bool\]
     reveal_type(expr2)
 
-    # EXPECTED_TYPE: sqlalchemy..*ColumnElement\[Union\[builtins.complex, decimal.Decimal\]\]
+    # EXPECTED_TYPE: sqlalchemy..*ColumnElement\[Union\[builtins.float, decimal.Decimal\]\]
     reveal_type(expr3)
 
     # EXPECTED_TYPE: sqlalchemy..*UnaryExpression\[builtins.int.?\]

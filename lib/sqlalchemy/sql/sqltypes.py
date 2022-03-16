@@ -17,6 +17,7 @@ import enum
 import json
 import pickle
 from typing import Any
+from typing import overload
 from typing import Sequence
 from typing import Tuple
 from typing import TypeVar
@@ -48,6 +49,7 @@ from .. import util
 from ..engine import processors
 from ..util import langhelpers
 from ..util import OrderedDict
+from ..util.typing import Literal
 
 
 _T = TypeVar("_T", bound="Any")
@@ -373,9 +375,10 @@ class BigInteger(Integer):
     __visit_name__ = "big_integer"
 
 
-class Numeric(
-    _LookupExpressionAdapter, TypeEngine[Union[decimal.Decimal, float]]
-):
+_N = TypeVar("_N", bound=Union[decimal.Decimal, float])
+
+
+class Numeric(_LookupExpressionAdapter, TypeEngine[_N]):
 
     """A type for fixed precision numbers, such as ``NUMERIC`` or ``DECIMAL``.
 
@@ -542,7 +545,7 @@ class Numeric(
         }
 
 
-class Float(Numeric):
+class Float(Numeric[_N]):
 
     """Type representing floating point types, such as ``FLOAT`` or ``REAL``.
 
@@ -567,8 +570,34 @@ class Float(Numeric):
 
     scale = None
 
+    @overload
     def __init__(
-        self: "Float",
+        self: Float[float],
+        precision=...,
+        decimal_return_scale=...,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: Float[decimal.Decimal],
+        precision=...,
+        asdecimal: Literal[True] = ...,
+        decimal_return_scale=...,
+    ):
+        ...
+
+    @overload
+    def __init__(
+        self: Float[float],
+        precision=...,
+        asdecimal: Literal[False] = ...,
+        decimal_return_scale=...,
+    ):
+        ...
+
+    def __init__(
+        self: Float[_N],
         precision=None,
         asdecimal=False,
         decimal_return_scale=None,

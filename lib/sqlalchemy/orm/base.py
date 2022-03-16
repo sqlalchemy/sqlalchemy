@@ -638,7 +638,7 @@ class ORMDescriptor(Generic[_T], TypingOnly):
         @overload
         def __get__(
             self, instance: Literal[None], owner: Any
-        ) -> SQLORMOperations[_T]:
+        ) -> SQLCoreOperations[_T]:
             ...
 
         @overload
@@ -647,7 +647,7 @@ class ORMDescriptor(Generic[_T], TypingOnly):
 
         def __get__(
             self, instance: object, owner: Any
-        ) -> Union[SQLORMOperations[_T], _T]:
+        ) -> Union[ORMDescriptor[_T], SQLCoreOperations[_T], _T]:
             ...
 
 

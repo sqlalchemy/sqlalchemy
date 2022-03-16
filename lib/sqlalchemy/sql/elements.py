@@ -103,8 +103,8 @@ if typing.TYPE_CHECKING:
     from ..engine.interfaces import CacheStats
     from ..engine.result import Result
 
-_NUMERIC = Union[complex, Decimal]
-_NUMBER = Union[complex, int, Decimal]
+_NUMERIC = Union[float, Decimal]
+_NUMBER = Union[float, int, Decimal]
 
 _T = TypeVar("_T", bound="Any")
 _OPT = TypeVar("_OPT", bound="Any")
@@ -348,6 +348,7 @@ class ClauseElement(
         the _copy_internals() method.
 
         """
+
         skip = self._memoized_keys
         c = self.__class__.__new__(self.__class__)
         c.__dict__ = {k: v for k, v in self.__dict__.items() if k not in skip}
@@ -995,8 +996,12 @@ class SQLCoreOperations(Generic[_T], ColumnOperators, TypingOnly):
 
         @overload
         def __truediv__(
-            self: _SQO[_NMT], other: Any
+            self: _SQO[int], other: Any
         ) -> ColumnElement[_NUMERIC]:
+            ...
+
+        @overload
+        def __truediv__(self: _SQO[_NT], other: Any) -> ColumnElement[_NT]:
             ...
 
         @overload

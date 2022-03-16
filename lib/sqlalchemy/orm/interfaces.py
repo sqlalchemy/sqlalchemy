@@ -466,7 +466,9 @@ class PropComparator(SQLORMOperations[_T]):
     def __clause_element__(self):
         raise NotImplementedError("%r" % self)
 
-    def _bulk_update_tuples(self, value):
+    def _bulk_update_tuples(
+        self, value: Any
+    ) -> List[Tuple[SQLCoreOperations[_T], Any]]:
         """Receive a SQL expression that represents a value in the SET
         clause of an UPDATE statement.
 

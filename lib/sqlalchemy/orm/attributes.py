@@ -20,6 +20,7 @@ from collections import namedtuple
 import operator
 import typing
 from typing import Any
+from typing import Callable
 from typing import List
 from typing import NamedTuple
 from typing import Tuple
@@ -68,6 +69,7 @@ from ..sql import visitors
 
 if typing.TYPE_CHECKING:
     from ..sql.elements import ColumnElement
+    from ..sql.elements import SQLCoreOperations
 
 _T = TypeVar("_T")
 
@@ -277,7 +279,9 @@ class QueryableAttribute(
     def _from_objects(self):
         return self.expression._from_objects
 
-    def _bulk_update_tuples(self, value):
+    def _bulk_update_tuples(
+        self, value: Any
+    ) -> List[Tuple[SQLCoreOperations[_T], Any]]:
         """Return setter tuples for a bulk UPDATE."""
 
         return self.comparator._bulk_update_tuples(value)
@@ -416,7 +420,9 @@ HasEntityNamespace = namedtuple("HasEntityNamespace", ["entity_namespace"])
 HasEntityNamespace.is_mapper = HasEntityNamespace.is_aliased_class = False
 
 
-def create_proxied_attribute(descriptor):
+def create_proxied_attribute(
+    descriptor: Any,
+) -> Callable[..., QueryableAttribute[Any]]:
     """Create an QueryableAttribute / user descriptor hybrid.
 
     Returns a new QueryableAttribute type that delegates descriptor

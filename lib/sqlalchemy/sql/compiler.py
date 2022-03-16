@@ -265,7 +265,7 @@ OPERATORS = {
     operators.nulls_last_op: " NULLS LAST",
 }
 
-FUNCTIONS: Dict[Type[Function], str] = {
+FUNCTIONS: Dict[Type[Function[Any]], str] = {
     functions.coalesce: "coalesce",
     functions.current_date: "CURRENT_DATE",
     functions.current_time: "CURRENT_TIME",
@@ -2043,7 +2043,7 @@ class SQLCompiler(Compiled):
 
     def visit_function(
         self,
-        func: Function,
+        func: Function[Any],
         add_to_result_map: Optional[_ResultMapAppender] = None,
         **kwargs: Any,
     ) -> str:

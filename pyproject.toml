@@ -91,6 +91,7 @@ module = [
     "sqlalchemy.sql._py_util",
     "sqlalchemy.connectors.*",
     "sqlalchemy.engine.*",
+    "sqlalchemy.ext.hybrid",
     "sqlalchemy.ext.associationproxy",
     "sqlalchemy.pool.*",
     "sqlalchemy.event.*",

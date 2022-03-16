@@ -56,3 +56,13 @@ def is_quoted_name(s: str) -> TypeGuard[quoted_name]:
 
 def is_tuple_type(t: TypeEngine[Any]) -> TypeGuard[TupleType]:
     return t._is_tuple_type
+
+
+def is_has_clause_element(s: object) -> TypeGuard[roles.HasClauseElement]:
+    return hasattr(s, "__clause_element__")
+
+
+def is_has_column_element_clause_element(
+    s: object,
+) -> TypeGuard[roles.HasColumnElementClauseElement]:
+    return hasattr(s, "__clause_element__")

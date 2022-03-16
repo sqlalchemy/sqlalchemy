@@ -12,7 +12,10 @@
 from __future__ import annotations
 
 from typing import Any
+from typing import Optional
+from typing import overload
 from typing import Sequence
+from typing import TYPE_CHECKING
 from typing import TypeVar
 
 from . import annotation
@@ -47,6 +50,8 @@ from .type_api import TypeEngine
 from .visitors import InternalTraversal
 from .. import util
 
+if TYPE_CHECKING:
+    from ._typing import _TypeEngineArgument
 
 _T = TypeVar("_T", bound=Any)
 
@@ -104,7 +109,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
     _with_ordinality = False
     _table_value_type = None
 
-    def __init__(self, *clauses, **kwargs):
+    def __init__(self, *clauses: Any):
         r"""Construct a :class:`.FunctionElement`.
 
         :param \*clauses: list of column expressions that form the arguments
@@ -752,7 +757,7 @@ class _FunctionGenerator:
         self.__names = []
         self.opts = opts
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> _FunctionGenerator:
         # passthru __ attributes; fixes pydoc
         if name.startswith("__"):
             try:
@@ -766,7 +771,17 @@ class _FunctionGenerator:
         f.__names = list(self.__names) + [name]
         return f
 
-    def __call__(self, *c, **kwargs):
+    @overload
+    def __call__(
+        self, *c: Any, type_: TypeEngine[_T], **kwargs: Any
+    ) -> Function[_T]:
+        ...
+
+    @overload
+    def __call__(self, *c: Any, **kwargs: Any) -> Function[Any]:
+        ...
+
+    def __call__(self, *c: Any, **kwargs: Any) -> Function[Any]:
         o = self.opts.copy()
         o.update(kwargs)
 
@@ -795,7 +810,7 @@ func.__doc__ = _FunctionGenerator.__doc__
 modifier = _FunctionGenerator(group=False)
 
 
-class Function(FunctionElement):
+class Function(FunctionElement[_T]):
     r"""Describe a named SQL function.
 
     The :class:`.Function` object is typically generated from the
@@ -842,7 +857,7 @@ class Function(FunctionElement):
 
     packagenames: Sequence[str]
 
-    type: TypeEngine = sqltypes.NULLTYPE
+    type: TypeEngine[_T]
     """A :class:`_types.TypeEngine` object which refers to the SQL return
     type represented by this SQL function.
 
@@ -859,19 +874,25 @@ class Function(FunctionElement):
 
     """
 
-    def __init__(self, name, *clauses, **kw):
+    def __init__(
+        self,
+        name: str,
+        *clauses: Any,
+        type_: Optional[_TypeEngineArgument[_T]] = None,
+        packagenames: Optional[Sequence[str]] = None,
+    ):
         """Construct a :class:`.Function`.
 
         The :data:`.func` construct is normally used to construct
         new :class:`.Function` instances.
 
         """
-        self.packagenames = kw.pop("packagenames", None) or ()
+        self.packagenames = packagenames or ()
         self.name = name
 
-        self.type = sqltypes.to_instance(kw.get("type_", None))
+        self.type = sqltypes.to_instance(type_)
 
-        FunctionElement.__init__(self, *clauses, **kw)
+        FunctionElement.__init__(self, *clauses)
 
     def _bind_param(self, operator, obj, type_=None, **kw):
         return BindParameter(
