@@ -358,7 +358,8 @@ class ClauseElement(
         # process leaves around a lot of remnants of the previous clause
         # typically in the form of column expressions still attached to the
         # old table.
-        c._is_clone_of = self
+        cc = self._is_clone_of
+        c._is_clone_of = cc if cc is not None else self
 
         return c
 

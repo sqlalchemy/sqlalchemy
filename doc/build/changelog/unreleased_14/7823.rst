@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm, performance
+    :tickets: 7823
+
+    Improvements in memory usage by the ORM, removing a significant set of
+    intermediary expression objects that are typically stored when a copy of an
+    expression object is created. These clones have been greatly reduced,
+    reducing the number of total expression objects stored in memory by
+    ORM mappings by about 30%.

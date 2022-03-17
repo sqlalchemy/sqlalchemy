@@ -1568,14 +1568,22 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
 
         s = fixture_session()
         self.mapper_registry.map_imperatively(User, users)
+        gc_collect()
 
         s.add(User(name="ed"))
         s.flush()
         assert not s.dirty
 
         user = s.query(User).one()
+
+        # heisenberg the GC a little bit, since #7823 caused a lot more
+        # GC when mappings are set up, larger test suite started failing
+        # on this being gc'ed
+        user_is = user._sa_instance_state
         del user
         gc_collect()
+        assert user_is.obj() is None
+
         assert len(s.identity_map) == 0
 
         user = s.query(User).one()
@@ -1600,6 +1608,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
 
         s = fixture_session()
         self.mapper_registry.map_imperatively(User, users)
+        gc_collect()
 
         s.add(User(name="ed"))
         s.flush()
@@ -1642,6 +1651,8 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
             properties={"addresses": relationship(Address, backref="user")},
         )
         self.mapper_registry.map_imperatively(Address, addresses)
+        gc_collect()
+
         s.add(User(name="ed", addresses=[Address(email_address="ed1")]))
         s.commit()
 
@@ -1682,6 +1693,8 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
             },
         )
         self.mapper_registry.map_imperatively(Address, addresses)
+        gc_collect()
+
         s.add(User(name="ed", address=Address(email_address="ed1")))
         s.commit()
 
@@ -1709,6 +1722,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
         users, User = self.tables.users, self.classes.User
 
         self.mapper_registry.map_imperatively(User, users)
+        gc_collect()
 
         sess = Session(testing.db)
 
@@ -1740,6 +1754,7 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
         users, User = self.tables.users, self.classes.User
 
         self.mapper_registry.map_imperatively(User, users)
+        gc_collect()
 
         sess = fixture_session()
 

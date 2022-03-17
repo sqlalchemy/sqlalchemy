@@ -346,6 +346,19 @@ class MemUsageTest(EnsureZeroed):
 
         go()
 
+    def test_clone_expression(self):
+
+        root_expr = column("x", Integer) == 12
+        expr = root_expr
+
+        @profile_memory()
+        def go():
+            nonlocal expr
+
+            expr = cloned_traverse(expr, {}, {})
+
+        go()
+
 
 @testing.add_to_marker.memory_intensive
 class MemUsageWBackendTest(fixtures.MappedTest, EnsureZeroed):
