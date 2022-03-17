@@ -3450,7 +3450,8 @@ index_info AS (
             AND index_info.index_name = fk_info.unique_constraint_name
             AND index_info.ordinal_position = fk_info.ordinal_position
 
-    ORDER BY constraint_schema, constraint_name, ordinal_position
+    ORDER BY fk_info.constraint_schema, fk_info.constraint_name,
+        fk_info.ordinal_position
 """
             )
             .bindparams(
