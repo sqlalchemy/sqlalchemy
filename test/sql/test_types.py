@@ -72,7 +72,9 @@ from sqlalchemy.sql import null
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql import table
+from sqlalchemy.sql import type_api
 from sqlalchemy.sql import visitors
+from sqlalchemy.sql.compiler import TypeCompiler
 from sqlalchemy.sql.sqltypes import TypeEngine
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -117,10 +119,15 @@ def _types_for_mod(mod):
 def _all_types(omit_special_types=False):
     seen = set()
     for typ in _types_for_mod(types):
-        if omit_special_types and typ in (
-            types.TypeDecorator,
-            types.TypeEngine,
-            types.Variant,
+        if omit_special_types and (
+            typ
+            in (
+                TypeEngine,
+                type_api.TypeEngineMixin,
+                types.Variant,
+                types.TypeDecorator,
+            )
+            or type_api.TypeEngineMixin in typ.__bases__
         ):
             continue
 
@@ -3553,7 +3560,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 return "MYINTEGER %s" % kw["type_expression"].name
 
         dialect = default.DefaultDialect()
-        dialect.type_compiler = SomeTypeCompiler(dialect)
+        dialect.type_compiler_instance = SomeTypeCompiler(dialect)
         self.assert_compile(
             ddl.CreateColumn(Column("bar", VARCHAR(50))),
             "bar MYVARCHAR",
@@ -3564,6 +3571,34 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "bar MYINTEGER bar",
             dialect=dialect,
         )
+
+    def test_legacy_typecompiler_attribute(self):
+        """the .type_compiler attribute was broken into
+        .type_compiler_cls and .type_compiler_instance for 2.0 so that it can
+        be properly typed.  However it is expected that the majority of
+        dialects make use of the .type_compiler attribute both at the class
+        level as well as the instance level, so make sure it still functions
+        in exactly the same way, both as the type compiler class to be
+        used as well as that it's present as an instance on an instance
+        of the dialect.
+
+        """
+
+        dialect = default.DefaultDialect()
+        assert isinstance(
+            dialect.type_compiler_instance, dialect.type_compiler_cls
+        )
+        is_(dialect.type_compiler_instance, dialect.type_compiler)
+
+        class MyTypeCompiler(TypeCompiler):
+            pass
+
+        class MyDialect(default.DefaultDialect):
+            type_compiler = MyTypeCompiler
+
+        dialect = MyDialect()
+        assert isinstance(dialect.type_compiler_instance, MyTypeCompiler)
+        is_(dialect.type_compiler_instance, dialect.type_compiler)
 
 
 class TestKWArgPassThru(AssertsCompiledSQL, fixtures.TestBase):

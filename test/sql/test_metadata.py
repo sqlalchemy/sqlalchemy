@@ -2100,6 +2100,8 @@ class SchemaTypeTest(fixtures.TestBase):
     # causes collection-mutate-while-iterated errors in the event system
     # since the hooks here call upon the adapted type.  Need to figure out
     # why Enum and Boolean don't have this problem.
+    # NOTE: it's likely the need for the SchemaType.adapt() method,
+    # which Enum / Boolean don't use (and crash if it comes first)
     class MyType(TrackEvents, sqltypes.SchemaType, sqltypes.TypeEngine):
         pass
 
@@ -2141,7 +2143,7 @@ class SchemaTypeTest(fixtures.TestBase):
         # [ticket:3832]
         # this also serves as the test for [ticket:6152]
 
-        class MySchemaType(sqltypes.TypeEngine, sqltypes.SchemaType):
+        class MySchemaType(sqltypes.SchemaType):
             pass
 
         target_typ = MySchemaType()

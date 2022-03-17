@@ -1132,10 +1132,12 @@ class SchemaEventTarget:
 
     """
 
-    def _set_parent(self, parent, **kw):
+    def _set_parent(self, parent: SchemaEventTarget, **kw: Any) -> None:
         """Associate with this SchemaEvent's parent object."""
 
-    def _set_parent_with_dispatch(self, parent, **kw):
+    def _set_parent_with_dispatch(
+        self, parent: SchemaEventTarget, **kw: Any
+    ) -> None:
         self.dispatch.before_parent_attach(self, parent)
         self._set_parent(parent, **kw)
         self.dispatch.after_parent_attach(self, parent)

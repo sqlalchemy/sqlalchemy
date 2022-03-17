@@ -3077,7 +3077,7 @@ class Sequence(HasSchemaAttr, IdentityOptions, DefaultGenerator):
         elif metadata is not None and schema is None and metadata.schema:
             self.schema = schema = metadata.schema
         else:
-            self.schema = quoted_name(schema, quote_schema)
+            self.schema = quoted_name.construct(schema, quote_schema)
         self.metadata = metadata
         self._key = _get_table_key(name, schema)
         if metadata:
@@ -4258,7 +4258,7 @@ class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
         """
         self.table = table = None
 
-        self.name = quoted_name(name, kw.pop("quote", None))
+        self.name = quoted_name.construct(name, kw.pop("quote", None))
         self.unique = kw.pop("unique", False)
         _column_flag = kw.pop("_column_flag", False)
         if "info" in kw:
@@ -4493,7 +4493,7 @@ class MetaData(HasSchemaAttr):
 
         """
         self.tables = util.FacadeDict()
-        self.schema = quoted_name(schema, quote_schema)
+        self.schema = quoted_name.construct(schema, quote_schema)
         self.naming_convention = (
             naming_convention
             if naming_convention

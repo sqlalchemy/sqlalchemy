@@ -141,7 +141,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         if connection is None:
             try:
                 self._dbapi_connection = engine.raw_connection()
-            except dialect.dbapi.Error as err:
+            except dialect.loaded_dbapi.Error as err:
                 Connection._handle_dbapi_exception_noconnection(
                     err, dialect, engine
                 )
@@ -1809,7 +1809,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
         if not self._is_disconnect:
             self._is_disconnect = (
-                isinstance(e, self.dialect.dbapi.Error)
+                isinstance(e, self.dialect.loaded_dbapi.Error)
                 and not self.closed
                 and self.dialect.is_disconnect(
                     e,
@@ -1825,7 +1825,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                 statement,
                 parameters,
                 e,
-                self.dialect.dbapi.Error,
+                self.dialect.loaded_dbapi.Error,
                 hide_parameters=self.engine.hide_parameters,
                 dialect=self.dialect,
                 ismulti=context.executemany if context is not None else None,
@@ -1834,7 +1834,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         try:
             # non-DBAPI error - if we already got a context,
             # or there's no string statement, don't wrap it
-            should_wrap = isinstance(e, self.dialect.dbapi.Error) or (
+            should_wrap = isinstance(e, self.dialect.loaded_dbapi.Error) or (
                 statement is not None
                 and context is None
                 and not is_exit_exception
@@ -1845,7 +1845,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
                     statement,
                     parameters,
                     cast(Exception, e),
-                    self.dialect.dbapi.Error,
+                    self.dialect.loaded_dbapi.Error,
                     hide_parameters=self.engine.hide_parameters,
                     connection_invalidated=self._is_disconnect,
                     dialect=self.dialect,
@@ -1943,17 +1943,17 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         exc_info = sys.exc_info()
 
         is_disconnect = isinstance(
-            e, dialect.dbapi.Error
+            e, dialect.loaded_dbapi.Error
         ) and dialect.is_disconnect(e, None, None)
 
-        should_wrap = isinstance(e, dialect.dbapi.Error)
+        should_wrap = isinstance(e, dialect.loaded_dbapi.Error)
 
         if should_wrap:
             sqlalchemy_exception = exc.DBAPIError.instance(
                 None,
                 None,
                 cast(Exception, e),
-                dialect.dbapi.Error,
+                dialect.loaded_dbapi.Error,
                 hide_parameters=engine.hide_parameters,
                 connection_invalidated=is_disconnect,
             )

@@ -25,7 +25,8 @@ expr4 = -c2
 
 expr5 = ~(c2 == 5)
 
-expr6 = ~column("q", Boolean)
+q = column("q", Boolean)
+expr6 = ~q
 
 expr7 = c1 + "x"
 

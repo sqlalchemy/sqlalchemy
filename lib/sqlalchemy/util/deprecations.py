@@ -36,7 +36,7 @@ _T = TypeVar("_T", bound=Any)
 
 
 # https://mypy.readthedocs.io/en/stable/generics.html#declaring-decorators
-_F = TypeVar("_F", bound=Callable[..., Any])
+_F = TypeVar("_F", bound="Callable[..., Any]")
 
 
 def _warn_with_version(

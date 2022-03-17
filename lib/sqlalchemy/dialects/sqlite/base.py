@@ -1426,7 +1426,7 @@ class SQLiteCompiler(compiler.SQLCompiler):
 class SQLiteDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
 
-        coltype = self.dialect.type_compiler.process(
+        coltype = self.dialect.type_compiler_instance.process(
             column.type, type_expression=column
         )
         colspec = self.preparer.format_column(column) + " " + coltype
@@ -1815,7 +1815,7 @@ class SQLiteDialect(default.DefaultDialect):
     execution_ctx_cls = SQLiteExecutionContext
     statement_compiler = SQLiteCompiler
     ddl_compiler = SQLiteDDLCompiler
-    type_compiler = SQLiteTypeCompiler
+    type_compiler_cls = SQLiteTypeCompiler
     preparer = SQLiteIdentifierPreparer
     ischema_names = ischema_names
     colspecs = colspecs
