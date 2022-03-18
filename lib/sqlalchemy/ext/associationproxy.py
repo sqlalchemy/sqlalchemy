@@ -383,6 +383,22 @@ class AssociationProxyInstance(object):
             return AmbiguousAssociationProxyInstance(
                 parent, owning_class, target_class, value_attr
             )
+        except Exception as err:
+            util.raise_(
+                exc.InvalidRequestError(
+                    "Association proxy received an unexpected error when "
+                    "trying to retreive attribute "
+                    '"%s.%s" from '
+                    'class "%s": %s'
+                    % (
+                        target_class.__name__,
+                        parent.value_attr,
+                        target_class.__name__,
+                        err,
+                    )
+                ),
+                from_=err,
+            )
         else:
             return cls._construct_for_assoc(
                 target_assoc, parent, owning_class, target_class, value_attr

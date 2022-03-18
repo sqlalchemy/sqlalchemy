@@ -1,0 +1,10 @@
+.. change::
+    :tags: bug, ext
+    :tickets: 7827
+
+    Improved the error message that's raised for the case where the
+    :func:`.association_proxy` construct attempts to access a target attribute
+    at the class level, and this access fails. The particular use case here is
+    when proxying to a hybrid attribute that does not include a working
+    class-level implementation.
+
