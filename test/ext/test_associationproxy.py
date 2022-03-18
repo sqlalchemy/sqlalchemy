@@ -37,6 +37,7 @@ from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_false
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.fixtures import fixture_session
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
@@ -3365,6 +3366,10 @@ class ProxyHybridTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
             b_data = association_proxy("bs", "value")
             well_behaved_b_data = association_proxy("bs", "well_behaved_value")
 
+            fails_on_class_access = association_proxy(
+                "bs", "fails_on_class_access"
+            )
+
         class B(Base):
             __tablename__ = "b"
 
@@ -3408,6 +3413,10 @@ class ProxyHybridTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
             def well_behaved_w_expr(cls):
                 return cast(cls.data, Integer)
 
+            @hybrid_property
+            def fails_on_class_access(self):
+                return len(self.data)
+
         class C(Base):
             __tablename__ = "c"
 
@@ -3415,6 +3424,19 @@ class ProxyHybridTest(fixtures.DeclarativeMappedTest, AssertsCompiledSQL):
             b_id = Column(ForeignKey("b.id"))
             _b = relationship("B")
             attr = association_proxy("_b", "well_behaved_w_expr")
+
+    def test_msg_fails_on_cls_access(self):
+        A, B = self.classes("A", "B")
+
+        a1 = A(bs=[B(data="b1")])
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            "Association proxy received an unexpected error when trying to "
+            'retreive attribute "B.fails_on_class_access" from '
+            r'class "B": .* no len\(\)',
+        ):
+            a1.fails_on_class_access
 
     def test_get_ambiguous(self):
         A, B = self.classes("A", "B")
