@@ -461,7 +461,7 @@ immediate target of an association proxy is a **mapped column expression**,
 standard column operators can be used which will be embedded in the subquery.
 For example a straight equality operator::
 
-    >>> print(session.query(User).filter(User.special_keys == "jek"))
+    >>> print(session.scalars(select(User).where(User.special_keys == "jek")))
     SELECT "user".id AS user_id, "user".name AS user_name
     FROM "user"
     WHERE EXISTS (SELECT 1
@@ -470,7 +470,7 @@ For example a straight equality operator::
 
 a LIKE operator::
 
-    >>> print(session.query(User).filter(User.special_keys.like("%jek")))
+    >>> print(session.scalars(select(User).where(User.special_keys.like("%jek"))))
     SELECT "user".id AS user_id, "user".name AS user_name
     FROM "user"
     WHERE EXISTS (SELECT 1
@@ -484,7 +484,7 @@ operators can be used instead, such as :meth:`_orm.PropComparator.has` and
 two association proxies linked together, so when using this proxy for generating
 SQL phrases, we get two levels of EXISTS subqueries::
 
-    >>> print(session.query(User).filter(User.keywords.any(Keyword.keyword == "jek")))
+    >>> print(session.scalars(select(User).where(User.keywords.any(Keyword.keyword == "jek"))))
     SELECT "user".id AS user_id, "user".name AS user_name
     FROM "user"
     WHERE EXISTS (SELECT 1

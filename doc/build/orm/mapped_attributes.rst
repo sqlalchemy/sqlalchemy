@@ -153,7 +153,7 @@ The approach above will work, but there's more we can add. While our
 ``EmailAddress`` object will shuttle the value through the ``email``
 descriptor and into the ``_email`` mapped attribute, the class level
 ``EmailAddress.email`` attribute does not have the usual expression semantics
-usable with :class:`_query.Query`. To provide these, we instead use the
+usable with :class:`_sql.Select`. To provide these, we instead use the
 :mod:`~sqlalchemy.ext.hybrid` extension as follows::
 
     from sqlalchemy.ext.hybrid import hybrid_property
@@ -180,11 +180,12 @@ that is, from the ``EmailAddress`` class directly:
 .. sourcecode:: python+sql
 
     from sqlalchemy.orm import Session
+    from sqlalchemy import select
     session = Session()
 
-    {sql}address = session.query(EmailAddress).\
-                     filter(EmailAddress.email == 'address@example.com').\
-                     one()
+    {sql}address = address = session.scalars(
+        select(EmailAddress).where(EmailAddress.email == 'address@example.com'
+    ).one()
     SELECT address.email AS address_email, address.id AS address_id
     FROM address
     WHERE address.email = ?
@@ -240,7 +241,7 @@ attribute, a SQL function is rendered which produces the same effect:
 
 .. sourcecode:: python+sql
 
-    {sql}address = session.query(EmailAddress).filter(EmailAddress.email == 'address').one()
+    {sql}address = session.scalars(select(EmailAddress).where(EmailAddress.email == 'address')).one())
     SELECT address.email AS address_email, address.id AS address_id
     FROM address
     WHERE substr(address.email, ?, length(address.email) - ?) = ?

@@ -245,7 +245,7 @@ all queries.   The consequence of this is that any query that limits rows
 using ``LIMIT`` or ``OFFSET`` should **always** specify an ``ORDER BY``.
 Otherwise, it is not deterministic which rows will actually be returned.
 
-When we use a SQLAlchemy method like :meth:`_query.Query.first`, we are in fact
+When we use a SQLAlchemy method like :meth:`_engine.ScalarResult.first`, we are in fact
 applying a ``LIMIT`` of one to the query, so without an explicit ordering
 it is not deterministic what row we actually get back.
 While we may not notice this for simple queries on databases that usually
@@ -260,7 +260,7 @@ We see two queries emitted like this:
 
 .. sourcecode:: python+sql
 
-    >>> session.query(User).options(subqueryload(User.addresses)).all()
+    >>> session.scalars(select(User).options(subqueryload(User.addresses))).all()
     {opensql}-- the "main" query
     SELECT users.id AS users_id
     FROM users
@@ -279,7 +279,7 @@ the two queries may not see the same results:
 
 .. sourcecode:: python+sql
 
-    >>> user = session.query(User).options(subqueryload(User.addresses)).first()
+    >>> user = session.scalars(select(User).options(subqueryload(User.addresses))).first()
     {opensql}-- the "main" query
     SELECT users.id AS users_id
     FROM users
@@ -321,10 +321,10 @@ won't see that anything actually went wrong.
 
 The solution to this problem is to always specify a deterministic sort order,
 so that the main query always returns the same set of rows. This generally
-means that you should :meth:`_query.Query.order_by` on a unique column on the table.
+means that you should :meth:`_sql.Select.order_by` on a unique column on the table.
 The primary key is a good choice for this::
 
-    session.query(User).options(subqueryload(User.addresses)).order_by(User.id).first()
+    session.scalars(select(User).options(subqueryload(User.addresses)).order_by(User.id)).first()
 
 Note that the :func:`_orm.joinedload` eager loader strategy does not suffer from
 the same problem because only one query is ever issued, so the load query

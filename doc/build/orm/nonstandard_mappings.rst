@@ -78,7 +78,7 @@ time while making use of the proper context, that is, accommodating for
 aliases and similar, the accessor :attr:`.ColumnProperty.Comparator.expressions`
 may be used::
 
-    q = session.query(AddressUser).group_by(*AddressUser.id.expressions)
+    stmt = select(AddressUser).group_by(*AddressUser.id.expressions)
 
 .. versionadded:: 1.3.17 Added the
    :attr:`.ColumnProperty.Comparator.expressions` accessor.

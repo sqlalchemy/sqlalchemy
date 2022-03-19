@@ -414,7 +414,7 @@ When we talk about expiration of data we are usually talking about an object
 that is in the :term:`persistent` state.   For example, if we load an object
 as follows::
 
-    user = session.query(User).filter_by(name='user1').first()
+    user = session.scalars(select(User).filter_by(name='user1')).first()
 
 The above ``User`` object is persistent, and has a series of attributes
 present; if we were to look inside its ``__dict__``, we'd see that state

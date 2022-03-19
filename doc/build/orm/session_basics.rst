@@ -481,8 +481,8 @@ This means if we emit two separate queries, each for the same row, and get
 a mapped object back, the two queries will have returned the same Python
 object::
 
-  >>> u1 = session.query(User).filter(id=5).first()
-  >>> u2 = session.query(User).filter(id=5).first()
+  >>> u1 = session.scalars(select(User).where(User.id == 5)).first()
+  >>> u2 = session.scalars(select(User).where(User.id == 5)).first()
   >>> u1 is u2
   True
 
@@ -522,7 +522,11 @@ ways to refresh its contents with new data from the current transaction:
   and indicates that it should return objects that are unconditionally
   re-populated from their contents in the database::
 
-    u2 = session.query(User).populate_existing().filter(id=5).first()
+    u2 = session.scalars(
+        select(User)
+        .where(User.id == 5)
+        .execution_options(populate_existing=True)
+    ).first()
 
   ..
 
@@ -972,7 +976,7 @@ E.g. **don't do this**::
         def go(self):
             session = Session()
             try:
-                session.query(FooBar).update({"x": 5})
+                session.execute(update(FooBar).values(x=5))
                 session.commit()
             except:
                 session.rollback()
@@ -982,7 +986,7 @@ E.g. **don't do this**::
         def go(self):
             session = Session()
             try:
-                session.query(Widget).update({"q": 18})
+                session.execute(update(Widget).values(q=18))
                 session.commit()
             except:
                 session.rollback()
@@ -1002,11 +1006,11 @@ transaction automatically::
 
     class ThingOne:
         def go(self, session):
-            session.query(FooBar).update({"x": 5})
+            session.execute(update(FooBar).values(x=5))
 
     class ThingTwo:
         def go(self, session):
-            session.query(Widget).update({"q": 18})
+            session.execute(update(Widget).values(q=18))
 
     def run_my_program():
         with Session() as session:
@@ -1024,7 +1028,7 @@ Is the Session a cache?
 Yeee...no. It's somewhat used as a cache, in that it implements the
 :term:`identity map` pattern, and stores objects keyed to their primary key.
 However, it doesn't do any kind of query caching. This means, if you say
-``session.query(Foo).filter_by(name='bar')``, even if ``Foo(name='bar')``
+``session.scalars(select(Foo).filter_by(name='bar'))``, even if ``Foo(name='bar')``
 is right there, in the identity map, the session has no idea about that.
 It has to issue SQL to the database, get the rows back, and then when it
 sees the primary key in the row, *then* it can look in the local identity
