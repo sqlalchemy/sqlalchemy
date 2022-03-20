@@ -355,7 +355,6 @@ class ExecuteTest(fixtures.TablesTest):
                     )
                 )
             )
-
             assert_raises_message(
                 TypeError,
                 "I'm not a DBAPI error",
@@ -379,6 +378,8 @@ class ExecuteTest(fixtures.TablesTest):
         # have any special behaviors
         with patch.object(
             testing.db.dialect, "dbapi", Mock(Error=DBAPIError)
+        ), patch.object(
+            testing.db.dialect, "loaded_dbapi", Mock(Error=DBAPIError)
         ), patch.object(
             testing.db.dialect, "is_disconnect", lambda *arg: False
         ), patch.object(

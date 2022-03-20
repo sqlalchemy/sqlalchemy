@@ -2311,7 +2311,7 @@ class MSDDLCompiler(compiler.DDLCompiler):
         if column.computed is not None:
             colspec += " " + self.process(column.computed)
         else:
-            colspec += " " + self.dialect.type_compiler.process(
+            colspec += " " + self.dialect.type_compiler_instance.process(
                 column.type, type_expression=column
             )
 
@@ -2719,7 +2719,7 @@ class MSDialect(default.DefaultDialect):
 
     statement_compiler = MSSQLCompiler
     ddl_compiler = MSDDLCompiler
-    type_compiler = MSTypeCompiler
+    type_compiler_cls = MSTypeCompiler
     preparer = MSIdentifierPreparer
 
     construct_arguments = [

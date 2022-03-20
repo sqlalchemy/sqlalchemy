@@ -1682,7 +1682,7 @@ class QueuePoolTest(PoolTestBase):
 
         dialect = Mock()
         dialect.is_disconnect = lambda *arg, **kw: True
-        dialect.dbapi.Error = Error
+        dialect.dbapi.Error = dialect.loaded_dbapi.Error = Error
 
         pools = []
 

@@ -178,7 +178,8 @@ def clsname_as_plain_name(cls: Type[Any]) -> str:
 
 
 def method_is_overridden(
-    instance_or_cls: Union[Type[Any], object], against_method: types.MethodType
+    instance_or_cls: Union[Type[Any], object],
+    against_method: Callable[..., Any],
 ) -> bool:
     """Return True if the two class methods don't match."""
 
@@ -815,7 +816,12 @@ def unbound_method_to_callable(func_or_cls):
         return func_or_cls
 
 
-def generic_repr(obj, additional_kw=(), to_inspect=None, omit_kwarg=()):
+def generic_repr(
+    obj: Any,
+    additional_kw: Sequence[Tuple[str, Any]] = (),
+    to_inspect: Optional[Union[object, List[object]]] = None,
+    omit_kwarg: Sequence[str] = (),
+) -> str:
     """Produce a __repr__() based on direct association of the __init__()
     specification vs. same-named attributes present.
 

@@ -1712,9 +1712,6 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
     def python_type(self):
         return dt.timedelta
 
-    def coerce_compared_value(self, op, value):
-        return self
-
 
 PGInterval = INTERVAL
 
@@ -2168,7 +2165,7 @@ ischema_names = {
 class PGCompiler(compiler.SQLCompiler):
     def render_bind_cast(self, type_, dbapi_type, sqltext):
         return f"""{sqltext}::{
-                self.dialect.type_compiler.process(
+                self.dialect.type_compiler_instance.process(
                     dbapi_type, identifier_preparer=self.preparer
                 )
             }"""
@@ -2318,7 +2315,7 @@ class PGCompiler(compiler.SQLCompiler):
         return "SELECT %s WHERE 1!=1" % (
             ", ".join(
                 "CAST(NULL AS %s)"
-                % self.dialect.type_compiler.process(
+                % self.dialect.type_compiler_instance.process(
                     INTEGER() if type_._isnull else type_
                 )
                 for type_ in element_types or [INTEGER()]
@@ -2604,7 +2601,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
             else:
                 colspec += " SERIAL"
         else:
-            colspec += " " + self.dialect.type_compiler.process(
+            colspec += " " + self.dialect.type_compiler_instance.process(
                 column.type,
                 type_expression=column,
                 identifier_preparer=self.preparer,
@@ -3225,7 +3222,7 @@ class PGDialect(default.DefaultDialect):
 
     statement_compiler = PGCompiler
     ddl_compiler = PGDDLCompiler
-    type_compiler = PGTypeCompiler
+    type_compiler_cls = PGTypeCompiler
     preparer = PGIdentifierPreparer
     execution_ctx_cls = PGExecutionContext
     inspector = PGInspector

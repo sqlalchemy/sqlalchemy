@@ -14,12 +14,14 @@ from types import ModuleType
 from typing import Any
 from typing import Awaitable
 from typing import Callable
+from typing import ClassVar
 from typing import Dict
 from typing import List
 from typing import Mapping
 from typing import MutableMapping
 from typing import Optional
 from typing import Sequence
+from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
@@ -60,6 +62,7 @@ if TYPE_CHECKING:
     from ..sql.schema import DefaultGenerator
     from ..sql.schema import Sequence as Sequence_SchemaItem
     from ..sql.sqltypes import Integer
+    from ..sql.type_api import _TypeMemoDict
     from ..sql.type_api import TypeEngine
 
 ConnectArgsType = Tuple[Tuple[str], MutableMapping[str, Any]]
@@ -166,7 +169,7 @@ class DBAPICursor(Protocol):
     def execute(
         self,
         operation: Any,
-        parameters: Optional[_DBAPISingleExecuteParams],
+        parameters: Optional[_DBAPISingleExecuteParams] = None,
     ) -> Any:
         ...
 
@@ -577,7 +580,7 @@ class Dialect(EventTarget):
     driver: str
     """identifying name for the dialect's DBAPI"""
 
-    dbapi: ModuleType
+    dbapi: Optional[ModuleType]
     """A reference to the DBAPI module object itself.
 
     SQLAlchemy dialects import DBAPI modules using the classmethod
@@ -600,6 +603,16 @@ class Dialect(EventTarget):
 
     """
 
+    @util.non_memoized_property
+    def loaded_dbapi(self) -> ModuleType:
+        """same as .dbapi, but is never None; will raise an error if no
+        DBAPI was set up.
+
+        .. versionadded:: 2.0
+
+        """
+        raise NotImplementedError()
+
     positional: bool
     """True if the paramstyle for this Dialect is positional."""
 
@@ -616,8 +629,28 @@ class Dialect(EventTarget):
     ddl_compiler: Type[DDLCompiler]
     """a :class:`.Compiled` class used to compile DDL statements"""
 
-    type_compiler: Union[Type[TypeCompiler], TypeCompiler]
-    """a :class:`.Compiled` class used to compile SQL type objects"""
+    type_compiler_cls: ClassVar[Type[TypeCompiler]]
+    """a :class:`.Compiled` class used to compile SQL type objects
+
+    .. versionadded:: 2.0
+
+    """
+
+    type_compiler_instance: TypeCompiler
+    """instance of a :class:`.Compiled` class used to compile SQL type
+    objects
+
+    .. versionadded:: 2.0
+
+    """
+
+    type_compiler: Any
+    """legacy; this is a TypeCompiler class at the class level, a
+    TypeCompiler instance at the instance level.
+
+    Refer to type_compiler_instance instead.
+
+    """
 
     preparer: Type[IdentifierPreparer]
     """a :class:`.IdentifierPreparer` class used to
@@ -683,9 +716,17 @@ class Dialect(EventTarget):
     """
 
     supports_default_values: bool
-    """Indicates if the construct ``INSERT INTO tablename DEFAULT
-      VALUES`` is supported
-    """
+    """dialect supports INSERT... DEFAULT VALUES syntax"""
+
+    supports_default_metavalue: bool
+    """dialect supports INSERT... VALUES (DEFAULT) syntax"""
+
+    supports_empty_insert: bool
+    """dialect supports INSERT () VALUES ()"""
+
+    supports_multivalues_insert: bool
+    """Target database supports INSERT...VALUES with multiple value
+    sets"""
 
     preexecute_autoincrement_sequences: bool
     """True if 'implicit' primary key functions must be executed separately
@@ -723,6 +764,12 @@ class Dialect(EventTarget):
       other backends.
     """
 
+    default_sequence_base: int
+    """the default value that will be rendered as the "START WITH" portion of
+    a CREATE SEQUENCE DDL statement.
+
+    """
+
     supports_native_enum: bool
     """Indicates if the dialect supports a native ENUM construct.
       This will prevent :class:`_types.Enum` from generating a CHECK
@@ -734,6 +781,10 @@ class Dialect(EventTarget):
       This will prevent :class:`_types.Boolean` from generating a CHECK
       constraint when that type is used.
     """
+
+    supports_native_decimal: bool
+    """indicates if Decimal objects are handled and returned for precision
+    numeric types, or if floats are returned"""
 
     construct_arguments: Optional[
         List[Tuple[Type[ClauseElement], Mapping[str, Any]]]
@@ -841,6 +892,52 @@ class Dialect(EventTarget):
     type conversion functions.
 
     """
+
+    label_length: Optional[int]
+    """optional user-defined max length for SQL labels"""
+
+    include_set_input_sizes: Optional[Set[Any]]
+    """set of DBAPI type objects that should be included in
+    automatic cursor.setinputsizes() calls.
+
+    This is only used if bind_typing is BindTyping.SET_INPUT_SIZES
+
+    """
+
+    exclude_set_input_sizes: Optional[Set[Any]]
+    """set of DBAPI type objects that should be excluded in
+    automatic cursor.setinputsizes() calls.
+
+    This is only used if bind_typing is BindTyping.SET_INPUT_SIZES
+
+    """
+
+    supports_simple_order_by_label: bool
+    """target database supports ORDER BY <labelname>, where <labelname>
+    refers to a label in the columns clause of the SELECT"""
+
+    div_is_floordiv: bool
+    """target database treats the / division operator as "floor division" """
+
+    tuple_in_values: bool
+    """target database supports tuple IN, i.e. (x, y) IN ((q, p), (r, z))"""
+
+    _bind_typing_render_casts: bool
+
+    supports_identity_columns: bool
+    """target database supports IDENTITY"""
+
+    cte_follows_insert: bool
+    """target database, when given a CTE with an INSERT statement, needs
+    the CTE to be below the INSERT"""
+
+    insert_executemany_returning: bool
+    """dialect / driver / database supports some means of providing RETURNING
+    support when dialect.do_executemany() is used.
+
+    """
+
+    _type_memos: MutableMapping[TypeEngine[Any], "_TypeMemoDict"]
 
     def _builtin_onconnect(self) -> Optional[_ListenerFnType]:
         raise NotImplementedError()
@@ -1495,7 +1592,7 @@ class Dialect(EventTarget):
     def is_disconnect(
         self,
         e: Exception,
-        connection: Optional[PoolProxiedConnection],
+        connection: Optional[Union[PoolProxiedConnection, DBAPIConnection]],
         cursor: Optional[DBAPICursor],
     ) -> bool:
         """Return True if the given DB-API error indicates an invalid

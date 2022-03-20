@@ -1414,25 +1414,25 @@ class MySQLCompiler(compiler.SQLCompiler):
                 sqltypes.Time,
             ),
         ):
-            return self.dialect.type_compiler.process(type_)
+            return self.dialect.type_compiler_instance.process(type_)
         elif isinstance(type_, sqltypes.String) and not isinstance(
             type_, (ENUM, SET)
         ):
             adapted = CHAR._adapt_string_for_cast(type_)
-            return self.dialect.type_compiler.process(adapted)
+            return self.dialect.type_compiler_instance.process(adapted)
         elif isinstance(type_, sqltypes._Binary):
             return "BINARY"
         elif isinstance(type_, sqltypes.JSON):
             return "JSON"
         elif isinstance(type_, sqltypes.NUMERIC):
-            return self.dialect.type_compiler.process(type_).replace(
+            return self.dialect.type_compiler_instance.process(type_).replace(
                 "NUMERIC", "DECIMAL"
             )
         elif (
             isinstance(type_, sqltypes.Float)
             and self.dialect._support_float_cast
         ):
-            return self.dialect.type_compiler.process(type_)
+            return self.dialect.type_compiler_instance.process(type_)
         else:
             return None
 
@@ -1442,7 +1442,9 @@ class MySQLCompiler(compiler.SQLCompiler):
             util.warn(
                 "Datatype %s does not support CAST on MySQL/MariaDb; "
                 "the CAST will be skipped."
-                % self.dialect.type_compiler.process(cast.typeclause.type)
+                % self.dialect.type_compiler_instance.process(
+                    cast.typeclause.type
+                )
             )
             return self.process(cast.clause.self_group(), **kw)
 
@@ -1699,7 +1701,7 @@ class MySQLDDLCompiler(compiler.DDLCompiler):
 
         colspec = [
             self.preparer.format_column(column),
-            self.dialect.type_compiler.process(
+            self.dialect.type_compiler_instance.process(
                 column.type, type_expression=column
             ),
         ]
@@ -2358,7 +2360,7 @@ class MySQLDialect(default.DefaultDialect):
 
     statement_compiler = MySQLCompiler
     ddl_compiler = MySQLDDLCompiler
-    type_compiler = MySQLTypeCompiler
+    type_compiler_cls = MySQLTypeCompiler
     ischema_names = ischema_names
     preparer = MySQLIdentifierPreparer
 

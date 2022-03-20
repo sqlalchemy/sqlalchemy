@@ -41,6 +41,7 @@ else:
 if typing.TYPE_CHECKING:
     from .result import _KeyType
     from .result import RMKeyView
+    from ..sql.type_api import _ResultProcessorType
 
 
 class Row(BaseRow, typing.Sequence[Any]):
@@ -105,7 +106,7 @@ class Row(BaseRow, typing.Sequence[Any]):
         )
 
     def _filter_on_values(
-        self, filters: Optional[Sequence[Optional[Callable[[Any], Any]]]]
+        self, filters: Optional[Sequence[Optional[_ResultProcessorType[Any]]]]
     ) -> Row:
         return Row(
             self._parent,

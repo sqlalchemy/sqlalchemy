@@ -86,6 +86,7 @@ module = [
     "sqlalchemy.sql.cache_key",
     "sqlalchemy.sql._elements_constructors",
     "sqlalchemy.sql.operators",
+    "sqlalchemy.sql.type_api",
     "sqlalchemy.sql.roles",
     "sqlalchemy.sql.visitors",
     "sqlalchemy.sql._py_util",
@@ -109,6 +110,7 @@ strict = true
 
 module = [
     #"sqlalchemy.sql.*",
+    "sqlalchemy.sql.sqltypes",
     "sqlalchemy.sql.elements",
     "sqlalchemy.sql.coercions",
     "sqlalchemy.sql.compiler",

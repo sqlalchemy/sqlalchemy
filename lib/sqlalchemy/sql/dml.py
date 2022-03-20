@@ -433,7 +433,7 @@ class ValuesBase(UpdateBase):
     _multi_values = ()
     _ordered_values = None
     _select_names = None
-
+    _inline: bool = False
     _returning = ()
 
     def __init__(self, table):
@@ -742,7 +742,6 @@ class Insert(ValuesBase):
 
     select = None
     include_insert_from_select_defaults = False
-    _inline = False
 
     is_insert = True
 
@@ -959,7 +958,6 @@ class Update(DMLWhereBase, ValuesBase):
 
     is_update = True
     _preserve_parameter_order = False
-    _inline = False
 
     _traverse_internals = (
         [

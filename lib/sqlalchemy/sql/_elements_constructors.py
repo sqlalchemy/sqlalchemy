@@ -58,7 +58,7 @@ if typing.TYPE_CHECKING:
 _T = TypeVar("_T")
 
 
-def all_(expr: _ColumnExpression[_T]) -> CollectionAggregate[_T]:
+def all_(expr: _ColumnExpression[_T]) -> CollectionAggregate[bool]:
     """Produce an ALL expression.
 
     For dialects such as that of PostgreSQL, this operator applies
@@ -173,7 +173,7 @@ def and_(*clauses: _ColumnExpression[bool]) -> BooleanClauseList:
     return BooleanClauseList.and_(*clauses)
 
 
-def any_(expr: _ColumnExpression[_T]) -> CollectionAggregate[_T]:
+def any_(expr: _ColumnExpression[_T]) -> CollectionAggregate[bool]:
     """Produce an ANY expression.
 
     For dialects such as that of PostgreSQL, this operator applies

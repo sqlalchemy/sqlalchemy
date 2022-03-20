@@ -954,7 +954,7 @@ class QuotedIdentTest(fixtures.TestBase):
         eq_(q2.quote, False)
 
     def test_coerce_none(self):
-        q1 = quoted_name(None, False)
+        q1 = quoted_name.construct(None, False)
         eq_(q1, None)
 
     def test_apply_map_quoted(self):

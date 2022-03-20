@@ -46,6 +46,7 @@ else:
 if typing.TYPE_CHECKING:
     from .row import RowMapping
     from ..sql.schema import Column
+    from ..sql.type_api import _ResultProcessorType
 
 _KeyType = Union[str, "Column[Any]"]
 _KeyIndexType = Union[str, "Column[Any]", int]
@@ -70,8 +71,7 @@ across all the result types
 
 """
 
-_ProcessorType = Callable[[Any], Any]
-_ProcessorsType = Sequence[Optional[_ProcessorType]]
+_ProcessorsType = Sequence[Optional["_ResultProcessorType[Any]"]]
 _TupleGetterType = Callable[[Sequence[Any]], Tuple[Any, ...]]
 _UniqueFilterType = Callable[[Any], Any]
 _UniqueFilterStateType = Tuple[Set[Any], Optional[_UniqueFilterType]]

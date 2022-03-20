@@ -743,9 +743,6 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
             day_precision=self.day_precision,
         )
 
-    def coerce_compared_value(self, op, value):
-        return self
-
 
 class ROWID(sqltypes.TypeEngine):
     """Oracle ROWID type.
@@ -1537,7 +1534,7 @@ class OracleDialect(default.DefaultDialect):
 
     statement_compiler = OracleCompiler
     ddl_compiler = OracleDDLCompiler
-    type_compiler = OracleTypeCompiler
+    type_compiler_cls = OracleTypeCompiler
     preparer = OracleIdentifierPreparer
     execution_ctx_cls = OracleExecutionContext
 

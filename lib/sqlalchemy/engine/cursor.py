@@ -23,6 +23,7 @@ from typing import List
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
+from typing import TYPE_CHECKING
 from typing import Union
 
 from .result import MergedResult
@@ -57,7 +58,7 @@ if typing.TYPE_CHECKING:
     from .result import _KeyMapType
     from .result import _KeyType
     from .result import _ProcessorsType
-    from .result import _ProcessorType
+    from ..sql.type_api import _ResultProcessorType
 
 # metadata entry tuple indexes.
 # using raw tuple is faster than namedtuple.
@@ -77,7 +78,7 @@ MD_UNTRANSLATED: Literal[6] = 6  # raw name from cursor.description
 
 
 _CursorKeyMapRecType = Tuple[
-    int, int, List[Any], str, str, Optional["_ProcessorType"], str
+    int, int, List[Any], str, str, Optional["_ResultProcessorType"], str
 ]
 
 _CursorKeyMapType = Dict["_KeyType", _CursorKeyMapRecType]
@@ -163,6 +164,9 @@ class CursorResultMetaData(ResultMetaData):
 
         compiled_statement = context.compiled.statement
         invoked_statement = context.invoked_statement
+
+        if TYPE_CHECKING:
+            assert isinstance(invoked_statement, elements.ClauseElement)
 
         if compiled_statement is invoked_statement:
             return self

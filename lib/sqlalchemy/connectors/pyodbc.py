@@ -143,7 +143,9 @@ class PyODBCConnector(Connector):
     def is_disconnect(
         self,
         e: Exception,
-        connection: Optional[pool.PoolProxiedConnection],
+        connection: Optional[
+            Union[pool.PoolProxiedConnection, interfaces.DBAPIConnection]
+        ],
         cursor: Optional[interfaces.DBAPICursor],
     ) -> bool:
         if isinstance(e, self.dbapi.ProgrammingError):
