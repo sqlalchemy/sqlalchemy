@@ -700,7 +700,7 @@ directly.  A query from ``A`` to ``D`` looks like:
 
 .. sourcecode:: python+sql
 
-    select(A).join(A.d))
+    sess.scalars(select(A).join(A.d)).all()
 
     {opensql}SELECT a.id AS a_id, a.b_id AS a_b_id
     FROM a JOIN (
@@ -801,7 +801,7 @@ With the above mapping, a simple join looks like:
 
 .. sourcecode:: python+sql
 
-    select(A).join(A.b)
+    sess.scalars(select(A).join(A.b)).all()
 
     {opensql}SELECT a.id AS a_id, a.b_id AS a_b_id
     FROM a JOIN (b JOIN d ON d.b_id = b.id JOIN c ON c.id = d.c_id) ON a.b_id = b.id
@@ -827,7 +827,7 @@ A query using the above ``A.b`` relationship will render a subquery:
 
 .. sourcecode:: python+sql
 
-    select(A).join(A.b)
+    sess.scalars(select(A).join(A.b)).all()
 
     {opensql}SELECT a.id AS a_id, a.b_id AS a_b_id
     FROM a JOIN (SELECT b.id AS id, b.some_b_column AS some_b_column
@@ -838,12 +838,12 @@ so in terms of ``B_viacd_subquery`` rather than ``B`` directly:
 
 .. sourcecode:: python+sql
 
-    (
+    sess.scalars(
         select(A)
         .join(A.b)
         .where(B_viacd_subquery.some_b_column == "some b")
         .order_by(B_viacd_subquery.id)
-    )
+    ).all()
 
     {opensql}SELECT a.id AS a_id, a.b_id AS a_b_id
     FROM a JOIN (SELECT b.id AS id, b.some_b_column AS some_b_column

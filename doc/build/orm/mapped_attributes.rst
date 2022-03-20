@@ -183,7 +183,7 @@ that is, from the ``EmailAddress`` class directly:
     from sqlalchemy import select
     session = Session()
 
-    {sql}address = address = session.scalars(
+    {sql}address = session.scalars(
         select(EmailAddress).where(EmailAddress.email == 'address@example.com'
     ).one()
     SELECT address.email AS address_email, address.id AS address_id
@@ -241,7 +241,7 @@ attribute, a SQL function is rendered which produces the same effect:
 
 .. sourcecode:: python+sql
 
-    {sql}address = session.scalars(select(EmailAddress).where(EmailAddress.email == 'address')).one())
+    {sql}address = session.scalars(select(EmailAddress).where(EmailAddress.email == 'address')).one()
     SELECT address.email AS address_email, address.id AS address_id
     FROM address
     WHERE substr(address.email, ?, length(address.email) - ?) = ?
