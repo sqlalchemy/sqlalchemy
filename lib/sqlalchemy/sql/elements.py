@@ -18,6 +18,7 @@ import itertools
 import operator
 import re
 import typing
+from typing import AbstractSet
 from typing import Any
 from typing import Callable
 from typing import cast
@@ -83,6 +84,7 @@ if typing.TYPE_CHECKING:
     from .operators import OperatorType
     from .schema import Column
     from .schema import DefaultGenerator
+    from .schema import FetchedValue
     from .schema import ForeignKey
     from .selectable import FromClause
     from .selectable import NamedFromClause
@@ -290,7 +292,7 @@ class ClauseElement(
 
     """
 
-    @util.memoized_property
+    @util.ro_memoized_property
     def description(self) -> Optional[str]:
         return None
 
@@ -319,7 +321,7 @@ class ClauseElement(
 
     _cache_key_traversal = None
 
-    negation_clause: ClauseElement
+    negation_clause: ColumnElement[bool]
 
     if typing.TYPE_CHECKING:
 
@@ -1153,9 +1155,7 @@ class ColumnElement(
     primary_key: bool = False
     _is_clone_of: Optional[ColumnElement[_T]]
 
-    @util.memoized_property
-    def foreign_keys(self) -> Iterable[ForeignKey]:
-        return []
+    foreign_keys: AbstractSet[ForeignKey] = frozenset()
 
     @util.memoized_property
     def _proxies(self) -> List[ColumnElement[Any]]:
@@ -1494,6 +1494,8 @@ class ColumnElement(
         else:
             key = name
 
+        assert key is not None
+
         co: ColumnClause[_T] = ColumnClause(
             coercions.expect(roles.TruncatedLabelRole, name)
             if name_is_truncatable
@@ -1506,7 +1508,6 @@ class ColumnElement(
         co._proxies = [self]
         if selectable._is_clone_of is not None:
             co._is_clone_of = selectable._is_clone_of.columns.get(key)
-        assert key is not None
         return key, co
 
     def cast(self, type_: TypeEngine[_T]) -> Cast[_T]:
@@ -4050,13 +4051,14 @@ class NamedColumn(ColumnElement[_T]):
     is_literal = False
     table: Optional[FromClause] = None
     name: str
+    key: str
 
     def _compare_name_for_result(self, other):
         return (hasattr(other, "name") and self.name == other.name) or (
             hasattr(other, "_label") and self._label == other._label
         )
 
-    @util.memoized_property
+    @util.ro_memoized_property
     def description(self) -> str:
         return self.name
 
@@ -4125,6 +4127,7 @@ class NamedColumn(ColumnElement[_T]):
             _selectable=selectable,
             is_literal=False,
         )
+
         c._propagate_attrs = selectable._propagate_attrs
         if name is None:
             c.key = self.key
@@ -4192,8 +4195,8 @@ class ColumnClause(
 
     onupdate: Optional[DefaultGenerator] = None
     default: Optional[DefaultGenerator] = None
-    server_default: Optional[DefaultGenerator] = None
-    server_onupdate: Optional[DefaultGenerator] = None
+    server_default: Optional[FetchedValue] = None
+    server_onupdate: Optional[FetchedValue] = None
 
     _is_multiparam_column = False
 

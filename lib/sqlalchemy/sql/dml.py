@@ -12,11 +12,13 @@ Provide :class:`_expression.Insert`, :class:`_expression.Update` and
 from __future__ import annotations
 
 import collections.abc as collections_abc
+import operator
 import typing
 from typing import Any
 from typing import List
 from typing import MutableMapping
 from typing import Optional
+from typing import TYPE_CHECKING
 
 from . import coercions
 from . import roles
@@ -36,10 +38,29 @@ from .elements import Null
 from .selectable import HasCTE
 from .selectable import HasPrefixes
 from .selectable import ReturnsRows
+from .selectable import TableClause
 from .sqltypes import NullType
 from .visitors import InternalTraversal
 from .. import exc
 from .. import util
+from ..util.typing import TypeGuard
+
+
+if TYPE_CHECKING:
+
+    def isupdate(dml) -> TypeGuard[UpdateDMLState]:
+        ...
+
+    def isdelete(dml) -> TypeGuard[DeleteDMLState]:
+        ...
+
+    def isinsert(dml) -> TypeGuard[InsertDMLState]:
+        ...
+
+else:
+    isupdate = operator.attrgetter("isupdate")
+    isdelete = operator.attrgetter("isdelete")
+    isinsert = operator.attrgetter("isinsert")
 
 
 class DMLState(CompileState):
@@ -49,6 +70,7 @@ class DMLState(CompileState):
     _ordered_values = None
     _parameter_ordering = None
     _has_multi_parameters = False
+
     isupdate = False
     isdelete = False
     isinsert = False
@@ -236,6 +258,8 @@ class UpdateBase(
 
     _hints = util.immutabledict()
     named_with_column = False
+
+    table: TableClause
 
     _return_defaults = False
     _return_defaults_columns = None

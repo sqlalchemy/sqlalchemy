@@ -55,8 +55,8 @@ _T_co = TypeVar("_T_co", covariant=True)
 _F = TypeVar("_F", bound=Callable[..., Any])
 _MP = TypeVar("_MP", bound="memoized_property[Any]")
 _MA = TypeVar("_MA", bound="HasMemoized.memoized_attribute[Any]")
-_HP = TypeVar("_HP", bound="hybridproperty")
-_HM = TypeVar("_HM", bound="hybridmethod")
+_HP = TypeVar("_HP", bound="hybridproperty[Any]")
+_HM = TypeVar("_HM", bound="hybridmethod[Any]")
 
 
 if compat.py310:
@@ -1234,12 +1234,23 @@ class _memoized_property(generic_fn_descriptor[_T_co]):
 # superclass has non-memoized, the class hierarchy of the descriptors
 # would need to be reversed; "class non_memoized(memoized)".  so there's no
 # way to achieve this.
+# additional issues, RO properties:
+# https://github.com/python/mypy/issues/12440
 if TYPE_CHECKING:
+
+    # allow memoized and non-memoized to be freely mixed by having them
+    # be the same class
     memoized_property = generic_fn_descriptor
     non_memoized_property = generic_fn_descriptor
+
+    # for read only situations, mypy only sees @property as read only.
+    # read only is needed when a subtype specializes the return type
+    # of a property, meaning assignment needs to be disallowed
+    ro_memoized_property = property
+    ro_non_memoized_property = property
 else:
-    memoized_property = _memoized_property
-    non_memoized_property = _non_memoized_property
+    memoized_property = ro_memoized_property = _memoized_property
+    non_memoized_property = ro_non_memoized_property = _non_memoized_property
 
 
 def memoized_instancemethod(fn: _F) -> _F:
@@ -1515,7 +1526,9 @@ def duck_type_collection(
         return default
 
 
-def assert_arg_type(arg: Any, argtype: Type[Any], name: str) -> Any:
+def assert_arg_type(
+    arg: Any, argtype: Union[Tuple[Type[Any], ...], Type[Any]], name: str
+) -> Any:
     if isinstance(arg, argtype):
         return arg
     else:
@@ -1576,37 +1589,37 @@ class classproperty(property):
         return self.fget(cls)  # type: ignore
 
 
-class hybridproperty:
-    def __init__(self, func):
+class hybridproperty(Generic[_T]):
+    def __init__(self, func: Callable[..., _T]):
         self.func = func
         self.clslevel = func
 
-    def __get__(self, instance, owner):
+    def __get__(self, instance: Any, owner: Any) -> _T:
         if instance is None:
             clsval = self.clslevel(owner)
             return clsval
         else:
             return self.func(instance)
 
-    def classlevel(self, func):
+    def classlevel(self, func: Callable[..., Any]) -> hybridproperty[_T]:
         self.clslevel = func
         return self
 
 
-class hybridmethod:
+class hybridmethod(Generic[_T]):
     """Decorate a function as cls- or instance- level."""
 
-    def __init__(self, func):
+    def __init__(self, func: Callable[..., _T]):
         self.func = self.__func__ = func
         self.clslevel = func
 
-    def __get__(self, instance, owner):
+    def __get__(self, instance: Any, owner: Any) -> Callable[..., _T]:
         if instance is None:
-            return self.clslevel.__get__(owner, owner.__class__)
+            return self.clslevel.__get__(owner, owner.__class__)  # type:ignore
         else:
-            return self.func.__get__(instance, owner)
+            return self.func.__get__(instance, owner)  # type:ignore
 
-    def classlevel(self, func):
+    def classlevel(self, func: Callable[..., Any]) -> hybridmethod[_T]:
         self.clslevel = func
         return self
 

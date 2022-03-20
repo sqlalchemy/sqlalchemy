@@ -32,6 +32,7 @@ if typing.TYPE_CHECKING:
     from ..sql.ddl import SchemaDropper
     from ..sql.ddl import SchemaGenerator
     from ..sql.schema import HasSchemaAttr
+    from ..sql.schema import SchemaItem
 
 
 class MockConnection:
@@ -55,7 +56,7 @@ class MockConnection:
     def _run_ddl_visitor(
         self,
         visitorcallable: Type[Union[SchemaGenerator, SchemaDropper]],
-        element: DDLElement,
+        element: SchemaItem,
         **kwargs: Any,
     ) -> None:
         kwargs["checkfirst"] = False

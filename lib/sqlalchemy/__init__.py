@@ -7,6 +7,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from . import util as _util
 from .engine import AdaptedConnection as AdaptedConnection
 from .engine import BaseRow as BaseRow
@@ -191,7 +193,6 @@ from .sql.expression import tuple_ as tuple_
 from .sql.expression import type_coerce as type_coerce
 from .sql.expression import TypeClause as TypeClause
 from .sql.expression import TypeCoerce as TypeCoerce
-from .sql.expression import typing as typing
 from .sql.expression import UnaryExpression as UnaryExpression
 from .sql.expression import union as union
 from .sql.expression import union_all as union_all
@@ -254,7 +255,7 @@ from .types import VARCHAR as VARCHAR
 __version__ = "2.0.0b1"
 
 
-def __go(lcls):
+def __go(lcls: Any) -> None:
     from . import util as _sa_util
 
     _sa_util.preloaded.import_prefix("sqlalchemy")

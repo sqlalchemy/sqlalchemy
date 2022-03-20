@@ -34,8 +34,10 @@ else:
 
 if compat.py310:
     from typing import TypeGuard as TypeGuard
+    from typing import TypeAlias as TypeAlias
 else:
     from typing_extensions import TypeGuard as TypeGuard
+    from typing_extensions import TypeAlias as TypeAlias
 
 if typing.TYPE_CHECKING or compat.py38:
     from typing import SupportsIndex as SupportsIndex

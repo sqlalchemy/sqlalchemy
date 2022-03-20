@@ -51,57 +51,73 @@ reportTypedDictNotRequiredAccess = "warning"
 [tool.mypy]
 mypy_path = "./lib/"
 show_error_codes = true
-strict = false
+strict = true
 incremental = true
 
-# disabled checking
 [[tool.mypy.overrides]]
-module="sqlalchemy.*"
-ignore_errors = true
-warn_unused_ignores = false
 
-strict = true
-
-# some debate at
-# https://github.com/python/mypy/issues/8754.
-# implicit_reexport = true
-
-# individual packages or even modules should be listed here
-# with strictness-specificity set up.  there's no way we are going to get
-# the whole library 100% strictly typed, so we have to tune this based on
-# the type of module or package we are dealing with
-
-[[tool.mypy.overrides]]
 # ad-hoc ignores
 module = [
     "sqlalchemy.engine.reflection",  # interim, should be strict
+
+    # TODO for strict:
+    "sqlalchemy.ext.asyncio.*",
+    "sqlalchemy.ext.automap",
+    "sqlalchemy.ext.compiler",
+    "sqlalchemy.ext.declarative.*",
+    "sqlalchemy.ext.mutable",
+    "sqlalchemy.ext.horizontal_shard",
+
+    "sqlalchemy.sql._selectable_constructors",
+    "sqlalchemy.sql._dml_constructors",
+
+    # TODO for non-strict:
+    "sqlalchemy.ext.baked",
+    "sqlalchemy.ext.instrumentation",
+    "sqlalchemy.ext.indexable",
+    "sqlalchemy.ext.orderinglist",
+    "sqlalchemy.ext.serializer",
+
+    "sqlalchemy.sql.selectable",   # would be nice as strict
+    "sqlalchemy.sql.ddl",
+    "sqlalchemy.sql.functions",  # would be nice as strict
+    "sqlalchemy.sql.lambdas",
+    "sqlalchemy.sql.dml",   # would be nice as strict
+    "sqlalchemy.sql.util",
+
+    # not yet classified:
+    "sqlalchemy.orm.*",
+    "sqlalchemy.dialects.*",
+    "sqlalchemy.cyextension.*",
+    "sqlalchemy.future.*",
+    "sqlalchemy.testing.*",
+
 ]
 
+warn_unused_ignores = false
 ignore_errors = true
 
 # strict checking
 [[tool.mypy.overrides]]
+
 module = [
-    "sqlalchemy.sql.annotation",
-    "sqlalchemy.sql.cache_key",
-    "sqlalchemy.sql._elements_constructors",
-    "sqlalchemy.sql.operators",
-    "sqlalchemy.sql.type_api",
-    "sqlalchemy.sql.roles",
-    "sqlalchemy.sql.visitors",
-    "sqlalchemy.sql._py_util",
+    # packages
     "sqlalchemy.connectors.*",
-    "sqlalchemy.engine.*",
-    "sqlalchemy.ext.hybrid",
-    "sqlalchemy.ext.associationproxy",
-    "sqlalchemy.pool.*",
     "sqlalchemy.event.*",
+    "sqlalchemy.ext.*",
+    "sqlalchemy.sql.*",
+    "sqlalchemy.engine.*",
+    "sqlalchemy.pool.*",
+
+    # modules
     "sqlalchemy.events",
     "sqlalchemy.exc",
     "sqlalchemy.inspection",
     "sqlalchemy.schema",
     "sqlalchemy.types",
 ]
+
+warn_unused_ignores = false
 ignore_errors = false
 strict = true
 
@@ -109,20 +125,24 @@ strict = true
 [[tool.mypy.overrides]]
 
 module = [
-    #"sqlalchemy.sql.*",
-    "sqlalchemy.sql.sqltypes",
-    "sqlalchemy.sql.elements",
-    "sqlalchemy.sql.coercions",
-    "sqlalchemy.sql.compiler",
-    #"sqlalchemy.sql.default_comparator",
-    "sqlalchemy.sql.naming",
-    "sqlalchemy.sql.traversals",
-    "sqlalchemy.util.*",
     "sqlalchemy.engine.cursor",
     "sqlalchemy.engine.default",
+
+    "sqlalchemy.sql.base",
+    "sqlalchemy.sql.coercions",
+    "sqlalchemy.sql.compiler",
+    "sqlalchemy.sql.crud",
+    "sqlalchemy.sql.elements",    # would be nice as strict
+    "sqlalchemy.sql.naming",
+    "sqlalchemy.sql.schema",      # would be nice as strict
+    "sqlalchemy.sql.sqltypes",   # would be nice as strict
+    "sqlalchemy.sql.traversals",
+
+    "sqlalchemy.util.*",
 ]
 
 
+warn_unused_ignores = false
 ignore_errors = false
 
 # mostly strict without requiring totally untyped things to be

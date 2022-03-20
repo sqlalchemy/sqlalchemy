@@ -476,7 +476,8 @@ class Relationship(
                 "the set of foreign key values."
             )
 
-        __hash__ = None
+        # https://github.com/python/mypy/issues/4266
+        __hash__ = None  # type: ignore
 
         def __eq__(self, other):
             """Implement the ``==`` operator.

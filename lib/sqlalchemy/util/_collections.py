@@ -135,7 +135,7 @@ def coerce_to_immutabledict(d):
 EMPTY_DICT: immutabledict[Any, Any] = immutabledict()
 
 
-class FacadeDict(ImmutableDictBase[Any, Any]):
+class FacadeDict(ImmutableDictBase[_KT, _VT]):
     """A dictionary that is not publicly mutable."""
 
     def __new__(cls, *args):

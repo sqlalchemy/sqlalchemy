@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 from typing import Any
-from typing import Union
+from typing import Optional
 
 from . import coercions
 from . import roles
@@ -23,8 +23,6 @@ from .selectable import Select
 from .selectable import TableClause
 from .selectable import TableSample
 from .selectable import Values
-from ..util.typing import _LiteralStar
-from ..util.typing import Literal
 
 
 def alias(selectable, name=None, flat=False):
@@ -283,9 +281,7 @@ def outerjoin(left, right, onclause=None, full=False):
     return Join(left, right, onclause, isouter=True, full=full)
 
 
-def select(
-    *entities: Union[_LiteralStar, Literal[1], _ColumnsClauseElement]
-) -> "Select":
+def select(*entities: _ColumnsClauseElement) -> Select:
     r"""Construct a new :class:`_expression.Select`.
 
 
@@ -326,7 +322,7 @@ def select(
     return Select(*entities)
 
 
-def table(name: str, *columns: ColumnClause, **kw: Any) -> "TableClause":
+def table(name: str, *columns: ColumnClause[Any], **kw: Any) -> TableClause:
     """Produce a new :class:`_expression.TableClause`.
 
     The object returned is an instance of
@@ -435,7 +431,11 @@ def union_all(*selects):
     return CompoundSelect._create_union_all(*selects)
 
 
-def values(*columns, name=None, literal_binds=False) -> "Values":
+def values(
+    *columns: ColumnClause[Any],
+    name: Optional[str] = None,
+    literal_binds: bool = False,
+) -> Values:
     r"""Construct a :class:`_expression.Values` construct.
 
     The column expressions and the actual data for

@@ -54,7 +54,9 @@ from ..sql import expression
 from ..sql._typing import is_tuple_type
 from ..sql.compiler import DDLCompiler
 from ..sql.compiler import SQLCompiler
+from ..sql.elements import ColumnClause
 from ..sql.elements import quoted_name
+from ..sql.schema import default_is_scalar
 
 if typing.TYPE_CHECKING:
     from types import ModuleType
@@ -1164,7 +1166,7 @@ class DefaultExecutionContext(ExecutionContext):
             return ()
 
     @util.memoized_property
-    def returning_cols(self) -> Optional[Sequence[Column[Any]]]:
+    def returning_cols(self) -> Optional[Sequence[ColumnClause[Any]]]:
         if TYPE_CHECKING:
             assert isinstance(self.compiled, SQLCompiler)
         return self.compiled.returning
@@ -1778,15 +1780,11 @@ class DefaultExecutionContext(ExecutionContext):
         # to avoid many calls of get_insert_default()/
         # get_update_default()
         for c in insert_prefetch:
-            if c.default and not c.default.is_sequence and c.default.is_scalar:
-                if TYPE_CHECKING:
-                    assert isinstance(c.default, ColumnDefault)
+            if c.default and default_is_scalar(c.default):
                 scalar_defaults[c] = c.default.arg
 
         for c in update_prefetch:
-            if c.onupdate and c.onupdate.is_scalar:
-                if TYPE_CHECKING:
-                    assert isinstance(c.onupdate, ColumnDefault)
+            if c.onupdate and default_is_scalar(c.onupdate):
                 scalar_defaults[c] = c.onupdate.arg
 
         for param in self.compiled_parameters:
@@ -1817,9 +1815,7 @@ class DefaultExecutionContext(ExecutionContext):
         ) = self.compiled_parameters[0]
 
         for c in compiled.insert_prefetch:
-            if c.default and not c.default.is_sequence and c.default.is_scalar:
-                if TYPE_CHECKING:
-                    assert isinstance(c.default, ColumnDefault)
+            if c.default and default_is_scalar(c.default):
                 val = c.default.arg
             else:
                 val = self.get_insert_default(c)

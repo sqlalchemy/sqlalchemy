@@ -317,7 +317,6 @@ class Inspector(inspection.Inspectable["Inspector"]):
             with an already-given :class:`_schema.MetaData`.
 
         """
-
         with self._operation_context() as conn:
             tnames = self.dialect.get_table_names(
                 conn, schema, info_cache=self.info_cache

@@ -43,7 +43,6 @@ from ._elements_constructors import text as text
 from ._elements_constructors import true as true
 from ._elements_constructors import tuple_ as tuple_
 from ._elements_constructors import type_coerce as type_coerce
-from ._elements_constructors import typing as typing
 from ._elements_constructors import within_group as within_group
 from ._selectable_constructors import alias as alias
 from ._selectable_constructors import cte as cte

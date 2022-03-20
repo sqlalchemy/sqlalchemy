@@ -463,7 +463,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
     _is_clone_of: Optional[FromClause]
 
-    schema = None
+    schema: Optional[str] = None
     """Define the 'schema' attribute for this :class:`_expression.FromClause`.
 
     This is typically ``None`` for most objects except that of
@@ -673,7 +673,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         """
         return self._cloned_set.intersection(other._cloned_set)
 
-    @property
+    @util.non_memoized_property
     def description(self) -> str:
         """A brief description of this :class:`_expression.FromClause`.
 
@@ -710,7 +710,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         return self.columns
 
     @util.memoized_property
-    def columns(self) -> ColumnCollection:
+    def columns(self) -> ColumnCollection[Any]:
         """A named-based collection of :class:`_expression.ColumnElement`
         objects maintained by this :class:`_expression.FromClause`.
 
@@ -796,7 +796,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
     # this is awkward.   maybe there's a better way
     if TYPE_CHECKING:
-        c: ColumnCollection
+        c: ColumnCollection[Any]
     else:
         c = property(
             attrgetter("columns"),
@@ -2398,6 +2398,8 @@ class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
     ]
 
     _is_table = True
+
+    fullname: str
 
     implicit_returning = False
     """:class:`_expression.TableClause`
