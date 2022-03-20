@@ -583,6 +583,13 @@ class AssociationProxyInstance(SQLORMOperations[_T]):
             return AmbiguousAssociationProxyInstance(
                 parent, owning_class, target_class, value_attr
             )
+        except Exception as err:
+            raise exc.InvalidRequestError(
+                f"Association proxy received an unexpected error when "
+                f"trying to retreive attribute "
+                f'"{target_class.__name__}.{parent.value_attr}" from '
+                f'class "{target_class.__name__}": {err}'
+            ) from err
         else:
             return cls._construct_for_assoc(
                 target_assoc, parent, owning_class, target_class, value_attr
