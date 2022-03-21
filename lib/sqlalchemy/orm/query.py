@@ -1557,12 +1557,20 @@ class Query(
         automatically if the :meth:`~sqlalchemy.orm.query.Query.yield_per()`
         method or execution option is used.
 
+        .. versionadded:: 1.4 - added ORM options to
+           :meth:`_orm.Query.execution_options`
+
         The execution options may also be specified on a per execution basis
         when using :term:`2.0 style` queries via the
         :paramref:`_orm.Session.execution_options` parameter.
 
-        .. versionadded:: 1.4 - added ORM options to
-           :meth:`_orm.Query.execution_options`
+        .. warning:: The
+           :paramref:`_engine.Connection.execution_options.stream_results`
+           parameter should not be used at the level of individual ORM
+           statement executions, as the :class:`_orm.Session` will not track
+           objects from different schema translate maps within a single
+           session.
+
 
         .. seealso::
 
