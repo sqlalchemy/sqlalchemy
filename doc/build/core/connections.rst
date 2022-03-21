@@ -757,15 +757,18 @@ as the schema name is passed to these methods explicitly.
 
       session = Session(schema_engine)
 
-  When using the ORM, the schema translate feature is only supported as
-  **a single schema translate map per Session**.   It will **not work** if
-  different schema translate maps are given on a per-statement basis, as
-  the ORM :class:`_orm.Session` does not take current schema translate
-  values into account for individual objects.  In other words, all
-  objects loaded in a particular :class:`_orm.Session` must be based on the
-  **same** ``schema_translate_map``.
-
       ...
+
+  .. warning::
+
+    When using the ORM, the schema translate feature is only supported as
+    **a single schema translate map per Session**.   It will **not work** if
+    different schema translate maps are given on a per-statement basis, as
+    the ORM :class:`_orm.Session` does not take current schema translate
+    values into account for individual objects.  In other words, all
+    objects loaded in a particular :class:`_orm.Session` must be based on the
+    **same** ``schema_translate_map``.
+
 
 
 
