@@ -271,7 +271,7 @@ Below is a simple recipe which works profiling into a context manager::
 To profile a section of code::
 
     with profiled():
-        session.execute(select(FooClass).where(FooClass.somevalue==8)).all()
+        session.scalars(select(FooClass).where(FooClass.somevalue==8)).all()
 
 The output of profiling can be used to give an idea where time is
 being spent.   A section of profiling output looks like this::

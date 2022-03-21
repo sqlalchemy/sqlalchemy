@@ -75,7 +75,7 @@ basic query options are :func:`_orm.defer` and
 
     stmt = select(Book)
     stmt = stmt.options(defer('summary'), undefer('excerpt'))
-    session.execute(stmt)
+    session.scalars(stmt).all()
 
 
 Above, the "summary" column will not load until accessed, and the "excerpt"
@@ -89,6 +89,7 @@ using :func:`_orm.undefer_group`, sending in the group name::
 
     stmt = select(Book)
     stmt = stmt.options(undefer_group('photos'))
+    session.scalars(stmt).all()
 
 
 .. _deferred_loading_w_multiple:
