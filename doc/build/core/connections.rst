@@ -945,15 +945,16 @@ as the schema name is passed to these methods explicitly.
 
   .. warning::
 
-    When using the ORM, the schema translate feature is only supported as
+    When using the ORM :class:`_orm.Session` without extensions, the schema
+    translate feature is only supported as
     **a single schema translate map per Session**.   It will **not work** if
     different schema translate maps are given on a per-statement basis, as
     the ORM :class:`_orm.Session` does not take current schema translate
-    values into account for individual objects.  In other words, all
-    objects loaded in a particular :class:`_orm.Session` must be based on the
-    **same** ``schema_translate_map``.
+    values into account for individual objects.
 
-
+    To use a single :class:`_orm.Session` with multiple ``schema_translate_map``
+    configurations, the :ref:`horizontal_sharding_toplevel` extension may
+    be used.  See the example at :ref:`examples_sharding`.
 
 
 .. versionadded:: 1.1

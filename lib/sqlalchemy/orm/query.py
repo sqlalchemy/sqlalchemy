@@ -1569,7 +1569,8 @@ class Query(
            parameter should not be used at the level of individual ORM
            statement executions, as the :class:`_orm.Session` will not track
            objects from different schema translate maps within a single
-           session.
+           session.  For multiple schema translate maps within the scope of a
+           single :class:`_orm.Session`, see :ref:`examples_sharding`.
 
 
         .. seealso::
