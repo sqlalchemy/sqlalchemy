@@ -70,7 +70,7 @@ ids = Table("ids", Base.metadata, Column("nextid", Integer, nullable=False))
 
 def id_generator(ctx):
     # in reality, might want to use a separate transaction for this.
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         nextid = conn.scalar(ids.select().with_for_update())
         conn.execute(ids.update().values({ids.c.nextid: ids.c.nextid + 1}))
     return nextid
