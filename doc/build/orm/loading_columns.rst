@@ -15,7 +15,7 @@ Deferred Column Loading
 
 Deferred column loading allows particular columns of a table be loaded only
 upon direct access, instead of when the entity is queried using
-:class:`_query.Query`.  This feature is useful when one wants to avoid
+:class:`_sql.Select`.  This feature is useful when one wants to avoid
 loading a large text or binary field into memory when it's not needed.
 Individual columns can be lazy loaded by themselves or placed into groups that
 lazy-load together, using the :func:`_orm.deferred` function to
@@ -65,16 +65,18 @@ Deferred Column Loader Query Options
 ------------------------------------
 
 Columns can be marked as "deferred" or reset to "undeferred" at query time
-using options which are passed to the :meth:`_query.Query.options` method; the most
+using options which are passed to the :meth:`_sql.Select.options` method; the most
 basic query options are :func:`_orm.defer` and
 :func:`_orm.undefer`::
 
     from sqlalchemy.orm import defer
     from sqlalchemy.orm import undefer
+    from sqlalchemy import select
 
-    query = session.query(Book)
-    query = query.options(defer('summary'), undefer('excerpt'))
-    query.all()
+    stmt = select(Book)
+    stmt = stmt.options(defer('summary'), undefer('excerpt'))
+    session.scalars(stmt).all()
+
 
 Above, the "summary" column will not load until accessed, and the "excerpt"
 column will load immediately even if it was mapped as a "deferred" column.
@@ -83,23 +85,28 @@ column will load immediately even if it was mapped as a "deferred" column.
 using :func:`_orm.undefer_group`, sending in the group name::
 
     from sqlalchemy.orm import undefer_group
+    from sqlalchemy import select
 
-    query = session.query(Book)
-    query.options(undefer_group('photos')).all()
+    stmt = select(Book)
+    stmt = stmt.options(undefer_group('photos'))
+    session.scalars(stmt).all()
+
 
 .. _deferred_loading_w_multiple:
 
 Deferred Loading across Multiple Entities
 -----------------------------------------
 
-To specify column deferral for a :class:`_query.Query` that loads multiple types of
+To specify column deferral for a :class:`_sql.Select` that loads multiple types of
 entities at once, the deferral options may be specified more explicitly using
 class-bound attributes, rather than string names::
 
     from sqlalchemy.orm import defer
+    from sqlalchemy import select
 
-    query = session.query(Book, Author).join(Book.author)
-    query = query.options(defer(Author.bio))
+    stmt = select(Book, Author).join(Book.author)
+    stmt = stmt.options(defer(Author.bio))
+
 
 Column deferral options may also indicate that they take place along various
 relationship paths, which are themselves often :ref:`eagerly loaded
@@ -114,11 +121,12 @@ option (described later in this section) to defer all ``Book`` columns except
 those explicitly specified::
 
     from sqlalchemy.orm import joinedload
+    from sqlalchemy import select
 
-    query = session.query(Author)
-    query = query.options(
-                joinedload(Author.books).load_only(Book.summary, Book.excerpt),
-            )
+    stmt = select(Author)
+    stmt = stmt.options(
+        joinedload(Author.books).load_only(Book.summary, Book.excerpt)
+    )
 
 Option structures as above can also be organized in more complex ways, such
 as hierarchically using the :meth:`_orm.Load.options`
@@ -129,17 +137,20 @@ may be used::
     from sqlalchemy.orm import defer
     from sqlalchemy.orm import joinedload
     from sqlalchemy.orm import load_only
+    from sqlalchemy import select
 
-    query = session.query(Author)
-    query = query.options(
-                joinedload(Author.book).options(
-                    load_only(Book.summary, Book.excerpt),
-                    joinedload(Book.citations).options(
-                        joinedload(Citation.author),
-                        defer(Citation.fulltext)
-                    )
-                )
+    stmt = select(Author)
+    stmt = stmt.options(
+        joinedload(Author.book).options(
+            load_only(Book.summary, Book.excerpt),
+            joinedload(Book.citations).options(
+                joinedload(Citation.author),
+                defer(Citation.fulltext)
             )
+        )
+    )
+
+
 
 .. versionadded:: 1.3.6  Added :meth:`_orm.Load.options` to allow easier
    construction of hierarchies of loader options.
@@ -150,8 +161,11 @@ option structure without actually setting any options at that level, so that fur
 sub-options may be applied.  The :func:`_orm.defaultload` function can be used
 to create the same structure as we did above using :meth:`_orm.Load.options` as::
 
-    query = session.query(Author)
-    query = query.options(
+    from sqlalchemy import select
+    from sqlalchemy.orm import defaultload
+
+    stmt = select(Author)
+    stmt = stmt.options(
         joinedload(Author.book).load_only(Book.summary, Book.excerpt),
         defaultload(Author.book).joinedload(Book.citations).joinedload(Citation.author),
         defaultload(Author.book).defaultload(Book.citations).defer(Citation.fulltext)
@@ -172,8 +186,9 @@ the "summary" and "excerpt" columns, we could say::
 
     from sqlalchemy.orm import defer
     from sqlalchemy.orm import undefer
+    from sqlalchemy import select
 
-    session.query(Book).options(
+    select(Book).options(
         defer('*'), undefer("summary"), undefer("excerpt"))
 
 Above, the :func:`.defer` option is applied using a wildcard to all column
@@ -189,8 +204,9 @@ which will apply deferred behavior to all column attributes except those
 that are named::
 
     from sqlalchemy.orm import load_only
+    from sqlalchemy import select
 
-    session.query(Book).options(load_only(Book.summary, Book.excerpt))
+    select(Book).options(load_only(Book.summary, Book.excerpt))
 
 Wildcard and Exclusionary Options with Multiple-Entity Queries
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -235,7 +251,7 @@ loading, discussed at :ref:`prevent_lazy_with_raiseload`.    Using the
 :paramref:`.orm.defer.raiseload` parameter on the :func:`.defer` option,
 an exception is raised if the attribute is accessed::
 
-    book = session.query(Book).options(defer(Book.summary, raiseload=True)).first()
+    book = session.scalars(select(Book).options(defer(Book.summary, raiseload=True)).limit(1)).first()
 
     # would raise an exception
     book.summary
@@ -253,7 +269,8 @@ Deferred "raiseload" can be configured at the mapper level via
         summary = deferred(Column(String(2000)), raiseload=True)
         excerpt = deferred(Column(Text), raiseload=True)
 
-    book_w_excerpt = session.query(Book).options(undefer(Book.excerpt)).first()
+    book_w_excerpt = session.scalars(select(Book).options(undefer(Book.excerpt)).limit(1)).first()
+
 
 
 
@@ -285,9 +302,10 @@ namespace.
 The bundle allows columns to be grouped together::
 
     from sqlalchemy.orm import Bundle
+    from sqlalchemy import select
 
     bn = Bundle('mybundle', MyClass.data1, MyClass.data2)
-    for row in session.query(bn).filter(bn.c.data1 == 'd1'):
+    for row in session.execute(select(bn).where(bn.c.title == "d1")):
         print(row.mybundle.data1, row.mybundle.data2)
 
 The bundle can be subclassed to provide custom behaviors when results
@@ -323,7 +341,7 @@ return structure with a straight Python dictionary::
 A result from the above bundle will return dictionary values::
 
     bn = DictBundle('mybundle', MyClass.data1, MyClass.data2)
-    for row in session.query(bn).filter(bn.c.data1 == 'd1'):
+    for row in session.execute(select(bn)).where(bn.c.data1 == 'd1'):
         print(row.mybundle['data1'], row.mybundle['data2'])
 
 The :class:`.Bundle` construct is also integrated into the behavior

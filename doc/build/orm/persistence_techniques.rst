@@ -21,7 +21,7 @@ an attribute::
 
         value = Column(Integer)
 
-    someobject = session.query(SomeClass).get(5)
+    someobject = session.get(SomeClass, 5)
 
     # set 'value' attribute to a SQL expression adding one
     someobject.value = SomeClass.value + 1

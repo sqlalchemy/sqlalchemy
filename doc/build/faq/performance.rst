@@ -271,7 +271,7 @@ Below is a simple recipe which works profiling into a context manager::
 To profile a section of code::
 
     with profiled():
-        Session.query(FooClass).filter(FooClass.somevalue==8).all()
+        session.scalars(select(FooClass).where(FooClass.somevalue==8)).all()
 
 The output of profiling can be used to give an idea where time is
 being spent.   A section of profiling output looks like this::
@@ -403,18 +403,18 @@ Common strategies to mitigate this include:
 
 * fetch individual columns instead of full entities, that is::
 
-      session.query(User.id, User.name)
+      select(User.id, User.name)
 
   instead of::
 
-      session.query(User)
+      select(User)
 
 * Use :class:`.Bundle` objects to organize column-based results::
 
       u_b = Bundle('user', User.id, User.name)
       a_b = Bundle('address', Address.id, Address.email)
 
-      for user, address in session.query(u_b, a_b).join(User.addresses):
+      for user, address in session.execute(select(u_b, a_b).join(User.addresses)):
           # ...
 
 * Use result caching - see :ref:`examples_caching` for an in-depth example
