@@ -234,25 +234,22 @@ The same idea applies to all the other arguments, such as ``foreign_keys``::
 
 .. _faq_subqueryload_limit_sort:
 
-Why is ``ORDER BY`` required with ``LIMIT`` (especially with ``subqueryload()``)?
----------------------------------------------------------------------------------
+Why is ``ORDER BY`` recommended with ``LIMIT`` (especially with ``subqueryload()``)?
+------------------------------------------------------------------------------------
 
-A relational database can return rows in any
-arbitrary order, when an explicit ordering is not set.
-While this ordering very often corresponds to the natural
-order of rows within a table, this is not the case for all databases and
-all queries.   The consequence of this is that any query that limits rows
-using ``LIMIT`` or ``OFFSET`` should **always** specify an ``ORDER BY``.
-Otherwise, it is not deterministic which rows will actually be returned.
+When ORDER BY is not used for a SELECT statement that returns rows, the
+relational database is free to returned matched rows in any arbitrary
+order.  While this ordering very often corresponds to the natural
+order of rows within a table, this is not the case for all databases and all
+queries. The consequence of this is that any query that limits rows using
+``LIMIT`` or ``OFFSET``, or which merely selects the first row of the result,
+discarding the rest, will not be deterministic in terms of what result row is
+returned, assuming there's more than one row that matches the query's criteria.
 
-When we use a SQLAlchemy method like :meth:`_query.Query.first`, we are in fact
-applying a ``LIMIT`` of one to the query, so without an explicit ordering
-it is not deterministic what row we actually get back.
 While we may not notice this for simple queries on databases that usually
-returns rows in their natural
-order, it becomes much more of an issue if we also use :func:`_orm.subqueryload`
-to load related collections, and we may not be loading the collections
-as intended.
+returns rows in their natural order, it becomes more of an issue if we
+also use :func:`_orm.subqueryload` to load related collections, and we may not
+be loading the collections as intended.
 
 SQLAlchemy implements :func:`_orm.subqueryload` by issuing a separate query,
 the results of which are matched up to the results from the first query.
