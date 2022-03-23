@@ -1477,6 +1477,7 @@ class TableValuedAlias(Alias):
     _supports_derived_columns = True
     _render_derived = False
     _render_derived_w_types = False
+    joins_implicitly = False
 
     _traverse_internals = [
         ("element", InternalTraversal.dp_clauseelement),
@@ -1486,9 +1487,16 @@ class TableValuedAlias(Alias):
         ("_render_derived_w_types", InternalTraversal.dp_boolean),
     ]
 
-    def _init(self, selectable, name=None, table_value_type=None):
+    def _init(
+        self,
+        selectable,
+        name=None,
+        table_value_type=None,
+        joins_implicitly=False,
+    ):
         super(TableValuedAlias, self)._init(selectable, name=name)
 
+        self.joins_implicitly = joins_implicitly
         self._tableval_type = (
             type_api.TABLEVALUE
             if table_value_type is None

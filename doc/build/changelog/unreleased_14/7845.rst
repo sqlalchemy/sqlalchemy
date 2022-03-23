@@ -1,0 +1,11 @@
+.. change::
+    :tags: usecase, sql
+    :tickets: 7845
+
+    Added new parameter
+    :paramref:`.FunctionElement.table_valued.joins_implicitly`, for the
+    :meth:`.FunctionElement.table_valued` construct. This parameter indicates
+    that the given table-valued function implicitly joins to the table it
+    refers towards, essentially disabling the "from linting" feature, i.e. the
+    "cartesian product" warning, from taking effect due to the presence of this
+    parameter. May be used for functions such as ``func.json_each()``.
