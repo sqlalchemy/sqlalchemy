@@ -1368,17 +1368,17 @@ class Mapper(
             # that of the inheriting (unless concrete or explicit)
             self.primary_key = self.inherits.primary_key
         else:
-            # determine primary key from argument or persist_selectable pks -
-            # reduce to the minimal set of columns
+            # determine primary key from argument or persist_selectable pks
             if self._primary_key_argument:
-                primary_key = sql_util.reduce_columns(
-                    [
-                        self.persist_selectable.corresponding_column(c)
-                        for c in self._primary_key_argument
-                    ],
-                    ignore_nonexistent_tables=True,
-                )
+                primary_key = [
+                    self.persist_selectable.corresponding_column(c)
+                    for c in self._primary_key_argument
+                ]
             else:
+                # if heuristically determined PKs, reduce to the minimal set
+                # of columns by eliminating FK->PK pairs for a multi-table
+                # expression.   May over-reduce for some kinds of UNIONs
+                # / CTEs; use explicit PK argument for these special cases
                 primary_key = sql_util.reduce_columns(
                     self._pks_by_table[self.persist_selectable],
                     ignore_nonexistent_tables=True,
