@@ -1182,11 +1182,14 @@ Examples from PostgreSQL's reference documentation follow below:
 
     >>> from sqlalchemy import select, func
     >>> stmt = select(
-    ...     func.generate_series(4, 1, -1).table_valued("value", with_ordinality="ordinality")
+    ...     func.generate_series(4, 1, -1).
+    ...     table_valued("value", with_ordinality="ordinality").
+    ...     render_derived()
     ... )
     >>> print(stmt)
     SELECT anon_1.value, anon_1.ordinality
-    FROM generate_series(:generate_series_1, :generate_series_2, :generate_series_3) WITH ORDINALITY AS anon_1
+    FROM generate_series(:generate_series_1, :generate_series_2, :generate_series_3)
+    WITH ORDINALITY AS anon_1(value, ordinality)
 
 .. versionadded:: 1.4.0b2
 
