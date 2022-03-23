@@ -212,7 +212,15 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
          string name will be added as a column to the .c collection
          of the resulting :class:`_sql.TableValuedAlias`.
 
+        :param joins_implicitly: when True, the table valued function may be
+         used in the FROM clause without any explicit JOIN to other tables
+         in the SQL query, and no "cartesian product" warning will be generated.
+         May be useful for SQL functions such as ``func.json_each()``.
+
+         .. versionadded:: 1.4.33
+
         .. versionadded:: 1.4.0b2
+
 
         .. seealso::
 
@@ -234,6 +242,7 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
         new_func = self._generate()
 
         with_ordinality = kw.pop("with_ordinality", None)
+        joins_implicitly = kw.pop("joins_implicitly", None)
         name = kw.pop("name", None)
 
         if with_ordinality:
@@ -244,7 +253,7 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
             *expr
         )
 
-        return new_func.alias(name=name)
+        return new_func.alias(name=name, joins_implicitly=joins_implicitly)
 
     def column_valued(self, name=None):
         """Return this :class:`_functions.FunctionElement` as a column expression that
@@ -497,7 +506,7 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
 
         return None
 
-    def alias(self, name=None):
+    def alias(self, name=None, joins_implicitly=False):
         r"""Produce a :class:`_expression.Alias` construct against this
         :class:`.FunctionElement`.
 
@@ -539,6 +548,17 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
 
         .. versionadded:: 1.4.0b2  Added the ``.column`` accessor
 
+        :param name: alias name, will be rendered as ``AS <name>`` in the
+         FROM clause
+
+        :param joins_implicitly: when True, the table valued function may be
+         used in the FROM clause without any explicit JOIN to other tables
+         in the SQL query, and no "cartesian product" warning will be
+         generated.  May be useful for SQL functions such as
+         ``func.json_each()``.
+
+         .. versionadded:: 1.4.33
+
         .. seealso::
 
             :ref:`tutorial_functions_table_valued` -
@@ -554,7 +574,10 @@ class FunctionElement(Executable, ColumnElement, FromClause, Generative):
         """
 
         return TableValuedAlias._construct(
-            self, name, table_value_type=self.type
+            self,
+            name,
+            table_value_type=self.type,
+            joins_implicitly=joins_implicitly,
         )
 
     def select(self):

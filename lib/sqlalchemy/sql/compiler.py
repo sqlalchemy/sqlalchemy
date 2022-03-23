@@ -2805,6 +2805,8 @@ class SQLCompiler(Compiled):
                 return self.preparer.format_alias(cte, cte_name)
 
     def visit_table_valued_alias(self, element, **kw):
+        if element.joins_implicitly:
+            kw["from_linter"] = None
         if element._is_lateral:
             return self.visit_lateral(element, **kw)
         else:
