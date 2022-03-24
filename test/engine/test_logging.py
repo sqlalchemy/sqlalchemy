@@ -626,6 +626,13 @@ class TransactionContextLoggingTest(fixtures.TestBase):
         return e
 
     @testing.fixture()
+    def autocommit_iso_logging_engine(self, testing_engine):
+        kw = {"echo": True, "future": True, "isolation_level": "AUTOCOMMIT"}
+        e = testing_engine(options=kw)
+        e.connect().close()
+        return e
+
+    @testing.fixture()
     def plain_logging_engine(self, testing_engine):
         # deliver an engine with logging using the plain logging API,
         # not the echo parameter
@@ -660,6 +667,38 @@ class TransactionContextLoggingTest(fixtures.TestBase):
 
         assert_buf(["BEGIN (implicit)", "ROLLBACK"])
 
+    def test_commit_as_you_go_block_commit_engine_level_autocommit(
+        self, autocommit_iso_logging_engine, assert_buf
+    ):
+        with autocommit_iso_logging_engine.connect() as conn:
+            conn.begin()
+            conn.commit()
+
+        assert_buf(
+            [
+                "BEGIN (implicit; DBAPI should not "
+                "BEGIN due to autocommit mode)",
+                "COMMIT using DBAPI connection.commit(), DBAPI "
+                "should ignore due to autocommit mode",
+            ]
+        )
+
+    def test_commit_engine_level_autocommit_exec_opt_nonauto(
+        self, autocommit_iso_logging_engine, assert_buf
+    ):
+        with autocommit_iso_logging_engine.execution_options(
+            isolation_level=testing.db.dialect.default_isolation_level
+        ).connect() as conn:
+            conn.begin()
+            conn.commit()
+
+        assert_buf(
+            [
+                "BEGIN (implicit)",
+                "COMMIT",
+            ]
+        )
+
     def test_commit_as_you_go_block_commit_autocommit(
         self, logging_engine, assert_buf
     ):
@@ -671,7 +710,8 @@ class TransactionContextLoggingTest(fixtures.TestBase):
 
         assert_buf(
             [
-                "BEGIN (implicit)",
+                "BEGIN (implicit; DBAPI should not "
+                "BEGIN due to autocommit mode)",
                 "COMMIT using DBAPI connection.commit(), DBAPI "
                 "should ignore due to autocommit mode",
             ]
@@ -688,7 +728,8 @@ class TransactionContextLoggingTest(fixtures.TestBase):
 
         assert_buf(
             [
-                "BEGIN (implicit)",
+                "BEGIN (implicit; DBAPI should not "
+                "BEGIN due to autocommit mode)",
                 "ROLLBACK using DBAPI connection.rollback(), DBAPI "
                 "should ignore due to autocommit mode",
             ]

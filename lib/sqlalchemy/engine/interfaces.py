@@ -677,8 +677,13 @@ class Dialect(EventTarget):
 
     """
 
+    # NOTE: this does not take into effect engine-level isolation level.
+    # not clear if this should be changed, seems like it should
     default_isolation_level: Optional[_IsolationLevel]
     """the isolation that is implicitly present on new connections"""
+
+    # create_engine()  -> isolation_level  currently goes here
+    _on_connect_isolation_level: Optional[_IsolationLevel]
 
     execution_ctx_cls: Type["ExecutionContext"]
     """a :class:`.ExecutionContext` class used to handle statement execution"""
