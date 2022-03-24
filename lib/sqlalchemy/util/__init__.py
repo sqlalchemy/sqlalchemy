@@ -130,6 +130,8 @@ from .langhelpers import (
 from .langhelpers import PluginLoader as PluginLoader
 from .langhelpers import portable_instancemethod as portable_instancemethod
 from .langhelpers import quoted_token_parser as quoted_token_parser
+from .langhelpers import ro_memoized_property as ro_memoized_property
+from .langhelpers import ro_non_memoized_property as ro_non_memoized_property
 from .langhelpers import safe_reraise as safe_reraise
 from .langhelpers import set_creation_order as set_creation_order
 from .langhelpers import string_or_unprintable as string_or_unprintable

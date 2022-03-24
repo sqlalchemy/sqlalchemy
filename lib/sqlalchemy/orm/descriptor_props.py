@@ -511,7 +511,8 @@ class Composite(
 
         """
 
-        __hash__ = None
+        # https://github.com/python/mypy/issues/4266
+        __hash__ = None  # type: ignore
 
         @util.memoized_property
         def clauses(self):

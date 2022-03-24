@@ -705,7 +705,7 @@ class TypeEngine(Visitable, Generic[_T]):
         """
         return self
 
-    @util.memoized_property
+    @util.ro_memoized_property
     def _type_affinity(self) -> Optional[Type[TypeEngine[_T]]]:
         """Return a rudimental 'affinity' value expressing the general class
         of type."""
@@ -719,7 +719,7 @@ class TypeEngine(Visitable, Generic[_T]):
         else:
             return self.__class__
 
-    @util.memoized_property
+    @util.ro_memoized_property
     def _generic_type_affinity(
         self,
     ) -> Type[TypeEngine[_T]]:
@@ -1694,7 +1694,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
         tt.impl = tt.impl_instance = typedesc
         return tt
 
-    @util.non_memoized_property
+    @util.ro_non_memoized_property
     def _type_affinity(self) -> Optional[Type[TypeEngine[Any]]]:
         return self.impl_instance._type_affinity
 

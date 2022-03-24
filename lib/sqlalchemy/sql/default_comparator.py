@@ -26,6 +26,7 @@ from . import roles
 from . import type_api
 from .elements import and_
 from .elements import BinaryExpression
+from .elements import ClauseElement
 from .elements import ClauseList
 from .elements import CollationClause
 from .elements import CollectionAggregate
@@ -43,7 +44,7 @@ _T = typing.TypeVar("_T", bound=Any)
 if typing.TYPE_CHECKING:
     from .elements import ColumnElement
     from .operators import custom_op
-    from .sqltypes import TypeEngine
+    from .type_api import TypeEngine
 
 
 def _boolean_compare(
@@ -53,10 +54,10 @@ def _boolean_compare(
     *,
     negate_op: Optional[OperatorType] = None,
     reverse: bool = False,
-    _python_is_types=(util.NoneType, bool),
-    _any_all_expr=False,
+    _python_is_types: Tuple[Type[Any], ...] = (type(None), bool),
+    _any_all_expr: bool = False,
     result_type: Optional[
-        Union[Type["TypeEngine[bool]"], "TypeEngine[bool]"]
+        Union[Type[TypeEngine[bool]], TypeEngine[bool]]
     ] = None,
     **kwargs: Any,
 ) -> BinaryExpression[bool]:
@@ -165,7 +166,7 @@ def _custom_op_operate(
 def _binary_operate(
     expr: ColumnElement[Any],
     op: OperatorType,
-    obj: roles.BinaryElementRole,
+    obj: roles.BinaryElementRole[Any],
     *,
     reverse: bool = False,
     result_type: Optional[
@@ -192,7 +193,7 @@ def _binary_operate(
 
 
 def _conjunction_operate(
-    expr: ColumnElement[Any], op: OperatorType, other, **kw
+    expr: ColumnElement[Any], op: OperatorType, other: Any, **kw: Any
 ) -> ColumnElement[Any]:
     if op is operators.and_:
         return and_(expr, other)
@@ -203,7 +204,10 @@ def _conjunction_operate(
 
 
 def _scalar(
-    expr: ColumnElement[Any], op: OperatorType, fn, **kw
+    expr: ColumnElement[Any],
+    op: OperatorType,
+    fn: Callable[[ColumnElement[Any]], ColumnElement[Any]],
+    **kw: Any,
 ) -> ColumnElement[Any]:
     return fn(expr)
 
@@ -211,9 +215,9 @@ def _scalar(
 def _in_impl(
     expr: ColumnElement[Any],
     op: OperatorType,
-    seq_or_selectable,
+    seq_or_selectable: ClauseElement,
     negate_op: OperatorType,
-    **kw,
+    **kw: Any,
 ) -> ColumnElement[Any]:
     seq_or_selectable = coercions.expect(
         roles.InElementRole, seq_or_selectable, expr=expr, operator=op
@@ -227,7 +231,7 @@ def _in_impl(
 
 
 def _getitem_impl(
-    expr: ColumnElement[Any], op: OperatorType, other, **kw
+    expr: ColumnElement[Any], op: OperatorType, other: Any, **kw: Any
 ) -> ColumnElement[Any]:
     if isinstance(expr.type, type_api.INDEXABLE):
         other = coercions.expect(
@@ -239,7 +243,7 @@ def _getitem_impl(
 
 
 def _unsupported_impl(
-    expr: ColumnElement[Any], op: OperatorType, *arg, **kw
+    expr: ColumnElement[Any], op: OperatorType, *arg: Any, **kw: Any
 ) -> NoReturn:
     raise NotImplementedError(
         "Operator '%s' is not supported on " "this expression" % op.__name__
@@ -247,7 +251,7 @@ def _unsupported_impl(
 
 
 def _inv_impl(
-    expr: ColumnElement[Any], op: OperatorType, **kw
+    expr: ColumnElement[Any], op: OperatorType, **kw: Any
 ) -> ColumnElement[Any]:
     """See :meth:`.ColumnOperators.__inv__`."""
 
@@ -260,14 +264,14 @@ def _inv_impl(
 
 
 def _neg_impl(
-    expr: ColumnElement[Any], op: OperatorType, **kw
+    expr: ColumnElement[Any], op: OperatorType, **kw: Any
 ) -> ColumnElement[Any]:
     """See :meth:`.ColumnOperators.__neg__`."""
     return UnaryExpression(expr, operator=operators.neg, type_=expr.type)
 
 
 def _match_impl(
-    expr: ColumnElement[Any], op: OperatorType, other, **kw
+    expr: ColumnElement[Any], op: OperatorType, other: Any, **kw: Any
 ) -> ColumnElement[Any]:
     """See :meth:`.ColumnOperators.match`."""
 
@@ -289,7 +293,7 @@ def _match_impl(
 
 
 def _distinct_impl(
-    expr: ColumnElement[Any], op: OperatorType, **kw
+    expr: ColumnElement[Any], op: OperatorType, **kw: Any
 ) -> ColumnElement[Any]:
     """See :meth:`.ColumnOperators.distinct`."""
     return UnaryExpression(
@@ -298,7 +302,11 @@ def _distinct_impl(
 
 
 def _between_impl(
-    expr: ColumnElement[Any], op: OperatorType, cleft, cright, **kw
+    expr: ColumnElement[Any],
+    op: OperatorType,
+    cleft: Any,
+    cright: Any,
+    **kw: Any,
 ) -> ColumnElement[Any]:
     """See :meth:`.ColumnOperators.between`."""
     return BinaryExpression(
@@ -329,26 +337,32 @@ def _between_impl(
 
 
 def _collate_impl(
-    expr: ColumnElement[Any], op: OperatorType, collation, **kw
-) -> ColumnElement[Any]:
+    expr: ColumnElement[str], op: OperatorType, collation: str, **kw: Any
+) -> ColumnElement[str]:
     return CollationClause._create_collation_expression(expr, collation)
 
 
 def _regexp_match_impl(
-    expr: ColumnElement[Any], op: OperatorType, pattern, flags, **kw
+    expr: ColumnElement[str],
+    op: OperatorType,
+    pattern: Any,
+    flags: Optional[str],
+    **kw: Any,
 ) -> ColumnElement[Any]:
     if flags is not None:
-        flags = coercions.expect(
+        flags_expr = coercions.expect(
             roles.BinaryElementRole,
             flags,
             expr=expr,
             operator=operators.regexp_replace_op,
         )
+    else:
+        flags_expr = None
     return _boolean_compare(
         expr,
         op,
         pattern,
-        flags=flags,
+        flags=flags_expr,
         negate_op=operators.not_regexp_match_op
         if op is operators.regexp_match_op
         else operators.regexp_match_op,
@@ -359,10 +373,10 @@ def _regexp_match_impl(
 def _regexp_replace_impl(
     expr: ColumnElement[Any],
     op: OperatorType,
-    pattern,
-    replacement,
-    flags,
-    **kw,
+    pattern: Any,
+    replacement: Any,
+    flags: Optional[str],
+    **kw: Any,
 ) -> ColumnElement[Any]:
     replacement = coercions.expect(
         roles.BinaryElementRole,
@@ -371,21 +385,29 @@ def _regexp_replace_impl(
         operator=operators.regexp_replace_op,
     )
     if flags is not None:
-        flags = coercions.expect(
+        flags_expr = coercions.expect(
             roles.BinaryElementRole,
             flags,
             expr=expr,
             operator=operators.regexp_replace_op,
         )
+    else:
+        flags_expr = None
     return _binary_operate(
-        expr, op, pattern, replacement=replacement, flags=flags, **kw
+        expr, op, pattern, replacement=replacement, flags=flags_expr, **kw
     )
 
 
 # a mapping of operators with the method they use, along with
 # additional keyword arguments to be passed
 operator_lookup: Dict[
-    str, Tuple[Callable[..., ColumnElement[Any]], util.immutabledict]
+    str,
+    Tuple[
+        Callable[..., ColumnElement[Any]],
+        util.immutabledict[
+            str, Union[OperatorType, Callable[..., ColumnElement[Any]]]
+        ],
+    ],
 ] = {
     "and_": (_conjunction_operate, util.EMPTY_DICT),
     "or_": (_conjunction_operate, util.EMPTY_DICT),

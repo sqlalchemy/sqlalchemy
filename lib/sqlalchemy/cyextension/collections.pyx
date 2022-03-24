@@ -26,6 +26,10 @@ cdef class OrderedSet(set):
 
     cdef list _list
 
+    @classmethod
+    def __class_getitem__(cls, key):
+        return cls
+
     def __init__(self, d=None):
         set.__init__(self)
         if d is not None:

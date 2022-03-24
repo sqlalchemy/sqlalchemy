@@ -345,6 +345,12 @@ class Integer(HasExpressionLookup, TypeEngine[int]):
 
     __visit_name__ = "integer"
 
+    if TYPE_CHECKING:
+
+        @util.ro_memoized_property
+        def _type_affinity(self) -> Type[Integer]:
+            ...
+
     def get_dbapi_type(self, dbapi):
         return dbapi.NUMBER
 
@@ -1892,8 +1898,8 @@ class _AbstractInterval(HasExpressionLookup, TypeEngine[dt.timedelta]):
             operators.truediv: {Numeric: self.__class__},
         }
 
-    @util.non_memoized_property
-    def _type_affinity(self) -> Optional[Type[TypeEngine[Any]]]:
+    @util.ro_non_memoized_property
+    def _type_affinity(self) -> Type[Interval]:
         return Interval
 
 

@@ -9,6 +9,7 @@ from typing import Union
 from . import roles
 from .. import util
 from ..inspection import Inspectable
+from ..util.typing import Literal
 
 if TYPE_CHECKING:
     from .elements import quoted_name
@@ -24,12 +25,13 @@ if TYPE_CHECKING:
 _T = TypeVar("_T", bound=Any)
 
 _ColumnsClauseElement = Union[
+    Literal["*", 1],
     roles.ColumnsClauseRole,
-    Type,
+    Type[Any],
     Inspectable[roles.HasColumnElementClauseElement],
 ]
 _FromClauseElement = Union[
-    roles.FromClauseRole, Type, Inspectable[roles.HasFromClauseElement]
+    roles.FromClauseRole, Type[Any], Inspectable[roles.HasFromClauseElement]
 ]
 
 _ColumnExpression = Union[

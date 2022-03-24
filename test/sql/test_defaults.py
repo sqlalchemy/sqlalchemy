@@ -354,7 +354,8 @@ class DefaultObjectTest(fixtures.TestBase):
             assert_raises_message(
                 sa.exc.ArgumentError,
                 r"SQL expression for WHERE/HAVING role expected, "
-                r"got (?:Sequence|ColumnDefault|DefaultClause)\('y'.*\)",
+                r"got (?:Sequence|(?:ScalarElement)ColumnDefault|"
+                r"DefaultClause)\('y'.*\)",
                 t.select().where,
                 const,
             )

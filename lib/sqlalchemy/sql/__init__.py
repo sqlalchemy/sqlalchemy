@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+from typing import Any
 
 from .base import Executable as Executable
 from .compiler import COLLECT_CARTESIAN_PRODUCTS as COLLECT_CARTESIAN_PRODUCTS
@@ -97,7 +98,7 @@ from .expression import within_group as within_group
 from .visitors import ClauseVisitor as ClauseVisitor
 
 
-def __go(lcls):
+def __go(lcls: Any) -> None:
     from .. import util as _sa_util
 
     from . import base

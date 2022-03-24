@@ -211,9 +211,11 @@ class StrictFromClauseRole(FromClauseRole):
     __slots__ = ()
     # does not allow text() or select() objects
 
-    c: ColumnCollection
+    c: ColumnCollection[Any]
 
-    @property
+    # this should be ->str , however, working around:
+    # https://github.com/python/mypy/issues/12440
+    @util.ro_non_memoized_property
     def description(self) -> str:
         raise NotImplementedError()
 

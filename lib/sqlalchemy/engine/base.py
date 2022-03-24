@@ -73,6 +73,7 @@ if typing.TYPE_CHECKING:
     from ..sql.functions import FunctionElement
     from ..sql.schema import ColumnDefault
     from ..sql.schema import HasSchemaAttr
+    from ..sql.schema import SchemaItem
 
 """Defines :class:`_engine.Connection` and :class:`_engine.Engine`.
 
@@ -2015,7 +2016,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
     def _run_ddl_visitor(
         self,
         visitorcallable: Type[Union[SchemaGenerator, SchemaDropper]],
-        element: DDLElement,
+        element: SchemaItem,
         **kwargs: Any,
     ) -> None:
         """run a DDL visitor.
@@ -2760,7 +2761,7 @@ class Engine(
     def _run_ddl_visitor(
         self,
         visitorcallable: Type[Union[SchemaGenerator, SchemaDropper]],
-        element: DDLElement,
+        element: SchemaItem,
         **kwargs: Any,
     ) -> None:
         with self.begin() as conn:
