@@ -925,9 +925,14 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         )
 
     def _is_autocommit_isolation(self) -> bool:
+        opt_iso = self._execution_options.get("isolation_level", None)
         return bool(
-            self._execution_options.get("isolation_level", None)
-            == "AUTOCOMMIT"
+            opt_iso == "AUTOCOMMIT"
+            or (
+                opt_iso is None
+                and self.engine.dialect._on_connect_isolation_level
+                == "AUTOCOMMIT"
+            )
         )
 
     def get_transaction(self) -> Optional[RootTransaction]:
@@ -949,7 +954,13 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
     def _begin_impl(self, transaction: RootTransaction) -> None:
         if self._echo:
-            self._log_info("BEGIN (implicit)")
+            if self._is_autocommit_isolation():
+                self._log_info(
+                    "BEGIN (implicit; DBAPI should not BEGIN due to "
+                    "autocommit mode)"
+                )
+            else:
+                self._log_info("BEGIN (implicit)")
 
         self.__in_begin = True
 
