@@ -905,10 +905,15 @@ class Connection(Connectable):
             and self._nested_transaction.is_active
         )
 
-    def _is_autocommit(self):
-        return (
-            self._execution_options.get("isolation_level", None)
-            == "AUTOCOMMIT"
+    def _is_autocommit_isolation(self):
+        opt_iso = self._execution_options.get("isolation_level", None)
+        return bool(
+            opt_iso == "AUTOCOMMIT"
+            or (
+                opt_iso is None
+                and getattr(self.engine.dialect, "isolation_level", None)
+                == "AUTOCOMMIT"
+            )
         )
 
     def get_transaction(self):
@@ -939,7 +944,13 @@ class Connection(Connectable):
         assert not self.__branch_from
 
         if self._echo:
-            self._log_info("BEGIN (implicit)")
+            if self._is_autocommit_isolation():
+                self._log_info(
+                    "BEGIN (implicit; DBAPI should not BEGIN due to "
+                    "autocommit mode)"
+                )
+            else:
+                self._log_info("BEGIN (implicit)")
 
         self.__in_begin = True
 
@@ -961,7 +972,7 @@ class Connection(Connectable):
 
         if self._still_open_and_dbapi_connection_is_valid:
             if self._echo:
-                if self._is_autocommit():
+                if self._is_autocommit_isolation():
                     self._log_info(
                         "ROLLBACK using DBAPI connection.rollback(), "
                         "DBAPI should ignore due to autocommit mode"
@@ -980,7 +991,7 @@ class Connection(Connectable):
         # if a connection has this set as the isolation level, we can skip
         # the "autocommit" warning as the operation will do "autocommit"
         # in any case
-        if autocommit and not self._is_autocommit():
+        if autocommit and not self._is_autocommit_isolation():
             util.warn_deprecated_20(
                 "The current statement is being autocommitted using "
                 "implicit autocommit, which will be removed in "
@@ -993,7 +1004,7 @@ class Connection(Connectable):
             self.dispatch.commit(self)
 
         if self._echo:
-            if self._is_autocommit():
+            if self._is_autocommit_isolation():
                 self._log_info(
                     "COMMIT using DBAPI connection.commit(), "
                     "DBAPI should ignore due to autocommit mode"
