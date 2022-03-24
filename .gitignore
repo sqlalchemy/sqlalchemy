@@ -36,6 +36,7 @@ test/test_schema.db
 /.ipynb_checkpoints/
 *.ipynb
 /querytest.db
-/.mypy_cache
 /.pytest_cache
 /db_idents.txt
+# items that only belong in the 2.0 branch
+/lib/sqlalchemy/cyextension
