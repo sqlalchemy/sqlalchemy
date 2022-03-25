@@ -24,6 +24,7 @@ from typing import Any
 from typing import cast
 from typing import List
 from typing import Optional
+from typing import Sequence
 from typing import Tuple
 from typing import Type
 from typing import TypeVar
@@ -50,7 +51,6 @@ from .. import util
 from ..sql import operators
 from ..sql import roles
 from ..sql import visitors
-from ..sql._typing import _ColumnsClauseElement
 from ..sql.base import ExecutableOption
 from ..sql.cache_key import HasCacheKey
 from ..sql.elements import SQLCoreOperations
@@ -60,6 +60,8 @@ from ..util.typing import TypedDict
 
 if typing.TYPE_CHECKING:
     from .decl_api import RegistryType
+    from ..sql._typing import _ColumnsClauseArgument
+    from ..sql._typing import _DMLColumnArgument
 
 _T = TypeVar("_T", bound=Any)
 
@@ -90,8 +92,8 @@ class ORMColumnDescription(TypedDict):
     name: str
     type: Union[Type, TypeEngine]
     aliased: bool
-    expr: _ColumnsClauseElement
-    entity: Optional[_ColumnsClauseElement]
+    expr: _ColumnsClauseArgument
+    entity: Optional[_ColumnsClauseArgument]
 
 
 class _IntrospectsAnnotations:
@@ -468,7 +470,7 @@ class PropComparator(SQLORMOperations[_T]):
 
     def _bulk_update_tuples(
         self, value: Any
-    ) -> List[Tuple[SQLCoreOperations[_T], Any]]:
+    ) -> Sequence[Tuple[_DMLColumnArgument, Any]]:
         """Receive a SQL expression that represents a value in the SET
         clause of an UPDATE statement.
 

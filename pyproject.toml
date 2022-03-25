@@ -81,7 +81,6 @@ module = [
     "sqlalchemy.sql.selectable",   # would be nice as strict
     "sqlalchemy.sql.functions",  # would be nice as strict
     "sqlalchemy.sql.lambdas",
-    "sqlalchemy.sql.dml",   # would be nice as strict
     "sqlalchemy.sql.util",
 
     # not yet classified:

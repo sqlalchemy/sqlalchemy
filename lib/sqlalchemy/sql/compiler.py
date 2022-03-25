@@ -52,7 +52,6 @@ from typing import Type
 from typing import TYPE_CHECKING
 from typing import Union
 
-from sqlalchemy.sql.ddl import DDLElement
 from . import base
 from . import coercions
 from . import crud
@@ -79,10 +78,12 @@ from ..util.typing import Protocol
 from ..util.typing import TypedDict
 
 if typing.TYPE_CHECKING:
+    from . import roles
     from .annotation import _AnnotationDict
     from .base import _AmbiguousTableNameMap
     from .base import CompileState
     from .cache_key import CacheKey
+    from .ddl import DDLElement
     from .dml import Insert
     from .dml import UpdateBase
     from .dml import ValuesBase
@@ -724,7 +725,7 @@ class SQLCompiler(Compiled):
     """list of columns for which onupdate default values should be evaluated
     before an UPDATE takes place"""
 
-    returning: Optional[List[ColumnClause[Any]]]
+    returning: Optional[Sequence[roles.ColumnsClauseRole]]
     """list of columns that will be delivered to cursor.description or
     dialect equivalent via the RETURNING clause on an INSERT, UPDATE, or DELETE
 
@@ -4099,7 +4100,9 @@ class SQLCompiler(Compiled):
         return " FOR UPDATE"
 
     def returning_clause(
-        self, stmt: UpdateBase, returning_cols: List[ColumnClause[Any]]
+        self,
+        stmt: UpdateBase,
+        returning_cols: Sequence[roles.ColumnsClauseRole],
     ) -> str:
         raise exc.CompileError(
             "RETURNING is not supported by this "

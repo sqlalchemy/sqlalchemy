@@ -6,26 +6,30 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 from __future__ import annotations
 
-import typing
 from typing import Any
 from typing import Generic
 from typing import Iterable
+from typing import List
 from typing import Optional
+from typing import TYPE_CHECKING
 from typing import TypeVar
 
 from .. import util
-from ..util import TypingOnly
 from ..util.typing import Literal
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     from ._typing import _PropagateAttrsType
+    from ._typing import _SelectIterable
+    from .base import _EntityNamespace
     from .base import ColumnCollection
+    from .base import ReadOnlyColumnCollection
     from .elements import ClauseElement
+    from .elements import ColumnClause
     from .elements import ColumnElement
     from .elements import Label
+    from .elements import NamedColumn
     from .selectable import FromClause
     from .selectable import Subquery
-
 
 _T = TypeVar("_T", bound=Any)
 
@@ -109,7 +113,7 @@ class ColumnsClauseRole(AllowsLambdaRole, UsesInspection, ColumnListRole):
     _role_name = "Column expression or FROM clause"
 
     @property
-    def _select_iterable(self) -> Iterable[ColumnsClauseRole]:
+    def _select_iterable(self) -> _SelectIterable:
         raise NotImplementedError()
 
 
@@ -202,32 +206,51 @@ class FromClauseRole(ColumnsClauseRole, JoinTargetRole):
 
     _is_subquery = False
 
-    @property
-    def _hide_froms(self) -> Iterable[FromClause]:
-        raise NotImplementedError()
+    named_with_column: bool
+
+    if TYPE_CHECKING:
+
+        @util.ro_non_memoized_property
+        def c(self) -> ReadOnlyColumnCollection[str, ColumnClause[Any]]:
+            ...
+
+        @util.ro_non_memoized_property
+        def columns(self) -> ReadOnlyColumnCollection[str, ColumnClause[Any]]:
+            ...
+
+        @util.ro_non_memoized_property
+        def entity_namespace(self) -> _EntityNamespace:
+            ...
+
+        @util.ro_non_memoized_property
+        def _hide_froms(self) -> Iterable[FromClause]:
+            ...
+
+        @util.ro_non_memoized_property
+        def _from_objects(self) -> List[FromClause]:
+            ...
 
 
 class StrictFromClauseRole(FromClauseRole):
     __slots__ = ()
     # does not allow text() or select() objects
 
-    c: ColumnCollection[Any]
+    if TYPE_CHECKING:
 
-    # this should be ->str , however, working around:
-    # https://github.com/python/mypy/issues/12440
-    @util.ro_non_memoized_property
-    def description(self) -> str:
-        raise NotImplementedError()
+        @util.ro_non_memoized_property
+        def description(self) -> str:
+            ...
 
 
 class AnonymizedFromClauseRole(StrictFromClauseRole):
     __slots__ = ()
-    # calls .alias() as a post processor
 
-    def _anonymous_fromclause(
-        self, name: Optional[str] = None, flat: bool = False
-    ) -> FromClause:
-        raise NotImplementedError()
+    if TYPE_CHECKING:
+
+        def _anonymous_fromclause(
+            self, name: Optional[str] = None, flat: bool = False
+        ) -> FromClause:
+            ...
 
 
 class ReturnsRowsRole(SQLRole):
@@ -283,6 +306,16 @@ class DMLTableRole(FromClauseRole):
     __slots__ = ()
     _role_name = "subject table for an INSERT, UPDATE or DELETE"
 
+    if TYPE_CHECKING:
+
+        @util.ro_non_memoized_property
+        def primary_key(self) -> Iterable[NamedColumn[Any]]:
+            ...
+
+        @util.ro_non_memoized_property
+        def columns(self) -> ReadOnlyColumnCollection[str, ColumnClause[Any]]:
+            ...
+
 
 class DMLColumnRole(SQLRole):
     __slots__ = ()
@@ -315,36 +348,3 @@ class DDLReferredColumnRole(DDLConstraintColumnRole):
     _role_name = (
         "String column name or Column object for DDL foreign key constraint"
     )
-
-
-class HasClauseElement(TypingOnly):
-    """indicates a class that has a __clause_element__() method"""
-
-    __slots__ = ()
-
-    if typing.TYPE_CHECKING:
-
-        def __clause_element__(self) -> ClauseElement:
-            ...
-
-
-class HasColumnElementClauseElement(TypingOnly):
-    """indicates a class that has a __clause_element__() method"""
-
-    __slots__ = ()
-
-    if typing.TYPE_CHECKING:
-
-        def __clause_element__(self) -> ColumnElement[Any]:
-            ...
-
-
-class HasFromClauseElement(HasClauseElement, TypingOnly):
-    """indicates a class that has a __clause_element__() method"""
-
-    __slots__ = ()
-
-    if typing.TYPE_CHECKING:
-
-        def __clause_element__(self) -> FromClause:
-            ...

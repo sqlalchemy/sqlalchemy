@@ -37,6 +37,7 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import Iterator
 from typing import List
 from typing import MutableMapping
 from typing import Optional
@@ -54,7 +55,6 @@ from . import ddl
 from . import roles
 from . import type_api
 from . import visitors
-from .base import ColumnCollection
 from .base import DedupeColumnCollection
 from .base import DialectKWArgs
 from .base import Executable
@@ -78,6 +78,7 @@ from ..util.typing import Protocol
 from ..util.typing import TypeGuard
 
 if typing.TYPE_CHECKING:
+    from .base import ReadOnlyColumnCollection
     from .type_api import TypeEngine
     from ..engine import Connection
     from ..engine import Engine
@@ -273,6 +274,16 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
 
     __visit_name__ = "table"
 
+    if TYPE_CHECKING:
+
+        @util.ro_non_memoized_property
+        def primary_key(self) -> PrimaryKeyConstraint:
+            ...
+
+        @util.ro_non_memoized_property
+        def foreign_keys(self) -> Set[ForeignKey]:
+            ...
+
     constraints: Set[Constraint]
     """A collection of all :class:`_schema.Constraint` objects associated with
       this :class:`_schema.Table`.
@@ -316,12 +327,18 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
     ]
 
     if TYPE_CHECKING:
-
-        @util.non_memoized_property
-        def columns(self) -> ColumnCollection[Column[Any]]:
+        # we are upgrading .c and .columns to return Column, not
+        # ColumnClause.   mypy typically sees this as incompatible because
+        # the contract of TableClause is that we can put a ColumnClause
+        # into this collection.  does not recognize its immutability
+        # for the moment.
+        @util.ro_non_memoized_property
+        def columns(self) -> ReadOnlyColumnCollection[str, Column[Any]]:  # type: ignore # noqa: E501
             ...
 
-        c: ColumnCollection[Column[Any]]
+        @util.ro_non_memoized_property
+        def c(self) -> ReadOnlyColumnCollection[str, Column[Any]]:  # type: ignore # noqa: E501
+            ...
 
     def _gen_cache_key(self, anon_map, bindparams):
         if self._annotations:
@@ -737,7 +754,7 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
         PrimaryKeyConstraint(
             _implicit_generated=True
         )._set_parent_with_dispatch(self)
-        self.foreign_keys = set()
+        self.foreign_keys = set()  # type: ignore
         self._extra_dependencies = set()
         if self.schema is not None:
             self.fullname = "%s.%s" % (self.schema, self.name)
@@ -3537,7 +3554,7 @@ class ColumnCollectionMixin:
 
     """
 
-    columns: ColumnCollection[Column[Any]]
+    _columns: DedupeColumnCollection[Column[Any]]
 
     _allow_multiple_tables = False
 
@@ -3551,7 +3568,7 @@ class ColumnCollectionMixin:
     def __init__(self, *columns, **kw):
         _autoattach = kw.pop("_autoattach", True)
         self._column_flag = kw.pop("_column_flag", False)
-        self.columns = DedupeColumnCollection()
+        self._columns = DedupeColumnCollection()
 
         processed_expressions = kw.pop("_gather_expressions", None)
         if processed_expressions is not None:
@@ -3624,6 +3641,14 @@ class ColumnCollectionMixin:
                     )
                 )
 
+    @util.ro_memoized_property
+    def columns(self) -> ReadOnlyColumnCollection[str, Column[Any]]:
+        return self._columns.as_readonly()
+
+    @util.ro_memoized_property
+    def c(self) -> ReadOnlyColumnCollection[str, Column[Any]]:
+        return self._columns.as_readonly()
+
     def _col_expressions(self, table: Table) -> List[Column[Any]]:
         return [
             table.c[col] if isinstance(col, str) else col
@@ -3635,7 +3660,7 @@ class ColumnCollectionMixin:
             assert isinstance(parent, Table)
         for col in self._col_expressions(parent):
             if col is not None:
-                self.columns.add(col)
+                self._columns.add(col)
 
 
 class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
@@ -3668,7 +3693,7 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
             self, *columns, _autoattach=_autoattach, _column_flag=_column_flag
         )
 
-    columns: DedupeColumnCollection[Column[Any]]
+    columns: ReadOnlyColumnCollection[str, Column[Any]]
     """A :class:`_expression.ColumnCollection` representing the set of columns
     for this constraint.
 
@@ -3679,7 +3704,7 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
         ColumnCollectionMixin._set_parent(self, table)
 
     def __contains__(self, x):
-        return x in self.columns
+        return x in self._columns
 
     @util.deprecated(
         "1.4",
@@ -3708,7 +3733,7 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
             initially=self.initially,
             *[
                 _copy_expression(expr, self.parent, target_table)
-                for expr in self.columns
+                for expr in self._columns
             ],
             **constraint_kwargs,
         )
@@ -3723,13 +3748,13 @@ class ColumnCollectionConstraint(ColumnCollectionMixin, Constraint):
 
         """
 
-        return self.columns.contains_column(col)
+        return self._columns.contains_column(col)
 
-    def __iter__(self):
-        return iter(self.columns)
+    def __iter__(self) -> Iterator[Column[Any]]:
+        return iter(self._columns)
 
-    def __len__(self):
-        return len(self.columns)
+    def __len__(self) -> int:
+        return len(self._columns)
 
 
 class CheckConstraint(ColumnCollectionConstraint):
@@ -4002,10 +4027,10 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
             self._set_parent_with_dispatch(table)
 
     def _append_element(self, column: Column[Any], fk: ForeignKey) -> None:
-        self.columns.add(column)
+        self._columns.add(column)
         self.elements.append(fk)
 
-    columns: DedupeColumnCollection[Column[Any]]
+    columns: ReadOnlyColumnCollection[str, Column[Any]]
     """A :class:`_expression.ColumnCollection` representing the set of columns
     for this constraint.
 
@@ -4072,7 +4097,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
 
         """
         if hasattr(self, "parent"):
-            return self.columns.keys()
+            return self._columns.keys()
         else:
             return [
                 col.key if isinstance(col, ColumnElement) else str(col)
@@ -4095,7 +4120,7 @@ class ForeignKeyConstraint(ColumnCollectionConstraint):
                 "named '%s' is present." % (table.description, ke.args[0])
             ) from ke
 
-        for col, fk in zip(self.columns, self.elements):
+        for col, fk in zip(self._columns, self.elements):
             if not hasattr(fk, "parent") or fk.parent is not col:
                 fk._set_parent_with_dispatch(col)
 
@@ -4226,7 +4251,11 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
             table.constraints.add(self)
 
         table_pks = [c for c in table.c if c.primary_key]
-        if self.columns and table_pks and set(table_pks) != set(self.columns):
+        if (
+            self._columns
+            and table_pks
+            and set(table_pks) != set(self._columns)
+        ):
             util.warn(
                 "Table '%s' specifies columns %s as primary_key=True, "
                 "not matching locally specified columns %s; setting the "
@@ -4235,18 +4264,18 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
                 % (
                     table.name,
                     ", ".join("'%s'" % c.name for c in table_pks),
-                    ", ".join("'%s'" % c.name for c in self.columns),
-                    ", ".join("'%s'" % c.name for c in self.columns),
+                    ", ".join("'%s'" % c.name for c in self._columns),
+                    ", ".join("'%s'" % c.name for c in self._columns),
                 )
             )
             table_pks[:] = []
 
-        for c in self.columns:
+        for c in self._columns:
             c.primary_key = True
             if c._user_defined_nullable is NULL_UNSPECIFIED:
                 c.nullable = False
         if table_pks:
-            self.columns.extend(table_pks)
+            self._columns.extend(table_pks)
 
     def _reload(self, columns):
         """repopulate this :class:`.PrimaryKeyConstraint` given
@@ -4272,14 +4301,14 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
         for col in columns:
             col.primary_key = True
 
-        self.columns.extend(columns)
+        self._columns.extend(columns)
 
         PrimaryKeyConstraint._autoincrement_column._reset(self)
         self._set_parent_with_dispatch(self.table)
 
     def _replace(self, col):
         PrimaryKeyConstraint._autoincrement_column._reset(self)
-        self.columns.replace(col)
+        self._columns.replace(col)
 
         self.dispatch._sa_event_column_added_to_pk_constraint(self, col)
 
@@ -4288,9 +4317,9 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
         autoinc = self._autoincrement_column
 
         if autoinc is not None:
-            return [autoinc] + [c for c in self.columns if c is not autoinc]
+            return [autoinc] + [c for c in self._columns if c is not autoinc]
         else:
-            return list(self.columns)
+            return list(self._columns)
 
     @util.memoized_property
     def _autoincrement_column(self):
@@ -4323,8 +4352,8 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
                 return False
             return True
 
-        if len(self.columns) == 1:
-            col = list(self.columns)[0]
+        if len(self._columns) == 1:
+            col = list(self._columns)[0]
 
             if col.autoincrement is True:
                 _validate_autoinc(col, True)
@@ -4337,7 +4366,7 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
 
         else:
             autoinc = None
-            for col in self.columns:
+            for col in self._columns:
                 if col.autoincrement is True:
                     _validate_autoinc(col, True)
                     if autoinc is not None:

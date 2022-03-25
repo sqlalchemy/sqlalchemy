@@ -357,8 +357,8 @@ class ImmutableTest(fixtures.TestBase):
             with expect_raises_message(TypeError, "object is immutable"):
                 m()
 
-    def test_immutable_properties(self):
-        d = util.ImmutableProperties({3: 4})
+    def test_readonly_properties(self):
+        d = util.ReadOnlyProperties({3: 4})
         calls = (
             lambda: d.__delitem__(1),
             lambda: d.__setitem__(2, 3),
@@ -563,7 +563,7 @@ class ColumnCollectionCommon(testing.AssertsCompiledSQL):
         eq_(keys, ["c1", "foo", "c3"])
         ne_(id(keys), id(cc.keys()))
 
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
         eq_(ci.keys(), ["c1", "foo", "c3"])
 
     def test_values(self):
@@ -576,7 +576,7 @@ class ColumnCollectionCommon(testing.AssertsCompiledSQL):
         eq_(val, [c1, c2, c3])
         ne_(id(val), id(cc.values()))
 
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
         eq_(ci.values(), [c1, c2, c3])
 
     def test_items(self):
@@ -589,7 +589,7 @@ class ColumnCollectionCommon(testing.AssertsCompiledSQL):
         eq_(items, [("c1", c1), ("foo", c2), ("c3", c3)])
         ne_(id(items), id(cc.items()))
 
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
         eq_(ci.items(), [("c1", c1), ("foo", c2), ("c3", c3)])
 
     def test_key_index_error(self):
@@ -732,7 +732,7 @@ class ColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
 
         self._assert_collection_integrity(cc)
 
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
         eq_(ci._all_columns, [c1, c2a, c3, c2b])
         eq_(list(ci), [c1, c2a, c3, c2b])
         eq_(ci.keys(), ["c1", "c2", "c3", "c2"])
@@ -763,7 +763,7 @@ class ColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
 
         self._assert_collection_integrity(cc)
 
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
         eq_(ci._all_columns, [c1, c2a, c3, c2b])
         eq_(list(ci), [c1, c2a, c3, c2b])
         eq_(ci.keys(), ["c1", "c2", "c3", "c2"])
@@ -786,7 +786,7 @@ class ColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         assert cc.contains_column(c2)
         self._assert_collection_integrity(cc)
 
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
         eq_(ci._all_columns, [c1, c2, c3, c2])
         eq_(list(ci), [c1, c2, c3, c2])
 
@@ -821,7 +821,7 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         c2.key = "foo"
 
         cc = self._column_collection(columns=[("c1", c1), ("foo", c2)])
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
 
         d = {"cc": cc, "ci": ci}
 
@@ -922,7 +922,7 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         assert cc.contains_column(c2)
         self._assert_collection_integrity(cc)
 
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
         eq_(ci._all_columns, [c1, c2, c3])
         eq_(list(ci), [c1, c2, c3])
 
@@ -944,13 +944,13 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         assert cc.contains_column(c2)
         self._assert_collection_integrity(cc)
 
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
         eq_(ci._all_columns, [c1, c2, c3])
         eq_(list(ci), [c1, c2, c3])
 
     def test_replace(self):
         cc = DedupeColumnCollection()
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
 
         c1, c2a, c3, c2b = (
             column("c1"),
@@ -979,7 +979,7 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
 
     def test_replace_key_matches_name_of_another(self):
         cc = DedupeColumnCollection()
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
 
         c1, c2a, c3, c2b = (
             column("c1"),
@@ -1009,7 +1009,7 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
 
     def test_replace_key_matches(self):
         cc = DedupeColumnCollection()
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
 
         c1, c2a, c3, c2b = (
             column("c1"),
@@ -1041,7 +1041,7 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
 
     def test_replace_name_matches(self):
         cc = DedupeColumnCollection()
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
 
         c1, c2a, c3, c2b = (
             column("c1"),
@@ -1073,7 +1073,7 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
 
     def test_replace_no_match(self):
         cc = DedupeColumnCollection()
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
 
         c1, c2, c3, c4 = column("c1"), column("c2"), column("c3"), column("c4")
         c4.key = "X"
@@ -1123,7 +1123,7 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         cc = DedupeColumnCollection(
             columns=[("c1", c1), ("c2", c2), ("c3", c3)]
         )
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
 
         eq_(cc._all_columns, [c1, c2, c3])
         eq_(list(cc), [c1, c2, c3])
@@ -1184,7 +1184,7 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
 
     def test_dupes_extend(self):
         cc = DedupeColumnCollection()
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
 
         c1, c2a, c3, c2b = (
             column("c1"),
@@ -3044,7 +3044,7 @@ class TestProperties(fixtures.TestBase):
 
     def test_pickle_immuatbleprops(self):
         data = {"hello": "bla"}
-        props = util.Properties(data).as_immutable()
+        props = util.Properties(data).as_readonly()
 
         for loader, dumper in picklers():
             s = dumper(props)

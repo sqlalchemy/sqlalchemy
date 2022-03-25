@@ -56,7 +56,7 @@ from ..sql import coercions
 from ..sql import dml
 from ..sql import roles
 from ..sql import visitors
-from ..sql._typing import _ColumnsClauseElement
+from ..sql._typing import _ColumnsClauseArgument
 from ..sql.base import CompileState
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..util.typing import Literal
@@ -2040,7 +2040,7 @@ class Session(_SessionClassMethods):
         )
 
     def query(
-        self, *entities: "_ColumnsClauseElement", **kwargs: Any
+        self, *entities: "_ColumnsClauseArgument", **kwargs: Any
     ) -> "Query":
         """Return a new :class:`_query.Query` object corresponding to this
         :class:`_orm.Session`.

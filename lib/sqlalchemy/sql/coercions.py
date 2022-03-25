@@ -46,6 +46,7 @@ if typing.TYPE_CHECKING:
     from . import schema
     from . import selectable
     from . import traversals
+    from ._typing import _ColumnsClauseArgument
     from .elements import ClauseElement
     from .elements import ColumnClause
     from .elements import ColumnElement
@@ -161,6 +162,32 @@ def expect(
     post_inspect: bool = False,
     **kw: Any,
 ) -> ColumnElement[_T]:
+    ...
+
+
+@overload
+def expect(
+    role: Type[roles.DMLTableRole],
+    element: Any,
+    *,
+    apply_propagate_attrs: Optional[ClauseElement] = None,
+    argname: Optional[str] = None,
+    post_inspect: bool = False,
+    **kw: Any,
+) -> roles.DMLTableRole:
+    ...
+
+
+@overload
+def expect(
+    role: Type[roles.ColumnsClauseRole],
+    element: Any,
+    *,
+    apply_propagate_attrs: Optional[ClauseElement] = None,
+    argname: Optional[str] = None,
+    post_inspect: bool = False,
+    **kw: Any,
+) -> roles.ColumnsClauseRole:
     ...
 
 

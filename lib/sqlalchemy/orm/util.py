@@ -632,7 +632,6 @@ class AliasedInsp(
     ORMEntityColumnsClauseRole,
     ORMFromClauseRole,
     sql_base.HasCacheKey,
-    roles.HasFromClauseElement,
     InspectionAttr,
     MemoizedSlots,
 ):

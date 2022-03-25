@@ -48,7 +48,7 @@ from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
     from . import sqltypes
-    from ._typing import _ColumnExpression
+    from ._typing import _ColumnExpressionArgument
     from ._typing import _TypeEngineArgument
     from .elements import BinaryExpression
     from .functions import FunctionElement
@@ -58,7 +58,7 @@ if typing.TYPE_CHECKING:
 _T = TypeVar("_T")
 
 
-def all_(expr: _ColumnExpression[_T]) -> CollectionAggregate[bool]:
+def all_(expr: _ColumnExpressionArgument[_T]) -> CollectionAggregate[bool]:
     """Produce an ALL expression.
 
     For dialects such as that of PostgreSQL, this operator applies
@@ -112,7 +112,7 @@ def all_(expr: _ColumnExpression[_T]) -> CollectionAggregate[bool]:
     return CollectionAggregate._create_all(expr)
 
 
-def and_(*clauses: _ColumnExpression[bool]) -> BooleanClauseList:
+def and_(*clauses: _ColumnExpressionArgument[bool]) -> ColumnElement[bool]:
     r"""Produce a conjunction of expressions joined by ``AND``.
 
     E.g.::
@@ -173,7 +173,7 @@ def and_(*clauses: _ColumnExpression[bool]) -> BooleanClauseList:
     return BooleanClauseList.and_(*clauses)
 
 
-def any_(expr: _ColumnExpression[_T]) -> CollectionAggregate[bool]:
+def any_(expr: _ColumnExpressionArgument[_T]) -> CollectionAggregate[bool]:
     """Produce an ANY expression.
 
     For dialects such as that of PostgreSQL, this operator applies
@@ -227,7 +227,7 @@ def any_(expr: _ColumnExpression[_T]) -> CollectionAggregate[bool]:
     return CollectionAggregate._create_any(expr)
 
 
-def asc(column: _ColumnExpression[_T]) -> UnaryExpression[_T]:
+def asc(column: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
     """Produce an ascending ``ORDER BY`` clause element.
 
     e.g.::
@@ -266,7 +266,7 @@ def asc(column: _ColumnExpression[_T]) -> UnaryExpression[_T]:
 
 
 def collate(
-    expression: _ColumnExpression[str], collation: str
+    expression: _ColumnExpressionArgument[str], collation: str
 ) -> BinaryExpression[str]:
     """Return the clause ``expression COLLATE collation``.
 
@@ -289,7 +289,7 @@ def collate(
 
 
 def between(
-    expr: _ColumnExpression[_T],
+    expr: _ColumnExpressionArgument[_T],
     lower_bound: Any,
     upper_bound: Any,
     symmetric: bool = False,
@@ -364,17 +364,19 @@ def outparam(
     return BindParameter(key, None, type_=type_, unique=False, isoutparam=True)
 
 
+# mypy insists that BinaryExpression and _HasClauseElement protocol overlap.
+# they do not.  at all.  bug in mypy?
 @overload
-def not_(clause: BinaryExpression[_T]) -> BinaryExpression[_T]:
+def not_(clause: BinaryExpression[_T]) -> BinaryExpression[_T]:  # type: ignore
     ...
 
 
 @overload
-def not_(clause: _ColumnExpression[_T]) -> ColumnElement[_T]:
+def not_(clause: _ColumnExpressionArgument[_T]) -> ColumnElement[_T]:
     ...
 
 
-def not_(clause: _ColumnExpression[_T]) -> ColumnElement[_T]:
+def not_(clause: _ColumnExpressionArgument[_T]) -> ColumnElement[_T]:
     """Return a negation of the given clause, i.e. ``NOT(clause)``.
 
     The ``~`` operator is also overloaded on all
@@ -646,7 +648,7 @@ def bindparam(
 
 def case(
     *whens: Union[
-        typing_Tuple[_ColumnExpression[bool], Any], Mapping[Any, Any]
+        typing_Tuple[_ColumnExpressionArgument[bool], Any], Mapping[Any, Any]
     ],
     value: Optional[Any] = None,
     else_: Optional[Any] = None,
@@ -775,7 +777,7 @@ def case(
 
 
 def cast(
-    expression: _ColumnExpression[Any],
+    expression: _ColumnExpressionArgument[Any],
     type_: _TypeEngineArgument[_T],
 ) -> Cast[_T]:
     r"""Produce a ``CAST`` expression.
@@ -932,7 +934,7 @@ def column(
     return ColumnClause(text, type_, is_literal, _selectable)
 
 
-def desc(column: _ColumnExpression[_T]) -> UnaryExpression[_T]:
+def desc(column: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
     """Produce a descending ``ORDER BY`` clause element.
 
     e.g.::
@@ -971,7 +973,7 @@ def desc(column: _ColumnExpression[_T]) -> UnaryExpression[_T]:
     return UnaryExpression._create_desc(column)
 
 
-def distinct(expr: _ColumnExpression[_T]) -> UnaryExpression[_T]:
+def distinct(expr: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
     """Produce an column-expression-level unary ``DISTINCT`` clause.
 
     This applies the ``DISTINCT`` keyword to an individual column
@@ -1010,7 +1012,7 @@ def distinct(expr: _ColumnExpression[_T]) -> UnaryExpression[_T]:
     return UnaryExpression._create_distinct(expr)
 
 
-def extract(field: str, expr: _ColumnExpression[Any]) -> Extract:
+def extract(field: str, expr: _ColumnExpressionArgument[Any]) -> Extract:
     """Return a :class:`.Extract` construct.
 
     This is typically available as :func:`.extract`
@@ -1090,7 +1092,7 @@ def false() -> False_:
 
 
 def funcfilter(
-    func: FunctionElement[_T], *criterion: _ColumnExpression[bool]
+    func: FunctionElement[_T], *criterion: _ColumnExpressionArgument[bool]
 ) -> FunctionFilter[_T]:
     """Produce a :class:`.FunctionFilter` object against a function.
 
@@ -1122,7 +1124,7 @@ def funcfilter(
 
 def label(
     name: str,
-    element: _ColumnExpression[_T],
+    element: _ColumnExpressionArgument[_T],
     type_: Optional[_TypeEngineArgument[_T]] = None,
 ) -> "Label[_T]":
     """Return a :class:`Label` object for the
@@ -1149,7 +1151,7 @@ def null() -> Null:
     return Null._instance()
 
 
-def nulls_first(column: _ColumnExpression[_T]) -> UnaryExpression[_T]:
+def nulls_first(column: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
     """Produce the ``NULLS FIRST`` modifier for an ``ORDER BY`` expression.
 
     :func:`.nulls_first` is intended to modify the expression produced
@@ -1193,7 +1195,7 @@ def nulls_first(column: _ColumnExpression[_T]) -> UnaryExpression[_T]:
     return UnaryExpression._create_nulls_first(column)
 
 
-def nulls_last(column: _ColumnExpression[_T]) -> UnaryExpression[_T]:
+def nulls_last(column: _ColumnExpressionArgument[_T]) -> UnaryExpression[_T]:
     """Produce the ``NULLS LAST`` modifier for an ``ORDER BY`` expression.
 
     :func:`.nulls_last` is intended to modify the expression produced
@@ -1237,7 +1239,7 @@ def nulls_last(column: _ColumnExpression[_T]) -> UnaryExpression[_T]:
     return UnaryExpression._create_nulls_last(column)
 
 
-def or_(*clauses: _ColumnExpression[bool]) -> BooleanClauseList:
+def or_(*clauses: _ColumnExpressionArgument[bool]) -> ColumnElement[bool]:
     """Produce a conjunction of expressions joined by ``OR``.
 
     E.g.::
@@ -1291,10 +1293,16 @@ def or_(*clauses: _ColumnExpression[bool]) -> BooleanClauseList:
 def over(
     element: FunctionElement[_T],
     partition_by: Optional[
-        Union[Iterable[_ColumnExpression[Any]], _ColumnExpression[Any]]
+        Union[
+            Iterable[_ColumnExpressionArgument[Any]],
+            _ColumnExpressionArgument[Any],
+        ]
     ] = None,
     order_by: Optional[
-        Union[Iterable[_ColumnExpression[Any]], _ColumnExpression[Any]]
+        Union[
+            Iterable[_ColumnExpressionArgument[Any]],
+            _ColumnExpressionArgument[Any],
+        ]
     ] = None,
     range_: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
     rows: Optional[typing_Tuple[Optional[int], Optional[int]]] = None,
@@ -1502,7 +1510,7 @@ def true() -> True_:
 
 
 def tuple_(
-    *clauses: _ColumnExpression[Any],
+    *clauses: _ColumnExpressionArgument[Any],
     types: Optional[Sequence[_TypeEngineArgument[Any]]] = None,
 ) -> Tuple:
     """Return a :class:`.Tuple`.
@@ -1531,7 +1539,7 @@ def tuple_(
 
 
 def type_coerce(
-    expression: _ColumnExpression[Any],
+    expression: _ColumnExpressionArgument[Any],
     type_: _TypeEngineArgument[_T],
 ) -> TypeCoerce[_T]:
     r"""Associate a SQL expression with a particular type, without rendering
@@ -1612,7 +1620,7 @@ def type_coerce(
 
 
 def within_group(
-    element: FunctionElement[_T], *order_by: _ColumnExpression[Any]
+    element: FunctionElement[_T], *order_by: _ColumnExpressionArgument[Any]
 ) -> WithinGroup[_T]:
     r"""Produce a :class:`.WithinGroup` object against a function.
 

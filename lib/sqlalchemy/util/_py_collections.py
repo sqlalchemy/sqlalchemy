@@ -29,37 +29,45 @@ _KT = TypeVar("_KT", bound=Any)
 _VT = TypeVar("_VT", bound=Any)
 
 
-class ImmutableContainer:
+class ReadOnlyContainer:
     __slots__ = ()
+
+    def _readonly(self, *arg: Any, **kw: Any) -> NoReturn:
+        raise TypeError(
+            "%s object is immutable and/or readonly" % self.__class__.__name__
+        )
 
     def _immutable(self, *arg: Any, **kw: Any) -> NoReturn:
         raise TypeError("%s object is immutable" % self.__class__.__name__)
 
     def __delitem__(self, key: Any) -> NoReturn:
-        self._immutable()
+        self._readonly()
 
     def __setitem__(self, key: Any, value: Any) -> NoReturn:
-        self._immutable()
+        self._readonly()
 
     def __setattr__(self, key: str, value: Any) -> NoReturn:
+        self._readonly()
+
+
+class ImmutableDictBase(ReadOnlyContainer, Dict[_KT, _VT]):
+    def _readonly(self, *arg: Any, **kw: Any) -> NoReturn:
         self._immutable()
 
-
-class ImmutableDictBase(ImmutableContainer, Dict[_KT, _VT]):
     def clear(self) -> NoReturn:
-        self._immutable()
+        self._readonly()
 
     def pop(self, key: Any, default: Optional[Any] = None) -> NoReturn:
-        self._immutable()
+        self._readonly()
 
     def popitem(self) -> NoReturn:
-        self._immutable()
+        self._readonly()
 
     def setdefault(self, key: Any, default: Optional[Any] = None) -> NoReturn:
-        self._immutable()
+        self._readonly()
 
     def update(self, *arg: Any, **kw: Any) -> NoReturn:
-        self._immutable()
+        self._readonly()
 
 
 class immutabledict(ImmutableDictBase[_KT, _VT]):

@@ -2206,7 +2206,7 @@ class BulkORMUpdate(ORMDMLState, UpdateDMLState, BulkUDCompileState):
             if opt._is_criteria_option:
                 opt.get_global_criteria(extra_criteria_attributes)
 
-        if not statement._preserve_parameter_order and statement._values:
+        if statement._values:
             self._resolved_values = dict(self._resolved_values)
 
         new_stmt = sql.Update.__new__(sql.Update)

@@ -122,7 +122,7 @@ class InstanceState(interfaces.InspectionAttrInfo):
         since the last flush.
 
         """
-        return util.ImmutableProperties(
+        return util.ReadOnlyProperties(
             dict((key, AttributeState(self, key)) for key in self.manager)
         )
 

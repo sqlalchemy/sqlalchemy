@@ -813,6 +813,7 @@ from typing import Generic
 from typing import List
 from typing import Optional
 from typing import overload
+from typing import Sequence
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
@@ -824,15 +825,20 @@ from ..orm import attributes
 from ..orm import InspectionAttrExtensionType
 from ..orm import interfaces
 from ..orm import ORMDescriptor
-from ..sql._typing import is_has_column_element_clause_element
+from ..sql._typing import is_has_clause_element
 from ..sql.elements import ColumnElement
 from ..sql.elements import SQLCoreOperations
 from ..util.typing import Literal
 from ..util.typing import Protocol
 
+
 if TYPE_CHECKING:
     from ..orm.util import AliasedInsp
+    from ..sql._typing import _ColumnExpressionArgument
+    from ..sql._typing import _DMLColumnArgument
+    from ..sql._typing import _HasClauseElement
     from ..sql.operators import OperatorType
+    from ..sql.roles import ColumnsClauseRole
 
 _T = TypeVar("_T", bound=Any)
 _T_co = TypeVar("_T_co", bound=Any, covariant=True)
@@ -878,10 +884,12 @@ class _HybridSetterType(Protocol[_T_con]):
         ...
 
 
-class _HybridUpdaterType(Protocol[_T]):
+class _HybridUpdaterType(Protocol[_T_con]):
     def __call__(
-        self, cls: Type[Any], value: Union[_T, SQLCoreOperations[_T]]
-    ) -> List[Tuple[SQLCoreOperations[_T], Any]]:
+        self,
+        cls: Type[Any],
+        value: Union[_T_con, _ColumnExpressionArgument[_T_con]],
+    ) -> List[Tuple[_DMLColumnArgument, Any]]:
         ...
 
 
@@ -890,8 +898,10 @@ class _HybridDeleterType(Protocol[_T_co]):
         ...
 
 
-class _HybridExprCallableType(Protocol[_T]):
-    def __call__(self, cls: Any) -> SQLCoreOperations[_T]:
+class _HybridExprCallableType(Protocol[_T_co]):
+    def __call__(
+        self, cls: Any
+    ) -> Union[_HasClauseElement, ColumnElement[_T_co]]:
         ...
 
 
@@ -1273,17 +1283,21 @@ class Comparator(interfaces.PropComparator[_T]):
     :class:`~.orm.interfaces.PropComparator`
     classes for usage with hybrids."""
 
-    def __init__(self, expression: SQLCoreOperations[_T]):
+    def __init__(
+        self, expression: Union[_HasClauseElement, ColumnElement[_T]]
+    ):
         self.expression = expression
 
-    def __clause_element__(self) -> ColumnElement[_T]:
+    def __clause_element__(self) -> ColumnsClauseRole:
         expr = self.expression
-        if is_has_column_element_clause_element(expr):
-            expr = expr.__clause_element__()
+        if is_has_clause_element(expr):
+            ret_expr = expr.__clause_element__()
+        else:
+            if TYPE_CHECKING:
+                assert isinstance(expr, ColumnElement)
+            ret_expr = expr
 
-        elif TYPE_CHECKING:
-            assert isinstance(expr, ColumnElement)
-        return expr
+        return ret_expr
 
     @util.non_memoized_property
     def property(self) -> Any:
@@ -1298,7 +1312,7 @@ class ExprComparator(Comparator[_T]):
     def __init__(
         self,
         cls: Type[Any],
-        expression: SQLCoreOperations[_T],
+        expression: Union[_HasClauseElement, ColumnElement[_T]],
         hybrid: hybrid_property[_T],
     ):
         self.cls = cls
@@ -1314,7 +1328,7 @@ class ExprComparator(Comparator[_T]):
 
     def _bulk_update_tuples(
         self, value: Any
-    ) -> List[Tuple[SQLCoreOperations[_T], Any]]:
+    ) -> Sequence[Tuple[_DMLColumnArgument, Any]]:
         if isinstance(self.expression, attributes.QueryableAttribute):
             return self.expression._bulk_update_tuples(value)
         elif self.hybrid.update_expr is not None:

@@ -21,9 +21,7 @@ from ._collections import flatten_iterator as flatten_iterator
 from ._collections import has_dupes as has_dupes
 from ._collections import has_intersection as has_intersection
 from ._collections import IdentitySet as IdentitySet
-from ._collections import ImmutableContainer as ImmutableContainer
 from ._collections import immutabledict as immutabledict
-from ._collections import ImmutableProperties as ImmutableProperties
 from ._collections import LRUCache as LRUCache
 from ._collections import merge_lists_w_ordering as merge_lists_w_ordering
 from ._collections import ordered_column_set as ordered_column_set
@@ -33,6 +31,8 @@ from ._collections import OrderedProperties as OrderedProperties
 from ._collections import OrderedSet as OrderedSet
 from ._collections import PopulateDict as PopulateDict
 from ._collections import Properties as Properties
+from ._collections import ReadOnlyContainer as ReadOnlyContainer
+from ._collections import ReadOnlyProperties as ReadOnlyProperties
 from ._collections import ScopedRegistry as ScopedRegistry
 from ._collections import sort_dictionary as sort_dictionary
 from ._collections import ThreadLocalRegistry as ThreadLocalRegistry
@@ -107,6 +107,9 @@ from .langhelpers import get_func_kwargs as get_func_kwargs
 from .langhelpers import getargspec_init as getargspec_init
 from .langhelpers import has_compiled_ext as has_compiled_ext
 from .langhelpers import HasMemoized as HasMemoized
+from .langhelpers import (
+    HasMemoized_ro_memoized_attribute as HasMemoized_ro_memoized_attribute,
+)
 from .langhelpers import hybridmethod as hybridmethod
 from .langhelpers import hybridproperty as hybridproperty
 from .langhelpers import inject_docstring_text as inject_docstring_text

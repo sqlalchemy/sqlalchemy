@@ -39,6 +39,7 @@ from ..util.typing import Literal
 if TYPE_CHECKING:
     from .compiler import _BindNameForColProtocol
     from .compiler import SQLCompiler
+    from .dml import _DMLColumnElement
     from .dml import DMLState
     from .dml import Insert
     from .dml import Update
@@ -129,8 +130,10 @@ def _get_crud_params(
             [],
         )
 
-    stmt_parameter_tuples: Optional[List[Any]]
-    spd: Optional[MutableMapping[str, Any]]
+    stmt_parameter_tuples: Optional[
+        List[Tuple[Union[str, ColumnClause[Any]], Any]]
+    ]
+    spd: Optional[MutableMapping[_DMLColumnElement, Any]]
 
     if compile_state._has_multi_parameters:
         mp = compile_state._multi_parameters
@@ -355,8 +358,8 @@ def _handle_values_anonymous_param(compiler, col, value, name, **kw):
 def _key_getters_for_crud_column(
     compiler: SQLCompiler, stmt: ValuesBase, compile_state: DMLState
 ) -> Tuple[
-    Callable[[Union[str, Column[Any]]], Union[str, Tuple[str, str]]],
-    Callable[[Column[Any]], Union[str, Tuple[str, str]]],
+    Callable[[Union[str, ColumnClause[Any]]], Union[str, Tuple[str, str]]],
+    Callable[[ColumnClause[Any]], Union[str, Tuple[str, str]]],
     _BindNameForColProtocol,
 ]:
     if dml.isupdate(compile_state) and compile_state._extra_froms:
