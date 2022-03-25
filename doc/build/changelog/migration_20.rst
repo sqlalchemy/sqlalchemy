@@ -100,7 +100,44 @@ automatically.
 
     :ref:`postgresql_psycopg`
 
+.. _ticket_7631:
 
+New Conditional DDL for Constraints and Indexes
+------------------------------------------------
+
+A new method :meth:`_schema.Constraint.ddl_if` and :meth:`_schema.Index.ddl_if`
+allows constructs such as :class:`_schema.CheckConstraint`, :class:`_schema.UniqueConstraint`
+and :class:`_schema.Index` to be rendered conditionally for a given
+:class:`_schema.Table`, based on the same kinds of criteria that are accepted
+by the :meth:`_schema.DDLElement.execute_if` method.  In the example below,
+the CHECK constraint and index will only be produced against a PostgreSQL
+backend::
+
+    meta = MetaData()
+
+
+    my_table = Table(
+        "my_table",
+        meta,
+        Column("id", Integer, primary_key=True),
+        Column("num", Integer),
+        Column("data", String),
+        Index("my_pg_index", "data").ddl_if(dialect="postgresql"),
+        CheckConstraint("num > 5").ddl_if(dialect="postgresql"),
+    )
+
+    e1 = create_engine("sqlite://", echo=True)
+    meta.create_all(e1)  # will not generate CHECK and INDEX
+
+
+    e2 = create_engine("postgresql://scott:tiger@localhost/test", echo=True)
+    meta.create_all(e2)  # will generate CHECK and INDEX
+
+.. seealso::
+
+    :ref:`schema_ddl_ddl_if`
+
+:ticket:`7631`
 
 Behavioral Changes
 ==================

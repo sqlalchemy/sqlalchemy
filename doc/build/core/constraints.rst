@@ -770,6 +770,7 @@ Constraints API
 ---------------
 .. autoclass:: Constraint
     :members:
+    :inherited-members:
 
 .. autoclass:: ColumnCollectionMixin
     :members:

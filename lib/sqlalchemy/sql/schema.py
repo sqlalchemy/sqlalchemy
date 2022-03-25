@@ -184,6 +184,61 @@ class SchemaItem(SchemaEventTarget, visitors.Visitable):
     _use_schema_map = True
 
 
+SelfHasConditionalDDL = TypeVar(
+    "SelfHasConditionalDDL", bound="HasConditionalDDL"
+)
+
+
+class HasConditionalDDL:
+    """define a class that includes the :meth:`.HasConditionalDDL.ddl_if`
+    method, allowing for conditional rendering of DDL.
+
+    Currently applies to constraints and indexes.
+
+    .. versionadded:: 2.0
+
+
+    """
+
+    _ddl_if: Optional[ddl.DDLIf] = None
+
+    def ddl_if(
+        self: SelfHasConditionalDDL,
+        dialect: Optional[str] = None,
+        callable_: Optional[ddl.DDLIfCallable] = None,
+        state: Optional[Any] = None,
+    ) -> SelfHasConditionalDDL:
+        r"""apply a conditional DDL rule to this schema item.
+
+        These rules work in a similar manner to the
+        :meth:`.DDLElement.execute_if` callable, with the added feature that
+        the criteria may be checked within the DDL compilation phase for a
+        construct such as :class:`.CreateTable`.
+        :meth:`.HasConditionalDDL.ddl_if` currently applies towards the
+        :class:`.Index` construct as well as all :class:`.Constraint`
+        constructs.
+
+        :param dialect: string name of a dialect, or a tuple of string names
+         to indicate multiple dialect types.
+
+        :param callable\_: a callable that is constructed using the same form
+         as that described in :paramref:`.DDLElement.execute_if.callable_`.
+
+        :param state: any arbitrary object that will be passed to the
+         callable, if present.
+
+        .. versionadded:: 2.0
+
+        .. seealso::
+
+            :ref:`schema_ddl_ddl_if` - background and usage examples
+
+
+        """
+        self._ddl_if = ddl.DDLIf(dialect, callable_, state)
+        return self
+
+
 class HasSchemaAttr(SchemaItem):
     """schema item that includes a top-level schema name"""
 
@@ -3355,7 +3410,7 @@ class DefaultClause(FetchedValue):
         return "DefaultClause(%r, for_update=%r)" % (self.arg, self.for_update)
 
 
-class Constraint(DialectKWArgs, SchemaItem):
+class Constraint(DialectKWArgs, HasConditionalDDL, SchemaItem):
     """A table-level SQL constraint.
 
     :class:`_schema.Constraint` serves as the base class for the series of
@@ -3423,6 +3478,16 @@ class Constraint(DialectKWArgs, SchemaItem):
         self._type_bound = _type_bound
         util.set_creation_order(self)
         self._validate_dialect_kwargs(dialect_kw)
+
+    def _should_create_for_compiler(self, compiler, **kw):
+        if self._create_rule is not None and not self._create_rule(compiler):
+            return False
+        elif self._ddl_if is not None:
+            return self._ddl_if._should_execute(
+                ddl.CreateConstraint(self), self, None, compiler=compiler, **kw
+            )
+        else:
+            return True
 
     @property
     def table(self):
@@ -4292,7 +4357,9 @@ class UniqueConstraint(ColumnCollectionConstraint):
     __visit_name__ = "unique_constraint"
 
 
-class Index(DialectKWArgs, ColumnCollectionMixin, SchemaItem):
+class Index(
+    DialectKWArgs, ColumnCollectionMixin, HasConditionalDDL, SchemaItem
+):
     """A table-level INDEX.
 
     Defines a composite (one or more column) INDEX.
