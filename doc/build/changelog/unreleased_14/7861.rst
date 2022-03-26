@@ -1,0 +1,10 @@
+.. change::
+    :tags: usecase, orm
+    :tickets: 7861
+
+    Added new attributes :attr:`.UpdateBase.returning_column_descriptions` and
+    :attr:`.UpdateBase.entity_description` to allow for inspection of ORM
+    attributes and entities that are installed as part of an :class:`.Insert`,
+    :class:`.Update`, or :class:`.Delete` construct. The
+    :attr:`.Select.column_descriptions` accessor is also now implemented for
+    Core-only selectables.

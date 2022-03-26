@@ -6,11 +6,13 @@ from sqlalchemy import bindparam
 from sqlalchemy import Boolean
 from sqlalchemy import cast
 from sqlalchemy import Column
+from sqlalchemy import delete
 from sqlalchemy import exc
 from sqlalchemy import exists
 from sqlalchemy import false
 from sqlalchemy import ForeignKey
 from sqlalchemy import func
+from sqlalchemy import insert
 from sqlalchemy import Integer
 from sqlalchemy import join
 from sqlalchemy import literal_column
@@ -29,6 +31,7 @@ from sqlalchemy import true
 from sqlalchemy import type_coerce
 from sqlalchemy import TypeDecorator
 from sqlalchemy import union
+from sqlalchemy import update
 from sqlalchemy import util
 from sqlalchemy.sql import Alias
 from sqlalchemy.sql import annotation
@@ -87,6 +90,135 @@ class SelectableTest(
     fixtures.TestBase, AssertsExecutionResults, AssertsCompiledSQL
 ):
     __dialect__ = "default"
+
+    @testing.combinations(
+        (
+            (table1.c.col1, table1.c.col2),
+            [
+                {
+                    "name": "col1",
+                    "type": table1.c.col1.type,
+                    "expr": table1.c.col1,
+                },
+                {
+                    "name": "col2",
+                    "type": table1.c.col2.type,
+                    "expr": table1.c.col2,
+                },
+            ],
+        ),
+        (
+            (table1,),
+            [
+                {
+                    "name": "col1",
+                    "type": table1.c.col1.type,
+                    "expr": table1.c.col1,
+                },
+                {
+                    "name": "col2",
+                    "type": table1.c.col2.type,
+                    "expr": table1.c.col2,
+                },
+                {
+                    "name": "col3",
+                    "type": table1.c.col3.type,
+                    "expr": table1.c.col3,
+                },
+                {
+                    "name": "colx",
+                    "type": table1.c.colx.type,
+                    "expr": table1.c.colx,
+                },
+            ],
+        ),
+        (
+            (func.count(table1.c.col1),),
+            [
+                {
+                    "name": "count",
+                    "type": testing.eq_type_affinity(Integer),
+                    "expr": testing.eq_clause_element(
+                        func.count(table1.c.col1)
+                    ),
+                }
+            ],
+        ),
+        (
+            (func.count(table1.c.col1), func.count(table1.c.col2)),
+            [
+                {
+                    "name": "count",
+                    "type": testing.eq_type_affinity(Integer),
+                    "expr": testing.eq_clause_element(
+                        func.count(table1.c.col1)
+                    ),
+                },
+                {
+                    "name": "count_1",
+                    "type": testing.eq_type_affinity(Integer),
+                    "expr": testing.eq_clause_element(
+                        func.count(table1.c.col2)
+                    ),
+                },
+            ],
+        ),
+    )
+    def test_core_column_descriptions(self, cols, expected):
+        stmt = select(*cols)
+        # reverse eq_ is so eq_clause_element works
+        eq_(expected, stmt.column_descriptions)
+
+    @testing.combinations(insert, update, delete, argnames="dml_construct")
+    @testing.combinations(
+        (
+            table1,
+            (table1.c.col1, table1.c.col2),
+            {"name": "table1", "table": table1},
+            [
+                {
+                    "name": "col1",
+                    "type": table1.c.col1.type,
+                    "expr": table1.c.col1,
+                },
+                {
+                    "name": "col2",
+                    "type": table1.c.col2.type,
+                    "expr": table1.c.col2,
+                },
+            ],
+        ),
+        (
+            table1,
+            (func.count(table1.c.col1),),
+            {"name": "table1", "table": table1},
+            [
+                {
+                    "name": None,
+                    "type": testing.eq_type_affinity(Integer),
+                    "expr": testing.eq_clause_element(
+                        func.count(table1.c.col1)
+                    ),
+                },
+            ],
+        ),
+        (
+            table1,
+            None,
+            {"name": "table1", "table": table1},
+            [],
+        ),
+        argnames="entity, cols, expected_entity, expected_returning",
+    )
+    def test_dml_descriptions(
+        self, dml_construct, entity, cols, expected_entity, expected_returning
+    ):
+        stmt = dml_construct(entity)
+        if cols:
+            stmt = stmt.returning(*cols)
+
+        eq_(stmt.entity_description, expected_entity)
+        eq_(expected_returning, stmt.returning_column_descriptions)
 
     def test_indirect_correspondence_on_labels(self):
         # this test depends upon 'distance' to

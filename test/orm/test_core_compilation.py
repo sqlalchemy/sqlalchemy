@@ -1,5 +1,6 @@
 from sqlalchemy import bindparam
 from sqlalchemy import Column
+from sqlalchemy import delete
 from sqlalchemy import exc
 from sqlalchemy import func
 from sqlalchemy import insert
@@ -12,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy import testing
 from sqlalchemy import text
 from sqlalchemy import union
+from sqlalchemy import update
 from sqlalchemy import util
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm import column_property
@@ -112,6 +114,18 @@ class SelectableTest(QueryTest, AssertsCompiledSQL):
             ],
         ),
         (
+            lambda user_alias: (user_alias,),
+            lambda User, user_alias: [
+                {
+                    "name": None,
+                    "type": User,
+                    "aliased": True,
+                    "expr": user_alias,
+                    "entity": user_alias,
+                }
+            ],
+        ),
+        (
             lambda User: (User.id,),
             lambda User: [
                 {
@@ -161,16 +175,100 @@ class SelectableTest(QueryTest, AssertsCompiledSQL):
                 },
             ],
         ),
+        (
+            lambda user_table: (user_table,),
+            lambda user_table: [
+                {
+                    "name": "id",
+                    "type": testing.eq_type_affinity(sqltypes.Integer),
+                    "expr": user_table.c.id,
+                },
+                {
+                    "name": "name",
+                    "type": testing.eq_type_affinity(sqltypes.String),
+                    "expr": user_table.c.name,
+                },
+            ],
+        ),
     )
     def test_column_descriptions(self, cols, expected):
         User, Address = self.classes("User", "Address")
+        ua = aliased(User)
 
-        cols = testing.resolve_lambda(cols, User=User, Address=Address)
-        expected = testing.resolve_lambda(expected, User=User, Address=Address)
+        cols = testing.resolve_lambda(
+            cols,
+            User=User,
+            Address=Address,
+            user_alias=ua,
+            user_table=inspect(User).local_table,
+        )
+        expected = testing.resolve_lambda(
+            expected,
+            User=User,
+            Address=Address,
+            user_alias=ua,
+            user_table=inspect(User).local_table,
+        )
 
         stmt = select(*cols)
-
         eq_(stmt.column_descriptions, expected)
+
+    @testing.combinations(insert, update, delete, argnames="dml_construct")
+    @testing.combinations(
+        (
+            lambda User: User,
+            lambda User: (User.id, User.name),
+            lambda User, user_table: {
+                "name": "User",
+                "type": User,
+                "expr": User,
+                "entity": User,
+                "table": user_table,
+            },
+            lambda User: [
+                {
+                    "name": "id",
+                    "type": testing.eq_type_affinity(sqltypes.Integer),
+                    "aliased": False,
+                    "expr": User.id,
+                    "entity": User,
+                },
+                {
+                    "name": "name",
+                    "type": testing.eq_type_affinity(sqltypes.String),
+                    "aliased": False,
+                    "expr": User.name,
+                    "entity": User,
+                },
+            ],
+        ),
+        argnames="entity, cols, expected_entity, expected_returning",
+    )
+    def test_dml_descriptions(
+        self, dml_construct, entity, cols, expected_entity, expected_returning
+    ):
+        User, Address = self.classes("User", "Address")
+
+        lambda_args = dict(
+            User=User,
+            Address=Address,
+            user_table=inspect(User).local_table,
+        )
+        entity = testing.resolve_lambda(entity, **lambda_args)
+        cols = testing.resolve_lambda(cols, **lambda_args)
+        expected_entity = testing.resolve_lambda(
+            expected_entity, **lambda_args
+        )
+        expected_returning = testing.resolve_lambda(
+            expected_returning, **lambda_args
+        )
+
+        stmt = dml_construct(entity)
+        if cols:
+            stmt = stmt.returning(*cols)
+
+        eq_(stmt.entity_description, expected_entity)
+        eq_(stmt.returning_column_descriptions, expected_returning)
 
 
 class ColumnsClauseFromsTest(QueryTest, AssertsCompiledSQL):

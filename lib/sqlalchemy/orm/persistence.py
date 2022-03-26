@@ -42,6 +42,7 @@ from ..sql.base import _entity_namespace_key
 from ..sql.base import CompileState
 from ..sql.base import Options
 from ..sql.dml import DeleteDMLState
+from ..sql.dml import InsertDMLState
 from ..sql.dml import UpdateDMLState
 from ..sql.elements import BooleanClauseList
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
@@ -2133,8 +2134,59 @@ class BulkUDCompileState(CompileState):
         }
 
 
+class ORMDMLState:
+    @classmethod
+    def get_entity_description(cls, statement):
+        ext_info = statement.table._annotations["parententity"]
+        mapper = ext_info.mapper
+        if ext_info.is_aliased_class:
+            _label_name = ext_info.name
+        else:
+            _label_name = mapper.class_.__name__
+
+        return {
+            "name": _label_name,
+            "type": mapper.class_,
+            "expr": ext_info.entity,
+            "entity": ext_info.entity,
+            "table": mapper.local_table,
+        }
+
+    @classmethod
+    def get_returning_column_descriptions(cls, statement):
+        def _ent_for_col(c):
+            return c._annotations.get("parententity", None)
+
+        def _attr_for_col(c, ent):
+            if ent is None:
+                return c
+            proxy_key = c._annotations.get("proxy_key", None)
+            if not proxy_key:
+                return c
+            else:
+                return getattr(ent.entity, proxy_key, c)
+
+        return [
+            {
+                "name": c.key,
+                "type": c.type,
+                "expr": _attr_for_col(c, ent),
+                "aliased": ent.is_aliased_class,
+                "entity": ent.entity,
+            }
+            for c, ent in [
+                (c, _ent_for_col(c)) for c in statement._all_selected_columns
+            ]
+        ]
+
+
+@CompileState.plugin_for("orm", "insert")
+class ORMInsert(ORMDMLState, InsertDMLState):
+    pass
+
+
 @CompileState.plugin_for("orm", "update")
-class BulkORMUpdate(UpdateDMLState, BulkUDCompileState):
+class BulkORMUpdate(ORMDMLState, UpdateDMLState, BulkUDCompileState):
     @classmethod
     def create_for_statement(cls, statement, compiler, **kw):
 
@@ -2352,7 +2404,7 @@ class BulkORMUpdate(UpdateDMLState, BulkUDCompileState):
 
 
 @CompileState.plugin_for("orm", "delete")
-class BulkORMDelete(DeleteDMLState, BulkUDCompileState):
+class BulkORMDelete(ORMDMLState, DeleteDMLState, BulkUDCompileState):
     @classmethod
     def create_for_statement(cls, statement, compiler, **kw):
         self = cls.__new__(cls)
