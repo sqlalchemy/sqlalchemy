@@ -4388,7 +4388,16 @@ class SelectState(util.MemoizedSlots, CompileState):
 
     @classmethod
     def get_column_descriptions(cls, statement):
-        cls._plugin_not_implemented()
+        return [
+            {
+                "name": name,
+                "type": element.type,
+                "expr": element,
+            }
+            for _, name, _, element, _ in (
+                statement._generate_columns_plus_names(False)
+            )
+        ]
 
     @classmethod
     def from_statement(cls, statement, from_statement):
@@ -5331,8 +5340,43 @@ class Select(
 
     @property
     def column_descriptions(self):
-        """Return a 'column descriptions' structure which may be
-        :term:`plugin-specific`.
+        """Return a :term:`plugin-enabled` 'column descriptions' structure
+        referring to the columns which are SELECTed by this statement.
+
+        This attribute is generally useful when using the ORM, as an
+        extended structure which includes information about mapped
+        entities is returned.  The section :ref:`queryguide_inspection`
+        contains more background.
+
+        For a Core-only statement, the structure returned by this accessor
+        is derived from the same objects that are returned by the
+        :attr:`.Select.selected_columns` accessor, formatted as a list of
+        dictionaries which contain the keys ``name``, ``type`` and ``expr``,
+        which indicate the column expressions to be selected::
+
+            >>> stmt = select(user_table)
+            >>> stmt.column_descriptions
+            [
+                {
+                    'name': 'id',
+                    'type': Integer(),
+                    'expr': Column('id', Integer(), ...)},
+                {
+                    'name': 'name',
+                    'type': String(length=30),
+                    'expr': Column('name', String(length=30), ...)}
+            ]
+
+        .. versionchanged:: 1.4.33 The :attr:`.Select.column_descriptions`
+           attribute returns a structure for a Core-only set of entities,
+           not just ORM-only entities.
+
+        .. seealso::
+
+            :attr:`.UpdateBase.entity_description` - entity information for
+            an :func:`.insert`, :func:`.update`, or :func:`.delete`
+
+            :ref:`queryguide_inspection` - ORM background
 
         """
         meth = SelectState.get_plugin_class(self).get_column_descriptions

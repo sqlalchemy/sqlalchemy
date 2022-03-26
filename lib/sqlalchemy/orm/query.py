@@ -2973,6 +2973,15 @@ class Query(
                 }
             ]
 
+        .. seealso::
+
+            This API is available using :term:`2.0 style` queries as well,
+            documented at:
+
+            * :ref:`queryguide_inspection`
+
+            * :attr:`.Select.column_descriptions`
+
         """
 
         return _column_descriptions(self, legacy=True)

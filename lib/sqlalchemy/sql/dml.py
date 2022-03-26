@@ -48,6 +48,21 @@ class DMLState(CompileState):
     def __init__(self, statement, compiler, **kw):
         raise NotImplementedError()
 
+    @classmethod
+    def get_entity_description(cls, statement):
+        return {"name": statement.table.name, "table": statement.table}
+
+    @classmethod
+    def get_returning_column_descriptions(cls, statement):
+        return [
+            {
+                "name": c.key,
+                "type": c.type,
+                "expr": c,
+            }
+            for c in statement._all_selected_columns
+        ]
+
     @property
     def dml_table(self):
         return self.statement.table
@@ -485,6 +500,89 @@ class UpdateBase(
             selectable = self.table
 
         self._hints = self._hints.union({(selectable, dialect_name): text})
+
+    @property
+    def entity_description(self):
+        """Return a :term:`plugin-enabled` description of the table and/or entity
+        which this DML construct is operating against.
+
+        This attribute is generally useful when using the ORM, as an
+        extended structure which includes information about mapped
+        entities is returned.  The section :ref:`queryguide_inspection`
+        contains more background.
+
+        For a Core statement, the structure returned by this accessor
+        is derived from the :attr:`.UpdateBase.table` attribute, and
+        refers to the :class:`.Table` being inserted, updated, or deleted::
+
+            >>> stmt = insert(user_table)
+            >>> stmt.entity_description
+            {
+                "name": "user_table",
+                "table": Table("user_table", ...)
+            }
+
+        .. versionadded:: 1.4.33
+
+        .. seealso::
+
+            :attr:`.UpdateBase.returning_column_descriptions`
+
+            :attr:`.Select.column_descriptions` - entity information for
+            a :func:`.select` construct
+
+            :ref:`queryguide_inspection` - ORM background
+
+        """
+        meth = DMLState.get_plugin_class(self).get_entity_description
+        return meth(self)
+
+    @property
+    def returning_column_descriptions(self):
+        """Return a :term:`plugin-enabled` description of the columns
+        which this DML construct is RETURNING against, in other words
+        the expressions established as part of :meth:`.UpdateBase.returning`.
+
+        This attribute is generally useful when using the ORM, as an
+        extended structure which includes information about mapped
+        entities is returned.  The section :ref:`queryguide_inspection`
+        contains more background.
+
+        For a Core statement, the structure returned by this accessor is
+        derived from the same objects that are returned by the
+        :attr:`.UpdateBase.exported_columns` accessor::
+
+            >>> stmt = insert(user_table).returning(user_table.c.id, user_table.c.name)
+            >>> stmt.entity_description
+            [
+                {
+                    "name": "id",
+                    "type": Integer,
+                    "expr": Column("id", Integer(), table=<user>, ...)
+                },
+                {
+                    "name": "name",
+                    "type": String(),
+                    "expr": Column("name", String(), table=<user>, ...)
+                },
+            ]
+
+        .. versionadded:: 1.4.33
+
+        .. seealso::
+
+            :attr:`.UpdateBase.entity_description`
+
+            :attr:`.Select.column_descriptions` - entity information for
+            a :func:`.select` construct
+
+            :ref:`queryguide_inspection` - ORM background
+
+        """  # noqa E501
+        meth = DMLState.get_plugin_class(
+            self
+        ).get_returning_column_descriptions
+        return meth(self)
 
 
 class ValuesBase(UpdateBase):
