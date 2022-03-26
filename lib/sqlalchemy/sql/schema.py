@@ -62,7 +62,8 @@ RETAIN_SCHEMA = util.symbol("retain_schema")
 
 BLANK_SCHEMA = util.symbol(
     "blank_schema",
-    """Symbol indicating that a :class:`_schema.Table` or :class:`.Sequence`
+    """Symbol indicating that a :class:`_schema.Table`, :class:`.Sequence`
+    or in some cases a :class:`_schema.ForeignKey` object
     should have 'None' for its schema, even if the parent
     :class:`_schema.MetaData` has specified a schema.
 
@@ -1047,7 +1048,14 @@ class Table(DialectKWArgs, SchemaItem, TableClause):
          target schema that we are changing to, the
          :class:`_schema.ForeignKeyConstraint` object, and the existing
          "target schema" of that constraint.  The function should return the
-         string schema name that should be applied.
+         string schema name that should be applied.    To reset the schema
+         to "none", return the symbol :data:`.BLANK_SCHEMA`.  To effect no
+         change, return ``None`` or :data:`.RETAIN_SCHEMA`.
+
+         .. versionchanged:: 1.4.33  The ``referred_schema_fn`` function
+            may return the :data:`.BLANK_SCHEMA` or :data:`.RETAIN_SCHEMA`
+            symbols.
+
          E.g.::
 
                 def referred_schema_fn(table, to_schema,
@@ -2292,11 +2300,14 @@ class ForeignKey(DialectKWArgs, SchemaItem):
         argument first passed to the object's constructor.
 
         """
-        if schema:
+        if schema not in (None, RETAIN_SCHEMA):
             _schema, tname, colname = self._column_tokens
             if table_name is not None:
                 tname = table_name
-            return "%s.%s.%s" % (schema, tname, colname)
+            if schema is BLANK_SCHEMA:
+                return "%s.%s" % (tname, colname)
+            else:
+                return "%s.%s.%s" % (schema, tname, colname)
         elif table_name:
             schema, tname, colname = self._column_tokens
             if schema:
