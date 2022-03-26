@@ -41,6 +41,7 @@ from sqlalchemy.sql import naming
 from sqlalchemy.sql import operators
 from sqlalchemy.sql.elements import _NONE_NAME
 from sqlalchemy.sql.elements import literal_column
+from sqlalchemy.sql.schema import RETAIN_SCHEMA
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
@@ -1314,6 +1315,27 @@ class ToMetaDataTest(fixtures.TestBase, AssertsCompiledSQL, ComparesTables):
             return "h"
 
         self._assert_fk(t2, "z", "h.t1.x", referred_schema_fn=ref_fn)
+
+    def test_fk_reset_to_none(self):
+        m = MetaData()
+
+        t2 = Table("t2", m, Column("y", Integer, ForeignKey("p.t1.x")))
+
+        def ref_fn(table, to_schema, constraint, referred_schema):
+            return BLANK_SCHEMA
+
+        self._assert_fk(t2, None, "t1.x", referred_schema_fn=ref_fn)
+
+    @testing.combinations(None, RETAIN_SCHEMA)
+    def test_fk_test_non_return_for_referred_schema(self, sym):
+        m = MetaData()
+
+        t2 = Table("t2", m, Column("y", Integer, ForeignKey("p.t1.x")))
+
+        def ref_fn(table, to_schema, constraint, referred_schema):
+            return sym
+
+        self._assert_fk(t2, None, "p.t1.x", referred_schema_fn=ref_fn)
 
     def test_copy_info(self):
         m = MetaData()
