@@ -442,28 +442,8 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
             :class:`.PrimaryKeyConstraint`, and
             :class:`_schema.ForeignKeyConstraint`.
 
-        :param autoload: Defaults to ``False``, unless
-            :paramref:`_schema.Table.autoload_with`
-            is set in which case it defaults to ``True``;
-            :class:`_schema.Column` objects
-            for this table should be reflected from the database, possibly
-            augmenting objects that were explicitly specified.
-            :class:`_schema.Column` and other objects explicitly set on the
-            table will replace corresponding reflected objects.
-
-            .. deprecated:: 1.4
-
-                The autoload parameter is deprecated and will be removed in
-                version 2.0.  Please use the
-                :paramref:`_schema.Table.autoload_with` parameter, passing an
-                engine or connection.
-
-            .. seealso::
-
-                :ref:`metadata_reflection_toplevel`
-
         :param autoload_replace: Defaults to ``True``; when using
-            :paramref:`_schema.Table.autoload`
+            :paramref:`_schema.Table.autoload_with`
             in conjunction with :paramref:`_schema.Table.extend_existing`,
             indicates
             that :class:`_schema.Column` objects present in the already-existing
@@ -482,7 +462,7 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
 
             .. seealso::
 
-                :paramref:`_schema.Table.autoload`
+                :paramref:`_schema.Table.autoload_with`
 
                 :paramref:`_schema.Table.extend_existing`
 
@@ -520,7 +500,7 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
 
             :paramref:`_schema.Table.extend_existing`
             will also work in conjunction
-            with :paramref:`_schema.Table.autoload` to run a new reflection
+            with :paramref:`_schema.Table.autoload_with` to run a new reflection
             operation against the database, even if a :class:`_schema.Table`
             of the same name is already present in the target
             :class:`_schema.MetaData`; newly reflected :class:`_schema.Column`
@@ -529,7 +509,7 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
             :class:`_schema.Table`, potentially overwriting existing columns
             and options of the same name.
 
-            As is always the case with :paramref:`_schema.Table.autoload`,
+            As is always the case with :paramref:`_schema.Table.autoload_with`,
             :class:`_schema.Column` objects can be specified in the same
             :class:`_schema.Table`
             constructor, which will take precedence.  Below, the existing
@@ -547,7 +527,7 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
 
             .. seealso::
 
-                :paramref:`_schema.Table.autoload`
+                :paramref:`_schema.Table.autoload_with`
 
                 :paramref:`_schema.Table.autoload_replace`
 
@@ -569,7 +549,6 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
         :param resolve_fks: Whether or not to reflect :class:`_schema.Table`
             objects
             related to this one via :class:`_schema.ForeignKey` objects, when
-            :paramref:`_schema.Table.autoload` or
             :paramref:`_schema.Table.autoload_with` is
             specified.   Defaults to True.  Set to False to disable reflection of
             related tables as :class:`_schema.ForeignKey`
