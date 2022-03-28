@@ -1184,8 +1184,7 @@ class LoaderCriteriaOption(CriteriaOption):
         # if options to limit the criteria to immediate query only,
         # use compile_state.attributes instead
 
-        if not compile_state.compile_options._for_refresh_state:
-            self.get_global_criteria(compile_state.global_attributes)
+        self.get_global_criteria(compile_state.global_attributes)
 
     def get_global_criteria(self, attributes):
         for mp in self._all_mappers():
