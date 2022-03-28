@@ -1202,8 +1202,7 @@ class LoaderCriteriaOption(CriteriaOption):
                 "Please migrate code to use the with_polymorphic() standalone "
                 "function before using with_loader_criteria()."
             )
-        if not compile_state.compile_options._for_refresh_state:
-            self.get_global_criteria(compile_state.global_attributes)
+        self.get_global_criteria(compile_state.global_attributes)
 
     def get_global_criteria(self, attributes):
         for mp in self._all_mappers():

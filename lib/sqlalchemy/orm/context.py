@@ -2254,7 +2254,10 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
             single_crit = ext_info.mapper._single_table_criterion
 
-            additional_entity_criteria = self._get_extra_criteria(ext_info)
+            if self.compile_options._for_refresh_state:
+                additional_entity_criteria = []
+            else:
+                additional_entity_criteria = self._get_extra_criteria(ext_info)
 
             if single_crit is not None:
                 additional_entity_criteria += (single_crit,)
