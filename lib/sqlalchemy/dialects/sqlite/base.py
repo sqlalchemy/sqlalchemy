@@ -2449,17 +2449,21 @@ class SQLiteDialect(default.DefaultDialect):
         if not table_data:
             return []
 
-        CHECK_PATTERN = r"(?:CONSTRAINT (\w+) +)?" r"CHECK *\( *(.+) *\),? *"
+        CHECK_PATTERN = r"(?:CONSTRAINT (.+) +)?" r"CHECK *\( *(.+) *\),? *"
         check_constraints = []
         # NOTE: we aren't using re.S here because we actually are
         # taking advantage of each CHECK constraint being all on one
         # line in the table definition in order to delineate.  This
         # necessarily makes assumptions as to how the CREATE TABLE
         # was emitted.
+
         for match in re.finditer(CHECK_PATTERN, table_data, re.I):
-            check_constraints.append(
-                {"sqltext": match.group(2), "name": match.group(1)}
-            )
+            name = match.group(1)
+
+            if name:
+                name = re.sub(r'^"|"$', "", name)
+
+            check_constraints.append({"sqltext": match.group(2), "name": name})
 
         return check_constraints
 

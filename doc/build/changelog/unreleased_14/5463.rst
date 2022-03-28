@@ -1,0 +1,8 @@
+.. change::
+    :tags: bug, sqlite, reflection
+    :tickets: 5463
+
+    Fixed bug where the name of CHECK constraints under SQLite would not be
+    reflected if the name were created using quotes, as is the case when the
+    name uses mixed case or special characters.
+
