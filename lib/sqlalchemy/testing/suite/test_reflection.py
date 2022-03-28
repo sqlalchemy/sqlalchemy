@@ -1178,7 +1178,9 @@ class ComponentReflectionTestExtra(fixtures.TestBase):
             metadata,
             Column("a", Integer()),
             sa.CheckConstraint("a > 1 AND a < 5", name="cc1"),
-            sa.CheckConstraint("a = 1 OR (a > 2 AND a < 5)", name="cc2"),
+            sa.CheckConstraint(
+                "a = 1 OR (a > 2 AND a < 5)", name="UsesCasing"
+            ),
             schema=schema,
         )
 
@@ -1205,8 +1207,8 @@ class ComponentReflectionTestExtra(fixtures.TestBase):
         eq_(
             reflected,
             [
+                {"name": "UsesCasing", "sqltext": "a = 1 or a > 2 and a < 5"},
                 {"name": "cc1", "sqltext": "a > 1 and a < 5"},
-                {"name": "cc2", "sqltext": "a = 1 or a > 2 and a < 5"},
             ],
         )
 
