@@ -537,7 +537,7 @@ class TypeRoundTripTest(fixtures.TestBase, AssertsExecutionResults):
         )
         return bit_table
 
-    i, j, k, l = 255, 2 ** 32 - 1, 2 ** 63 - 1, 2 ** 64 - 1
+    i, j, k, l = 255, 2**32 - 1, 2**63 - 1, 2**64 - 1
 
     @testing.combinations(
         (([0] * 8), None),

@@ -1939,15 +1939,15 @@ class IdentityReflectionTest(fixtures.TablesTest):
             elif col["name"] == "id2":
                 is_true("identity" in col)
                 exp = default.copy()
-                exp.update(maxvalue=2 ** 31 - 1)
+                exp.update(maxvalue=2**31 - 1)
                 eq_(col["identity"], exp)
             elif col["name"] == "id3":
                 is_true("identity" in col)
                 exp = default.copy()
-                exp.update(maxvalue=2 ** 63 - 1)
+                exp.update(maxvalue=2**63 - 1)
                 eq_(col["identity"], exp)
             elif col["name"] == "id4":
                 is_true("identity" in col)
                 exp = default.copy()
-                exp.update(maxvalue=2 ** 15 - 1)
+                exp.update(maxvalue=2**15 - 1)
                 eq_(col["identity"], exp)

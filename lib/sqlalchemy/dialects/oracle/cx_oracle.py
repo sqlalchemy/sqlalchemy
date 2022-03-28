@@ -1266,7 +1266,7 @@ class OracleDialect_cx_oracle(OracleDialect):
 
         """
 
-        id_ = random.randint(0, 2 ** 128)
+        id_ = random.randint(0, 2**128)
         return (0x1234, "%032x" % id_, "%032x" % 9)
 
     def do_executemany(self, cursor, statement, parameters, context=None):

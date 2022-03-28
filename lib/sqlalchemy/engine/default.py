@@ -630,7 +630,7 @@ class DefaultDialect(Dialect):
         do_commit_twophase().  Its format is unspecified.
         """
 
-        return "_sa_%032x" % random.randint(0, 2 ** 128)
+        return "_sa_%032x" % random.randint(0, 2**128)
 
     def do_savepoint(self, connection, name):
         connection.execute(expression.SavepointClause(name))

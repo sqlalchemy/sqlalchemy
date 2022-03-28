@@ -281,7 +281,7 @@ class MypyPluginTest(fixtures.TestBase):
                 for idx, (typ, errmsg) in enumerate(output):
                     if is_re:
                         if re.match(
-                            fr".*{filename}\:{num}\: {typ}\: {prefix}{msg}",  # noqa E501
+                            rf".*{filename}\:{num}\: {typ}\: {prefix}{msg}",  # noqa E501
                             errmsg,
                         ):
                             break

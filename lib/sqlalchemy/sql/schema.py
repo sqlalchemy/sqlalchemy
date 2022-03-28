@@ -4329,14 +4329,10 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
             if col.autoincrement is True:
                 _validate_autoinc(col, True)
                 return col
-            elif (
-                col.autoincrement
-                in (
-                    "auto",
-                    "ignore_fk",
-                )
-                and _validate_autoinc(col, False)
-            ):
+            elif col.autoincrement in (
+                "auto",
+                "ignore_fk",
+            ) and _validate_autoinc(col, False):
                 return col
 
         else:

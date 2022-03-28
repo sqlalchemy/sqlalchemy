@@ -846,7 +846,7 @@ class IdentityReflectionTest(fixtures.TablesTest):
             "start": 1,
             "increment": 1,
             "on_null": False,
-            "maxvalue": 10 ** 28 - 1,
+            "maxvalue": 10**28 - 1,
             "minvalue": 1,
             "cycle": False,
             "cache": 20,
