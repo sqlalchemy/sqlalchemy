@@ -5,6 +5,8 @@ repos:
     rev: 21.5b1
     hooks:
     -   id: black
+        additional_dependencies:
+          - click < 8.1
 
 -   repo: https://github.com/sqlalchemyorg/zimports
     rev: v0.5.0
