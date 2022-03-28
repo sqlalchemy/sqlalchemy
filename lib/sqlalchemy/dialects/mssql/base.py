@@ -823,7 +823,6 @@ from ... import schema as sa_schema
 from ... import Sequence
 from ... import sql
 from ... import text
-from ... import types as sqltypes
 from ... import util
 from ...engine import cursor as _cursor
 from ...engine import default
@@ -835,6 +834,7 @@ from ...sql import expression
 from ...sql import func
 from ...sql import quoted_name
 from ...sql import roles
+from ...sql import sqltypes
 from ...sql import util as sql_util
 from ...sql._typing import is_sql_compiler
 from ...types import BIGINT

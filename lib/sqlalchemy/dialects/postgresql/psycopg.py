@@ -69,9 +69,9 @@ from .json import JSON
 from .json import JSONB
 from .json import JSONPathType
 from ... import pool
-from ... import types as sqltypes
 from ... import util
 from ...engine import AdaptedConnection
+from ...sql import sqltypes
 from ...util.concurrency import await_fallback
 from ...util.concurrency import await_only
 

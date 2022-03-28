@@ -47,10 +47,10 @@ from .interfaces import ExecutionContext
 from .. import event
 from .. import exc
 from .. import pool
-from .. import types as sqltypes
 from .. import util
 from ..sql import compiler
 from ..sql import expression
+from ..sql import type_api
 from ..sql._typing import is_tuple_type
 from ..sql.compiler import DDLCompiler
 from ..sql.compiler import SQLCompiler
@@ -498,7 +498,7 @@ class DefaultDialect(Dialect):
         and passes on to :func:`_types.adapt_type`.
 
         """
-        return sqltypes.adapt_type(typeobj, self.colspecs)
+        return type_api.adapt_type(typeobj, self.colspecs)
 
     def has_index(self, connection, table_name, index_name, schema=None):
         if not self.has_table(connection, table_name, schema=schema):
@@ -746,26 +746,6 @@ class DefaultDialect(Dialect):
         return connection
 
 
-class _RendersLiteral:
-    def literal_processor(self, dialect):
-        def process(value):
-            return "'%s'" % value
-
-        return process
-
-
-class _StrDateTime(_RendersLiteral, sqltypes.DateTime):
-    pass
-
-
-class _StrDate(_RendersLiteral, sqltypes.Date):
-    pass
-
-
-class _StrTime(_RendersLiteral, sqltypes.Time):
-    pass
-
-
 class StrCompileDialect(DefaultDialect):
 
     statement_compiler = compiler.StrSQLCompiler
@@ -786,12 +766,6 @@ class StrCompileDialect(DefaultDialect):
 
     supports_multivalues_insert = True
     supports_simple_order_by_label = True
-
-    colspecs = {
-        sqltypes.DateTime: _StrDateTime,
-        sqltypes.Date: _StrDate,
-        sqltypes.Time: _StrTime,
-    }
 
 
 class DefaultExecutionContext(ExecutionContext):

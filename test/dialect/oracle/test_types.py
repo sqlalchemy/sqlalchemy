@@ -84,11 +84,11 @@ class DialectTypesTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(oracle.LONG(), "LONG")
 
     @testing.combinations(
-        (Date(), cx_oracle._OracleDate),
+        (Date(), cx_oracle._CXOracleDate),
         (oracle.OracleRaw(), cx_oracle._OracleRaw),
         (String(), String),
         (VARCHAR(), cx_oracle._OracleString),
-        (DATE(), cx_oracle._OracleDate),
+        (DATE(), cx_oracle._CXOracleDate),
         (oracle.DATE(), oracle.DATE),
         (String(50), cx_oracle._OracleString),
         (Unicode(), cx_oracle._OracleUnicodeStringCHAR),

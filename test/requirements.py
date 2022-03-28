@@ -1047,8 +1047,7 @@ class DefaultRequirements(SuiteRequirements):
         literal string, e.g. via the TypeEngine.literal_processor() method.
 
         """
-
-        return fails_on_everything_except("sqlite")
+        return exclusions.open()
 
     @property
     def datetime(self):

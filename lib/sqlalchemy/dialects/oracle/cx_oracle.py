@@ -440,11 +440,11 @@ from .base import OracleCompiler
 from .base import OracleDialect
 from .base import OracleExecutionContext
 from ... import exc
-from ... import types as sqltypes
 from ... import util
 from ...engine import cursor as _cursor
 from ...engine import interfaces
 from ...engine import processors
+from ...sql import sqltypes
 from ...sql._typing import is_sql_compiler
 
 
@@ -563,7 +563,7 @@ class _OracleNUMBER(_OracleNumeric):
     is_number = True
 
 
-class _OracleDate(sqltypes.Date):
+class _CXOracleDate(oracle._OracleDate):
     def bind_processor(self, dialect):
         return None
 
@@ -575,6 +575,10 @@ class _OracleDate(sqltypes.Date):
                 return value
 
         return process
+
+
+class _CXOracleTIMESTAMP(oracle._OracleDateLiteralRender, sqltypes.TIMESTAMP):
+    pass
 
 
 # TODO: the names used across CHAR / VARCHAR / NCHAR / NVARCHAR
@@ -847,31 +851,35 @@ class OracleDialect_cx_oracle(OracleDialect):
 
     driver = "cx_oracle"
 
-    colspecs = {
-        sqltypes.Numeric: _OracleNumeric,
-        sqltypes.Float: _OracleNumeric,
-        oracle.BINARY_FLOAT: _OracleBINARY_FLOAT,
-        oracle.BINARY_DOUBLE: _OracleBINARY_DOUBLE,
-        sqltypes.Integer: _OracleInteger,
-        oracle.NUMBER: _OracleNUMBER,
-        sqltypes.Date: _OracleDate,
-        sqltypes.LargeBinary: _OracleBinary,
-        sqltypes.Boolean: oracle._OracleBoolean,
-        sqltypes.Interval: _OracleInterval,
-        oracle.INTERVAL: _OracleInterval,
-        sqltypes.Text: _OracleText,
-        sqltypes.String: _OracleString,
-        sqltypes.UnicodeText: _OracleUnicodeTextCLOB,
-        sqltypes.CHAR: _OracleChar,
-        sqltypes.NCHAR: _OracleNChar,
-        sqltypes.Enum: _OracleEnum,
-        oracle.LONG: _OracleLong,
-        oracle.RAW: _OracleRaw,
-        sqltypes.Unicode: _OracleUnicodeStringCHAR,
-        sqltypes.NVARCHAR: _OracleUnicodeStringNCHAR,
-        oracle.NCLOB: _OracleUnicodeTextNCLOB,
-        oracle.ROWID: _OracleRowid,
-    }
+    colspecs = OracleDialect.colspecs
+    colspecs.update(
+        {
+            sqltypes.TIMESTAMP: _CXOracleTIMESTAMP,
+            sqltypes.Numeric: _OracleNumeric,
+            sqltypes.Float: _OracleNumeric,
+            oracle.BINARY_FLOAT: _OracleBINARY_FLOAT,
+            oracle.BINARY_DOUBLE: _OracleBINARY_DOUBLE,
+            sqltypes.Integer: _OracleInteger,
+            oracle.NUMBER: _OracleNUMBER,
+            sqltypes.Date: _CXOracleDate,
+            sqltypes.LargeBinary: _OracleBinary,
+            sqltypes.Boolean: oracle._OracleBoolean,
+            sqltypes.Interval: _OracleInterval,
+            oracle.INTERVAL: _OracleInterval,
+            sqltypes.Text: _OracleText,
+            sqltypes.String: _OracleString,
+            sqltypes.UnicodeText: _OracleUnicodeTextCLOB,
+            sqltypes.CHAR: _OracleChar,
+            sqltypes.NCHAR: _OracleNChar,
+            sqltypes.Enum: _OracleEnum,
+            oracle.LONG: _OracleLong,
+            oracle.RAW: _OracleRaw,
+            sqltypes.Unicode: _OracleUnicodeStringCHAR,
+            sqltypes.NVARCHAR: _OracleUnicodeStringNCHAR,
+            oracle.NCLOB: _OracleUnicodeTextNCLOB,
+            oracle.ROWID: _OracleRowid,
+        }
+    )
 
     execute_sequence_format = list
 

@@ -1020,7 +1020,6 @@ from ... import exc
 from ... import log
 from ... import schema as sa_schema
 from ... import sql
-from ... import types as sqltypes
 from ... import util
 from ...engine import default
 from ...engine import reflection
@@ -1030,6 +1029,7 @@ from ...sql import elements
 from ...sql import functions
 from ...sql import operators
 from ...sql import roles
+from ...sql import sqltypes
 from ...sql import util as sql_util
 from ...sql.sqltypes import Unicode
 from ...types import BINARY

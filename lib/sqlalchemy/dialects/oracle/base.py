@@ -688,7 +688,28 @@ class LONG(sqltypes.Text):
     __visit_name__ = "LONG"
 
 
-class DATE(sqltypes.DateTime):
+class _OracleDateLiteralRender:
+    def literal_processor(self, dialect):
+        def process(value):
+            if value is not None:
+                if getattr(value, "microsecond", None):
+                    value = (
+                        f"""TO_TIMESTAMP"""
+                        f"""('{value.isoformat().replace("T", " ")}', """
+                        """'YYYY-MM-DD HH24:MI:SS.FF')"""
+                    )
+                else:
+                    value = (
+                        f"""TO_DATE"""
+                        f"""('{value.isoformat().replace("T", " ")}', """
+                        """'YYYY-MM-DD HH24:MI:SS')"""
+                    )
+            return value
+
+        return process
+
+
+class DATE(_OracleDateLiteralRender, sqltypes.DateTime):
     """Provide the oracle DATE type.
 
     This type has no special Python behavior, except that it subclasses
@@ -703,6 +724,10 @@ class DATE(sqltypes.DateTime):
 
     def _compare_type_affinity(self, other):
         return other._type_affinity in (sqltypes.DateTime, sqltypes.Date)
+
+
+class _OracleDate(_OracleDateLiteralRender, sqltypes.Date):
+    pass
 
 
 class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
@@ -763,6 +788,7 @@ colspecs = {
     sqltypes.Boolean: _OracleBoolean,
     sqltypes.Interval: INTERVAL,
     sqltypes.DateTime: DATE,
+    sqltypes.Date: _OracleDate,
 }
 
 ischema_names = {

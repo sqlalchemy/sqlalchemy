@@ -310,6 +310,7 @@ import decimal
 import re
 import struct
 
+from .base import _MSDateTime
 from .base import BINARY
 from .base import DATETIMEOFFSET
 from .base import MSDialect
@@ -447,7 +448,7 @@ class _ODBCDateTimeBindProcessor:
         return process
 
 
-class _ODBCDateTime(_ODBCDateTimeBindProcessor, sqltypes.DateTime):
+class _ODBCDateTime(_ODBCDateTimeBindProcessor, _MSDateTime):
     pass
 
 
