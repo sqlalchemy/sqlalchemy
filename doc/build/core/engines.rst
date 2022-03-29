@@ -72,8 +72,8 @@ will be imported if available - this default is typically the most widely
 known driver available for that backend.
 
 As the URL is like any other URL, **special characters such as those that may
-be used in the password need to be URL encoded to be parsed correctly.**. Below
-is an example of a URL that includes the password ``"kx%jj5/g"``, where the
+be used in the user and password need to be URL encoded to be parsed correctly.**.
+Below is an example of a URL that includes the password ``"kx%jj5/g"``, where the
 percent sign and slash characters are represented as ``%25`` and ``%2F``,
 respectively::
 
