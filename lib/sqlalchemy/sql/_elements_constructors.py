@@ -600,7 +600,7 @@ def bindparam(
          supports empty lists.
 
 
-    .. seealso::
+      .. seealso::
 
         :ref:`coretutorial_bind_param`
 
