@@ -1,0 +1,9 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 7868
+
+    Fixed regression in "dynamic" loader strategy where the
+    :meth:`_orm.Query.filter_by` method would not be given an appropriate
+    entity to filter from, in the case where a "secondary" table were present
+    in the relationship being queried and the mapping were against something
+    complex such as a "with polymorphic".
