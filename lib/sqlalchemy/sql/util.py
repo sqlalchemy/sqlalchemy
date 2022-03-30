@@ -15,6 +15,7 @@ from itertools import chain
 import typing
 from typing import Any
 from typing import cast
+from typing import Iterator
 from typing import Optional
 
 from . import coercions
@@ -33,6 +34,7 @@ from .elements import _find_columns  # noqa
 from .elements import _label_reference
 from .elements import _textual_label_reference
 from .elements import BindParameter
+from .elements import ClauseElement  # noqa
 from .elements import ColumnClause
 from .elements import ColumnElement
 from .elements import Grouping
@@ -51,6 +53,7 @@ from .. import exc
 from .. import util
 
 if typing.TYPE_CHECKING:
+    from .roles import FromClauseRole
     from ..engine.interfaces import _AnyExecuteParams
     from ..engine.interfaces import _AnyMultiExecuteParams
     from ..engine.interfaces import _AnySingleExecuteParams
@@ -404,7 +407,7 @@ def clause_is_present(clause, search):
         return False
 
 
-def tables_from_leftmost(clause):
+def tables_from_leftmost(clause: FromClauseRole) -> Iterator[FromClause]:
     if isinstance(clause, Join):
         for t in tables_from_leftmost(clause.left):
             yield t

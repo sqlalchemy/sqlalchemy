@@ -68,6 +68,7 @@ from ..sql import traversals
 from ..sql import visitors
 
 if typing.TYPE_CHECKING:
+    from ..sql.dml import _DMLColumnElement
     from ..sql.elements import ColumnElement
     from ..sql.elements import SQLCoreOperations
 
@@ -281,7 +282,7 @@ class QueryableAttribute(
 
     def _bulk_update_tuples(
         self, value: Any
-    ) -> List[Tuple[SQLCoreOperations[_T], Any]]:
+    ) -> List[Tuple[_DMLColumnElement, Any]]:
         """Return setter tuples for a bulk UPDATE."""
 
         return self.comparator._bulk_update_tuples(value)

@@ -16,13 +16,14 @@ from __future__ import annotations
 import collections
 from enum import Enum
 import itertools
-from operator import attrgetter
 import typing
 from typing import Any as TODO_Any
 from typing import Any
 from typing import Iterable
+from typing import List
 from typing import NamedTuple
 from typing import Optional
+from typing import Sequence
 from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import TypeVar
@@ -34,13 +35,15 @@ from . import roles
 from . import traversals
 from . import type_api
 from . import visitors
-from ._typing import _ColumnsClauseElement
+from ._typing import _ColumnsClauseArgument
+from ._typing import is_column_element
 from .annotation import Annotated
 from .annotation import SupportsCloneAnnotations
 from .base import _clone
 from .base import _cloned_difference
 from .base import _cloned_intersection
 from .base import _entity_namespace_key
+from .base import _EntityNamespace
 from .base import _expand_cloned
 from .base import _from_objects
 from .base import _generative
@@ -78,6 +81,13 @@ and_ = BooleanClauseList.and_
 
 _T = TypeVar("_T", bound=Any)
 
+if TYPE_CHECKING:
+    from ._typing import _SelectIterable
+    from .base import ReadOnlyColumnCollection
+    from .elements import NamedColumn
+    from .schema import ForeignKey
+    from .schema import PrimaryKeyConstraint
+
 
 class _OffsetLimitParam(BindParameter):
     inherit_cache = True
@@ -111,8 +121,8 @@ class ReturnsRows(roles.ReturnsRowsRole, DQLDMLClauseElement):
     def selectable(self):
         return self
 
-    @property
-    def _all_selected_columns(self):
+    @util.non_memoized_property
+    def _all_selected_columns(self) -> _SelectIterable:
         """A sequence of column expression objects that represents the
         "selected" columns of this :class:`_expression.ReturnsRows`.
 
@@ -457,7 +467,7 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
     __visit_name__ = "fromclause"
     named_with_column = False
 
-    @property
+    @util.ro_non_memoized_property
     def _hide_froms(self) -> Iterable[FromClause]:
         return ()
 
@@ -707,10 +717,10 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
 
         """
-        return self.columns
+        return self.c
 
-    @util.memoized_property
-    def columns(self) -> ColumnCollection[Any]:
+    @util.ro_non_memoized_property
+    def columns(self) -> ReadOnlyColumnCollection[str, Any]:
         """A named-based collection of :class:`_expression.ColumnElement`
         objects maintained by this :class:`_expression.FromClause`.
 
@@ -723,14 +733,23 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         :return: a :class:`.ColumnCollection` object.
 
         """
+        return self.c
 
+    @util.ro_memoized_property
+    def c(self) -> ReadOnlyColumnCollection[str, Any]:
+        """
+        A synonym for :attr:`.FromClause.columns`
+
+        :return: a :class:`.ColumnCollection`
+
+        """
         if "_columns" not in self.__dict__:
             self._init_collections()
             self._populate_column_collection()
-        return self._columns.as_immutable()
+        return self._columns.as_readonly()
 
-    @property
-    def entity_namespace(self):
+    @util.ro_non_memoized_property
+    def entity_namespace(self) -> _EntityNamespace:
         """Return a namespace used for name-based access in SQL expressions.
 
         This is the namespace that is used to resolve "filter_by()" type
@@ -743,10 +762,10 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         alternative results.
 
         """
-        return self.columns
+        return self.c
 
-    @util.memoized_property
-    def primary_key(self):
+    @util.ro_memoized_property
+    def primary_key(self) -> Iterable[NamedColumn[Any]]:
         """Return the iterable collection of :class:`_schema.Column` objects
         which comprise the primary key of this :class:`_selectable.FromClause`.
 
@@ -759,8 +778,8 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         self._populate_column_collection()
         return self.primary_key
 
-    @util.memoized_property
-    def foreign_keys(self):
+    @util.ro_memoized_property
+    def foreign_keys(self) -> Iterable[ForeignKey]:
         """Return the collection of :class:`_schema.ForeignKey` marker objects
         which this FromClause references.
 
@@ -791,28 +810,12 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
 
         """
 
-        for key in ["_columns", "columns", "primary_key", "foreign_keys"]:
+        for key in ["_columns", "columns", "c", "primary_key", "foreign_keys"]:
             self.__dict__.pop(key, None)
 
-    # this is awkward.   maybe there's a better way
-    if TYPE_CHECKING:
-        c: ColumnCollection[Any]
-    else:
-        c = property(
-            attrgetter("columns"),
-            doc="""
-            A named-based collection of :class:`_expression.ColumnElement`
-            objects maintained by this :class:`_expression.FromClause`.
-
-            The :attr:`_sql.FromClause.c` attribute is an alias for the
-            :attr:`_sql.FromClause.columns` attribute.
-
-            :return: a :class:`.ColumnCollection`
-
-            """,
-        )
-
-    _select_iterable = property(attrgetter("columns"))
+    @util.ro_non_memoized_property
+    def _select_iterable(self) -> _SelectIterable:
+        return self.c
 
     def _init_collections(self):
         assert "_columns" not in self.__dict__
@@ -820,8 +823,8 @@ class FromClause(roles.AnonymizedFromClauseRole, Selectable):
         assert "foreign_keys" not in self.__dict__
 
         self._columns = ColumnCollection()
-        self.primary_key = ColumnSet()
-        self.foreign_keys = set()
+        self.primary_key = ColumnSet()  # type: ignore
+        self.foreign_keys = set()  # type: ignore
 
     @property
     def _cols_populated(self):
@@ -1050,9 +1053,7 @@ class Join(roles.DMLTableRole, FromClause):
     @util.preload_module("sqlalchemy.sql.util")
     def _populate_column_collection(self):
         sqlutil = util.preloaded.sql_util
-        columns = [c for c in self.left.columns] + [
-            c for c in self.right.columns
-        ]
+        columns = [c for c in self.left.c] + [c for c in self.right.c]
 
         self.primary_key.extend(
             sqlutil.reduce_columns(
@@ -1300,14 +1301,14 @@ class Join(roles.DMLTableRole, FromClause):
                 .alias(name)
             )
 
-    @property
+    @util.ro_non_memoized_property
     def _hide_froms(self) -> Iterable[FromClause]:
         return itertools.chain(
             *[_from_objects(x.left, x.right) for x in self._cloned_set]
         )
 
-    @property
-    def _from_objects(self):
+    @util.ro_non_memoized_property
+    def _from_objects(self) -> List[FromClause]:
         return [self] + self.left._from_objects + self.right._from_objects
 
 
@@ -1415,7 +1416,7 @@ class AliasedReturnsRows(NoInit, NamedFromClause):
             self._reset_column_collection()
 
     @property
-    def _from_objects(self):
+    def _from_objects(self) -> List[FromClause]:
         return [self]
 
 
@@ -2329,8 +2330,12 @@ class FromGrouping(GroupedElement, FromClause):
     def _init_collections(self):
         pass
 
-    @property
+    @util.ro_non_memoized_property
     def columns(self):
+        return self.element.columns
+
+    @util.ro_non_memoized_property
+    def c(self):
         return self.element.columns
 
     @property
@@ -2350,12 +2355,12 @@ class FromGrouping(GroupedElement, FromClause):
     def _anonymous_fromclause(self, **kw):
         return FromGrouping(self.element._anonymous_fromclause(**kw))
 
-    @property
+    @util.ro_non_memoized_property
     def _hide_froms(self) -> Iterable[FromClause]:
         return self.element._hide_froms
 
-    @property
-    def _from_objects(self):
+    @util.ro_non_memoized_property
+    def _from_objects(self) -> List[FromClause]:
         return self.element._from_objects
 
     def __getstate__(self):
@@ -2436,6 +2441,16 @@ class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
         if kw:
             raise exc.ArgumentError("Unsupported argument(s): %s" % list(kw))
 
+    if TYPE_CHECKING:
+
+        @util.ro_non_memoized_property
+        def columns(self) -> ReadOnlyColumnCollection[str, ColumnClause[Any]]:
+            ...
+
+        @util.ro_non_memoized_property
+        def c(self) -> ReadOnlyColumnCollection[str, ColumnClause[Any]]:
+            ...
+
     def __str__(self):
         if self.schema is not None:
             return self.schema + "." + self.name
@@ -2507,8 +2522,8 @@ class TableClause(roles.DMLTableRole, Immutable, NamedFromClause):
         """
         return util.preloaded.sql_dml.Delete(self)
 
-    @property
-    def _from_objects(self):
+    @util.ro_non_memoized_property
+    def _from_objects(self) -> List[FromClause]:
         return [self]
 
 
@@ -2669,9 +2684,12 @@ class Values(Generative, NamedFromClause):
             self._columns.add(c)
             c.table = self
 
-    @property
-    def _from_objects(self):
+    @util.ro_non_memoized_property
+    def _from_objects(self) -> List[FromClause]:
         return [self]
+
+
+SelfSelectBase = TypeVar("SelfSelectBase", bound=Any)
 
 
 class SelectBase(
@@ -2697,11 +2715,26 @@ class SelectBase(
     _is_select_statement = True
     is_select = True
 
-    def _generate_fromclause_column_proxies(self, fromclause):
+    def _generate_fromclause_column_proxies(
+        self, fromclause: FromClause
+    ) -> None:
         raise NotImplementedError()
 
-    def _refresh_for_new_column(self, column):
+    def _refresh_for_new_column(self, column: ColumnElement[Any]) -> None:
         self._reset_memoizations()
+
+    def _generate_columns_plus_names(
+        self, anon_for_dupe_key: bool
+    ) -> List[Tuple[str, str, str, ColumnElement[Any], bool]]:
+        raise NotImplementedError()
+
+    def set_label_style(
+        self: SelfSelectBase, label_style: SelectLabelStyle
+    ) -> SelfSelectBase:
+        raise NotImplementedError()
+
+    def get_label_style(self) -> SelectLabelStyle:
+        raise NotImplementedError()
 
     @property
     def selected_columns(self):
@@ -2733,8 +2766,8 @@ class SelectBase(
         """
         raise NotImplementedError()
 
-    @property
-    def _all_selected_columns(self):
+    @util.non_memoized_property
+    def _all_selected_columns(self) -> _SelectIterable:
         """A sequence of expressions that correspond to what is rendered
         in the columns clause, including :class:`_sql.TextClause`
         constructs.
@@ -2893,8 +2926,8 @@ class SelectBase(
         """
         return Lateral._factory(self, name)
 
-    @property
-    def _from_objects(self):
+    @util.ro_non_memoized_property
+    def _from_objects(self) -> List[FromClause]:
         return [self]
 
     def subquery(self, name=None):
@@ -2979,6 +3012,8 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
 
     _is_select_container = True
 
+    element: SelectBase
+
     def __init__(self, element):
         self.element = coercions.expect(roles.SelectStatementRole, element)
 
@@ -2990,18 +3025,14 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
             return self
 
     def get_label_style(self) -> SelectLabelStyle:
-        return self._label_style
+        return self.element.get_label_style()
 
     def set_label_style(
         self, label_style: SelectLabelStyle
-    ) -> "SelectStatementGrouping":
+    ) -> SelectStatementGrouping:
         return SelectStatementGrouping(
             self.element.set_label_style(label_style)
         )
-
-    @property
-    def _label_style(self):
-        return self.element._label_style
 
     @property
     def select_statement(self):
@@ -3010,17 +3041,18 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
     def self_group(self, against=None):
         return self
 
-    def _generate_columns_plus_names(self, anon_for_dupe_key):
+    def _generate_columns_plus_names(
+        self, anon_for_dupe_key: bool
+    ) -> List[Tuple[str, str, str, ColumnElement[Any], bool]]:
         return self.element._generate_columns_plus_names(anon_for_dupe_key)
 
-    def _generate_fromclause_column_proxies(self, subquery):
+    def _generate_fromclause_column_proxies(
+        self, subquery: FromClause
+    ) -> None:
         self.element._generate_fromclause_column_proxies(subquery)
 
-    def _generate_proxy_for_new_column(self, column, subquery):
-        return self.element._generate_proxy_for_new_column(subquery)
-
-    @property
-    def _all_selected_columns(self):
+    @util.non_memoized_property
+    def _all_selected_columns(self) -> _SelectIterable:
         return self.element._all_selected_columns
 
     @property
@@ -3039,8 +3071,8 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
         """
         return self.element.selected_columns
 
-    @property
-    def _from_objects(self):
+    @util.ro_non_memoized_property
+    def _from_objects(self) -> List[FromClause]:
         return self.element._from_objects
 
 
@@ -3612,10 +3644,10 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
                 return True
         return False
 
-    def _set_label_style(self, style):
+    def set_label_style(self, style):
         if self._label_style is not style:
             self = self._generate()
-            select_0 = self.selects[0]._set_label_style(style)
+            select_0 = self.selects[0].set_label_style(style)
             self.selects = [select_0] + self.selects[1:]
 
         return self
@@ -3665,8 +3697,8 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         for select in self.selects:
             select._refresh_for_new_column(column)
 
-    @property
-    def _all_selected_columns(self):
+    @util.non_memoized_property
+    def _all_selected_columns(self) -> _SelectIterable:
         return self.selects[0]._all_selected_columns
 
     @property
@@ -3701,8 +3733,18 @@ class SelectState(util.MemoizedSlots, CompileState):
         "_label_resolve_dict",
     )
 
-    class default_select_compile_options(CacheableOptions):
-        _cache_key_traversal = []
+    if TYPE_CHECKING:
+        default_select_compile_options: CacheableOptions
+    else:
+
+        class default_select_compile_options(CacheableOptions):
+            _cache_key_traversal = []
+
+    if TYPE_CHECKING:
+
+        @classmethod
+        def get_plugin_class(cls, statement: Select) -> SelectState:
+            ...
 
     def __init__(self, statement, compiler, **kw):
         self.statement = statement
@@ -3966,7 +4008,7 @@ class SelectState(util.MemoizedSlots, CompileState):
             return None
 
     @classmethod
-    def all_selected_columns(cls, statement):
+    def all_selected_columns(cls, statement: Select) -> _SelectIterable:
         return [c for c in _select_iterables(statement._raw_columns)]
 
     def _setup_joins(self, args, raw_columns):
@@ -4205,15 +4247,17 @@ class Select(
     _memoized_select_entities: Tuple[TODO_Any, ...] = ()
 
     _distinct = False
-    _distinct_on: Tuple[ColumnElement, ...] = ()
+    _distinct_on: Tuple[ColumnElement[Any], ...] = ()
     _correlate: Tuple[FromClause, ...] = ()
     _correlate_except: Optional[Tuple[FromClause, ...]] = None
-    _where_criteria: Tuple[ColumnElement, ...] = ()
-    _having_criteria: Tuple[ColumnElement, ...] = ()
+    _where_criteria: Tuple[ColumnElement[Any], ...] = ()
+    _having_criteria: Tuple[ColumnElement[Any], ...] = ()
     _from_obj: Tuple[FromClause, ...] = ()
     _auto_correlate = True
 
-    _compile_options = SelectState.default_select_compile_options
+    _compile_options: CacheableOptions = (
+        SelectState.default_select_compile_options
+    )
 
     _traverse_internals = (
         [
@@ -4264,7 +4308,7 @@ class Select(
         stmt.__dict__.update(kw)
         return stmt
 
-    def __init__(self, *entities: _ColumnsClauseElement):
+    def __init__(self, *entities: _ColumnsClauseArgument):
         r"""Construct a new :class:`_expression.Select`.
 
         The public constructor for :class:`_expression.Select` is the
@@ -4286,7 +4330,7 @@ class Select(
         cols = list(elem._select_iterable)
         return cols[0].type
 
-    def filter(self, *criteria):
+    def filter(self: SelfSelect, *criteria: ColumnElement[Any]) -> SelfSelect:
         """A synonym for the :meth:`_future.Select.where` method."""
 
         return self.where(*criteria)
@@ -4896,7 +4940,7 @@ class Select(
         return self
 
     @property
-    def whereclause(self):
+    def whereclause(self) -> Optional[ColumnElement[Any]]:
         """Return the completed WHERE clause for this
         :class:`_expression.Select` statement.
 
@@ -5161,12 +5205,12 @@ class Select(
             [
                 (conv(c), c)
                 for c in self._all_selected_columns
-                if not c._is_text_clause
+                if is_column_element(c)
             ]
-        ).as_immutable()
+        ).as_readonly()
 
     @HasMemoized.memoized_attribute
-    def _all_selected_columns(self):
+    def _all_selected_columns(self) -> Sequence[ColumnElement[Any]]:
         meth = SelectState.get_plugin_class(self).all_selected_columns
         return list(meth(self))
 
@@ -5175,7 +5219,9 @@ class Select(
             self = self.set_label_style(LABEL_STYLE_DISAMBIGUATE_ONLY)
         return self
 
-    def _generate_columns_plus_names(self, anon_for_dupe_key):
+    def _generate_columns_plus_names(
+        self, anon_for_dupe_key: bool
+    ) -> List[Tuple[str, str, str, ColumnElement[Any], bool]]:
         """Generate column names as rendered in a SELECT statement by
         the compiler.
 
@@ -5805,13 +5851,13 @@ class TextualSelect(SelectBase):
         """
         return ColumnCollection(
             (c.key, c) for c in self.column_args
-        ).as_immutable()
+        ).as_readonly()
 
-    @property
-    def _all_selected_columns(self):
+    @util.non_memoized_property
+    def _all_selected_columns(self) -> _SelectIterable:
         return self.column_args
 
-    def _set_label_style(self, style):
+    def set_label_style(self, style):
         return self
 
     def _ensure_disambiguated_names(self):

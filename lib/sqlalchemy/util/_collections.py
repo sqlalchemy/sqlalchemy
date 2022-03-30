@@ -38,13 +38,13 @@ from .typing import Protocol
 if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
     from ._py_collections import immutabledict as immutabledict
     from ._py_collections import IdentitySet as IdentitySet
-    from ._py_collections import ImmutableContainer as ImmutableContainer
+    from ._py_collections import ReadOnlyContainer as ReadOnlyContainer
     from ._py_collections import ImmutableDictBase as ImmutableDictBase
     from ._py_collections import OrderedSet as OrderedSet
     from ._py_collections import unique_list as unique_list
 else:
     from sqlalchemy.cyextension.immutabledict import (
-        ImmutableContainer as ImmutableContainer,
+        ReadOnlyContainer as ReadOnlyContainer,
     )
     from sqlalchemy.cyextension.immutabledict import (
         ImmutableDictBase as ImmutableDictBase,
@@ -213,10 +213,10 @@ class Properties(Generic[_T]):
     def __contains__(self, key: str) -> bool:
         return key in self._data
 
-    def as_immutable(self) -> "ImmutableProperties[_T]":
+    def as_readonly(self) -> "ReadOnlyProperties[_T]":
         """Return an immutable proxy for this :class:`.Properties`."""
 
-        return ImmutableProperties(self._data)
+        return ReadOnlyProperties(self._data)
 
     def update(self, value):
         self._data.update(value)
@@ -263,7 +263,7 @@ class OrderedProperties(Properties[_T]):
         Properties.__init__(self, OrderedDict())
 
 
-class ImmutableProperties(ImmutableContainer, Properties[_T]):
+class ReadOnlyProperties(ReadOnlyContainer, Properties[_T]):
     """Provide immutable dict/object attribute to an underlying dictionary."""
 
     __slots__ = ()

@@ -25,6 +25,7 @@ from typing import overload
 from typing import Sequence
 from typing import Tuple
 from typing import Type
+from typing import TYPE_CHECKING
 from typing import TypeVar
 
 from . import operators
@@ -35,9 +36,9 @@ from .visitors import InternalTraversal
 from .. import util
 from ..util.typing import Literal
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
+    from .base import _EntityNamespace
     from .visitors import _TraverseInternalsType
-    from ..util.typing import Self
 
 _AnnotationDict = Mapping[str, Any]
 
@@ -192,7 +193,12 @@ class SupportsWrappingAnnotations(SupportsAnnotations):
     __slots__ = ()
 
     _constructor: Callable[..., SupportsWrappingAnnotations]
-    entity_namespace: Mapping[str, Any]
+
+    if TYPE_CHECKING:
+
+        @util.ro_non_memoized_property
+        def entity_namespace(self) -> _EntityNamespace:
+            ...
 
     def _annotate(self, values: _AnnotationDict) -> Annotated:
         """return a copy of this ClauseElement with annotations
@@ -380,8 +386,8 @@ class Annotated(SupportsAnnotations):
         else:
             return hash(other) == hash(self)
 
-    @property
-    def entity_namespace(self) -> Mapping[str, Any]:
+    @util.ro_non_memoized_property
+    def entity_namespace(self) -> _EntityNamespace:
         if "entity_namespace" in self._annotations:
             return cast(
                 SupportsWrappingAnnotations,

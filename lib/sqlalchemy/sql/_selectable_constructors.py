@@ -12,7 +12,7 @@ from typing import Optional
 
 from . import coercions
 from . import roles
-from ._typing import _ColumnsClauseElement
+from ._typing import _ColumnsClauseArgument
 from .elements import ColumnClause
 from .selectable import Alias
 from .selectable import CompoundSelect
@@ -281,7 +281,7 @@ def outerjoin(left, right, onclause=None, full=False):
     return Join(left, right, onclause, isouter=True, full=full)
 
 
-def select(*entities: _ColumnsClauseElement) -> Select:
+def select(*entities: _ColumnsClauseArgument) -> Select:
     r"""Construct a new :class:`_expression.Select`.
 
 

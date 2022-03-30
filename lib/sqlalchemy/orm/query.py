@@ -60,7 +60,7 @@ from ..sql import roles
 from ..sql import Select
 from ..sql import util as sql_util
 from ..sql import visitors
-from ..sql._typing import _FromClauseElement
+from ..sql._typing import _FromClauseArgument
 from ..sql.annotation import SupportsCloneAnnotations
 from ..sql.base import _entity_namespace_key
 from ..sql.base import _generative
@@ -2018,7 +2018,7 @@ class Query(
     @_generative
     @_assertions(_no_clauseelement_condition)
     def select_from(
-        self: SelfQuery, *from_obj: _FromClauseElement
+        self: SelfQuery, *from_obj: _FromClauseArgument
     ) -> SelfQuery:
         r"""Set the FROM clause of this :class:`.Query` explicitly.
 

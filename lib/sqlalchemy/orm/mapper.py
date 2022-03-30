@@ -1749,6 +1749,7 @@ class Mapper(
                 col.key = col._tq_key_label = key
 
             self.columns.add(col, key)
+
             for col in prop.columns + prop._orig_columns:
                 for col in col.proxy_set:
                     self._columntoproperty[col] = prop
@@ -2381,7 +2382,7 @@ class Mapper(
                 yield c
 
     @HasMemoized.memoized_attribute
-    def attrs(self) -> util.ImmutableProperties["MapperProperty"]:
+    def attrs(self) -> util.ReadOnlyProperties["MapperProperty"]:
         """A namespace of all :class:`.MapperProperty` objects
         associated this mapper.
 
@@ -2416,7 +2417,7 @@ class Mapper(
         """
 
         self._check_configure()
-        return util.ImmutableProperties(self._props)
+        return util.ReadOnlyProperties(self._props)
 
     @HasMemoized.memoized_attribute
     def all_orm_descriptors(self):
@@ -2484,7 +2485,7 @@ class Mapper(
             :attr:`_orm.Mapper.attrs`
 
         """
-        return util.ImmutableProperties(
+        return util.ReadOnlyProperties(
             dict(self.class_manager._all_sqla_attributes())
         )
 
@@ -2571,7 +2572,7 @@ class Mapper(
 
     def _filter_properties(self, type_):
         self._check_configure()
-        return util.ImmutableProperties(
+        return util.ReadOnlyProperties(
             util.OrderedDict(
                 (k, v) for k, v in self._props.items() if isinstance(v, type_)
             )

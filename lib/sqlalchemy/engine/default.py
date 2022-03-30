@@ -54,7 +54,6 @@ from ..sql import expression
 from ..sql._typing import is_tuple_type
 from ..sql.compiler import DDLCompiler
 from ..sql.compiler import SQLCompiler
-from ..sql.elements import ColumnClause
 from ..sql.elements import quoted_name
 from ..sql.schema import default_is_scalar
 
@@ -88,6 +87,7 @@ if typing.TYPE_CHECKING:
     from ..sql.dml import DMLState
     from ..sql.dml import UpdateBase
     from ..sql.elements import BindParameter
+    from ..sql.roles import ColumnsClauseRole
     from ..sql.schema import Column
     from ..sql.schema import ColumnDefault
     from ..sql.type_api import _BindProcessorType
@@ -1166,7 +1166,7 @@ class DefaultExecutionContext(ExecutionContext):
             return ()
 
     @util.memoized_property
-    def returning_cols(self) -> Optional[Sequence[ColumnClause[Any]]]:
+    def returning_cols(self) -> Optional[Sequence[ColumnsClauseRole]]:
         if TYPE_CHECKING:
             assert isinstance(self.compiled, SQLCompiler)
         return self.compiled.returning

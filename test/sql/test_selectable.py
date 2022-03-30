@@ -208,6 +208,24 @@ class SelectableTest(
             {"name": "table1", "table": table1},
             [],
         ),
+        (
+            table1.alias("some_alias"),
+            None,
+            {
+                "name": "some_alias",
+                "table": testing.eq_clause_element(table1.alias("some_alias")),
+            },
+            [],
+        ),
+        (
+            table1.join(table2),
+            None,
+            {
+                "name": None,
+                "table": testing.eq_clause_element(table1.join(table2)),
+            },
+            [],
+        ),
         argnames="entity, cols, expected_entity, expected_returning",
     )
     def test_dml_descriptions(

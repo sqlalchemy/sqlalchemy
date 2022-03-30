@@ -1248,6 +1248,7 @@ if TYPE_CHECKING:
     # of a property, meaning assignment needs to be disallowed
     ro_memoized_property = property
     ro_non_memoized_property = property
+
 else:
     memoized_property = ro_memoized_property = _memoized_property
     non_memoized_property = ro_non_memoized_property = _non_memoized_property
@@ -1346,6 +1347,12 @@ class HasMemoized:
             return result
 
         return update_wrapper(oneshot, fn)
+
+
+if TYPE_CHECKING:
+    HasMemoized_ro_memoized_attribute = property
+else:
+    HasMemoized_ro_memoized_attribute = HasMemoized.memoized_attribute
 
 
 class MemoizedSlots:

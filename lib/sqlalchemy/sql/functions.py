@@ -298,7 +298,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
 
         return self.alias(name=name).column
 
-    @property
+    @util.ro_non_memoized_property
     def columns(self):
         r"""The set of columns exported by this :class:`.FunctionElement`.
 
@@ -320,6 +320,11 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             SQL function expressions.
 
         """  # noqa E501
+        return self.c
+
+    @util.ro_memoized_property
+    def c(self):
+        """synonym for :attr:`.FunctionElement.columns`."""
 
         return ColumnCollection(
             columns=[(col.key, col) for col in self._all_selected_columns]
