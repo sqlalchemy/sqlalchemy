@@ -87,7 +87,15 @@ _T = TypeVar("_T", bound="Any")
 _ServerDefaultType = Union["FetchedValue", str, TextClause, ColumnElement]
 _TAB = TypeVar("_TAB", bound="Table")
 
-RETAIN_SCHEMA = util.symbol("retain_schema")
+RETAIN_SCHEMA = util.symbol(
+    "retain_schema"
+    """Symbol indicating that a :class:`_schema.Table`, :class:`.Sequence`
+    or in some cases a :class:`_schema.ForeignKey` object, in situations
+    where the object is being copied for a :meth:`.MetaData.to_metadata`
+    operation, should retain the schema name that it already has.
+
+    """
+)
 
 BLANK_SCHEMA = util.symbol(
     "blank_schema",

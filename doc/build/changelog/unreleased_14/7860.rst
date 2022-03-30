@@ -2,10 +2,10 @@
     :tags: usecase, schema
     :tickets: 7860
 
-    Added support so that the :paramref:`.Table.tometadata.referred_schema_fn`
+    Added support so that the :paramref:`.Table.to_metadata.referred_schema_fn`
     callable passed to :meth:`.Table.to_metadata` may return the value
-    :data:`.BLANK_SCHEMA` to indicate that the referenced foreign key should be
-    reset to None. The :data.`RETAIN_SCHEMA` symbol may also be returned from
+    :attr:`.BLANK_SCHEMA` to indicate that the referenced foreign key should be
+    reset to None. The :attr:`RETAIN_SCHEMA` symbol may also be returned from
     this function to indicate "no change", which will behave the same as
     ``None`` currently does which also indicates no change.
 

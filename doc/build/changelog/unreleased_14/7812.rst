@@ -2,6 +2,7 @@
     :tags: bug, mssql, regression
     :tickets: 7812
 
-    Fixed regression caused by :ticket:`7160` where FK reflection on a very
-    old database (compatibility level 80: SQL Server 2000) causes an
-    "Ambiguous column name" error. Patch courtesy of @Lin-Your.
+    Fixed regression caused by :ticket:`7160` where FK reflection in
+    conjunction with a low compatibility level setting (compatibility level 80:
+    SQL Server 2000) causes an "Ambiguous column name" error. Patch courtesy
+    @Lin-Your.
