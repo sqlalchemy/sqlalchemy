@@ -576,7 +576,7 @@ Column, Table, MetaData API
 
     Symbol indicating that a :class:`_schema.Table`, :class:`.Sequence`
     or in some cases a :class:`_schema.ForeignKey` object, in situations
-    where the object is being copied for a :meth:`.MetaData.to_metadata`
+    where the object is being copied for a :meth:`.Table.to_metadata`
     operation, should retain the schema name that it already has.
 
 
