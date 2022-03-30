@@ -345,8 +345,8 @@ def between(
         :meth:`_expression.ColumnElement.between`
 
     """
-    expr = coercions.expect(roles.ExpressionElementRole, expr)
-    return expr.between(lower_bound, upper_bound, symmetric=symmetric)
+    col_expr = coercions.expect(roles.ExpressionElementRole, expr)
+    return col_expr.between(lower_bound, upper_bound, symmetric=symmetric)
 
 
 def outparam(

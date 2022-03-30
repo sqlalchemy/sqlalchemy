@@ -82,7 +82,6 @@ from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.elements import CompilerColumnElement
 from sqlalchemy.sql.expression import ClauseElement
 from sqlalchemy.sql.expression import ClauseList
-from sqlalchemy.sql.expression import HasPrefixes
 from sqlalchemy.sql.selectable import LABEL_STYLE_NONE
 from sqlalchemy.sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.testing import assert_raises
@@ -268,18 +267,6 @@ class SelectTest(fixtures.TestBase, AssertsCompiledSQL):
             getattr,
             select(table1.c.myid).scalar_subquery(),
             "columns",
-        )
-
-    def test_prefix_constructor(self):
-        class Pref(HasPrefixes):
-            def _generate(self):
-                return self
-
-        assert_raises(
-            exc.ArgumentError,
-            Pref().prefix_with,
-            "some prefix",
-            not_a_dialect=True,
         )
 
     def test_table_select(self):

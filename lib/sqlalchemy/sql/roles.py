@@ -19,7 +19,6 @@ from ..util.typing import Literal
 
 if TYPE_CHECKING:
     from ._typing import _PropagateAttrsType
-    from ._typing import _SelectIterable
     from .base import _EntityNamespace
     from .base import ColumnCollection
     from .base import ReadOnlyColumnCollection
@@ -28,6 +27,7 @@ if TYPE_CHECKING:
     from .elements import ColumnElement
     from .elements import Label
     from .elements import NamedColumn
+    from .selectable import _SelectIterable
     from .selectable import FromClause
     from .selectable import Subquery
 
@@ -164,6 +164,12 @@ class WhereHavingRole(OnClauseRole):
 
 
 class ExpressionElementRole(Generic[_T], SQLRole):
+    # note when using generics for ExpressionElementRole,
+    # the generic type needs to be in
+    # sqlalchemy.sql.coercions._impl_lookup mapping also.
+    # these are set up for basic types like int, bool, str, float
+    # right now
+
     __slots__ = ()
     _role_name = "SQL expression element"
 

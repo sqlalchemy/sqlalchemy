@@ -313,12 +313,12 @@ EXTRACT_MAP = {
 }
 
 COMPOUND_KEYWORDS = {
-    selectable.CompoundSelect.UNION: "UNION",
-    selectable.CompoundSelect.UNION_ALL: "UNION ALL",
-    selectable.CompoundSelect.EXCEPT: "EXCEPT",
-    selectable.CompoundSelect.EXCEPT_ALL: "EXCEPT ALL",
-    selectable.CompoundSelect.INTERSECT: "INTERSECT",
-    selectable.CompoundSelect.INTERSECT_ALL: "INTERSECT ALL",
+    selectable._CompoundSelectKeyword.UNION: "UNION",
+    selectable._CompoundSelectKeyword.UNION_ALL: "UNION ALL",
+    selectable._CompoundSelectKeyword.EXCEPT: "EXCEPT",
+    selectable._CompoundSelectKeyword.EXCEPT_ALL: "EXCEPT ALL",
+    selectable._CompoundSelectKeyword.INTERSECT: "INTERSECT",
+    selectable._CompoundSelectKeyword.INTERSECT_ALL: "INTERSECT ALL",
 }
 
 
@@ -1468,6 +1468,10 @@ class SQLCompiler(Compiled):
             self.post_compile_params = frozenset()
             for key in expanded_state.parameter_expansion:
                 bind = self.binds.pop(key)
+
+                if TYPE_CHECKING:
+                    assert bind.value is not None
+
                 self.bind_names.pop(bind)
                 for value, expanded_key in zip(
                     bind.value, expanded_state.parameter_expansion[key]
@@ -3089,12 +3093,7 @@ class SQLCompiler(Compiled):
                     self.ctes_recursive = True
                 text = self.preparer.format_alias(cte, cte_name)
                 if cte.recursive:
-                    if isinstance(cte.element, selectable.Select):
-                        col_source = cte.element
-                    elif isinstance(cte.element, selectable.CompoundSelect):
-                        col_source = cte.element.selects[0]
-                    else:
-                        assert False, "cte should only be against SelectBase"
+                    col_source = cte.element
 
                     # TODO: can we get at the .columns_plus_names collection
                     # that is already (or will be?) generated for the SELECT
@@ -3315,7 +3314,9 @@ class SQLCompiler(Compiled):
             for elem in chunk
         )
 
-        if isinstance(element.name, elements._truncated_label):
+        if element._unnamed:
+            name = None
+        elif isinstance(element.name, elements._truncated_label):
             name = self._truncated_identifier("values", element.name)
         else:
             name = element.name
@@ -3980,7 +3981,7 @@ class SQLCompiler(Compiled):
         clause = " ".join(
             prefix._compiler_dispatch(self, **kw)
             for prefix, dialect_name in prefixes
-            if dialect_name is None or dialect_name == self.dialect.name
+            if dialect_name in (None, "*") or dialect_name == self.dialect.name
         )
         if clause:
             clause += " "

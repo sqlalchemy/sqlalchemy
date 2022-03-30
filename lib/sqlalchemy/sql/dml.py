@@ -45,11 +45,14 @@ from .base import Executable
 from .base import HasCompileState
 from .elements import BooleanClauseList
 from .elements import ClauseElement
+from .elements import ColumnClause
 from .elements import ColumnElement
 from .elements import Null
+from .selectable import Alias
 from .selectable import FromClause
 from .selectable import HasCTE
 from .selectable import HasPrefixes
+from .selectable import Join
 from .selectable import ReturnsRows
 from .selectable import TableClause
 from .sqltypes import NullType
@@ -59,15 +62,15 @@ from .. import util
 from ..util.typing import TypeGuard
 
 if TYPE_CHECKING:
-
+    from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnsClauseArgument
     from ._typing import _DMLColumnArgument
+    from ._typing import _DMLTableArgument
     from ._typing import _FromClauseArgument
-    from ._typing import _HasClauseElement
-    from ._typing import _SelectIterable
     from .base import ReadOnlyColumnCollection
     from .compiler import SQLCompiler
-    from .elements import ColumnClause
+    from .selectable import _ColumnsClauseElement
+    from .selectable import _SelectIterable
     from .selectable import Select
 
     def isupdate(dml: DMLState) -> TypeGuard[UpdateDMLState]:
@@ -85,7 +88,8 @@ else:
     isinsert = operator.attrgetter("isinsert")
 
 
-_DMLColumnElement = Union[str, "ColumnClause[Any]"]
+_DMLColumnElement = Union[str, ColumnClause[Any]]
+_DMLTableElement = Union[TableClause, Alias, Join]
 
 
 class DMLState(CompileState):
@@ -132,7 +136,7 @@ class DMLState(CompileState):
         ]
 
     @property
-    def dml_table(self) -> roles.DMLTableRole:
+    def dml_table(self) -> _DMLTableElement:
         return self.statement.table
 
     if TYPE_CHECKING:
@@ -322,17 +326,17 @@ class UpdateBase(
     __visit_name__ = "update_base"
 
     _hints: util.immutabledict[
-        Tuple[roles.DMLTableRole, str], str
+        Tuple[_DMLTableElement, str], str
     ] = util.EMPTY_DICT
     named_with_column = False
 
-    table: roles.DMLTableRole
+    table: _DMLTableElement
 
     _return_defaults = False
     _return_defaults_columns: Optional[
-        Tuple[roles.ColumnsClauseRole, ...]
+        Tuple[_ColumnsClauseElement, ...]
     ] = None
-    _returning: Tuple[roles.ColumnsClauseRole, ...] = ()
+    _returning: Tuple[_ColumnsClauseElement, ...] = ()
 
     is_dml = True
 
@@ -483,7 +487,7 @@ class UpdateBase(
     def with_hint(
         self: SelfUpdateBase,
         text: str,
-        selectable: Optional[roles.DMLTableRole] = None,
+        selectable: Optional[_DMLTableArgument] = None,
         dialect_name: str = "*",
     ) -> SelfUpdateBase:
         """Add a table hint for a single table to this
@@ -517,7 +521,8 @@ class UpdateBase(
         """
         if selectable is None:
             selectable = self.table
-
+        else:
+            selectable = coercions.expect(roles.DMLTableRole, selectable)
         self._hints = self._hints.union({(selectable, dialect_name): text})
         return self
 
@@ -636,9 +641,9 @@ class ValuesBase(UpdateBase):
 
     _select_names: Optional[List[str]] = None
     _inline: bool = False
-    _returning: Tuple[roles.ColumnsClauseRole, ...] = ()
+    _returning: Tuple[_ColumnsClauseElement, ...] = ()
 
-    def __init__(self, table: _FromClauseArgument):
+    def __init__(self, table: _DMLTableArgument):
         self.table = coercions.expect(
             roles.DMLTableRole, table, apply_propagate_attrs=self
         )
@@ -970,7 +975,7 @@ class Insert(ValuesBase):
         + HasCTE._has_ctes_traverse_internals
     )
 
-    def __init__(self, table: roles.FromClauseRole):
+    def __init__(self, table: _DMLTableArgument):
         super(Insert, self).__init__(table)
 
     @_generative
@@ -1066,12 +1071,12 @@ SelfDMLWhereBase = typing.TypeVar("SelfDMLWhereBase", bound="DMLWhereBase")
 
 
 class DMLWhereBase:
-    table: roles.DMLTableRole
+    table: _DMLTableElement
     _where_criteria: Tuple[ColumnElement[Any], ...] = ()
 
     @_generative
     def where(
-        self: SelfDMLWhereBase, *whereclause: roles.ExpressionElementRole[Any]
+        self: SelfDMLWhereBase, *whereclause: _ColumnExpressionArgument[bool]
     ) -> SelfDMLWhereBase:
         """Return a new construct with the given expression(s) added to
         its WHERE clause, joined to the existing clause via AND, if any.
@@ -1104,7 +1109,9 @@ class DMLWhereBase:
         """
 
         for criterion in whereclause:
-            where_criteria = coercions.expect(roles.WhereHavingRole, criterion)
+            where_criteria: ColumnElement[Any] = coercions.expect(
+                roles.WhereHavingRole, criterion
+            )
             self._where_criteria += (where_criteria,)
         return self
 
@@ -1119,7 +1126,7 @@ class DMLWhereBase:
 
         return self.where(*criteria)
 
-    def _filter_by_zero(self) -> roles.DMLTableRole:
+    def _filter_by_zero(self) -> _DMLTableElement:
         return self.table
 
     def filter_by(self: SelfDMLWhereBase, **kwargs: Any) -> SelfDMLWhereBase:
@@ -1189,7 +1196,7 @@ class Update(DMLWhereBase, ValuesBase):
         + HasCTE._has_ctes_traverse_internals
     )
 
-    def __init__(self, table: roles.FromClauseRole):
+    def __init__(self, table: _DMLTableArgument):
         super(Update, self).__init__(table)
 
     @_generative
@@ -1279,7 +1286,7 @@ class Delete(DMLWhereBase, UpdateBase):
         + HasCTE._has_ctes_traverse_internals
     )
 
-    def __init__(self, table: roles.FromClauseRole):
+    def __init__(self, table: _DMLTableArgument):
         self.table = coercions.expect(
             roles.DMLTableRole, table, apply_propagate_attrs=self
         )

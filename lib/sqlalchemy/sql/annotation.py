@@ -59,7 +59,9 @@ class SupportsAnnotations(ExternallyTraversible):
 
     _is_immutable: bool
 
-    def _annotate(self, values: _AnnotationDict) -> SupportsAnnotations:
+    def _annotate(
+        self: SelfSupportsAnnotations, values: _AnnotationDict
+    ) -> SelfSupportsAnnotations:
         raise NotImplementedError()
 
     @overload
@@ -105,11 +107,6 @@ class SupportsAnnotations(ExternallyTraversible):
         )
 
 
-SelfSupportsCloneAnnotations = TypeVar(
-    "SelfSupportsCloneAnnotations", bound="SupportsCloneAnnotations"
-)
-
-
 class SupportsCloneAnnotations(SupportsAnnotations):
     if not typing.TYPE_CHECKING:
         __slots__ = ()
@@ -119,8 +116,8 @@ class SupportsCloneAnnotations(SupportsAnnotations):
     ]
 
     def _annotate(
-        self: SelfSupportsCloneAnnotations, values: _AnnotationDict
-    ) -> SelfSupportsCloneAnnotations:
+        self: SelfSupportsAnnotations, values: _AnnotationDict
+    ) -> SelfSupportsAnnotations:
         """return a copy of this ClauseElement with annotations
         updated by the given dictionary.
 
@@ -132,8 +129,8 @@ class SupportsCloneAnnotations(SupportsAnnotations):
         return new
 
     def _with_annotations(
-        self: SelfSupportsCloneAnnotations, values: _AnnotationDict
-    ) -> SelfSupportsCloneAnnotations:
+        self: SelfSupportsAnnotations, values: _AnnotationDict
+    ) -> SelfSupportsAnnotations:
         """return a copy of this ClauseElement with annotations
         replaced by the given dictionary.
 
@@ -184,11 +181,6 @@ class SupportsCloneAnnotations(SupportsAnnotations):
             return self
 
 
-SelfSupportsWrappingAnnotations = TypeVar(
-    "SelfSupportsWrappingAnnotations", bound="SupportsWrappingAnnotations"
-)
-
-
 class SupportsWrappingAnnotations(SupportsAnnotations):
     __slots__ = ()
 
@@ -200,19 +192,23 @@ class SupportsWrappingAnnotations(SupportsAnnotations):
         def entity_namespace(self) -> _EntityNamespace:
             ...
 
-    def _annotate(self, values: _AnnotationDict) -> Annotated:
+    def _annotate(
+        self: SelfSupportsAnnotations, values: _AnnotationDict
+    ) -> SelfSupportsAnnotations:
         """return a copy of this ClauseElement with annotations
         updated by the given dictionary.
 
         """
-        return Annotated._as_annotated_instance(self, values)
+        return Annotated._as_annotated_instance(self, values)  # type: ignore
 
-    def _with_annotations(self, values: _AnnotationDict) -> Annotated:
+    def _with_annotations(
+        self: SelfSupportsAnnotations, values: _AnnotationDict
+    ) -> SelfSupportsAnnotations:
         """return a copy of this ClauseElement with annotations
         replaced by the given dictionary.
 
         """
-        return Annotated._as_annotated_instance(self, values)
+        return Annotated._as_annotated_instance(self, values)  # type: ignore
 
     @overload
     def _deannotate(
@@ -306,16 +302,17 @@ class Annotated(SupportsAnnotations):
         self: SelfAnnotated, values: _AnnotationDict
     ) -> SelfAnnotated:
         _values = self._annotations.union(values)
-        return self._with_annotations(_values)
+        new: SelfAnnotated = self._with_annotations(_values)  # type: ignore
+        return new
 
     def _with_annotations(
-        self: SelfAnnotated, values: util.immutabledict[str, Any]
-    ) -> SelfAnnotated:
+        self: SelfAnnotated, values: _AnnotationDict
+    ) -> SupportsAnnotations:
         clone = self.__class__.__new__(self.__class__)
         clone.__dict__ = self.__dict__.copy()
         clone.__dict__.pop("_annotations_cache_key", None)
         clone.__dict__.pop("_generate_cache_key", None)
-        clone._annotations = values
+        clone._annotations = util.immutabledict(values)
         return clone
 
     @overload

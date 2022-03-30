@@ -36,6 +36,7 @@ import operator
 import typing
 from typing import Any
 from typing import Callable
+from typing import cast
 from typing import Dict
 from typing import Iterator
 from typing import List
@@ -68,6 +69,7 @@ from .elements import SQLCoreOperations
 from .elements import TextClause
 from .selectable import TableClause
 from .type_api import to_instance
+from .visitors import ExternallyTraversible
 from .visitors import InternalTraversal
 from .. import event
 from .. import exc
@@ -131,21 +133,33 @@ def _get_table_key(name: str, schema: Optional[str]) -> str:
 
 # this should really be in sql/util.py but we'd have to
 # break an import cycle
-def _copy_expression(expression, source_table, target_table):
+def _copy_expression(
+    expression: ColumnElement[Any],
+    source_table: Optional[Table],
+    target_table: Optional[Table],
+) -> ColumnElement[Any]:
     if source_table is None or target_table is None:
         return expression
 
-    def replace(col):
+    fixed_source_table = source_table
+    fixed_target_table = target_table
+
+    def replace(
+        element: ExternallyTraversible, **kw: Any
+    ) -> Optional[ExternallyTraversible]:
         if (
-            isinstance(col, Column)
-            and col.table is source_table
-            and col.key in source_table.c
+            isinstance(element, Column)
+            and element.table is fixed_source_table
+            and element.key in fixed_source_table.c
         ):
-            return target_table.c[col.key]
+            return fixed_target_table.c[element.key]
         else:
             return None
 
-    return visitors.replacement_traverse(expression, {}, replace)
+    return cast(
+        ColumnElement[Any],
+        visitors.replacement_traverse(expression, {}, replace),
+    )
 
 
 @inspection._self_inspects
@@ -911,8 +925,8 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
     def _reset_exported(self):
         pass
 
-    @property
-    def _autoincrement_column(self):
+    @util.ro_non_memoized_property
+    def _autoincrement_column(self) -> Optional[Column[Any]]:
         return self.primary_key._autoincrement_column
 
     @property
@@ -2307,6 +2321,8 @@ class ForeignKey(DialectKWArgs, SchemaItem):
     __visit_name__ = "foreign_key"
 
     parent: Column[Any]
+
+    _table_column: Optional[Column[Any]]
 
     def __init__(
         self,
@@ -4290,11 +4306,11 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
 
         self._columns.extend(columns)
 
-        PrimaryKeyConstraint._autoincrement_column._reset(self)
+        PrimaryKeyConstraint._autoincrement_column._reset(self)  # type: ignore
         self._set_parent_with_dispatch(self.table)
 
     def _replace(self, col):
-        PrimaryKeyConstraint._autoincrement_column._reset(self)
+        PrimaryKeyConstraint._autoincrement_column._reset(self)  # type: ignore
         self._columns.replace(col)
 
         self.dispatch._sa_event_column_added_to_pk_constraint(self, col)
@@ -4308,8 +4324,8 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
         else:
             return list(self._columns)
 
-    @util.memoized_property
-    def _autoincrement_column(self):
+    @util.ro_memoized_property
+    def _autoincrement_column(self) -> Optional[Column[Any]]:
         def _validate_autoinc(col, autoinc_true):
             if col.type._type_affinity is None or not issubclass(
                 col.type._type_affinity, type_api.INTEGERTYPE._type_affinity
@@ -4350,6 +4366,8 @@ class PrimaryKeyConstraint(ColumnCollectionConstraint):
                 "ignore_fk",
             ) and _validate_autoinc(col, False):
                 return col
+            else:
+                return None
 
         else:
             autoinc = None

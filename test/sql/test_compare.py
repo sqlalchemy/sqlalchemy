@@ -208,6 +208,8 @@ class CoreFixtures:
             column("q") == column("x"),
             column("q") == column("y"),
             column("z") == column("x"),
+            (column("z") == column("x")).self_group(),
+            (column("q") == column("x")).self_group(),
             column("z") + column("x"),
             column("z") - column("x"),
             column("x") - column("z"),

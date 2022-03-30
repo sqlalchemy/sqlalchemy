@@ -63,12 +63,14 @@ if TYPE_CHECKING:
     from . import elements
     from . import type_api
     from ._typing import _ColumnsClauseArgument
-    from ._typing import _SelectIterable
     from .elements import BindParameter
     from .elements import ColumnClause
     from .elements import ColumnElement
     from .elements import NamedColumn
     from .elements import SQLCoreOperations
+    from .elements import TextClause
+    from .selectable import _JoinTargetElement
+    from .selectable import _SelectIterable
     from .selectable import FromClause
     from ..engine import Connection
     from ..engine import Result
@@ -167,7 +169,11 @@ class SingletonConstant(Immutable):
         cls._singleton = obj
 
 
-def _from_objects(*elements: ColumnElement[Any]) -> Iterator[FromClause]:
+def _from_objects(
+    *elements: Union[
+        ColumnElement[Any], FromClause, TextClause, _JoinTargetElement
+    ]
+) -> Iterator[FromClause]:
     return itertools.chain.from_iterable(
         [element._from_objects for element in elements]
     )
@@ -255,6 +261,11 @@ def _expand_cloned(elements):
     predecessors.
 
     """
+    # TODO: cython candidate
+    # and/or change approach: in
+    # https://gerrit.sqlalchemy.org/c/sqlalchemy/sqlalchemy/+/3712 we propose
+    # getting rid of _cloned_set.
+    # turning this into chain.from_iterable adds all kinds of callcount
     return itertools.chain(*[x._cloned_set for x in elements])
 
 
@@ -1559,6 +1570,11 @@ class ColumnCollection(Generic[_COLKEY, _COL]):
            was moved onto the :class:`_expression.ColumnCollection` itself.
 
         """
+        # TODO: cython candidate
+
+        # don't dig around if the column is locally present
+        if column in self._colset:
+            return column
 
         def embedded(expanded_proxy_set, target_set):
             for t in target_set.difference(expanded_proxy_set):
@@ -1568,9 +1584,6 @@ class ColumnCollection(Generic[_COLKEY, _COL]):
                     return False
             return True
 
-        # don't dig around if the column is locally present
-        if column in self._colset:
-            return column
         col, intersect = None, None
         target_set = column.proxy_set
         cols = [c for (k, c) in self._collection]

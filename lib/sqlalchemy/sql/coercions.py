@@ -12,7 +12,6 @@ import numbers
 import re
 import typing
 from typing import Any
-from typing import Any as TODO_Any
 from typing import Callable
 from typing import Dict
 from typing import List
@@ -20,7 +19,9 @@ from typing import NoReturn
 from typing import Optional
 from typing import overload
 from typing import Type
+from typing import TYPE_CHECKING
 from typing import TypeVar
+from typing import Union
 
 from . import operators
 from . import roles
@@ -32,6 +33,7 @@ from .visitors import Visitable
 from .. import exc
 from .. import inspection
 from .. import util
+from ..util.typing import Literal
 
 if not typing.TYPE_CHECKING:
     elements = None
@@ -46,12 +48,26 @@ if typing.TYPE_CHECKING:
     from . import schema
     from . import selectable
     from . import traversals
+    from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnsClauseArgument
+    from ._typing import _DMLTableArgument
+    from ._typing import _FromClauseArgument
+    from .dml import _DMLTableElement
     from .elements import ClauseElement
     from .elements import ColumnClause
     from .elements import ColumnElement
+    from .elements import DQLDMLClauseElement
     from .elements import SQLCoreOperations
-
+    from .schema import Column
+    from .selectable import _ColumnsClauseElement
+    from .selectable import _JoinTargetElement
+    from .selectable import _JoinTargetProtocol
+    from .selectable import _OnClauseElement
+    from .selectable import FromClause
+    from .selectable import HasCTE
+    from .selectable import SelectBase
+    from .selectable import Subquery
+    from .visitors import _TraverseCallableType
 
 _SR = TypeVar("_SR", bound=roles.SQLRole)
 _F = TypeVar("_F", bound=Callable[..., Any])
@@ -143,10 +159,6 @@ def _expression_collection_was_a_list(attrname, fnname, args):
 def expect(
     role: Type[roles.TruncatedLabelRole],
     element: Any,
-    *,
-    apply_propagate_attrs: Optional[ClauseElement] = None,
-    argname: Optional[str] = None,
-    post_inspect: bool = False,
     **kw: Any,
 ) -> str:
     ...
@@ -154,12 +166,30 @@ def expect(
 
 @overload
 def expect(
-    role: Type[roles.ExpressionElementRole[_T]],
+    role: Type[roles.StatementOptionRole],
     element: Any,
-    *,
-    apply_propagate_attrs: Optional[ClauseElement] = None,
-    argname: Optional[str] = None,
-    post_inspect: bool = False,
+    **kw: Any,
+) -> DQLDMLClauseElement:
+    ...
+
+
+@overload
+def expect(
+    role: Type[roles.DDLReferredColumnRole],
+    element: Any,
+    **kw: Any,
+) -> Column[Any]:
+    ...
+
+
+@overload
+def expect(
+    role: Union[
+        Type[roles.ExpressionElementRole[Any]],
+        Type[roles.LimitOffsetRole],
+        Type[roles.WhereHavingRole],
+    ],
+    element: _ColumnExpressionArgument[_T],
     **kw: Any,
 ) -> ColumnElement[_T]:
     ...
@@ -167,40 +197,89 @@ def expect(
 
 @overload
 def expect(
-    role: Type[roles.DMLTableRole],
+    role: Union[
+        Type[roles.ExpressionElementRole[Any]],
+        Type[roles.LimitOffsetRole],
+        Type[roles.WhereHavingRole],
+    ],
     element: Any,
-    *,
-    apply_propagate_attrs: Optional[ClauseElement] = None,
-    argname: Optional[str] = None,
-    post_inspect: bool = False,
     **kw: Any,
-) -> roles.DMLTableRole:
+) -> ColumnElement[Any]:
+    ...
+
+
+@overload
+def expect(
+    role: Type[roles.DMLTableRole],
+    element: _DMLTableArgument,
+    **kw: Any,
+) -> _DMLTableElement:
+    ...
+
+
+@overload
+def expect(
+    role: Type[roles.HasCTERole],
+    element: HasCTE,
+    **kw: Any,
+) -> HasCTE:
+    ...
+
+
+@overload
+def expect(
+    role: Type[roles.SelectStatementRole],
+    element: SelectBase,
+    **kw: Any,
+) -> SelectBase:
+    ...
+
+
+@overload
+def expect(
+    role: Type[roles.FromClauseRole],
+    element: _FromClauseArgument,
+    **kw: Any,
+) -> FromClause:
+    ...
+
+
+@overload
+def expect(
+    role: Type[roles.FromClauseRole],
+    element: SelectBase,
+    *,
+    explicit_subquery: Literal[True] = ...,
+    **kw: Any,
+) -> Subquery:
     ...
 
 
 @overload
 def expect(
     role: Type[roles.ColumnsClauseRole],
-    element: Any,
-    *,
-    apply_propagate_attrs: Optional[ClauseElement] = None,
-    argname: Optional[str] = None,
-    post_inspect: bool = False,
+    element: _ColumnsClauseArgument,
     **kw: Any,
-) -> roles.ColumnsClauseRole:
+) -> _ColumnsClauseElement:
     ...
 
 
 @overload
 def expect(
+    role: Union[Type[roles.JoinTargetRole], Type[roles.OnClauseRole]],
+    element: _JoinTargetProtocol,
+    **kw: Any,
+) -> _JoinTargetProtocol:
+    ...
+
+
+# catchall for not-yet-implemented overloads
+@overload
+def expect(
     role: Type[_SR],
     element: Any,
-    *,
-    apply_propagate_attrs: Optional[ClauseElement] = None,
-    argname: Optional[str] = None,
-    post_inspect: bool = False,
     **kw: Any,
-) -> TODO_Any:
+) -> Any:
     ...
 
 
@@ -212,7 +291,7 @@ def expect(
     argname: Optional[str] = None,
     post_inspect: bool = False,
     **kw: Any,
-) -> TODO_Any:
+) -> Any:
     if (
         role.allows_lambda
         # note callable() will not invoke a __getattr__() method, whereas
@@ -329,7 +408,8 @@ def expect_col_expression_collection(role, expressions):
             strname = resolved = expr
         else:
             cols: List[ColumnClause[Any]] = []
-            visitors.traverse(resolved, {}, {"column": cols.append})
+            col_append: _TraverseCallableType[ColumnClause[Any]] = cols.append
+            visitors.traverse(resolved, {}, {"column": col_append})
             if cols:
                 column = cols[0]
         add_element = column if column is not None else strname
@@ -432,7 +512,7 @@ class _ColumnCoercions(RoleImpl):
         original_element = element
         if not getattr(resolved, "is_clause_element", False):
             self._raise_for_expected(original_element, argname, resolved)
-        elif resolved._is_select_statement:
+        elif resolved._is_select_base:
             self._warn_for_scalar_subquery_coercion()
             return resolved.scalar_subquery()
         elif resolved._is_from_clause and isinstance(
@@ -670,7 +750,7 @@ class InElementImpl(RoleImpl):
         if resolved._is_from_clause:
             if (
                 isinstance(resolved, selectable.Alias)
-                and resolved.element._is_select_statement
+                and resolved.element._is_select_base
             ):
                 self._warn_for_implicit_coercion(resolved)
                 return self._post_coercion(resolved.element, **kw)
@@ -722,7 +802,7 @@ class InElementImpl(RoleImpl):
             self._raise_for_expected(element, **kw)
 
     def _post_coercion(self, element, expr, operator, **kw):
-        if element._is_select_statement:
+        if element._is_select_base:
             # for IN, we are doing scalar_subquery() coercion without
             # a warning
             return element.scalar_subquery()
@@ -1085,7 +1165,7 @@ class JoinTargetImpl(RoleImpl):
             # #6550, unless JoinTargetImpl._skip_clauseelement_for_target_match
             # were set to False.
             return element
-        elif legacy and resolved._is_select_statement:
+        elif legacy and resolved._is_select_base:
             util.warn_deprecated(
                 "Implicit coercion of SELECT and textual SELECT "
                 "constructs into FROM clauses is deprecated; please call "
@@ -1114,7 +1194,7 @@ class FromClauseImpl(_SelectIsNotFrom, _NoTextCoercion, RoleImpl):
         allow_select: bool = True,
         **kw: Any,
     ) -> Any:
-        if resolved._is_select_statement:
+        if resolved._is_select_base:
             if explicit_subquery:
                 return resolved.subquery()
             elif allow_select:
@@ -1150,7 +1230,7 @@ class StrictFromClauseImpl(FromClauseImpl):
         allow_select: bool = False,
         **kw: Any,
     ) -> Any:
-        if resolved._is_select_statement and allow_select:
+        if resolved._is_select_base and allow_select:
             util.warn_deprecated(
                 "Implicit coercion of SELECT and textual SELECT constructs "
                 "into FROM clauses is deprecated; please call .subquery() "
@@ -1195,7 +1275,7 @@ class DMLSelectImpl(_NoTextCoercion, RoleImpl):
         if resolved._is_from_clause:
             if (
                 isinstance(resolved, selectable.Alias)
-                and resolved.element._is_select_statement
+                and resolved.element._is_select_base
             ):
                 return resolved.element
             else:
@@ -1235,3 +1315,9 @@ for name in dir(roles):
         if name in globals():
             impl = globals()[name](cls)
             _impl_lookup[cls] = impl
+
+if not TYPE_CHECKING:
+    ee_impl = _impl_lookup[roles.ExpressionElementRole]
+
+    for py_type in (int, bool, str, float):
+        _impl_lookup[roles.ExpressionElementRole[py_type]] = ee_impl

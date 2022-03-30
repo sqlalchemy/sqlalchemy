@@ -1008,10 +1008,7 @@ class TypeEngine(Visitable, Generic[_T]):
     @util.preload_module("sqlalchemy.engine.default")
     def _default_dialect(self) -> Dialect:
 
-        if TYPE_CHECKING:
-            from ..engine import default
-        else:
-            default = util.preloaded.engine_default
+        default = util.preloaded.engine_default
 
         # dmypy / mypy seems to sporadically keep thinking this line is
         # returning Any, which seems to be caused by the @deprecated_params

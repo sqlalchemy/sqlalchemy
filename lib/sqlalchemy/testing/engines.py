@@ -306,6 +306,7 @@ def testing_engine(
     options=None,
     asyncio=False,
     transfer_staticpool=False,
+    share_pool=False,
     _sqlite_savepoint=False,
 ):
     if asyncio:
@@ -356,6 +357,8 @@ def testing_engine(
         if config.db is not None and isinstance(config.db.pool, StaticPool):
             use_reaper = False
             engine.pool._transfer_from(config.db.pool)
+    elif share_pool:
+        engine.pool = config.db.pool
 
     if scope == "global":
         if asyncio:

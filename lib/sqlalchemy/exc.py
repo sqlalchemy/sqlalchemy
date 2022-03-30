@@ -23,8 +23,8 @@ from typing import Tuple
 from typing import Type
 from typing import Union
 
-from .util import _preloaded
 from .util import compat
+from .util import preloaded as _preloaded
 
 if typing.TYPE_CHECKING:
     from .engine.interfaces import _AnyExecuteParams
@@ -345,6 +345,8 @@ class MultipleResultsFound(InvalidRequestError):
 class NoReferenceError(InvalidRequestError):
     """Raised by ``ForeignKey`` to indicate a reference cannot be resolved."""
 
+    table_name: str
+
 
 class AwaitRequired(InvalidRequestError):
     """Error raised by the async greenlet spawn if no async operation
@@ -501,10 +503,7 @@ class StatementError(SQLAlchemyError):
 
     @_preloaded.preload_module("sqlalchemy.sql.util")
     def _sql_message(self) -> str:
-        if typing.TYPE_CHECKING:
-            from .sql import util
-        else:
-            util = _preloaded.preloaded.sql_util
+        util = _preloaded.sql_util
 
         details = [self._message()]
         if self.statement:

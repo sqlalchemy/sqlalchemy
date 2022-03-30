@@ -28,6 +28,8 @@ from typing import Generic
 from typing import Iterable
 from typing import List
 from typing import Optional
+from typing import Tuple
+from typing import TYPE_CHECKING
 from typing import TypeVar
 
 from . import exc as orm_exc
@@ -78,6 +80,8 @@ from ..sql.selectable import SelectBase
 from ..sql.selectable import SelectStatementGrouping
 from ..sql.visitors import InternalTraversal
 
+if TYPE_CHECKING:
+    from ..sql.selectable import _SetupJoinsElement
 
 __all__ = ["Query", "QueryContext"]
 
@@ -134,7 +138,8 @@ class Query(
     _correlate = ()
     _auto_correlate = True
     _from_obj = ()
-    _setup_joins = ()
+    _setup_joins: Tuple[_SetupJoinsElement, ...] = ()
+
     _label_style = LABEL_STYLE_LEGACY_ORM
 
     _memoized_select_entities = ()

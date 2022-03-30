@@ -54,6 +54,11 @@ class CacheConst(enum.Enum):
 NO_CACHE = CacheConst.NO_CACHE
 
 
+_CacheKeyTraversalType = Union[
+    "_TraverseInternalsType", Literal[CacheConst.NO_CACHE], Literal[None]
+]
+
+
 class CacheTraverseTarget(enum.Enum):
     CACHE_IN_PLACE = 0
     CALL_GEN_CACHE_KEY = 1
@@ -89,9 +94,7 @@ class HasCacheKey:
 
     __slots__ = ()
 
-    _cache_key_traversal: Union[
-        _TraverseInternalsType, Literal[CacheConst.NO_CACHE], Literal[None]
-    ] = NO_CACHE
+    _cache_key_traversal: _CacheKeyTraversalType = NO_CACHE
 
     _is_has_cache_key = True
 

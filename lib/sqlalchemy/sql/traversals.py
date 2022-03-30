@@ -228,7 +228,7 @@ class HasCopyInternals(HasTraverseInternals):
         raise NotImplementedError()
 
     def _copy_internals(
-        self, omit_attrs: Iterable[str] = (), **kw: Any
+        self, *, omit_attrs: Iterable[str] = (), **kw: Any
     ) -> None:
         """Reassign internal elements to be clones of themselves.
 

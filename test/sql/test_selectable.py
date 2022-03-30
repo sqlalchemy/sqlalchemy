@@ -432,6 +432,24 @@ class SelectableTest(
             ):
                 select(stmt.subquery()).compile()
 
+    def test_correlate_none_arg_error(self):
+        stmt = select(table1)
+        with expect_raises_message(
+            exc.ArgumentError,
+            "additional FROM objects not accepted when passing "
+            "None/False to correlate",
+        ):
+            stmt.correlate(None, table2)
+
+    def test_correlate_except_none_arg_error(self):
+        stmt = select(table1)
+        with expect_raises_message(
+            exc.ArgumentError,
+            "additional FROM objects not accepted when passing "
+            "None/False to correlate_except",
+        ):
+            stmt.correlate_except(None, table2)
+
     def test_select_label_grouped_still_corresponds(self):
         label = select(table1.c.col1).label("foo")
         label2 = label.self_group()

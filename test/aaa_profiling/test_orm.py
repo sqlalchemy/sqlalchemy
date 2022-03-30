@@ -835,27 +835,14 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
         )
         s.commit()
 
-    def test_build_query(self):
+    def test_fetch_results_integrated(self, testing_engine):
         A, B, C, D, E, F, G = self.classes("A", "B", "C", "D", "E", "F", "G")
 
-        sess = fixture_session()
+        # this test has been reworked to use the compiled cache again,
+        # as a real-world scenario.
 
-        @profiling.function_call_count()
-        def go():
-            for i in range(100):
-                q = sess.query(A).options(
-                    joinedload(A.bs).joinedload(B.cs).joinedload(C.ds),
-                    joinedload(A.es).joinedload(E.fs),
-                    defaultload(A.es).joinedload(E.gs),
-                )
-                q._compile_context()
-
-        go()
-
-    def test_fetch_results(self):
-        A, B, C, D, E, F, G = self.classes("A", "B", "C", "D", "E", "F", "G")
-
-        sess = Session(testing.db)
+        eng = testing_engine(share_pool=True)
+        sess = Session(eng)
 
         q = sess.query(A).options(
             joinedload(A.bs).joinedload(B.cs).joinedload(C.ds),
@@ -863,47 +850,27 @@ class JoinedEagerLoadTest(NoCache, fixtures.MappedTest):
             defaultload(A.es).joinedload(E.gs),
         )
 
-        compile_state = q._compile_state()
+        @profiling.function_call_count()
+        def initial_run():
+            list(q.all())
 
-        from sqlalchemy.orm.context import ORMCompileState
+        initial_run()
+        sess.close()
 
-        @profiling.function_call_count(warmup=1)
-        def go():
+        @profiling.function_call_count()
+        def subsequent_run():
+            list(q.all())
+
+        subsequent_run()
+        sess.close()
+
+        @profiling.function_call_count()
+        def more_runs():
             for i in range(100):
-                # NOTE: this test was broken in
-                # 77f1b7d236dba6b1c859bb428ef32d118ec372e6 because we started
-                # clearing out the attributes after the first iteration.   make
-                # sure the attributes are there every time.
-                assert compile_state.attributes
-                exec_opts = {}
-                bind_arguments = {}
-                ORMCompileState.orm_pre_session_exec(
-                    sess,
-                    compile_state.select_statement,
-                    {},
-                    exec_opts,
-                    bind_arguments,
-                    is_reentrant_invoke=False,
-                )
+                list(q.all())
 
-                r = sess.connection().execute(
-                    compile_state.statement,
-                    execution_options=exec_opts,
-                )
-
-                r.context.compiled.compile_state = compile_state
-                obj = ORMCompileState.orm_setup_cursor_result(
-                    sess,
-                    compile_state.statement,
-                    {},
-                    exec_opts,
-                    {},
-                    r,
-                )
-                list(obj.unique())
-                sess.close()
-
-        go()
+        more_runs()
+        sess.close()
 
 
 class JoinConditionTest(NoCache, fixtures.DeclarativeMappedTest):

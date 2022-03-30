@@ -688,6 +688,19 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
         mapping = self._mapping(s)
         assert x not in mapping
 
+    def test_subquery_accessors(self):
+        t = self._xy_table_fixture()
+
+        s = text("SELECT x from t").columns(t.c.x)
+
+        self.assert_compile(
+            select(s.scalar_subquery()), "SELECT (SELECT x from t) AS anon_1"
+        )
+        self.assert_compile(
+            select(s.subquery()),
+            "SELECT anon_1.x FROM (SELECT x from t) AS anon_1",
+        )
+
     def test_select_label_alt_name_table_alias_column(self):
         t = self._xy_table_fixture()
         x = t.c.x
@@ -714,6 +727,36 @@ class AsFromTest(fixtures.TestBase, AssertsCompiledSQL):
             "WITH t AS (select id, name from user) "
             "SELECT mytable.myid, mytable.name, mytable.description "
             "FROM mytable, t WHERE mytable.myid = t.id",
+        )
+
+    def test_cte_recursive(self):
+        t = (
+            text("select id, name from user")
+            .columns(id=Integer, name=String)
+            .cte("t", recursive=True)
+        )
+
+        s = select(table1).where(table1.c.myid == t.c.id)
+        self.assert_compile(
+            s,
+            "WITH RECURSIVE t(id, name) AS (select id, name from user) "
+            "SELECT mytable.myid, mytable.name, mytable.description "
+            "FROM mytable, t WHERE mytable.myid = t.id",
+        )
+
+    def test_unions(self):
+        s1 = text("select id, name from user where id > 5").columns(
+            id=Integer, name=String
+        )
+        s2 = text("select id, name from user where id < 15").columns(
+            id=Integer, name=String
+        )
+        stmt = union(s1, s2)
+        eq_(stmt.selected_columns.keys(), ["id", "name"])
+        self.assert_compile(
+            stmt,
+            "select id, name from user where id > 5 UNION "
+            "select id, name from user where id < 15",
         )
 
     def test_subquery(self):

@@ -7,12 +7,17 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from .dml import Delete
 from .dml import Insert
 from .dml import Update
 
+if TYPE_CHECKING:
+    from ._typing import _DMLTableArgument
 
-def insert(table):
+
+def insert(table: _DMLTableArgument) -> Insert:
     """Construct an :class:`_expression.Insert` object.
 
     E.g.::
@@ -82,7 +87,7 @@ def insert(table):
     return Insert(table)
 
 
-def update(table):
+def update(table: _DMLTableArgument) -> Update:
     r"""Construct an :class:`_expression.Update` object.
 
     E.g.::
@@ -122,7 +127,7 @@ def update(table):
     return Update(table)
 
 
-def delete(table):
+def delete(table: _DMLTableArgument) -> Delete:
     r"""Construct :class:`_expression.Delete` object.
 
     E.g.::

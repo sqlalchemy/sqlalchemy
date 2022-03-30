@@ -9,7 +9,9 @@
 from collections import defaultdict as defaultdict
 from functools import partial as partial
 from functools import update_wrapper as update_wrapper
+from typing import TYPE_CHECKING
 
+from . import preloaded as preloaded
 from ._collections import coerce_generator_arg as coerce_generator_arg
 from ._collections import coerce_to_immutabledict as coerce_to_immutabledict
 from ._collections import column_dict as column_dict
@@ -44,8 +46,6 @@ from ._collections import UniqueAppender as UniqueAppender
 from ._collections import update_copy as update_copy
 from ._collections import WeakPopulateDict as WeakPopulateDict
 from ._collections import WeakSequence as WeakSequence
-from ._preloaded import preload_module as preload_module
-from ._preloaded import preloaded as preloaded
 from .compat import arm as arm
 from .compat import b as b
 from .compat import b64decode as b64decode
@@ -148,3 +148,4 @@ from .langhelpers import warn as warn
 from .langhelpers import warn_exception as warn_exception
 from .langhelpers import warn_limited as warn_limited
 from .langhelpers import wrap_callable as wrap_callable
+from .preloaded import preload_module as preload_module

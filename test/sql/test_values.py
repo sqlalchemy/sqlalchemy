@@ -294,6 +294,31 @@ class ValuesTest(fixtures.TablesTest, AssertsCompiledSQL):
             checkparams={},
         )
 
+    def test_anon_alias(self):
+        people = self.tables.people
+        values = (
+            Values(
+                column("bookcase_id", Integer),
+                column("bookcase_owner_id", Integer),
+            )
+            .data([(1, 1), (2, 1), (3, 2), (3, 3)])
+            .alias()
+        )
+        stmt = select(people, values).select_from(
+            people.join(
+                values, values.c.bookcase_owner_id == people.c.people_id
+            )
+        )
+        self.assert_compile(
+            stmt,
+            "SELECT people.people_id, people.age, people.name, "
+            "anon_1.bookcase_id, anon_1.bookcase_owner_id FROM people "
+            "JOIN (VALUES (:param_1, :param_2), (:param_3, :param_4), "
+            "(:param_5, :param_6), (:param_7, :param_8)) AS anon_1 "
+            "(bookcase_id, bookcase_owner_id) "
+            "ON people.people_id = anon_1.bookcase_owner_id",
+        )
+
     def test_with_join_unnamed(self):
         people = self.tables.people
         values = Values(

@@ -68,20 +68,12 @@ module = [
     "sqlalchemy.ext.mutable",
     "sqlalchemy.ext.horizontal_shard",
 
-    "sqlalchemy.sql._selectable_constructors",
-    "sqlalchemy.sql._dml_constructors",
-
     # TODO for non-strict:
     "sqlalchemy.ext.baked",
     "sqlalchemy.ext.instrumentation",
     "sqlalchemy.ext.indexable",
     "sqlalchemy.ext.orderinglist",
     "sqlalchemy.ext.serializer",
-
-    "sqlalchemy.sql.selectable",   # would be nice as strict
-    "sqlalchemy.sql.functions",  # would be nice as strict
-    "sqlalchemy.sql.lambdas",
-    "sqlalchemy.sql.util",
 
     # not yet classified:
     "sqlalchemy.orm.*",
@@ -132,10 +124,14 @@ module = [
     "sqlalchemy.sql.crud",
     "sqlalchemy.sql.ddl",  # would be nice as strict
     "sqlalchemy.sql.elements",    # would be nice as strict
+    "sqlalchemy.sql.functions",  # would be nice as strict, requires sqltypes
+    "sqlalchemy.sql.lambdas",
     "sqlalchemy.sql.naming",
+    "sqlalchemy.sql.selectable",   # would be nice as strict
     "sqlalchemy.sql.schema",      # would be nice as strict
     "sqlalchemy.sql.sqltypes",   # would be nice as strict
     "sqlalchemy.sql.traversals",
+    "sqlalchemy.sql.util",
 
     "sqlalchemy.util.*",
 ]

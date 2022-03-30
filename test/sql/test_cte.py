@@ -1186,6 +1186,37 @@ class CTETest(fixtures.TestBase, AssertsCompiledSQL):
             dialect="postgresql",
         )
 
+    def test_recursive_dml_syntax(self):
+        orders = table(
+            "orders",
+            column("region"),
+            column("amount"),
+            column("product"),
+            column("quantity"),
+        )
+
+        upsert = (
+            orders.update()
+            .where(orders.c.region == "Region1")
+            .values(amount=1.0, product="Product1", quantity=1)
+            .returning(*(orders.c._all_columns))
+            .cte("upsert", recursive=True)
+        )
+        stmt = select(upsert)
+
+        # This statement probably makes no sense, just want to see that the
+        # column generation aspect needed by RECURSIVE works (new in 2.0)
+        self.assert_compile(
+            stmt,
+            "WITH RECURSIVE upsert(region, amount, product, quantity) "
+            "AS (UPDATE orders SET amount=:param_1, product=:param_2, "
+            "quantity=:param_3 WHERE orders.region = :region_1 "
+            "RETURNING orders.region, orders.amount, orders.product, "
+            "orders.quantity) "
+            "SELECT upsert.region, upsert.amount, upsert.product, "
+            "upsert.quantity FROM upsert",
+        )
+
     def test_upsert_from_select(self):
         orders = table(
             "orders",

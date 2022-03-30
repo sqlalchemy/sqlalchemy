@@ -463,11 +463,12 @@ def update_copy(d, _new=None, **kw):
     return d
 
 
-def flatten_iterator(x):
+def flatten_iterator(x: Iterable[_T]) -> Iterator[_T]:
     """Given an iterator of which further sub-elements may also be
     iterators, flatten the sub-elements into a single iterator.
 
     """
+    elem: _T
     for elem in x:
         if not isinstance(elem, str) and hasattr(elem, "__iter__"):
             for y in flatten_iterator(elem):

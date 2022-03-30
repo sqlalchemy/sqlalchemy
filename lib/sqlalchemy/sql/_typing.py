@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import operator
 from typing import Any
-from typing import Iterable
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
@@ -24,9 +24,16 @@ if TYPE_CHECKING:
     from .roles import FromClauseRole
     from .schema import DefaultGenerator
     from .schema import Sequence
+    from .selectable import Alias
     from .selectable import FromClause
+    from .selectable import Join
     from .selectable import NamedFromClause
+    from .selectable import ReturnsRows
+    from .selectable import Select
+    from .selectable import SelectBase
+    from .selectable import Subquery
     from .selectable import TableClause
+    from .sqltypes import TableValueType
     from .sqltypes import TupleType
     from .type_api import TypeEngine
     from ..util.typing import TypeGuard
@@ -47,6 +54,14 @@ class _HasClauseElement(Protocol):
 # the coercions system is responsible for converting from XYZArgument to
 # XYZElement.
 
+_TextCoercedExpressionArgument = Union[
+    str,
+    "TextClause",
+    "ColumnElement[_T]",
+    _HasClauseElement,
+    roles.ExpressionElementRole[_T],
+]
+
 _ColumnsClauseArgument = Union[
     Literal["*", 1],
     roles.ColumnsClauseRole,
@@ -54,8 +69,31 @@ _ColumnsClauseArgument = Union[
     Inspectable[_HasClauseElement],
     _HasClauseElement,
 ]
+"""open-ended SELECT columns clause argument.
 
-_SelectIterable = Iterable[Union["ColumnElement[Any]", "TextClause"]]
+Includes column expressions, tables, ORM mapped entities, a few literal values.
+
+This type is used for lists of columns  / entities to be returned in result
+sets; select(...), insert().returning(...), etc.
+
+
+"""
+
+_ColumnExpressionArgument = Union[
+    "ColumnElement[_T]", _HasClauseElement, roles.ExpressionElementRole[_T]
+]
+"""narrower "column expression" argument.
+
+This type is used for all the other "column" kinds of expressions that
+typically represent a single SQL column expression, not a set of columns the
+way a table or ORM entity does.
+
+This includes ColumnElement, or ORM-mapped attributes that will have a
+`__clause_element__()` method, it also has the ExpressionElementRole
+overall which brings in the TextClause object also.
+
+"""
+
 
 _FromClauseArgument = Union[
     roles.FromClauseRole,
@@ -63,28 +101,99 @@ _FromClauseArgument = Union[
     Inspectable[_HasClauseElement],
     _HasClauseElement,
 ]
+"""A FROM clause, like we would send to select().select_from().
 
-_ColumnExpressionArgument = Union[
-    "ColumnElement[_T]", _HasClauseElement, roles.ExpressionElementRole[_T]
+Also accommodates ORM entities and related constructs.
+
+"""
+
+_JoinTargetArgument = Union[_FromClauseArgument, roles.JoinTargetRole]
+"""target for join() builds on _FromClauseArgument to include additional
+join target roles such as those which come from the ORM.
+
+"""
+
+_OnClauseArgument = Union[_ColumnExpressionArgument[Any], roles.OnClauseRole]
+"""target for an ON clause, includes additional roles such as those which
+come from the ORM.
+
+"""
+
+_SelectStatementForCompoundArgument = Union[
+    "SelectBase", roles.CompoundElementRole
 ]
+"""SELECT statement acceptable by ``union()`` and other SQL set operations"""
 
-_DMLColumnArgument = Union[str, "ColumnClause[Any]", _HasClauseElement]
+_DMLColumnArgument = Union[
+    str, "ColumnClause[Any]", _HasClauseElement, roles.DMLColumnRole
+]
+"""A DML column expression.  This is a "key" inside of insert().values(),
+update().values(), and related.
+
+These are usually strings or SQL table columns.
+
+There's also edge cases like JSON expression assignment, which we would want
+the DMLColumnRole to be able to accommodate.
+
+"""
+
+
+_DMLTableArgument = Union[
+    "TableClause",
+    "Join",
+    "Alias",
+    Type[Any],
+    Inspectable[_HasClauseElement],
+    _HasClauseElement,
+]
 
 _PropagateAttrsType = util.immutabledict[str, Any]
 
 _TypeEngineArgument = Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"]
 
+if TYPE_CHECKING:
 
-def is_named_from_clause(t: FromClauseRole) -> TypeGuard[NamedFromClause]:
-    return t.named_with_column
+    def is_named_from_clause(t: FromClauseRole) -> TypeGuard[NamedFromClause]:
+        ...
 
+    def is_column_element(c: ClauseElement) -> TypeGuard[ColumnElement[Any]]:
+        ...
 
-def is_column_element(c: ClauseElement) -> TypeGuard[ColumnElement[Any]]:
-    return c._is_column_element
+    def is_text_clause(c: ClauseElement) -> TypeGuard[TextClause]:
+        ...
 
+    def is_from_clause(c: ClauseElement) -> TypeGuard[FromClause]:
+        ...
 
-def is_text_clause(c: ClauseElement) -> TypeGuard[TextClause]:
-    return c._is_text_clause
+    def is_tuple_type(t: TypeEngine[Any]) -> TypeGuard[TupleType]:
+        ...
+
+    def is_table_value_type(t: TypeEngine[Any]) -> TypeGuard[TableValueType]:
+        ...
+
+    def is_select_base(t: ReturnsRows) -> TypeGuard[SelectBase]:
+        ...
+
+    def is_select_statement(t: ReturnsRows) -> TypeGuard[Select]:
+        ...
+
+    def is_table(t: FromClause) -> TypeGuard[TableClause]:
+        ...
+
+    def is_subquery(t: FromClause) -> TypeGuard[Subquery]:
+        ...
+
+else:
+    is_named_from_clause = operator.attrgetter("named_with_column")
+    is_column_element = operator.attrgetter("_is_column_element")
+    is_text_clause = operator.attrgetter("_is_text_clause")
+    is_from_clause = operator.attrgetter("_is_from_clause")
+    is_tuple_type = operator.attrgetter("_is_tuple_type")
+    is_table_value_type = operator.attrgetter("_is_table_value")
+    is_select_base = operator.attrgetter("_is_select_base")
+    is_select_statement = operator.attrgetter("_is_select_statement")
+    is_table = operator.attrgetter("_is_table")
+    is_subquery = operator.attrgetter("_is_subquery")
 
 
 def has_schema_attr(t: FromClauseRole) -> TypeGuard[TableClause]:
@@ -93,10 +202,6 @@ def has_schema_attr(t: FromClauseRole) -> TypeGuard[TableClause]:
 
 def is_quoted_name(s: str) -> TypeGuard[quoted_name]:
     return hasattr(s, "quote")
-
-
-def is_tuple_type(t: TypeEngine[Any]) -> TypeGuard[TupleType]:
-    return t._is_tuple_type
 
 
 def is_has_clause_element(s: object) -> TypeGuard[_HasClauseElement]:
