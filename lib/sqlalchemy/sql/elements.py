@@ -1759,6 +1759,7 @@ class BindParameter(roles.InElementRole, ColumnElement[_T]):
         ("type", InternalTraversal.dp_type),
         ("callable", InternalTraversal.dp_plain_dict),
         ("value", InternalTraversal.dp_plain_obj),
+        ("literal_execute", InternalTraversal.dp_boolean),
     ]
 
     key: str
@@ -1967,6 +1968,7 @@ class BindParameter(roles.InElementRole, ColumnElement[_T]):
             self.__class__,
             self.type._static_cache_key,
             self.key % anon_map if self._key_is_anon else self.key,
+            self.literal_execute,
         )
 
     def _convert_to_unique(self):
