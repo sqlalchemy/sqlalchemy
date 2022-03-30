@@ -52,7 +52,7 @@ class URL(NamedTuple):
     format of the URL is an RFC-1738-style string.
 
     To create a new :class:`_engine.URL` object, use the
-    :func:`_engine.url.make_url` function.  To construct a :class:`_engine.URL`
+    :func:`.make_url` function.  To construct a :class:`_engine.URL`
     programmatically, use the :meth:`_engine.URL.create` constructor.
 
     .. versionchanged:: 1.4
@@ -65,6 +65,10 @@ class URL(NamedTuple):
         :meth:`_engine.URL.update_query_dict` to return a new
         :class:`_engine.URL` object with modifications.   See notes for this
         change at :ref:`change_5526`.
+
+    .. seealso::
+
+        :ref:`database_urls`
 
     :class:`_engine.URL` contains the following attributes:
 
@@ -108,6 +112,10 @@ class URL(NamedTuple):
         query: Mapping[str, Union[Sequence[str], str]] = util.EMPTY_DICT,
     ) -> URL:
         """Create a new :class:`_engine.URL` object.
+
+        .. seealso::
+
+            :ref:`database_urls`
 
         :param drivername: the name of the database backend. This name will
           correspond to a module in sqlalchemy/databases or a third party
@@ -772,6 +780,10 @@ def make_url(name_or_url: Union[str, URL]) -> URL:
 
     The given string is parsed according to the RFC 1738 spec.  If an
     existing URL object is passed, just returns the object.
+
+    .. seealso::
+
+        :ref:`database_urls`
 
     """
 
