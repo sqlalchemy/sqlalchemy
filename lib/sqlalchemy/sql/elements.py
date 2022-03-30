@@ -1230,6 +1230,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
         ("type", InternalTraversal.dp_type),
         ("callable", InternalTraversal.dp_plain_dict),
         ("value", InternalTraversal.dp_plain_obj),
+        ("literal_execute", InternalTraversal.dp_boolean),
     ]
 
     _is_crud = False
@@ -1663,6 +1664,7 @@ class BindParameter(roles.InElementRole, ColumnElement):
             self.__class__,
             self.type._static_cache_key,
             self.key % anon_map if self._key_is_anon else self.key,
+            self.literal_execute,
         )
 
     def _convert_to_unique(self):
