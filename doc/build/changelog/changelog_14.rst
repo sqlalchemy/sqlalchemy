@@ -15,7 +15,27 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.34
-    :include_notes_from: unreleased_14
+    :released: March 31, 2022
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 7878
+
+        Fixed regression caused by :ticket:`7861` where invoking an
+        :class:`.Insert` construct which contained ORM entities directly via
+        :meth:`_orm.Session.execute` would fail.
+
+    .. change::
+        :tags: bug, postgresql
+        :tickets: 7880
+
+        Scaled back a fix made for :ticket:`6581` where "executemany values" mode
+        for psycopg2 were disabled for all "ON CONFLICT" styles of INSERT, to
+        not apply to the "ON CONFLICT DO NOTHING" clause, which does not include
+        any parameters and is safe for "executemany values" mode.  "ON CONFLICT
+        DO UPDATE" is still blocked from "executemany values" as there may
+        be additional parameters in the DO UPDATE clause that cannot be batched
+        (which is the original issue fixed by :ticket:`6581`).
 
 .. changelog::
     :version: 1.4.33
