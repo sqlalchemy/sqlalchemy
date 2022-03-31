@@ -1,0 +1,11 @@
+.. change::
+    :tags: bug, postgresql
+    :tickets: 7880
+
+    Scaled back a fix made for :ticket:`6581` where "executemany values" mode
+    for psycopg2 were disabled for all "ON CONFLICT" styles of INSERT, to
+    not apply to the "ON CONFLICT DO NOTHING" clause, which does not include
+    any parameters and is safe for "executemany values" mode.  "ON CONFLICT
+    DO UPDATE" is still blocked from "executemany values" as there may
+    be additional parameters in the DO UPDATE clause that cannot be batched
+    (which is the original issue fixed by :ticket:`6581`).
