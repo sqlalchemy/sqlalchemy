@@ -2948,32 +2948,45 @@ class Engine(Connectable, log.Identified):
     def __repr__(self):
         return "Engine(%r)" % (self.url,)
 
-    def dispose(self):
+    def dispose(self, close=True):
         """Dispose of the connection pool used by this
         :class:`_engine.Engine`.
 
-        This has the effect of fully closing all **currently checked in**
-        database connections.  Connections that are still checked out
-        will **not** be closed, however they will no longer be associated
-        with this :class:`_engine.Engine`,
-        so when they are closed individually,
-        eventually the :class:`_pool.Pool` which they are associated with will
-        be garbage collected and they will be closed out fully, if
-        not already closed on checkin.
+        A new connection pool is created immediately after the old one has been
+        disposed. The previous connection pool is disposed either actively, by
+        closing out all currently checked-in connections in that pool, or
+        passively, by losing references to it but otherwise not closing any
+        connections. The latter strategy is more appropriate for an initializer
+        in a forked Python process.
 
-        A new connection pool is created immediately after the old one has
-        been disposed.   This new pool, like all SQLAlchemy connection pools,
-        does not make any actual connections to the database until one is
-        first requested, so as long as the :class:`_engine.Engine`
-        isn't used again,
-        no new connections will be made.
+        :param close: if left at its default of ``True``, has the
+         effect of fully closing all **currently checked in**
+         database connections.  Connections that are still checked out
+         will **not** be closed, however they will no longer be associated
+         with this :class:`_engine.Engine`,
+         so when they are closed individually, eventually the
+         :class:`_pool.Pool` which they are associated with will
+         be garbage collected and they will be closed out fully, if
+         not already closed on checkin.
+
+         If set to ``False``, the previous connection pool is de-referenced,
+         and otherwise not touched in any way.
+
+        .. versionadded:: 1.4.33  Added the :paramref:`.Engine.dispose.close`
+            parameter to allow the replacement of a connection pool in a child
+            process without interfering with the connections used by the parent
+            process.
+
 
         .. seealso::
 
             :ref:`engine_disposal`
 
+            :ref:`pooling_multiprocessing`
+
         """
-        self.pool.dispose()
+        if close:
+            self.pool.dispose()
         self.pool = self.pool.recreate()
         self.dispatch.engine_disposed(self)
 

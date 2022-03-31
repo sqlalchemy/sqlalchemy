@@ -1904,7 +1904,10 @@ Valid use cases for calling :meth:`_engine.Engine.dispose` include:
   :class:`_engine.Engine` object is copied to the child process,
   :meth:`_engine.Engine.dispose` should be called so that the engine creates
   brand new database connections local to that fork.   Database connections
-  generally do **not** travel across process boundaries.
+  generally do **not** travel across process boundaries.  Use the
+  :paramref:`.Engine.dispose.close` parameter set to False in this case.
+  See the section :ref:`pooling_multiprocessing` for more background on this
+  use case.
 
 * Within test suites or multitenancy scenarios where many
   ad-hoc, short-lived :class:`_engine.Engine` objects may be created and disposed.
@@ -1928,6 +1931,12 @@ entirely.  This typically incurs only a modest performance impact upon the
 use of new connections, and means that when a connection is checked in,
 it is entirely closed out and is not held in memory.  See :ref:`pool_switching`
 for guidelines on how to disable pooling.
+
+.. seealso::
+
+    :ref:`pooling_toplevel`
+
+    :ref:`pooling_multiprocessing`
 
 .. _dbapi_connections:
 
