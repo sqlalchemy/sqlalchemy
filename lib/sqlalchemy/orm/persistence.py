@@ -2186,7 +2186,32 @@ class ORMDMLState:
 
 @CompileState.plugin_for("orm", "insert")
 class ORMInsert(ORMDMLState, InsertDMLState):
-    pass
+    @classmethod
+    def orm_pre_session_exec(
+        cls,
+        session,
+        statement,
+        params,
+        execution_options,
+        bind_arguments,
+        is_reentrant_invoke,
+    ):
+        return (
+            statement,
+            util.immutabledict(execution_options),
+        )
+
+    @classmethod
+    def orm_setup_cursor_result(
+        cls,
+        session,
+        statement,
+        params,
+        execution_options,
+        bind_arguments,
+        result,
+    ):
+        return result
 
 
 @CompileState.plugin_for("orm", "update")

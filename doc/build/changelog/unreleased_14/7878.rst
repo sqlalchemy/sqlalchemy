@@ -1,0 +1,7 @@
+.. change::
+    :tags: bug, orm, regression
+    :tickets: 7878
+
+    Fixed regression caused by :ticket:`7861` where invoking an
+    :class:`.Insert` construct which contained ORM entities directly via
+    :meth:`_orm.Session.execute` would fail.
