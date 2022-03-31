@@ -461,45 +461,50 @@ are three general approaches to this:
     engine = create_engine("mysql+mysqldb://user:pass@host/dbname", poolclass=NullPool)
 
 
-2. Call :meth:`_engine.Engine.dispose` on any given :class:`_engine.Engine`
-   **directly before** the new process is started, so that the new process
-   will create new connections, as well as not attempt to close connections that
-   were shared from the parent which can impact the parent's subsequent
-   use of those connections.  **This is the recommended approach**::
+2. Call :meth:`_engine.Engine.dispose` on any given :class:`_engine.Engine`,
+   passing the :paramref:`.Engine.dispose.close` parameter with a value of
+   ``False``, within the initialize phase of the child process.  This is
+   so that the new process will not touch any of the parent process' connections
+   and will instead start with new connections.
+   **This is the recommended approach**::
 
-    engine = create_engine("mysql+mysqldb://user:pass@host/dbname")
+        from multiprocessing import Pool
 
-    def run_in_process():
-        with engine.connect() as conn:
-            conn.execute(text("..."))
+        engine = create_engine("mysql+mysqldb://user:pass@host/dbname")
 
-    # before process starts, ensure engine.dispose() is called
-    engine.dispose()
-    p = Process(target=run_in_process)
-    p.start()
+        def run_in_process(some_data_record):
+            with engine.connect() as conn:
+                conn.execute(text("..."))
 
-3. Alternatively, if the :class:`_engine.Engine` is only to be used in
-   child processes, and will not be used from the parent process subsequent
-   to the creation of child forks, the dispose may be within the child process
-   right as it begins::
+        def initializer():
+            """ensure the parent proc's database connections are not touched
+               in the new connection pool"""
+            engine.dispose(close=False)
 
-    engine = create_engine("mysql+mysqldb://user:pass@host/dbname")
+        with Pool(10, initializer=initializer) as p:
+            p.map(run_in_process, data)
 
-    def run_in_process():
-        # process starts. ensure engine.dispose() is called just once
-        # at the beginning.  note this cause parent process connections
-        # to be closed for most drivers
+
+   .. versionadded:: 1.4.33  Added the :paramref:`.Engine.dispose.close`
+      parameter to allow the replacement of a connection pool in a child
+      process without interfering with the connections used by the parent
+      process.
+
+3. Call :meth:`.Engine.dispose` **directly before** the child process is
+   created.  This will also cause the child process to start with a new
+   connection pool, while ensuring the parent connections are not transferred
+   to the child process::
+
+        engine = create_engine("mysql://user:pass@host/dbname")
+
+        def run_in_process():
+            with engine.connect() as conn:
+                conn.execute(text("..."))
+
+        # before process starts, ensure engine.dispose() is called
         engine.dispose()
-
-        with engine.connect() as conn:
-            conn.execute(text("..."))
-
-    p = Process(target=run_in_process)
-    p.start()
-
-    # after child process starts, "engine" above should not be used within
-    # the parent process for connectivity, without calling
-    # engine.dispose() first
+        p = Process(target=run_in_process)
+        p.start()
 
 4. An event handler can be applied to the connection pool that tests for
    connections being shared across process boundaries, and invalidates them::
