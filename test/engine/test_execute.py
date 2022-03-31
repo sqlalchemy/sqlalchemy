@@ -3,6 +3,7 @@
 import collections.abc as collections_abc
 from contextlib import contextmanager
 from contextlib import nullcontext
+import copy
 from io import StringIO
 import re
 import threading
@@ -2276,6 +2277,30 @@ class EngineEventsTest(fixtures.TestBase):
         eng.dispose()
 
         eq_(canary.mock_calls, [call(eng), call(eng)])
+
+    @testing.requires.ad_hoc_engines
+    @testing.combinations(True, False, argnames="close")
+    def test_close_parameter(self, testing_engine, close):
+        eng = testing_engine(
+            options=dict(pool_size=1, max_overflow=0, poolclass=QueuePool)
+        )
+
+        conn = eng.connect()
+        dbapi_conn_one = conn.connection.dbapi_connection
+        conn.close()
+
+        eng_copy = copy.copy(eng)
+        eng_copy.dispose(close=close)
+        copy_conn = eng_copy.connect()
+        dbapi_conn_two = copy_conn.connection.dbapi_connection
+
+        is_not(dbapi_conn_one, dbapi_conn_two)
+
+        conn = eng.connect()
+        if close:
+            is_not(dbapi_conn_one, conn.connection.dbapi_connection)
+        else:
+            is_(dbapi_conn_one, conn.connection.dbapi_connection)
 
     def test_retval_flag(self):
         canary = []

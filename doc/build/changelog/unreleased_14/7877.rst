@@ -1,0 +1,13 @@
+.. change::
+    :tags: usecase, engine
+    :tickets: 7877, 7815
+
+    Added new parameter :paramref:`.Engine.dispose.close`, defaulting to True.
+    When False, the engine disposal does not touch the connections in the old
+    pool at all, simply dropping the pool and replacing it. This use case is so
+    that when the original pool is transferred from a parent process, the
+    parent process may continue to use those connections.
+
+    .. seealso::
+
+        :ref:`pooling_multiprocessing` - revised documentation
