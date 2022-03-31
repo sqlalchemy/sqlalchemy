@@ -1,9 +1,0 @@
-.. change::
-    :tags: usecase, orm
-    :tickets: 7805
-
-    Added :paramref:`_orm.with_polymorphic.adapt_on_names` to the
-    :func:`_orm.with_polymorphic` function, which allows a polymorphic load
-    (typically with concrete mapping) to be stated against an alternative
-    selectable that will adapt to the original mapped selectable on column
-    names alone.

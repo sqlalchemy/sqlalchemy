@@ -1,7 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 7862
-
-    Fixed bug in :func:`_orm.with_loader_criteria` function where loader
-    criteria would not be applied to a joined eager load that were invoked
-    within the scope of a refresh operation for the parent object.

@@ -1,9 +1,0 @@
-.. change::
-    :tags: bug, sql, regression
-    :tickets: 7798
-
-    Fixed regression caused by :ticket:`7760` where the new capabilities of
-    :class:`.TextualSelect` were not fully implemented within the compiler
-    properly, leading to issues with composed INSERT constructs such as "INSERT
-    FROM SELECT" and "INSERT...ON CONFLICT" when combined with CTE and textual
-    statements.

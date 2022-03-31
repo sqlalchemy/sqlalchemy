@@ -15,7 +15,185 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.33
-    :include_notes_from: unreleased_14
+    :released: March 31, 2022
+
+    .. change::
+        :tags: bug, engine
+        :tickets: 7853
+
+        Further clarified connection-level logging to indicate the BEGIN, ROLLBACK
+        and COMMIT log messages do not actually indicate a real transaction when
+        the AUTOCOMMIT isolation level is in use; messaging has been extended to
+        include the BEGIN message itself, and the messaging has also been fixed to
+        accommodate when the :class:`.Engine` level
+        :paramref:`.create_engine.isolation_level` parameter was used directly.
+
+    .. change::
+        :tags: bug, mssql, regression
+        :tickets: 7812
+
+        Fixed regression caused by :ticket:`7160` where FK reflection in
+        conjunction with a low compatibility level setting (compatibility level 80:
+        SQL Server 2000) causes an "Ambiguous column name" error. Patch courtesy
+        @Lin-Your.
+
+    .. change::
+        :tags: usecase, schema
+        :tickets: 7860
+
+        Added support so that the :paramref:`.Table.to_metadata.referred_schema_fn`
+        callable passed to :meth:`.Table.to_metadata` may return the value
+        :attr:`.BLANK_SCHEMA` to indicate that the referenced foreign key should be
+        reset to None. The :attr:`.RETAIN_SCHEMA` symbol may also be returned from
+        this function to indicate "no change", which will behave the same as
+        ``None`` currently does which also indicates no change.
+
+
+    .. change::
+        :tags: bug, sqlite, reflection
+        :tickets: 5463
+
+        Fixed bug where the name of CHECK constraints under SQLite would not be
+        reflected if the name were created using quotes, as is the case when the
+        name uses mixed case or special characters.
+
+
+    .. change::
+        :tags: bug, orm, regression
+        :tickets: 7868
+
+        Fixed regression in "dynamic" loader strategy where the
+        :meth:`_orm.Query.filter_by` method would not be given an appropriate
+        entity to filter from, in the case where a "secondary" table were present
+        in the relationship being queried and the mapping were against something
+        complex such as a "with polymorphic".
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7801
+
+        Fixed bug where :func:`_orm.composite` attributes would not work in
+        conjunction with the :func:`_orm.selectin_polymorphic` loader strategy for
+        joined table inheritance.
+
+
+    .. change::
+        :tags: bug, orm, performance
+        :tickets: 7823
+
+        Improvements in memory usage by the ORM, removing a significant set of
+        intermediary expression objects that are typically stored when a copy of an
+        expression object is created. These clones have been greatly reduced,
+        reducing the number of total expression objects stored in memory by
+        ORM mappings by about 30%.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 7805
+
+        Added :paramref:`_orm.with_polymorphic.adapt_on_names` to the
+        :func:`_orm.with_polymorphic` function, which allows a polymorphic load
+        (typically with concrete mapping) to be stated against an alternative
+        selectable that will adapt to the original mapped selectable on column
+        names alone.
+
+    .. change::
+        :tags: usecase, sql
+        :tickets: 7845
+
+        Added new parameter
+        :paramref:`.FunctionElement.table_valued.joins_implicitly`, for the
+        :meth:`.FunctionElement.table_valued` construct. This parameter indicates
+        that the given table-valued function implicitly joins to the table it
+        refers towards, essentially disabling the "from linting" feature, i.e. the
+        "cartesian product" warning, from taking effect due to the presence of this
+        parameter. May be used for functions such as ``func.json_each()``.
+
+    .. change::
+        :tags: usecase, engine
+        :tickets: 7877, 7815
+
+        Added new parameter :paramref:`.Engine.dispose.close`, defaulting to True.
+        When False, the engine disposal does not touch the connections in the old
+        pool at all, simply dropping the pool and replacing it. This use case is so
+        that when the original pool is transferred from a parent process, the
+        parent process may continue to use those connections.
+
+        .. seealso::
+
+            :ref:`pooling_multiprocessing` - revised documentation
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7799
+
+        Fixed issue where the :func:`_orm.selectin_polymorphic` loader option would
+        not work with joined inheritance mappers that don't have a fixed
+        "polymorphic_on" column.   Additionally added test support for a wider
+        variety of usage patterns with this construct.
+
+    .. change::
+        :tags: usecase, orm
+        :tickets: 7861
+
+        Added new attributes :attr:`.UpdateBase.returning_column_descriptions` and
+        :attr:`.UpdateBase.entity_description` to allow for inspection of ORM
+        attributes and entities that are installed as part of an :class:`.Insert`,
+        :class:`.Update`, or :class:`.Delete` construct. The
+        :attr:`.Select.column_descriptions` accessor is also now implemented for
+        Core-only selectables.
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 7876
+
+        The :paramref:`.bindparam.literal_execute` parameter now takes part
+        of the cache generation of a :func:`.bindparam`, since it changes
+        the sql string generated by the compiler.
+        Previously the correct bind values were used, but the ``literal_execute``
+        would be ignored on subsequent executions of the same query.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7862
+
+        Fixed bug in :func:`_orm.with_loader_criteria` function where loader
+        criteria would not be applied to a joined eager load that were invoked
+        within the scope of a refresh operation for the parent object.
+
+    .. change::
+        :tags: bug, orm
+        :tickets: 7842
+
+        Fixed issue where the :class:`_orm.Mapper` would reduce a user-defined
+        :paramref:`_orm.Mapper.primary_key` argument too aggressively, in the case
+        of mapping to a ``UNION`` where for some of the SELECT entries, two columns
+        are essentially equivalent, but in another, they are not, such as in a
+        recursive CTE. The logic here has been changed to accept a given
+        user-defined PK as given, where columns will be related to the mapped
+        selectable but no longer "reduced" as this heuristic can't accommodate for
+        all situations.
+
+    .. change::
+        :tags: bug, ext
+        :tickets: 7827
+
+        Improved the error message that's raised for the case where the
+        :func:`.association_proxy` construct attempts to access a target attribute
+        at the class level, and this access fails. The particular use case here is
+        when proxying to a hybrid attribute that does not include a working
+        class-level implementation.
+
+
+    .. change::
+        :tags: bug, sql, regression
+        :tickets: 7798
+
+        Fixed regression caused by :ticket:`7760` where the new capabilities of
+        :class:`.TextualSelect` were not fully implemented within the compiler
+        properly, leading to issues with composed INSERT constructs such as "INSERT
+        FROM SELECT" and "INSERT...ON CONFLICT" when combined with CTE and textual
+        statements.
 
 .. changelog::
     :version: 1.4.32
