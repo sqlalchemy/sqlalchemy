@@ -927,7 +927,7 @@ class PGDialect_psycopg2(PGDialect):
             self.executemany_mode & EXECUTEMANY_VALUES
             and context
             and context.isinsert
-            and context.compiled.insert_single_values_expr
+            and context.compiled._is_safe_for_fast_insert_values_helper
         ):
             executemany_values = (
                 "(%s)" % context.compiled.insert_single_values_expr

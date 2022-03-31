@@ -1429,6 +1429,7 @@ import re
 from uuid import UUID as _python_UUID
 
 from . import array as _array
+from . import dml
 from . import hstore as _hstore
 from . import json as _json
 from . import ranges as _ranges
@@ -2462,6 +2463,24 @@ class PGCompiler(compiler.SQLCompiler):
             target_text = ""
 
         return target_text
+
+    @util.memoized_property
+    def _is_safe_for_fast_insert_values_helper(self):
+        # don't allow fast executemany if _post_values_clause is
+        # present and is not an OnConflictDoNothing. what this means
+        # concretely is that the
+        # "fast insert executemany helper" won't be used, in other
+        # words we won't convert "executemany()" of many parameter
+        # sets into a single INSERT with many elements in VALUES.
+        # We can't apply that optimization safely if for example the
+        # statement includes a clause like "ON CONFLICT DO UPDATE"
+
+        return self.insert_single_values_expr is not None and (
+            self.statement._post_values_clause is None
+            or isinstance(
+                self.statement._post_values_clause, dml.OnConflictDoNothing
+            )
+        )
 
     def visit_on_conflict_do_nothing(self, on_conflict, **kw):
 
