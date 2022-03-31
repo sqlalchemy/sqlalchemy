@@ -1,8 +1,0 @@
-.. change::
-    :tags: bug, orm
-    :tickets: 7801
-
-    Fixed bug where :func:`_orm.composite` attributes would not work in
-    conjunction with the :func:`_orm.selectin_polymorphic` loader strategy for
-    joined table inheritance.
-
