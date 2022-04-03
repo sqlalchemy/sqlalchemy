@@ -926,6 +926,12 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
 
         2021-03-15 12:05:57.105542
 
+    The incoming storage format is by default parsed using the
+    Python ``datetime.fromisoformat()`` function.
+
+    .. versionchanged:: 2.0  ``datetime.fromisoformat()`` is used for default
+       datetime string parsing.
+
     The storage format can be customized to some degree using the
     ``storage_format`` and ``regexp`` parameters, such as::
 
@@ -941,7 +947,8 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
      with keys year, month, day, hour, minute, second, and microsecond.
 
     :param regexp: regular expression which will be applied to incoming result
-     rows. If the regexp contains named groups, the resulting match dict is
+     rows, replacing the use of ``datetime.fromisoformat()`` to parse incoming
+     strings. If the regexp contains named groups, the resulting match dict is
      applied to the Python datetime() constructor as keyword arguments.
      Otherwise, if positional groups are used, the datetime() constructor
      is called with positional arguments via
@@ -1027,6 +1034,13 @@ class DATE(_DateTimeMixin, sqltypes.Date):
 
         2011-03-15
 
+    The incoming storage format is by default parsed using the
+    Python ``date.fromisoformat()`` function.
+
+    .. versionchanged:: 2.0  ``date.fromisoformat()`` is used for default
+       date string parsing.
+
+
     The storage format can be customized to some degree using the
     ``storage_format`` and ``regexp`` parameters, such as::
 
@@ -1042,11 +1056,13 @@ class DATE(_DateTimeMixin, sqltypes.Date):
      dict with keys year, month, and day.
 
     :param regexp: regular expression which will be applied to
-     incoming result rows. If the regexp contains named groups, the
-     resulting match dict is applied to the Python date() constructor
-     as keyword arguments. Otherwise, if positional groups are used, the
-     date() constructor is called with positional arguments via
+     incoming result rows, replacing the use of ``date.fromisoformat()`` to
+     parse incoming strings. If the regexp contains named groups, the resulting
+     match dict is applied to the Python date() constructor as keyword
+     arguments. Otherwise, if positional groups are used, the date()
+     constructor is called with positional arguments via
      ``*map(int, match_obj.groups(0))``.
+
     """
 
     _storage_format = "%(year)04d-%(month)02d-%(day)02d"
@@ -1092,6 +1108,12 @@ class TIME(_DateTimeMixin, sqltypes.Time):
 
         12:05:57.10558
 
+    The incoming storage format is by default parsed using the
+    Python ``time.fromisoformat()`` function.
+
+    .. versionchanged:: 2.0  ``time.fromisoformat()`` is used for default
+       time string parsing.
+
     The storage format can be customized to some degree using the
     ``storage_format`` and ``regexp`` parameters, such as::
 
@@ -1107,10 +1129,12 @@ class TIME(_DateTimeMixin, sqltypes.Time):
      with keys hour, minute, second, and microsecond.
 
     :param regexp: regular expression which will be applied to incoming result
-     rows. If the regexp contains named groups, the resulting match dict is
+     rows, replacing the use of ``datetime.fromisoformat()`` to parse incoming
+     strings. If the regexp contains named groups, the resulting match dict is
      applied to the Python time() constructor as keyword arguments. Otherwise,
      if positional groups are used, the time() constructor is called with
      positional arguments via ``*map(int, match_obj.groups(0))``.
+
     """
 
     _storage_format = "%(hour)02d:%(minute)02d:%(second)02d.%(microsecond)06d"

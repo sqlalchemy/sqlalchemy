@@ -117,7 +117,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         ]:
             assert_raises_message(
                 ValueError,
-                "Couldn't parse %s string." % disp,
+                "Invalid isoformat string:",
                 lambda: connection.execute(
                     text("select 'ASDF' as value").columns(value=typ)
                 ).scalar(),
@@ -166,7 +166,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
             # 2004-05-21T00:00:00
             storage_format="%(year)04d-%(month)02d-%(day)02d"
             "T%(hour)02d:%(minute)02d:%(second)02d",
-            regexp=r"(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)",
+            regexp=r"^(\d+)-(\d+)-(\d+)T(\d+):(\d+):(\d+)$",
         )
         t = Table("t", self.metadata, Column("d", sqlite_date))
         self.metadata.create_all(connection)
@@ -195,7 +195,7 @@ class TestTypes(fixtures.TestBase, AssertsExecutionResults):
         sqlite_date = sqlite.DATETIME(
             storage_format="%(year)04d%(month)02d%(day)02d"
             "%(hour)02d%(minute)02d%(second)02d",
-            regexp=r"(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})",
+            regexp=r"^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$",
         )
         t = Table("t", self.metadata, Column("d", sqlite_date))
         self.metadata.create_all(connection)
