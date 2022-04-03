@@ -1820,10 +1820,17 @@ class TableValuedAlias(Alias):
 
         """
 
-        tva = TableValuedAlias._construct(self, name=name)
+        tva = TableValuedAlias._construct(
+            self,
+            name=name,
+            table_value_type=self._tableval_type,
+            joins_implicitly=self.joins_implicitly,
+        )
+
         if self._render_derived:
             tva._render_derived = True
             tva._render_derived_w_types = self._render_derived_w_types
+
         return tva
 
     def lateral(self, name=None):
@@ -1884,7 +1891,15 @@ class TableValuedAlias(Alias):
         # python id() of the original which can cause name conflicts if
         # a new anon-name grabs the same identifier as the local anon-name
         # (just saw it happen on CI)
-        new_alias = TableValuedAlias._construct(self, name=name)
+
+        # construct against original to prevent memory growth
+        # for repeated generations
+        new_alias = TableValuedAlias._construct(
+            self.element,
+            name=name,
+            table_value_type=self._tableval_type,
+            joins_implicitly=self.joins_implicitly,
+        )
         new_alias._render_derived = True
         new_alias._render_derived_w_types = with_types
         return new_alias

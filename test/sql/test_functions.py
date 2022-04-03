@@ -25,7 +25,6 @@ from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import Text
 from sqlalchemy import true
-from sqlalchemy import types as sqltypes
 from sqlalchemy import util
 from sqlalchemy.dialects import mysql
 from sqlalchemy.dialects import oracle
@@ -37,6 +36,7 @@ from sqlalchemy.sql import functions
 from sqlalchemy.sql import LABEL_STYLE_TABLENAME_PLUS_COL
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import quoted_name
+from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql import table
 from sqlalchemy.sql.compiler import BIND_TEMPLATES
 from sqlalchemy.sql.functions import FunctionElement
@@ -1429,6 +1429,30 @@ class TableValuedCompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "WITH ORDINALITY AS unnested(unnested, ordinality) ON true "
             "LEFT OUTER JOIN b ON unnested.unnested = b.ref",
         )
+
+    def test_render_derived_maintains_tableval_type(self):
+        fn = func.json_something()
+
+        tv = fn.table_valued(column("x", String))
+
+        eq_(tv.column.type, testing.eq_type_affinity(sqltypes.TableValueType))
+        eq_(tv.column.type._elements[0].type, testing.eq_type_affinity(String))
+
+        tv = tv.render_derived()
+        eq_(tv.column.type, testing.eq_type_affinity(sqltypes.TableValueType))
+        eq_(tv.column.type._elements[0].type, testing.eq_type_affinity(String))
+
+    def test_alias_maintains_tableval_type(self):
+        fn = func.json_something()
+
+        tv = fn.table_valued(column("x", String))
+
+        eq_(tv.column.type, testing.eq_type_affinity(sqltypes.TableValueType))
+        eq_(tv.column.type._elements[0].type, testing.eq_type_affinity(String))
+
+        tv = tv.alias()
+        eq_(tv.column.type, testing.eq_type_affinity(sqltypes.TableValueType))
+        eq_(tv.column.type._elements[0].type, testing.eq_type_affinity(String))
 
     def test_star_with_ordinality(self):
         """
