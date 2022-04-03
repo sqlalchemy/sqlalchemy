@@ -432,7 +432,7 @@ class DateTimeMicrosecondsTest(_DateFixture, fixtures.TablesTest):
     __requires__ = ("datetime_microseconds",)
     __backend__ = True
     datatype = DateTime
-    data = datetime.datetime(2012, 10, 15, 12, 57, 18, 396)
+    data = datetime.datetime(2012, 10, 15, 12, 57, 18, 39642)
 
 
 class TimestampMicrosecondsTest(_DateFixture, fixtures.TablesTest):
