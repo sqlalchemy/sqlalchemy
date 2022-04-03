@@ -6,6 +6,7 @@ import weakref
 
 import sqlalchemy as sa
 from sqlalchemy import ForeignKey
+from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import MetaData
@@ -356,6 +357,18 @@ class MemUsageTest(EnsureZeroed):
             nonlocal expr
 
             expr = cloned_traverse(expr, {}, {})
+
+        go()
+
+    def test_tv_render_derived(self):
+        root_expr = func.some_fn().table_valued()
+        expr = root_expr
+
+        @profile_memory()
+        def go():
+            nonlocal expr
+
+            expr = expr.render_derived()
 
         go()
 
