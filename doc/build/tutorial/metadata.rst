@@ -443,6 +443,9 @@ This form is called  :ref:`hybrid table <orm_imperative_table_configuration>`,
 and it consists of assigning to the ``.__table__`` attribute directly, rather
 than having the declarative process generate it::
 
+    mapper_registry = registry()
+    Base = mapper_registry.generate_base()
+
     class User(Base):
         __table__ = user_table
 
@@ -458,6 +461,15 @@ than having the declarative process generate it::
 
         def __repr__(self):
             return f"Address({self.email_address!r})"
+
+.. note:: The above example is an **alternative form** to the mapping that's
+   first illustrated previously at :ref:`tutorial_declaring_mapped_classes`.
+   This example is for illustrative purposes only, and is not part of this
+   tutorial's "doctest" steps, and as such does not need to be run for readers
+   who are executing code examples. The mapping here and the one at
+   :ref:`tutorial_declaring_mapped_classes` produce equivalent mappings, but in
+   general one would use only **one** of these two forms for particular mapped
+   class.
 
 The above two classes are equivalent to those which we declared in the
 previous mapping example.
