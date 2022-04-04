@@ -30,6 +30,8 @@ alternate instrumentation forms.
 """
 
 
+import weakref
+
 from . import base
 from . import collections
 from . import exc
@@ -131,7 +133,7 @@ class ClassManager(HasMemoized, dict):
         if registry:
             registry._add_manager(self)
         if declarative_scan:
-            self.declarative_scan = declarative_scan
+            self.declarative_scan = weakref.ref(declarative_scan)
         if expired_attribute_loader:
             self.expired_attribute_loader = expired_attribute_loader
 

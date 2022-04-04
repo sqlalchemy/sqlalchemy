@@ -152,7 +152,13 @@ def _check_declared_props_nocascade(obj, name, cls):
 
 
 class _MapperConfig(object):
-    __slots__ = ("cls", "classname", "properties", "declared_attr_reg")
+    __slots__ = (
+        "cls",
+        "classname",
+        "properties",
+        "declared_attr_reg",
+        "__weakref__",
+    )
 
     @classmethod
     def setup_mapping(cls, registry, cls_, dict_, table, mapper_kw):
@@ -300,9 +306,12 @@ class _ClassScanMapperConfig(_MapperConfig):
         mapper_kw,
     ):
 
+        # grab class dict before the instrumentation manager has been added.
+        # reduces cycles
+        self.dict_ = dict(dict_) if dict_ else {}
+
         super(_ClassScanMapperConfig, self).__init__(registry, cls_, mapper_kw)
 
-        self.dict_ = dict(dict_) if dict_ else {}
         self.persist_selectable = None
         self.declared_columns = set()
         self.column_copies = {}

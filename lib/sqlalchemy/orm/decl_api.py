@@ -54,6 +54,10 @@ def has_inherited_table(cls):
 
 class DeclarativeMeta(type):
     def __init__(cls, classname, bases, dict_, **kw):
+        # use cls.__dict__, which can be modified by an
+        # __init_subclass__() method (#7900)
+        dict_ = cls.__dict__
+
         # early-consume registry from the initial declarative base,
         # assign privately to not conflict with subclass attributes named
         # "registry"
@@ -228,7 +232,8 @@ class declared_attr(interfaces._MappedAttribute, property):
 
         # here, we are inside of the declarative scan.  use the registry
         # that is tracking the values of these attributes.
-        declarative_scan = manager.declarative_scan
+        declarative_scan = manager.declarative_scan()
+        assert declarative_scan is not None
         reg = declarative_scan.declared_attr_reg
 
         if desc in reg:
