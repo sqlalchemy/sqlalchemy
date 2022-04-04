@@ -39,6 +39,7 @@ from typing import Optional
 from typing import Set
 from typing import TYPE_CHECKING
 from typing import TypeVar
+import weakref
 
 from . import base
 from . import collections
@@ -167,7 +168,7 @@ class ClassManager(
         if registry:
             registry._add_manager(self)
         if declarative_scan:
-            self.declarative_scan = declarative_scan
+            self.declarative_scan = weakref.ref(declarative_scan)
         if expired_attribute_loader:
             self.expired_attribute_loader = expired_attribute_loader
 
