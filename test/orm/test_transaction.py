@@ -1267,6 +1267,8 @@ class AutoExpireTest(_LocalFixture):
         assert u1_state not in s._deleted
         del u1
         gc_collect()
+        gc_collect()
+        gc_collect()
         assert u1_state.obj() is None
 
         s.rollback()

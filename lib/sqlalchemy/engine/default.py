@@ -933,8 +933,11 @@ class DefaultExecutionContext(ExecutionContext):
                 assert isinstance(compiled.statement, UpdateBase)
             self.is_crud = True
             self._is_explicit_returning = bool(compiled.statement._returning)
-            self._is_implicit_returning = bool(
-                compiled.returning and not compiled.statement._returning
+            self._is_implicit_returning = is_implicit_returning = bool(
+                compiled.implicit_returning
+            )
+            assert not (
+                is_implicit_returning and compiled.statement._returning
             )
 
         if not parameters:
@@ -1166,12 +1169,6 @@ class DefaultExecutionContext(ExecutionContext):
             return ()
 
     @util.memoized_property
-    def returning_cols(self) -> Optional[Sequence[ColumnsClauseRole]]:
-        if TYPE_CHECKING:
-            assert isinstance(self.compiled, SQLCompiler)
-        return self.compiled.returning
-
-    @util.memoized_property
     def no_parameters(self):
         return self.execution_options.get("no_parameters", False)
 
@@ -1349,6 +1346,7 @@ class DefaultExecutionContext(ExecutionContext):
             result = _cursor.CursorResult(self, strategy, cursor_description)
 
         compiled = self.compiled
+
         if (
             compiled
             and not self.isddl

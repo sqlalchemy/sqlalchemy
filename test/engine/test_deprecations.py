@@ -483,15 +483,15 @@ class ImplicitReturningFlagTest(fixtures.TestBase):
                     ):
                         stmt.compile(conn)
                 else:
-                    eq_(stmt.compile(conn).returning, [t.c.id])
+                    eq_(stmt.compile(conn).implicit_returning, [t.c.id])
             elif (
                 implicit_returning is None
                 and testing.db.dialect.implicit_returning
             ):
-                eq_(stmt.compile(conn).returning, [t.c.id])
+                eq_(stmt.compile(conn).implicit_returning, [t.c.id])
             else:
-                eq_(stmt.compile(conn).returning, [])
+                eq_(stmt.compile(conn).implicit_returning, [])
 
             # table setting it to False disables it
             stmt2 = insert(t2).values(data="data")
-            eq_(stmt2.compile(conn).returning, [])
+            eq_(stmt2.compile(conn).implicit_returning, [])

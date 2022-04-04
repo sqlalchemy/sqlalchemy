@@ -1089,7 +1089,9 @@ class OracleCompiler(compiler.SQLCompiler):
 
         return " " + alias_name_text
 
-    def returning_clause(self, stmt, returning_cols):
+    def returning_clause(
+        self, stmt, returning_cols, *, populate_result_map, **kw
+    ):
         columns = []
         binds = []
 
@@ -1122,23 +1124,34 @@ class OracleCompiler(compiler.SQLCompiler):
                 self.bindparam_string(self._truncate_bindparam(outparam))
             )
 
-            # ensure the ExecutionContext.get_out_parameters() method is
-            # *not* called; the cx_Oracle dialect wants to handle these
-            # parameters separately
-            self.has_out_parameters = False
+            # has_out_parameters would in a normal case be set to True
+            # as a result of the compiler visiting an outparam() object.
+            # in this case, the above outparam() objects are not being
+            # visited.   Ensure the statement itself didn't have other
+            # outparam() objects independently.
+            # technically, this could be supported, but as it would be
+            # a very strange use case without a clear rationale, disallow it
+            if self.has_out_parameters:
+                raise exc.InvalidRequestError(
+                    "Using explicit outparam() objects with "
+                    "UpdateBase.returning() in the same Core DML statement "
+                    "is not supported in the Oracle dialect."
+                )
+
+            self._oracle_returning = True
 
             columns.append(self.process(col_expr, within_columns_clause=False))
-
-            self._add_to_result_map(
-                getattr(col_expr, "name", col_expr._anon_name_label),
-                getattr(col_expr, "name", col_expr._anon_name_label),
-                (
-                    column,
-                    getattr(column, "name", None),
-                    getattr(column, "key", None),
-                ),
-                column.type,
-            )
+            if populate_result_map:
+                self._add_to_result_map(
+                    getattr(col_expr, "name", col_expr._anon_name_label),
+                    getattr(col_expr, "name", col_expr._anon_name_label),
+                    (
+                        column,
+                        getattr(column, "name", None),
+                        getattr(column, "key", None),
+                    ),
+                    column.type,
+                )
 
         return "RETURNING " + ", ".join(columns) + " INTO " + ", ".join(binds)
 
@@ -1510,6 +1523,7 @@ class OracleDialect(default.DefaultDialect):
     max_identifier_length = 128
 
     implicit_returning = True
+    full_returning = True
 
     div_is_floordiv = False
 

@@ -463,11 +463,18 @@ class UpdateBase(
         )
         return self
 
-    @util.non_memoized_property
+    def corresponding_column(
+        self, column: ColumnElement[Any], require_embedded: bool = False
+    ) -> Optional[ColumnElement[Any]]:
+        return self.exported_columns.corresponding_column(
+            column, require_embedded=require_embedded
+        )
+
+    @util.ro_memoized_property
     def _all_selected_columns(self) -> _SelectIterable:
         return [c for c in _select_iterables(self._returning)]
 
-    @property
+    @util.ro_memoized_property
     def exported_columns(
         self,
     ) -> ReadOnlyColumnCollection[Optional[str], ColumnElement[Any]]:

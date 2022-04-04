@@ -1585,6 +1585,8 @@ class WeakIdentityMapTest(_fixtures.FixtureTest):
         user_is = user._sa_instance_state
         del user
         gc_collect()
+        gc_collect()
+        gc_collect()
         assert user_is.obj() is None
 
         assert len(s.identity_map) == 0
