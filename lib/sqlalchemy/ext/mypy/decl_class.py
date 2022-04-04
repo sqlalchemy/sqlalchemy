@@ -381,7 +381,8 @@ def _scan_declarative_assignment_stmt(
     if isinstance(node, PlaceholderNode):
         return
 
-    assert node is lvalue.node
+    if node is not lvalue.node:
+        return
     assert isinstance(node, Var)
 
     if node.name == "__abstract__":

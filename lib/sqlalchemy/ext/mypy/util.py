@@ -23,6 +23,7 @@ from mypy.nodes import NameExpr
 from mypy.nodes import Statement
 from mypy.nodes import SymbolTableNode
 from mypy.nodes import TypeInfo
+from mypy.nodes import PlaceholderNode
 from mypy.plugin import ClassDefContext
 from mypy.plugin import DynamicClassDefContext
 from mypy.plugin import SemanticAnalyzerPluginInterface
@@ -34,6 +35,8 @@ from mypy.types import Type
 from mypy.types import TypeVarType
 from mypy.types import UnboundType
 from mypy.types import UnionType
+
+from .exceptions import ShouldDeferException
 
 
 _TArgType = TypeVar("_TArgType", bound=Union[CallExpr, NameExpr])
@@ -262,21 +265,24 @@ def unbound_to_instance(
     if (
         node is not None
         and isinstance(node, SymbolTableNode)
-        and isinstance(node.node, TypeInfo)
     ):
-        bound_type = node.node
+        if isinstance(node.node, TypeInfo):
 
-        return Instance(
-            bound_type,
-            [
-                unbound_to_instance(api, arg)
-                if isinstance(arg, UnboundType)
-                else arg
-                for arg in typ.args
-            ],
-        )
-    else:
-        return typ
+            bound_type = node.node
+
+            return Instance(
+                bound_type,
+                [
+                    unbound_to_instance(api, arg)
+                    if isinstance(arg, UnboundType)
+                    else arg
+                    for arg in typ.args
+                ],
+            )
+        elif isinstance(node.node, PlaceholderNode):
+            raise ShouldDeferException
+
+    return typ
 
 
 def info_for_cls(

@@ -9,11 +9,13 @@
 Mypy plugin for SQLAlchemy ORM.
 
 """
+from typing import Any
 from typing import Callable
 from typing import List
 from typing import Optional
 from typing import Tuple
 from typing import Type as TypingType
+from typing import TypeVar
 from typing import Union
 
 from mypy import nodes
@@ -38,7 +40,22 @@ from mypy.types import Type
 
 from . import decl_class
 from . import names
-from . import util
+from . import util, exceptions
+
+
+_FuncT = TypeVar("_FuncT", bound=Callable[[Union[ClassDefContext, DynamicClassDefContext]], Any])
+
+
+def with_defer(func: _FuncT) -> _FuncT:
+
+    def wrapper(ctx):
+        try:
+            return func(ctx)
+        except exceptions.ShouldDeferException:
+            if not ctx.api.final_iteration:
+                ctx.api.defer()
+
+    return wrapper
 
 
 class SQLAlchemyPlugin(Plugin):
@@ -121,6 +138,7 @@ def plugin(version: str) -> TypingType[SQLAlchemyPlugin]:
     return SQLAlchemyPlugin
 
 
+@with_defer
 def _dynamic_class_hook(ctx: DynamicClassDefContext) -> None:
     """Generate a declarative Base class when the declarative_base() function
     is encountered."""
@@ -160,6 +178,7 @@ def _dynamic_class_hook(ctx: DynamicClassDefContext) -> None:
     util.set_is_base(info)
 
 
+@with_defer
 def _fill_in_decorators(ctx: ClassDefContext) -> None:
     for decorator in ctx.cls.decorators:
         # set the ".fullname" attribute of a class decorator
@@ -211,6 +230,7 @@ def _fill_in_decorators(ctx: ClassDefContext) -> None:
                 )
 
 
+@with_defer
 def _cls_decorator_hook(ctx: ClassDefContext) -> None:
     _add_globals(ctx)
     assert isinstance(ctx.reason, nodes.MemberExpr)
@@ -228,6 +248,7 @@ def _cls_decorator_hook(ctx: ClassDefContext) -> None:
     decl_class.scan_declarative_assignments_and_apply_types(ctx.cls, ctx.api)
 
 
+@with_defer
 def _base_cls_decorator_hook(ctx: ClassDefContext) -> None:
     _add_globals(ctx)
 
@@ -241,6 +262,7 @@ def _base_cls_decorator_hook(ctx: ClassDefContext) -> None:
     )
 
 
+@with_defer
 def _declarative_mixin_hook(ctx: ClassDefContext) -> None:
     _add_globals(ctx)
     util.set_is_base(ctx.cls.info)
@@ -249,10 +271,12 @@ def _declarative_mixin_hook(ctx: ClassDefContext) -> None:
     )
 
 
+@with_defer
 def _metaclass_cls_hook(ctx: ClassDefContext) -> None:
     util.set_is_base(ctx.cls.info)
 
 
+@with_defer
 def _base_cls_hook(ctx: ClassDefContext) -> None:
     _add_globals(ctx)
     decl_class.scan_declarative_assignments_and_apply_types(ctx.cls, ctx.api)
