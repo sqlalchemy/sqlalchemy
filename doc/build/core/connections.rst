@@ -1409,9 +1409,9 @@ Basic guidelines include:
         def my_stmt(parameter, thing=False):
             stmt = lambda_stmt(lambda: select(table))
             if thing:
-                stmt += s.where(table.c.x > parameter)
+                stmt += lambda s: s.where(table.c.x > parameter)
             else:
-                stmt += s.where(table.c.y == parameter)
+                stmt += lambda s: s.where(table.c.y == parameter)
             return stmt
 
   There are a variety of failures which can occur if the lambda does not
