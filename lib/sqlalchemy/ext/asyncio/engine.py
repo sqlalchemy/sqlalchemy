@@ -4,6 +4,10 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+from __future__ import annotations
+
+from typing import Any
+
 from . import exc as async_exc
 from .base import ProxyComparable
 from .base import StartableContext
@@ -72,7 +76,7 @@ class AsyncConnectable:
 
 @util.create_proxy_methods(
     Connection,
-    ":class:`_future.Connection`",
+    ":class:`_engine.Connection`",
     ":class:`_asyncio.AsyncConnection`",
     classmethods=[],
     methods=[],
@@ -125,6 +129,7 @@ class AsyncConnection(ProxyComparable, StartableContext, AsyncConnectable):
     .. seealso::
 
         :ref:`asyncio_events`
+
     """
 
     sync_engine: Engine
@@ -137,6 +142,7 @@ class AsyncConnection(ProxyComparable, StartableContext, AsyncConnectable):
     .. seealso::
 
         :ref:`asyncio_events`
+
     """
 
     @classmethod
@@ -552,10 +558,100 @@ class AsyncConnection(ProxyComparable, StartableContext, AsyncConnectable):
     async def __aexit__(self, type_, value, traceback):
         await self.close()
 
+    # START PROXY METHODS AsyncConnection
+
+    # code within this block is **programmatically,
+    # statically generated** by tools/generate_proxy_methods.py
+
+    @property
+    def closed(self) -> Any:
+        r"""Return True if this connection is closed.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_engine.Connection` class
+            on behalf of the :class:`_asyncio.AsyncConnection` class.
+
+        """  # noqa: E501
+
+        return self._proxied.closed
+
+    @property
+    def invalidated(self) -> Any:
+        r"""Return True if this connection was invalidated.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_engine.Connection` class
+            on behalf of the :class:`_asyncio.AsyncConnection` class.
+
+        This does not indicate whether or not the connection was
+        invalidated at the pool level, however
+
+
+        """  # noqa: E501
+
+        return self._proxied.invalidated
+
+    @property
+    def dialect(self) -> Any:
+        r"""Proxy for the :attr:`_engine.Connection.dialect` attribute
+        on behalf of the :class:`_asyncio.AsyncConnection` class.
+
+        """  # noqa: E501
+
+        return self._proxied.dialect
+
+    @dialect.setter
+    def dialect(self, attr: Any) -> None:
+        self._proxied.dialect = attr
+
+    @property
+    def default_isolation_level(self) -> Any:
+        r"""The default isolation level assigned to this
+        :class:`_engine.Connection`.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_engine.Connection` class
+            on behalf of the :class:`_asyncio.AsyncConnection` class.
+
+        This is the isolation level setting that the
+        :class:`_engine.Connection`
+        has when first procured via the :meth:`_engine.Engine.connect` method.
+        This level stays in place until the
+        :paramref:`.Connection.execution_options.isolation_level` is used
+        to change the setting on a per-:class:`_engine.Connection` basis.
+
+        Unlike :meth:`_engine.Connection.get_isolation_level`,
+        this attribute is set
+        ahead of time from the first connection procured by the dialect,
+        so SQL query is not invoked when this accessor is called.
+
+        .. versionadded:: 0.9.9
+
+        .. seealso::
+
+            :meth:`_engine.Connection.get_isolation_level`
+            - view current level
+
+            :paramref:`_sa.create_engine.isolation_level`
+            - set per :class:`_engine.Engine` isolation level
+
+            :paramref:`.Connection.execution_options.isolation_level`
+            - set per :class:`_engine.Connection` isolation level
+
+
+        """  # noqa: E501
+
+        return self._proxied.default_isolation_level
+
+    # END PROXY METHODS AsyncConnection
+
 
 @util.create_proxy_methods(
     Engine,
-    ":class:`_future.Engine`",
+    ":class:`_engine.Engine`",
     ":class:`_asyncio.AsyncEngine`",
     classmethods=[],
     methods=[
@@ -700,6 +796,181 @@ class AsyncEngine(ProxyComparable, AsyncConnectable):
         """
 
         return await greenlet_spawn(self.sync_engine.dispose)
+
+    # START PROXY METHODS AsyncEngine
+
+    # code within this block is **programmatically,
+    # statically generated** by tools/generate_proxy_methods.py
+
+    def clear_compiled_cache(self) -> None:
+        r"""Clear the compiled cache associated with the dialect.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_engine.Engine` class on
+            behalf of the :class:`_asyncio.AsyncEngine` class.
+
+        This applies **only** to the built-in cache that is established
+        via the :paramref:`_engine.create_engine.query_cache_size` parameter.
+        It will not impact any dictionary caches that were passed via the
+        :paramref:`.Connection.execution_options.query_cache` parameter.
+
+        .. versionadded:: 1.4
+
+
+        """  # noqa: E501
+
+        return self._proxied.clear_compiled_cache()
+
+    def update_execution_options(self, **opt: Any) -> None:
+        r"""Update the default execution_options dictionary
+        of this :class:`_engine.Engine`.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_engine.Engine` class on
+            behalf of the :class:`_asyncio.AsyncEngine` class.
+
+        The given keys/values in \**opt are added to the
+        default execution options that will be used for
+        all connections.  The initial contents of this dictionary
+        can be sent via the ``execution_options`` parameter
+        to :func:`_sa.create_engine`.
+
+        .. seealso::
+
+            :meth:`_engine.Connection.execution_options`
+
+            :meth:`_engine.Engine.execution_options`
+
+
+        """  # noqa: E501
+
+        return self._proxied.update_execution_options(**opt)
+
+    def get_execution_options(self) -> _ExecuteOptions:
+        r"""Get the non-SQL options which will take effect during execution.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_engine.Engine` class on
+            behalf of the :class:`_asyncio.AsyncEngine` class.
+
+        .. versionadded: 1.3
+
+        .. seealso::
+
+            :meth:`_engine.Engine.execution_options`
+
+        """  # noqa: E501
+
+        return self._proxied.get_execution_options()
+
+    @property
+    def url(self) -> URL:
+        r"""Proxy for the :attr:`_engine.Engine.url` attribute
+        on behalf of the :class:`_asyncio.AsyncEngine` class.
+
+        """  # noqa: E501
+
+        return self._proxied.url
+
+    @url.setter
+    def url(self, attr: URL) -> None:
+        self._proxied.url = attr
+
+    @property
+    def pool(self) -> Pool:
+        r"""Proxy for the :attr:`_engine.Engine.pool` attribute
+        on behalf of the :class:`_asyncio.AsyncEngine` class.
+
+        """  # noqa: E501
+
+        return self._proxied.pool
+
+    @pool.setter
+    def pool(self, attr: Pool) -> None:
+        self._proxied.pool = attr
+
+    @property
+    def dialect(self) -> Dialect:
+        r"""Proxy for the :attr:`_engine.Engine.dialect` attribute
+        on behalf of the :class:`_asyncio.AsyncEngine` class.
+
+        """  # noqa: E501
+
+        return self._proxied.dialect
+
+    @dialect.setter
+    def dialect(self, attr: Dialect) -> None:
+        self._proxied.dialect = attr
+
+    @property
+    def engine(self) -> Any:
+        r""".. container:: class_bases
+
+        Proxied for the :class:`_engine.Engine` class
+        on behalf of the :class:`_asyncio.AsyncEngine` class.
+
+
+        """  # noqa: E501
+
+        return self._proxied.engine
+
+    @property
+    def name(self) -> Any:
+        r"""String name of the :class:`~sqlalchemy.engine.interfaces.Dialect`
+        in use by this :class:`Engine`.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_engine.Engine` class
+            on behalf of the :class:`_asyncio.AsyncEngine` class.
+
+
+        """  # noqa: E501
+
+        return self._proxied.name
+
+    @property
+    def driver(self) -> Any:
+        r"""Driver name of the :class:`~sqlalchemy.engine.interfaces.Dialect`
+        in use by this :class:`Engine`.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_engine.Engine` class
+            on behalf of the :class:`_asyncio.AsyncEngine` class.
+
+
+        """  # noqa: E501
+
+        return self._proxied.driver
+
+    @property
+    def echo(self) -> Any:
+        r"""When ``True``, enable log output for this element.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_engine.Engine` class
+            on behalf of the :class:`_asyncio.AsyncEngine` class.
+
+        This has the effect of setting the Python logging level for the namespace
+        of this element's class and object reference.  A value of boolean ``True``
+        indicates that the loglevel ``logging.INFO`` will be set for the logger,
+        whereas the string value ``debug`` will set the loglevel to
+        ``logging.DEBUG``.
+
+        """  # noqa: E501
+
+        return self._proxied.echo
+
+    @echo.setter
+    def echo(self, attr: Any) -> None:
+        self._proxied.echo = attr
+
+    # END PROXY METHODS AsyncEngine
 
 
 class AsyncTransaction(ProxyComparable, StartableContext):

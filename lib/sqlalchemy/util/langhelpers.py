@@ -678,111 +678,17 @@ def create_proxy_methods(
     methods=(),
     attributes=(),
 ):
-    """A class decorator that will copy attributes to a proxy class.
+    """A class decorator indicating attributes should refer to a proxy
+    class.
 
-    The class to be instrumented must define a single accessor "_proxied".
+    This decorator is now a "marker" that does nothing at runtime.  Instead,
+    it is consumed by the tools/generate_proxy_methods.py script to
+    statically generate proxy methods and attributes that are fully
+    recognized by typing tools such as mypy.
 
     """
 
     def decorate(cls):
-        def instrument(name, clslevel=False):
-            fn = cast(types.FunctionType, getattr(target_cls, name))
-            spec = compat.inspect_getfullargspec(fn)
-            env = {"__name__": fn.__module__}
-
-            spec = _update_argspec_defaults_into_env(spec, env)
-            caller_argspec = format_argspec_plus(spec, grouped=False)
-
-            metadata = {
-                "name": fn.__name__,
-                "apply_pos_proxied": caller_argspec["apply_pos_proxied"],
-                "apply_kw_proxied": caller_argspec["apply_kw_proxied"],
-                "grouped_args": caller_argspec["grouped_args"],
-                "self_arg": caller_argspec["self_arg"],
-            }
-
-            if clslevel:
-                code = (
-                    "def %(name)s%(grouped_args)s:\n"
-                    "    return target_cls.%(name)s(%(apply_kw_proxied)s)"
-                    % metadata
-                )
-                env["target_cls"] = target_cls
-            else:
-                code = (
-                    "def %(name)s%(grouped_args)s:\n"
-                    "    return %(self_arg)s._proxied.%(name)s(%(apply_kw_proxied)s)"  # noqa: E501
-                    % metadata
-                )
-
-            proxy_fn = cast(
-                types.FunctionType, _exec_code_in_env(code, env, fn.__name__)
-            )
-            proxy_fn.__defaults__ = getattr(fn, "__func__", fn).__defaults__
-            proxy_fn.__doc__ = inject_docstring_text(
-                fn.__doc__,
-                ".. container:: class_bases\n\n    "
-                "Proxied for the %s class on behalf of the %s class."
-                % (target_cls_sphinx_name, proxy_cls_sphinx_name),
-                1,
-            )
-
-            if clslevel:
-                return classmethod(proxy_fn)
-            else:
-                return proxy_fn
-
-        def makeprop(name):
-            attr = target_cls.__dict__.get(name, None)
-
-            if attr is not None:
-                doc = inject_docstring_text(
-                    attr.__doc__,
-                    ".. container:: class_bases\n\n    "
-                    "Proxied for the %s class on behalf of the %s class."
-                    % (
-                        target_cls_sphinx_name,
-                        proxy_cls_sphinx_name,
-                    ),
-                    1,
-                )
-            else:
-                doc = None
-
-            code = (
-                "def set_(self, attr):\n"
-                "    self._proxied.%(name)s = attr\n"
-                "def get(self):\n"
-                "    return self._proxied.%(name)s\n"
-                "get.__doc__ = doc\n"
-                "getset = property(get, set_)"
-            ) % {"name": name}
-
-            getset = _exec_code_in_env(code, {"doc": doc}, "getset")
-
-            return getset
-
-        for meth in methods:
-            if hasattr(cls, meth):
-                raise TypeError(
-                    "class %s already has a method %s" % (cls, meth)
-                )
-            setattr(cls, meth, instrument(meth))
-
-        for prop in attributes:
-            if hasattr(cls, prop):
-                raise TypeError(
-                    "class %s already has a method %s" % (cls, prop)
-                )
-            setattr(cls, prop, makeprop(prop))
-
-        for prop in classmethods:
-            if hasattr(cls, prop):
-                raise TypeError(
-                    "class %s already has a method %s" % (cls, prop)
-                )
-            setattr(cls, prop, instrument(prop, clslevel=True))
-
         return cls
 
     return decorate

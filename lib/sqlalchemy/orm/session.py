@@ -56,7 +56,6 @@ from ..sql import coercions
 from ..sql import dml
 from ..sql import roles
 from ..sql import visitors
-from ..sql._typing import _ColumnsClauseArgument
 from ..sql.base import CompileState
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..util.typing import Literal
@@ -64,6 +63,7 @@ from ..util.typing import Literal
 if typing.TYPE_CHECKING:
     from .mapper import Mapper
     from ..engine import Row
+    from ..sql._typing import _ColumnsClauseArgument
     from ..sql._typing import _ExecuteOptions
     from ..sql._typing import _ExecuteParams
     from ..sql.base import Executable
@@ -2043,9 +2043,7 @@ class Session(_SessionClassMethods):
             % (", ".join(context),),
         )
 
-    def query(
-        self, *entities: "_ColumnsClauseArgument", **kwargs: Any
-    ) -> "Query":
+    def query(self, *entities: _ColumnsClauseArgument, **kwargs: Any) -> Query:
         """Return a new :class:`_query.Query` object corresponding to this
         :class:`_orm.Session`.
 

@@ -5,14 +5,8 @@
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 
-"""Testing extensions.
+from __future__ import annotations
 
-this module is designed to work as a testing-framework-agnostic library,
-created so that multiple test frameworks can be supported at once
-(mostly so that we can migrate to new ones). The current target
-is pytest.
-
-"""
 import abc
 import configparser
 import logging
@@ -22,6 +16,15 @@ import sys
 from typing import Any
 
 from sqlalchemy.testing import asyncio
+
+"""Testing extensions.
+
+this module is designed to work as a testing-framework-agnostic library,
+created so that multiple test frameworks can be supported at once
+(mostly so that we can migrate to new ones). The current target
+is pytest.
+
+"""
 
 # flag which indicates we are in the SQLAlchemy testing suite,
 # and not that of Alembic or a third party dialect.

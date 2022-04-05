@@ -2672,14 +2672,18 @@ class Engine(
     @property
     def name(self) -> str:
         """String name of the :class:`~sqlalchemy.engine.interfaces.Dialect`
-        in use by this :class:`Engine`."""
+        in use by this :class:`Engine`.
+
+        """
 
         return self.dialect.name
 
     @property
     def driver(self) -> str:
         """Driver name of the :class:`~sqlalchemy.engine.interfaces.Dialect`
-        in use by this :class:`Engine`."""
+        in use by this :class:`Engine`.
+
+        """
 
         return self.dialect.driver
 

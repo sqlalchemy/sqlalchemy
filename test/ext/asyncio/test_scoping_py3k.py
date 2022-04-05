@@ -37,8 +37,9 @@ class AsyncScopedSessionTest(AsyncFixture):
             await AsyncSession.flush()
 
             conn = await AsyncSession.connection()
+
             stmt = select(func.count(User.id)).where(User.name == user_name)
-            eq_(await conn.scalar(stmt), 1)
+            eq_(await AsyncSession.scalar(stmt), 1)
 
             await AsyncSession.delete(u1)
             await AsyncSession.flush()

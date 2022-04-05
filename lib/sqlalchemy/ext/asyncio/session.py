@@ -4,6 +4,10 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+from __future__ import annotations
+
+from typing import Any
+
 from . import engine
 from . import result as _result
 from .base import ReversibleProxy
@@ -312,7 +316,9 @@ class AsyncSession(ReversibleProxy):
         **kw,
     ):
         """Execute a statement and return a streaming
-        :class:`_asyncio.AsyncResult` object."""
+        :class:`_asyncio.AsyncResult` object.
+
+        """
 
         if execution_options:
             execution_options = util.immutabledict(execution_options).union(
@@ -628,6 +634,508 @@ class AsyncSession(ReversibleProxy):
     def _maker_context_manager(self):
         # TODO: can this use asynccontextmanager ??
         return _AsyncSessionContextManager(self)
+
+    # START PROXY METHODS AsyncSession
+
+    # code within this block is **programmatically,
+    # statically generated** by tools/generate_proxy_methods.py
+
+    def __contains__(self, instance):
+        r"""Return True if the instance is associated with this session.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        The instance may be pending or persistent within the Session for a
+        result of True.
+
+
+        """  # noqa: E501
+
+        return self._proxied.__contains__(instance)
+
+    def __iter__(self):
+        r"""Iterate over all pending or persistent instances within this
+        Session.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+
+        """  # noqa: E501
+
+        return self._proxied.__iter__()
+
+    def add(self, instance: Any, _warn: bool = True) -> None:
+        r"""Place an object in the ``Session``.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        Its state will be persisted to the database on the next flush
+        operation.
+
+        Repeated calls to ``add()`` will be ignored. The opposite of ``add()``
+        is ``expunge()``.
+
+
+        """  # noqa: E501
+
+        return self._proxied.add(instance, _warn=_warn)
+
+    def add_all(self, instances):
+        r"""Add the given collection of instances to this ``Session``.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        """  # noqa: E501
+
+        return self._proxied.add_all(instances)
+
+    def expire(self, instance, attribute_names=None):
+        r"""Expire the attributes on an instance.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        Marks the attributes of an instance as out of date. When an expired
+        attribute is next accessed, a query will be issued to the
+        :class:`.Session` object's current transactional context in order to
+        load all expired attributes for the given instance.   Note that
+        a highly isolated transaction will return the same values as were
+        previously read in that same transaction, regardless of changes
+        in database state outside of that transaction.
+
+        To expire all objects in the :class:`.Session` simultaneously,
+        use :meth:`Session.expire_all`.
+
+        The :class:`.Session` object's default behavior is to
+        expire all state whenever the :meth:`Session.rollback`
+        or :meth:`Session.commit` methods are called, so that new
+        state can be loaded for the new transaction.   For this reason,
+        calling :meth:`Session.expire` only makes sense for the specific
+        case that a non-ORM SQL statement was emitted in the current
+        transaction.
+
+        :param instance: The instance to be refreshed.
+        :param attribute_names: optional list of string attribute names
+          indicating a subset of attributes to be expired.
+
+        .. seealso::
+
+            :ref:`session_expire` - introductory material
+
+            :meth:`.Session.expire`
+
+            :meth:`.Session.refresh`
+
+            :meth:`_orm.Query.populate_existing`
+
+
+        """  # noqa: E501
+
+        return self._proxied.expire(instance, attribute_names=attribute_names)
+
+    def expire_all(self):
+        r"""Expires all persistent instances within this Session.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        When any attributes on a persistent instance is next accessed,
+        a query will be issued using the
+        :class:`.Session` object's current transactional context in order to
+        load all expired attributes for the given instance.   Note that
+        a highly isolated transaction will return the same values as were
+        previously read in that same transaction, regardless of changes
+        in database state outside of that transaction.
+
+        To expire individual objects and individual attributes
+        on those objects, use :meth:`Session.expire`.
+
+        The :class:`.Session` object's default behavior is to
+        expire all state whenever the :meth:`Session.rollback`
+        or :meth:`Session.commit` methods are called, so that new
+        state can be loaded for the new transaction.   For this reason,
+        calling :meth:`Session.expire_all` is not usually needed,
+        assuming the transaction is isolated.
+
+        .. seealso::
+
+            :ref:`session_expire` - introductory material
+
+            :meth:`.Session.expire`
+
+            :meth:`.Session.refresh`
+
+            :meth:`_orm.Query.populate_existing`
+
+
+        """  # noqa: E501
+
+        return self._proxied.expire_all()
+
+    def expunge(self, instance):
+        r"""Remove the `instance` from this ``Session``.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        This will free all internal references to the instance.  Cascading
+        will be applied according to the *expunge* cascade rule.
+
+
+        """  # noqa: E501
+
+        return self._proxied.expunge(instance)
+
+    def expunge_all(self):
+        r"""Remove all object instances from this ``Session``.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        This is equivalent to calling ``expunge(obj)`` on all objects in this
+        ``Session``.
+
+
+        """  # noqa: E501
+
+        return self._proxied.expunge_all()
+
+    def is_modified(self, instance, include_collections=True):
+        r"""Return ``True`` if the given instance has locally
+        modified attributes.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        This method retrieves the history for each instrumented
+        attribute on the instance and performs a comparison of the current
+        value to its previously committed value, if any.
+
+        It is in effect a more expensive and accurate
+        version of checking for the given instance in the
+        :attr:`.Session.dirty` collection; a full test for
+        each attribute's net "dirty" status is performed.
+
+        E.g.::
+
+            return session.is_modified(someobject)
+
+        A few caveats to this method apply:
+
+        * Instances present in the :attr:`.Session.dirty` collection may
+          report ``False`` when tested with this method.  This is because
+          the object may have received change events via attribute mutation,
+          thus placing it in :attr:`.Session.dirty`, but ultimately the state
+          is the same as that loaded from the database, resulting in no net
+          change here.
+        * Scalar attributes may not have recorded the previously set
+          value when a new value was applied, if the attribute was not loaded,
+          or was expired, at the time the new value was received - in these
+          cases, the attribute is assumed to have a change, even if there is
+          ultimately no net change against its database value. SQLAlchemy in
+          most cases does not need the "old" value when a set event occurs, so
+          it skips the expense of a SQL call if the old value isn't present,
+          based on the assumption that an UPDATE of the scalar value is
+          usually needed, and in those few cases where it isn't, is less
+          expensive on average than issuing a defensive SELECT.
+
+          The "old" value is fetched unconditionally upon set only if the
+          attribute container has the ``active_history`` flag set to ``True``.
+          This flag is set typically for primary key attributes and scalar
+          object references that are not a simple many-to-one.  To set this
+          flag for any arbitrary mapped column, use the ``active_history``
+          argument with :func:`.column_property`.
+
+        :param instance: mapped instance to be tested for pending changes.
+        :param include_collections: Indicates if multivalued collections
+         should be included in the operation.  Setting this to ``False`` is a
+         way to detect only local-column based properties (i.e. scalar columns
+         or many-to-one foreign keys) that would result in an UPDATE for this
+         instance upon flush.
+
+
+        """  # noqa: E501
+
+        return self._proxied.is_modified(
+            instance, include_collections=include_collections
+        )
+
+    def in_transaction(self):
+        r"""Return True if this :class:`_orm.Session` has begun a transaction.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        .. versionadded:: 1.4
+
+        .. seealso::
+
+            :attr:`_orm.Session.is_active`
+
+
+
+        """  # noqa: E501
+
+        return self._proxied.in_transaction()
+
+    def in_nested_transaction(self):
+        r"""Return True if this :class:`_orm.Session` has begun a nested
+        transaction, e.g. SAVEPOINT.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        .. versionadded:: 1.4
+
+
+        """  # noqa: E501
+
+        return self._proxied.in_nested_transaction()
+
+    @property
+    def dirty(self) -> Any:
+        r"""The set of all persistent instances considered dirty.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class
+            on behalf of the :class:`_asyncio.AsyncSession` class.
+
+        E.g.::
+
+            some_mapped_object in session.dirty
+
+        Instances are considered dirty when they were modified but not
+        deleted.
+
+        Note that this 'dirty' calculation is 'optimistic'; most
+        attribute-setting or collection modification operations will
+        mark an instance as 'dirty' and place it in this set, even if
+        there is no net change to the attribute's value.  At flush
+        time, the value of each attribute is compared to its
+        previously saved value, and if there's no net change, no SQL
+        operation will occur (this is a more expensive operation so
+        it's only done at flush time).
+
+        To check if an instance has actionable net changes to its
+        attributes, use the :meth:`.Session.is_modified` method.
+
+
+        """  # noqa: E501
+
+        return self._proxied.dirty
+
+    @property
+    def deleted(self) -> Any:
+        r"""The set of all instances marked as 'deleted' within this ``Session``
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class
+            on behalf of the :class:`_asyncio.AsyncSession` class.
+
+        """  # noqa: E501
+
+        return self._proxied.deleted
+
+    @property
+    def new(self) -> Any:
+        r"""The set of all instances marked as 'new' within this ``Session``.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class
+            on behalf of the :class:`_asyncio.AsyncSession` class.
+
+        """  # noqa: E501
+
+        return self._proxied.new
+
+    @property
+    def identity_map(self) -> identity.IdentityMap:
+        r"""Proxy for the :attr:`_orm.Session.identity_map` attribute
+        on behalf of the :class:`_asyncio.AsyncSession` class.
+
+        """  # noqa: E501
+
+        return self._proxied.identity_map
+
+    @identity_map.setter
+    def identity_map(self, attr: identity.IdentityMap) -> None:
+        self._proxied.identity_map = attr
+
+    @property
+    def is_active(self) -> Any:
+        r"""True if this :class:`.Session` not in "partial rollback" state.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class
+            on behalf of the :class:`_asyncio.AsyncSession` class.
+
+        .. versionchanged:: 1.4 The :class:`_orm.Session` no longer begins
+           a new transaction immediately, so this attribute will be False
+           when the :class:`_orm.Session` is first instantiated.
+
+        "partial rollback" state typically indicates that the flush process
+        of the :class:`_orm.Session` has failed, and that the
+        :meth:`_orm.Session.rollback` method must be emitted in order to
+        fully roll back the transaction.
+
+        If this :class:`_orm.Session` is not in a transaction at all, the
+        :class:`_orm.Session` will autobegin when it is first used, so in this
+        case :attr:`_orm.Session.is_active` will return True.
+
+        Otherwise, if this :class:`_orm.Session` is within a transaction,
+        and that transaction has not been rolled back internally, the
+        :attr:`_orm.Session.is_active` will also return True.
+
+        .. seealso::
+
+            :ref:`faq_session_rollback`
+
+            :meth:`_orm.Session.in_transaction`
+
+
+        """  # noqa: E501
+
+        return self._proxied.is_active
+
+    @property
+    def autoflush(self) -> bool:
+        r"""Proxy for the :attr:`_orm.Session.autoflush` attribute
+        on behalf of the :class:`_asyncio.AsyncSession` class.
+
+        """  # noqa: E501
+
+        return self._proxied.autoflush
+
+    @autoflush.setter
+    def autoflush(self, attr: bool) -> None:
+        self._proxied.autoflush = attr
+
+    @property
+    def no_autoflush(self) -> Any:
+        r"""Return a context manager that disables autoflush.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class
+            on behalf of the :class:`_asyncio.AsyncSession` class.
+
+        e.g.::
+
+            with session.no_autoflush:
+
+                some_object = SomeClass()
+                session.add(some_object)
+                # won't autoflush
+                some_object.related_thing = session.query(SomeRelated).first()
+
+        Operations that proceed within the ``with:`` block
+        will not be subject to flushes occurring upon query
+        access.  This is useful when initializing a series
+        of objects which involve existing database queries,
+        where the uncompleted object should not yet be flushed.
+
+
+        """  # noqa: E501
+
+        return self._proxied.no_autoflush
+
+    @property
+    def info(self) -> Any:
+        r"""A user-modifiable dictionary.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class
+            on behalf of the :class:`_asyncio.AsyncSession` class.
+
+        The initial value of this dictionary can be populated using the
+        ``info`` argument to the :class:`.Session` constructor or
+        :class:`.sessionmaker` constructor or factory methods.  The dictionary
+        here is always local to this :class:`.Session` and can be modified
+        independently of all other :class:`.Session` objects.
+
+
+        """  # noqa: E501
+
+        return self._proxied.info
+
+    @classmethod
+    def object_session(cls, instance: Any) -> "Session":
+        r"""Return the :class:`.Session` to which an object belongs.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        This is an alias of :func:`.object_session`.
+
+
+        """  # noqa: E501
+
+        return Session.object_session(instance)
+
+    @classmethod
+    def identity_key(
+        cls,
+        class_=None,
+        ident=None,
+        *,
+        instance=None,
+        row=None,
+        identity_token=None,
+    ) -> _IdentityKeyType:
+        r"""Return an identity key.
+
+        .. container:: class_bases
+
+            Proxied for the :class:`_orm.Session` class on
+            behalf of the :class:`_asyncio.AsyncSession` class.
+
+        This is an alias of :func:`.util.identity_key`.
+
+
+        """  # noqa: E501
+
+        return Session.identity_key(
+            class_=class_,
+            ident=ident,
+            instance=instance,
+            row=row,
+            identity_token=identity_token,
+        )
+
+    # END PROXY METHODS AsyncSession
 
 
 class _AsyncSessionContextManager:

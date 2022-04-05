@@ -4,6 +4,7 @@
 recursive-include doc *.html *.css *.txt *.js *.png *.py Makefile *.rst *.sty
 recursive-include examples *.py *.xml
 recursive-include test *.py *.dat *.testpatch
+recursive-include tools *.py
 
 # for some reason in some environments stale Cython .c files
 # are being pulled in, these should never be in a dist
