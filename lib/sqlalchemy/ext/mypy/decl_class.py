@@ -41,6 +41,7 @@ from . import apply
 from . import infer
 from . import names
 from . import util
+from . import exceptions
 
 
 def scan_declarative_assignments_and_apply_types(
@@ -91,15 +92,32 @@ def scan_declarative_assignments_and_apply_types(
                 cls, api, sym_name, sym, mapped_attributes
             )
     else:
+        assignment_to_map, decorator_to_map = [], []
         for stmt in util.flatten_typechecking(cls.defs.body):
             if isinstance(stmt, AssignmentStmt):
-                _scan_declarative_assignment_stmt(
-                    cls, api, stmt, mapped_attributes
-                )
+                assignment_to_map.append((stmt,_scan_declarative_assignment_stmt(
+                    cls, api, stmt
+                )))
             elif isinstance(stmt, Decorator):
-                _scan_declarative_decorator_stmt(
-                    cls, api, stmt, mapped_attributes
+                decorator_to_map.append(_scan_declarative_decorator_stmt(
+                    cls, api, stmt
+                ))
+        for stmt, result in assignment_to_map:
+            if result is not None:
+                lvalue, left_hand_explicit_type, python_type_for_type, sa_attr = result
+                mapped_attributes.append(sa_attr)
+                apply.apply_type_to_mapped_statement(
+                    api,
+                    stmt,
+                    lvalue,
+                    left_hand_explicit_type,
+                    python_type_for_type,
                 )
+        for result in decorator_to_map:
+            if result is not None:
+                dec_index, new_stmt, sa_attr = result
+                mapped_attributes.append(sa_attr)
+                cls.defs.body[dec_index] = new_stmt
     _scan_for_mapped_bases(cls, api)
 
     if not is_mixin_scan:
@@ -204,7 +222,6 @@ def _scan_declarative_decorator_stmt(
     cls: ClassDef,
     api: SemanticAnalyzerPluginInterface,
     stmt: Decorator,
-    attributes: List[util.SQLAlchemyAttribute],
 ) -> None:
     """Extract mapping information from a @declared_attr in a declarative
     class.
@@ -344,23 +361,19 @@ def _scan_declarative_decorator_stmt(
     new_stmt = AssignmentStmt([left_node], rvalue)
     new_stmt.type = left_node.node.type
 
-    attributes.append(
-        util.SQLAlchemyAttribute(
+    return dec_index, new_stmt, util.SQLAlchemyAttribute(
             name=left_node.name,
             line=stmt.line,
             column=stmt.column,
             typ=left_hand_explicit_type,
             info=cls.info,
         )
-    )
-    cls.defs.body[dec_index] = new_stmt
 
 
 def _scan_declarative_assignment_stmt(
     cls: ClassDef,
     api: SemanticAnalyzerPluginInterface,
     stmt: AssignmentStmt,
-    attributes: List[util.SQLAlchemyAttribute],
 ) -> None:
     """Extract mapping information from an assignment statement in a
     declarative class.
@@ -469,23 +482,16 @@ def _scan_declarative_assignment_stmt(
 
     assert python_type_for_type is not None
 
-    attributes.append(
-        util.SQLAlchemyAttribute(
+    if isinstance(python_type_for_type, UnboundType):
+        raise exceptions.ShouldDeferException
+
+    return lvalue, left_hand_explicit_type, python_type_for_type, util.SQLAlchemyAttribute(
             name=node.name,
             line=stmt.line,
             column=stmt.column,
             typ=python_type_for_type,
             info=cls.info,
         )
-    )
-
-    apply.apply_type_to_mapped_statement(
-        api,
-        stmt,
-        lvalue,
-        left_hand_explicit_type,
-        python_type_for_type,
-    )
 
 
 def _scan_for_mapped_bases(
