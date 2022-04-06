@@ -15,7 +15,40 @@ This document details individual issue-level changes made throughout
 
 .. changelog::
     :version: 1.4.35
-    :include_notes_from: unreleased_14
+    :released: April 6, 2022
+
+    .. change::
+        :tags: bug, sql
+        :tickets: 7890
+
+        Fixed bug in newly implemented
+        :paramref:`.FunctionElement.table_valued.joins_implicitly` feature where
+        the parameter would not automatically propagate from the original
+        :class:`.TableValuedAlias` object to the secondary object produced when
+        calling upon :meth:`.TableValuedAlias.render_derived` or
+        :meth:`.TableValuedAlias.alias`.
+
+        Additionally repaired these issues in :class:`.TableValuedAlias`:
+
+        * repaired a potential memory issue which could occur when
+          repeatedly calling :meth:`.TableValuedAlias.render_derived` against
+          successive copies of the same object (for .alias(), we currently
+          have to still continue chaining from the previous element.  not sure
+          if this can be improved but this is standard behavior for .alias()
+          elsewhere)
+        * repaired issue where the individual element types would be lost when
+          calling upon :meth:`.TableValuedAlias.render_derived` or
+          :meth:`.TableValuedAlias.alias`.
+
+    .. change::
+        :tags: bug, sql, regression
+        :tickets: 7903
+
+        Fixed regression caused by :ticket:`7823` which impacted the caching
+        system, such that bound parameters that had been "cloned" within ORM
+        operations, such as polymorphic loading, would in some cases not acquire
+        their correct execution-time value leading to incorrect bind values being
+        rendered.
 
 .. changelog::
     :version: 1.4.34
