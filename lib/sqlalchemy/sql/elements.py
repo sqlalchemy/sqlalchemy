@@ -370,7 +370,6 @@ class ClauseElement(
         # old table.
         cc = self._is_clone_of
         c._is_clone_of = cc if cc is not None else self
-
         return c
 
     def _negate_in_binary(self, negated_op, original_op):
@@ -1942,6 +1941,15 @@ class BindParameter(roles.InElementRole, ColumnElement[_T]):
         self: SelfBindParameter, maintain_key: bool = False, **kw: Any
     ) -> SelfBindParameter:
         c = ClauseElement._clone(self, **kw)
+        # ensure all the BindParameter objects stay in cloned set.
+        # in #7823, we changed "clone" so that a clone only keeps a reference
+        # to the "original" element, since for column correspondence, that's
+        # all we need.   However, for BindParam, _cloned_set is used by
+        # the "cache key bind match" lookup, which means if any of those
+        # interim BindParameter objects became part of a cache key in the
+        # cache, we need it.  So here, make sure all clones keep carrying
+        # forward.
+        c._cloned_set.update(self._cloned_set)
         if not maintain_key and self.unique:
             c.key = _anonymous_label.safe_construct(
                 id(c), c._orig_key or "param", sanitize_key=True

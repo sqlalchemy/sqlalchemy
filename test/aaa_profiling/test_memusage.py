@@ -348,8 +348,15 @@ class MemUsageTest(EnsureZeroed):
         go()
 
     def test_clone_expression(self):
+        # this test is for the memory issue "fixed" in #7823, where clones
+        # no longer carry along all past elements.
+        # However, due to #7903, we can't at the moment use a
+        # BindParameter here - these have to continue to carry along all
+        # the previous clones for now.  So the test here only works with
+        # expressions that dont have BindParameter objects in them.
 
-        root_expr = column("x", Integer) == 12
+        root_expr = column("x", Integer) == column("y", Integer)
+
         expr = root_expr
 
         @profile_memory()

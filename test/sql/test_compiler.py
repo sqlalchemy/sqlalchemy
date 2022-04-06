@@ -3945,7 +3945,8 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             extracted_parameters=s1_cache_key[1],
         )
 
-    def test_construct_params_w_bind_clones_post(self):
+    @testing.combinations(True, False, argnames="adapt_before_key")
+    def test_construct_params_w_bind_clones_post(self, adapt_before_key):
         """test that a BindParameter that has been cloned after the cache
         key was generated still matches up when construct_params()
         is called with an extracted parameter collection.
@@ -3968,6 +3969,11 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
 
         # it's anonymous so unique=True
         is_true(original_bind.unique)
+
+        # test #7903 - adapt the statement *before* we make the cache
+        # key also
+        if adapt_before_key:
+            stmt = sql_util.ClauseAdapter(table1).traverse(stmt)
 
         # cache key against the original param
         cache_key = stmt._generate_cache_key()
@@ -4021,7 +4027,8 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
             {"myid_1": 10},
         )
 
-    def test_construct_duped_params_w_bind_clones_post(self):
+    @testing.combinations(True, False, argnames="adapt_before_key")
+    def test_construct_duped_params_w_bind_clones_post(self, adapt_before_key):
         """same as previous test_construct_params_w_bind_clones_post but
         where the binds have been used
         repeatedly, and the adaption occurs on a per-subquery basis.
@@ -4043,6 +4050,10 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
 
         # it's anonymous so unique=True
         is_true(original_bind.unique)
+
+        # variant that exercises #7903
+        if adapt_before_key:
+            stmt = sql_util.ClauseAdapter(table1).traverse(stmt)
 
         # cache key against the original param
         cache_key = stmt._generate_cache_key()
@@ -4125,7 +4136,7 @@ class BindParameterTest(AssertsCompiledSQL, fixtures.TestBase):
         be unique, still matches up when construct_params()
         is called with an extracted parameter collection.
 
-        other ORM feaures like optimized_compare() end up doing something
+        other ORM features like optimized_compare() end up doing something
         like this, such as if there are multiple "has()" or "any()" which would
         have cloned the join condition and changed the values of bound
         parameters.
