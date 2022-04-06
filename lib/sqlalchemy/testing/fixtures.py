@@ -51,6 +51,13 @@ class TestBase(object):
         assert val, msg
 
     @config.fixture()
+    def nocache(self):
+        _cache = config.db._compiled_cache
+        config.db._compiled_cache = None
+        yield
+        config.db._compiled_cache = _cache
+
+    @config.fixture()
     def connection_no_trans(self):
         eng = getattr(self, "bind", None) or config.db
 

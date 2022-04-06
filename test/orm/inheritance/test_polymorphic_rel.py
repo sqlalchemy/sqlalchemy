@@ -10,10 +10,10 @@ from sqlalchemy.orm import join
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm import subqueryload
+from sqlalchemy.orm import with_parent
 from sqlalchemy.orm import with_polymorphic
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import eq_
-from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.fixtures import fixture_session
 from ._poly_fixtures import _Polymorphic
@@ -30,7 +30,7 @@ from ._poly_fixtures import Paperwork
 from ._poly_fixtures import Person
 
 
-class _PolymorphicTestBase(fixtures.NoCache):
+class _PolymorphicTestBase(object):
     __backend__ = True
     __dialect__ = "default_enhanced"
 
@@ -194,6 +194,34 @@ class _PolymorphicTestBase(fixtures.NoCache):
             sess.get(Manager, b1.person_id),
             Boss(name="pointy haired boss", golf_swing="fore"),
         )
+
+    def test_lazyload_related_w_cache_check(self):
+        sess = fixture_session()
+
+        c1 = sess.get(Company, 1)
+        c2 = sess.get(Company, 2)
+
+        q1 = (
+            sess.query(Person)
+            .filter(with_parent(c1, Company.employees))
+            .order_by(Person.person_id)
+        )
+        eq_(
+            q1.all(),
+            [
+                Engineer(name="dilbert"),
+                Engineer(name="wally"),
+                Boss(name="pointy haired boss"),
+                Manager(name="dogbert"),
+            ],
+        )
+
+        q2 = (
+            sess.query(Person)
+            .filter(with_parent(c2, Company.employees))
+            .order_by(Person.person_id)
+        )
+        eq_(q2.all(), [Engineer(name="vlad")])
 
     def test_multi_join(self):
         sess = fixture_session()
@@ -881,7 +909,7 @@ class _PolymorphicTestBase(fixtures.NoCache):
 
         self.assert_sql_count(testing.db, go, 1)
 
-    def test_with_polymorphic_three_future(self):
+    def test_with_polymorphic_three_future(self, nocache):
         sess = fixture_session()
 
         def go():
@@ -2284,6 +2312,12 @@ class PolymorphicPolymorphicTest(
 
 
 class PolymorphicUnionsTest(_PolymorphicTestBase, _PolymorphicUnions):
+    @testing.skip_if(
+        lambda: True, "join condition doesn't work w/ this mapping"
+    )
+    def test_lazyload_related_w_cache_check(self):
+        pass
+
     def test_with_polymorphic_two_future_default_wp(self):
         """test #7262
 
@@ -2385,6 +2419,12 @@ class PolymorphicUnionsTest(_PolymorphicTestBase, _PolymorphicUnions):
 class PolymorphicAliasedJoinsTest(
     _PolymorphicTestBase, _PolymorphicAliasedJoins
 ):
+    @testing.skip_if(
+        lambda: True, "join condition doesn't work w/ this mapping"
+    )
+    def test_lazyload_related_w_cache_check(self):
+        pass
+
     def test_with_polymorphic_two_future_default_wp(self):
         """test #7262
 
