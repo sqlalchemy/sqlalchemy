@@ -889,9 +889,9 @@ class SessionTransaction(_StateChange, TransactionalContext):
                 self.session.flush()
             else:
                 raise exc.FlushError(
-                    "Over 100 subsequent flushes have occurred within "
-                    "session.commit() - is an after_flush() hook "
-                    "creating new objects?"
+                    "session.commit() (or session.prepare()) has now attempted 100 flush()es "
+                    "to bring the session into clean state - is an after_flush() "
+                    "hook creating new objects? is flush() having no effect()?"
                 )
 
         if self._parent is None and self.session.twophase:
