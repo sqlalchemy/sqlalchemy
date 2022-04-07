@@ -805,10 +805,13 @@ https://msdn.microsoft.com/en-us/library/ms175095.aspx.
 
 """  # noqa
 
+from __future__ import annotations
+
 import codecs
 import datetime
 import operator
 import re
+from typing import TYPE_CHECKING
 
 from . import information_schema as ischema
 from .json import JSON
@@ -833,6 +836,7 @@ from ...sql import func
 from ...sql import quoted_name
 from ...sql import roles
 from ...sql import util as sql_util
+from ...sql._typing import is_sql_compiler
 from ...types import BIGINT
 from ...types import BINARY
 from ...types import CHAR
@@ -849,6 +853,10 @@ from ...types import TEXT
 from ...types import VARCHAR
 from ...util import update_wrapper
 
+if TYPE_CHECKING:
+    from ...sql.compiler import SQLCompiler
+    from ...sql.dml import DMLState
+    from ...sql.selectable import TableClause
 
 # https://sqlserverbuilds.blogspot.com/
 MS_2017_VERSION = (14,)
@@ -1623,6 +1631,8 @@ class MSExecutionContext(default.DefaultExecutionContext):
     _lastrowid = None
     _rowcount = None
 
+    dialect: MSDialect
+
     def _opt_encode(self, statement):
 
         if self.compiled and self.compiled.schema_translate_map:
@@ -1636,13 +1646,20 @@ class MSExecutionContext(default.DefaultExecutionContext):
         """Activate IDENTITY_INSERT if needed."""
 
         if self.isinsert:
+            if TYPE_CHECKING:
+                assert is_sql_compiler(self.compiled)
+                assert isinstance(self.compiled.compile_state, DMLState)
+                assert isinstance(
+                    self.compiled.compile_state.dml_table, TableClause
+                )
+
             tbl = self.compiled.compile_state.dml_table
             id_column = tbl._autoincrement_column
-            insert_has_identity = (id_column is not None) and (
-                not isinstance(id_column.default, Sequence)
-            )
 
-            if insert_has_identity:
+            if id_column is not None and (
+                not isinstance(id_column.default, Sequence)
+            ):
+                insert_has_identity = True
                 compile_state = self.compiled.compile_state
                 self._enable_identity_insert = (
                     id_column.key in self.compiled_parameters[0]
@@ -1655,12 +1672,13 @@ class MSExecutionContext(default.DefaultExecutionContext):
                 )
 
             else:
+                insert_has_identity = False
                 self._enable_identity_insert = False
 
             self._select_lastrowid = (
                 not self.compiled.inline
                 and insert_has_identity
-                and not self.compiled.returning
+                and not self.compiled.effective_returning
                 and not self._enable_identity_insert
                 and not self.executemany
             )
@@ -1701,8 +1719,10 @@ class MSExecutionContext(default.DefaultExecutionContext):
             self._lastrowid = int(row[0])
 
         elif (
-            self.isinsert or self.isupdate or self.isdelete
-        ) and self.compiled.returning:
+            self.compiled is not None
+            and is_sql_compiler(self.compiled)
+            and self.compiled.effective_returning
+        ):
             self.cursor_fetch_strategy = (
                 _cursor.FullyBufferedCursorFetchStrategy(
                     self.cursor,
@@ -1712,6 +1732,12 @@ class MSExecutionContext(default.DefaultExecutionContext):
             )
 
         if self._enable_identity_insert:
+            if TYPE_CHECKING:
+                assert is_sql_compiler(self.compiled)
+                assert isinstance(self.compiled.compile_state, DMLState)
+                assert isinstance(
+                    self.compiled.compile_state.dml_table, TableClause
+                )
             conn._cursor_execute(
                 self.cursor,
                 self._opt_encode(
@@ -2065,17 +2091,21 @@ class MSSQLCompiler(compiler.SQLCompiler):
             )
         return super(MSSQLCompiler, self).visit_binary(binary, **kwargs)
 
-    def returning_clause(self, stmt, returning_cols):
+    def returning_clause(
+        self, stmt, returning_cols, *, populate_result_map, **kw
+    ):
         # SQL server returning clause requires that the columns refer to
         # the virtual table names "inserted" or "deleted".   Here, we make
         # a simple alias of our table with that name, and then adapt the
         # columns we have from the list of RETURNING columns to that new name
         # so that they render as "inserted.<colname>" / "deleted.<colname>".
 
-        if self.isinsert or self.isupdate:
+        if stmt.is_insert or stmt.is_update:
             target = stmt.table.alias("inserted")
-        else:
+        elif stmt.is_delete:
             target = stmt.table.alias("deleted")
+        else:
+            assert False, "expected Insert, Update or Delete statement"
 
         adapter = sql_util.ClauseAdapter(target)
 
@@ -2091,6 +2121,7 @@ class MSSQLCompiler(compiler.SQLCompiler):
             self._label_returning_column(
                 stmt,
                 adapter.traverse(c),
+                populate_result_map,
                 {"result_map_targets": (c,)},
             )
             for c in expression._select_iterables(returning_cols)

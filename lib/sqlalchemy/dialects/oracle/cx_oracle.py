@@ -352,8 +352,7 @@ RETURNING Support
 -----------------
 
 The cx_Oracle dialect implements RETURNING using OUT parameters.
-The dialect supports RETURNING fully, however cx_Oracle 6 is recommended
-for complete support.
+The dialect supports RETURNING fully.
 
 .. _cx_oracle_lob:
 
@@ -430,6 +429,8 @@ SQLAlchemy type (or a subclass of such).
    as better integration of outputtypehandlers.
 
 """  # noqa
+from __future__ import annotations
+
 import decimal
 import random
 import re
@@ -444,6 +445,7 @@ from ... import util
 from ...engine import cursor as _cursor
 from ...engine import interfaces
 from ...engine import processors
+from ...sql._typing import is_sql_compiler
 
 
 class _OracleInteger(sqltypes.Integer):
@@ -452,10 +454,13 @@ class _OracleInteger(sqltypes.Integer):
         # 208#issuecomment-409715955
         return int
 
-    def _cx_oracle_var(self, dialect, cursor):
+    def _cx_oracle_var(self, dialect, cursor, arraysize=None):
         cx_Oracle = dialect.dbapi
         return cursor.var(
-            cx_Oracle.STRING, 255, arraysize=cursor.arraysize, outconverter=int
+            cx_Oracle.STRING,
+            255,
+            arraysize=arraysize if arraysize is not None else cursor.arraysize,
+            outconverter=int,
         )
 
     def _cx_oracle_outputtypehandler(self, dialect):
@@ -494,8 +499,6 @@ class _OracleNumeric(sqltypes.Numeric):
     def _cx_oracle_outputtypehandler(self, dialect):
         cx_Oracle = dialect.dbapi
 
-        is_cx_oracle_6 = dialect._is_cx_oracle_6
-
         def handler(cursor, name, default_type, size, precision, scale):
             outconverter = None
 
@@ -506,11 +509,8 @@ class _OracleNumeric(sqltypes.Numeric):
                         # allows for float("inf") to be handled
                         type_ = default_type
                         outconverter = decimal.Decimal
-                    elif is_cx_oracle_6:
-                        type_ = decimal.Decimal
                     else:
-                        type_ = cx_Oracle.STRING
-                        outconverter = dialect._to_decimal
+                        type_ = decimal.Decimal
                 else:
                     if self.is_number and scale == 0:
                         # integer. cx_Oracle is observed to handle the widest
@@ -525,11 +525,8 @@ class _OracleNumeric(sqltypes.Numeric):
                     if default_type == cx_Oracle.NATIVE_FLOAT:
                         type_ = default_type
                         outconverter = decimal.Decimal
-                    elif is_cx_oracle_6:
-                        type_ = decimal.Decimal
                     else:
-                        type_ = cx_Oracle.STRING
-                        outconverter = dialect._to_decimal
+                        type_ = decimal.Decimal
                 else:
                     if self.is_number and scale == 0:
                         # integer. cx_Oracle is observed to handle the widest
@@ -670,6 +667,8 @@ class _OracleRowid(oracle.ROWID):
 class OracleCompiler_cx_oracle(OracleCompiler):
     _oracle_cx_sql_compiler = True
 
+    _oracle_returning = False
+
     def bindparam_string(self, name, **kw):
         quote = getattr(name, "quote", None)
         if (
@@ -696,7 +695,7 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
     def _generate_out_parameter_vars(self):
         # check for has_out_parameters or RETURNING, create cx_Oracle.var
         # objects if so
-        if self.compiled.returning or self.compiled.has_out_parameters:
+        if self.compiled.has_out_parameters or self.compiled._oracle_returning:
             quoted_bind_names = self.compiled.escaped_bind_names
             for bindparam in self.compiled.binds.values():
                 if bindparam.isoutparam:
@@ -705,7 +704,7 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
 
                     if hasattr(type_impl, "_cx_oracle_var"):
                         self.out_parameters[name] = type_impl._cx_oracle_var(
-                            self.dialect, self.cursor
+                            self.dialect, self.cursor, arraysize=1
                         )
                     else:
                         dbtype = type_impl.get_dbapi_type(self.dialect.dbapi)
@@ -726,10 +725,14 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
                             cx_Oracle.NCLOB,
                         ):
                             self.out_parameters[name] = self.cursor.var(
-                                dbtype, outconverter=lambda value: value.read()
+                                dbtype,
+                                outconverter=lambda value: value.read(),
+                                arraysize=1,
                             )
                         else:
-                            self.out_parameters[name] = self.cursor.var(dbtype)
+                            self.out_parameters[name] = self.cursor.var(
+                                dbtype, arraysize=1
+                            )
                     self.parameters[0][
                         quoted_bind_names.get(name, name)
                     ] = self.out_parameters[name]
@@ -782,22 +785,33 @@ class OracleExecutionContext_cx_oracle(OracleExecutionContext):
         self._generate_cursor_outputtype_handler()
 
     def post_exec(self):
-        if self.compiled and self.out_parameters and self.compiled.returning:
+        if (
+            self.compiled
+            and is_sql_compiler(self.compiled)
+            and self.compiled._oracle_returning
+        ):
             # create a fake cursor result from the out parameters. unlike
             # get_out_parameter_values(), the result-row handlers here will be
             # applied at the Result level
-            returning_params = [
-                self.dialect._returningval(self.out_parameters["ret_%d" % i])
-                for i in range(len(self.out_parameters))
+
+            numrows = len(self.out_parameters["ret_0"].values[0])
+            numcols = len(self.out_parameters)
+
+            initial_buffer = [
+                tuple(
+                    self.out_parameters[f"ret_{j}"].values[0][i]
+                    for j in range(numcols)
+                )
+                for i in range(numrows)
             ]
 
             fetch_strategy = _cursor.FullyBufferedCursorFetchStrategy(
                 self.cursor,
                 [
-                    (getattr(col, "name", col._anon_name_label), None)
-                    for col in self.compiled.returning
+                    (entry.keyname, None)
+                    for entry in self.compiled._result_columns
                 ],
-                initial_buffer=[tuple(returning_params)],
+                initial_buffer=initial_buffer,
             )
 
             self.cursor_fetch_strategy = fetch_strategy
@@ -908,17 +922,10 @@ class OracleDialect_cx_oracle(OracleDialect):
             self.cx_oracle_ver = (0, 0, 0)
         else:
             self.cx_oracle_ver = self._parse_cx_oracle_ver(cx_Oracle.version)
-            if self.cx_oracle_ver < (5, 2) and self.cx_oracle_ver > (0, 0, 0):
+            if self.cx_oracle_ver < (7,) and self.cx_oracle_ver > (0, 0, 0):
                 raise exc.InvalidRequestError(
-                    "cx_Oracle version 5.2 and above are supported"
+                    "cx_Oracle version 7 and above are supported"
                 )
-
-            if encoding_errors and self.cx_oracle_ver < (6, 4):
-                util.warn(
-                    "cx_oracle version %r does not support encodingErrors"
-                    % (self.cx_oracle_ver,)
-                )
-                self._cursor_var_unicode_kwargs = util.immutabledict()
 
             self.include_set_input_sizes = {
                 cx_Oracle.DATETIME,
@@ -936,24 +943,6 @@ class OracleDialect_cx_oracle(OracleDialect):
             }
 
             self._paramval = lambda value: value.getvalue()
-
-            # https://github.com/oracle/python-cx_Oracle/issues/176#issuecomment-386821291
-            # https://github.com/oracle/python-cx_Oracle/issues/224
-            self._values_are_lists = self.cx_oracle_ver >= (6, 3)
-            if self._values_are_lists:
-                cx_Oracle.__future__.dml_ret_array_val = True
-
-                def _returningval(value):
-                    try:
-                        return value.values[0][0]
-                    except IndexError:
-                        return None
-
-                self._returningval = _returningval
-            else:
-                self._returningval = self._paramval
-
-        self._is_cx_oracle_6 = self.cx_oracle_ver >= (6,)
 
     def _parse_cx_oracle_ver(self, version):
         m = re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", version)

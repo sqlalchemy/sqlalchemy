@@ -31,6 +31,7 @@ from sqlalchemy.testing import config
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.assertions import expect_raises_message
 from sqlalchemy.testing.schema import Column
 from sqlalchemy.testing.schema import Table
 from sqlalchemy.testing.suite import test_select
@@ -54,7 +55,7 @@ class DialectTest(fixtures.TestBase):
         ):
             assert_raises_message(
                 exc.InvalidRequestError,
-                "cx_Oracle version 5.2 and above are supported",
+                "cx_Oracle version 7 and above are supported",
                 cx_oracle.OracleDialect_cx_oracle,
                 dbapi=mock.Mock(),
             )
@@ -62,7 +63,7 @@ class DialectTest(fixtures.TestBase):
         with mock.patch(
             "sqlalchemy.dialects.oracle.cx_oracle.OracleDialect_cx_oracle."
             "_parse_cx_oracle_ver",
-            lambda self, vers: (5, 3, 1),
+            lambda self, vers: (7, 1, 0),
         ):
             cx_oracle.OracleDialect_cx_oracle(dbapi=mock.Mock())
 
@@ -302,19 +303,6 @@ class EncodingErrorsTest(fixtures.TestBase):
             assert_raises(UnicodeDecodeError, outconverter, utf8_w_errors)
 
     @_oracle_char_combinations
-    def test_older_cx_oracle_warning(self, cx_Oracle, cx_oracle_type):
-        cx_Oracle.version = "6.3"
-
-        with testing.expect_warnings(
-            r"cx_oracle version \(6, 3\) does not support encodingErrors"
-        ):
-            dialect = cx_oracle.dialect(
-                dbapi=cx_Oracle, encoding_errors="ignore"
-            )
-
-            eq_(dialect._cursor_var_unicode_kwargs, {})
-
-    @_oracle_char_combinations
     def test_encoding_errors_cx_oracle(
         self,
         cx_Oracle,
@@ -477,6 +465,23 @@ end;
         )
         eq_(result.out_parameters, {"x_out": 10, "y_out": 75, "z_out": None})
         assert isinstance(result.out_parameters["x_out"], int)
+
+    def test_no_out_params_w_returning(self, connection, metadata):
+        t = Table("t", metadata, Column("x", Integer), Column("y", Integer))
+        metadata.create_all(connection)
+        stmt = (
+            t.insert()
+            .values(x=5, y=10)
+            .returning(outparam("my_param", Integer), t.c.x)
+        )
+
+        with expect_raises_message(
+            exc.InvalidRequestError,
+            r"Using explicit outparam\(\) objects with "
+            r"UpdateBase.returning\(\) in the same Core DML statement "
+            "is not supported in the Oracle dialect.",
+        ):
+            connection.execute(stmt)
 
     @classmethod
     def teardown_test_class(cls):

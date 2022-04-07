@@ -61,6 +61,8 @@ from . import operators
 from . import schema
 from . import selectable
 from . import sqltypes
+from ._typing import is_column_element
+from ._typing import is_dml
 from .base import _from_objects
 from .base import Executable
 from .base import NO_ARG
@@ -90,6 +92,7 @@ if typing.TYPE_CHECKING:
     from .elements import _truncated_label
     from .elements import BindParameter
     from .elements import ColumnClause
+    from .elements import ColumnElement
     from .elements import Label
     from .functions import Function
     from .selectable import Alias
@@ -492,6 +495,9 @@ class Compiled:
     defaults.
     """
 
+    is_sql = False
+    is_ddl = False
+
     _cached_metadata: Optional[CursorResultMetaData] = None
 
     _result_columns: Optional[List[ResultColumnsEntry]] = None
@@ -701,6 +707,8 @@ class SQLCompiler(Compiled):
 
     extract_map = EXTRACT_MAP
 
+    is_sql = True
+
     _result_columns: List[ResultColumnsEntry]
 
     compound_keywords = COMPOUND_KEYWORDS
@@ -725,9 +733,14 @@ class SQLCompiler(Compiled):
     """list of columns for which onupdate default values should be evaluated
     before an UPDATE takes place"""
 
-    returning: Optional[Sequence[roles.ColumnsClauseRole]]
-    """list of columns that will be delivered to cursor.description or
-    dialect equivalent via the RETURNING clause on an INSERT, UPDATE, or DELETE
+    implicit_returning: Optional[Sequence[ColumnElement[Any]]] = None
+    """list of "implicit" returning columns for a toplevel INSERT or UPDATE
+    statement, used to receive newly generated values of columns.
+
+    .. versionadded:: 2.0  ``implicit_returning`` replaces the previous
+       ``returning`` collection, which was not a generalized RETURNING
+       collection and instead was in fact specific to the "implicit returning"
+       feature.
 
     """
 
@@ -749,12 +762,6 @@ class SQLCompiler(Compiled):
     column/label name, ColumnElement object (if any) and
     TypeEngine. CursorResult uses this for type processing and
     column targeting"""
-
-    returning = None
-    """holds the "returning" collection of columns if
-    the statement is CRUD and defines returning columns
-    either implicitly or explicitly
-    """
 
     returning_precedes_values: bool = False
     """set to True classwide to generate RETURNING
@@ -978,9 +985,6 @@ class SQLCompiler(Compiled):
             if TYPE_CHECKING:
                 assert isinstance(statement, UpdateBase)
 
-            if statement._returning:
-                self.returning = statement._returning
-
             if self.isinsert or self.isupdate:
                 if TYPE_CHECKING:
                     assert isinstance(statement, ValuesBase)
@@ -1000,6 +1004,39 @@ class SQLCompiler(Compiled):
 
         if self._render_postcompile:
             self._process_parameters_for_postcompile(_populate_self=True)
+
+    @util.ro_memoized_property
+    def effective_returning(self) -> Optional[Sequence[ColumnElement[Any]]]:
+        """The effective "returning" columns for INSERT, UPDATE or DELETE.
+
+        This is either the so-called "implicit returning" columns which are
+        calculated by the compiler on the fly, or those present based on what's
+        present in ``self.statement._returning`` (expanded into individual
+        columns using the ``._all_selected_columns`` attribute) i.e. those set
+        explicitly using the :meth:`.UpdateBase.returning` method.
+
+        .. versionadded:: 2.0
+
+        """
+        if self.implicit_returning:
+            return self.implicit_returning
+        elif is_dml(self.statement):
+            return [
+                c
+                for c in self.statement._all_selected_columns
+                if is_column_element(c)
+            ]
+
+        else:
+            return None
+
+    @property
+    def returning(self):
+        """backwards compatibility; returns the
+        effective_returning collection.
+
+        """
+        return self.effective_returning
 
     @property
     def current_executable(self):
@@ -1569,7 +1606,7 @@ class SQLCompiler(Compiled):
         param_key_getter = self._within_exec_param_key_getter
         table = self.statement.table
 
-        returning = self.returning
+        returning = self.implicit_returning
         assert returning is not None
         ret = {col: idx for idx, col in enumerate(returning)}
 
@@ -3373,7 +3410,9 @@ class SQLCompiler(Compiled):
             ResultColumnsEntry(keyname, name, objects, type_)
         )
 
-    def _label_returning_column(self, stmt, column, column_clause_args=None):
+    def _label_returning_column(
+        self, stmt, column, populate_result_map, column_clause_args=None
+    ):
         """Render a column with necessary labels inside of a RETURNING clause.
 
         This method is provided for individual dialects in place of calling
@@ -3386,7 +3425,7 @@ class SQLCompiler(Compiled):
         return self._label_select_column(
             None,
             column,
-            True,
+            populate_result_map,
             False,
             {} if column_clause_args is None else column_clause_args,
         )
@@ -4103,7 +4142,10 @@ class SQLCompiler(Compiled):
     def returning_clause(
         self,
         stmt: UpdateBase,
-        returning_cols: Sequence[roles.ColumnsClauseRole],
+        returning_cols: Sequence[ColumnElement[Any]],
+        *,
+        populate_result_map: bool,
+        **kw: Any,
     ) -> str:
         raise exc.CompileError(
             "RETURNING is not supported by this "
@@ -4228,7 +4270,6 @@ class SQLCompiler(Compiled):
         return dialect_hints, table_text
 
     def visit_insert(self, insert_stmt, **kw):
-
         compile_state = insert_stmt._compile_state_factory(
             insert_stmt, self, **kw
         )
@@ -4250,7 +4291,7 @@ class SQLCompiler(Compiled):
         )
 
         crud_params_struct = crud._get_crud_params(
-            self, insert_stmt, compile_state, **kw
+            self, insert_stmt, compile_state, toplevel, **kw
         )
         crud_params_single = crud_params_struct.single_params
 
@@ -4303,9 +4344,11 @@ class SQLCompiler(Compiled):
                 [expr for _, expr, _ in crud_params_single]
             )
 
-        if self.returning or insert_stmt._returning:
+        if self.implicit_returning or insert_stmt._returning:
             returning_clause = self.returning_clause(
-                insert_stmt, self.returning or insert_stmt._returning
+                insert_stmt,
+                self.implicit_returning or insert_stmt._returning,
+                populate_result_map=toplevel,
             )
 
             if self.returning_precedes_values:
@@ -4449,7 +4492,7 @@ class SQLCompiler(Compiled):
             update_stmt, update_stmt.table, render_extra_froms, **kw
         )
         crud_params_struct = crud._get_crud_params(
-            self, update_stmt, compile_state, **kw
+            self, update_stmt, compile_state, toplevel, **kw
         )
         crud_params = crud_params_struct.single_params
 
@@ -4473,10 +4516,12 @@ class SQLCompiler(Compiled):
             )
         )
 
-        if self.returning or update_stmt._returning:
+        if self.implicit_returning or update_stmt._returning:
             if self.returning_precedes_values:
                 text += " " + self.returning_clause(
-                    update_stmt, self.returning or update_stmt._returning
+                    update_stmt,
+                    self.implicit_returning or update_stmt._returning,
+                    populate_result_map=toplevel,
                 )
 
         if extra_froms:
@@ -4502,10 +4547,12 @@ class SQLCompiler(Compiled):
             text += " " + limit_clause
 
         if (
-            self.returning or update_stmt._returning
+            self.implicit_returning or update_stmt._returning
         ) and not self.returning_precedes_values:
             text += " " + self.returning_clause(
-                update_stmt, self.returning or update_stmt._returning
+                update_stmt,
+                self.implicit_returning or update_stmt._returning,
+                populate_result_map=toplevel,
             )
 
         if self.ctes:
@@ -4585,7 +4632,9 @@ class SQLCompiler(Compiled):
         if delete_stmt._returning:
             if self.returning_precedes_values:
                 text += " " + self.returning_clause(
-                    delete_stmt, delete_stmt._returning
+                    delete_stmt,
+                    delete_stmt._returning,
+                    populate_result_map=toplevel,
                 )
 
         if extra_froms:
@@ -4608,7 +4657,9 @@ class SQLCompiler(Compiled):
 
         if delete_stmt._returning and not self.returning_precedes_values:
             text += " " + self.returning_clause(
-                delete_stmt, delete_stmt._returning
+                delete_stmt,
+                delete_stmt._returning,
+                populate_result_map=toplevel,
             )
 
         if self.ctes:
@@ -4685,7 +4736,14 @@ class StrSQLCompiler(SQLCompiler):
     def visit_sequence(self, seq, **kw):
         return "<next sequence value: %s>" % self.preparer.format_sequence(seq)
 
-    def returning_clause(self, stmt, returning_cols):
+    def returning_clause(
+        self,
+        stmt: UpdateBase,
+        returning_cols: Sequence[ColumnElement[Any]],
+        *,
+        populate_result_map: bool,
+        **kw: Any,
+    ) -> str:
         columns = [
             self._label_select_column(None, c, True, False, {})
             for c in base._select_iterables(returning_cols)
@@ -4733,6 +4791,8 @@ class StrSQLCompiler(SQLCompiler):
 
 
 class DDLCompiler(Compiled):
+    is_ddl = True
+
     if TYPE_CHECKING:
 
         def __init__(

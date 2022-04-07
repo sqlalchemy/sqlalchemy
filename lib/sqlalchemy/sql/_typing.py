@@ -14,6 +14,11 @@ from ..util.typing import Literal
 from ..util.typing import Protocol
 
 if TYPE_CHECKING:
+    from .compiler import Compiled
+    from .compiler import DDLCompiler
+    from .compiler import SQLCompiler
+    from .dml import UpdateBase
+    from .dml import ValuesBase
     from .elements import ClauseElement
     from .elements import ColumnClause
     from .elements import ColumnElement
@@ -37,6 +42,7 @@ if TYPE_CHECKING:
     from .sqltypes import TupleType
     from .type_api import TypeEngine
     from ..util.typing import TypeGuard
+
 
 _T = TypeVar("_T", bound=Any)
 
@@ -153,6 +159,12 @@ _TypeEngineArgument = Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"]
 
 if TYPE_CHECKING:
 
+    def is_sql_compiler(c: Compiled) -> TypeGuard[SQLCompiler]:
+        ...
+
+    def is_ddl_compiler(c: Compiled) -> TypeGuard[DDLCompiler]:
+        ...
+
     def is_named_from_clause(t: FromClauseRole) -> TypeGuard[NamedFromClause]:
         ...
 
@@ -183,7 +195,13 @@ if TYPE_CHECKING:
     def is_subquery(t: FromClause) -> TypeGuard[Subquery]:
         ...
 
+    def is_dml(c: ClauseElement) -> TypeGuard[UpdateBase]:
+        ...
+
 else:
+
+    is_sql_compiler = operator.attrgetter("is_sql")
+    is_ddl_compiler = operator.attrgetter("is_ddl")
     is_named_from_clause = operator.attrgetter("named_with_column")
     is_column_element = operator.attrgetter("_is_column_element")
     is_text_clause = operator.attrgetter("_is_text_clause")
@@ -194,6 +212,7 @@ else:
     is_select_statement = operator.attrgetter("_is_select_statement")
     is_table = operator.attrgetter("_is_table")
     is_subquery = operator.attrgetter("_is_subquery")
+    is_dml = operator.attrgetter("is_dml")
 
 
 def has_schema_attr(t: FromClauseRole) -> TypeGuard[TableClause]:
@@ -206,3 +225,7 @@ def is_quoted_name(s: str) -> TypeGuard[quoted_name]:
 
 def is_has_clause_element(s: object) -> TypeGuard[_HasClauseElement]:
     return hasattr(s, "__clause_element__")
+
+
+def is_insert_update(c: ClauseElement) -> TypeGuard[ValuesBase]:
+    return c.is_dml and (c.is_insert or c.is_update)  # type: ignore

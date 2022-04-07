@@ -937,7 +937,7 @@ class Executable(roles.StatementRole, Generative):
     _with_context_options: Tuple[
         Tuple[Callable[[CompileState], None], Any], ...
     ] = ()
-    _compile_options: Optional[CacheableOptions]
+    _compile_options: Optional[Union[Type[CacheableOptions], CacheableOptions]]
 
     _executable_traverse_internals = [
         ("_with_options", InternalTraversal.dp_executable_options),
@@ -982,7 +982,7 @@ class Executable(roles.StatementRole, Generative):
         ) -> Result:
             ...
 
-    @util.non_memoized_property
+    @util.ro_non_memoized_property
     def _all_selected_columns(self):
         raise NotImplementedError()
 

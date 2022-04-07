@@ -478,7 +478,7 @@ class PGExecutionContext_psycopg2(_PGExecutionContext_common_psycopg):
         if (
             self._psycopg2_fetched_rows
             and self.compiled
-            and self.compiled.returning
+            and self.compiled.effective_returning
         ):
             # psycopg2 execute_values will provide for a real cursor where
             # cursor.description works correctly. however, it executes the
@@ -736,7 +736,7 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
                 statement,
                 parameters,
                 template=executemany_values,
-                fetch=bool(context.compiled.returning),
+                fetch=bool(context.compiled.effective_returning),
                 **kwargs,
             )
 

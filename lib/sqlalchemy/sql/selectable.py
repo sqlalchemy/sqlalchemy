@@ -127,6 +127,9 @@ if TYPE_CHECKING:
 
 
 _ColumnsClauseElement = Union["FromClause", ColumnElement[Any], "TextClause"]
+_LabelConventionCallable = Callable[
+    [Union["ColumnElement[Any]", "TextClause"]], Optional[str]
+]
 
 
 class _JoinTargetProtocol(Protocol):
@@ -183,7 +186,7 @@ class ReturnsRows(roles.ReturnsRowsRole, DQLDMLClauseElement):
     def selectable(self) -> ReturnsRows:
         return self
 
-    @util.non_memoized_property
+    @util.ro_non_memoized_property
     def _all_selected_columns(self) -> _SelectIterable:
         """A sequence of column expression objects that represents the
         "selected" columns of this :class:`_expression.ReturnsRows`.
@@ -3277,7 +3280,7 @@ class SelectBase(
         """
         raise NotImplementedError()
 
-    @util.non_memoized_property
+    @util.ro_non_memoized_property
     def _all_selected_columns(self) -> _SelectIterable:
         """A sequence of expressions that correspond to what is rendered
         in the columns clause, including :class:`_sql.TextClause`
@@ -3586,7 +3589,7 @@ class SelectStatementGrouping(GroupedElement, SelectBase):
     ) -> None:
         self.element._generate_fromclause_column_proxies(subquery)
 
-    @util.non_memoized_property
+    @util.ro_non_memoized_property
     def _all_selected_columns(self) -> _SelectIterable:
         return self.element._all_selected_columns
 
@@ -4297,7 +4300,7 @@ class CompoundSelect(HasCompileState, GenerativeSelect):
         for select in self.selects:
             select._refresh_for_new_column(column)
 
-    @util.non_memoized_property
+    @util.ro_non_memoized_property
     def _all_selected_columns(self) -> _SelectIterable:
         return self.selects[0]._all_selected_columns
 
@@ -4408,7 +4411,7 @@ class SelectState(util.MemoizedSlots, CompileState):
     @classmethod
     def _column_naming_convention(
         cls, label_style: SelectLabelStyle
-    ) -> Callable[[Union[ColumnElement[Any], TextClause]], Optional[str]]:
+    ) -> _LabelConventionCallable:
 
         table_qualified = label_style is LABEL_STYLE_TABLENAME_PLUS_COL
         dedupe = label_style is not LABEL_STYLE_NONE
@@ -5984,7 +5987,7 @@ class Select(
         )
         return cc.as_readonly()
 
-    @HasMemoized.memoized_attribute
+    @HasMemoized_ro_memoized_attribute
     def _all_selected_columns(self) -> _SelectIterable:
         meth = SelectState.get_plugin_class(self).all_selected_columns
         return list(meth(self))
@@ -6537,14 +6540,7 @@ class TextualSelect(SelectBase):
             (c.key, c) for c in self.column_args
         ).as_readonly()
 
-    # def _generate_columns_plus_names(
-    #    self, anon_for_dupe_key: bool
-    # ) -> List[Tuple[str, str, str, ColumnElement[Any], bool]]:
-    #    return Select._generate_columns_plus_names(
-    #        self, anon_for_dupe_key=anon_for_dupe_key
-    #    )
-
-    @util.non_memoized_property
+    @util.ro_non_memoized_property
     def _all_selected_columns(self) -> _SelectIterable:
         return self.column_args
 

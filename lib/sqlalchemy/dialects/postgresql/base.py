@@ -2401,10 +2401,11 @@ class PGCompiler(compiler.SQLCompiler):
 
         return tmp
 
-    def returning_clause(self, stmt, returning_cols):
-
+    def returning_clause(
+        self, stmt, returning_cols, *, populate_result_map, **kw
+    ):
         columns = [
-            self._label_returning_column(stmt, c)
+            self._label_returning_column(stmt, c, populate_result_map)
             for c in expression._select_iterables(returning_cols)
         ]
 

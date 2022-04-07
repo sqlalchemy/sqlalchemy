@@ -305,6 +305,7 @@ class ClauseElement(
 
     is_clause_element = True
     is_selectable = False
+    is_dml = False
     _is_column_element = False
     _is_table = False
     _is_textual = False
