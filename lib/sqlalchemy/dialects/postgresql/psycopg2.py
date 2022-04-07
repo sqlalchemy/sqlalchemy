@@ -456,6 +456,8 @@ from .json import JSONB
 from ... import types as sqltypes
 from ... import util
 from ...engine import cursor as _cursor
+from ...util import FastIntFlag
+from ...util import parse_user_argument_for_enum
 
 
 logger = logging.getLogger("sqlalchemy.dialects.postgresql")
@@ -519,13 +521,19 @@ class PGIdentifierPreparer_psycopg2(PGIdentifierPreparer):
     pass
 
 
-EXECUTEMANY_PLAIN = util.symbol("executemany_plain", canonical=0)
-EXECUTEMANY_BATCH = util.symbol("executemany_batch", canonical=1)
-EXECUTEMANY_VALUES = util.symbol("executemany_values", canonical=2)
-EXECUTEMANY_VALUES_PLUS_BATCH = util.symbol(
-    "executemany_values_plus_batch",
-    canonical=EXECUTEMANY_BATCH | EXECUTEMANY_VALUES,
-)
+class ExecutemanyMode(FastIntFlag):
+    EXECUTEMANY_PLAIN = 0
+    EXECUTEMANY_BATCH = 1
+    EXECUTEMANY_VALUES = 2
+    EXECUTEMANY_VALUES_PLUS_BATCH = EXECUTEMANY_BATCH | EXECUTEMANY_VALUES
+
+
+(
+    EXECUTEMANY_PLAIN,
+    EXECUTEMANY_BATCH,
+    EXECUTEMANY_VALUES,
+    EXECUTEMANY_VALUES_PLUS_BATCH,
+) = tuple(ExecutemanyMode)
 
 
 class PGDialect_psycopg2(_PGDialect_common_psycopg):
@@ -564,7 +572,7 @@ class PGDialect_psycopg2(_PGDialect_common_psycopg):
 
         # Parse executemany_mode argument, allowing it to be only one of the
         # symbol names
-        self.executemany_mode = util.symbol.parse_user_argument(
+        self.executemany_mode = parse_user_argument_for_enum(
             executemany_mode,
             {
                 EXECUTEMANY_PLAIN: [None],

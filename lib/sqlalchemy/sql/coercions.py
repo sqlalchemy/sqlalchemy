@@ -114,7 +114,7 @@ def _deep_is_literal(element):
                 schema.SchemaEventTarget,
                 HasCacheKey,
                 Options,
-                util.langhelpers._symbol,
+                util.langhelpers.symbol,
             ),
         )
         and not hasattr(element, "__clause_element__")

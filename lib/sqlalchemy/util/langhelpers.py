@@ -12,6 +12,7 @@ modules, classes, hierarchies, attributes, functions, and methods.
 from __future__ import annotations
 
 import collections
+import enum
 from functools import update_wrapper
 import hashlib
 import inspect
@@ -671,13 +672,13 @@ def format_argspec_init(method, grouped=True):
 
 
 def create_proxy_methods(
-    target_cls,
-    target_cls_sphinx_name,
-    proxy_cls_sphinx_name,
-    classmethods=(),
-    methods=(),
-    attributes=(),
-):
+    target_cls: Type[Any],
+    target_cls_sphinx_name: str,
+    proxy_cls_sphinx_name: str,
+    classmethods: Sequence[str] = (),
+    methods: Sequence[str] = (),
+    attributes: Sequence[str] = (),
+) -> Callable[[_T], _T]:
     """A class decorator indicating attributes should refer to a proxy
     class.
 
@@ -1539,39 +1540,7 @@ class hybridmethod(Generic[_T]):
         return self
 
 
-class _symbol(int):
-    name: str
-
-    def __new__(
-        cls,
-        name: str,
-        doc: Optional[str] = None,
-        canonical: Optional[int] = None,
-    ) -> "_symbol":
-        """Construct a new named symbol."""
-        assert isinstance(name, str)
-        if canonical is None:
-            canonical = hash(name)
-        v = int.__new__(_symbol, canonical)
-        v.name = name
-        if doc:
-            v.__doc__ = doc
-        return v
-
-    def __reduce__(self):
-        return symbol, (self.name, "x", int(self))
-
-    def __str__(self):
-        return repr(self)
-
-    def __repr__(self):
-        return "symbol(%r)" % self.name
-
-
-_symbol.__name__ = "symbol"
-
-
-class symbol:
+class symbol(int):
     """A constant symbol.
 
     >>> symbol('foo') is symbol('foo')
@@ -1584,71 +1553,99 @@ class symbol:
 
     Repeated calls of symbol('name') will all return the same instance.
 
-    The optional ``doc`` argument assigns to ``__doc__``.  This
-    is strictly so that Sphinx autoattr picks up the docstring we want
-    (it doesn't appear to pick up the in-module docstring if the datamember
-    is in a different module - autoattribute also blows up completely).
-    If Sphinx fixes/improves this then we would no longer need
-    ``doc`` here.
+    In SQLAlchemy 2.0, symbol() is used for the implementation of
+    ``_FastIntFlag``, but otherwise should be mostly replaced by
+    ``enum.Enum`` and variants.
+
 
     """
 
-    symbols: Dict[str, "_symbol"] = {}
+    name: str
+
+    symbols: Dict[str, symbol] = {}
     _lock = threading.Lock()
 
-    def __new__(  # type: ignore[misc]
+    def __new__(
         cls,
         name: str,
         doc: Optional[str] = None,
         canonical: Optional[int] = None,
-    ) -> _symbol:
+    ) -> symbol:
         with cls._lock:
             sym = cls.symbols.get(name)
             if sym is None:
-                cls.symbols[name] = sym = _symbol(name, doc, canonical)
+                assert isinstance(name, str)
+                if canonical is None:
+                    canonical = hash(name)
+                sym = int.__new__(symbol, canonical)
+                sym.name = name
+                if doc:
+                    sym.__doc__ = doc
+
+                cls.symbols[name] = sym
             return sym
 
-    @classmethod
-    def parse_user_argument(
-        cls, arg, choices, name, resolve_symbol_names=False
-    ):
-        """Given a user parameter, parse the parameter into a chosen symbol.
+    def __reduce__(self):
+        return symbol, (self.name, "x", int(self))
 
-        The user argument can be a string name that matches the name of a
-        symbol, or the symbol object itself, or any number of alternate choices
-        such as True/False/ None etc.
+    def __str__(self):
+        return repr(self)
 
-        :param arg: the user argument.
-        :param choices: dictionary of symbol object to list of possible
-         entries.
-        :param name: name of the argument.   Used in an :class:`.ArgumentError`
-         that is raised if the parameter doesn't match any available argument.
-        :param resolve_symbol_names: include the name of each symbol as a valid
-         entry.
+    def __repr__(self):
+        return f"symbol({self.name!r})"
 
-        """
-        # note using hash lookup is tricky here because symbol's `__hash__`
-        # is its int value which we don't want included in the lookup
-        # explicitly, so we iterate and compare each.
-        for sym, choice in choices.items():
-            if arg is sym:
-                return sym
-            elif resolve_symbol_names and arg == sym.name:
-                return sym
-            elif arg in choice:
-                return sym
 
-        if arg is None:
-            return None
+class _IntFlagMeta(type):
+    def __init__(
+        cls,
+        classname: str,
+        bases: Tuple[Type[Any], ...],
+        dict_: Dict[str, Any],
+        **kw: Any,
+    ) -> None:
+        items: List[symbol]
+        cls._items = items = []
+        for k, v in dict_.items():
+            if isinstance(v, int):
+                sym = symbol(k, canonical=v)
+            elif not k.startswith("_"):
+                raise TypeError("Expected integer values for IntFlag")
+            else:
+                continue
+            setattr(cls, k, sym)
+            items.append(sym)
 
-        raise exc.ArgumentError("Invalid value for '%s': %r" % (name, arg))
+    def __iter__(self) -> Iterator[symbol]:
+        return iter(self._items)
+
+
+class _FastIntFlag(metaclass=_IntFlagMeta):
+    """An 'IntFlag' copycat that isn't slow when performing bitwise
+    operations.
+
+    the ``FastIntFlag`` class will return ``enum.IntFlag`` under TYPE_CHECKING
+    and ``_FastIntFlag`` otherwise.
+
+    """
+
+
+if TYPE_CHECKING:
+    from enum import IntFlag
+
+    FastIntFlag = IntFlag
+else:
+    FastIntFlag = _FastIntFlag
+
+
+_E = TypeVar("_E", bound=enum.Enum)
 
 
 def parse_user_argument_for_enum(
     arg: Any,
-    choices: Dict[_T, List[Any]],
+    choices: Dict[_E, List[Any]],
     name: str,
-) -> Optional[_T]:
+    resolve_symbol_names: bool = False,
+) -> Optional[_E]:
     """Given a user parameter, parse the parameter into a chosen value
     from a list of choice objects, typically Enum values.
 
@@ -1663,10 +1660,10 @@ def parse_user_argument_for_enum(
         that is raised if the parameter doesn't match any available argument.
 
     """
-    # TODO: use whatever built in thing Enum provides for this,
-    # if applicable
     for enum_value, choice in choices.items():
         if arg is enum_value:
+            return enum_value
+        elif resolve_symbol_names and arg == enum_value.name:
             return enum_value
         elif arg in choice:
             return enum_value
@@ -1674,7 +1671,7 @@ def parse_user_argument_for_enum(
     if arg is None:
         return None
 
-    raise exc.ArgumentError("Invalid value for '%s': %r" % (name, arg))
+    raise exc.ArgumentError(f"Invalid value for '{name}': {arg!r}")
 
 
 _creation_order = 1

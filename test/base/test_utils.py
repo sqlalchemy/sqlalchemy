@@ -27,6 +27,7 @@ from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.testing.util import picklers
 from sqlalchemy.util import classproperty
 from sqlalchemy.util import compat
+from sqlalchemy.util import FastIntFlag
 from sqlalchemy.util import get_callable_argspec
 from sqlalchemy.util import langhelpers
 from sqlalchemy.util import preloaded
@@ -2300,6 +2301,20 @@ class SymbolTest(fixtures.TestBase):
         assert sym1 is not sym3
         assert sym1 != sym3
 
+    def test_fast_int_flag(self):
+        class Enum(FastIntFlag):
+            sym1 = 1
+            sym2 = 2
+
+            sym3 = 3
+
+        assert Enum.sym1 is not Enum.sym3
+        assert Enum.sym1 != Enum.sym3
+
+        assert Enum.sym1.name == "sym1"
+
+        eq_(list(Enum), [Enum.sym1, Enum.sym2, Enum.sym3])
+
     def test_pickle(self):
         sym1 = util.symbol("foo")
         sym2 = util.symbol("foo")
@@ -2338,17 +2353,19 @@ class SymbolTest(fixtures.TestBase):
         assert (sym1 | sym2) & (sym2 | sym4)
 
     def test_parser(self):
-        sym1 = util.symbol("sym1", canonical=1)
-        sym2 = util.symbol("sym2", canonical=2)
-        sym3 = util.symbol("sym3", canonical=4)
-        sym4 = util.symbol("sym4", canonical=8)
+        class MyEnum(FastIntFlag):
+            sym1 = 1
+            sym2 = 2
+            sym3 = 4
+            sym4 = 8
 
+        sym1, sym2, sym3, sym4 = tuple(MyEnum)
         lookup_one = {sym1: [], sym2: [True], sym3: [False], sym4: [None]}
         lookup_two = {sym1: [], sym2: [True], sym3: [False]}
         lookup_three = {sym1: [], sym2: ["symbol2"], sym3: []}
 
         is_(
-            util.symbol.parse_user_argument(
+            langhelpers.parse_user_argument_for_enum(
                 "sym2", lookup_one, "some_name", resolve_symbol_names=True
             ),
             sym2,
@@ -2357,35 +2374,41 @@ class SymbolTest(fixtures.TestBase):
         assert_raises_message(
             exc.ArgumentError,
             "Invalid value for 'some_name': 'sym2'",
-            util.symbol.parse_user_argument,
+            langhelpers.parse_user_argument_for_enum,
             "sym2",
             lookup_one,
             "some_name",
         )
         is_(
-            util.symbol.parse_user_argument(
+            langhelpers.parse_user_argument_for_enum(
                 True, lookup_one, "some_name", resolve_symbol_names=False
             ),
             sym2,
         )
 
         is_(
-            util.symbol.parse_user_argument(sym2, lookup_one, "some_name"),
+            langhelpers.parse_user_argument_for_enum(
+                sym2, lookup_one, "some_name"
+            ),
             sym2,
         )
 
         is_(
-            util.symbol.parse_user_argument(None, lookup_one, "some_name"),
+            langhelpers.parse_user_argument_for_enum(
+                None, lookup_one, "some_name"
+            ),
             sym4,
         )
 
         is_(
-            util.symbol.parse_user_argument(None, lookup_two, "some_name"),
+            langhelpers.parse_user_argument_for_enum(
+                None, lookup_two, "some_name"
+            ),
             None,
         )
 
         is_(
-            util.symbol.parse_user_argument(
+            langhelpers.parse_user_argument_for_enum(
                 "symbol2", lookup_three, "some_name"
             ),
             sym2,
@@ -2394,7 +2417,7 @@ class SymbolTest(fixtures.TestBase):
         assert_raises_message(
             exc.ArgumentError,
             "Invalid value for 'some_name': 'foo'",
-            util.symbol.parse_user_argument,
+            langhelpers.parse_user_argument_for_enum,
             "foo",
             lookup_three,
             "some_name",

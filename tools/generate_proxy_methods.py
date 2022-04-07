@@ -149,13 +149,27 @@ def process_class(
 
         iscoroutine = inspect.iscoroutinefunction(fn)
 
-        if spec.defaults:
-            new_defaults = tuple(
-                _repr_sym("util.EMPTY_DICT") if df is util.EMPTY_DICT else df
-                for df in spec.defaults
-            )
+        if spec.defaults or spec.kwonlydefaults:
             elem = list(spec)
-            elem[3] = tuple(new_defaults)
+
+            if spec.defaults:
+                new_defaults = tuple(
+                    _repr_sym("util.EMPTY_DICT")
+                    if df is util.EMPTY_DICT
+                    else df
+                    for df in spec.defaults
+                )
+                elem[3] = new_defaults
+
+            if spec.kwonlydefaults:
+                new_kwonlydefaults = {
+                    name: _repr_sym("util.EMPTY_DICT")
+                    if df is util.EMPTY_DICT
+                    else df
+                    for name, df in spec.kwonlydefaults.items()
+                }
+                elem[5] = new_kwonlydefaults
+
             spec = compat.FullArgSpec(*elem)
 
         caller_argspec = format_argspec_plus(spec, grouped=False)

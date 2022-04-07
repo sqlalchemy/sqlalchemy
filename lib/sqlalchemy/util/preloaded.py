@@ -23,6 +23,8 @@ _FN = TypeVar("_FN", bound=Callable[..., Any])
 
 if TYPE_CHECKING:
     from sqlalchemy.engine import default as engine_default
+    from sqlalchemy.orm import session as orm_session
+    from sqlalchemy.orm import util as orm_util
     from sqlalchemy.sql import dml as sql_dml
     from sqlalchemy.sql import util as sql_util
 

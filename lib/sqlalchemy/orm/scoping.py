@@ -7,6 +7,19 @@
 
 from __future__ import annotations
 
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import Iterable
+from typing import Iterator
+from typing import Optional
+from typing import Sequence
+from typing import Tuple
+from typing import Type
+from typing import TYPE_CHECKING
+from typing import TypeVar
+from typing import Union
+
 from . import exc as orm_exc
 from .base import class_mapper
 from .session import Session
@@ -17,16 +30,54 @@ from ..util import ScopedRegistry
 from ..util import ThreadLocalRegistry
 from ..util import warn
 from ..util import warn_deprecated
+from ..util.typing import Protocol
+
+if TYPE_CHECKING:
+    from ._typing import _IdentityKeyType
+    from .identity import IdentityMap
+    from .interfaces import ORMOption
+    from .mapper import Mapper
+    from .query import Query
+    from .session import _EntityBindKey
+    from .session import _PKIdentityArgument
+    from .session import _SessionBind
+    from .session import sessionmaker
+    from .session import SessionTransaction
+    from ..engine import Connection
+    from ..engine import Engine
+    from ..engine import Result
+    from ..engine import Row
+    from ..engine.interfaces import _CoreAnyExecuteParams
+    from ..engine.interfaces import _CoreSingleExecuteParams
+    from ..engine.interfaces import _ExecuteOptions
+    from ..engine.interfaces import _ExecuteOptionsParameter
+    from ..engine.result import ScalarResult
+    from ..sql._typing import _ColumnsClauseArgument
+    from ..sql.base import Executable
+    from ..sql.elements import ClauseElement
+    from ..sql.selectable import ForUpdateArg
+
+
+class _QueryDescriptorType(Protocol):
+    def __get__(self, instance: Any, owner: Type[Any]) -> Optional[Query[Any]]:
+        ...
+
+
+_O = TypeVar("_O", bound=object)
 
 __all__ = ["scoped_session", "ScopedSessionMixin"]
 
 
 class ScopedSessionMixin:
-    @property
-    def _proxied(self):
-        return self.registry()
+    session_factory: sessionmaker
+    _support_async: bool
+    registry: ScopedRegistry[Session]
 
-    def __call__(self, **kw):
+    @property
+    def _proxied(self) -> Session:
+        return self.registry()  # type: ignore
+
+    def __call__(self, **kw: Any) -> Session:
         r"""Return the current :class:`.Session`, creating it
         using the :attr:`.scoped_session.session_factory` if not present.
 
@@ -57,7 +108,7 @@ class ScopedSessionMixin:
             )
         return sess
 
-    def configure(self, **kwargs):
+    def configure(self, **kwargs: Any) -> None:
         """reconfigure the :class:`.sessionmaker` used by this
         :class:`.scoped_session`.
 
@@ -120,7 +171,6 @@ class ScopedSessionMixin:
         "autoflush",
         "no_autoflush",
         "info",
-        "autocommit",
     ],
 )
 class scoped_session(ScopedSessionMixin):
@@ -136,15 +186,20 @@ class scoped_session(ScopedSessionMixin):
 
     """
 
-    _support_async = False
+    _support_async: bool = False
 
-    session_factory = None
+    session_factory: sessionmaker
     """The `session_factory` provided to `__init__` is stored in this
     attribute and may be accessed at a later time.  This can be useful when
     a new non-scoped :class:`.Session` or :class:`_engine.Connection` to the
     database is needed."""
 
-    def __init__(self, session_factory, scopefunc=None):
+    def __init__(
+        self,
+        session_factory: sessionmaker,
+        scopefunc: Optional[Callable[[], Any]] = None,
+    ):
+
         """Construct a new :class:`.scoped_session`.
 
         :param session_factory: a factory to create new :class:`.Session`
@@ -167,7 +222,7 @@ class scoped_session(ScopedSessionMixin):
         else:
             self.registry = ThreadLocalRegistry(session_factory)
 
-    def remove(self):
+    def remove(self) -> None:
         """Dispose of the current :class:`.Session`, if present.
 
         This will first call :meth:`.Session.close` method
@@ -184,7 +239,9 @@ class scoped_session(ScopedSessionMixin):
             self.registry().close()
         self.registry.clear()
 
-    def query_property(self, query_cls=None):
+    def query_property(
+        self, query_cls: Optional[Type[Query[Any]]] = None
+    ) -> _QueryDescriptorType:
         """return a class property which produces a :class:`_query.Query`
         object
         against the class and the current :class:`.Session` when called.
@@ -211,16 +268,18 @@ class scoped_session(ScopedSessionMixin):
         """
 
         class query:
-            def __get__(s, instance, owner):
+            def __get__(
+                s, instance: Any, owner: Type[Any]
+            ) -> Optional[Query[Any]]:
                 try:
                     mapper = class_mapper(owner)
-                    if mapper:
-                        if query_cls:
-                            # custom query class
-                            return query_cls(mapper, session=self.registry())
-                        else:
-                            # session's configured query class
-                            return self.registry().query(mapper)
+                    assert mapper is not None
+                    if query_cls:
+                        # custom query class
+                        return query_cls(mapper, session=self.registry())
+                    else:
+                        # session's configured query class
+                        return self.registry().query(mapper)
                 except orm_exc.UnmappedClassError:
                     return None
 
@@ -231,7 +290,7 @@ class scoped_session(ScopedSessionMixin):
     # code within this block is **programmatically,
     # statically generated** by tools/generate_proxy_methods.py
 
-    def __contains__(self, instance):
+    def __contains__(self, instance: object) -> bool:
         r"""Return True if the instance is associated with this session.
 
         .. container:: class_bases
@@ -247,7 +306,7 @@ class scoped_session(ScopedSessionMixin):
 
         return self._proxied.__contains__(instance)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[object]:
         r"""Iterate over all pending or persistent instances within this
         Session.
 
@@ -261,7 +320,7 @@ class scoped_session(ScopedSessionMixin):
 
         return self._proxied.__iter__()
 
-    def add(self, instance: Any, _warn: bool = True) -> None:
+    def add(self, instance: object, _warn: bool = True) -> None:
         r"""Place an object in the ``Session``.
 
         .. container:: class_bases
@@ -280,7 +339,7 @@ class scoped_session(ScopedSessionMixin):
 
         return self._proxied.add(instance, _warn=_warn)
 
-    def add_all(self, instances):
+    def add_all(self, instances: Iterable[object]) -> None:
         r"""Add the given collection of instances to this ``Session``.
 
         .. container:: class_bases
@@ -292,7 +351,9 @@ class scoped_session(ScopedSessionMixin):
 
         return self._proxied.add_all(instances)
 
-    def begin(self, nested=False, _subtrans=False):
+    def begin(
+        self, nested: bool = False, _subtrans: bool = False
+    ) -> SessionTransaction:
         r"""Begin a transaction, or nested transaction,
         on this :class:`.Session`, if one is not already begun.
 
@@ -335,7 +396,7 @@ class scoped_session(ScopedSessionMixin):
 
         return self._proxied.begin(nested=nested, _subtrans=_subtrans)
 
-    def begin_nested(self):
+    def begin_nested(self) -> SessionTransaction:
         r"""Begin a "nested" transaction on this Session, e.g. SAVEPOINT.
 
         .. container:: class_bases
@@ -367,7 +428,7 @@ class scoped_session(ScopedSessionMixin):
 
         return self._proxied.begin_nested()
 
-    def close(self):
+    def close(self) -> None:
         r"""Close out the transactional resources and ORM objects used by this
         :class:`_orm.Session`.
 
@@ -434,7 +495,7 @@ class scoped_session(ScopedSessionMixin):
     def connection(
         self,
         bind_arguments: Optional[Dict[str, Any]] = None,
-        execution_options: Optional["_ExecuteOptions"] = None,
+        execution_options: Optional[_ExecuteOptions] = None,
     ) -> "Connection":
         r"""Return a :class:`_engine.Connection` object corresponding to this
         :class:`.Session` object's transactional state.
@@ -476,7 +537,7 @@ class scoped_session(ScopedSessionMixin):
             bind_arguments=bind_arguments, execution_options=execution_options
         )
 
-    def delete(self, instance):
+    def delete(self, instance: object) -> None:
         r"""Mark an instance as deleted.
 
         .. container:: class_bases
@@ -493,13 +554,13 @@ class scoped_session(ScopedSessionMixin):
 
     def execute(
         self,
-        statement: "Executable",
-        params: Optional["_ExecuteParams"] = None,
-        execution_options: "_ExecuteOptions" = util.EMPTY_DICT,
+        statement: Executable,
+        params: Optional[_CoreAnyExecuteParams] = None,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
         bind_arguments: Optional[Dict[str, Any]] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
-    ):
+    ) -> Result:
         r"""Execute a SQL expression construct.
 
         .. container:: class_bases
@@ -567,7 +628,9 @@ class scoped_session(ScopedSessionMixin):
             _add_event=_add_event,
         )
 
-    def expire(self, instance, attribute_names=None):
+    def expire(
+        self, instance: object, attribute_names: Optional[Iterable[str]] = None
+    ) -> None:
         r"""Expire the attributes on an instance.
 
         .. container:: class_bases
@@ -613,7 +676,7 @@ class scoped_session(ScopedSessionMixin):
 
         return self._proxied.expire(instance, attribute_names=attribute_names)
 
-    def expire_all(self):
+    def expire_all(self) -> None:
         r"""Expires all persistent instances within this Session.
 
         .. container:: class_bases
@@ -654,7 +717,7 @@ class scoped_session(ScopedSessionMixin):
 
         return self._proxied.expire_all()
 
-    def expunge(self, instance):
+    def expunge(self, instance: object) -> None:
         r"""Remove the `instance` from this ``Session``.
 
         .. container:: class_bases
@@ -670,7 +733,7 @@ class scoped_session(ScopedSessionMixin):
 
         return self._proxied.expunge(instance)
 
-    def expunge_all(self):
+    def expunge_all(self) -> None:
         r"""Remove all object instances from this ``Session``.
 
         .. container:: class_bases
@@ -686,7 +749,7 @@ class scoped_session(ScopedSessionMixin):
 
         return self._proxied.expunge_all()
 
-    def flush(self, objects=None):
+    def flush(self, objects: Optional[Sequence[Any]] = None) -> None:
         r"""Flush all the object changes to the database.
 
         .. container:: class_bases
@@ -719,14 +782,15 @@ class scoped_session(ScopedSessionMixin):
 
     def get(
         self,
-        entity,
-        ident,
-        options=None,
-        populate_existing=False,
-        with_for_update=None,
-        identity_token=None,
-        execution_options=None,
-    ):
+        entity: _EntityBindKey[_O],
+        ident: _PKIdentityArgument,
+        *,
+        options: Optional[Sequence[ORMOption]] = None,
+        populate_existing: bool = False,
+        with_for_update: Optional[ForUpdateArg] = None,
+        identity_token: Optional[Any] = None,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+    ) -> Optional[_O]:
         r"""Return an instance based on the given primary key identifier,
         or ``None`` if not found.
 
@@ -841,12 +905,12 @@ class scoped_session(ScopedSessionMixin):
 
     def get_bind(
         self,
-        mapper=None,
-        clause=None,
-        bind=None,
-        _sa_skip_events=None,
-        _sa_skip_for_implicit_returning=False,
-    ):
+        mapper: Optional[_EntityBindKey[_O]] = None,
+        clause: Optional[ClauseElement] = None,
+        bind: Optional[_SessionBind] = None,
+        _sa_skip_events: Optional[bool] = None,
+        _sa_skip_for_implicit_returning: bool = False,
+    ) -> Union[Engine, Connection]:
         r"""Return a "bind" to which this :class:`.Session` is bound.
 
         .. container:: class_bases
@@ -933,7 +997,9 @@ class scoped_session(ScopedSessionMixin):
             _sa_skip_for_implicit_returning=_sa_skip_for_implicit_returning,
         )
 
-    def is_modified(self, instance, include_collections=True):
+    def is_modified(
+        self, instance: object, include_collections: bool = True
+    ) -> bool:
         r"""Return ``True`` if the given instance has locally
         modified attributes.
 
@@ -997,11 +1063,11 @@ class scoped_session(ScopedSessionMixin):
 
     def bulk_save_objects(
         self,
-        objects,
-        return_defaults=False,
-        update_changed_only=True,
-        preserve_order=True,
-    ):
+        objects: Iterable[object],
+        return_defaults: bool = False,
+        update_changed_only: bool = True,
+        preserve_order: bool = True,
+    ) -> None:
         r"""Perform a bulk save of the given list of objects.
 
         .. container:: class_bases
@@ -1109,8 +1175,12 @@ class scoped_session(ScopedSessionMixin):
         )
 
     def bulk_insert_mappings(
-        self, mapper, mappings, return_defaults=False, render_nulls=False
-    ):
+        self,
+        mapper: Mapper[Any],
+        mappings: Iterable[Dict[str, Any]],
+        return_defaults: bool = False,
+        render_nulls: bool = False,
+    ) -> None:
         r"""Perform a bulk insert of the given list of mapping dictionaries.
 
         .. container:: class_bases
@@ -1221,7 +1291,9 @@ class scoped_session(ScopedSessionMixin):
             render_nulls=render_nulls,
         )
 
-    def bulk_update_mappings(self, mapper, mappings):
+    def bulk_update_mappings(
+        self, mapper: Mapper[Any], mappings: Iterable[Dict[str, Any]]
+    ) -> None:
         r"""Perform a bulk update of the given list of mapping dictionaries.
 
         .. container:: class_bases
@@ -1287,7 +1359,13 @@ class scoped_session(ScopedSessionMixin):
 
         return self._proxied.bulk_update_mappings(mapper, mappings)
 
-    def merge(self, instance, load=True, options=None):
+    def merge(
+        self,
+        instance: _O,
+        *,
+        load: bool = True,
+        options: Optional[Sequence[ORMOption]] = None,
+    ) -> _O:
         r"""Copy the state of a given instance into a corresponding instance
         within this :class:`.Session`.
 
@@ -1355,7 +1433,9 @@ class scoped_session(ScopedSessionMixin):
 
         return self._proxied.merge(instance, load=load, options=options)
 
-    def query(self, *entities: _ColumnsClauseArgument, **kwargs: Any) -> Query:
+    def query(
+        self, *entities: _ColumnsClauseArgument, **kwargs: Any
+    ) -> Query[Any]:
         r"""Return a new :class:`_query.Query` object corresponding to this
         :class:`_orm.Session`.
 
@@ -1381,7 +1461,12 @@ class scoped_session(ScopedSessionMixin):
 
         return self._proxied.query(*entities, **kwargs)
 
-    def refresh(self, instance, attribute_names=None, with_for_update=None):
+    def refresh(
+        self,
+        instance: object,
+        attribute_names: Optional[Iterable[str]] = None,
+        with_for_update: Optional[ForUpdateArg] = None,
+    ) -> None:
         r"""Expire and refresh attributes on the given instance.
 
         .. container:: class_bases
@@ -1452,7 +1537,7 @@ class scoped_session(ScopedSessionMixin):
             with_for_update=with_for_update,
         )
 
-    def rollback(self):
+    def rollback(self) -> None:
         r"""Rollback the current transaction in progress.
 
         .. container:: class_bases
@@ -1479,12 +1564,12 @@ class scoped_session(ScopedSessionMixin):
 
     def scalar(
         self,
-        statement,
-        params=None,
-        execution_options=util.EMPTY_DICT,
-        bind_arguments=None,
-        **kw,
-    ):
+        statement: Executable,
+        params: Optional[_CoreSingleExecuteParams] = None,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[Dict[str, Any]] = None,
+        **kw: Any,
+    ) -> Any:
         r"""Execute a statement and return a scalar result.
 
         .. container:: class_bases
@@ -1509,12 +1594,12 @@ class scoped_session(ScopedSessionMixin):
 
     def scalars(
         self,
-        statement,
-        params=None,
-        execution_options=util.EMPTY_DICT,
-        bind_arguments=None,
-        **kw,
-    ):
+        statement: Executable,
+        params: Optional[_CoreSingleExecuteParams] = None,
+        execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
+        bind_arguments: Optional[Dict[str, Any]] = None,
+        **kw: Any,
+    ) -> ScalarResult[Any]:
         r"""Execute a statement and return the results as scalars.
 
         .. container:: class_bases
@@ -1615,7 +1700,7 @@ class scoped_session(ScopedSessionMixin):
         return self._proxied.new
 
     @property
-    def identity_map(self) -> identity.IdentityMap:
+    def identity_map(self) -> IdentityMap:
         r"""Proxy for the :attr:`_orm.Session.identity_map` attribute
         on behalf of the :class:`_orm.scoping.scoped_session` class.
 
@@ -1624,7 +1709,7 @@ class scoped_session(ScopedSessionMixin):
         return self._proxied.identity_map
 
     @identity_map.setter
-    def identity_map(self, attr: identity.IdentityMap) -> None:
+    def identity_map(self, attr: IdentityMap) -> None:
         self._proxied.identity_map = attr
 
     @property
@@ -1726,19 +1811,6 @@ class scoped_session(ScopedSessionMixin):
 
         return self._proxied.info
 
-    @property
-    def autocommit(self) -> Any:
-        r"""Proxy for the :attr:`_orm.Session.autocommit` attribute
-        on behalf of the :class:`_orm.scoping.scoped_session` class.
-
-        """  # noqa: E501
-
-        return self._proxied.autocommit
-
-    @autocommit.setter
-    def autocommit(self, attr: Any) -> None:
-        self._proxied.autocommit = attr
-
     @classmethod
     def close_all(cls) -> None:
         r"""Close *all* sessions in memory.
@@ -1755,7 +1827,7 @@ class scoped_session(ScopedSessionMixin):
         return Session.close_all()
 
     @classmethod
-    def object_session(cls, instance: Any) -> "Session":
+    def object_session(cls, instance: object) -> Optional[Session]:
         r"""Return the :class:`.Session` to which an object belongs.
 
         .. container:: class_bases
@@ -1773,13 +1845,13 @@ class scoped_session(ScopedSessionMixin):
     @classmethod
     def identity_key(
         cls,
-        class_=None,
-        ident=None,
+        class_: Optional[Type[Any]] = None,
+        ident: Union[Any, Tuple[Any, ...]] = None,
         *,
-        instance=None,
-        row=None,
-        identity_token=None,
-    ) -> _IdentityKeyType:
+        instance: Optional[Any] = None,
+        row: Optional[Row] = None,
+        identity_token: Optional[Any] = None,
+    ) -> _IdentityKeyType[Any]:
         r"""Return an identity key.
 
         .. container:: class_bases

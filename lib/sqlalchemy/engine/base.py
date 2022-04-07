@@ -79,8 +79,8 @@ if typing.TYPE_CHECKING:
 
 """
 
-_EMPTY_EXECUTION_OPTS: _ExecuteOptions = util.immutabledict()
-NO_OPTIONS: Mapping[str, Any] = util.immutabledict()
+_EMPTY_EXECUTION_OPTS: _ExecuteOptions = util.EMPTY_DICT
+NO_OPTIONS: Mapping[str, Any] = util.EMPTY_DICT
 
 
 class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
@@ -936,6 +936,20 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
             )
         )
 
+    def _get_required_transaction(self) -> RootTransaction:
+        trans = self._transaction
+        if trans is None:
+            raise exc.InvalidRequestError("connection is not in a transaction")
+        return trans
+
+    def _get_required_nested_transaction(self) -> NestedTransaction:
+        trans = self._nested_transaction
+        if trans is None:
+            raise exc.InvalidRequestError(
+                "connection is not in a nested transaction"
+            )
+        return trans
+
     def get_transaction(self) -> Optional[RootTransaction]:
         """Return the current root transaction in progress, if any.
 
@@ -1220,7 +1234,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         self,
         func: FunctionElement[Any],
         distilled_parameters: _CoreMultiExecuteParams,
-        execution_options: _ExecuteOptions,
+        execution_options: _ExecuteOptionsParameter,
     ) -> Result:
         """Execute a sql.FunctionElement object."""
 
@@ -1232,7 +1246,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         self,
         default: ColumnDefault,
         distilled_parameters: _CoreMultiExecuteParams,
-        execution_options: _ExecuteOptions,
+        execution_options: _ExecuteOptionsParameter,
     ) -> Any:
         """Execute a schema.ColumnDefault object."""
 
@@ -1291,7 +1305,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         self,
         ddl: DDLElement,
         distilled_parameters: _CoreMultiExecuteParams,
-        execution_options: _ExecuteOptions,
+        execution_options: _ExecuteOptionsParameter,
     ) -> Result:
         """Execute a schema.DDL object."""
 
@@ -1388,7 +1402,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         self,
         elem: Executable,
         distilled_parameters: _CoreMultiExecuteParams,
-        execution_options: _ExecuteOptions,
+        execution_options: _ExecuteOptionsParameter,
     ) -> Result:
         """Execute a sql.ClauseElement object."""
 
@@ -1511,7 +1525,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         self,
         statement: str,
         parameters: Optional[_DBAPIAnyExecuteParams] = None,
-        execution_options: Optional[_ExecuteOptions] = None,
+        execution_options: Optional[_ExecuteOptionsParameter] = None,
     ) -> Result:
         r"""Executes a SQL statement construct and returns a
         :class:`_engine.CursorResult`.

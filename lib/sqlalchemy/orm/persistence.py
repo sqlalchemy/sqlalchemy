@@ -19,6 +19,12 @@ from itertools import chain
 from itertools import groupby
 from itertools import zip_longest
 import operator
+from typing import Any
+from typing import Dict
+from typing import Iterable
+from typing import TYPE_CHECKING
+from typing import TypeVar
+from typing import Union
 
 from . import attributes
 from . import evaluator
@@ -47,15 +53,22 @@ from ..sql.dml import UpdateDMLState
 from ..sql.elements import BooleanClauseList
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 
+if TYPE_CHECKING:
+    from .mapper import Mapper
+    from .session import SessionTransaction
+    from .state import InstanceState
+
+_O = TypeVar("_O", bound=object)
+
 
 def _bulk_insert(
-    mapper,
-    mappings,
-    session_transaction,
-    isstates,
-    return_defaults,
-    render_nulls,
-):
+    mapper: Mapper[_O],
+    mappings: Union[Iterable[InstanceState[_O]], Iterable[Dict[str, Any]]],
+    session_transaction: SessionTransaction,
+    isstates: bool,
+    return_defaults: bool,
+    render_nulls: bool,
+) -> None:
     base_mapper = mapper.base_mapper
 
     if session_transaction.session.connection_callable:
@@ -126,8 +139,12 @@ def _bulk_insert(
 
 
 def _bulk_update(
-    mapper, mappings, session_transaction, isstates, update_changed_only
-):
+    mapper: Mapper[Any],
+    mappings: Union[Iterable[InstanceState[_O]], Iterable[Dict[str, Any]]],
+    session_transaction: SessionTransaction,
+    isstates: bool,
+    update_changed_only: bool,
+) -> None:
     base_mapper = mapper.base_mapper
 
     search_keys = mapper._primary_key_propkeys

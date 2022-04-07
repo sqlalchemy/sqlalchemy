@@ -190,6 +190,7 @@ class SelectableTest(QueryTest, AssertsCompiledSQL):
                 },
             ],
         ),
+        argnames="cols, expected",
     )
     def test_column_descriptions(self, cols, expected):
         User, Address = self.classes("User", "Address")
@@ -211,7 +212,12 @@ class SelectableTest(QueryTest, AssertsCompiledSQL):
         )
 
         stmt = select(*cols)
+
         eq_(stmt.column_descriptions, expected)
+
+        if stmt._propagate_attrs:
+            stmt = select(*cols).from_statement(stmt)
+            eq_(stmt.column_descriptions, expected)
 
     @testing.combinations(insert, update, delete, argnames="dml_construct")
     @testing.combinations(

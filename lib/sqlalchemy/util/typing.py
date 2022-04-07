@@ -3,10 +3,12 @@ from __future__ import annotations
 import sys
 import typing
 from typing import Any
+from typing import Callable
 from typing import cast
 from typing import Dict
 from typing import ForwardRef
 from typing import Iterable
+from typing import Optional
 from typing import Tuple
 from typing import Type
 from typing import TypeVar
@@ -82,7 +84,9 @@ else:
 
 
 def de_stringify_annotation(
-    cls: Type[Any], annotation: Union[str, Type[Any]]
+    cls: Type[Any],
+    annotation: Union[str, Type[Any]],
+    str_cleanup_fn: Optional[Callable[[str], str]] = None,
 ) -> Union[str, Type[Any]]:
     """Resolve annotations that may be string based into real objects.
 
@@ -105,9 +109,13 @@ def de_stringify_annotation(
         annotation = cast(ForwardRef, annotation).__forward_arg__
 
     if isinstance(annotation, str):
+        if str_cleanup_fn:
+            annotation = str_cleanup_fn(annotation)
+
         base_globals: "Dict[str, Any]" = getattr(
             sys.modules.get(cls.__module__, None), "__dict__", {}
         )
+
         try:
             annotation = eval(annotation, base_globals, None)
         except NameError:

@@ -18,12 +18,17 @@ from __future__ import annotations
 
 from collections import namedtuple
 import operator
-import typing
 from typing import Any
 from typing import Callable
+from typing import Collection
+from typing import Dict
 from typing import List
 from typing import NamedTuple
+from typing import Optional
+from typing import overload
 from typing import Tuple
+from typing import Type
+from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
@@ -35,8 +40,8 @@ from .base import ATTR_WAS_SET
 from .base import CALLABLES_OK
 from .base import DEFERRED_HISTORY_LOAD
 from .base import INIT_OK
-from .base import instance_dict
-from .base import instance_state
+from .base import instance_dict as instance_dict
+from .base import instance_state as instance_state
 from .base import instance_str
 from .base import LOAD_AGAINST_COMMITTED
 from .base import manager_of_class
@@ -55,6 +60,7 @@ from .base import PASSIVE_NO_RESULT
 from .base import PASSIVE_OFF
 from .base import PASSIVE_ONLY_PERSISTENT
 from .base import PASSIVE_RETURN_NO_VALUE
+from .base import PassiveFlag
 from .base import RELATED_OBJECT_OK  # noqa
 from .base import SQL_OK  # noqa
 from .base import state_str
@@ -67,7 +73,8 @@ from ..sql import roles
 from ..sql import traversals
 from ..sql import visitors
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
+    from .state import InstanceState
     from ..sql.dml import _DMLColumnElement
     from ..sql.elements import ColumnElement
     from ..sql.elements import SQLCoreOperations
@@ -114,6 +121,8 @@ class QueryableAttribute(
     """
 
     is_attribute = True
+
+    impl: AttributeImpl
 
     # PropComparator has a __visit_name__ to participate within
     # traversals.   Disambiguate the attribute vs. a comparator.
@@ -402,7 +411,19 @@ class InstrumentedAttribute(QueryableAttribute[_T]):
     def __delete__(self, instance):
         self.impl.delete(instance_state(instance), instance_dict(instance))
 
-    def __get__(self, instance, owner):
+    @overload
+    def __get__(
+        self, instance: None, owner: Type[Any]
+    ) -> InstrumentedAttribute:
+        ...
+
+    @overload
+    def __get__(self, instance: object, owner: Type[Any]) -> Optional[_T]:
+        ...
+
+    def __get__(
+        self, instance: Optional[object], owner: Type[Any]
+    ) -> Union[InstrumentedAttribute, Optional[_T]]:
         if instance is None:
             return self
 
@@ -636,6 +657,8 @@ Event = AttributeEvent
 class AttributeImpl:
     """internal implementation for instrumented attributes."""
 
+    collection: bool
+
     def __init__(
         self,
         class_,
@@ -811,7 +834,12 @@ class AttributeImpl:
 
             state.parents[id_] = False
 
-    def get_history(self, state, dict_, passive=PASSIVE_OFF):
+    def get_history(
+        self,
+        state: InstanceState[Any],
+        dict_: _InstanceDict,
+        passive=PASSIVE_OFF,
+    ) -> History:
         raise NotImplementedError()
 
     def get_all_pending(self, state, dict_, passive=PASSIVE_NO_INITIALIZE):
@@ -989,7 +1017,12 @@ class ScalarAttributeImpl(AttributeImpl):
         ):
             raise AttributeError("%s object does not have a value" % self)
 
-    def get_history(self, state, dict_, passive=PASSIVE_OFF):
+    def get_history(
+        self,
+        state: InstanceState[Any],
+        dict_: Dict[str, Any],
+        passive: PassiveFlag = PASSIVE_OFF,
+    ) -> History:
         if self.key in dict_:
             return History.from_scalar_attribute(self, state, dict_[self.key])
         elif self.key in state.committed_state:
@@ -1005,13 +1038,13 @@ class ScalarAttributeImpl(AttributeImpl):
 
     def set(
         self,
-        state,
-        dict_,
-        value,
-        initiator,
-        passive=PASSIVE_OFF,
-        check_old=None,
-        pop=False,
+        state: InstanceState[Any],
+        dict_: Dict[str, Any],
+        value: Any,
+        initiator: Optional[Event],
+        passive: PassiveFlag = PASSIVE_OFF,
+        check_old: Optional[object] = None,
+        pop: bool = False,
     ):
         if self.dispatch._active_history:
             old = self.get(state, dict_, PASSIVE_RETURN_NO_VALUE)
@@ -1536,7 +1569,7 @@ class CollectionAttributeImpl(AttributeImpl):
         if fire_event:
             self.dispatch.dispose_collection(state, collection, adapter)
 
-    def _invalidate_collection(self, collection):
+    def _invalidate_collection(self, collection: Collection) -> None:
         adapter = getattr(collection, "_sa_adapter")
         adapter.invalidated = True
 

@@ -1303,7 +1303,9 @@ class Comparator(interfaces.PropComparator[_T]):
     def property(self) -> Any:
         return None
 
-    def adapt_to_entity(self, adapt_to_entity: AliasedInsp) -> Comparator[_T]:
+    def adapt_to_entity(
+        self, adapt_to_entity: AliasedInsp[Any]
+    ) -> Comparator[_T]:
         # interesting....
         return self
 

@@ -16,11 +16,14 @@ from typing import Any
 from typing import Callable
 from typing import Optional
 from typing import Tuple
+from typing import TypeVar
 from typing import Union
 
 from .. import exc as sa_exc
 from .. import util
 from ..util.typing import Literal
+
+_F = TypeVar("_F", bound=Callable[..., Any])
 
 
 class _StateChangeState(Enum):
@@ -60,7 +63,7 @@ class _StateChange:
             Literal[_StateChangeStates.ANY], Tuple[_StateChangeState, ...]
         ],
         moves_to: _StateChangeState,
-    ) -> Callable[..., Any]:
+    ) -> Callable[[_F], _F]:
         """Method decorator declaring valid states.
 
         :param prerequisite_states: sequence of acceptable prerequisite

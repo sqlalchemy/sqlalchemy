@@ -263,52 +263,54 @@ class IdentitySet:
 
     """
 
-    def __init__(self, iterable=None):
+    _members: Dict[int, Any]
+
+    def __init__(self, iterable: Optional[Iterable[Any]] = None):
         self._members = dict()
         if iterable:
             self.update(iterable)
 
-    def add(self, value):
+    def add(self, value: Any) -> None:
         self._members[id(value)] = value
 
-    def __contains__(self, value):
+    def __contains__(self, value: Any) -> bool:
         return id(value) in self._members
 
-    def remove(self, value):
+    def remove(self, value: Any) -> None:
         del self._members[id(value)]
 
-    def discard(self, value):
+    def discard(self, value: Any) -> None:
         try:
             self.remove(value)
         except KeyError:
             pass
 
-    def pop(self):
+    def pop(self) -> Any:
         try:
             pair = self._members.popitem()
             return pair[1]
         except KeyError:
             raise KeyError("pop from an empty set")
 
-    def clear(self):
+    def clear(self) -> None:
         self._members.clear()
 
-    def __cmp__(self, other):
+    def __cmp__(self, other: Any) -> NoReturn:
         raise TypeError("cannot compare sets using cmp()")
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, IdentitySet):
             return self._members == other._members
         else:
             return False
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         if isinstance(other, IdentitySet):
             return self._members != other._members
         else:
             return True
 
-    def issubset(self, iterable):
+    def issubset(self, iterable: Iterable[Any]) -> bool:
         if isinstance(iterable, self.__class__):
             other = iterable
         else:
@@ -322,17 +324,17 @@ class IdentitySet:
             return False
         return True
 
-    def __le__(self, other):
+    def __le__(self, other: Any) -> bool:
         if not isinstance(other, IdentitySet):
             return NotImplemented
         return self.issubset(other)
 
-    def __lt__(self, other):
+    def __lt__(self, other: Any) -> bool:
         if not isinstance(other, IdentitySet):
             return NotImplemented
         return len(self) < len(other) and self.issubset(other)
 
-    def issuperset(self, iterable):
+    def issuperset(self, iterable: Iterable[Any]) -> bool:
         if isinstance(iterable, self.__class__):
             other = iterable
         else:
@@ -347,38 +349,38 @@ class IdentitySet:
             return False
         return True
 
-    def __ge__(self, other):
+    def __ge__(self, other: Any) -> bool:
         if not isinstance(other, IdentitySet):
             return NotImplemented
         return self.issuperset(other)
 
-    def __gt__(self, other):
+    def __gt__(self, other: Any) -> bool:
         if not isinstance(other, IdentitySet):
             return NotImplemented
         return len(self) > len(other) and self.issuperset(other)
 
-    def union(self, iterable):
+    def union(self, iterable: Iterable[Any]) -> IdentitySet:
         result = self.__class__()
         members = self._members
         result._members.update(members)
         result._members.update((id(obj), obj) for obj in iterable)
         return result
 
-    def __or__(self, other):
+    def __or__(self, other: Any) -> IdentitySet:
         if not isinstance(other, IdentitySet):
             return NotImplemented
         return self.union(other)
 
-    def update(self, iterable):
+    def update(self, iterable: Iterable[Any]) -> None:
         self._members.update((id(obj), obj) for obj in iterable)
 
-    def __ior__(self, other):
+    def __ior__(self, other: Any) -> IdentitySet:
         if not isinstance(other, IdentitySet):
             return NotImplemented
         self.update(other)
         return self
 
-    def difference(self, iterable):
+    def difference(self, iterable: Iterable[Any]) -> IdentitySet:
         result = self.__new__(self.__class__)
         other: Collection[Any]
 
@@ -391,21 +393,21 @@ class IdentitySet:
         }
         return result
 
-    def __sub__(self, other):
+    def __sub__(self, other: IdentitySet) -> IdentitySet:
         if not isinstance(other, IdentitySet):
             return NotImplemented
         return self.difference(other)
 
-    def difference_update(self, iterable):
+    def difference_update(self, iterable: Iterable[Any]) -> None:
         self._members = self.difference(iterable)._members
 
-    def __isub__(self, other):
+    def __isub__(self, other: IdentitySet) -> IdentitySet:
         if not isinstance(other, IdentitySet):
             return NotImplemented
         self.difference_update(other)
         return self
 
-    def intersection(self, iterable):
+    def intersection(self, iterable: Iterable[Any]) -> IdentitySet:
         result = self.__new__(self.__class__)
 
         other: Collection[Any]
@@ -419,21 +421,21 @@ class IdentitySet:
         }
         return result
 
-    def __and__(self, other):
+    def __and__(self, other: IdentitySet) -> IdentitySet:
         if not isinstance(other, IdentitySet):
             return NotImplemented
         return self.intersection(other)
 
-    def intersection_update(self, iterable):
+    def intersection_update(self, iterable: Iterable[Any]) -> None:
         self._members = self.intersection(iterable)._members
 
-    def __iand__(self, other):
+    def __iand__(self, other: IdentitySet) -> IdentitySet:
         if not isinstance(other, IdentitySet):
             return NotImplemented
         self.intersection_update(other)
         return self
 
-    def symmetric_difference(self, iterable):
+    def symmetric_difference(self, iterable: Iterable[Any]) -> IdentitySet:
         result = self.__new__(self.__class__)
         if isinstance(iterable, self.__class__):
             other = iterable._members
@@ -447,37 +449,37 @@ class IdentitySet:
         )
         return result
 
-    def __xor__(self, other):
+    def __xor__(self, other: IdentitySet) -> IdentitySet:
         if not isinstance(other, IdentitySet):
             return NotImplemented
         return self.symmetric_difference(other)
 
-    def symmetric_difference_update(self, iterable):
+    def symmetric_difference_update(self, iterable: Iterable[Any]) -> None:
         self._members = self.symmetric_difference(iterable)._members
 
-    def __ixor__(self, other):
+    def __ixor__(self, other: IdentitySet) -> IdentitySet:
         if not isinstance(other, IdentitySet):
             return NotImplemented
         self.symmetric_difference(other)
         return self
 
-    def copy(self):
+    def copy(self) -> IdentitySet:
         result = self.__new__(self.__class__)
         result._members = self._members.copy()
         return result
 
     __copy__ = copy
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._members)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         return iter(self._members.values())
 
-    def __hash__(self):
+    def __hash__(self) -> NoReturn:
         raise TypeError("set objects are unhashable")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "%s(%r)" % (type(self).__name__, list(self._members.values()))
 
 

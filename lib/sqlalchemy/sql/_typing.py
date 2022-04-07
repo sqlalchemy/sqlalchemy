@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
+from sqlalchemy.sql.base import Executable
 from . import roles
 from .. import util
 from ..inspection import Inspectable
@@ -183,10 +184,14 @@ if TYPE_CHECKING:
     def is_table_value_type(t: TypeEngine[Any]) -> TypeGuard[TableValueType]:
         ...
 
-    def is_select_base(t: ReturnsRows) -> TypeGuard[SelectBase]:
+    def is_select_base(
+        t: Union[Executable, ReturnsRows]
+    ) -> TypeGuard[SelectBase]:
         ...
 
-    def is_select_statement(t: ReturnsRows) -> TypeGuard[Select]:
+    def is_select_statement(
+        t: Union[Executable, ReturnsRows]
+    ) -> TypeGuard[Select]:
         ...
 
     def is_table(t: FromClause) -> TypeGuard[TableClause]:

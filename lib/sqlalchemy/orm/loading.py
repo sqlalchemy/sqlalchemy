@@ -15,12 +15,24 @@ as well as some of the attribute loading strategies.
 
 from __future__ import annotations
 
+from typing import Any
+from typing import Iterable
+from typing import Mapping
+from typing import Optional
+from typing import Sequence
+from typing import Tuple
+from typing import TYPE_CHECKING
+from typing import TypeVar
+from typing import Union
+
+from sqlalchemy.orm.context import FromStatement
 from . import attributes
 from . import exc as orm_exc
 from . import path_registry
 from .base import _DEFER_FOR_STATE
 from .base import _RAISE_FOR_STATE
 from .base import _SET_DEFERRED_EXPIRED
+from .base import PassiveFlag
 from .util import _none_set
 from .util import state_str
 from .. import exc as sa_exc
@@ -31,9 +43,25 @@ from ..engine.result import ChunkedIteratorResult
 from ..engine.result import FrozenResult
 from ..engine.result import SimpleResultMetaData
 from ..sql import util as sql_util
+from ..sql.selectable import ForUpdateArg
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..sql.selectable import SelectState
 
+if TYPE_CHECKING:
+    from ._typing import _IdentityKeyType
+    from .base import LoaderCallableStatus
+    from .context import FromStatement
+    from .interfaces import ORMOption
+    from .mapper import Mapper
+    from .session import Session
+    from .state import InstanceState
+    from ..engine.interfaces import _ExecuteOptions
+    from ..sql import Select
+    from ..sql.base import Executable
+    from ..sql.selectable import ForUpdateArg
+
+_T = TypeVar("_T", bound=Any)
+_O = TypeVar("_O", bound=object)
 _new_runid = util.counter()
 
 
@@ -350,7 +378,12 @@ def merge_result(query, iterator, load=True):
         session.autoflush = autoflush
 
 
-def get_from_identity(session, mapper, key, passive):
+def get_from_identity(
+    session: Session,
+    mapper: Mapper[_O],
+    key: _IdentityKeyType[_O],
+    passive: PassiveFlag,
+) -> Union[Optional[_O], LoaderCallableStatus]:
     """Look up the given key in the given session's identity map,
     check the object for expired state if found.
 
@@ -385,16 +418,17 @@ def get_from_identity(session, mapper, key, passive):
 
 
 def load_on_ident(
-    session,
-    statement,
-    key,
-    load_options=None,
-    refresh_state=None,
-    with_for_update=None,
-    only_load_props=None,
-    no_autoflush=False,
-    bind_arguments=util.EMPTY_DICT,
-    execution_options=util.EMPTY_DICT,
+    session: Session,
+    statement: Union[Select, FromStatement],
+    key: Optional[_IdentityKeyType],
+    *,
+    load_options: Optional[Sequence[ORMOption]] = None,
+    refresh_state: Optional[InstanceState[Any]] = None,
+    with_for_update: Optional[ForUpdateArg] = None,
+    only_load_props: Optional[Iterable[str]] = None,
+    no_autoflush: bool = False,
+    bind_arguments: Mapping[str, Any] = util.EMPTY_DICT,
+    execution_options: _ExecuteOptions = util.EMPTY_DICT,
 ):
     """Load the given identity key from the database."""
     if key is not None:
@@ -419,17 +453,18 @@ def load_on_ident(
 
 
 def load_on_pk_identity(
-    session,
-    statement,
-    primary_key_identity,
-    load_options=None,
-    refresh_state=None,
-    with_for_update=None,
-    only_load_props=None,
-    identity_token=None,
-    no_autoflush=False,
-    bind_arguments=util.EMPTY_DICT,
-    execution_options=util.EMPTY_DICT,
+    session: Session,
+    statement: Union[Select, FromStatement],
+    primary_key_identity: Optional[Tuple[Any, ...]],
+    *,
+    load_options: Optional[Sequence[ORMOption]] = None,
+    refresh_state: Optional[InstanceState[Any]] = None,
+    with_for_update: Optional[ForUpdateArg] = None,
+    only_load_props: Optional[Iterable[str]] = None,
+    identity_token: Optional[Any] = None,
+    no_autoflush: bool = False,
+    bind_arguments: Mapping[str, Any] = util.EMPTY_DICT,
+    execution_options: _ExecuteOptions = util.EMPTY_DICT,
 ):
 
     """Load the given primary key identity from the database."""

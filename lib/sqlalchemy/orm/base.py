@@ -20,8 +20,8 @@ from typing import Dict
 from typing import Generic
 from typing import Optional
 from typing import overload
-from typing import Tuple
 from typing import Type
+from typing import TYPE_CHECKING
 from typing import TypeVar
 from typing import Union
 
@@ -30,6 +30,7 @@ from .. import exc as sa_exc
 from .. import inspection
 from .. import util
 from ..sql.elements import SQLCoreOperations
+from ..util import FastIntFlag
 from ..util.langhelpers import TypingOnly
 from ..util.typing import Concatenate
 from ..util.typing import Literal
@@ -37,159 +38,147 @@ from ..util.typing import ParamSpec
 from ..util.typing import Self
 
 if typing.TYPE_CHECKING:
+    from ._typing import _InternalEntityType
     from .attributes import InstrumentedAttribute
     from .mapper import Mapper
+    from .state import InstanceState
 
 _T = TypeVar("_T", bound=Any)
 
+_O = TypeVar("_O", bound=object)
 
-_IdentityKeyType = Tuple[type, Tuple[Any, ...], Optional[str]]
 
-
-PASSIVE_NO_RESULT = util.symbol(
-    "PASSIVE_NO_RESULT",
+class LoaderCallableStatus(Enum):
+    PASSIVE_NO_RESULT = 0
     """Symbol returned by a loader callable or other attribute/history
     retrieval operation when a value could not be determined, based
     on loader callable flags.
-    """,
-)
+    """
 
-PASSIVE_CLASS_MISMATCH = util.symbol(
-    "PASSIVE_CLASS_MISMATCH",
+    PASSIVE_CLASS_MISMATCH = 1
     """Symbol indicating that an object is locally present for a given
     primary key identity but it is not of the requested class.  The
-    return value is therefore None and no SQL should be emitted.""",
-)
+    return value is therefore None and no SQL should be emitted."""
 
-ATTR_WAS_SET = util.symbol(
-    "ATTR_WAS_SET",
+    ATTR_WAS_SET = 2
     """Symbol returned by a loader callable to indicate the
     retrieved value, or values, were assigned to their attributes
     on the target object.
-    """,
-)
+    """
 
-ATTR_EMPTY = util.symbol(
-    "ATTR_EMPTY",
+    ATTR_EMPTY = 3
     """Symbol used internally to indicate an attribute had no callable.""",
-)
 
-NO_VALUE = util.symbol(
-    "NO_VALUE",
+    NO_VALUE = 4
     """Symbol which may be placed as the 'previous' value of an attribute,
     indicating no value was loaded for an attribute when it was modified,
     and flags indicated we were not to load it.
-    """,
-)
+    """
+
+    NEVER_SET = NO_VALUE
+    """
+    Synonymous with NO_VALUE
+
+    .. versionchanged:: 1.4   NEVER_SET was merged with NO_VALUE
+
+    """
+
+
+(
+    PASSIVE_NO_RESULT,
+    PASSIVE_CLASS_MISMATCH,
+    ATTR_WAS_SET,
+    ATTR_EMPTY,
+    NO_VALUE,
+) = tuple(LoaderCallableStatus)
+
 NEVER_SET = NO_VALUE
-"""
-Synonymous with NO_VALUE
 
-.. versionchanged:: 1.4   NEVER_SET was merged with NO_VALUE
-"""
 
-NO_CHANGE = util.symbol(
-    "NO_CHANGE",
+class PassiveFlag(FastIntFlag):
+    """Bitflag interface that passes options onto loader callables"""
+
+    NO_CHANGE = 0
     """No callables or SQL should be emitted on attribute access
     and no state should change
-    """,
-    canonical=0,
-)
+    """
 
-CALLABLES_OK = util.symbol(
-    "CALLABLES_OK",
+    CALLABLES_OK = 1
     """Loader callables can be fired off if a value
     is not present.
-    """,
-    canonical=1,
-)
+    """
 
-SQL_OK = util.symbol(
-    "SQL_OK",
-    """Loader callables can emit SQL at least on scalar value attributes.""",
-    canonical=2,
-)
+    SQL_OK = 2
+    """Loader callables can emit SQL at least on scalar value attributes."""
 
-RELATED_OBJECT_OK = util.symbol(
-    "RELATED_OBJECT_OK",
+    RELATED_OBJECT_OK = 4
     """Callables can use SQL to load related objects as well
     as scalar value attributes.
-    """,
-    canonical=4,
-)
+    """
 
-INIT_OK = util.symbol(
-    "INIT_OK",
+    INIT_OK = 8
     """Attributes should be initialized with a blank
     value (None or an empty collection) upon get, if no other
     value can be obtained.
-    """,
-    canonical=8,
-)
+    """
 
-NON_PERSISTENT_OK = util.symbol(
-    "NON_PERSISTENT_OK",
-    """Callables can be emitted if the parent is not persistent.""",
-    canonical=16,
-)
+    NON_PERSISTENT_OK = 16
+    """Callables can be emitted if the parent is not persistent."""
 
-LOAD_AGAINST_COMMITTED = util.symbol(
-    "LOAD_AGAINST_COMMITTED",
+    LOAD_AGAINST_COMMITTED = 32
     """Callables should use committed values as primary/foreign keys during a
     load.
-    """,
-    canonical=32,
-)
+    """
 
-NO_AUTOFLUSH = util.symbol(
-    "NO_AUTOFLUSH",
+    NO_AUTOFLUSH = 64
     """Loader callables should disable autoflush.""",
-    canonical=64,
-)
 
-NO_RAISE = util.symbol(
-    "NO_RAISE",
-    """Loader callables should not raise any assertions""",
-    canonical=128,
-)
+    NO_RAISE = 128
+    """Loader callables should not raise any assertions"""
 
-DEFERRED_HISTORY_LOAD = util.symbol(
-    "DEFERRED_HISTORY_LOAD",
-    """indicates special load of the previous value of an attribute""",
-    canonical=256,
-)
+    DEFERRED_HISTORY_LOAD = 256
+    """indicates special load of the previous value of an attribute"""
 
-# pre-packaged sets of flags used as inputs
-PASSIVE_OFF = util.symbol(
-    "PASSIVE_OFF",
-    "Callables can be emitted in all cases.",
-    canonical=(
+    # pre-packaged sets of flags used as inputs
+    PASSIVE_OFF = (
         RELATED_OBJECT_OK | NON_PERSISTENT_OK | INIT_OK | CALLABLES_OK | SQL_OK
-    ),
-)
-PASSIVE_RETURN_NO_VALUE = util.symbol(
-    "PASSIVE_RETURN_NO_VALUE",
-    """PASSIVE_OFF ^ INIT_OK""",
-    canonical=PASSIVE_OFF ^ INIT_OK,
-)
-PASSIVE_NO_INITIALIZE = util.symbol(
-    "PASSIVE_NO_INITIALIZE",
-    "PASSIVE_RETURN_NO_VALUE ^ CALLABLES_OK",
-    canonical=PASSIVE_RETURN_NO_VALUE ^ CALLABLES_OK,
-)
-PASSIVE_NO_FETCH = util.symbol(
-    "PASSIVE_NO_FETCH", "PASSIVE_OFF ^ SQL_OK", canonical=PASSIVE_OFF ^ SQL_OK
-)
-PASSIVE_NO_FETCH_RELATED = util.symbol(
-    "PASSIVE_NO_FETCH_RELATED",
-    "PASSIVE_OFF ^ RELATED_OBJECT_OK",
-    canonical=PASSIVE_OFF ^ RELATED_OBJECT_OK,
-)
-PASSIVE_ONLY_PERSISTENT = util.symbol(
-    "PASSIVE_ONLY_PERSISTENT",
-    "PASSIVE_OFF ^ NON_PERSISTENT_OK",
-    canonical=PASSIVE_OFF ^ NON_PERSISTENT_OK,
-)
+    )
+    "Callables can be emitted in all cases."
+
+    PASSIVE_RETURN_NO_VALUE = PASSIVE_OFF ^ INIT_OK
+    """PASSIVE_OFF ^ INIT_OK"""
+
+    PASSIVE_NO_INITIALIZE = PASSIVE_RETURN_NO_VALUE ^ CALLABLES_OK
+    "PASSIVE_RETURN_NO_VALUE ^ CALLABLES_OK"
+
+    PASSIVE_NO_FETCH = PASSIVE_OFF ^ SQL_OK
+    "PASSIVE_OFF ^ SQL_OK"
+
+    PASSIVE_NO_FETCH_RELATED = PASSIVE_OFF ^ RELATED_OBJECT_OK
+    "PASSIVE_OFF ^ RELATED_OBJECT_OK"
+
+    PASSIVE_ONLY_PERSISTENT = PASSIVE_OFF ^ NON_PERSISTENT_OK
+    "PASSIVE_OFF ^ NON_PERSISTENT_OK"
+
+
+(
+    NO_CHANGE,
+    CALLABLES_OK,
+    SQL_OK,
+    RELATED_OBJECT_OK,
+    INIT_OK,
+    NON_PERSISTENT_OK,
+    LOAD_AGAINST_COMMITTED,
+    NO_AUTOFLUSH,
+    NO_RAISE,
+    DEFERRED_HISTORY_LOAD,
+    PASSIVE_OFF,
+    PASSIVE_RETURN_NO_VALUE,
+    PASSIVE_NO_INITIALIZE,
+    PASSIVE_NO_FETCH,
+    PASSIVE_NO_FETCH_RELATED,
+    PASSIVE_ONLY_PERSISTENT,
+) = tuple(PassiveFlag)
 
 DEFAULT_MANAGER_ATTR = "_sa_class_manager"
 DEFAULT_STATE_ATTR = "_sa_instance_state"
@@ -285,18 +274,27 @@ def manager_of_class(cls):
     return cls.__dict__.get(DEFAULT_MANAGER_ATTR, None)
 
 
-instance_state = operator.attrgetter(DEFAULT_STATE_ATTR)
+if TYPE_CHECKING:
 
-instance_dict = operator.attrgetter("__dict__")
+    def instance_state(instance: _O) -> InstanceState[_O]:
+        ...
+
+    def instance_dict(instance: object) -> Dict[str, Any]:
+        ...
+
+else:
+    instance_state = operator.attrgetter(DEFAULT_STATE_ATTR)
+
+    instance_dict = operator.attrgetter("__dict__")
 
 
-def instance_str(instance):
+def instance_str(instance: object) -> str:
     """Return a string describing an instance."""
 
     return state_str(instance_state(instance))
 
 
-def state_str(state):
+def state_str(state: InstanceState[Any]) -> str:
     """Return a string describing an instance via its InstanceState."""
 
     if state is None:
@@ -305,7 +303,7 @@ def state_str(state):
         return "<%s at 0x%x>" % (state.class_.__name__, id(state.obj()))
 
 
-def state_class_str(state):
+def state_class_str(state: InstanceState[Any]) -> str:
     """Return a string describing an instance's class via its
     InstanceState.
     """
@@ -316,15 +314,15 @@ def state_class_str(state):
         return "<%s>" % (state.class_.__name__,)
 
 
-def attribute_str(instance, attribute):
+def attribute_str(instance: object, attribute: str) -> str:
     return instance_str(instance) + "." + attribute
 
 
-def state_attribute_str(state, attribute):
+def state_attribute_str(state: InstanceState[Any], attribute: str) -> str:
     return state_str(state) + "." + attribute
 
 
-def object_mapper(instance):
+def object_mapper(instance: _T) -> Mapper[_T]:
     """Given an object, return the primary Mapper associated with the object
     instance.
 
@@ -343,7 +341,7 @@ def object_mapper(instance):
     return object_state(instance).mapper
 
 
-def object_state(instance):
+def object_state(instance: _T) -> InstanceState[_T]:
     """Given an object, return the :class:`.InstanceState`
     associated with the object.
 
@@ -368,14 +366,14 @@ def object_state(instance):
 
 
 @inspection._inspects(object)
-def _inspect_mapped_object(instance):
+def _inspect_mapped_object(instance: _T) -> Optional[InstanceState[_T]]:
     try:
         return instance_state(instance)
     except (exc.UnmappedClassError,) + exc.NO_STATE:
         return None
 
 
-def _class_to_mapper(class_or_mapper):
+def _class_to_mapper(class_or_mapper: Union[Mapper[_T], _T]) -> Mapper[_T]:
     insp = inspection.inspect(class_or_mapper, False)
     if insp is not None:
         return insp.mapper
@@ -383,7 +381,9 @@ def _class_to_mapper(class_or_mapper):
         raise exc.UnmappedClassError(class_or_mapper)
 
 
-def _mapper_or_none(entity):
+def _mapper_or_none(
+    entity: Union[_T, _InternalEntityType[_T]]
+) -> Optional[Mapper[_T]]:
     """Return the :class:`_orm.Mapper` for the given class or None if the
     class is not mapped.
     """
@@ -578,6 +578,8 @@ class InspectionAttrInfo(InspectionAttr):
     ``__slots__``; this is essentially an implementation artifact.
 
     """
+
+    __slots__ = ()
 
     @util.memoized_property
     def info(self) -> Dict[Any, Any]:

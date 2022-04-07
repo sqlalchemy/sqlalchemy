@@ -99,6 +99,10 @@ module = [
     "sqlalchemy.engine.*",
     "sqlalchemy.pool.*",
 
+    "sqlalchemy.orm.scoping",
+    "sqlalchemy.orm.session",
+    "sqlalchemy.orm.state",
+
     # modules
     "sqlalchemy.events",
     "sqlalchemy.exc",

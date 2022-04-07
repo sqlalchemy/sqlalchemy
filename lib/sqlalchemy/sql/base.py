@@ -648,7 +648,9 @@ class CompileState:
             return None
 
     @classmethod
-    def _get_plugin_class_for_plugin(cls, statement, plugin_name):
+    def _get_plugin_class_for_plugin(
+        cls, statement: Executable, plugin_name: str
+    ) -> Optional[Type[CompileState]]:
         try:
             return cls.plugins[
                 (plugin_name, statement._effective_plugin_target)
@@ -790,7 +792,7 @@ class Options(metaclass=_MetaOptions):
         )
 
     @classmethod
-    def isinstance(cls, klass):
+    def isinstance(cls, klass: Type[Any]) -> bool:
         return issubclass(cls, klass)
 
     @hybridmethod
@@ -911,6 +913,8 @@ class ExecutableOption(HasCopyInternals):
     __visit_name__ = "executable_option"
 
     _is_has_cache_key = False
+
+    _is_core = True
 
     def _clone(self, **kw):
         """Create a shallow copy of this ExecutableOption."""

@@ -838,6 +838,10 @@ class ORMOption(ExecutableOption):
 
     """
 
+    _is_core = False
+
+    _is_user_defined = False
+
     _is_compile_state = False
 
     _is_criteria_option = False
@@ -941,6 +945,8 @@ class UserDefinedOption(ORMOption):
     __slots__ = ("payload",)
 
     _is_legacy_option = False
+
+    _is_user_defined = True
 
     propagate_to_loaders = False
     """if True, indicate this option should be carried along

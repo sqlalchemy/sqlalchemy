@@ -32,33 +32,64 @@ alternate instrumentation forms.
 
 from __future__ import annotations
 
+from typing import Any
+from typing import Dict
+from typing import Generic
+from typing import Set
+from typing import TYPE_CHECKING
+from typing import TypeVar
+
 from . import base
 from . import collections
 from . import exc
 from . import interfaces
 from . import state
 from .. import util
+from ..event import EventTarget
 from ..util import HasMemoized
+from ..util.typing import Protocol
 
+if TYPE_CHECKING:
+    from .attributes import InstrumentedAttribute
+    from .mapper import Mapper
+    from ..event import dispatcher
 
+_T = TypeVar("_T", bound=Any)
 DEL_ATTR = util.symbol("DEL_ATTR")
 
 
-class ClassManager(HasMemoized, dict):
+class _ExpiredAttributeLoaderProto(Protocol):
+    def __call__(
+        self,
+        state: state.InstanceState[Any],
+        toload: Set[str],
+        passive: base.PassiveFlag,
+    ):
+        ...
+
+
+class ClassManager(
+    HasMemoized,
+    Dict[str, "InstrumentedAttribute[Any]"],
+    Generic[_T],
+    EventTarget,
+):
     """Tracks state information at the class level."""
+
+    dispatch: dispatcher[ClassManager]
 
     MANAGER_ATTR = base.DEFAULT_MANAGER_ATTR
     STATE_ATTR = base.DEFAULT_STATE_ATTR
 
     _state_setter = staticmethod(util.attrsetter(STATE_ATTR))
 
-    expired_attribute_loader = None
+    expired_attribute_loader: _ExpiredAttributeLoaderProto
     "previously known as deferred_scalar_loader"
 
     init_method = None
 
     factory = None
-    mapper = None
+
     declarative_scan = None
     registry = None
 
@@ -199,7 +230,7 @@ class ClassManager(HasMemoized, dict):
         return frozenset([attr.impl for attr in self.values()])
 
     @util.memoized_property
-    def mapper(self):
+    def mapper(self) -> Mapper[_T]:
         # raises unless self.mapper has been assigned
         raise exc.UnmappedClassError(self.class_)
 
@@ -426,7 +457,9 @@ class ClassManager(HasMemoized, dict):
     def teardown_instance(self, instance):
         delattr(instance, self.STATE_ATTR)
 
-    def _serialize(self, state, state_dict):
+    def _serialize(
+        self, state: state.InstanceState, state_dict: Dict[str, Any]
+    ) -> _SerializeManager:
         return _SerializeManager(state, state_dict)
 
     def _new_state_if_none(self, instance):
@@ -480,7 +513,7 @@ class _SerializeManager:
 
     """
 
-    def __init__(self, state, d):
+    def __init__(self, state: state.InstanceState[Any], d: Dict[str, Any]):
         self.class_ = state.class_
         manager = state.manager
         manager.dispatch.pickle(state, d)

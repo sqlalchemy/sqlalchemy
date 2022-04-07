@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import itertools
 from typing import Any
+from typing import cast
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -61,7 +62,7 @@ from ..sql.selectable import SelectState
 from ..sql.visitors import InternalTraversal
 
 if TYPE_CHECKING:
-    from ._typing import _EntityType
+    from ._typing import _InternalEntityType
     from ..sql.compiler import _CompilerStackEntry
     from ..sql.dml import _DMLTableElement
     from ..sql.elements import ColumnElement
@@ -213,7 +214,7 @@ class ORMCompileState(CompileState):
     statement: Union[Select, FromStatement]
     select_statement: Union[Select, FromStatement]
     _entities: List[_QueryEntity]
-    _polymorphic_adapters: Dict[_EntityType, ORMAdapter]
+    _polymorphic_adapters: Dict[_InternalEntityType, ORMAdapter]
     compile_options: Union[
         Type[default_compile_options], default_compile_options
     ]
@@ -629,6 +630,24 @@ class FromStatement(GroupedElement, ReturnsRows, Executable):
             compiler.compile_state = compile_state
 
         return compiler.process(compile_state.statement, **kw)
+
+    @property
+    def column_descriptions(self):
+        """Return a :term:`plugin-enabled` 'column descriptions' structure
+        referring to the columns which are SELECTed by this statement.
+
+        See the section :ref:`queryguide_inspection` for an overview
+        of this feature.
+
+        .. seealso::
+
+            :ref:`queryguide_inspection` - ORM background
+
+        """
+        meth = cast(
+            ORMSelectCompileState, SelectState.get_plugin_class(self)
+        ).get_column_descriptions
+        return meth(self)
 
     def _ensure_disambiguated_names(self):
         return self

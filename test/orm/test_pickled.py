@@ -11,7 +11,6 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.orm import attributes
 from sqlalchemy.orm import clear_mappers
 from sqlalchemy.orm import exc as orm_exc
-from sqlalchemy.orm import instrumentation
 from sqlalchemy.orm import lazyload
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import state as sa_state
@@ -409,73 +408,6 @@ class PickleTest(fixtures.MappedTest):
         for loads, dumps in picklers():
             u2 = loads(dumps(u1))
             eq_(u1, u2)
-
-    def test_09_pickle(self):
-        users = self.tables.users
-        self.mapper_registry.map_imperatively(User, users)
-        sess = fixture_session()
-        sess.add(User(id=1, name="ed"))
-        sess.commit()
-        sess.close()
-
-        inst = User(id=1, name="ed")
-        del inst._sa_instance_state
-
-        state = sa_state.InstanceState.__new__(sa_state.InstanceState)
-        state_09 = {
-            "class_": User,
-            "modified": False,
-            "committed_state": {},
-            "instance": inst,
-            "callables": {"name": state, "id": state},
-            "key": (User, (1,)),
-            "expired": True,
-        }
-        manager = instrumentation._SerializeManager.__new__(
-            instrumentation._SerializeManager
-        )
-        manager.class_ = User
-        state_09["manager"] = manager
-        state.__setstate__(state_09)
-        eq_(state.expired_attributes, {"name", "id"})
-
-        sess = fixture_session()
-        sess.add(inst)
-        eq_(inst.name, "ed")
-        # test identity_token expansion
-        eq_(sa.inspect(inst).key, (User, (1,), None))
-
-    def test_11_pickle(self):
-        users = self.tables.users
-        self.mapper_registry.map_imperatively(User, users)
-        sess = fixture_session()
-        u1 = User(id=1, name="ed")
-        sess.add(u1)
-        sess.commit()
-
-        sess.close()
-
-        manager = instrumentation._SerializeManager.__new__(
-            instrumentation._SerializeManager
-        )
-        manager.class_ = User
-
-        state_11 = {
-            "class_": User,
-            "modified": False,
-            "committed_state": {},
-            "instance": u1,
-            "manager": manager,
-            "key": (User, (1,)),
-            "expired_attributes": set(),
-            "expired": True,
-        }
-
-        state = sa_state.InstanceState.__new__(sa_state.InstanceState)
-        state.__setstate__(state_11)
-
-        eq_(state.identity_token, None)
-        eq_(state.identity_key, (User, (1,), None))
 
     def test_state_info_pickle(self):
         users = self.tables.users

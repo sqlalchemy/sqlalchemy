@@ -22,6 +22,7 @@ from typing import Generic
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Mapping
 from typing import Optional
 from typing import overload
 from typing import Set
@@ -123,7 +124,7 @@ def merge_lists_w_ordering(a, b):
     return result
 
 
-def coerce_to_immutabledict(d):
+def coerce_to_immutabledict(d: Mapping[_KT, _VT]) -> immutabledict[_KT, _VT]:
     if not d:
         return EMPTY_DICT
     elif isinstance(d, immutabledict):
@@ -161,6 +162,8 @@ class FacadeDict(ImmutableDictBase[_KT, _VT]):
 
 _DT = TypeVar("_DT", bound=Any)
 
+_F = TypeVar("_F", bound=Any)
+
 
 class Properties(Generic[_T]):
     """Provide a __getattr__/__setattr__ interface over a dict."""
@@ -169,7 +172,7 @@ class Properties(Generic[_T]):
 
     _data: Dict[str, _T]
 
-    def __init__(self, data):
+    def __init__(self, data: Dict[str, _T]):
         object.__setattr__(self, "_data", data)
 
     def __len__(self) -> int:
@@ -178,30 +181,30 @@ class Properties(Generic[_T]):
     def __iter__(self) -> Iterator[_T]:
         return iter(list(self._data.values()))
 
-    def __dir__(self):
+    def __dir__(self) -> List[str]:
         return dir(super(Properties, self)) + [
             str(k) for k in self._data.keys()
         ]
 
-    def __add__(self, other):
-        return list(self) + list(other)
+    def __add__(self, other: Properties[_F]) -> List[Union[_T, _F]]:
+        return list(self) + list(other)  # type: ignore
 
-    def __setitem__(self, key, obj):
+    def __setitem__(self, key: str, obj: _T) -> None:
         self._data[key] = obj
 
     def __getitem__(self, key: str) -> _T:
         return self._data[key]
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str) -> None:
         del self._data[key]
 
-    def __setattr__(self, key, obj):
+    def __setattr__(self, key: str, obj: _T) -> None:
         self._data[key] = obj
 
-    def __getstate__(self):
+    def __getstate__(self) -> Dict[str, Any]:
         return {"_data": self._data}
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: Dict[str, Any]) -> None:
         object.__setattr__(self, "_data", state["_data"])
 
     def __getattr__(self, key: str) -> _T:
@@ -213,12 +216,12 @@ class Properties(Generic[_T]):
     def __contains__(self, key: str) -> bool:
         return key in self._data
 
-    def as_readonly(self) -> "ReadOnlyProperties[_T]":
+    def as_readonly(self) -> ReadOnlyProperties[_T]:
         """Return an immutable proxy for this :class:`.Properties`."""
 
         return ReadOnlyProperties(self._data)
 
-    def update(self, value):
+    def update(self, value: Dict[str, _T]) -> None:
         self._data.update(value)
 
     @overload
@@ -249,7 +252,7 @@ class Properties(Generic[_T]):
     def has_key(self, key: str) -> bool:
         return key in self._data
 
-    def clear(self):
+    def clear(self) -> None:
         self._data.clear()
 
 
@@ -318,7 +321,7 @@ class WeakSequence:
 
 
 class OrderedIdentitySet(IdentitySet):
-    def __init__(self, iterable=None):
+    def __init__(self, iterable: Optional[Iterable[Any]] = None):
         IdentitySet.__init__(self)
         self._members = OrderedDict()
         if iterable:
@@ -615,7 +618,9 @@ class ScopedRegistry(Generic[_T]):
     scopefunc: _ScopeFuncType
     registry: Any
 
-    def __init__(self, createfunc, scopefunc):
+    def __init__(
+        self, createfunc: Callable[[], _T], scopefunc: Callable[[], Any]
+    ):
         """Construct a new :class:`.ScopedRegistry`.
 
         :param createfunc:  A creation function that will generate

@@ -460,7 +460,7 @@ def composite(
     class_: Type[_T],
     *attrs: Union[sql.ColumnElement[Any], MappedColumn, str, Mapped[Any]],
     **kwargs: Any,
-) -> "Composite[_T]":
+) -> Composite[_T]:
     ...
 
 
@@ -468,7 +468,7 @@ def composite(
 def composite(
     *attrs: Union[sql.ColumnElement[Any], MappedColumn, str, Mapped[Any]],
     **kwargs: Any,
-) -> "Composite[Any]":
+) -> Composite[Any]:
     ...
 
 
@@ -476,7 +476,7 @@ def composite(
     class_: Any = None,
     *attrs: Union[sql.ColumnElement[Any], MappedColumn, str, Mapped[Any]],
     **kwargs: Any,
-) -> "Composite[Any]":
+) -> Composite[Any]:
     r"""Return a composite column-based property for use with a Mapper.
 
     See the mapping documentation section :ref:`mapper_composite` for a

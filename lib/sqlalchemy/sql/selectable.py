@@ -3037,7 +3037,9 @@ class ForUpdateArg(ClauseElement):
     skip_locked: bool
 
     @classmethod
-    def _from_argument(cls, with_for_update):
+    def _from_argument(
+        cls, with_for_update: Union[ForUpdateArg, None, bool, Dict[str, Any]]
+    ) -> Optional[ForUpdateArg]:
         if isinstance(with_for_update, ForUpdateArg):
             return with_for_update
         elif with_for_update in (None, False):
@@ -3045,7 +3047,7 @@ class ForUpdateArg(ClauseElement):
         elif with_for_update is True:
             return ForUpdateArg()
         else:
-            return ForUpdateArg(**with_for_update)
+            return ForUpdateArg(**cast("Dict[str, Any]", with_for_update))
 
     def __eq__(self, other):
         return (

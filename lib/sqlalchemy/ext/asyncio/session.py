@@ -640,7 +640,7 @@ class AsyncSession(ReversibleProxy):
     # code within this block is **programmatically,
     # statically generated** by tools/generate_proxy_methods.py
 
-    def __contains__(self, instance):
+    def __contains__(self, instance: object) -> bool:
         r"""Return True if the instance is associated with this session.
 
         .. container:: class_bases
@@ -656,7 +656,7 @@ class AsyncSession(ReversibleProxy):
 
         return self._proxied.__contains__(instance)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[object]:
         r"""Iterate over all pending or persistent instances within this
         Session.
 
@@ -670,7 +670,7 @@ class AsyncSession(ReversibleProxy):
 
         return self._proxied.__iter__()
 
-    def add(self, instance: Any, _warn: bool = True) -> None:
+    def add(self, instance: object, _warn: bool = True) -> None:
         r"""Place an object in the ``Session``.
 
         .. container:: class_bases
@@ -689,7 +689,7 @@ class AsyncSession(ReversibleProxy):
 
         return self._proxied.add(instance, _warn=_warn)
 
-    def add_all(self, instances):
+    def add_all(self, instances: Iterable[object]) -> None:
         r"""Add the given collection of instances to this ``Session``.
 
         .. container:: class_bases
@@ -701,7 +701,9 @@ class AsyncSession(ReversibleProxy):
 
         return self._proxied.add_all(instances)
 
-    def expire(self, instance, attribute_names=None):
+    def expire(
+        self, instance: object, attribute_names: Optional[Iterable[str]] = None
+    ) -> None:
         r"""Expire the attributes on an instance.
 
         .. container:: class_bases
@@ -747,7 +749,7 @@ class AsyncSession(ReversibleProxy):
 
         return self._proxied.expire(instance, attribute_names=attribute_names)
 
-    def expire_all(self):
+    def expire_all(self) -> None:
         r"""Expires all persistent instances within this Session.
 
         .. container:: class_bases
@@ -788,7 +790,7 @@ class AsyncSession(ReversibleProxy):
 
         return self._proxied.expire_all()
 
-    def expunge(self, instance):
+    def expunge(self, instance: object) -> None:
         r"""Remove the `instance` from this ``Session``.
 
         .. container:: class_bases
@@ -804,7 +806,7 @@ class AsyncSession(ReversibleProxy):
 
         return self._proxied.expunge(instance)
 
-    def expunge_all(self):
+    def expunge_all(self) -> None:
         r"""Remove all object instances from this ``Session``.
 
         .. container:: class_bases
@@ -820,7 +822,9 @@ class AsyncSession(ReversibleProxy):
 
         return self._proxied.expunge_all()
 
-    def is_modified(self, instance, include_collections=True):
+    def is_modified(
+        self, instance: object, include_collections: bool = True
+    ) -> bool:
         r"""Return ``True`` if the given instance has locally
         modified attributes.
 
@@ -882,7 +886,7 @@ class AsyncSession(ReversibleProxy):
             instance, include_collections=include_collections
         )
 
-    def in_transaction(self):
+    def in_transaction(self) -> bool:
         r"""Return True if this :class:`_orm.Session` has begun a transaction.
 
         .. container:: class_bases
@@ -902,7 +906,7 @@ class AsyncSession(ReversibleProxy):
 
         return self._proxied.in_transaction()
 
-    def in_nested_transaction(self):
+    def in_nested_transaction(self) -> bool:
         r"""Return True if this :class:`_orm.Session` has begun a nested
         transaction, e.g. SAVEPOINT.
 
@@ -978,7 +982,7 @@ class AsyncSession(ReversibleProxy):
         return self._proxied.new
 
     @property
-    def identity_map(self) -> identity.IdentityMap:
+    def identity_map(self) -> IdentityMap:
         r"""Proxy for the :attr:`_orm.Session.identity_map` attribute
         on behalf of the :class:`_asyncio.AsyncSession` class.
 
@@ -987,7 +991,7 @@ class AsyncSession(ReversibleProxy):
         return self._proxied.identity_map
 
     @identity_map.setter
-    def identity_map(self, attr: identity.IdentityMap) -> None:
+    def identity_map(self, attr: IdentityMap) -> None:
         self._proxied.identity_map = attr
 
     @property
@@ -1090,7 +1094,7 @@ class AsyncSession(ReversibleProxy):
         return self._proxied.info
 
     @classmethod
-    def object_session(cls, instance: Any) -> "Session":
+    def object_session(cls, instance: object) -> Optional[Session]:
         r"""Return the :class:`.Session` to which an object belongs.
 
         .. container:: class_bases
@@ -1108,13 +1112,13 @@ class AsyncSession(ReversibleProxy):
     @classmethod
     def identity_key(
         cls,
-        class_=None,
-        ident=None,
+        class_: Optional[Type[Any]] = None,
+        ident: Union[Any, Tuple[Any, ...]] = None,
         *,
-        instance=None,
-        row=None,
-        identity_token=None,
-    ) -> _IdentityKeyType:
+        instance: Optional[Any] = None,
+        row: Optional[Row] = None,
+        identity_token: Optional[Any] = None,
+    ) -> _IdentityKeyType[Any]:
         r"""Return an identity key.
 
         .. container:: class_bases
@@ -1243,7 +1247,7 @@ def async_object_session(instance):
         return None
 
 
-def async_session(session):
+def async_session(session: Session) -> AsyncSession:
     """Return the :class:`_asyncio.AsyncSession` which is proxying the given
     :class:`_orm.Session` object, if any.
 
