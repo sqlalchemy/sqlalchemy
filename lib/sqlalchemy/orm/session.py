@@ -1261,6 +1261,9 @@ class Session(_SessionClassMethods):
             with self.begin():
                 yield self
 
+    def _create_transaction(self, *args, **kwargs):
+        return SessionTransaction(self, *args,**kwargs)
+
     def in_transaction(self):
         """Return True if this :class:`_orm.Session` has begun a transaction.
 
@@ -1319,7 +1322,7 @@ class Session(_SessionClassMethods):
     def _autobegin(self):
         if self._transaction is None:
 
-            trans = SessionTransaction(self, autobegin=True)
+            trans = self._create_transaction(autobegin=True)
             assert self._transaction is trans
             return True
 
@@ -1343,7 +1346,8 @@ class Session(_SessionClassMethods):
          documentation on SAVEPOINT transactions, please see
          :ref:`session_begin_nested`.
 
-        :return: the :class:`.SessionTransaction` object.  Note that
+        :return: the object created by _create_transaction(), normally
+         a :class:`.SessionTransaction` object.  Note that
          :class:`.SessionTransaction`
          acts as a Python context manager, allowing :meth:`.Session.begin`
          to be used in a "with" block.  See :ref:`session_explicit_begin` for
@@ -1379,7 +1383,7 @@ class Session(_SessionClassMethods):
             # a subtransaction
 
             assert not nested and not _subtrans
-            trans = SessionTransaction(self)
+            trans = self._create_transaction(self)
             assert self._transaction is trans
 
         return self._transaction  # needed for __enter__/__exit__ hook
@@ -1393,7 +1397,8 @@ class Session(_SessionClassMethods):
         For documentation on SAVEPOINT
         transactions, please see :ref:`session_begin_nested`.
 
-        :return: the :class:`.SessionTransaction` object.  Note that
+        :return: the object created by _create_transaction(), normally a
+         :class:`.SessionTransaction` object.  Note that
          :class:`.SessionTransaction` acts as a context manager, allowing
          :meth:`.Session.begin_nested` to be used in a "with" block.
          See :ref:`session_begin_nested` for a usage example.
