@@ -424,41 +424,51 @@ a :term:`2.0-style` :meth:`_orm.Session.execute` call, as well as within the
 committed. It also occurs before a SAVEPOINT is issued when
 :meth:`~.Session.begin_nested` is used.
 
-Regardless of the autoflush setting, a flush can always be forced by issuing
-:meth:`~.Session.flush`::
+A :class:`.Session` flush can be forced at any time by calling the
+:meth:`~.Session.flush` method::
 
     session.flush()
 
-The "flush-on-Query" aspect of the behavior can be disabled by constructing
-:class:`.sessionmaker` with the flag ``autoflush=False``::
+The flush which occurs automatically within the scope of
+:meth:`_orm.Session.execute`, :class:`_query.Query`, as well as other
+:class:`.Session` methods such as :meth:`.Session.merge` (but **not** including
+the :meth:`.Session.commit` method) is known as **autoflush**. This "autoflush"
+behavior can be disabled by constructing a :class:`.Session` or
+:class:`.sessionmaker` passing the :paramref:`.Session.autoflush` parameter as
+``False``::
 
     Session = sessionmaker(autoflush=False)
 
-Additionally, autoflush can be temporarily disabled by setting the
-``autoflush`` flag at any time::
-
-    mysession = Session()
-    mysession.autoflush = False
-
-More conveniently, it can be turned off within a context managed block using :attr:`.Session.no_autoflush`::
+Additionally, autoflush can be temporarily disabled within the flow
+of using a :class:`.Session` using the
+:attr:`.Session.no_autoflush` context manager::
 
     with mysession.no_autoflush:
         mysession.add(some_object)
         mysession.flush()
 
-The flush process *always* occurs within a transaction (subject
-to the :ref:`isolation level <session_transaction_isolation>`_ of the
-database transaction), which is
-*never* committed automatically; the :meth:`_orm.Session.commit` method
-must be called, or an appropriate context manager which does the same
-thing must be used, in order for the database changes to be committed.
+The flush process **always occurs** when the :meth:`.Session.commit` method is
+called, regardless of any "autoflush" settings, when the :class:`.Session` has
+remaining pending changes to process.
 
-Any failures during flush will always result in a rollback of
-whatever transaction is present.   In order to continue using that
+As the :class:`.Session` only invokes SQL to the database within the context of
+a :term:`DBAPI` transaction, all "flush" operations themselves only occur within a
+database transaction (subject to the
+:ref:`isolation level <session_transaction_isolation>` of the database
+transaction), provided that the DBAPI is not in
+:ref:`driver level autocommit <dbapi_autocommit>` mode. This means that
+assuming the database connection is providing for :term:`atomicity` within its
+transactional settings, if any individual DML statement inside the flush fails,
+the entire operation will be rolled back.
+
+When a failure occurs within a flush, in order to continue using that
 same :class:`_orm.Session`, an explicit call to :meth:`~.Session.rollback` is
 required after a flush fails, even though the underlying transaction will have
-been rolled back already - this is so that the overall nesting pattern of
-so-called "subtransactions" is consistently maintained.
+been rolled back already (even if the database driver is technically in
+driver-level autocommit mode).  This is so that the overall nesting pattern of
+so-called "subtransactions" is consistently maintained. The FAQ section
+:ref:`faq_session_rollback` contains a more detailed description of this
+behavior.
 
 .. seealso::
 

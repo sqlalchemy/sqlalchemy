@@ -1104,6 +1104,10 @@ class Session(_SessionClassMethods):
            not be called repeatedly in order for database queries to retrieve
            results.
 
+           .. seealso::
+
+               :ref:`session_flushing` - additional background on autoflush
+
         :param bind: An optional :class:`_engine.Engine` or
            :class:`_engine.Connection` to
            which this ``Session`` should be bound. When specified, all SQL
@@ -4022,6 +4026,11 @@ class sessionmaker(_SessionClassMethods):
          objects.  Defaults to :class:`.Session`.
         :param autoflush: The autoflush setting to use with newly created
          :class:`.Session` objects.
+
+         .. seealso::
+
+            :ref:`session_flushing` - additional background on autoflush
+
         :param expire_on_commit=True: the
          :paramref:`_orm.Session.expire_on_commit` setting to use
          with newly created :class:`.Session` objects.
