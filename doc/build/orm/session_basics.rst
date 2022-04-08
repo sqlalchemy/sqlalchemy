@@ -429,11 +429,26 @@ A :class:`.Session` flush can be forced at any time by calling the
 
     session.flush()
 
-The flush which occurs automatically within the scope of
-:meth:`_orm.Session.execute`, :class:`_query.Query`, as well as other
-:class:`.Session` methods such as :meth:`.Session.merge` (but **not** including
-the :meth:`.Session.commit` method) is known as **autoflush**. This "autoflush"
-behavior can be disabled by constructing a :class:`.Session` or
+The flush which occurs automatically within the scope of certain methods
+is known as **autoflush**.  Autoflush is defined as a configurable,
+automatic flush call which occurs at the beginning of methods including:
+
+* :meth:`_orm.Session.execute` and other SQL-executing methods
+* When a :class:`_query.Query` is invoked to send SQL to the database
+* Within the :meth:`.Session.merge` method before querying the database
+* When objects are :ref:`refreshed <session_expiring>`
+* When ORM :term:`lazy load` operations occur against unloaded object
+  attributes.
+
+There are also points at which flushes occur **unconditionally**; these
+points are within key transactional boundaries which include:
+
+* Within the process of the :meth:`.Session.commit` method
+* When :meth:`.Session.begin_nested` is called
+* When the :meth:`.Session.prepare` 2PC method is used.
+
+The **autoflush** behavior, as applied to the previous list of items,
+can be disabled by constructing a :class:`.Session` or
 :class:`.sessionmaker` passing the :paramref:`.Session.autoflush` parameter as
 ``False``::
 
@@ -447,7 +462,8 @@ of using a :class:`.Session` using the
         mysession.add(some_object)
         mysession.flush()
 
-The flush process **always occurs** when the :meth:`.Session.commit` method is
+**To reiterate:** The flush process **always occurs** when transactional
+methods such as :meth:`.Session.commit` and :meth:`.Session.begin_nested` are
 called, regardless of any "autoflush" settings, when the :class:`.Session` has
 remaining pending changes to process.
 
