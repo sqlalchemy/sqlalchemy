@@ -1383,7 +1383,7 @@ class Session(_SessionClassMethods):
             # a subtransaction
 
             assert not nested and not _subtrans
-            trans = self._create_transaction(self)
+            trans = self._create_transaction()
             assert self._transaction is trans
 
         return self._transaction  # needed for __enter__/__exit__ hook
