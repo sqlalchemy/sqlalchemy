@@ -8,7 +8,10 @@ included, using asyncio-compatible dialects.
 
 .. versionadded:: 1.4
 
-.. note:: The asyncio extension as of SQLAlchemy 1.4.3 can now be considered to
+.. warning:: Please read :ref:`asyncio_install` for important platform
+   installation notes for many platforms, including **Apple M1 Architecture**.
+
+.. tip:: The asyncio extension as of SQLAlchemy 1.4.3 can now be considered to
    be **beta level** software. API details are subject to change however at this
    point it is unlikely for there to be significant backwards-incompatible
    changes.
@@ -22,21 +25,32 @@ included, using asyncio-compatible dialects.
 
 .. _asyncio_install:
 
-Asyncio Platform Installation Notes
-------------------------------------
+Asyncio Platform Installation Notes (Including Apple M1)
+---------------------------------------------------------
 
-The asyncio extension requires at least Python version 3.6. It also depends
+The asyncio extension requires Python 3 only. It also depends
 upon the `greenlet <https://pypi.org/project/greenlet/>`_ library. This
 dependency is installed by default on common machine platforms including::
 
     x86_64 aarch64 ppc64le amd64 win32
 
 For the above platforms, ``greenlet`` is known to supply pre-built wheel files.
-To ensure the ``greenlet`` dependency is present on other platforms, the
-``[asyncio]`` extra may be installed as follows, which will include an attempt
-to build and install ``greenlet``::
+For other platforms, **greenlet does not install by default**;
+the current file listing for greenlet can be seen at
+`Greenlet - Download Files <https://pypi.org/project/greenlet/#files>`_.
+Note that **there are many architectures omitted, including Apple M1**.
+
+To install SQLAlchemy while ensuring the ``greenlet`` dependency is present
+regardless of what platform is in use, the
+``[asyncio]`` `setuptools extra <https://packaging.python.org/en/latest/tutorials/installing-packages/#installing-setuptools-extras>`_
+may be installed
+as follows, which will include also instruct ``pip`` to install ``greenlet``::
 
   pip install sqlalchemy[asyncio]
+
+Note that installation of ``greenlet`` on platforms that do not have a pre-built
+wheel file means that ``greenlet`` will be built from source, which requires
+that Python's development libraries also be present.
 
 
 Synopsis - Core
