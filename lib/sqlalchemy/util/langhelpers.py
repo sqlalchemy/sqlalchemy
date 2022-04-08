@@ -106,10 +106,12 @@ class safe_reraise:
             with safe_reraise():
                 sess.rollback()
 
-    TODO: is this context manager getting us anything in Python 3?
-    Not sure of the coroutine issue stated above; we would assume this was
-    when using eventlet / gevent.  not sure if our own greenlet integration
-    is impacted.
+    TODO: we should at some point evaluate current behaviors in this regard
+    based on current greenlet, gevent/eventlet implementations in Python 3, and
+    also see the degree to which our own asyncio (based on greenlet also) is
+    impacted by this. .rollback() will cause IO / context switch to occur in
+    all these scenarios; what happens to the exception context from an
+    "except:" block if we don't explicitly store it? Original issue was #2703.
 
     """
 
