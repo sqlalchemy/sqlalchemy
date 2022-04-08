@@ -1003,6 +1003,10 @@ class Session(_SessionClassMethods):
            :meth:`~.Session.flush` are rarely needed; you usually only need to
            call :meth:`~.Session.commit` (which flushes) to finalize changes.
 
+           .. seealso::
+
+               :ref:`session_flushing` - additional background on autoflush
+
         :param bind: An optional :class:`_engine.Engine` or
            :class:`_engine.Connection` to
            which this ``Session`` should be bound. When specified, all SQL
