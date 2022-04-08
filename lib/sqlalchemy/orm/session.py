@@ -2135,6 +2135,9 @@ class Session(_SessionClassMethods):
         of objects which involve existing database queries,
         where the uncompleted object should not yet be flushed.
 
+        This does not disable the flush() that automatically
+        occurs within commit().
+
         """
         autoflush = self.autoflush
         self.autoflush = False
