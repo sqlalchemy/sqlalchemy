@@ -312,8 +312,10 @@ class DDL(DDLElement):
 
         :param statement:
           A string or unicode string to be executed.  Statements will be
-          processed with Python's string formatting operator.  See the
-          ``context`` argument and the ``execute_at`` method.
+          processed with Python's string formatting operator using
+          a fixed set of string substitutions, as well as additional
+          substitutions provided by the optional :paramref:`.DDL.context`
+          parameter.
 
           A literal '%' in a statement must be escaped as '%%'.
 
