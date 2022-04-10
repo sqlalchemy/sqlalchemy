@@ -61,7 +61,6 @@ module = [
     "sqlalchemy.engine.reflection",  # interim, should be strict
 
     # TODO for strict:
-    "sqlalchemy.ext.asyncio.*",
     "sqlalchemy.ext.automap",
     "sqlalchemy.ext.compiler",
     "sqlalchemy.ext.declarative.*",

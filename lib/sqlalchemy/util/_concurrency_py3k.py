@@ -4,6 +4,7 @@
 #
 # This module is part of SQLAlchemy and is released under
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
+from __future__ import annotations
 
 import asyncio
 from contextvars import copy_context as _copy_context
@@ -18,6 +19,8 @@ from typing import TypeVar
 from .langhelpers import memoized_property
 from .. import exc
 from ..util.typing import Protocol
+
+_T = TypeVar("_T", bound=Any)
 
 if typing.TYPE_CHECKING:
 
@@ -51,8 +54,6 @@ if not typing.TYPE_CHECKING:
         getattr(greenlet, "gr_context")
     except (ImportError, AttributeError):
         _copy_context = None  # noqa
-
-_T = TypeVar("_T", bound=Any)
 
 
 def is_exit_exception(e: BaseException) -> bool:
@@ -128,11 +129,11 @@ def await_fallback(awaitable: Awaitable[_T]) -> _T:
 
 
 async def greenlet_spawn(
-    fn: Callable[..., Any],
+    fn: Callable[..., _T],
     *args: Any,
     _require_await: bool = False,
     **kwargs: Any,
-) -> Any:
+) -> _T:
     """Runs a sync function ``fn`` in a new greenlet.
 
     The sync function can then use :func:`await_` to wait for async
@@ -143,6 +144,7 @@ async def greenlet_spawn(
     :param \\*\\*kwargs: Keyword arguments to pass to the ``fn`` callable.
     """
 
+    result: _T
     context = _AsyncIoGreenlet(fn, getcurrent())
     # runs the function synchronously in gl greenlet. If the execution
     # is interrupted by await_, context is not dead and result is a

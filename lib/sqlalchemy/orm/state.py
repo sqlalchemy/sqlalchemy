@@ -23,12 +23,12 @@ from typing import Optional
 from typing import Set
 from typing import Tuple
 from typing import TYPE_CHECKING
-from typing import TypeVar
 import weakref
 
 from . import base
 from . import exc as orm_exc
 from . import interfaces
+from ._typing import _O
 from ._typing import is_collection_impl
 from .base import ATTR_WAS_SET
 from .base import INIT_OK
@@ -62,8 +62,6 @@ if TYPE_CHECKING:
     from ..ext.asyncio.session import async_session as _async_provider
     from ..ext.asyncio.session import AsyncSession
 
-_T = TypeVar("_T", bound=Any)
-
 if TYPE_CHECKING:
     _sessions: weakref.WeakValueDictionary[int, Session]
 else:
@@ -83,7 +81,7 @@ class _InstanceDictProto(Protocol):
 
 
 @inspection._self_inspects
-class InstanceState(interfaces.InspectionAttrInfo, Generic[_T]):
+class InstanceState(interfaces.InspectionAttrInfo, Generic[_O]):
     """tracks state information at the instance level.
 
     The :class:`.InstanceState` is a key object used by the
@@ -119,15 +117,15 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_T]):
         "expired_attributes",
     )
 
-    manager: ClassManager[_T]
+    manager: ClassManager[_O]
     session_id: Optional[int] = None
-    key: Optional[_IdentityKeyType[_T]] = None
+    key: Optional[_IdentityKeyType[_O]] = None
     runid: Optional[int] = None
     load_options: Tuple[ORMOption, ...] = ()
     load_path: PathRegistry = PathRegistry.root
     insert_order: Optional[int] = None
     _strong_obj: Optional[object] = None
-    obj: weakref.ref[_T]
+    obj: weakref.ref[_O]
 
     committed_state: Dict[str, Any]
 
@@ -159,7 +157,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_T]):
        see also the ``unmodified`` collection which is intersected
        against this set when a refresh operation occurs."""
 
-    callables: Dict[str, Callable[[InstanceState[_T], PassiveFlag], Any]]
+    callables: Dict[str, Callable[[InstanceState[_O], PassiveFlag], Any]]
     """A namespace where a per-state loader callable can be associated.
 
     In SQLAlchemy 1.0, this is only used for lazy loaders / deferred
@@ -174,7 +172,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_T]):
     if not TYPE_CHECKING:
         callables = util.EMPTY_DICT
 
-    def __init__(self, obj: _T, manager: ClassManager[_T]):
+    def __init__(self, obj: _O, manager: ClassManager[_O]):
         self.class_ = obj.__class__
         self.manager = manager
         self.obj = weakref.ref(obj, self._cleanup)
@@ -381,7 +379,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_T]):
             return None
 
     @property
-    def object(self) -> Optional[_T]:
+    def object(self) -> Optional[_O]:
         """Return the mapped object represented by this
         :class:`.InstanceState`.
 
@@ -411,7 +409,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_T]):
             return self.key[1]
 
     @property
-    def identity_key(self) -> Optional[_IdentityKeyType[_T]]:
+    def identity_key(self) -> Optional[_IdentityKeyType[_O]]:
         """Return the identity key for the mapped object.
 
         This is the key used to locate the object within
@@ -435,7 +433,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_T]):
         return {}
 
     @util.memoized_property
-    def mapper(self) -> Mapper[_T]:
+    def mapper(self) -> Mapper[_O]:
         """Return the :class:`_orm.Mapper` used for this mapped object."""
         return self.manager.mapper
 
@@ -452,7 +450,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_T]):
     @classmethod
     def _detach_states(
         self,
-        states: Iterable[InstanceState[_T]],
+        states: Iterable[InstanceState[_O]],
         session: Session,
         to_transient: bool = False,
     ) -> None:
@@ -497,7 +495,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_T]):
         # used by the test suite, apparently
         self._detach()
 
-    def _cleanup(self, ref: weakref.ref[_T]) -> None:
+    def _cleanup(self, ref: weakref.ref[_O]) -> None:
         """Weakref callback cleanup.
 
         This callable cleans out the state when it is being garbage
@@ -657,14 +655,14 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_T]):
 
     @classmethod
     def _instance_level_callable_processor(
-        cls, manager: ClassManager[_T], fn: _LoaderCallable, key: Any
-    ) -> Callable[[InstanceState[_T], _InstanceDict, Row], None]:
+        cls, manager: ClassManager[_O], fn: _LoaderCallable, key: Any
+    ) -> Callable[[InstanceState[_O], _InstanceDict, Row], None]:
         impl = manager[key].impl
         if is_collection_impl(impl):
             fixed_impl = impl
 
             def _set_callable(
-                state: InstanceState[_T], dict_: _InstanceDict, row: Row
+                state: InstanceState[_O], dict_: _InstanceDict, row: Row
             ) -> None:
                 if "callables" not in state.__dict__:
                     state.callables = {}
@@ -676,7 +674,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_T]):
         else:
 
             def _set_callable(
-                state: InstanceState[_T], dict_: _InstanceDict, row: Row
+                state: InstanceState[_O], dict_: _InstanceDict, row: Row
             ) -> None:
                 if "callables" not in state.__dict__:
                     state.callables = {}
@@ -768,7 +766,7 @@ class InstanceState(interfaces.InspectionAttrInfo, Generic[_T]):
         self.manager.dispatch.expire(self, attribute_names)
 
     def _load_expired(
-        self, state: InstanceState[_T], passive: PassiveFlag
+        self, state: InstanceState[_O], passive: PassiveFlag
     ) -> LoaderCallableStatus:
         """__call__ allows the InstanceState to act as a deferred
         callable for loading expired attributes, which is also

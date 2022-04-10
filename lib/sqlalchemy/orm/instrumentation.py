@@ -35,6 +35,7 @@ from __future__ import annotations
 from typing import Any
 from typing import Dict
 from typing import Generic
+from typing import Optional
 from typing import Set
 from typing import TYPE_CHECKING
 from typing import TypeVar
@@ -44,6 +45,7 @@ from . import collections
 from . import exc
 from . import interfaces
 from . import state
+from ._typing import _O
 from .. import util
 from ..event import EventTarget
 from ..util import HasMemoized
@@ -52,6 +54,7 @@ from ..util.typing import Protocol
 if TYPE_CHECKING:
     from .attributes import InstrumentedAttribute
     from .mapper import Mapper
+    from .state import InstanceState
     from ..event import dispatcher
 
 _T = TypeVar("_T", bound=Any)
@@ -71,7 +74,7 @@ class _ExpiredAttributeLoaderProto(Protocol):
 class ClassManager(
     HasMemoized,
     Dict[str, "InstrumentedAttribute[Any]"],
-    Generic[_T],
+    Generic[_O],
     EventTarget,
 ):
     """Tracks state information at the class level."""
@@ -230,7 +233,7 @@ class ClassManager(
         return frozenset([attr.impl for attr in self.values()])
 
     @util.memoized_property
-    def mapper(self) -> Mapper[_T]:
+    def mapper(self) -> Mapper[_O]:
         # raises unless self.mapper has been assigned
         raise exc.UnmappedClassError(self.class_)
 
@@ -442,7 +445,7 @@ class ClassManager(
 
     # InstanceState management
 
-    def new_instance(self, state=None):
+    def new_instance(self, state: Optional[InstanceState[_O]] = None) -> _O:
         instance = self.class_.__new__(self.class_)
         if state is None:
             state = self._state_constructor(instance, self)

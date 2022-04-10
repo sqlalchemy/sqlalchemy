@@ -448,7 +448,13 @@ def _entity_descriptor(entity, key):
         ) from err
 
 
-_state_mapper = util.dottedgetter("manager.mapper")
+if TYPE_CHECKING:
+
+    def _state_mapper(state: InstanceState[_O]) -> Mapper[_O]:
+        ...
+
+else:
+    _state_mapper = util.dottedgetter("manager.mapper")
 
 
 @inspection._inspects(type)

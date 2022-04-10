@@ -73,10 +73,8 @@ class PoolEvents(event.Events[Pool]):
             return target.pool
         elif isinstance(target, Pool):
             return target
-        elif hasattr(target, "dispatch") and hasattr(
-            target.dispatch._events, "_no_async_engine_events"
-        ):
-            target.dispatch._events._no_async_engine_events()
+        elif hasattr(target, "_no_async_engine_events"):
+            target._no_async_engine_events()
         else:
             return None
 

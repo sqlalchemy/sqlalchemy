@@ -10,6 +10,7 @@
 """
 from __future__ import annotations
 
+from typing import Any
 import weakref
 
 from . import instrumentation
@@ -1324,7 +1325,7 @@ class _MapperEventsHold(_EventsHold):
 _sessionevents_lifecycle_event_names = set()
 
 
-class SessionEvents(event.Events):
+class SessionEvents(event.Events[Session]):
     """Define events specific to :class:`.Session` lifecycle.
 
     e.g.::
@@ -1396,12 +1397,21 @@ class SessionEvents(event.Events):
                 return target
         elif isinstance(target, Session):
             return target
+        elif hasattr(target, "_no_async_engine_events"):
+            target._no_async_engine_events()
         else:
             # allows alternate SessionEvents-like-classes to be consulted
             return event.Events._accept_with(target)
 
     @classmethod
-    def _listen(cls, event_key, raw=False, restore_load_context=False, **kw):
+    def _listen(
+        cls,
+        event_key: Any,
+        *,
+        raw: bool = False,
+        restore_load_context: bool = False,
+        **kw: Any,
+    ) -> None:
         is_instance_event = (
             event_key.identifier in _sessionevents_lifecycle_event_names
         )

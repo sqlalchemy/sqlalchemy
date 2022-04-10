@@ -26,7 +26,6 @@ from typing import Set
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
-from typing import TypeVar
 from typing import Union
 import weakref
 
@@ -38,6 +37,7 @@ from . import loading
 from . import persistence
 from . import query
 from . import state as statelib
+from ._typing import _O
 from ._typing import is_composite_class
 from ._typing import is_user_defined_option
 from .base import _class_to_mapper
@@ -119,10 +119,11 @@ _sessions: weakref.WeakValueDictionary[
 """Weak-referencing dictionary of :class:`.Session` objects.
 """
 
-_O = TypeVar("_O", bound=object)
 statelib._sessions = _sessions
 
 _PKIdentityArgument = Union[Any, Tuple[Any, ...]]
+
+_BindArguments = Dict[str, Any]
 
 _EntityBindKey = Union[Type[_O], "Mapper[_O]"]
 _SessionBindKey = Union[Type[Any], "Mapper[Any]", "Table"]
@@ -251,7 +252,7 @@ class ORMExecuteState(util.MemoizedSlots):
     parameters: Optional[_CoreAnyExecuteParams]
     execution_options: _ExecuteOptions
     local_execution_options: _ExecuteOptions
-    bind_arguments: Dict[str, Any]
+    bind_arguments: _BindArguments
     _compile_state_cls: Optional[Type[ORMCompileState]]
     _starting_event_idx: int
     _events_todo: List[Any]
@@ -263,7 +264,7 @@ class ORMExecuteState(util.MemoizedSlots):
         statement: Executable,
         parameters: Optional[_CoreAnyExecuteParams],
         execution_options: _ExecuteOptions,
-        bind_arguments: Dict[str, Any],
+        bind_arguments: _BindArguments,
         compile_state_cls: Optional[Type[ORMCompileState]],
         events_todo: List[_InstanceLevelDispatch[Session]],
     ):
@@ -286,7 +287,7 @@ class ORMExecuteState(util.MemoizedSlots):
         statement: Optional[Executable] = None,
         params: Optional[_CoreAnyExecuteParams] = None,
         execution_options: Optional[_ExecuteOptionsParameter] = None,
-        bind_arguments: Optional[Dict[str, Any]] = None,
+        bind_arguments: Optional[_BindArguments] = None,
     ) -> Result:
         """Execute the statement represented by this
         :class:`.ORMExecuteState`, without re-invoking events that have
@@ -1626,9 +1627,9 @@ class Session(_SessionClassMethods, EventTarget):
 
     def connection(
         self,
-        bind_arguments: Optional[Dict[str, Any]] = None,
+        bind_arguments: Optional[_BindArguments] = None,
         execution_options: Optional[_ExecuteOptions] = None,
-    ) -> "Connection":
+    ) -> Connection:
         r"""Return a :class:`_engine.Connection` object corresponding to this
         :class:`.Session` object's transactional state.
 
@@ -1690,7 +1691,7 @@ class Session(_SessionClassMethods, EventTarget):
         statement: Executable,
         params: Optional[_CoreAnyExecuteParams] = None,
         execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[Dict[str, Any]] = None,
+        bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
     ) -> Result:
@@ -1833,7 +1834,7 @@ class Session(_SessionClassMethods, EventTarget):
         statement: Executable,
         params: Optional[_CoreSingleExecuteParams] = None,
         execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[Dict[str, Any]] = None,
+        bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> Any:
         """Execute a statement and return a scalar result.
@@ -1857,7 +1858,7 @@ class Session(_SessionClassMethods, EventTarget):
         statement: Executable,
         params: Optional[_CoreSingleExecuteParams] = None,
         execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[Dict[str, Any]] = None,
+        bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> ScalarResult[Any]:
         """Execute a statement and return the results as scalars.
@@ -3099,7 +3100,7 @@ class Session(_SessionClassMethods, EventTarget):
         _recursive: Dict[InstanceState[Any], object],
         _resolve_conflict_map: Dict[_IdentityKeyType[Any], object],
     ) -> _O:
-        mapper = _state_mapper(state)
+        mapper: Mapper[_O] = _state_mapper(state)
         if state in _recursive:
             return cast(_O, _recursive[state])
 
@@ -3249,6 +3250,7 @@ class Session(_SessionClassMethods, EventTarget):
 
         if new_instance:
             merged_state.manager.dispatch.load(merged_state, None)
+
         return merged
 
     def _validate_persistent(self, state: InstanceState[Any]) -> None:
@@ -4291,7 +4293,7 @@ class sessionmaker(_SessionClassMethods):
         In Python, the ``__call__`` method is invoked on an object when
         it is "called" in the same way as a function::
 
-            Session = sessionmaker()
+            Session = sessionmaker(some_engine)
             session = Session()  # invokes sessionmaker.__call__()
 
         """

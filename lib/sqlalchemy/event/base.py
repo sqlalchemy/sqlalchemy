@@ -256,6 +256,7 @@ class _HasEventsDispatch(Generic[_ET]):
     def _listen(
         cls,
         event_key: _EventKey[_ET],
+        *,
         propagate: bool = False,
         insert: bool = False,
         named: bool = False,
@@ -361,6 +362,7 @@ class Events(_HasEventsDispatch[_ET]):
     def _listen(
         cls,
         event_key: _EventKey[_ET],
+        *,
         propagate: bool = False,
         insert: bool = False,
         named: bool = False,

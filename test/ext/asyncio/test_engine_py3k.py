@@ -480,6 +480,28 @@ class AsyncEngineTest(EngineFixture):
             eq_(async_engine.pool.checkedin(), 0)
         is_not(p1, async_engine.pool)
 
+    @testing.requires.queue_pool
+    @async_test
+    async def test_dispose_no_close(self, async_engine):
+        c1 = await async_engine.connect()
+        c2 = await async_engine.connect()
+
+        await c1.close()
+        await c2.close()
+
+        p1 = async_engine.pool
+
+        if isinstance(p1, AsyncAdaptedQueuePool):
+            eq_(async_engine.pool.checkedin(), 2)
+
+        await async_engine.dispose(close=False)
+
+        # TODO: test that DBAPI connection was not closed
+
+        if isinstance(p1, AsyncAdaptedQueuePool):
+            eq_(async_engine.pool.checkedin(), 0)
+        is_not(p1, async_engine.pool)
+
     @testing.requires.independent_connections
     @async_test
     async def test_init_once_concurrency(self, async_engine):

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import List
-from typing import Sequence
 
 from sqlalchemy import create_engine
 from sqlalchemy import ForeignKey
@@ -45,6 +44,6 @@ with Session(e) as sess:
     sess.commit()
 
 with Session(e) as sess:
-    users: Sequence[User] = sess.scalars(
+    users: List[User] = sess.scalars(
         select(User), execution_options={"stream_results": False}
     ).all()

@@ -132,6 +132,8 @@ class Mapper(
     _identity_class: Type[_O]
 
     always_refresh: bool
+    allow_partial_pks: bool
+    version_id_col: Optional[ColumnElement[Any]]
 
     @util.deprecated_params(
         non_primary=(
@@ -2931,7 +2933,7 @@ class Mapper(
         self,
         state: InstanceState[_O],
         dict_: _InstanceDict,
-        column: Column[Any],
+        column: ColumnElement[Any],
         passive: PassiveFlag = PassiveFlag.PASSIVE_RETURN_NO_VALUE,
     ) -> Any:
         prop = self._columntoproperty[column]

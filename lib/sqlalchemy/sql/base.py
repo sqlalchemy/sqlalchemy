@@ -73,6 +73,7 @@ if TYPE_CHECKING:
     from .selectable import _SelectIterable
     from .selectable import FromClause
     from ..engine import Connection
+    from ..engine import CursorResult
     from ..engine import Result
     from ..engine.base import _CompiledCacheType
     from ..engine.interfaces import _CoreMultiExecuteParams
@@ -983,7 +984,7 @@ class Executable(roles.StatementRole, Generative):
             distilled_params: _CoreMultiExecuteParams,
             execution_options: _ExecuteOptionsParameter,
             _force: bool = False,
-        ) -> Result:
+        ) -> CursorResult:
             ...
 
     @util.ro_non_memoized_property

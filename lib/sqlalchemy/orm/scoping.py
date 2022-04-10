@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from .interfaces import ORMOption
     from .mapper import Mapper
     from .query import Query
+    from .session import _BindArguments
     from .session import _EntityBindKey
     from .session import _PKIdentityArgument
     from .session import _SessionBind
@@ -65,65 +66,7 @@ class _QueryDescriptorType(Protocol):
 
 _O = TypeVar("_O", bound=object)
 
-__all__ = ["scoped_session", "ScopedSessionMixin"]
-
-
-class ScopedSessionMixin:
-    session_factory: sessionmaker
-    _support_async: bool
-    registry: ScopedRegistry[Session]
-
-    @property
-    def _proxied(self) -> Session:
-        return self.registry()  # type: ignore
-
-    def __call__(self, **kw: Any) -> Session:
-        r"""Return the current :class:`.Session`, creating it
-        using the :attr:`.scoped_session.session_factory` if not present.
-
-        :param \**kw: Keyword arguments will be passed to the
-         :attr:`.scoped_session.session_factory` callable, if an existing
-         :class:`.Session` is not present.  If the :class:`.Session` is present
-         and keyword arguments have been passed,
-         :exc:`~sqlalchemy.exc.InvalidRequestError` is raised.
-
-        """
-        if kw:
-            if self.registry.has():
-                raise sa_exc.InvalidRequestError(
-                    "Scoped session is already present; "
-                    "no new arguments may be specified."
-                )
-            else:
-                sess = self.session_factory(**kw)
-                self.registry.set(sess)
-        else:
-            sess = self.registry()
-        if not self._support_async and sess._is_asyncio:
-            warn_deprecated(
-                "Using `scoped_session` with asyncio is deprecated and "
-                "will raise an error in a future version. "
-                "Please use `async_scoped_session` instead.",
-                "1.4.23",
-            )
-        return sess
-
-    def configure(self, **kwargs: Any) -> None:
-        """reconfigure the :class:`.sessionmaker` used by this
-        :class:`.scoped_session`.
-
-        See :meth:`.sessionmaker.configure`.
-
-        """
-
-        if self.registry.has():
-            warn(
-                "At least one scoped session is already present. "
-                " configure() can not affect sessions that have "
-                "already been created."
-            )
-
-        self.session_factory.configure(**kwargs)
+__all__ = ["scoped_session"]
 
 
 @create_proxy_methods(
@@ -173,7 +116,7 @@ class ScopedSessionMixin:
         "info",
     ],
 )
-class scoped_session(ScopedSessionMixin):
+class scoped_session:
     """Provides scoped management of :class:`.Session` objects.
 
     See :ref:`unitofwork_contextual` for a tutorial.
@@ -191,8 +134,9 @@ class scoped_session(ScopedSessionMixin):
     session_factory: sessionmaker
     """The `session_factory` provided to `__init__` is stored in this
     attribute and may be accessed at a later time.  This can be useful when
-    a new non-scoped :class:`.Session` or :class:`_engine.Connection` to the
-    database is needed."""
+    a new non-scoped :class:`.Session` is needed."""
+
+    registry: ScopedRegistry[Session]
 
     def __init__(
         self,
@@ -221,6 +165,58 @@ class scoped_session(ScopedSessionMixin):
             self.registry = ScopedRegistry(session_factory, scopefunc)
         else:
             self.registry = ThreadLocalRegistry(session_factory)
+
+    @property
+    def _proxied(self) -> Session:
+        return self.registry()
+
+    def __call__(self, **kw: Any) -> Session:
+        r"""Return the current :class:`.Session`, creating it
+        using the :attr:`.scoped_session.session_factory` if not present.
+
+        :param \**kw: Keyword arguments will be passed to the
+         :attr:`.scoped_session.session_factory` callable, if an existing
+         :class:`.Session` is not present.  If the :class:`.Session` is present
+         and keyword arguments have been passed,
+         :exc:`~sqlalchemy.exc.InvalidRequestError` is raised.
+
+        """
+        if kw:
+            if self.registry.has():
+                raise sa_exc.InvalidRequestError(
+                    "Scoped session is already present; "
+                    "no new arguments may be specified."
+                )
+            else:
+                sess = self.session_factory(**kw)
+                self.registry.set(sess)
+        else:
+            sess = self.registry()
+        if not self._support_async and sess._is_asyncio:
+            warn_deprecated(
+                "Using `scoped_session` with asyncio is deprecated and "
+                "will raise an error in a future version. "
+                "Please use `async_scoped_session` instead.",
+                "1.4.23",
+            )
+        return sess
+
+    def configure(self, **kwargs: Any) -> None:
+        """reconfigure the :class:`.sessionmaker` used by this
+        :class:`.scoped_session`.
+
+        See :meth:`.sessionmaker.configure`.
+
+        """
+
+        if self.registry.has():
+            warn(
+                "At least one scoped session is already present. "
+                " configure() can not affect sessions that have "
+                "already been created."
+            )
+
+        self.session_factory.configure(**kwargs)
 
     def remove(self) -> None:
         """Dispose of the current :class:`.Session`, if present.
@@ -494,9 +490,9 @@ class scoped_session(ScopedSessionMixin):
 
     def connection(
         self,
-        bind_arguments: Optional[Dict[str, Any]] = None,
+        bind_arguments: Optional[_BindArguments] = None,
         execution_options: Optional[_ExecuteOptions] = None,
-    ) -> "Connection":
+    ) -> Connection:
         r"""Return a :class:`_engine.Connection` object corresponding to this
         :class:`.Session` object's transactional state.
 
@@ -557,7 +553,7 @@ class scoped_session(ScopedSessionMixin):
         statement: Executable,
         params: Optional[_CoreAnyExecuteParams] = None,
         execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[Dict[str, Any]] = None,
+        bind_arguments: Optional[_BindArguments] = None,
         _parent_execute_state: Optional[Any] = None,
         _add_event: Optional[Any] = None,
     ) -> Result:
@@ -1567,7 +1563,7 @@ class scoped_session(ScopedSessionMixin):
         statement: Executable,
         params: Optional[_CoreSingleExecuteParams] = None,
         execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[Dict[str, Any]] = None,
+        bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> Any:
         r"""Execute a statement and return a scalar result.
@@ -1597,7 +1593,7 @@ class scoped_session(ScopedSessionMixin):
         statement: Executable,
         params: Optional[_CoreSingleExecuteParams] = None,
         execution_options: _ExecuteOptionsParameter = util.EMPTY_DICT,
-        bind_arguments: Optional[Dict[str, Any]] = None,
+        bind_arguments: Optional[_BindArguments] = None,
         **kw: Any,
     ) -> ScalarResult[Any]:
         r"""Execute a statement and return the results as scalars.

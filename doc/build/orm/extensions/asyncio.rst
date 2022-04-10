@@ -147,12 +147,12 @@ illustrates a complete example including mapper and session configuration::
     from sqlalchemy import Integer
     from sqlalchemy import String
     from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlalchemy.ext.asyncio import async_sessionmaker
     from sqlalchemy.ext.asyncio import create_async_engine
     from sqlalchemy.future import select
     from sqlalchemy.orm import declarative_base
     from sqlalchemy.orm import relationship
     from sqlalchemy.orm import selectinload
-    from sqlalchemy.orm import sessionmaker
 
     Base = declarative_base()
 
@@ -190,9 +190,7 @@ illustrates a complete example including mapper and session configuration::
 
         # expire_on_commit=False will prevent attributes from being expired
         # after commit.
-        async_session = sessionmaker(
-            engine, expire_on_commit=False, class_=AsyncSession
-        )
+        async_session = async_sessionmaker(engine, expire_on_commit=False)
 
         async with async_session() as session:
             async with session.begin():
@@ -234,7 +232,7 @@ illustrates a complete example including mapper and session configuration::
     asyncio.run(async_main())
 
 In the example above, the :class:`_asyncio.AsyncSession` is instantiated using
-the optional :class:`_orm.sessionmaker` helper, and associated with an
+the optional :class:`_asyncio.async_sessionmaker` helper, and associated with an
 :class:`_asyncio.AsyncEngine` against particular database URL. It is
 then used in a Python asynchronous context manager (i.e. ``async with:``
 statement) so that it is automatically closed at the end of the block; this is
@@ -284,8 +282,8 @@ prevent this:
       async_session = AsyncSession(engine, expire_on_commit=False)
 
       # sessionmaker version
-      async_session = sessionmaker(
-          engine, expire_on_commit=False, class_=AsyncSession
+      async_session = async_sessionmaker(
+          engine, expire_on_commit=False
       )
 
       async with async_session() as session:
@@ -722,11 +720,11 @@ constructor::
 
     from asyncio import current_task
 
-    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.ext.asyncio import async_sessionmaker
     from sqlalchemy.ext.asyncio import async_scoped_session
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    async_session_factory = sessionmaker(some_async_engine, class_=AsyncSession)
+    async_session_factory = async_sessionmaker(some_async_engine, expire_on_commit=False)
     AsyncScopedSession = async_scoped_session(async_session_factory, scopefunc=current_task)
 
     some_async_session = AsyncScopedSession()
@@ -832,6 +830,10 @@ ORM Session API Documentation
 .. autofunction:: async_object_session
 
 .. autofunction:: async_session
+
+.. autoclass:: async_sessionmaker
+   :members:
+   :inherited-members:
 
 .. autoclass:: async_scoped_session
    :members:

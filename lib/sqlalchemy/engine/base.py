@@ -42,7 +42,7 @@ from ..sql import util as sql_util
 _CompiledCacheType = MutableMapping[Any, "Compiled"]
 
 if typing.TYPE_CHECKING:
-    from . import Result
+    from . import CursorResult
     from . import ScalarResult
     from .interfaces import _AnyExecuteParams
     from .interfaces import _AnyMultiExecuteParams
@@ -472,7 +472,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         else:
             return self._dbapi_connection
 
-    def get_isolation_level(self) -> str:
+    def get_isolation_level(self) -> _IsolationLevel:
         """Return the current isolation level assigned to this
         :class:`_engine.Connection`.
 
@@ -1186,9 +1186,9 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         statement: Executable,
         parameters: Optional[_CoreAnyExecuteParams] = None,
         execution_options: Optional[_ExecuteOptionsParameter] = None,
-    ) -> Result:
+    ) -> CursorResult:
         r"""Executes a SQL statement construct and returns a
-        :class:`_engine.Result`.
+        :class:`_engine.CursorResult`.
 
         :param statement: The statement to be executed.  This is always
          an object that is in both the :class:`_expression.ClauseElement` and
@@ -1235,7 +1235,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         func: FunctionElement[Any],
         distilled_parameters: _CoreMultiExecuteParams,
         execution_options: _ExecuteOptionsParameter,
-    ) -> Result:
+    ) -> CursorResult:
         """Execute a sql.FunctionElement object."""
 
         return self._execute_clauseelement(
@@ -1306,7 +1306,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         ddl: DDLElement,
         distilled_parameters: _CoreMultiExecuteParams,
         execution_options: _ExecuteOptionsParameter,
-    ) -> Result:
+    ) -> CursorResult:
         """Execute a schema.DDL object."""
 
         execution_options = ddl._execution_options.merge_with(
@@ -1403,7 +1403,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         elem: Executable,
         distilled_parameters: _CoreMultiExecuteParams,
         execution_options: _ExecuteOptionsParameter,
-    ) -> Result:
+    ) -> CursorResult:
         """Execute a sql.ClauseElement object."""
 
         execution_options = elem._execution_options.merge_with(
@@ -1476,7 +1476,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         compiled: Compiled,
         distilled_parameters: _CoreMultiExecuteParams,
         execution_options: _ExecuteOptionsParameter = _EMPTY_EXECUTION_OPTS,
-    ) -> Result:
+    ) -> CursorResult:
         """Execute a sql.Compiled object.
 
         TODO: why do we have this?   likely deprecate or remove
@@ -1526,7 +1526,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         statement: str,
         parameters: Optional[_DBAPIAnyExecuteParams] = None,
         execution_options: Optional[_ExecuteOptionsParameter] = None,
-    ) -> Result:
+    ) -> CursorResult:
         r"""Executes a SQL statement construct and returns a
         :class:`_engine.CursorResult`.
 
@@ -1603,7 +1603,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         execution_options: _ExecuteOptions,
         *args: Any,
         **kw: Any,
-    ) -> Result:
+    ) -> CursorResult:
         """Create an :class:`.ExecutionContext` and execute, returning
         a :class:`_engine.CursorResult`."""
 

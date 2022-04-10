@@ -16,6 +16,7 @@ from typing import Tuple
 from typing import Type
 from typing import Union
 
+from .base import Connection
 from .base import Engine
 from .interfaces import ConnectionEventsTarget
 from .interfaces import DBAPIConnection
@@ -123,9 +124,23 @@ class ConnectionEvents(event.Events[ConnectionEventsTarget]):
     _dispatch_target = ConnectionEventsTarget
 
     @classmethod
-    def _listen(  # type: ignore[override]
+    def _accept_with(
+        cls,
+        target: Union[ConnectionEventsTarget, Type[ConnectionEventsTarget]],
+    ) -> Optional[Union[ConnectionEventsTarget, Type[ConnectionEventsTarget]]]:
+        default_dispatch = super()._accept_with(target)
+        if default_dispatch is None and hasattr(
+            target, "_no_async_engine_events"
+        ):
+            target._no_async_engine_events()  # type: ignore
+
+        return default_dispatch
+
+    @classmethod
+    def _listen(
         cls,
         event_key: event._EventKey[ConnectionEventsTarget],
+        *,
         retval: bool = False,
         **kw: Any,
     ) -> None:
@@ -769,7 +784,9 @@ class DialectEvents(event.Events[Dialect]):
     def _listen(  # type: ignore
         cls,
         event_key: event._EventKey[Dialect],
+        *,
         retval: bool = False,
+        **kw: Any,
     ) -> None:
         target = event_key.dispatch_target
 
@@ -789,10 +806,8 @@ class DialectEvents(event.Events[Dialect]):
             return target.dialect
         elif isinstance(target, Dialect):
             return target
-        elif hasattr(target, "dispatch") and hasattr(
-            target.dispatch._events, "_no_async_engine_events"
-        ):
-            target.dispatch._events._no_async_engine_events()
+        elif hasattr(target, "_no_async_engine_events"):
+            target._no_async_engine_events()
         else:
             return None
 

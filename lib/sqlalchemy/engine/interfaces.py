@@ -46,7 +46,7 @@ from ..util.typing import TypedDict
 if TYPE_CHECKING:
     from .base import Connection
     from .base import Engine
-    from .result import Result
+    from .cursor import CursorResult
     from .url import URL
     from ..event import _ListenerFnType
     from ..event import dispatcher
@@ -2422,7 +2422,7 @@ class ExecutionContext:
     def _get_cache_stats(self) -> str:
         raise NotImplementedError()
 
-    def _setup_result_proxy(self) -> Result:
+    def _setup_result_proxy(self) -> CursorResult:
         raise NotImplementedError()
 
     def fire_sequence(self, seq: Sequence_SchemaItem, type_: Integer) -> int:
