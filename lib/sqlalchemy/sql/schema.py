@@ -1661,7 +1661,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause):
                 parameter to :class:`_schema.Column`.
 
 
-        """  # noqa E501
+        """  # noqa: E501, RST201, RST202
 
         name = kwargs.pop("name", None)
         type_ = kwargs.pop("type_", None)

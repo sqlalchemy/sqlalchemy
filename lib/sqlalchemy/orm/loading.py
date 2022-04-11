@@ -758,7 +758,7 @@ def _instance_processor(
                         # test.orm.inheritance.test_basic ->
                         # EagerTargetingTest.test_adapt_stringency
                         # OptimizedLoadTest.test_column_expression_joined
-                        # PolymorphicOnNotLocalTest.test_polymorphic_on_column_prop  # noqa E501
+                        # PolymorphicOnNotLocalTest.test_polymorphic_on_column_prop  # noqa: E501
                         #
 
                         adapted_col = adapter.columns[col]

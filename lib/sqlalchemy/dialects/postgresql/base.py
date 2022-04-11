@@ -1421,7 +1421,7 @@ E.g.::
     )
 
 
-"""  # noqa E501
+"""  # noqa: E501
 
 from collections import defaultdict
 import datetime as dt

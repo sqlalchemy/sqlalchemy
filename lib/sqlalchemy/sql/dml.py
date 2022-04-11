@@ -439,7 +439,7 @@ class UpdateBase(
 
           :ref:`tutorial_insert_returning` - in the :ref:`unified_tutorial`
 
-        """  # noqa E501
+        """  # noqa: E501
         if self._return_defaults:
             raise exc.InvalidRequestError(
                 "return_defaults() is already configured on this statement"
@@ -578,7 +578,7 @@ class UpdateBase(
 
             :ref:`queryguide_inspection` - ORM background
 
-        """  # noqa E501
+        """  # noqa: E501
         meth = DMLState.get_plugin_class(
             self
         ).get_returning_column_descriptions

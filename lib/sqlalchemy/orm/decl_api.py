@@ -200,7 +200,7 @@ class declared_attr(interfaces._MappedAttribute, property):
         :ref:`orm_declarative_dataclasses_mixin` - illustrates special forms
         for use with Python dataclasses
 
-    """  # noqa E501
+    """  # noqa: E501
 
     def __init__(self, fget, cascading=False):
         super(declared_attr, self).__init__(fget)

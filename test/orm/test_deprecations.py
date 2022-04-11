@@ -3151,7 +3151,7 @@ class DeprecatedInhTest(_poly_fixtures._Polymorphic):
         mach_alias = machines.select()
 
         # note python 2 does not allow parens here; reformat in py3 only
-        with DeprecatedQueryTest._expect_implicit_subquery(), _aliased_join_warning(  # noqa E501
+        with DeprecatedQueryTest._expect_implicit_subquery(), _aliased_join_warning(  # noqa: E501
             "Person->people"
         ):
             self.assert_compile(
@@ -3884,7 +3884,7 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         with testing.expect_deprecated(
             "The mapper.non_primary parameter is deprecated"
         ):
-            m = self.mapper_registry.map_imperatively(  # noqa F841
+            m = self.mapper_registry.map_imperatively(  # noqa: F841
                 User,
                 users,
                 non_primary=True,
@@ -3947,7 +3947,7 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         with testing.expect_deprecated(
             "The mapper.non_primary parameter is deprecated"
         ):
-            m = mapper(  # noqa F841
+            m = mapper(  # noqa: F841
                 User,
                 users,
                 non_primary=True,

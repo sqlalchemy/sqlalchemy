@@ -12,7 +12,7 @@ greenlet_error = None
 
 if compat.py3k:
     try:
-        import greenlet  # noqa F401
+        import greenlet  # noqa: F401
     except ImportError as e:
         greenlet_error = str(e)
     else:
@@ -22,18 +22,18 @@ if compat.py3k:
         from ._concurrency_py3k import greenlet_spawn
         from ._concurrency_py3k import is_exit_exception
         from ._concurrency_py3k import AsyncAdaptedLock
-        from ._concurrency_py3k import _util_async_run  # noqa F401
+        from ._concurrency_py3k import _util_async_run  # noqa: F401
         from ._concurrency_py3k import (
             _util_async_run_coroutine_function,
-        )  # noqa F401, E501
-        from ._concurrency_py3k import asyncio  # noqa F401
+        )  # noqa: F401, E501
+        from ._concurrency_py3k import asyncio  # noqa: F401
 
     # does not need greennlet, just Python 3
-    from ._compat_py3k import asynccontextmanager  # noqa F401
+    from ._compat_py3k import asynccontextmanager  # noqa: F401
 
 if not have_greenlet:
 
-    asyncio = None  # noqa F811
+    asyncio = None  # noqa: F811
 
     def _not_implemented():
         # this conditional is to prevent pylance from considering
@@ -51,23 +51,23 @@ if not have_greenlet:
                 else ""
             )
 
-    def is_exit_exception(e):  # noqa F811
+    def is_exit_exception(e):  # noqa: F811
         return not isinstance(e, Exception)
 
-    def await_only(thing):  # noqa F811
+    def await_only(thing):  # noqa: F811
         _not_implemented()
 
-    def await_fallback(thing):  # noqa F81
+    def await_fallback(thing):  # noqa: F811
         return thing
 
-    def greenlet_spawn(fn, *args, **kw):  # noqa F81
+    def greenlet_spawn(fn, *args, **kw):  # noqa: F811
         _not_implemented()
 
-    def AsyncAdaptedLock(*args, **kw):  # noqa F81
+    def AsyncAdaptedLock(*args, **kw):  # noqa: F811
         _not_implemented()
 
-    def _util_async_run(fn, *arg, **kw):  # noqa F81
+    def _util_async_run(fn, *arg, **kw):  # noqa: F811
         return fn(*arg, **kw)
 
-    def _util_async_run_coroutine_function(fn, *arg, **kw):  # noqa F81
+    def _util_async_run_coroutine_function(fn, *arg, **kw):  # noqa: F811
         _not_implemented()

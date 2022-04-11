@@ -471,7 +471,7 @@ class ExecuteTest(fixtures.TablesTest):
             eq_(str(err), message)
 
             # unicode accessor decodes to utf-8
-            eq_(unicode(err), util.u("some message méil"))  # noqa F821
+            eq_(unicode(err), util.u("some message méil"))  # noqa: F821
         else:
             eq_(str(err), util.u("some message méil"))
 
@@ -486,7 +486,7 @@ class ExecuteTest(fixtures.TablesTest):
             eq_(str(err), message)
 
             # unicode accessor decodes to utf-8
-            eq_(unicode(err), util.u("some message m\\xe9il"))  # noqa F821
+            eq_(unicode(err), util.u("some message m\\xe9il"))  # noqa: F821
         else:
             eq_(str(err), util.u("some message m\\xe9il"))
 
@@ -497,7 +497,7 @@ class ExecuteTest(fixtures.TablesTest):
 
         err = tsa.exc.SQLAlchemyError(message)
         if util.py2k:
-            eq_(unicode(err), util.u("some message méil"))  # noqa F821
+            eq_(unicode(err), util.u("some message méil"))  # noqa: F821
         else:
             eq_(str(err), util.u("some message méil"))
 
@@ -506,7 +506,7 @@ class ExecuteTest(fixtures.TablesTest):
         eq_(str(err), "foo")
 
         if util.py2k:
-            eq_(unicode(err), util.u("fóó"))  # noqa F821
+            eq_(unicode(err), util.u("fóó"))  # noqa: F821
 
     def test_stmt_exception_str_multi_args(self):
         err = tsa.exc.SQLAlchemyError("some message", 206)

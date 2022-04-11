@@ -889,7 +889,7 @@ LABEL_STYLE_NONE = util.symbol(
 
     .. versionadded:: 1.4
 
-""",  # noqa E501
+""",  # noqa: E501
 )
 
 LABEL_STYLE_TABLENAME_PLUS_COL = util.symbol(
@@ -919,7 +919,7 @@ LABEL_STYLE_TABLENAME_PLUS_COL = util.symbol(
 
     .. versionadded:: 1.4
 
-""",  # noqa E501
+""",  # noqa: E501
 )
 
 
@@ -1757,7 +1757,7 @@ class TableValuedAlias(Alias):
 
         :ref:`tutorial_functions_table_valued` - in the :ref:`unified_tutorial`
 
-    """  # noqa E501
+    """  # noqa: E501
 
     __visit_name__ = "table_valued_alias"
 
@@ -1884,7 +1884,7 @@ class TableValuedAlias(Alias):
          datatype specification with each column. This is a special syntax
          currently known to be required by PostgreSQL for some SQL functions.
 
-        """  # noqa E501
+        """  # noqa: E501
 
         # note: don't use the @_generative system here, keep a reference
         # to the original object.  otherwise you can have re-use of the
@@ -5897,7 +5897,7 @@ class Select(
 
          .. versionadded:: 1.4.23
 
-        """  # noqa E501
+        """  # noqa: E501
 
         # memoizations should be cleared here as of
         # I95c560ffcbfa30b26644999412fb6a385125f663 , asserting this
@@ -6709,7 +6709,7 @@ class Exists(UnaryExpression):
             :meth:`_sql.SelectBase.exists` - method to transform a ``SELECT`` to an
             ``EXISTS`` clause.
 
-        """  # noqa E501
+        """  # noqa: E501
         if args and isinstance(args[0], (SelectBase, ScalarSelect)):
             s = args[0]
         else:

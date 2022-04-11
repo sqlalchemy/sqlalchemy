@@ -174,7 +174,7 @@ class MypyPluginTest(fixtures.TestBase):
                 if m:
                     is_mypy = bool(m.group(1))
                     expected_msg = m.group(2)
-                    expected_msg = re.sub(r"# noqa ?.*", "", m.group(2))
+                    expected_msg = re.sub(r"# noqa[:]? ?.*", "", m.group(2))
                     expected_errors.append(
                         (num, is_mypy, expected_msg.strip())
                     )

@@ -19,5 +19,5 @@ class User:
 
 u1 = User()
 
-# EXPECTED_MYPY: Incompatible types in assignment (expression has type "Optional[str]", variable has type "Optional[int]") # noqa E501
+# EXPECTED_MYPY: Incompatible types in assignment (expression has type "Optional[str]", variable has type "Optional[int]") # noqa: E501
 p: Optional[int] = u1.name

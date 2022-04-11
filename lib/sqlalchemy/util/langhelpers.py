@@ -668,7 +668,7 @@ def create_proxy_methods(
             else:
                 code = (
                     "def %(name)s(%(args)s):\n"
-                    "    return %(self_arg)s._proxied.%(name)s(%(apply_kw_proxied)s)"  # noqa E501
+                    "    return %(self_arg)s._proxied.%(name)s(%(apply_kw_proxied)s)"  # noqa: E501
                     % metadata
                 )
 
@@ -1932,9 +1932,9 @@ def repr_tuple_names(names):
 
 def has_compiled_ext():
     try:
-        from sqlalchemy import cimmutabledict  # noqa F401
-        from sqlalchemy import cprocessors  # noqa F401
-        from sqlalchemy import cresultproxy  # noqa F401
+        from sqlalchemy import cimmutabledict  # noqa: F401
+        from sqlalchemy import cprocessors  # noqa: F401
+        from sqlalchemy import cresultproxy  # noqa: F401
 
         return True
     except ImportError:
