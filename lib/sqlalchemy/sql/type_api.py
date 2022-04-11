@@ -176,7 +176,7 @@ class TypeEngine(Visitable, Generic[_T]):
             op_fn, addtl_kw = default_comparator.operator_lookup[op.__name__]
             if kwargs:
                 addtl_kw = addtl_kw.union(kwargs)
-            return op_fn(self.expr, op, other, reverse=True, **addtl_kw)  # type: ignore  # noqa E501
+            return op_fn(self.expr, op, other, reverse=True, **addtl_kw)  # type: ignore  # noqa: E501
 
         def _adapt_expression(
             self,
@@ -1656,14 +1656,14 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
     def comparator_factory(  # type: ignore  # mypy properties bug
         self,
     ) -> _ComparatorFactory[Any]:
-        if TypeDecorator.Comparator in self.impl.comparator_factory.__mro__:  # type: ignore # noqa E501
+        if TypeDecorator.Comparator in self.impl.comparator_factory.__mro__:  # type: ignore # noqa: E501
             return self.impl.comparator_factory
         else:
             # reconcile the Comparator class on the impl with that
             # of TypeDecorator
             return type(
                 "TDComparator",
-                (TypeDecorator.Comparator, self.impl.comparator_factory),  # type: ignore # noqa E501
+                (TypeDecorator.Comparator, self.impl.comparator_factory),  # type: ignore # noqa: E501
                 {},
             )
 
@@ -2173,7 +2173,7 @@ class TypeDecorator(SchemaEventTarget, ExternalType, TypeEngine[_T]):
 
     # mypy property bug
     @property
-    def sort_key_function(self) -> Optional[Callable[[Any], Any]]:  # type: ignore # noqa E501
+    def sort_key_function(self) -> Optional[Callable[[Any], Any]]:  # type: ignore # noqa: E501
         return self.impl_instance.sort_key_function
 
     def __repr__(self) -> str:

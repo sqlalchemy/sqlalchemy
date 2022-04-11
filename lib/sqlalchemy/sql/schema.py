@@ -683,10 +683,10 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
             by the SQLAlchemy dialect.
 
             .. note:: setting this flag to ``False`` will not provide
-            case-insensitive behavior for table reflection; table reflection
-            will always search for a mixed-case name in a case sensitive
-            fashion.  Case insensitive names are specified in SQLAlchemy only
-            by stating the name with all lower case characters.
+              case-insensitive behavior for table reflection; table reflection
+              will always search for a mixed-case name in a case sensitive
+              fashion.  Case insensitive names are specified in SQLAlchemy only
+              by stating the name with all lower case characters.
 
         :param quote_schema: same as 'quote' but applies to the schema identifier.
 
@@ -707,10 +707,10 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
             specify the special symbol :attr:`.BLANK_SCHEMA`.
 
             .. versionadded:: 1.0.14  Added the :attr:`.BLANK_SCHEMA` symbol to
-            allow a :class:`_schema.Table`
-            to have a blank schema name even when the
-            parent :class:`_schema.MetaData` specifies
-            :paramref:`_schema.MetaData.schema`.
+              allow a :class:`_schema.Table`
+              to have a blank schema name even when the
+              parent :class:`_schema.MetaData` specifies
+              :paramref:`_schema.MetaData.schema`.
 
             The quoting rules for the schema name are the same as those for the
             ``name`` parameter, in that quoting is applied for reserved words or
@@ -730,7 +730,7 @@ class Table(DialectKWArgs, HasSchemaAttr, TableClause):
             See the documentation regarding an individual dialect at
             :ref:`dialect_toplevel` for detail on documented arguments.
 
-        """  # noqa E501
+        """  # noqa: E501
 
         # __init__ is overridden to prevent __new__ from
         # calling the superclass constructor.
@@ -1834,7 +1834,7 @@ class Column(DialectKWArgs, SchemaItem, ColumnClause[_T]):
                 parameter to :class:`_schema.Column`.
 
 
-        """  # noqa E501
+        """  # noqa: E501, RST201, RST202
 
         name = kwargs.pop("name", None)
         type_ = kwargs.pop("type_", None)

@@ -157,7 +157,7 @@ def exists(
         :meth:`_sql.SelectBase.exists` - method to transform a ``SELECT`` to an
         ``EXISTS`` clause.
 
-    """  # noqa E501
+    """  # noqa: E501
 
     return Exists(__argument)
 

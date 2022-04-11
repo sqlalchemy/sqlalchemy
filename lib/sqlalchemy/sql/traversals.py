@@ -146,7 +146,7 @@ class HasShallowCopy(HasTraverseInternals):
                 "_generated_shallow_from_dict_traversal",
             )
 
-            cls._generated_shallow_from_dict_traversal = shallow_from_dict  # type: ignore  # noqa E501
+            cls._generated_shallow_from_dict_traversal = shallow_from_dict  # type: ignore  # noqa: E501
 
         shallow_from_dict(self, d)
 
@@ -164,7 +164,7 @@ class HasShallowCopy(HasTraverseInternals):
                 cls._traverse_internals, "_generated_shallow_to_dict_traversal"
             )
 
-            cls._generated_shallow_to_dict_traversal = shallow_to_dict  # type: ignore  # noqa E501
+            cls._generated_shallow_to_dict_traversal = shallow_to_dict  # type: ignore  # noqa: E501
         return shallow_to_dict(self)
 
     def _shallow_copy_to(

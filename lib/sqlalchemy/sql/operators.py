@@ -417,7 +417,7 @@ class custom_op(OperatorType, Generic[_T]):
         if hasattr(left, "__sa_operate__"):
             return left.operate(self, right, *other, **kwargs)
         elif self.python_impl:
-            return self.python_impl(left, right, *other, **kwargs)  # type: ignore  # noqa E501
+            return self.python_impl(left, right, *other, **kwargs)  # type: ignore  # noqa: E501
         else:
             raise exc.InvalidRequestError(
                 f"Custom operator {self.opstring!r} can't be used with "

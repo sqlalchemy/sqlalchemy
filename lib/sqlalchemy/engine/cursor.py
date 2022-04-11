@@ -1637,7 +1637,7 @@ class CursorResult(Result):
 
             :ref:`tutorial_update_delete_rowcount` - in the :ref:`unified_tutorial`
 
-        """  # noqa E501
+        """  # noqa: E501
 
         try:
             return self.context.rowcount

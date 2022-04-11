@@ -510,7 +510,7 @@ def get_callable_argspec(
             fn.__init__, no_self=no_self, _is_init=True
         )
     elif hasattr(fn, "__func__"):
-        return compat.inspect_getfullargspec(fn.__func__)  # type: ignore[attr-defined] # noqa E501
+        return compat.inspect_getfullargspec(fn.__func__)  # type: ignore[attr-defined] # noqa: E501
     elif hasattr(fn, "__call__"):
         if inspect.ismethod(fn.__call__):  # type: ignore [operator]
             return get_callable_argspec(
@@ -711,7 +711,7 @@ def create_proxy_methods(
             else:
                 code = (
                     "def %(name)s%(grouped_args)s:\n"
-                    "    return %(self_arg)s._proxied.%(name)s(%(apply_kw_proxied)s)"  # noqa E501
+                    "    return %(self_arg)s._proxied.%(name)s(%(apply_kw_proxied)s)"  # noqa: E501
                     % metadata
                 )
 
@@ -1544,7 +1544,7 @@ def assert_arg_type(
         if isinstance(argtype, tuple):
             raise exc.ArgumentError(
                 "Argument '%s' is expected to be one of type %s, got '%s'"
-                % (name, " or ".join("'%s'" % a for a in argtype), type(arg))  # type: ignore  # noqa E501
+                % (name, " or ".join("'%s'" % a for a in argtype), type(arg))  # type: ignore  # noqa: E501
             )
         else:
             raise exc.ArgumentError(

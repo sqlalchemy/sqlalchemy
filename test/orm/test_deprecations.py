@@ -1345,7 +1345,7 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         with testing.expect_deprecated(
             "The mapper.non_primary parameter is deprecated"
         ):
-            m = self.mapper_registry.map_imperatively(  # noqa F841
+            m = self.mapper_registry.map_imperatively(  # noqa: F841
                 User,
                 users,
                 non_primary=True,
@@ -1402,7 +1402,7 @@ class NonPrimaryMapperTest(_fixtures.FixtureTest, AssertsCompiledSQL):
         with testing.expect_deprecated(
             "The mapper.non_primary parameter is deprecated"
         ):
-            m = registry.map_imperatively(  # noqa F841
+            m = registry.map_imperatively(  # noqa: F841
                 User,
                 users,
                 non_primary=True,

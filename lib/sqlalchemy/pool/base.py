@@ -269,7 +269,7 @@ class Pool(log.Identified, event.EventTarget):
 
         # mypy seems to get super confused assigning functions to
         # attributes
-        self._invoke_creator = self._should_wrap_creator(creator)  # type: ignore  # noqa E501
+        self._invoke_creator = self._should_wrap_creator(creator)  # type: ignore  # noqa: E501
 
     @_creator.deleter
     def _creator(self) -> None:
@@ -609,7 +609,7 @@ class _ConnectionRecord(ConnectionPoolEntry):
     dbapi_connection: Optional[DBAPIConnection]
 
     @property
-    def driver_connection(self) -> Optional[Any]:  # type: ignore[override]  # mypy#4125  # noqa E501
+    def driver_connection(self) -> Optional[Any]:  # type: ignore[override]  # mypy#4125  # noqa: E501
         if self.dbapi_connection is None:
             return None
         else:
@@ -632,7 +632,7 @@ class _ConnectionRecord(ConnectionPoolEntry):
         return {}
 
     @util.memoized_property
-    def record_info(self) -> Optional[Dict[str, Any]]:  # type: ignore[override]  # mypy#4125  # noqa E501
+    def record_info(self) -> Optional[Dict[str, Any]]:  # type: ignore[override]  # mypy#4125  # noqa: E501
         return {}
 
     @classmethod
@@ -1081,7 +1081,7 @@ class _AdhocProxiedConnection(PoolProxiedConnection):
         self._is_valid = False
 
     @property
-    def record_info(self) -> Optional[Dict[str, Any]]:  # type: ignore[override]  # mypy#4125  # noqa E501
+    def record_info(self) -> Optional[Dict[str, Any]]:  # type: ignore[override]  # mypy#4125  # noqa: E501
         return self._connection_record.record_info
 
     def cursor(self, *args: Any, **kwargs: Any) -> DBAPICursor:
@@ -1147,7 +1147,7 @@ class _ConnectionFairy(PoolProxiedConnection):
     _connection_record: Optional[_ConnectionRecord]
 
     @property
-    def driver_connection(self) -> Optional[Any]:  # type: ignore[override]  # mypy#4125  # noqa E501
+    def driver_connection(self) -> Optional[Any]:  # type: ignore[override]  # mypy#4125  # noqa: E501
         if self._connection_record is None:
             return None
         return self._connection_record.driver_connection
@@ -1322,7 +1322,7 @@ class _ConnectionFairy(PoolProxiedConnection):
             return self._connection_record.info
 
     @property
-    def record_info(self) -> Optional[Dict[str, Any]]:  # type: ignore[override]  # mypy#4125  # noqa E501
+    def record_info(self) -> Optional[Dict[str, Any]]:  # type: ignore[override]  # mypy#4125  # noqa: E501
         if self._connection_record is None:
             return None
         else:

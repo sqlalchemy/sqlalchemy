@@ -430,7 +430,7 @@ def _key_getters_for_crud_column(
         _column_as_key = functools.partial(  # type: ignore
             coercions.expect_as_key, roles.DMLColumnRole
         )
-        _getattr_col_key = _col_bind_name = operator.attrgetter("key")  # type: ignore  # noqa E501
+        _getattr_col_key = _col_bind_name = operator.attrgetter("key")  # type: ignore  # noqa: E501
 
     return _column_as_key, _getattr_col_key, _col_bind_name
 

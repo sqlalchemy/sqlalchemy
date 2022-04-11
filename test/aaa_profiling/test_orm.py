@@ -1196,7 +1196,7 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
             for i in range(100):
                 # test counts assume objects remain in the session
                 # from previous run
-                r = q.all()  # noqa F841
+                r = q.all()  # noqa: F841
 
         go()
 
@@ -1212,7 +1212,7 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
             for i in range(100):
                 # test counts assume objects remain in the session
                 # from previous run
-                r = q.all()  # noqa F841
+                r = q.all()  # noqa: F841
 
         go()
 
@@ -1226,7 +1226,7 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
             for i in range(100):
                 # test counts assume objects remain in the session
                 # from previous run
-                r = q.all()  # noqa F841
+                r = q.all()  # noqa: F841
 
         go()
 
@@ -1240,7 +1240,7 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
             for i in range(100):
                 # test counts assume objects remain in the session
                 # from previous run
-                r = q.all()  # noqa F841
+                r = q.all()  # noqa: F841
 
         go()
 
@@ -1255,7 +1255,7 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
             for i in range(100):
                 # test counts assume objects remain in the session
                 # from previous run
-                r = q.all()  # noqa F841
+                r = q.all()  # noqa: F841
 
         go()
 
@@ -1270,7 +1270,7 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
             for i in range(100):
                 # test counts assume objects remain in the session
                 # from previous run
-                r = q.all()  # noqa F841
+                r = q.all()  # noqa: F841
 
         go()
 
@@ -1284,7 +1284,7 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
             for i in range(100):
                 # test counts assume objects remain in the session
                 # from previous run
-                r = q.all()  # noqa F841
+                r = q.all()  # noqa: F841
 
         go()
 
@@ -1299,7 +1299,7 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
             for i in range(100):
                 # test counts assume objects remain in the session
                 # from previous run
-                r = q.all()  # noqa F841
+                r = q.all()  # noqa: F841
 
         go()
 
@@ -1313,6 +1313,6 @@ class AnnotatedOverheadTest(NoCache, fixtures.MappedTest):
             for i in range(100):
                 # test counts assume objects remain in the session
                 # from previous run
-                r = q.all()  # noqa F841
+                r = q.all()  # noqa: F841
 
         go()

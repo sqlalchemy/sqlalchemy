@@ -180,7 +180,7 @@ class PyODBCConnector(Connector):
         dbapi_con = connection.connection.dbapi_connection
         version: Tuple[Union[int, str], ...] = ()
         r = re.compile(r"[.\-]")
-        for n in r.split(dbapi_con.getinfo(self.dbapi.SQL_DBMS_VER)):  # type: ignore[union-attr]  # noqa E501
+        for n in r.split(dbapi_con.getinfo(self.dbapi.SQL_DBMS_VER)):  # type: ignore[union-attr]  # noqa: E501
             try:
                 version += (int(n),)
             except ValueError:
@@ -215,7 +215,7 @@ class PyODBCConnector(Connector):
     def get_isolation_level_values(
         self, dbapi_connection: interfaces.DBAPIConnection
     ) -> List[_IsolationLevel]:
-        return super().get_isolation_level_values(dbapi_connection) + [  # type: ignore  # noqa E501
+        return super().get_isolation_level_values(dbapi_connection) + [  # type: ignore  # noqa: E501
             "AUTOCOMMIT"
         ]
 

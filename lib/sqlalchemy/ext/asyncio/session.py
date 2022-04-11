@@ -503,7 +503,7 @@ class AsyncSession(ReversibleProxy):
         blocking-style code, which will be translated to implicitly async calls
         at the point of invoking IO on the database drivers.
 
-        """  # noqa E501
+        """  # noqa: E501
 
         return self.sync_session.get_bind(
             mapper=mapper, clause=clause, bind=bind, **kw

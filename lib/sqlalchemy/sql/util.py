@@ -40,11 +40,11 @@ from .base import _from_objects
 from .base import ColumnSet
 from .cache_key import HasCacheKey  # noqa
 from .ddl import sort_tables  # noqa
-from .elements import _find_columns  # noqa
+from .elements import _find_columns
 from .elements import _label_reference
 from .elements import _textual_label_reference
 from .elements import BindParameter
-from .elements import ClauseElement  # noqa
+from .elements import ClauseElement
 from .elements import ColumnClause
 from .elements import ColumnElement
 from .elements import Grouping

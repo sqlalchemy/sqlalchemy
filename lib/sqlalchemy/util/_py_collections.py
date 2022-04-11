@@ -195,7 +195,7 @@ class OrderedSet(Set[_T]):
         return self  # type: ignore
 
     def union(self, *other: Iterable[_S]) -> "OrderedSet[Union[_T, _S]]":
-        result: "OrderedSet[Union[_T, _S]]" = self.__class__(self)  # type: ignore  # noqa E501
+        result: "OrderedSet[Union[_T, _S]]" = self.__class__(self)  # type: ignore  # noqa: E501
         for o in other:
             result.update(o)
         return result

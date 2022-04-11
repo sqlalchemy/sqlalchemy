@@ -200,7 +200,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
 
             :meth:`_functions.FunctionElement.column_valued`
 
-        """  # noqa E501
+        """  # noqa: E501
 
         return ScalarFunctionColumn(self, name, type_)
 
@@ -270,7 +270,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             :meth:`_sql.TableValuedAlias.render_derived` - renders the alias
             using a derived column clause, e.g. ``AS name(col1, col2, ...)``
 
-        """  # noqa 501
+        """  # noqa: 501
 
         new_func = self._generate()
 
@@ -311,7 +311,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
 
             :meth:`_functions.FunctionElement.table_valued`
 
-        """  # noqa 501
+        """  # noqa: 501
 
         return self.alias(name=name).column
 
@@ -336,7 +336,7 @@ class FunctionElement(Executable, ColumnElement[_T], FromClause, Generative):
             :meth:`_functions.FunctionElement.table_valued` - generates table-valued
             SQL function expressions.
 
-        """  # noqa E501
+        """  # noqa: E501
         return self.c
 
     @util.ro_memoized_property
@@ -1197,19 +1197,19 @@ class coalesce(ReturnTypeFromArgs[_T]):
     inherit_cache = True
 
 
-class max(ReturnTypeFromArgs[_T]):  # noqa  A001
+class max(ReturnTypeFromArgs[_T]):  # noqa:  A001
     """The SQL MAX() aggregate function."""
 
     inherit_cache = True
 
 
-class min(ReturnTypeFromArgs[_T]):  # noqa A001
+class min(ReturnTypeFromArgs[_T]):  # noqa: A001
     """The SQL MIN() aggregate function."""
 
     inherit_cache = True
 
 
-class sum(ReturnTypeFromArgs[_T]):  # noqa A001
+class sum(ReturnTypeFromArgs[_T]):  # noqa: A001
     """The SQL SUM() aggregate function."""
 
     inherit_cache = True

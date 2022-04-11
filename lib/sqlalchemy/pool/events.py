@@ -50,7 +50,7 @@ class PoolEvents(event.Events[Pool]):
         # will associate with engine.pool
         event.listen(engine, 'checkout', my_on_checkout)
 
-    """  # noqa E501
+    """  # noqa: E501
 
     _target_class_doc = "SomeEngineOrPool"
     _dispatch_target = Pool

@@ -820,7 +820,7 @@ class TypeReflectionTest(fixtures.TestBase):
                 oracle.FLOAT(16),
             ),  # using conversion
             (FLOAT(), DOUBLE_PRECISION()),
-            # from https://docs.oracle.com/cd/B14117_01/server.101/b10758/sqlqr06.htm  # noqa E501
+            # from https://docs.oracle.com/cd/B14117_01/server.101/b10758/sqlqr06.htm  # noqa: E501
             # DOUBLE PRECISION == precision 126
             # REAL == precision 63
             (oracle.FLOAT(126), DOUBLE_PRECISION()),

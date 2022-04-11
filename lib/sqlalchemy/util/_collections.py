@@ -388,11 +388,11 @@ class UniqueAppender(Generic[_T]):
         self.data = data
         self._unique = {}
         if via:
-            self._data_appender = getattr(data, via)  # type: ignore[assignment]  # noqa E501
+            self._data_appender = getattr(data, via)  # type: ignore[assignment]  # noqa: E501
         elif hasattr(data, "append"):
-            self._data_appender = cast("List[_T]", data).append  # type: ignore[assignment]  # noqa E501
+            self._data_appender = cast("List[_T]", data).append  # type: ignore[assignment]  # noqa: E501
         elif hasattr(data, "add"):
-            self._data_appender = cast("Set[_T]", data).add  # type: ignore[assignment]  # noqa E501
+            self._data_appender = cast("Set[_T]", data).add  # type: ignore[assignment]  # noqa: E501
 
     def append(self, item: _T) -> None:
         id_ = id(item)

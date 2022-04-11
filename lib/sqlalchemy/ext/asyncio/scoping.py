@@ -85,7 +85,7 @@ class async_scoped_session(ScopedSessionMixin):
          the current scope.   A function such as ``asyncio.current_task``
          may be useful here.
 
-        """  # noqa E501
+        """  # noqa: E501
 
         self.session_factory = session_factory
         self.registry = ScopedRegistry(session_factory, scopefunc)

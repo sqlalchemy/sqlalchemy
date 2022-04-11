@@ -1394,7 +1394,7 @@ class TableValuedCompileTest(fixtures.TestBase, AssertsCompiledSQL):
         `WITH ORDINALITY AS unnested(unnested, ordinality) ON true
         LEFT OUTER JOIN b ON unnested.unnested = b.ref
 
-        """  # noqa 501
+        """  # noqa: 501
 
         a = table("a", column("id"), column("refs"))
         b = table("b", column("id"), column("ref"))

@@ -1176,7 +1176,7 @@ class ObjectAssociationProxyInstance(AssociationProxyInstance[_T]):
                 **{self.value_attr: other}
             )
 
-    def __eq__(self, obj: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa E501
+    def __eq__(self, obj: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
         # note the has() here will fail for collections; eq_()
         # is only allowed with a scalar.
         if obj is None:
@@ -1187,7 +1187,7 @@ class ObjectAssociationProxyInstance(AssociationProxyInstance[_T]):
         else:
             return self._comparator.has(**{self.value_attr: obj})
 
-    def __ne__(self, obj: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa E501
+    def __ne__(self, obj: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
         # note the has() here will fail for collections; eq_()
         # is only allowed with a scalar.
         return self._comparator.has(
@@ -1203,7 +1203,7 @@ class ColumnAssociationProxyInstance(AssociationProxyInstance[_T]):
     _target_is_object: bool = False
     _is_canonical = True
 
-    def __eq__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa E501
+    def __eq__(self, other: Any) -> ColumnElement[bool]:  # type: ignore[override]  # noqa: E501
         # special case "is None" to check for no related row as well
         expr = self._criterion_exists(
             self.remote_attr.operate(operators.eq, other)

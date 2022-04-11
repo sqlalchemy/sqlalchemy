@@ -122,7 +122,7 @@ def await_fallback(awaitable: Awaitable[_T]) -> _T:
                 "loop is already running; can't call await_() here. "
                 "Was IO attempted in an unexpected place?"
             )
-        return loop.run_until_complete(awaitable)  # type: ignore[no-any-return]  # noqa E501
+        return loop.run_until_complete(awaitable)  # type: ignore[no-any-return]  # noqa: E501
 
     return current.driver.switch(awaitable)  # type: ignore[no-any-return]
 

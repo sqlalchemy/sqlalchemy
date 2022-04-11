@@ -130,9 +130,9 @@ class Visitable:
             try:
                 meth = getter(visitor)
             except AttributeError as err:
-                return visitor.visit_unsupported_compilation(self, err, **kw)  # type: ignore  # noqa E501
+                return visitor.visit_unsupported_compilation(self, err, **kw)  # type: ignore  # noqa: E501
             else:
-                return meth(self, **kw)  # type: ignore  # noqa E501
+                return meth(self, **kw)  # type: ignore  # noqa: E501
 
         cls._compiler_dispatch = (  # type: ignore
             cls._original_compiler_dispatch

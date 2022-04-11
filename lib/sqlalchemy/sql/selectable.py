@@ -288,7 +288,7 @@ class Selectable(ReturnsRows):
         object, returning a copy of this :class:`_expression.FromClause`.
 
         """
-        return util.preloaded.sql_util.ClauseAdapter(alias).traverse(  # type: ignore  # noqa E501
+        return util.preloaded.sql_util.ClauseAdapter(alias).traverse(  # type: ignore  # noqa: E501
             self
         )
 
@@ -1040,7 +1040,7 @@ class SelectLabelStyle(Enum):
 
     .. versionadded:: 1.4
 
-    """  # noqa E501
+    """  # noqa: E501
 
     LABEL_STYLE_TABLENAME_PLUS_COL = 1
     """Label style indicating all columns should be labeled as
@@ -1691,7 +1691,7 @@ class TableValuedAlias(LateralFromClause, Alias):
 
         :ref:`tutorial_functions_table_valued` - in the :ref:`unified_tutorial`
 
-    """  # noqa E501
+    """  # noqa: E501
 
     __visit_name__ = "table_valued_alias"
 
@@ -1820,7 +1820,7 @@ class TableValuedAlias(LateralFromClause, Alias):
          datatype specification with each column. This is a special syntax
          currently known to be required by PostgreSQL for some SQL functions.
 
-        """  # noqa E501
+        """  # noqa: E501
 
         # note: don't use the @_generative system here, keep a reference
         # to the original object.  otherwise you can have re-use of the
@@ -5657,7 +5657,7 @@ class Select(
 
          .. versionadded:: 1.4.23
 
-        """  # noqa E501
+        """  # noqa: E501
 
         # memoizations should be cleared here as of
         # I95c560ffcbfa30b26644999412fb6a385125f663 , asserting this

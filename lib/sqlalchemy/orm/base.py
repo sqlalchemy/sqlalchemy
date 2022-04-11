@@ -616,7 +616,7 @@ class SQLORMOperations(SQLCoreOperations[_T], TypingOnly):
         def and_(self, *criteria):
             ...
 
-        def any(self, criterion=None, **kwargs):  # noqa A001
+        def any(self, criterion=None, **kwargs):  # noqa: A001
             ...
 
         def has(self, criterion=None, **kwargs):

@@ -1172,7 +1172,7 @@ class Executable(roles.StatementRole, Generative):
             :ref:`orm_queryguide_execution_options` - documentation on all
             ORM-specific execution options
 
-        """  # noqa E501
+        """  # noqa: E501
         if "isolation_level" in kw:
             raise exc.ArgumentError(
                 "'isolation_level' execution option may only be specified "

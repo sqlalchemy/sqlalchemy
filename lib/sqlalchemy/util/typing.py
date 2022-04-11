@@ -47,16 +47,16 @@ else:
 if typing.TYPE_CHECKING or compat.py310:
     from typing import Annotated as Annotated
 else:
-    from typing_extensions import Annotated as Annotated  # noqa F401
+    from typing_extensions import Annotated as Annotated  # noqa: F401
 
 if typing.TYPE_CHECKING or compat.py38:
     from typing import Literal as Literal
     from typing import Protocol as Protocol
     from typing import TypedDict as TypedDict
 else:
-    from typing_extensions import Literal as Literal  # noqa F401
-    from typing_extensions import Protocol as Protocol  # noqa F401
-    from typing_extensions import TypedDict as TypedDict  # noqa F401
+    from typing_extensions import Literal as Literal  # noqa: F401
+    from typing_extensions import Protocol as Protocol  # noqa: F401
+    from typing_extensions import TypedDict as TypedDict  # noqa: F401
 
 # copied from TypeShed, required in order to implement
 # MutableMapping.update()
@@ -77,8 +77,8 @@ if typing.TYPE_CHECKING or not compat.py310:
     from typing_extensions import Concatenate as Concatenate
     from typing_extensions import ParamSpec as ParamSpec
 else:
-    from typing import Concatenate as Concatenate  # noqa F401
-    from typing import ParamSpec as ParamSpec  # noqa F401
+    from typing import Concatenate as Concatenate  # noqa: F401
+    from typing import ParamSpec as ParamSpec  # noqa: F401
 
 
 def de_stringify_annotation(

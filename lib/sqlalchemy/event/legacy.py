@@ -51,7 +51,7 @@ def _legacy_signature(
     def leg(fn: Callable[..., Any]) -> Callable[..., Any]:
         if not hasattr(fn, "_legacy_signatures"):
             fn._legacy_signatures = []  # type: ignore[attr-defined]
-        fn._legacy_signatures.append((since, argnames, converter))  # type: ignore[attr-defined] # noqa E501
+        fn._legacy_signatures.append((since, argnames, converter))  # type: ignore[attr-defined] # noqa: E501
         return fn
 
     return leg

@@ -2668,11 +2668,11 @@ class BooleanClauseList(ClauseList, ColumnElement[bool]):
         if lcc > 1:
             # multiple elements.  Return regular BooleanClauseList
             # which will link elements against the operator.
-            return cls._construct_raw(operator, convert_clauses)  # type: ignore # noqa E501
+            return cls._construct_raw(operator, convert_clauses)  # type: ignore # noqa: E501
         elif lcc == 1:
             # just one element.  return it as a single boolean element,
             # not a list and discard the operator.
-            return convert_clauses[0]  # type: ignore[no-any-return] # noqa E501
+            return convert_clauses[0]  # type: ignore[no-any-return] # noqa: E501
         else:
             # no elements period.  deprecated use case.  return an empty
             # ClauseList construct that generates nothing unless it has
@@ -2689,7 +2689,7 @@ class BooleanClauseList(ClauseList, ColumnElement[bool]):
                 },
                 version="1.4",
             )
-            return cls._construct_raw(operator)  # type: ignore[no-any-return] # noqa E501
+            return cls._construct_raw(operator)  # type: ignore[no-any-return] # noqa: E501
 
     @classmethod
     def _construct_for_whereclause(

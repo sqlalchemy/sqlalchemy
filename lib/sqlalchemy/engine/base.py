@@ -2655,7 +2655,7 @@ class Engine(
             :meth:`_engine.Engine.get_execution_options`
 
 
-        """  # noqa E501
+        """  # noqa: E501
         return self._option_cls(self, opt)
 
     def get_execution_options(self) -> _ExecuteOptions:

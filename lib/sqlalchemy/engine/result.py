@@ -502,7 +502,7 @@ class ResultInternal(InPlaceGenerative):
                     )
                     for made_row in made_rows
                 ]
-                if sig_row not in uniques and not uniques.add(sig_row)  # type: ignore # noqa E501
+                if sig_row not in uniques and not uniques.add(sig_row)  # type: ignore # noqa: E501
             ]
         else:
             interim_rows = made_rows
@@ -749,7 +749,7 @@ class ResultInternal(InPlaceGenerative):
         real_result = self._real_result if self._real_result else self
 
         if (
-            real_result._source_supports_scalars  # type: ignore[attr-defined] # noqa E501
+            real_result._source_supports_scalars  # type: ignore[attr-defined] # noqa: E501
             and len(indexes) == 1
         ):
             self._generate_rows = False
