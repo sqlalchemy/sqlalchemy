@@ -131,7 +131,7 @@ class AsyncResult(AsyncCommon):
         if row is _NO_ROW:
             return None
         else:
-            return row
+            return row  # type: ignore[return-value]
 
     async def fetchmany(self, size=None):
         """Fetch many rows.
@@ -152,7 +152,9 @@ class AsyncResult(AsyncCommon):
 
         """
 
-        return await greenlet_spawn(self._manyrow_getter, self, size)
+        return await greenlet_spawn(
+            self._manyrow_getter, self, size  # type: ignore
+        )
 
     async def all(self):
         """Return all rows in a list.
@@ -164,7 +166,7 @@ class AsyncResult(AsyncCommon):
 
         """
 
-        return await greenlet_spawn(self._allrows)
+        return await greenlet_spawn(self._allrows)  # type: ignore
 
     def __aiter__(self):
         return self
@@ -551,8 +553,8 @@ class AsyncMappingResult(AsyncCommon):
         """Iterate through sub-lists of elements of the size given.
 
         Equivalent to :meth:`_asyncio.AsyncResult.partitions` except that
-        mapping values, rather than :class:`_result.Row` objects,
-        are returned.
+        :class:`_result.RowMapping` values, rather than :class:`_result.Row`
+        objects, are returned.
 
         """
 
@@ -574,8 +576,8 @@ class AsyncMappingResult(AsyncCommon):
         """Fetch one object.
 
         Equivalent to :meth:`_asyncio.AsyncResult.fetchone` except that
-        mapping values, rather than :class:`_result.Row` objects,
-        are returned.
+        :class:`_result.RowMapping` values, rather than :class:`_result.Row`
+        objects, are returned.
 
         """
 
@@ -589,8 +591,8 @@ class AsyncMappingResult(AsyncCommon):
         """Fetch many objects.
 
         Equivalent to :meth:`_asyncio.AsyncResult.fetchmany` except that
-        mapping values, rather than :class:`_result.Row` objects,
-        are returned.
+        :class:`_result.RowMapping` values, rather than :class:`_result.Row`
+        objects, are returned.
 
         """
 
@@ -600,8 +602,8 @@ class AsyncMappingResult(AsyncCommon):
         """Return all scalar values in a list.
 
         Equivalent to :meth:`_asyncio.AsyncResult.all` except that
-        mapping values, rather than :class:`_result.Row` objects,
-        are returned.
+        :class:`_result.RowMapping` values, rather than :class:`_result.Row`
+        objects, are returned.
 
         """
 
@@ -621,8 +623,8 @@ class AsyncMappingResult(AsyncCommon):
         """Fetch the first object or None if no object is present.
 
         Equivalent to :meth:`_asyncio.AsyncResult.first` except that
-        mapping values, rather than :class:`_result.Row` objects,
-        are returned.
+        :class:`_result.RowMapping` values, rather than :class:`_result.Row`
+        objects, are returned.
 
 
         """
@@ -632,8 +634,8 @@ class AsyncMappingResult(AsyncCommon):
         """Return at most one object or raise an exception.
 
         Equivalent to :meth:`_asyncio.AsyncResult.one_or_none` except that
-        mapping values, rather than :class:`_result.Row` objects,
-        are returned.
+        :class:`_result.RowMapping` values, rather than :class:`_result.Row`
+        objects, are returned.
 
         """
         return await greenlet_spawn(self._only_one_row, True, False, False)
@@ -642,8 +644,8 @@ class AsyncMappingResult(AsyncCommon):
         """Return exactly one object or raise an exception.
 
         Equivalent to :meth:`_asyncio.AsyncResult.one` except that
-        mapping values, rather than :class:`_result.Row` objects,
-        are returned.
+        :class:`_result.RowMapping` values, rather than :class:`_result.Row`
+        objects, are returned.
 
         """
         return await greenlet_spawn(self._only_one_row, True, True, False)

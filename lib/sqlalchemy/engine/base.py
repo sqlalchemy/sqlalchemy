@@ -1150,7 +1150,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         statement: Executable,
         parameters: Optional[_CoreSingleExecuteParams] = None,
         execution_options: Optional[_ExecuteOptionsParameter] = None,
-    ) -> ScalarResult:
+    ) -> ScalarResult[Any]:
         """Executes and returns a scalar result set, which yields scalar values
         from the first column of each row.
 
