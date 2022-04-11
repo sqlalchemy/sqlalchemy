@@ -835,15 +835,17 @@ class PGDialect_psycopg2(PGDialect):
 
     def do_ping(self, dbapi_connection):
         cursor = None
+        before_autocommit = dbapi_connection.autocommit
         try:
-            dbapi_connection.autocommit = True
+            if not before_autocommit:
+                dbapi_connection.autocommit = True
             cursor = dbapi_connection.cursor()
             try:
                 cursor.execute(self._dialect_specific_select_one)
             finally:
                 cursor.close()
-                if not dbapi_connection.closed:
-                    dbapi_connection.autocommit = False
+                if not before_autocommit and not dbapi_connection.closed:
+                    dbapi_connection.autocommit = before_autocommit
         except self.dbapi.Error as err:
             if self.is_disconnect(err, dbapi_connection, cursor):
                 return False

@@ -1095,6 +1095,23 @@ class MiscBackendTest(
                 dbapi_conn.rollback()
             eq_(val, "off")
 
+    @testing.combinations((True,), (False,), argnames="autocommit")
+    def test_autocommit_pre_ping(self, testing_engine, autocommit):
+        engine = testing_engine(
+            options={
+                "isolation_level": "AUTOCOMMIT"
+                if autocommit
+                else "SERIALIZABLE",
+                "pool_pre_ping": True,
+            }
+        )
+        for i in range(4):
+            with engine.connect() as conn:
+                conn.execute(text("select 1")).scalar()
+
+                dbapi_conn = conn.connection.dbapi_connection
+                eq_(dbapi_conn.autocommit, autocommit)
+
     def test_deferrable_flag_engine(self):
         engine = engines.testing_engine(
             options={
