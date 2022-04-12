@@ -121,7 +121,17 @@ def _is_has_entity_namespace(element: Any) -> TypeGuard[_HasEntityNamespace]:
 
 
 class Immutable:
-    """mark a ClauseElement as 'immutable' when expressions are cloned."""
+    """mark a ClauseElement as 'immutable' when expressions are cloned.
+
+    "immutable" objects refers to the "mutability" of an object in the
+    context of SQL DQL and DML generation.   Such as, in DQL, one can
+    compose a SELECT or subquery of varied forms, but one cannot modify
+    the structure of a specific table or column within DQL.
+    :class:`.Immutable` is mostly intended to follow this concept, and as
+    such the primary "immutable" objects are :class:`.ColumnClause`,
+    :class:`.Column`, :class:`.TableClause`, :class:`.Table`.
+
+    """
 
     _is_immutable = True
 

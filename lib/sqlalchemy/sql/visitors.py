@@ -446,6 +446,8 @@ class HasTraverseInternals:
 
     _traverse_internals: _TraverseInternalsType
 
+    _is_immutable: bool = False
+
     @util.preload_module("sqlalchemy.sql.traversals")
     def get_children(
         self, omit_attrs: Tuple[str, ...] = (), **kw: Any
@@ -974,11 +976,25 @@ def cloned_traverse(
     visitors: Mapping[str, _TraverseCallableType[Any]],
 ) -> Optional[ExternallyTraversible]:
     """Clone the given expression structure, allowing modifications by
-    visitors.
+    visitors for mutable objects.
 
     Traversal usage is the same as that of :func:`.visitors.traverse`.
     The visitor functions present in the ``visitors`` dictionary may also
     modify the internals of the given structure as the traversal proceeds.
+
+    The :func:`.cloned_traverse` function does **not** provide objects that are
+    part of the :class:`.Immutable` interface to the visit methods (this
+    primarily includes :class:`.ColumnClause`, :class:`.Column`,
+    :class:`.TableClause` and :class:`.Table` objects). As this traversal is
+    only intended to allow in-place mutation of objects, :class:`.Immutable`
+    objects are skipped. The :meth:`.Immutable._clone` method is still called
+    on each object to allow for objects to replace themselves with a different
+    object based on a clone of their sub-internals (e.g. a
+    :class:`.ColumnClause` that clones its subquery to return a new
+    :class:`.ColumnClause`).
+
+    .. versionchanged:: 2.0  The :func:`.cloned_traverse` function omits
+       objects that are part of the :class:`.Immutable` interface.
 
     The central API feature used by the :func:`.visitors.cloned_traverse`
     and :func:`.visitors.replacement_traverse` functions, in addition to the
@@ -1021,11 +1037,21 @@ def cloned_traverse(
                         cloned[id(elem)] = newelem
                         return newelem
 
+                # the _clone method for immutable normally returns "self".
+                # however, the method is still allowed to return a
+                # different object altogether; ColumnClause._clone() will
+                # based on options clone the subquery to which it is associated
+                # and return the new corresponding column.
                 cloned[id(elem)] = newelem = elem._clone(clone=clone, **kw)
                 newelem._copy_internals(clone=clone, **kw)
-                meth = visitors.get(newelem.__visit_name__, None)
-                if meth:
-                    meth(newelem)
+
+                # however, visit methods which are tasked with in-place
+                # mutation of the object should not get access to the immutable
+                # object.
+                if not elem._is_immutable:
+                    meth = visitors.get(newelem.__visit_name__, None)
+                    if meth:
+                        meth(newelem)
             return cloned[id(elem)]
 
     if obj is not None:
