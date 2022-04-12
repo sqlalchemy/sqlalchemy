@@ -27,11 +27,12 @@ from . import type_api
 from .elements import and_
 from .elements import BinaryExpression
 from .elements import ClauseElement
-from .elements import ClauseList
 from .elements import CollationClause
 from .elements import CollectionAggregate
+from .elements import ExpressionClauseList
 from .elements import False_
 from .elements import Null
+from .elements import OperatorExpression
 from .elements import or_
 from .elements import True_
 from .elements import UnaryExpression
@@ -56,11 +57,9 @@ def _boolean_compare(
     reverse: bool = False,
     _python_is_types: Tuple[Type[Any], ...] = (type(None), bool),
     _any_all_expr: bool = False,
-    result_type: Optional[
-        Union[Type[TypeEngine[bool]], TypeEngine[bool]]
-    ] = None,
+    result_type: Optional[TypeEngine[bool]] = None,
     **kwargs: Any,
-) -> BinaryExpression[bool]:
+) -> OperatorExpression[bool]:
     if result_type is None:
         result_type = type_api.BOOLEANTYPE
 
@@ -71,7 +70,7 @@ def _boolean_compare(
         if op in (operators.eq, operators.ne) and isinstance(
             obj, (bool, True_, False_)
         ):
-            return BinaryExpression(
+            return OperatorExpression._construct_for_op(
                 expr,
                 coercions.expect(roles.ConstExprRole, obj),
                 op,
@@ -83,7 +82,7 @@ def _boolean_compare(
             operators.is_distinct_from,
             operators.is_not_distinct_from,
         ):
-            return BinaryExpression(
+            return OperatorExpression._construct_for_op(
                 expr,
                 coercions.expect(roles.ConstExprRole, obj),
                 op,
@@ -98,7 +97,7 @@ def _boolean_compare(
         else:
             # all other None uses IS, IS NOT
             if op in (operators.eq, operators.is_):
-                return BinaryExpression(
+                return OperatorExpression._construct_for_op(
                     expr,
                     coercions.expect(roles.ConstExprRole, obj),
                     operators.is_,
@@ -106,7 +105,7 @@ def _boolean_compare(
                     type_=result_type,
                 )
             elif op in (operators.ne, operators.is_not):
-                return BinaryExpression(
+                return OperatorExpression._construct_for_op(
                     expr,
                     coercions.expect(roles.ConstExprRole, obj),
                     operators.is_not,
@@ -125,7 +124,7 @@ def _boolean_compare(
         )
 
     if reverse:
-        return BinaryExpression(
+        return OperatorExpression._construct_for_op(
             obj,
             expr,
             op,
@@ -134,7 +133,7 @@ def _boolean_compare(
             modifiers=kwargs,
         )
     else:
-        return BinaryExpression(
+        return OperatorExpression._construct_for_op(
             expr,
             obj,
             op,
@@ -169,11 +168,9 @@ def _binary_operate(
     obj: roles.BinaryElementRole[Any],
     *,
     reverse: bool = False,
-    result_type: Optional[
-        Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"]
-    ] = None,
+    result_type: Optional[TypeEngine[_T]] = None,
     **kw: Any,
-) -> BinaryExpression[_T]:
+) -> OperatorExpression[_T]:
 
     coerced_obj = coercions.expect(
         roles.BinaryElementRole, obj, expr=expr, operator=op
@@ -189,7 +186,9 @@ def _binary_operate(
             op, right.comparator
         )
 
-    return BinaryExpression(left, right, op, type_=result_type, modifiers=kw)
+    return OperatorExpression._construct_for_op(
+        left, right, op, type_=result_type, modifiers=kw
+    )
 
 
 def _conjunction_operate(
@@ -311,7 +310,9 @@ def _between_impl(
     """See :meth:`.ColumnOperators.between`."""
     return BinaryExpression(
         expr,
-        ClauseList(
+        ExpressionClauseList._construct_for_list(
+            operators.and_,
+            type_api.NULLTYPE,
             coercions.expect(
                 roles.BinaryElementRole,
                 cleft,
@@ -324,9 +325,7 @@ def _between_impl(
                 expr=expr,
                 operator=operators.and_,
             ),
-            operator=operators.and_,
             group=False,
-            group_contents=False,
         ),
         op,
         negate=operators.not_between_op

@@ -320,6 +320,31 @@ class StringTest(_LiteralRoundTripFixture, fixtures.TestBase):
         data = r"backslash one \ backslash two \\ end"
         literal_round_trip(String(40), [data], [data])
 
+    def test_concatenate_binary(self, connection):
+        """dialects with special string concatenation operators should
+        implement visit_concat_op_binary() and visit_concat_op_clauselist()
+        in their compiler.
+
+        .. versionchanged:: 2.0  visit_concat_op_clauselist() is also needed
+           for dialects to override the string concatenation operator.
+
+        """
+        eq_(connection.scalar(select(literal("a") + "b")), "ab")
+
+    def test_concatenate_clauselist(self, connection):
+        """dialects with special string concatenation operators should
+        implement visit_concat_op_binary() and visit_concat_op_clauselist()
+        in their compiler.
+
+        .. versionchanged:: 2.0  visit_concat_op_clauselist() is also needed
+           for dialects to override the string concatenation operator.
+
+        """
+        eq_(
+            connection.scalar(select(literal("a") + "b" + "c" + "d" + "e")),
+            "abcde",
+        )
+
 
 class _DateFixture(_LiteralRoundTripFixture, fixtures.TestBase):
     compare = None

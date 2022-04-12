@@ -1323,7 +1323,11 @@ class ColumnElement(
         if self.type._type_affinity is type_api.BOOLEANTYPE._type_affinity:
             return AsBoolean(self, operators.is_false, operators.is_true)
         else:
-            return cast("UnaryExpression[_T]", super()._negate())
+            grouped = self.self_group(against=operators.inv)
+            assert isinstance(grouped, ColumnElement)
+            return UnaryExpression(
+                grouped, operator=operators.inv, wraps_column_expression=True
+            )
 
     type: TypeEngine[_T]
 
@@ -2501,6 +2505,8 @@ class ClauseList(
 
     __visit_name__ = "clauselist"
 
+    # this is used only by the ORM in a legacy use case for
+    # composite attributes
     _is_clause_list = True
 
     _traverse_internals: _TraverseInternalsType = [
@@ -2516,18 +2522,14 @@ class ClauseList(
         operator: OperatorType = operators.comma_op,
         group: bool = True,
         group_contents: bool = True,
-        _flatten_sub_clauses: bool = False,
         _literal_as_text_role: Type[roles.SQLRole] = roles.WhereHavingRole,
     ):
         self.operator = operator
         self.group = group
         self.group_contents = group_contents
         clauses_iterator: Iterable[_ColumnExpressionArgument[Any]] = clauses
-        if _flatten_sub_clauses:
-            clauses_iterator = util.flatten_iterator(clauses_iterator)
-
-        self._text_converter_role: Type[roles.SQLRole] = _literal_as_text_role
         text_converter_role: Type[roles.SQLRole] = _literal_as_text_role
+        self._text_converter_role = text_converter_role
 
         if self.group_contents:
             self.clauses = [
@@ -2594,8 +2596,176 @@ class ClauseList(
             return self
 
 
-class BooleanClauseList(ClauseList, ColumnElement[bool]):
-    __visit_name__ = "clauselist"
+class OperatorExpression(ColumnElement[_T]):
+    """base for expressions that contain an operator and operands
+
+    .. versionadded:: 2.0
+
+    """
+
+    operator: OperatorType
+    type: TypeEngine[_T]
+
+    group: bool = True
+
+    @property
+    def is_comparison(self):
+        return operators.is_comparison(self.operator)
+
+    def self_group(self, against=None):
+        if (
+            self.group
+            and operators.is_precedent(self.operator, against)
+            or (
+                # a negate against a non-boolean operator
+                # doesn't make too much sense but we should
+                # group for that
+                against is operators.inv
+                and not operators.is_boolean(self.operator)
+            )
+        ):
+            return Grouping(self)
+        else:
+            return self
+
+    @property
+    def _flattened_operator_clauses(
+        self,
+    ) -> typing_Tuple[ColumnElement[Any], ...]:
+        raise NotImplementedError()
+
+    @classmethod
+    def _construct_for_op(
+        cls,
+        left: ColumnElement[Any],
+        right: ColumnElement[Any],
+        op: OperatorType,
+        *,
+        type_: TypeEngine[_T],
+        negate: Optional[OperatorType] = None,
+        modifiers: Optional[Mapping[str, Any]] = None,
+    ) -> OperatorExpression[_T]:
+
+        if operators.is_associative(op):
+            assert (
+                negate is None
+            ), f"negate not supported for associative operator {op}"
+
+            multi = False
+            if getattr(
+                left, "operator", None
+            ) is op and type_._compare_type_affinity(left.type):
+                multi = True
+                left_flattened = left._flattened_operator_clauses
+            else:
+                left_flattened = (left,)
+
+            if getattr(
+                right, "operator", None
+            ) is op and type_._compare_type_affinity(right.type):
+                multi = True
+                right_flattened = right._flattened_operator_clauses
+            else:
+                right_flattened = (right,)
+
+            if multi:
+                return ExpressionClauseList._construct_for_list(
+                    op, type_, *(left_flattened + right_flattened)
+                )
+
+        return BinaryExpression(
+            left, right, op, type_=type_, negate=negate, modifiers=modifiers
+        )
+
+
+class ExpressionClauseList(OperatorExpression[_T]):
+    """Describe a list of clauses, separated by an operator,
+    in a column expression context.
+
+    :class:`.ExpressionClauseList` differs from :class:`.ClauseList` in that
+    it represents a column-oriented DQL expression only, not an open ended
+    list of anything comma separated.
+
+    .. versionadded:: 2.0
+
+    """
+
+    __visit_name__ = "expression_clauselist"
+
+    _traverse_internals: _TraverseInternalsType = [
+        ("clauses", InternalTraversal.dp_clauseelement_tuple),
+        ("operator", InternalTraversal.dp_operator),
+    ]
+
+    clauses: typing_Tuple[ColumnElement[Any], ...]
+
+    group: bool
+
+    def __init__(
+        self,
+        operator: OperatorType,
+        *clauses: _ColumnExpressionArgument[Any],
+        type_: Optional[_TypeEngineArgument[_T]] = None,
+    ):
+        self.operator = operator
+
+        self.clauses = tuple(
+            coercions.expect(
+                roles.ExpressionElementRole, clause, apply_propagate_attrs=self
+            )
+            for clause in clauses
+        )
+        self._is_implicitly_boolean = operators.is_boolean(self.operator)
+        self.type = type_api.to_instance(type_)  # type: ignore
+
+    @property
+    def _flattened_operator_clauses(
+        self,
+    ) -> typing_Tuple[ColumnElement[Any], ...]:
+        return self.clauses
+
+    def __iter__(self) -> Iterator[ColumnElement[Any]]:
+        return iter(self.clauses)
+
+    def __len__(self) -> int:
+        return len(self.clauses)
+
+    @property
+    def _select_iterable(self) -> _SelectIterable:
+        return (self,)
+
+    @util.ro_non_memoized_property
+    def _from_objects(self) -> List[FromClause]:
+        return list(itertools.chain(*[c._from_objects for c in self.clauses]))
+
+    def _append_inplace(self, clause: ColumnElement[Any]) -> None:
+        self.clauses += (clause,)
+
+    @classmethod
+    def _construct_for_list(
+        cls,
+        operator: OperatorType,
+        type_: TypeEngine[_T],
+        *clauses: ColumnElement[Any],
+        group: bool = True,
+    ) -> ExpressionClauseList[_T]:
+        self = cls.__new__(cls)
+        self.group = group
+        self.clauses = clauses
+        self.operator = operator
+        self.type = type_
+        return self
+
+    def _negate(self) -> Any:
+        grouped = self.self_group(against=operators.inv)
+        assert isinstance(grouped, ColumnElement)
+        return UnaryExpression(
+            grouped, operator=operators.inv, wraps_column_expression=True
+        )
+
+
+class BooleanClauseList(ExpressionClauseList[bool]):
+    __visit_name__ = "expression_clauselist"
     inherit_cache = True
 
     def __init__(self, *arg, **kw):
@@ -2668,7 +2838,15 @@ class BooleanClauseList(ClauseList, ColumnElement[bool]):
         if lcc > 1:
             # multiple elements.  Return regular BooleanClauseList
             # which will link elements against the operator.
-            return cls._construct_raw(operator, convert_clauses)  # type: ignore # noqa: E501
+
+            flattened_clauses = itertools.chain.from_iterable(
+                (c for c in to_flat._flattened_operator_clauses)
+                if getattr(to_flat, "operator", None) is operator
+                else (to_flat,)
+                for to_flat in convert_clauses
+            )
+
+            return cls._construct_raw(operator, flattened_clauses)  # type: ignore # noqa: E501
         elif lcc == 1:
             # just one element.  return it as a single boolean element,
             # not a list and discard the operator.
@@ -2726,10 +2904,9 @@ class BooleanClauseList(ClauseList, ColumnElement[bool]):
         clauses: Optional[Sequence[ColumnElement[Any]]] = None,
     ) -> BooleanClauseList:
         self = cls.__new__(cls)
-        self.clauses = list(clauses) if clauses else []
+        self.clauses = tuple(clauses) if clauses else ()
         self.group = True
         self.operator = operator
-        self.group_contents = True
         self.type = type_api.BOOLEANTYPE
         self._is_implicitly_boolean = True
         return self
@@ -2767,9 +2944,6 @@ class BooleanClauseList(ClauseList, ColumnElement[bool]):
             return self
         else:
             return super(BooleanClauseList, self).self_group(against=against)
-
-    def _negate(self):
-        return ClauseList._negate(self)
 
 
 and_ = BooleanClauseList.and_
@@ -3357,7 +3531,7 @@ class AsBoolean(WrapsColumnExpression[bool], UnaryExpression[bool]):
             return AsBoolean(self.element, self.negate, self.operator)
 
 
-class BinaryExpression(ColumnElement[_T]):
+class BinaryExpression(OperatorExpression[_T]):
     """Represent an expression that is ``LEFT <operator> RIGHT``.
 
     A :class:`.BinaryExpression` is generated automatically
@@ -3394,12 +3568,12 @@ class BinaryExpression(ColumnElement[_T]):
     modifiers: Optional[Mapping[str, Any]]
 
     left: ColumnElement[Any]
-    right: Union[ColumnElement[Any], ClauseList]
+    right: ColumnElement[Any]
 
     def __init__(
         self,
         left: ColumnElement[Any],
-        right: Union[ColumnElement[Any], ClauseList],
+        right: ColumnElement[Any],
         operator: OperatorType,
         type_: Optional[_TypeEngineArgument[_T]] = None,
         negate: Optional[OperatorType] = None,
@@ -3426,6 +3600,12 @@ class BinaryExpression(ColumnElement[_T]):
             self.modifiers = {}
         else:
             self.modifiers = modifiers
+
+    @property
+    def _flattened_operator_clauses(
+        self,
+    ) -> typing_Tuple[ColumnElement[Any], ...]:
+        return (self.left, self.right)
 
     def __bool__(self):
         """Implement Python-side "bool" for BinaryExpression as a
@@ -3465,8 +3645,6 @@ class BinaryExpression(ColumnElement[_T]):
         else:
             raise TypeError("Boolean value of this clause is not defined")
 
-    __nonzero__ = __bool__
-
     if typing.TYPE_CHECKING:
 
         def __invert__(
@@ -3474,20 +3652,9 @@ class BinaryExpression(ColumnElement[_T]):
         ) -> "BinaryExpression[_T]":
             ...
 
-    @property
-    def is_comparison(self):
-        return operators.is_comparison(self.operator)
-
     @util.ro_non_memoized_property
     def _from_objects(self) -> List[FromClause]:
         return self.left._from_objects + self.right._from_objects
-
-    def self_group(self, against=None):
-
-        if operators.is_precedent(self.operator, against):
-            return Grouping(self)
-        else:
-            return self
 
     def _negate(self):
         if self.negate is not None:
