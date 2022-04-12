@@ -56,6 +56,7 @@ asking it to reflect the schema and produce mappings::
 
     # collection-based relationships are by default named
     # "<classname>_collection"
+    u1 = session.query(User).first()
     print (u1.address_collection)
 
 Above, calling :meth:`.AutomapBase.prepare` while passing along the

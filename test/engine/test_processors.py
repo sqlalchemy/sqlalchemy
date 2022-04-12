@@ -1,6 +1,9 @@
+import datetime
+import re
 from types import MappingProxyType
 
 from sqlalchemy import exc
+from sqlalchemy.engine import processors
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises_message
@@ -36,34 +39,72 @@ class CyBooleanProcessorTest(_BooleanProcessorTest):
 
 
 class _DateProcessorTest(fixtures.TestBase):
+    def test_iso_datetime(self):
+        eq_(
+            self.module.str_to_datetime("2022-04-03 17:12:34.353"),
+            datetime.datetime(2022, 4, 3, 17, 12, 34, 353000),
+        )
+
+        eq_(
+            self.module.str_to_datetime("2022-04-03 17:12:34.353123"),
+            datetime.datetime(2022, 4, 3, 17, 12, 34, 353123),
+        )
+
+        eq_(
+            self.module.str_to_datetime("2022-04-03 17:12:34"),
+            datetime.datetime(2022, 4, 3, 17, 12, 34),
+        )
+
+        eq_(
+            self.module.str_to_time("17:12:34.353123"),
+            datetime.time(17, 12, 34, 353123),
+        )
+
+        eq_(
+            self.module.str_to_time("17:12:34.353"),
+            datetime.time(17, 12, 34, 353000),
+        )
+
+        eq_(
+            self.module.str_to_time("17:12:34"),
+            datetime.time(17, 12, 34),
+        )
+
+        eq_(self.module.str_to_date("2022-04-03"), datetime.date(2022, 4, 3))
+
     def test_date_no_string(self):
         assert_raises_message(
-            ValueError,
-            "Couldn't parse date string '2012' - value is not a string",
+            TypeError,
+            "fromisoformat: argument must be str",
             self.module.str_to_date,
             2012,
         )
 
-    def test_datetime_no_string(self):
+    def test_datetime_no_string_custom_reg(self):
         assert_raises_message(
             ValueError,
             "Couldn't parse datetime string '2012' - value is not a string",
-            self.module.str_to_datetime,
+            processors.str_to_datetime_processor_factory(
+                re.compile(r"(\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+)(?:\.(\d+))?"),
+                datetime.datetime,
+            ),
             2012,
         )
 
-    def test_time_no_string(self):
+    def test_time_no_string_custom_reg(self):
         assert_raises_message(
             ValueError,
             "Couldn't parse time string '2012' - value is not a string",
-            self.module.str_to_time,
+            processors.str_to_datetime_processor_factory(
+                re.compile(r"^(\d+):(\d+):(\d+)(?:\.(\d{6}))?$"), datetime.time
+            ),
             2012,
         )
 
     def test_date_invalid_string(self):
         assert_raises_message(
             ValueError,
-            "Couldn't parse date string: '5:a'",
+            "Invalid isoformat string: '5:a'",
             self.module.str_to_date,
             "5:a",
         )
@@ -71,7 +112,7 @@ class _DateProcessorTest(fixtures.TestBase):
     def test_datetime_invalid_string(self):
         assert_raises_message(
             ValueError,
-            "Couldn't parse datetime string: '5:a'",
+            "Invalid isoformat string: '5:a'",
             self.module.str_to_datetime,
             "5:a",
         )
@@ -79,7 +120,7 @@ class _DateProcessorTest(fixtures.TestBase):
     def test_time_invalid_string(self):
         assert_raises_message(
             ValueError,
-            "Couldn't parse time string: '5:a'",
+            "Invalid isoformat string: '5:a'",
             self.module.str_to_time,
             "5:a",
         )

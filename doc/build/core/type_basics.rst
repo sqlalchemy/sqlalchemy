@@ -52,6 +52,9 @@ type is emitted in ``CREATE TABLE``, such as ``VARCHAR`` see
 .. autoclass:: Enum
   :members: __init__, create, drop
 
+.. autoclass:: Double
+   :members:
+
 .. autoclass:: Float
   :members:
 
@@ -137,6 +140,9 @@ its exact name in DDL with ``CREATE TABLE`` is issued.
 
 .. autoclass:: DECIMAL
 
+.. autoclass:: DOUBLE
+
+.. autoclass:: DOUBLE_PRECISION
 
 .. autoclass:: FLOAT
 

@@ -21,13 +21,14 @@ database to return iterable result sets.
 from __future__ import annotations
 
 import collections.abc as collections_abc
-import itertools
 import operator
 from typing import Any
 from typing import Generic
 from typing import Iterable
 from typing import List
 from typing import Optional
+from typing import Tuple
+from typing import TYPE_CHECKING
 from typing import TypeVar
 
 from . import exc as orm_exc
@@ -38,9 +39,9 @@ from .base import _assertions
 from .context import _column_descriptions
 from .context import _determine_last_joined_entity
 from .context import _legacy_filter_by_entity_zero
+from .context import FromStatement
 from .context import LABEL_STYLE_LEGACY_ORM
 from .context import ORMCompileState
-from .context import ORMFromStatementCompileState
 from .context import QueryContext
 from .interfaces import ORMColumnDescription
 from .interfaces import ORMColumnsClauseRole
@@ -60,7 +61,7 @@ from ..sql import roles
 from ..sql import Select
 from ..sql import util as sql_util
 from ..sql import visitors
-from ..sql._typing import _FromClauseElement
+from ..sql._typing import _FromClauseArgument
 from ..sql.annotation import SupportsCloneAnnotations
 from ..sql.base import _entity_namespace_key
 from ..sql.base import _generative
@@ -69,15 +70,13 @@ from ..sql.expression import Exists
 from ..sql.selectable import _MemoizedSelectEntities
 from ..sql.selectable import _SelectFromElements
 from ..sql.selectable import ForUpdateArg
-from ..sql.selectable import GroupedElement
 from ..sql.selectable import HasHints
 from ..sql.selectable import HasPrefixes
 from ..sql.selectable import HasSuffixes
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
-from ..sql.selectable import SelectBase
-from ..sql.selectable import SelectStatementGrouping
-from ..sql.visitors import InternalTraversal
 
+if TYPE_CHECKING:
+    from ..sql.selectable import _SetupJoinsElement
 
 __all__ = ["Query", "QueryContext"]
 
@@ -134,7 +133,8 @@ class Query(
     _correlate = ()
     _auto_correlate = True
     _from_obj = ()
-    _setup_joins = ()
+    _setup_joins: Tuple[_SetupJoinsElement, ...] = ()
+
     _label_style = LABEL_STYLE_LEGACY_ORM
 
     _memoized_select_entities = ()
@@ -1347,12 +1347,21 @@ class Query(
         automatically if the :meth:`~sqlalchemy.orm.query.Query.yield_per()`
         method or execution option is used.
 
+        .. versionadded:: 1.4 - added ORM options to
+           :meth:`_orm.Query.execution_options`
+
         The execution options may also be specified on a per execution basis
         when using :term:`2.0 style` queries via the
         :paramref:`_orm.Session.execution_options` parameter.
 
-        .. versionadded:: 1.4 - added ORM options to
-           :meth:`_orm.Query.execution_options`
+        .. warning:: The
+           :paramref:`_engine.Connection.execution_options.stream_results`
+           parameter should not be used at the level of individual ORM
+           statement executions, as the :class:`_orm.Session` will not track
+           objects from different schema translate maps within a single
+           session.  For multiple schema translate maps within the scope of a
+           single :class:`_orm.Session`, see :ref:`examples_sharding`.
+
 
         .. seealso::
 
@@ -2009,7 +2018,7 @@ class Query(
     @_generative
     @_assertions(_no_clauseelement_condition)
     def select_from(
-        self: SelfQuery, *from_obj: _FromClauseElement
+        self: SelfQuery, *from_obj: _FromClauseArgument
     ) -> SelfQuery:
         r"""Set the FROM clause of this :class:`.Query` explicitly.
 
@@ -2382,6 +2391,15 @@ class Query(
                 }
             ]
 
+        .. seealso::
+
+            This API is available using :term:`2.0 style` queries as well,
+            documented at:
+
+            * :ref:`queryguide_inspection`
+
+            * :attr:`.Select.column_descriptions`
+
         """
 
         return _column_descriptions(self, legacy=True)
@@ -2740,91 +2758,6 @@ class Query(
         )
 
         return context
-
-
-class FromStatement(GroupedElement, SelectBase, Executable):
-    """Core construct that represents a load of ORM objects from a finished
-    select or text construct.
-
-    """
-
-    __visit_name__ = "orm_from_statement"
-
-    _compile_options = ORMFromStatementCompileState.default_compile_options
-
-    _compile_state_factory = ORMFromStatementCompileState.create_for_statement
-
-    _for_update_arg = None
-
-    _traverse_internals = [
-        ("_raw_columns", InternalTraversal.dp_clauseelement_list),
-        ("element", InternalTraversal.dp_clauseelement),
-    ] + Executable._executable_traverse_internals
-
-    _cache_key_traversal = _traverse_internals + [
-        ("_compile_options", InternalTraversal.dp_has_cache_key)
-    ]
-
-    def __init__(self, entities, element):
-        self._raw_columns = [
-            coercions.expect(
-                roles.ColumnsClauseRole,
-                ent,
-                apply_propagate_attrs=self,
-                post_inspect=True,
-            )
-            for ent in util.to_list(entities)
-        ]
-        self.element = element
-
-    def get_label_style(self):
-        return self._label_style
-
-    def set_label_style(self, label_style):
-        return SelectStatementGrouping(
-            self.element.set_label_style(label_style)
-        )
-
-    @property
-    def _label_style(self):
-        return self.element._label_style
-
-    def _compiler_dispatch(self, compiler, **kw):
-
-        """provide a fixed _compiler_dispatch method.
-
-        This is roughly similar to using the sqlalchemy.ext.compiler
-        ``@compiles`` extension.
-
-        """
-
-        compile_state = self._compile_state_factory(self, compiler, **kw)
-
-        toplevel = not compiler.stack
-
-        if toplevel:
-            compiler.compile_state = compile_state
-
-        return compiler.process(compile_state.statement, **kw)
-
-    def _ensure_disambiguated_names(self):
-        return self
-
-    def get_children(self, **kw):
-        for elem in itertools.chain.from_iterable(
-            element._from_objects for element in self._raw_columns
-        ):
-            yield elem
-        for elem in super(FromStatement, self).get_children(**kw):
-            yield elem
-
-    @property
-    def _returning(self):
-        return self.element._returning if self.element.is_dml else None
-
-    @property
-    def _inline(self):
-        return self.element._inline if self.element.is_dml else None
 
 
 class AliasOption(interfaces.LoaderOption):

@@ -1420,7 +1420,7 @@ class SuiteRequirements(Requirements):
     def greenlet(self):
         def go(config):
             try:
-                import greenlet  # noqa F401
+                import greenlet  # noqa: F401
             except ImportError:
                 return False
             else:

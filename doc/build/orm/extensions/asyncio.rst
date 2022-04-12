@@ -8,7 +8,10 @@ included, using asyncio-compatible dialects.
 
 .. versionadded:: 1.4
 
-.. note:: The asyncio extension as of SQLAlchemy 1.4.3 can now be considered to
+.. warning:: Please read :ref:`asyncio_install` for important platform
+   installation notes for many platforms, including **Apple M1 Architecture**.
+
+.. tip:: The asyncio extension as of SQLAlchemy 1.4.3 can now be considered to
    be **beta level** software. API details are subject to change however at this
    point it is unlikely for there to be significant backwards-incompatible
    changes.
@@ -22,21 +25,32 @@ included, using asyncio-compatible dialects.
 
 .. _asyncio_install:
 
-Asyncio Platform Installation Notes
-------------------------------------
+Asyncio Platform Installation Notes (Including Apple M1)
+---------------------------------------------------------
 
-The asyncio extension requires at least Python version 3.6. It also depends
+The asyncio extension requires Python 3 only. It also depends
 upon the `greenlet <https://pypi.org/project/greenlet/>`_ library. This
 dependency is installed by default on common machine platforms including::
 
     x86_64 aarch64 ppc64le amd64 win32
 
 For the above platforms, ``greenlet`` is known to supply pre-built wheel files.
-To ensure the ``greenlet`` dependency is present on other platforms, the
-``[asyncio]`` extra may be installed as follows, which will include an attempt
-to build and install ``greenlet``::
+For other platforms, **greenlet does not install by default**;
+the current file listing for greenlet can be seen at
+`Greenlet - Download Files <https://pypi.org/project/greenlet/#files>`_.
+Note that **there are many architectures omitted, including Apple M1**.
+
+To install SQLAlchemy while ensuring the ``greenlet`` dependency is present
+regardless of what platform is in use, the
+``[asyncio]`` `setuptools extra <https://packaging.python.org/en/latest/tutorials/installing-packages/#installing-setuptools-extras>`_
+may be installed
+as follows, which will include also instruct ``pip`` to install ``greenlet``::
 
   pip install sqlalchemy[asyncio]
+
+Note that installation of ``greenlet`` on platforms that do not have a pre-built
+wheel file means that ``greenlet`` will be built from source, which requires
+that Python's development libraries also be present.
 
 
 Synopsis - Core
@@ -133,12 +147,12 @@ illustrates a complete example including mapper and session configuration::
     from sqlalchemy import Integer
     from sqlalchemy import String
     from sqlalchemy.ext.asyncio import AsyncSession
+    from sqlalchemy.ext.asyncio import async_sessionmaker
     from sqlalchemy.ext.asyncio import create_async_engine
     from sqlalchemy.future import select
     from sqlalchemy.orm import declarative_base
     from sqlalchemy.orm import relationship
     from sqlalchemy.orm import selectinload
-    from sqlalchemy.orm import sessionmaker
 
     Base = declarative_base()
 
@@ -176,9 +190,7 @@ illustrates a complete example including mapper and session configuration::
 
         # expire_on_commit=False will prevent attributes from being expired
         # after commit.
-        async_session = sessionmaker(
-            engine, expire_on_commit=False, class_=AsyncSession
-        )
+        async_session = async_sessionmaker(engine, expire_on_commit=False)
 
         async with async_session() as session:
             async with session.begin():
@@ -220,7 +232,7 @@ illustrates a complete example including mapper and session configuration::
     asyncio.run(async_main())
 
 In the example above, the :class:`_asyncio.AsyncSession` is instantiated using
-the optional :class:`_orm.sessionmaker` helper, and associated with an
+the optional :class:`_asyncio.async_sessionmaker` helper, and associated with an
 :class:`_asyncio.AsyncEngine` against particular database URL. It is
 then used in a Python asynchronous context manager (i.e. ``async with:``
 statement) so that it is automatically closed at the end of the block; this is
@@ -270,8 +282,8 @@ prevent this:
       async_session = AsyncSession(engine, expire_on_commit=False)
 
       # sessionmaker version
-      async_session = sessionmaker(
-          engine, expire_on_commit=False, class_=AsyncSession
+      async_session = async_sessionmaker(
+          engine, expire_on_commit=False
       )
 
       async with async_session() as session:
@@ -708,11 +720,11 @@ constructor::
 
     from asyncio import current_task
 
-    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.ext.asyncio import async_sessionmaker
     from sqlalchemy.ext.asyncio import async_scoped_session
     from sqlalchemy.ext.asyncio import AsyncSession
 
-    async_session_factory = sessionmaker(some_async_engine, class_=AsyncSession)
+    async_session_factory = async_sessionmaker(some_async_engine, expire_on_commit=False)
     AsyncScopedSession = async_scoped_session(async_session_factory, scopefunc=current_task)
 
     some_async_session = AsyncScopedSession()
@@ -818,6 +830,10 @@ ORM Session API Documentation
 .. autofunction:: async_object_session
 
 .. autofunction:: async_session
+
+.. autoclass:: async_sessionmaker
+   :members:
+   :inherited-members:
 
 .. autoclass:: async_scoped_session
    :members:

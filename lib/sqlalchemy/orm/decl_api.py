@@ -249,7 +249,7 @@ class declared_attr(interfaces._MappedAttribute[_T]):
         :ref:`orm_declarative_dataclasses_mixin` - illustrates special forms
         for use with Python dataclasses
 
-    """  # noqa E501
+    """  # noqa: E501
 
     if typing.TYPE_CHECKING:
 

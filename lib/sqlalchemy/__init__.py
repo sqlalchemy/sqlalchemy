@@ -7,14 +7,12 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from . import util as _util
 from .engine import AdaptedConnection as AdaptedConnection
-from .engine import BaseCursorResult as BaseCursorResult
 from .engine import BaseRow as BaseRow
 from .engine import BindTyping as BindTyping
-from .engine import BufferedColumnResultProxy as BufferedColumnResultProxy
-from .engine import BufferedColumnRow as BufferedColumnRow
-from .engine import BufferedRowResultProxy as BufferedRowResultProxy
 from .engine import ChunkedIteratorResult as ChunkedIteratorResult
 from .engine import Compiled as Compiled
 from .engine import Connection as Connection
@@ -28,7 +26,6 @@ from .engine import engine_from_config as engine_from_config
 from .engine import ExceptionContext as ExceptionContext
 from .engine import ExecutionContext as ExecutionContext
 from .engine import FrozenResult as FrozenResult
-from .engine import FullyBufferedResultProxy as FullyBufferedResultProxy
 from .engine import Inspector as Inspector
 from .engine import IteratorResult as IteratorResult
 from .engine import make_url as make_url
@@ -196,7 +193,6 @@ from .sql.expression import tuple_ as tuple_
 from .sql.expression import type_coerce as type_coerce
 from .sql.expression import TypeClause as TypeClause
 from .sql.expression import TypeCoerce as TypeCoerce
-from .sql.expression import typing as typing
 from .sql.expression import UnaryExpression as UnaryExpression
 from .sql.expression import union as union
 from .sql.expression import union_all as union_all
@@ -223,6 +219,9 @@ from .types import Date as Date
 from .types import DATETIME as DATETIME
 from .types import DateTime as DateTime
 from .types import DECIMAL as DECIMAL
+from .types import DOUBLE as DOUBLE
+from .types import Double as Double
+from .types import DOUBLE_PRECISION as DOUBLE_PRECISION
 from .types import Enum as Enum
 from .types import FLOAT as FLOAT
 from .types import Float as Float
@@ -257,7 +256,7 @@ from .types import VARCHAR as VARCHAR
 __version__ = "2.0.0b1"
 
 
-def __go(lcls):
+def __go(lcls: Any) -> None:
     from . import util as _sa_util
 
     _sa_util.preloaded.import_prefix("sqlalchemy")

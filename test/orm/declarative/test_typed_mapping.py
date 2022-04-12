@@ -160,6 +160,39 @@ class MappedColumnTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         is_true(User.__table__.c.data.nullable)
         assert isinstance(User.__table__.c.created_at.type, DateTime)
 
+    def test_anno_w_fixed_table(self, decl_base):
+        users = Table(
+            "users",
+            decl_base.metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50), nullable=False),
+            Column("data", String(50)),
+            Column("x", Integer),
+            Column("y", Integer),
+            Column("created_at", DateTime),
+        )
+
+        class User(decl_base):
+            __table__ = users
+
+            id: Mapped[int]
+            name: Mapped[str]
+            data: Mapped[Optional[str]]
+            x: Mapped[int]
+            y: Mapped[int]
+            created_at: Mapped[datetime.datetime]
+
+        self.assert_compile(
+            select(User),
+            "SELECT users.id, users.name, users.data, users.x, "
+            "users.y, users.created_at FROM users",
+        )
+        eq_(User.__mapper__.primary_key, (User.__table__.c.id,))
+        is_false(User.__table__.c.id.nullable)
+        is_false(User.__table__.c.name.nullable)
+        is_true(User.__table__.c.data.nullable)
+        assert isinstance(User.__table__.c.created_at.type, DateTime)
+
     def test_construct_lhs_type_missing(self, decl_base):
         class MyClass:
             pass
@@ -421,6 +454,32 @@ class MixinTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         # ordering of cols is TODO
         eq_(A.__table__.c.keys(), ["id", "y", "name", "x"])
 
+        self.assert_compile(select(A), "SELECT a.id, a.y, a.name, a.x FROM a")
+
+    def test_mapped_column_omit_fn_fixed_table(self, decl_base):
+        class MixinOne:
+            name: Mapped[str]
+            x: Mapped[int]
+            y: Mapped[int]
+
+        a = Table(
+            "a",
+            decl_base.metadata,
+            Column("id", Integer, primary_key=True),
+            Column("name", String(50), nullable=False),
+            Column("data", String(50)),
+            Column("x", Integer),
+            Column("y", Integer),
+        )
+
+        class A(MixinOne, decl_base):
+            __table__ = a
+            id: Mapped[int]
+
+        self.assert_compile(
+            select(A), "SELECT a.id, a.name, a.data, a.x, a.y FROM a"
+        )
+
     def test_mc_duplication_plain(self, decl_base):
         class MixinOne:
             name: Mapped[str] = mapped_column()
@@ -562,7 +621,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             __sa_dataclass_metadata_key__ = "sa"
 
             id: Mapped[int] = mapped_column(primary_key=True)
-            bs: List["B"] = dataclasses.field(  # noqa: F821
+            bs: List["B"] = dataclasses.field(
                 default_factory=list, metadata={"sa": relationship()}
             )
 
@@ -583,9 +642,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
-            bs: Mapped[List["B"]] = relationship(  # noqa F821
-                back_populates="a"
-            )
+            bs: Mapped[List["B"]] = relationship(back_populates="a")
 
         class B(decl_base):
             __tablename__ = "b"
@@ -660,16 +717,10 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
-            bs_list: Mapped[List["B"]] = relationship(  # noqa F821
-                viewonly=True
-            )
-            bs_set: Mapped[Set["B"]] = relationship(viewonly=True)  # noqa F821
-            bs_list_warg: Mapped[List["B"]] = relationship(  # noqa F821
-                "B", viewonly=True
-            )
-            bs_set_warg: Mapped[Set["B"]] = relationship(  # noqa F821
-                "B", viewonly=True
-            )
+            bs_list: Mapped[List["B"]] = relationship(viewonly=True)
+            bs_set: Mapped[Set["B"]] = relationship(viewonly=True)
+            bs_list_warg: Mapped[List["B"]] = relationship("B", viewonly=True)
+            bs_set_warg: Mapped[Set["B"]] = relationship("B", viewonly=True)
 
         class B(decl_base):
             __tablename__ = "b"
@@ -697,7 +748,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
-            bs: Mapped[Dict[str, "B"]] = relationship()  # noqa F821
+            bs: Mapped[Dict[str, "B"]] = relationship()
 
         class B(decl_base):
             __tablename__ = "b"
@@ -720,7 +771,7 @@ class RelationshipLHSTest(fixtures.TestBase, testing.AssertsCompiledSQL):
             id: Mapped[int] = mapped_column(primary_key=True)
             data: Mapped[str] = mapped_column()
 
-            bs: Mapped[MappedCollection[str, "B"]] = relationship(  # noqa F821
+            bs: Mapped[MappedCollection[str, "B"]] = relationship(
                 collection_class=attribute_mapped_collection("name")
             )
 
@@ -989,7 +1040,7 @@ class AllYourFavoriteHitsTest(fixtures.TestBase, testing.AssertsCompiledSQL):
 
             name: Mapped[str50]
 
-            employees: Mapped[Set["Person"]] = relationship()  # noqa F821
+            employees: Mapped[Set["Person"]] = relationship()
 
         class Person(decl_base):
             __tablename__ = "person"

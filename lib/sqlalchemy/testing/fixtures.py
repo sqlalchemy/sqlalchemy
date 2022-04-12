@@ -52,6 +52,13 @@ class TestBase:
         assert val, msg
 
     @config.fixture()
+    def nocache(self):
+        _cache = config.db._compiled_cache
+        config.db._compiled_cache = None
+        yield
+        config.db._compiled_cache = _cache
+
+    @config.fixture()
     def connection_no_trans(self):
         eng = getattr(self, "bind", None) or config.db
 
@@ -121,6 +128,7 @@ class TestBase:
             future=None,
             asyncio=False,
             transfer_staticpool=False,
+            share_pool=False,
         ):
             if options is None:
                 options = {}
@@ -130,6 +138,7 @@ class TestBase:
                 options=options,
                 asyncio=asyncio,
                 transfer_staticpool=transfer_staticpool,
+                share_pool=share_pool,
             )
 
         yield gen_testing_engine

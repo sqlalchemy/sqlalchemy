@@ -57,7 +57,7 @@ class MySQLDialect_pymysql(MySQLDialect_mysqldb):
             return False
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return __import__("pymysql")
 
     def create_connect_args(self, url, _translate_args=None):

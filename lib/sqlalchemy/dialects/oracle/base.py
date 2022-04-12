@@ -558,10 +558,12 @@ from ...sql import visitors
 from ...types import BLOB
 from ...types import CHAR
 from ...types import CLOB
+from ...types import DOUBLE_PRECISION
 from ...types import FLOAT
 from ...types import INTEGER
 from ...types import NCHAR
 from ...types import NVARCHAR
+from ...types import REAL
 from ...types import TIMESTAMP
 from ...types import VARCHAR
 
@@ -625,8 +627,49 @@ class NUMBER(sqltypes.Numeric, sqltypes.Integer):
             return sqltypes.Integer
 
 
-class DOUBLE_PRECISION(sqltypes.Float):
-    __visit_name__ = "DOUBLE_PRECISION"
+class FLOAT(sqltypes.FLOAT):
+    """Oracle FLOAT.
+
+    This is the same as :class:`_sqltypes.FLOAT` except that
+    an Oracle-specific :paramref:`_oracle.FLOAT.binary_precision`
+    parameter is accepted, and
+    the :paramref:`_sqltypes.Float.precision` parameter is not accepted.
+
+    Oracle FLOAT types indicate precision in terms of "binary precision", which
+    defaults to 126. For a REAL type, the value is 63. This parameter does not
+    cleanly map to a specific number of decimal places but is roughly
+    equivalent to the desired number of decimal places divided by 0.3103.
+
+    .. versionadded:: 2.0
+
+    """
+
+    __visit_name__ = "FLOAT"
+
+    def __init__(
+        self,
+        binary_precision=None,
+        asdecimal=False,
+        decimal_return_scale=None,
+    ):
+        r"""
+        Construct a FLOAT
+
+        :param binary_precision: Oracle binary precision value to be rendered
+         in DDL. This may be approximated to the number of decimal characters
+         using the formula "decimal precision = 0.30103 * binary precision".
+         The default value used by Oracle for FLOAT / DOUBLE PRECISION is 126.
+
+        :param asdecimal: See :paramref:`_sqltypes.Float.asdecimal`
+
+        :param decimal_return_scale: See
+         :paramref:`_sqltypes.Float.decimal_return_scale`
+
+        """
+        super().__init__(
+            asdecimal=asdecimal, decimal_return_scale=decimal_return_scale
+        )
+        self.binary_precision = binary_precision
 
 
 class BINARY_DOUBLE(sqltypes.Float):
@@ -645,7 +688,28 @@ class LONG(sqltypes.Text):
     __visit_name__ = "LONG"
 
 
-class DATE(sqltypes.DateTime):
+class _OracleDateLiteralRender:
+    def literal_processor(self, dialect):
+        def process(value):
+            if value is not None:
+                if getattr(value, "microsecond", None):
+                    value = (
+                        f"""TO_TIMESTAMP"""
+                        f"""('{value.isoformat().replace("T", " ")}', """
+                        """'YYYY-MM-DD HH24:MI:SS.FF')"""
+                    )
+                else:
+                    value = (
+                        f"""TO_DATE"""
+                        f"""('{value.isoformat().replace("T", " ")}', """
+                        """'YYYY-MM-DD HH24:MI:SS')"""
+                    )
+            return value
+
+        return process
+
+
+class DATE(_OracleDateLiteralRender, sqltypes.DateTime):
     """Provide the oracle DATE type.
 
     This type has no special Python behavior, except that it subclasses
@@ -660,6 +724,10 @@ class DATE(sqltypes.DateTime):
 
     def _compare_type_affinity(self, other):
         return other._type_affinity in (sqltypes.DateTime, sqltypes.Date)
+
+
+class _OracleDate(_OracleDateLiteralRender, sqltypes.Date):
+    pass
 
 
 class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
@@ -700,9 +768,6 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
             day_precision=self.day_precision,
         )
 
-    def coerce_compared_value(self, op, value):
-        return self
-
 
 class ROWID(sqltypes.TypeEngine):
     """Oracle ROWID type.
@@ -723,6 +788,7 @@ colspecs = {
     sqltypes.Boolean: _OracleBoolean,
     sqltypes.Interval: INTERVAL,
     sqltypes.DateTime: DATE,
+    sqltypes.Date: _OracleDate,
 }
 
 ischema_names = {
@@ -742,6 +808,7 @@ ischema_names = {
     "RAW": RAW,
     "FLOAT": FLOAT,
     "DOUBLE PRECISION": DOUBLE_PRECISION,
+    "REAL": REAL,
     "LONG": LONG,
     "BINARY_DOUBLE": BINARY_DOUBLE,
     "BINARY_FLOAT": BINARY_FLOAT,
@@ -759,6 +826,9 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_float(self, type_, **kw):
         return self.visit_FLOAT(type_, **kw)
+
+    def visit_double(self, type_, **kw):
+        return self.visit_DOUBLE_PRECISION(type_, **kw)
 
     def visit_unicode(self, type_, **kw):
         if self.dialect._use_nchar_for_unicode:
@@ -795,24 +865,50 @@ class OracleTypeCompiler(compiler.GenericTypeCompiler):
         return self._generate_numeric(type_, "BINARY_FLOAT", **kw)
 
     def visit_FLOAT(self, type_, **kw):
-        # don't support conversion between decimal/binary
-        # precision yet
-        kw["no_precision"] = True
+        kw["_requires_binary_precision"] = True
         return self._generate_numeric(type_, "FLOAT", **kw)
 
     def visit_NUMBER(self, type_, **kw):
         return self._generate_numeric(type_, "NUMBER", **kw)
 
     def _generate_numeric(
-        self, type_, name, precision=None, scale=None, no_precision=False, **kw
+        self,
+        type_,
+        name,
+        precision=None,
+        scale=None,
+        _requires_binary_precision=False,
+        **kw,
     ):
         if precision is None:
-            precision = type_.precision
+
+            precision = getattr(type_, "precision", None)
+
+        if _requires_binary_precision:
+            binary_precision = getattr(type_, "binary_precision", None)
+
+            if precision and binary_precision is None:
+                # https://www.oracletutorial.com/oracle-basics/oracle-float/
+                estimated_binary_precision = int(precision / 0.30103)
+                raise exc.ArgumentError(
+                    "Oracle FLOAT types use 'binary precision', which does "
+                    "not convert cleanly from decimal 'precision'.  Please "
+                    "specify "
+                    f"this type with a separate Oracle variant, such as "
+                    f"{type_.__class__.__name__}(precision={precision})."
+                    f"with_variant(oracle.FLOAT"
+                    f"(binary_precision="
+                    f"{estimated_binary_precision}), 'oracle'), so that the "
+                    "Oracle specific 'binary_precision' may be specified "
+                    "accurately."
+                )
+            else:
+                precision = binary_precision
 
         if scale is None:
             scale = getattr(type_, "scale", None)
 
-        if no_precision or precision is None:
+        if precision is None:
             return name
         elif scale is None:
             n = "%(name)s(%(precision)s)"
@@ -1019,7 +1115,9 @@ class OracleCompiler(compiler.SQLCompiler):
 
         return " " + alias_name_text
 
-    def returning_clause(self, stmt, returning_cols):
+    def returning_clause(
+        self, stmt, returning_cols, *, populate_result_map, **kw
+    ):
         columns = []
         binds = []
 
@@ -1052,23 +1150,34 @@ class OracleCompiler(compiler.SQLCompiler):
                 self.bindparam_string(self._truncate_bindparam(outparam))
             )
 
-            # ensure the ExecutionContext.get_out_parameters() method is
-            # *not* called; the cx_Oracle dialect wants to handle these
-            # parameters separately
-            self.has_out_parameters = False
+            # has_out_parameters would in a normal case be set to True
+            # as a result of the compiler visiting an outparam() object.
+            # in this case, the above outparam() objects are not being
+            # visited.   Ensure the statement itself didn't have other
+            # outparam() objects independently.
+            # technically, this could be supported, but as it would be
+            # a very strange use case without a clear rationale, disallow it
+            if self.has_out_parameters:
+                raise exc.InvalidRequestError(
+                    "Using explicit outparam() objects with "
+                    "UpdateBase.returning() in the same Core DML statement "
+                    "is not supported in the Oracle dialect."
+                )
+
+            self._oracle_returning = True
 
             columns.append(self.process(col_expr, within_columns_clause=False))
-
-            self._add_to_result_map(
-                getattr(col_expr, "name", col_expr._anon_name_label),
-                getattr(col_expr, "name", col_expr._anon_name_label),
-                (
-                    column,
-                    getattr(column, "name", None),
-                    getattr(column, "key", None),
-                ),
-                column.type,
-            )
+            if populate_result_map:
+                self._add_to_result_map(
+                    getattr(col_expr, "name", col_expr._anon_name_label),
+                    getattr(col_expr, "name", col_expr._anon_name_label),
+                    (
+                        column,
+                        getattr(column, "name", None),
+                        getattr(column, "key", None),
+                    ),
+                    column.type,
+                )
 
         return "RETURNING " + ", ".join(columns) + " INTO " + ", ".join(binds)
 
@@ -1440,6 +1549,7 @@ class OracleDialect(default.DefaultDialect):
     max_identifier_length = 128
 
     implicit_returning = True
+    full_returning = True
 
     div_is_floordiv = False
 
@@ -1464,7 +1574,7 @@ class OracleDialect(default.DefaultDialect):
 
     statement_compiler = OracleCompiler
     ddl_compiler = OracleDDLCompiler
-    type_compiler = OracleTypeCompiler
+    type_compiler_cls = OracleTypeCompiler
     preparer = OracleIdentifierPreparer
     execution_ctx_cls = OracleExecutionContext
 
@@ -1964,8 +2074,19 @@ class OracleDialect(default.DefaultDialect):
                 else:
                     coltype = NUMBER(precision, scale)
             elif coltype == "FLOAT":
-                # TODO: support "precision" here as "binary_precision"
-                coltype = FLOAT()
+                # https://docs.oracle.com/cd/B14117_01/server.101/b10758/sqlqr06.htm
+                if precision == 126:
+                    # The DOUBLE PRECISION datatype is a floating-point
+                    # number with binary precision 126.
+                    coltype = DOUBLE_PRECISION()
+                elif precision == 63:
+                    # The REAL datatype is a floating-point number with a
+                    # binary precision of 63, or 18 decimal.
+                    coltype = REAL()
+                else:
+                    # non standard precision
+                    coltype = FLOAT(binary_precision=precision)
+
             elif coltype in ("VARCHAR2", "NVARCHAR2", "CHAR", "NCHAR"):
                 coltype = self.ischema_names.get(coltype)(length)
             elif "WITH TIME ZONE" in coltype:

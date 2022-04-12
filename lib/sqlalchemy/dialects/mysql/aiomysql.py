@@ -276,7 +276,7 @@ class MySQLDialect_aiomysql(MySQLDialect_pymysql):
     is_async = True
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return AsyncAdapt_aiomysql_dbapi(
             __import__("aiomysql"), __import__("pymysql")
         )

@@ -22,9 +22,9 @@ from typing import Generic
 from typing import Iterable
 from typing import Iterator
 from typing import List
+from typing import Mapping
 from typing import Optional
 from typing import overload
-from typing import Sequence
 from typing import Set
 from typing import Tuple
 from typing import TypeVar
@@ -34,17 +34,18 @@ import weakref
 
 from ._has_cy import HAS_CYEXTENSION
 from .typing import Literal
+from .typing import Protocol
 
 if typing.TYPE_CHECKING or not HAS_CYEXTENSION:
     from ._py_collections import immutabledict as immutabledict
     from ._py_collections import IdentitySet as IdentitySet
-    from ._py_collections import ImmutableContainer as ImmutableContainer
+    from ._py_collections import ReadOnlyContainer as ReadOnlyContainer
     from ._py_collections import ImmutableDictBase as ImmutableDictBase
     from ._py_collections import OrderedSet as OrderedSet
     from ._py_collections import unique_list as unique_list
 else:
     from sqlalchemy.cyextension.immutabledict import (
-        ImmutableContainer as ImmutableContainer,
+        ReadOnlyContainer as ReadOnlyContainer,
     )
     from sqlalchemy.cyextension.immutabledict import (
         ImmutableDictBase as ImmutableDictBase,
@@ -62,7 +63,7 @@ else:
 _T = TypeVar("_T", bound=Any)
 _KT = TypeVar("_KT", bound=Any)
 _VT = TypeVar("_VT", bound=Any)
-
+_T_co = TypeVar("_T_co", covariant=True)
 
 EMPTY_SET: FrozenSet[Any] = frozenset()
 
@@ -123,7 +124,7 @@ def merge_lists_w_ordering(a, b):
     return result
 
 
-def coerce_to_immutabledict(d):
+def coerce_to_immutabledict(d: Mapping[_KT, _VT]) -> immutabledict[_KT, _VT]:
     if not d:
         return EMPTY_DICT
     elif isinstance(d, immutabledict):
@@ -135,7 +136,7 @@ def coerce_to_immutabledict(d):
 EMPTY_DICT: immutabledict[Any, Any] = immutabledict()
 
 
-class FacadeDict(ImmutableDictBase[Any, Any]):
+class FacadeDict(ImmutableDictBase[_KT, _VT]):
     """A dictionary that is not publicly mutable."""
 
     def __new__(cls, *args):
@@ -161,6 +162,8 @@ class FacadeDict(ImmutableDictBase[Any, Any]):
 
 _DT = TypeVar("_DT", bound=Any)
 
+_F = TypeVar("_F", bound=Any)
+
 
 class Properties(Generic[_T]):
     """Provide a __getattr__/__setattr__ interface over a dict."""
@@ -169,7 +172,7 @@ class Properties(Generic[_T]):
 
     _data: Dict[str, _T]
 
-    def __init__(self, data):
+    def __init__(self, data: Dict[str, _T]):
         object.__setattr__(self, "_data", data)
 
     def __len__(self) -> int:
@@ -178,30 +181,30 @@ class Properties(Generic[_T]):
     def __iter__(self) -> Iterator[_T]:
         return iter(list(self._data.values()))
 
-    def __dir__(self):
+    def __dir__(self) -> List[str]:
         return dir(super(Properties, self)) + [
             str(k) for k in self._data.keys()
         ]
 
-    def __add__(self, other):
-        return list(self) + list(other)
+    def __add__(self, other: Properties[_F]) -> List[Union[_T, _F]]:
+        return list(self) + list(other)  # type: ignore
 
-    def __setitem__(self, key, obj):
+    def __setitem__(self, key: str, obj: _T) -> None:
         self._data[key] = obj
 
     def __getitem__(self, key: str) -> _T:
         return self._data[key]
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str) -> None:
         del self._data[key]
 
-    def __setattr__(self, key, obj):
+    def __setattr__(self, key: str, obj: _T) -> None:
         self._data[key] = obj
 
-    def __getstate__(self):
+    def __getstate__(self) -> Dict[str, Any]:
         return {"_data": self._data}
 
-    def __setstate__(self, state):
+    def __setstate__(self, state: Dict[str, Any]) -> None:
         object.__setattr__(self, "_data", state["_data"])
 
     def __getattr__(self, key: str) -> _T:
@@ -213,12 +216,12 @@ class Properties(Generic[_T]):
     def __contains__(self, key: str) -> bool:
         return key in self._data
 
-    def as_immutable(self) -> "ImmutableProperties[_T]":
+    def as_readonly(self) -> ReadOnlyProperties[_T]:
         """Return an immutable proxy for this :class:`.Properties`."""
 
-        return ImmutableProperties(self._data)
+        return ReadOnlyProperties(self._data)
 
-    def update(self, value):
+    def update(self, value: Dict[str, _T]) -> None:
         self._data.update(value)
 
     @overload
@@ -249,7 +252,7 @@ class Properties(Generic[_T]):
     def has_key(self, key: str) -> bool:
         return key in self._data
 
-    def clear(self):
+    def clear(self) -> None:
         self._data.clear()
 
 
@@ -263,7 +266,7 @@ class OrderedProperties(Properties[_T]):
         Properties.__init__(self, OrderedDict())
 
 
-class ImmutableProperties(ImmutableContainer, Properties[_T]):
+class ReadOnlyProperties(ReadOnlyContainer, Properties[_T]):
     """Provide immutable dict/object attribute to an underlying dictionary."""
 
     __slots__ = ()
@@ -318,7 +321,7 @@ class WeakSequence:
 
 
 class OrderedIdentitySet(IdentitySet):
-    def __init__(self, iterable=None):
+    def __init__(self, iterable: Optional[Iterable[Any]] = None):
         IdentitySet.__init__(self)
         self._members = OrderedDict()
         if iterable:
@@ -388,11 +391,11 @@ class UniqueAppender(Generic[_T]):
         self.data = data
         self._unique = {}
         if via:
-            self._data_appender = getattr(data, via)  # type: ignore[assignment]  # noqa E501
+            self._data_appender = getattr(data, via)  # type: ignore[assignment]  # noqa: E501
         elif hasattr(data, "append"):
-            self._data_appender = cast("List[_T]", data).append  # type: ignore[assignment]  # noqa E501
+            self._data_appender = cast("List[_T]", data).append  # type: ignore[assignment]  # noqa: E501
         elif hasattr(data, "add"):
-            self._data_appender = cast("Set[_T]", data).add  # type: ignore[assignment]  # noqa E501
+            self._data_appender = cast("Set[_T]", data).add  # type: ignore[assignment]  # noqa: E501
 
     def append(self, item: _T) -> None:
         id_ = id(item)
@@ -411,27 +414,13 @@ def coerce_generator_arg(arg):
         return arg
 
 
-@overload
-def to_list(x: Sequence[_T], default: Optional[List[_T]] = None) -> List[_T]:
-    ...
-
-
-@overload
-def to_list(
-    x: Optional[Sequence[_T]], default: Optional[List[_T]] = None
-) -> Optional[List[_T]]:
-    ...
-
-
-def to_list(
-    x: Optional[Sequence[_T]], default: Optional[List[_T]] = None
-) -> Optional[List[_T]]:
+def to_list(x: Any, default: Optional[List[Any]] = None) -> List[Any]:
     if x is None:
-        return default
+        return default  # type: ignore
     if not isinstance(x, collections_abc.Iterable) or isinstance(
         x, (str, bytes)
     ):
-        return [cast(_T, x)]
+        return [x]
     elif isinstance(x, list):
         return x
     else:
@@ -477,11 +466,12 @@ def update_copy(d, _new=None, **kw):
     return d
 
 
-def flatten_iterator(x):
+def flatten_iterator(x: Iterable[_T]) -> Iterator[_T]:
     """Given an iterator of which further sub-elements may also be
     iterators, flatten the sub-elements into a single iterator.
 
     """
+    elem: _T
     for elem in x:
         if not isinstance(elem, str) and hasattr(elem, "__iter__"):
             for y in flatten_iterator(elem):
@@ -511,9 +501,14 @@ class LRUCache(typing.MutableMapping[_KT, _VT]):
 
     capacity: int
     threshold: float
-    size_alert: Callable[["LRUCache[_KT, _VT]"], None]
+    size_alert: Optional[Callable[["LRUCache[_KT, _VT]"], None]]
 
-    def __init__(self, capacity=100, threshold=0.5, size_alert=None):
+    def __init__(
+        self,
+        capacity: int = 100,
+        threshold: float = 0.5,
+        size_alert: Optional[Callable[..., None]] = None,
+    ):
         self.capacity = capacity
         self.threshold = threshold
         self.size_alert = size_alert
@@ -592,7 +587,17 @@ class LRUCache(typing.MutableMapping[_KT, _VT]):
             self._mutex.release()
 
 
-class ScopedRegistry:
+class _CreateFuncType(Protocol[_T_co]):
+    def __call__(self) -> _T_co:
+        ...
+
+
+class _ScopeFuncType(Protocol):
+    def __call__(self) -> Any:
+        ...
+
+
+class ScopedRegistry(Generic[_T]):
     """A Registry that can store one or multiple instances of a single
     class on the basis of a "scope" function.
 
@@ -609,7 +614,13 @@ class ScopedRegistry:
 
     __slots__ = "createfunc", "scopefunc", "registry"
 
-    def __init__(self, createfunc, scopefunc):
+    createfunc: _CreateFuncType[_T]
+    scopefunc: _ScopeFuncType
+    registry: Any
+
+    def __init__(
+        self, createfunc: Callable[[], _T], scopefunc: Callable[[], Any]
+    ):
         """Construct a new :class:`.ScopedRegistry`.
 
         :param createfunc:  A creation function that will generate
@@ -624,24 +635,24 @@ class ScopedRegistry:
         self.scopefunc = scopefunc
         self.registry = {}
 
-    def __call__(self):
+    def __call__(self) -> _T:
         key = self.scopefunc()
         try:
-            return self.registry[key]
+            return self.registry[key]  # type: ignore[no-any-return]
         except KeyError:
-            return self.registry.setdefault(key, self.createfunc())
+            return self.registry.setdefault(key, self.createfunc())  # type: ignore[no-any-return] # noqa: E501
 
-    def has(self):
+    def has(self) -> bool:
         """Return True if an object is present in the current scope."""
 
         return self.scopefunc() in self.registry
 
-    def set(self, obj):
+    def set(self, obj: _T) -> None:
         """Set the value for the current scope."""
 
         self.registry[self.scopefunc()] = obj
 
-    def clear(self):
+    def clear(self) -> None:
         """Clear the current scope, if any."""
 
         try:
@@ -650,32 +661,32 @@ class ScopedRegistry:
             pass
 
 
-class ThreadLocalRegistry(ScopedRegistry):
+class ThreadLocalRegistry(ScopedRegistry[_T]):
     """A :class:`.ScopedRegistry` that uses a ``threading.local()``
     variable for storage.
 
     """
 
-    def __init__(self, createfunc):
+    def __init__(self, createfunc: Callable[[], _T]):
         self.createfunc = createfunc
         self.registry = threading.local()
 
-    def __call__(self):
+    def __call__(self) -> _T:
         try:
-            return self.registry.value
+            return self.registry.value  # type: ignore[no-any-return]
         except AttributeError:
             val = self.registry.value = self.createfunc()
-            return val
+            return val  # type: ignore[no-any-return]
 
-    def has(self):
+    def has(self) -> bool:
         return hasattr(self.registry, "value")
 
-    def set(self, obj):
+    def set(self, obj: _T) -> None:
         self.registry.value = obj
 
-    def clear(self):
+    def clear(self) -> None:
         try:
-            del self.registry.value  # type: ignore
+            del self.registry.value
         except AttributeError:
             pass
 

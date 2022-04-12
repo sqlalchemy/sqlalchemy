@@ -130,8 +130,9 @@ Glossary
         within the join expression.
 
     plugin
+    plugin-enabled
     plugin-specific
-        "plugin-specific" generally indicates a function or method in
+        "plugin-enabled" or "plugin-specific" generally indicates a function or method in
         SQLAlchemy Core which will behave differently when used in an ORM
         context.
 

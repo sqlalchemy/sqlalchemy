@@ -9,7 +9,9 @@
 from collections import defaultdict as defaultdict
 from functools import partial as partial
 from functools import update_wrapper as update_wrapper
+from typing import TYPE_CHECKING
 
+from . import preloaded as preloaded
 from ._collections import coerce_generator_arg as coerce_generator_arg
 from ._collections import coerce_to_immutabledict as coerce_to_immutabledict
 from ._collections import column_dict as column_dict
@@ -21,9 +23,7 @@ from ._collections import flatten_iterator as flatten_iterator
 from ._collections import has_dupes as has_dupes
 from ._collections import has_intersection as has_intersection
 from ._collections import IdentitySet as IdentitySet
-from ._collections import ImmutableContainer as ImmutableContainer
 from ._collections import immutabledict as immutabledict
-from ._collections import ImmutableProperties as ImmutableProperties
 from ._collections import LRUCache as LRUCache
 from ._collections import merge_lists_w_ordering as merge_lists_w_ordering
 from ._collections import ordered_column_set as ordered_column_set
@@ -33,6 +33,8 @@ from ._collections import OrderedProperties as OrderedProperties
 from ._collections import OrderedSet as OrderedSet
 from ._collections import PopulateDict as PopulateDict
 from ._collections import Properties as Properties
+from ._collections import ReadOnlyContainer as ReadOnlyContainer
+from ._collections import ReadOnlyProperties as ReadOnlyProperties
 from ._collections import ScopedRegistry as ScopedRegistry
 from ._collections import sort_dictionary as sort_dictionary
 from ._collections import ThreadLocalRegistry as ThreadLocalRegistry
@@ -44,8 +46,6 @@ from ._collections import UniqueAppender as UniqueAppender
 from ._collections import update_copy as update_copy
 from ._collections import WeakPopulateDict as WeakPopulateDict
 from ._collections import WeakSequence as WeakSequence
-from ._preloaded import preload_module as preload_module
-from ._preloaded import preloaded as preloaded
 from .compat import arm as arm
 from .compat import b as b
 from .compat import b64decode as b64decode
@@ -94,11 +94,12 @@ from .langhelpers import decode_slice as decode_slice
 from .langhelpers import decorator as decorator
 from .langhelpers import dictlike_iteritems as dictlike_iteritems
 from .langhelpers import duck_type_collection as duck_type_collection
-from .langhelpers import dynamic_property as dynamic_property
 from .langhelpers import ellipses_string as ellipses_string
 from .langhelpers import EnsureKWArg as EnsureKWArg
+from .langhelpers import FastIntFlag as FastIntFlag
 from .langhelpers import format_argspec_init as format_argspec_init
 from .langhelpers import format_argspec_plus as format_argspec_plus
+from .langhelpers import generic_fn_descriptor as generic_fn_descriptor
 from .langhelpers import generic_repr as generic_repr
 from .langhelpers import get_annotations as get_annotations
 from .langhelpers import get_callable_argspec as get_callable_argspec
@@ -107,6 +108,9 @@ from .langhelpers import get_func_kwargs as get_func_kwargs
 from .langhelpers import getargspec_init as getargspec_init
 from .langhelpers import has_compiled_ext as has_compiled_ext
 from .langhelpers import HasMemoized as HasMemoized
+from .langhelpers import (
+    HasMemoized_ro_memoized_attribute as HasMemoized_ro_memoized_attribute,
+)
 from .langhelpers import hybridmethod as hybridmethod
 from .langhelpers import hybridproperty as hybridproperty
 from .langhelpers import inject_docstring_text as inject_docstring_text
@@ -121,6 +125,7 @@ from .langhelpers import methods_equivalent as methods_equivalent
 from .langhelpers import (
     monkeypatch_proxied_specials as monkeypatch_proxied_specials,
 )
+from .langhelpers import non_memoized_property as non_memoized_property
 from .langhelpers import NoneType as NoneType
 from .langhelpers import only_once as only_once
 from .langhelpers import (
@@ -129,6 +134,8 @@ from .langhelpers import (
 from .langhelpers import PluginLoader as PluginLoader
 from .langhelpers import portable_instancemethod as portable_instancemethod
 from .langhelpers import quoted_token_parser as quoted_token_parser
+from .langhelpers import ro_memoized_property as ro_memoized_property
+from .langhelpers import ro_non_memoized_property as ro_non_memoized_property
 from .langhelpers import safe_reraise as safe_reraise
 from .langhelpers import set_creation_order as set_creation_order
 from .langhelpers import string_or_unprintable as string_or_unprintable
@@ -142,3 +149,4 @@ from .langhelpers import warn as warn
 from .langhelpers import warn_exception as warn_exception
 from .langhelpers import warn_limited as warn_limited
 from .langhelpers import wrap_callable as wrap_callable
+from .preloaded import preload_module as preload_module

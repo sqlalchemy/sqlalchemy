@@ -24,6 +24,7 @@ from typing import Any
 from typing import cast
 from typing import List
 from typing import Optional
+from typing import Sequence
 from typing import Tuple
 from typing import Type
 from typing import TypeVar
@@ -31,50 +32,38 @@ from typing import Union
 
 from . import exc as orm_exc
 from . import path_registry
-from .base import _MappedAttribute  # noqa
-from .base import EXT_CONTINUE
-from .base import EXT_SKIP
-from .base import EXT_STOP
-from .base import InspectionAttr  # noqa
-from .base import InspectionAttrInfo  # noqa
-from .base import MANYTOMANY
-from .base import MANYTOONE
-from .base import NOT_EXTENSION
-from .base import ONETOMANY
+from .base import _MappedAttribute as _MappedAttribute
+from .base import EXT_CONTINUE as EXT_CONTINUE
+from .base import EXT_SKIP as EXT_SKIP
+from .base import EXT_STOP as EXT_STOP
+from .base import InspectionAttr as InspectionAttr
+from .base import InspectionAttrExtensionType as InspectionAttrExtensionType
+from .base import InspectionAttrInfo as InspectionAttrInfo
+from .base import MANYTOMANY as MANYTOMANY
+from .base import MANYTOONE as MANYTOONE
+from .base import NotExtension as NotExtension
+from .base import ONETOMANY as ONETOMANY
 from .base import SQLORMOperations
+from .. import ColumnElement
 from .. import inspect
 from .. import inspection
 from .. import util
 from ..sql import operators
 from ..sql import roles
 from ..sql import visitors
-from ..sql._typing import _ColumnsClauseElement
 from ..sql.base import ExecutableOption
 from ..sql.cache_key import HasCacheKey
+from ..sql.elements import SQLCoreOperations
 from ..sql.schema import Column
 from ..sql.type_api import TypeEngine
 from ..util.typing import TypedDict
 
 if typing.TYPE_CHECKING:
     from .decl_api import RegistryType
+    from ..sql._typing import _ColumnsClauseArgument
+    from ..sql._typing import _DMLColumnArgument
 
 _T = TypeVar("_T", bound=Any)
-
-__all__ = (
-    "EXT_CONTINUE",
-    "EXT_STOP",
-    "EXT_SKIP",
-    "ONETOMANY",
-    "MANYTOMANY",
-    "MANYTOONE",
-    "NOT_EXTENSION",
-    "LoaderStrategy",
-    "MapperOption",
-    "LoaderOption",
-    "MapperProperty",
-    "PropComparator",
-    "StrategizedProperty",
-)
 
 
 class ORMStatementRole(roles.StatementRole):
@@ -103,8 +92,8 @@ class ORMColumnDescription(TypedDict):
     name: str
     type: Union[Type, TypeEngine]
     aliased: bool
-    expr: _ColumnsClauseElement
-    entity: Optional[_ColumnsClauseElement]
+    expr: _ColumnsClauseArgument
+    entity: Optional[_ColumnsClauseArgument]
 
 
 class _IntrospectsAnnotations:
@@ -189,6 +178,10 @@ class MapperProperty(
     mapper property.
 
     """
+
+    comparator: PropComparator[_T]
+    """The :class:`_orm.PropComparator` instance that implements SQL
+    expression construction on behalf of this mapped attribute."""
 
     @property
     def _links_to_entity(self):
@@ -376,9 +369,7 @@ class MapperProperty(
 
 
 @inspection._self_inspects
-class PropComparator(
-    SQLORMOperations[_T], operators.ColumnOperators[SQLORMOperations]
-):
+class PropComparator(SQLORMOperations[_T]):
     r"""Defines SQL operations for ORM mapped attributes.
 
     SQLAlchemy allows for operators to
@@ -477,7 +468,9 @@ class PropComparator(
     def __clause_element__(self):
         raise NotImplementedError("%r" % self)
 
-    def _bulk_update_tuples(self, value):
+    def _bulk_update_tuples(
+        self, value: Any
+    ) -> Sequence[Tuple[_DMLColumnArgument, Any]]:
         """Receive a SQL expression that represents a value in the SET
         clause of an UPDATE statement.
 
@@ -512,6 +505,11 @@ class PropComparator(
             }
         )
 
+    def _criterion_exists(
+        self, criterion: Optional[SQLCoreOperations[Any]] = None, **kwargs: Any
+    ) -> ColumnElement[Any]:
+        return self.prop.comparator._criterion_exists(criterion, **kwargs)
+
     @property
     def adapter(self):
         """Produce a callable that adapts column expressions
@@ -523,7 +521,7 @@ class PropComparator(
         else:
             return self._adapt_to_entity._adapt_element
 
-    @property
+    @util.non_memoized_property
     def info(self):
         return self.property.info
 
@@ -547,12 +545,12 @@ class PropComparator(
 
         def operate(
             self, op: operators.OperatorType, *other: Any, **kwargs: Any
-        ) -> "SQLORMOperations":
+        ) -> "SQLCoreOperations[Any]":
             ...
 
         def reverse_operate(
             self, op: operators.OperatorType, other: Any, **kwargs: Any
-        ) -> "SQLORMOperations":
+        ) -> "SQLCoreOperations[Any]":
             ...
 
     def of_type(self, class_) -> "SQLORMOperations[_T]":
@@ -609,9 +607,11 @@ class PropComparator(
         """
         return self.operate(operators.and_, *criteria)
 
-    def any(self, criterion=None, **kwargs) -> "SQLORMOperations[_T]":
-        r"""Return true if this collection contains any member that meets the
-        given criterion.
+    def any(
+        self, criterion: Optional[SQLCoreOperations[Any]] = None, **kwargs
+    ) -> ColumnElement[bool]:
+        r"""Return a SQL expression representing true if this element
+        references a member which meets the given criterion.
 
         The usual implementation of ``any()`` is
         :meth:`.Relationship.Comparator.any`.
@@ -627,9 +627,11 @@ class PropComparator(
 
         return self.operate(PropComparator.any_op, criterion, **kwargs)
 
-    def has(self, criterion=None, **kwargs) -> "SQLORMOperations[_T]":
-        r"""Return true if this element references a member which meets the
-        given criterion.
+    def has(
+        self, criterion: Optional[SQLCoreOperations[Any]] = None, **kwargs
+    ) -> ColumnElement[bool]:
+        r"""Return a SQL expression representing true if this element
+        references a member which meets the given criterion.
 
         The usual implementation of ``has()`` is
         :meth:`.Relationship.Comparator.has`.
@@ -836,6 +838,10 @@ class ORMOption(ExecutableOption):
 
     """
 
+    _is_core = False
+
+    _is_user_defined = False
+
     _is_compile_state = False
 
     _is_criteria_option = False
@@ -939,6 +945,8 @@ class UserDefinedOption(ORMOption):
     __slots__ = ("payload",)
 
     _is_legacy_option = False
+
+    _is_user_defined = True
 
     propagate_to_loaders = False
     """if True, indicate this option should be carried along

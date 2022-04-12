@@ -759,6 +759,18 @@ as the schema name is passed to these methods explicitly.
 
       ...
 
+  .. warning::
+
+    When using the ORM :class:`_orm.Session` without extensions, the schema
+    translate feature is only supported as
+    **a single schema translate map per Session**.   It will **not work** if
+    different schema translate maps are given on a per-statement basis, as
+    the ORM :class:`_orm.Session` does not take current schema translate
+    values into account for individual objects.
+
+    To use a single :class:`_orm.Session` with multiple ``schema_translate_map``
+    configurations, the :ref:`horizontal_sharding_toplevel` extension may
+    be used.  See the example at :ref:`examples_sharding`.
 
 
 .. versionadded:: 1.1
@@ -1397,9 +1409,9 @@ Basic guidelines include:
         def my_stmt(parameter, thing=False):
             stmt = lambda_stmt(lambda: select(table))
             if thing:
-                stmt += s.where(table.c.x > parameter)
+                stmt += lambda s: s.where(table.c.x > parameter)
             else:
-                stmt += s.where(table.c.y == parameter)
+                stmt += lambda s: s.where(table.c.y == parameter)
             return stmt
 
   There are a variety of failures which can occur if the lambda does not
@@ -1708,7 +1720,10 @@ Valid use cases for calling :meth:`_engine.Engine.dispose` include:
   :class:`_engine.Engine` object is copied to the child process,
   :meth:`_engine.Engine.dispose` should be called so that the engine creates
   brand new database connections local to that fork.   Database connections
-  generally do **not** travel across process boundaries.
+  generally do **not** travel across process boundaries.  Use the
+  :paramref:`.Engine.dispose.close` parameter set to False in this case.
+  See the section :ref:`pooling_multiprocessing` for more background on this
+  use case.
 
 * Within test suites or multitenancy scenarios where many
   ad-hoc, short-lived :class:`_engine.Engine` objects may be created and disposed.
@@ -1732,6 +1747,12 @@ entirely.  This typically incurs only a modest performance impact upon the
 use of new connections, and means that when a connection is checked in,
 it is entirely closed out and is not held in memory.  See :ref:`pool_switching`
 for guidelines on how to disable pooling.
+
+.. seealso::
+
+    :ref:`pooling_toplevel`
+
+    :ref:`pooling_multiprocessing`
 
 .. _dbapi_connections:
 

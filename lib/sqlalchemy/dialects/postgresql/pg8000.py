@@ -108,9 +108,9 @@ from .json import JSON
 from .json import JSONB
 from .json import JSONPathType
 from ... import exc
-from ... import types as sqltypes
 from ... import util
 from ...engine import processors
+from ...sql import sqltypes
 from ...sql.elements import quoted_name
 
 
@@ -426,7 +426,7 @@ class PGDialect_pg8000(PGDialect):
             return (99, 99, 99)
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return __import__("pg8000")
 
     def create_connect_args(self, url):

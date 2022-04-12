@@ -23,6 +23,8 @@ sys.path.insert(0, os.path.abspath("../.."))  # examples
 sys.path.insert(0, os.path.abspath("."))
 
 
+os.environ["DISABLE_SQLALCHEMY_CEXT_RUNTIME"] = "true"
+
 # -- General configuration --------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -36,6 +38,7 @@ extensions = [
     "zzzeeksphinx",
     "changelog",
     "sphinx_paramlinks",
+    "sphinx_copybutton",
 ]
 needs_extensions = {"zzzeeksphinx": "1.2.1"}
 
@@ -43,6 +46,12 @@ needs_extensions = {"zzzeeksphinx": "1.2.1"}
 # not sure why abspath() is needed here, some users
 # have reported this.
 templates_path = [os.path.abspath("templates")]
+
+# https://sphinx-copybutton.readthedocs.io/en/latest/use.html#strip-and-configure-input-prompts-for-code-cells
+copybutton_prompt_text = (
+    r">>> |\.\.\. |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "
+)
+copybutton_prompt_is_regexp = True
 
 nitpicky = False
 
@@ -148,6 +157,7 @@ zzzeeksphinx_module_prefixes = {
     "_row": "sqlalchemy.engine",
     "_schema": "sqlalchemy.schema",
     "_types": "sqlalchemy.types",
+    "_sqltypes": "sqlalchemy.types",
     "_asyncio": "sqlalchemy.ext.asyncio",
     "_expression": "sqlalchemy.sql.expression",
     "_sql": "sqlalchemy.sql.expression",

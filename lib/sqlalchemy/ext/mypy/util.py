@@ -88,7 +88,7 @@ class SQLAlchemyAttribute:
         return cls(typ=typ, info=info, **data)
 
 
-def name_is_dunder(name):
+def name_is_dunder(name: str) -> bool:
     return bool(re.match(r"^__.+?__$", name))
 
 

@@ -5,6 +5,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import testing
+from sqlalchemy import util
 from sqlalchemy.orm import query
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import scoped_session
@@ -158,7 +159,7 @@ class ScopedSessionTest(fixtures.MappedTest):
                     populate_existing=False,
                     with_for_update=None,
                     identity_token=None,
-                    execution_options=None,
+                    execution_options=util.EMPTY_DICT,
                 ),
             ],
         )

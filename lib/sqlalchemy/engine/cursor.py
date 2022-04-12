@@ -13,7 +13,20 @@ from __future__ import annotations
 
 import collections
 import functools
+import typing
+from typing import Any
+from typing import cast
+from typing import ClassVar
+from typing import Dict
+from typing import Iterator
+from typing import List
+from typing import Optional
+from typing import Sequence
+from typing import Tuple
+from typing import TYPE_CHECKING
+from typing import Union
 
+from .result import MergedResult
 from .result import Result
 from .result import ResultMetaData
 from .result import SimpleResultMetaData
@@ -25,24 +38,50 @@ from ..sql import elements
 from ..sql import sqltypes
 from ..sql import util as sql_util
 from ..sql.base import _generative
+from ..sql.compiler import ResultColumnsEntry
 from ..sql.compiler import RM_NAME
 from ..sql.compiler import RM_OBJECTS
 from ..sql.compiler import RM_RENDERED_NAME
 from ..sql.compiler import RM_TYPE
+from ..sql.type_api import TypeEngine
 from ..util import compat
+from ..util.typing import Literal
 
 _UNPICKLED = util.symbol("unpickled")
 
 
+if typing.TYPE_CHECKING:
+    from .interfaces import _DBAPICursorDescription
+    from .interfaces import ExecutionContext
+    from .result import _KeyIndexType
+    from .result import _KeyMapRecType
+    from .result import _KeyMapType
+    from .result import _KeyType
+    from .result import _ProcessorsType
+    from ..sql.type_api import _ResultProcessorType
+
 # metadata entry tuple indexes.
 # using raw tuple is faster than namedtuple.
-MD_INDEX = 0  # integer index in cursor.description
-MD_RESULT_MAP_INDEX = 1  # integer index in compiled._result_columns
-MD_OBJECTS = 2  # other string keys and ColumnElement obj that can match
-MD_LOOKUP_KEY = 3  # string key we usually expect for key-based lookup
-MD_RENDERED_NAME = 4  # name that is usually in cursor.description
-MD_PROCESSOR = 5  # callable to process a result value into a row
-MD_UNTRANSLATED = 6  # raw name from cursor.description
+MD_INDEX: Literal[0] = 0  # integer index in cursor.description
+MD_RESULT_MAP_INDEX: Literal[
+    1
+] = 1  # integer index in compiled._result_columns
+MD_OBJECTS: Literal[
+    2
+] = 2  # other string keys and ColumnElement obj that can match
+MD_LOOKUP_KEY: Literal[
+    3
+] = 3  # string key we usually expect for key-based lookup
+MD_RENDERED_NAME: Literal[4] = 4  # name that is usually in cursor.description
+MD_PROCESSOR: Literal[5] = 5  # callable to process a result value into a row
+MD_UNTRANSLATED: Literal[6] = 6  # raw name from cursor.description
+
+
+_CursorKeyMapRecType = Tuple[
+    int, int, List[Any], str, str, Optional["_ResultProcessorType"], str
+]
+
+_CursorKeyMapType = Dict["_KeyType", _CursorKeyMapRecType]
 
 
 class CursorResultMetaData(ResultMetaData):
@@ -61,26 +100,34 @@ class CursorResultMetaData(ResultMetaData):
         # if a need arises.
     )
 
-    returns_rows = True
+    _keymap: _CursorKeyMapType
+    _processors: _ProcessorsType
+    _keymap_by_result_column_idx: Optional[Dict[int, _KeyMapRecType]]
+    _unpickled: bool
+    _safe_for_cache: bool
+    _translated_indexes: Optional[List[int]]
 
-    def _has_key(self, key):
+    returns_rows: ClassVar[bool] = True
+
+    def _has_key(self, key: Any) -> bool:
         return key in self._keymap
 
-    def _for_freeze(self):
+    def _for_freeze(self) -> ResultMetaData:
         return SimpleResultMetaData(
             self._keys,
             extra=[self._keymap[key][MD_OBJECTS] for key in self._keys],
         )
 
-    def _reduce(self, keys):
-        recs = list(self._metadata_for_keys(keys))
+    def _reduce(self, keys: Sequence[_KeyIndexType]) -> ResultMetaData:
+        recs = cast(
+            "List[_CursorKeyMapRecType]", list(self._metadata_for_keys(keys))
+        )
 
         indexes = [rec[MD_INDEX] for rec in recs]
-        new_keys = [rec[MD_LOOKUP_KEY] for rec in recs]
+        new_keys: List[str] = [rec[MD_LOOKUP_KEY] for rec in recs]
 
         if self._translated_indexes:
             indexes = [self._translated_indexes[idx] for idx in indexes]
-
         tup = tuplegetter(*indexes)
 
         new_metadata = self.__class__.__new__(self.__class__)
@@ -104,7 +151,7 @@ class CursorResultMetaData(ResultMetaData):
 
         return new_metadata
 
-    def _adapt_to_context(self, context):
+    def _adapt_to_context(self, context: ExecutionContext) -> ResultMetaData:
         """When using a cached Compiled construct that has a _result_map,
         for a new statement that used the cached Compiled, we need to ensure
         the keymap has the Column objects from our new statement as keys.
@@ -112,15 +159,19 @@ class CursorResultMetaData(ResultMetaData):
         as matched to those of the cached statement.
 
         """
-
-        if not context.compiled._result_columns:
+        if not context.compiled or not context.compiled._result_columns:
             return self
 
         compiled_statement = context.compiled.statement
         invoked_statement = context.invoked_statement
 
+        if TYPE_CHECKING:
+            assert isinstance(invoked_statement, elements.ClauseElement)
+
         if compiled_statement is invoked_statement:
             return self
+
+        assert invoked_statement is not None
 
         # this is the most common path for Core statements when
         # caching is used.  In ORM use, this codepath is not really used
@@ -162,7 +213,9 @@ class CursorResultMetaData(ResultMetaData):
         md._safe_for_cache = self._safe_for_cache
         return md
 
-    def __init__(self, parent, cursor_description):
+    def __init__(
+        self, parent: CursorResult, cursor_description: _DBAPICursorDescription
+    ):
         context = parent.context
         self._tuplefilter = None
         self._translated_indexes = None
@@ -229,7 +282,7 @@ class CursorResultMetaData(ResultMetaData):
                 # new in 1.4: get the complete set of all possible keys,
                 # strings, objects, whatever, that are dupes across two
                 # different records, first.
-                index_by_key = {}
+                index_by_key: Dict[Any, Any] = {}
                 dupes = set()
                 for metadata_entry in raw:
                     for key in (metadata_entry[MD_RENDERED_NAME],) + (
@@ -480,7 +533,7 @@ class CursorResultMetaData(ResultMetaData):
     def _merge_textual_cols_by_position(
         self, context, cursor_description, result_columns
     ):
-        num_ctx_cols = len(result_columns) if result_columns else None
+        num_ctx_cols = len(result_columns)
 
         if num_ctx_cols > len(cursor_description):
             util.warn(
@@ -522,6 +575,8 @@ class CursorResultMetaData(ResultMetaData):
         match_map = self._create_description_match_map(
             result_columns, loose_column_name_matching
         )
+        mapped_type: TypeEngine[Any]
+
         for (
             idx,
             colname,
@@ -551,18 +606,22 @@ class CursorResultMetaData(ResultMetaData):
     @classmethod
     def _create_description_match_map(
         cls,
-        result_columns,
-        loose_column_name_matching=False,
-    ):
+        result_columns: List[ResultColumnsEntry],
+        loose_column_name_matching: bool = False,
+    ) -> Dict[
+        Union[str, object], Tuple[str, Tuple[Any, ...], TypeEngine[Any], int]
+    ]:
         """when matching cursor.description to a set of names that are present
         in a Compiled object, as is the case with TextualSelect, get all the
         names we expect might match those in cursor.description.
         """
 
-        d = {}
+        d: Dict[
+            Union[str, object],
+            Tuple[str, Tuple[Any, ...], TypeEngine[Any], int],
+        ] = {}
         for ridx, elem in enumerate(result_columns):
             key = elem[RM_RENDERED_NAME]
-
             if key in d:
                 # conflicting keyname - just add the column-linked objects
                 # to the existing record.  if there is a duplicate column
@@ -584,7 +643,6 @@ class CursorResultMetaData(ResultMetaData):
                         r_key,
                         (elem[RM_NAME], elem[RM_OBJECTS], elem[RM_TYPE], ridx),
                     )
-
         return d
 
     def _merge_cols_by_none(self, context, cursor_description):
@@ -626,7 +684,7 @@ class CursorResultMetaData(ResultMetaData):
             "result set column descriptions" % rec[MD_LOOKUP_KEY]
         )
 
-    def _index_for_key(self, key, raiseerr=True):
+    def _index_for_key(self, key: Any, raiseerr: bool = True) -> Optional[int]:
         # TODO: can consider pre-loading ints and negative ints
         # into _keymap - also no coverage here
         if isinstance(key, int):
@@ -653,7 +711,9 @@ class CursorResultMetaData(ResultMetaData):
             # ensure it raises
             CursorResultMetaData._key_fallback(self, ke.args[0], ke)
 
-    def _metadata_for_keys(self, keys):
+    def _metadata_for_keys(
+        self, keys: Sequence[Any]
+    ) -> Iterator[_CursorKeyMapRecType]:
         for key in keys:
             if int in key.__class__.__mro__:
                 key = self._keys[key]
@@ -691,7 +751,9 @@ class CursorResultMetaData(ResultMetaData):
         self._keys = state["_keys"]
         self._unpickled = True
         if state["_translated_indexes"]:
-            self._translated_indexes = state["_translated_indexes"]
+            self._translated_indexes = cast(
+                "List[int]", state["_translated_indexes"]
+            )
             self._tuplefilter = tuplegetter(*self._translated_indexes)
         else:
             self._translated_indexes = self._tuplefilter = None
@@ -707,7 +769,7 @@ class ResultFetchStrategy:
 
     __slots__ = ()
 
-    alternate_cursor_description = None
+    alternate_cursor_description: Optional[_DBAPICursorDescription] = None
 
     def soft_close(self, result, dbapi_cursor):
         raise NotImplementedError()
@@ -1096,13 +1158,32 @@ class _NoResultMetaData(ResultMetaData):
 _NO_RESULT_METADATA = _NoResultMetaData()
 
 
-class BaseCursorResult:
-    """Base class for database result objects."""
+class CursorResult(Result):
+    """A Result that is representing state from a DBAPI cursor.
 
-    out_parameters = None
-    _metadata = None
-    _soft_closed = False
-    closed = False
+    .. versionchanged:: 1.4  The :class:`.CursorResult``
+       class replaces the previous :class:`.ResultProxy` interface.
+       This classes are based on the :class:`.Result` calling API
+       which provides an updated usage model and calling facade for
+       SQLAlchemy Core and SQLAlchemy ORM.
+
+    Returns database rows via the :class:`.Row` class, which provides
+    additional API features and behaviors on top of the raw data returned by
+    the DBAPI.   Through the use of filters such as the :meth:`.Result.scalars`
+    method, other kinds of objects may also be returned.
+
+    .. seealso::
+
+        :ref:`coretutorial_selecting` - introductory material for accessing
+        :class:`_engine.CursorResult` and :class:`.Row` objects.
+
+    """
+
+    _metadata: Union[CursorResultMetaData, _NoResultMetaData]
+    _no_result_metadata = _NO_RESULT_METADATA
+    _soft_closed: bool = False
+    closed: bool = False
+    _is_cursor = True
 
     def __init__(self, context, cursor_strategy, cursor_description):
         self.context = context
@@ -1122,11 +1203,11 @@ class BaseCursorResult:
             if echo:
                 log = self.context.connection._log_debug
 
-                def log_row(row):
+                def _log_row(row):
                     log("Row %r", sql_util._repr_row(row))
                     return row
 
-                self._row_logging_fn = log_row
+                self._row_logging_fn = log_row = _log_row
             else:
                 log_row = None
 
@@ -1134,20 +1215,23 @@ class BaseCursorResult:
 
             keymap = metadata._keymap
             processors = metadata._processors
-            process_row = self._process_row
+            process_row = Row
             key_style = process_row._default_key_style
             _make_row = functools.partial(
                 process_row, metadata, processors, keymap, key_style
             )
             if log_row:
 
-                def make_row(row):
+                def _make_row_2(row):
                     made_row = _make_row(row)
+                    assert log_row is not None
                     log_row(made_row)
                     return made_row
 
+                make_row = _make_row_2
             else:
                 make_row = _make_row
+
             self._set_memoized_attribute("_row_getter", make_row)
 
         else:
@@ -1161,7 +1245,7 @@ class BaseCursorResult:
             if compiled._cached_metadata:
                 metadata = compiled._cached_metadata
             else:
-                metadata = self._cursor_metadata(self, cursor_description)
+                metadata = CursorResultMetaData(self, cursor_description)
                 if metadata._safe_for_cache:
                     compiled._cached_metadata = metadata
 
@@ -1192,7 +1276,7 @@ class BaseCursorResult:
             self._metadata = metadata
 
         else:
-            self._metadata = metadata = self._cursor_metadata(
+            self._metadata = metadata = CursorResultMetaData(
                 self, cursor_description
             )
         if self._echo:
@@ -1553,7 +1637,7 @@ class BaseCursorResult:
 
             :ref:`tutorial_update_delete_rowcount` - in the :ref:`unified_tutorial`
 
-        """  # noqa E501
+        """  # noqa: E501
 
         try:
             return self.context.rowcount
@@ -1622,33 +1706,6 @@ class BaseCursorResult:
         """
         return self.context.isinsert
 
-
-class CursorResult(BaseCursorResult, Result):
-    """A Result that is representing state from a DBAPI cursor.
-
-    .. versionchanged:: 1.4  The :class:`.CursorResult``
-       class replaces the previous :class:`.ResultProxy` interface.
-       This classes are based on the :class:`.Result` calling API
-       which provides an updated usage model and calling facade for
-       SQLAlchemy Core and SQLAlchemy ORM.
-
-    Returns database rows via the :class:`.Row` class, which provides
-    additional API features and behaviors on top of the raw data returned by
-    the DBAPI.   Through the use of filters such as the :meth:`.Result.scalars`
-    method, other kinds of objects may also be returned.
-
-    .. seealso::
-
-        :ref:`coretutorial_selecting` - introductory material for accessing
-        :class:`_engine.CursorResult` and :class:`.Row` objects.
-
-    """
-
-    _cursor_metadata = CursorResultMetaData
-    _cursor_strategy_cls = CursorFetchStrategy
-    _no_result_metadata = _NO_RESULT_METADATA
-    _is_cursor = True
-
     def _fetchiter_impl(self):
         fetchone = self.cursor_strategy.fetchone
 
@@ -1670,12 +1727,13 @@ class CursorResult(BaseCursorResult, Result):
     def _raw_row_iterator(self):
         return self._fetchiter_impl()
 
-    def merge(self, *others):
-        merged_result = super(CursorResult, self).merge(*others)
+    def merge(self, *others: Result) -> MergedResult:
+        merged_result = super().merge(*others)
         setup_rowcounts = not self._metadata.returns_rows
         if setup_rowcounts:
             merged_result.rowcount = sum(
-                result.rowcount for result in (self,) + others
+                cast(CursorResult, result).rowcount
+                for result in (self,) + others
             )
         return merged_result
 
@@ -1709,40 +1767,3 @@ class CursorResult(BaseCursorResult, Result):
 
 
 ResultProxy = CursorResult
-
-
-class BufferedRowResultProxy(ResultProxy):
-    """A ResultProxy with row buffering behavior.
-
-    .. deprecated::  1.4 this class is now supplied using a strategy object.
-       See :class:`.BufferedRowCursorFetchStrategy`.
-
-    """
-
-    _cursor_strategy_cls = BufferedRowCursorFetchStrategy
-
-
-class FullyBufferedResultProxy(ResultProxy):
-    """A result proxy that buffers rows fully upon creation.
-
-    .. deprecated::  1.4 this class is now supplied using a strategy object.
-       See :class:`.FullyBufferedCursorFetchStrategy`.
-
-    """
-
-    _cursor_strategy_cls = FullyBufferedCursorFetchStrategy
-
-
-class BufferedColumnRow(Row):
-    """Row is now BufferedColumn in all cases"""
-
-
-class BufferedColumnResultProxy(ResultProxy):
-    """A ResultProxy with column buffering behavior.
-
-    .. versionchanged:: 1.4   This is now the default behavior of the Row
-       and this class does not change behavior in any way.
-
-    """
-
-    _process_row = BufferedColumnRow

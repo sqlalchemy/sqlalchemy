@@ -87,6 +87,18 @@ class Address(Base):
         User, collection_class=attribute_mapped_collection("name")
     )
 
+    # pylance rejects this however.  cannot get both to work at the same
+    # time.
+    # if collection_class is cast() to mutablemapping, then pylance seems
+    # OK.  cannot make sense of the errors or what would the official way to
+    # do these things would be.  pylance keeps changing and newly breaking
+    # things, never know what's a bug, what's a "known limitation", and what's
+    # "you need to learn more".   I can't imagine most programmers being able
+    # to navigate this stuff
+    # user_style_ten_typed_mapping: Mapped[MutableMapping[str, User]] = relationship(
+    #      User, collection_class=attribute_mapped_collection("name")
+    # )
+
 
 if typing.TYPE_CHECKING:
     # EXPECTED_TYPE: sqlalchemy.*.InstrumentedAttribute\[builtins.list\*\[trad_relationship_uselist.Address\]\]

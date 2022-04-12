@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+from enum import IntEnum
 from operator import add as _uncast_add
 from operator import and_ as _uncast_and_
 from operator import contains as _uncast_contains
@@ -36,15 +37,17 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import cast
+from typing import Dict
 from typing import Generic
 from typing import Optional
-from typing import overload
+from typing import Set
 from typing import Type
 from typing import TypeVar
 from typing import Union
 
 from .. import exc
 from .. import util
+from ..util.typing import Literal
 from ..util.typing import Protocol
 
 if typing.TYPE_CHECKING:
@@ -52,8 +55,8 @@ if typing.TYPE_CHECKING:
     from .elements import ColumnElement
     from .type_api import TypeEngine
 
-_OP_RETURN = TypeVar("_OP_RETURN", bound=Any, covariant=True)
 _T = TypeVar("_T", bound=Any)
+_FN = TypeVar("_FN", bound=Callable[..., Any])
 
 
 class OperatorType(Protocol):
@@ -64,8 +67,12 @@ class OperatorType(Protocol):
     __name__: str
 
     def __call__(
-        self, left: "Operators[_OP_RETURN]", *other: Any, **kwargs: Any
-    ) -> "_OP_RETURN":
+        self,
+        left: "Operators",
+        right: Optional[Any] = None,
+        *other: Any,
+        **kwargs: Any,
+    ) -> "Operators":
         ...
 
 
@@ -91,7 +98,7 @@ sub = cast(OperatorType, _uncast_sub)
 truediv = cast(OperatorType, _uncast_truediv)
 
 
-class Operators(Generic[_OP_RETURN]):
+class Operators:
     """Base of comparison and logical operators.
 
     Implements base methods
@@ -108,7 +115,7 @@ class Operators(Generic[_OP_RETURN]):
 
     __slots__ = ()
 
-    def __and__(self, other: Any) -> "Operators":
+    def __and__(self, other: Any) -> Operators:
         """Implement the ``&`` operator.
 
         When used with SQL expressions, results in an
@@ -132,7 +139,7 @@ class Operators(Generic[_OP_RETURN]):
         """
         return self.operate(and_, other)
 
-    def __or__(self, other: Any) -> "Operators":
+    def __or__(self, other: Any) -> Operators:
         """Implement the ``|`` operator.
 
         When used with SQL expressions, results in an
@@ -156,7 +163,7 @@ class Operators(Generic[_OP_RETURN]):
         """
         return self.operate(or_, other)
 
-    def __invert__(self) -> "Operators":
+    def __invert__(self) -> Operators:
         """Implement the ``~`` operator.
 
         When used with SQL expressions, results in a
@@ -175,14 +182,14 @@ class Operators(Generic[_OP_RETURN]):
 
     def op(
         self,
-        opstring: Any,
+        opstring: str,
         precedence: int = 0,
         is_comparison: bool = False,
         return_type: Optional[
-            Union[Type["TypeEngine[_T]"], "TypeEngine[_T]"]
+            Union[Type["TypeEngine[Any]"], "TypeEngine[Any]"]
         ] = None,
-        python_impl=None,
-    ) -> Callable[[Any], _OP_RETURN]:
+        python_impl: Optional[Callable[..., Any]] = None,
+    ) -> Callable[[Any], Operators]:
         """Produce a generic operator function.
 
         e.g.::
@@ -200,7 +207,7 @@ class Operators(Generic[_OP_RETURN]):
 
         is a bitwise AND of the value in ``somecolumn``.
 
-        :param operator: a string which will be output as the infix operator
+        :param opstring: a string which will be output as the infix operator
           between this element and the expression passed to the
           generated function.
 
@@ -263,14 +270,17 @@ class Operators(Generic[_OP_RETURN]):
             python_impl=python_impl,
         )
 
-        def against(other: Any) -> _OP_RETURN:
-            return operator(self, other)
+        def against(other: Any) -> Operators:
+            return operator(self, other)  # type: ignore
 
         return against
 
     def bool_op(
-        self, opstring: Any, precedence: int = 0, python_impl=None
-    ) -> Callable[[Any], _OP_RETURN]:
+        self,
+        opstring: str,
+        precedence: int = 0,
+        python_impl: Optional[Callable[..., Any]] = None,
+    ) -> Callable[[Any], Operators]:
         """Return a custom boolean operator.
 
         This method is shorthand for calling
@@ -292,7 +302,7 @@ class Operators(Generic[_OP_RETURN]):
 
     def operate(
         self, op: OperatorType, *other: Any, **kwargs: Any
-    ) -> _OP_RETURN:
+    ) -> Operators:
         r"""Operate on an argument.
 
         This is the lowest level of operation, raises
@@ -322,7 +332,7 @@ class Operators(Generic[_OP_RETURN]):
 
     def reverse_operate(
         self, op: OperatorType, other: Any, **kwargs: Any
-    ) -> _OP_RETURN:
+    ) -> Operators:
         """Reverse operate on an argument.
 
         Usage is the same as :meth:`operate`.
@@ -379,7 +389,7 @@ class custom_op(OperatorType, Generic[_T]):
         ] = None,
         natural_self_precedent: bool = False,
         eager_grouping: bool = False,
-        python_impl=None,
+        python_impl: Optional[Callable[..., Any]] = None,
     ):
         self.opstring = opstring
         self.precedence = precedence
@@ -397,25 +407,17 @@ class custom_op(OperatorType, Generic[_T]):
     def __hash__(self) -> int:
         return id(self)
 
-    @overload
     def __call__(
-        self, left: "ColumnElement", right: Any, **kw
-    ) -> "BinaryExpression[_T]":
-        ...
-
-    @overload
-    def __call__(
-        self, left: "Operators[_OP_RETURN]", right: Any, **kw
-    ) -> _OP_RETURN:
-        ...
-
-    def __call__(
-        self, left: "Operators[_OP_RETURN]", right: Any, **kw
-    ) -> _OP_RETURN:
+        self,
+        left: Operators,
+        right: Optional[Any] = None,
+        *other: Any,
+        **kwargs: Any,
+    ) -> Operators:
         if hasattr(left, "__sa_operate__"):
-            return left.operate(self, right, **kw)
+            return left.operate(self, right, *other, **kwargs)
         elif self.python_impl:
-            return self.python_impl(left, right, **kw)
+            return self.python_impl(left, right, *other, **kwargs)  # type: ignore  # noqa: E501
         else:
             raise exc.InvalidRequestError(
                 f"Custom operator {self.opstring!r} can't be used with "
@@ -424,7 +426,7 @@ class custom_op(OperatorType, Generic[_T]):
             )
 
 
-class ColumnOperators(Operators[_OP_RETURN]):
+class ColumnOperators(Operators):
     """Defines boolean, comparison, and other operators for
     :class:`_expression.ColumnElement` expressions.
 
@@ -464,22 +466,22 @@ class ColumnOperators(Operators[_OP_RETURN]):
 
     __slots__ = ()
 
-    timetuple = None
+    timetuple: Literal[None] = None
     """Hack, allows datetime objects to be compared on the LHS."""
 
     if typing.TYPE_CHECKING:
 
         def operate(
             self, op: OperatorType, *other: Any, **kwargs: Any
-        ) -> "ColumnOperators":
+        ) -> ColumnOperators:
             ...
 
         def reverse_operate(
             self, op: OperatorType, other: Any, **kwargs: Any
-        ) -> "ColumnOperators":
+        ) -> ColumnOperators:
             ...
 
-    def __lt__(self, other: Any) -> "ColumnOperators":
+    def __lt__(self, other: Any) -> ColumnOperators:
         """Implement the ``<`` operator.
 
         In a column context, produces the clause ``a < b``.
@@ -487,7 +489,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(lt, other)
 
-    def __le__(self, other: Any) -> "ColumnOperators":
+    def __le__(self, other: Any) -> ColumnOperators:
         """Implement the ``<=`` operator.
 
         In a column context, produces the clause ``a <= b``.
@@ -498,7 +500,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
     # TODO: not sure why we have this
     __hash__ = Operators.__hash__  # type: ignore
 
-    def __eq__(self, other: Any) -> "ColumnOperators":
+    def __eq__(self, other: Any) -> ColumnOperators:  # type: ignore[override]
         """Implement the ``==`` operator.
 
         In a column context, produces the clause ``a = b``.
@@ -507,7 +509,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(eq, other)
 
-    def __ne__(self, other: Any) -> "ColumnOperators":
+    def __ne__(self, other: Any) -> ColumnOperators:  # type: ignore[override]
         """Implement the ``!=`` operator.
 
         In a column context, produces the clause ``a != b``.
@@ -516,7 +518,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(ne, other)
 
-    def is_distinct_from(self, other: Any) -> "ColumnOperators":
+    def is_distinct_from(self, other: Any) -> ColumnOperators:
         """Implement the ``IS DISTINCT FROM`` operator.
 
         Renders "a IS DISTINCT FROM b" on most platforms;
@@ -527,7 +529,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(is_distinct_from, other)
 
-    def is_not_distinct_from(self, other: Any) -> "ColumnOperators":
+    def is_not_distinct_from(self, other: Any) -> ColumnOperators:
         """Implement the ``IS NOT DISTINCT FROM`` operator.
 
         Renders "a IS NOT DISTINCT FROM b" on most platforms;
@@ -545,7 +547,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
     # deprecated 1.4; see #5435
     isnot_distinct_from = is_not_distinct_from
 
-    def __gt__(self, other: Any) -> "ColumnOperators":
+    def __gt__(self, other: Any) -> ColumnOperators:
         """Implement the ``>`` operator.
 
         In a column context, produces the clause ``a > b``.
@@ -553,7 +555,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(gt, other)
 
-    def __ge__(self, other: Any) -> "ColumnOperators":
+    def __ge__(self, other: Any) -> ColumnOperators:
         """Implement the ``>=`` operator.
 
         In a column context, produces the clause ``a >= b``.
@@ -561,7 +563,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(ge, other)
 
-    def __neg__(self) -> "ColumnOperators":
+    def __neg__(self) -> ColumnOperators:
         """Implement the ``-`` operator.
 
         In a column context, produces the clause ``-a``.
@@ -569,10 +571,10 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(neg)
 
-    def __contains__(self, other: Any) -> "ColumnOperators":
+    def __contains__(self, other: Any) -> ColumnOperators:
         return self.operate(contains, other)
 
-    def __getitem__(self, index: Any) -> "ColumnOperators":
+    def __getitem__(self, index: Any) -> ColumnOperators:
         """Implement the [] operator.
 
         This can be used by some database-specific types
@@ -581,7 +583,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(getitem, index)
 
-    def __lshift__(self, other: Any) -> "ColumnOperators":
+    def __lshift__(self, other: Any) -> ColumnOperators:
         """implement the << operator.
 
         Not used by SQLAlchemy core, this is provided
@@ -590,7 +592,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(lshift, other)
 
-    def __rshift__(self, other: Any) -> "ColumnOperators":
+    def __rshift__(self, other: Any) -> ColumnOperators:
         """implement the >> operator.
 
         Not used by SQLAlchemy core, this is provided
@@ -599,7 +601,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(rshift, other)
 
-    def concat(self, other: Any) -> "ColumnOperators":
+    def concat(self, other: Any) -> ColumnOperators:
         """Implement the 'concat' operator.
 
         In a column context, produces the clause ``a || b``,
@@ -608,7 +610,9 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(concat_op, other)
 
-    def like(self, other: Any, escape=None) -> "ColumnOperators":
+    def like(
+        self, other: Any, escape: Optional[str] = None
+    ) -> ColumnOperators:
         r"""Implement the ``like`` operator.
 
         In a column context, produces the expression::
@@ -633,7 +637,9 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(like_op, other, escape=escape)
 
-    def ilike(self, other: Any, escape=None) -> "ColumnOperators":
+    def ilike(
+        self, other: Any, escape: Optional[str] = None
+    ) -> ColumnOperators:
         r"""Implement the ``ilike`` operator, e.g. case insensitive LIKE.
 
         In a column context, produces an expression either of the form::
@@ -662,7 +668,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(ilike_op, other, escape=escape)
 
-    def in_(self, other: Any) -> "ColumnOperators":
+    def in_(self, other: Any) -> ColumnOperators:
         """Implement the ``in`` operator.
 
         In a column context, produces the clause ``column IN <other>``.
@@ -751,7 +757,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(in_op, other)
 
-    def not_in(self, other: Any) -> "ColumnOperators":
+    def not_in(self, other: Any) -> ColumnOperators:
         """implement the ``NOT IN`` operator.
 
         This is equivalent to using negation with
@@ -782,7 +788,9 @@ class ColumnOperators(Operators[_OP_RETURN]):
     # deprecated 1.4; see #5429
     notin_ = not_in
 
-    def not_like(self, other: Any, escape=None) -> "ColumnOperators":
+    def not_like(
+        self, other: Any, escape: Optional[str] = None
+    ) -> ColumnOperators:
         """implement the ``NOT LIKE`` operator.
 
         This is equivalent to using negation with
@@ -802,7 +810,9 @@ class ColumnOperators(Operators[_OP_RETURN]):
     # deprecated 1.4; see #5435
     notlike = not_like
 
-    def not_ilike(self, other: Any, escape=None) -> "ColumnOperators":
+    def not_ilike(
+        self, other: Any, escape: Optional[str] = None
+    ) -> ColumnOperators:
         """implement the ``NOT ILIKE`` operator.
 
         This is equivalent to using negation with
@@ -822,7 +832,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
     # deprecated 1.4; see #5435
     notilike = not_ilike
 
-    def is_(self, other: Any) -> "ColumnOperators":
+    def is_(self, other: Any) -> ColumnOperators:
         """Implement the ``IS`` operator.
 
         Normally, ``IS`` is generated automatically when comparing to a
@@ -835,7 +845,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(is_, other)
 
-    def is_not(self, other: Any) -> "ColumnOperators":
+    def is_not(self, other: Any) -> ColumnOperators:
         """Implement the ``IS NOT`` operator.
 
         Normally, ``IS NOT`` is generated automatically when comparing to a
@@ -856,8 +866,11 @@ class ColumnOperators(Operators[_OP_RETURN]):
     isnot = is_not
 
     def startswith(
-        self, other: Any, escape=None, autoescape=False
-    ) -> "ColumnOperators":
+        self,
+        other: Any,
+        escape: Optional[str] = None,
+        autoescape: bool = False,
+    ) -> ColumnOperators:
         r"""Implement the ``startswith`` operator.
 
         Produces a LIKE expression that tests against a match for the start
@@ -939,8 +952,11 @@ class ColumnOperators(Operators[_OP_RETURN]):
         )
 
     def endswith(
-        self, other: Any, escape=None, autoescape=False
-    ) -> "ColumnOperators":
+        self,
+        other: Any,
+        escape: Optional[str] = None,
+        autoescape: bool = False,
+    ) -> ColumnOperators:
         r"""Implement the 'endswith' operator.
 
         Produces a LIKE expression that tests against a match for the end
@@ -1021,9 +1037,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
             endswith_op, other, escape=escape, autoescape=autoescape
         )
 
-    def contains(
-        self, other: Any, escape=None, autoescape=False
-    ) -> "ColumnOperators":
+    def contains(self, other: Any, **kw: Any) -> ColumnOperators:
         r"""Implement the 'contains' operator.
 
         Produces a LIKE expression that tests against a match for the middle
@@ -1101,11 +1115,9 @@ class ColumnOperators(Operators[_OP_RETURN]):
 
 
         """
-        return self.operate(
-            contains_op, other, escape=escape, autoescape=autoescape
-        )
+        return self.operate(contains_op, other, **kw)
 
-    def match(self, other: Any, **kwargs) -> "ColumnOperators":
+    def match(self, other: Any, **kwargs: Any) -> ColumnOperators:
         """Implements a database-specific 'match' operator.
 
         :meth:`_sql.ColumnOperators.match` attempts to resolve to
@@ -1129,7 +1141,9 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(match_op, other, **kwargs)
 
-    def regexp_match(self, pattern, flags=None) -> "ColumnOperators":
+    def regexp_match(
+        self, pattern: Any, flags: Optional[str] = None
+    ) -> ColumnOperators:
         """Implements a database-specific 'regexp match' operator.
 
         E.g.::
@@ -1178,8 +1192,8 @@ class ColumnOperators(Operators[_OP_RETURN]):
         return self.operate(regexp_match_op, pattern, flags=flags)
 
     def regexp_replace(
-        self, pattern, replacement, flags=None
-    ) -> "ColumnOperators":
+        self, pattern: Any, replacement: Any, flags: Optional[str] = None
+    ) -> ColumnOperators:
         """Implements a database-specific 'regexp replace' operator.
 
         E.g.::
@@ -1224,17 +1238,17 @@ class ColumnOperators(Operators[_OP_RETURN]):
             flags=flags,
         )
 
-    def desc(self) -> "ColumnOperators":
+    def desc(self) -> ColumnOperators:
         """Produce a :func:`_expression.desc` clause against the
         parent object."""
         return self.operate(desc_op)
 
-    def asc(self) -> "ColumnOperators":
+    def asc(self) -> ColumnOperators:
         """Produce a :func:`_expression.asc` clause against the
         parent object."""
         return self.operate(asc_op)
 
-    def nulls_first(self) -> "ColumnOperators":
+    def nulls_first(self) -> ColumnOperators:
         """Produce a :func:`_expression.nulls_first` clause against the
         parent object.
 
@@ -1247,7 +1261,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
     # deprecated 1.4; see #5435
     nullsfirst = nulls_first
 
-    def nulls_last(self) -> "ColumnOperators":
+    def nulls_last(self) -> ColumnOperators:
         """Produce a :func:`_expression.nulls_last` clause against the
         parent object.
 
@@ -1260,7 +1274,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
     # deprecated 1.4; see #5429
     nullslast = nulls_last
 
-    def collate(self, collation) -> "ColumnOperators":
+    def collate(self, collation: str) -> ColumnOperators:
         """Produce a :func:`_expression.collate` clause against
         the parent object, given the collation string.
 
@@ -1271,7 +1285,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(collate, collation)
 
-    def __radd__(self, other: Any) -> "ColumnOperators":
+    def __radd__(self, other: Any) -> ColumnOperators:
         """Implement the ``+`` operator in reverse.
 
         See :meth:`.ColumnOperators.__add__`.
@@ -1279,7 +1293,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.reverse_operate(add, other)
 
-    def __rsub__(self, other: Any) -> "ColumnOperators":
+    def __rsub__(self, other: Any) -> ColumnOperators:
         """Implement the ``-`` operator in reverse.
 
         See :meth:`.ColumnOperators.__sub__`.
@@ -1287,7 +1301,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.reverse_operate(sub, other)
 
-    def __rmul__(self, other: Any) -> "ColumnOperators":
+    def __rmul__(self, other: Any) -> ColumnOperators:
         """Implement the ``*`` operator in reverse.
 
         See :meth:`.ColumnOperators.__mul__`.
@@ -1295,7 +1309,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.reverse_operate(mul, other)
 
-    def __rmod__(self, other: Any) -> "ColumnOperators":
+    def __rmod__(self, other: Any) -> ColumnOperators:
         """Implement the ``%`` operator in reverse.
 
         See :meth:`.ColumnOperators.__mod__`.
@@ -1303,21 +1317,23 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.reverse_operate(mod, other)
 
-    def between(self, cleft, cright, symmetric=False) -> "ColumnOperators":
+    def between(
+        self, cleft: Any, cright: Any, symmetric: bool = False
+    ) -> ColumnOperators:
         """Produce a :func:`_expression.between` clause against
         the parent object, given the lower and upper range.
 
         """
         return self.operate(between_op, cleft, cright, symmetric=symmetric)
 
-    def distinct(self) -> "ColumnOperators":
+    def distinct(self) -> ColumnOperators:
         """Produce a :func:`_expression.distinct` clause against the
         parent object.
 
         """
         return self.operate(distinct_op)
 
-    def any_(self) -> "ColumnOperators":
+    def any_(self) -> ColumnOperators:
         """Produce an :func:`_expression.any_` clause against the
         parent object.
 
@@ -1334,7 +1350,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(any_op)
 
-    def all_(self) -> "ColumnOperators":
+    def all_(self) -> ColumnOperators:
         """Produce an :func:`_expression.all_` clause against the
         parent object.
 
@@ -1352,7 +1368,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(all_op)
 
-    def __add__(self, other: Any) -> "ColumnOperators":
+    def __add__(self, other: Any) -> ColumnOperators:
         """Implement the ``+`` operator.
 
         In a column context, produces the clause ``a + b``
@@ -1364,7 +1380,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(add, other)
 
-    def __sub__(self, other: Any) -> "ColumnOperators":
+    def __sub__(self, other: Any) -> ColumnOperators:
         """Implement the ``-`` operator.
 
         In a column context, produces the clause ``a - b``.
@@ -1372,7 +1388,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(sub, other)
 
-    def __mul__(self, other: Any) -> "ColumnOperators":
+    def __mul__(self, other: Any) -> ColumnOperators:
         """Implement the ``*`` operator.
 
         In a column context, produces the clause ``a * b``.
@@ -1380,7 +1396,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(mul, other)
 
-    def __mod__(self, other: Any) -> "ColumnOperators":
+    def __mod__(self, other: Any) -> ColumnOperators:
         """Implement the ``%`` operator.
 
         In a column context, produces the clause ``a % b``.
@@ -1388,7 +1404,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(mod, other)
 
-    def __truediv__(self, other: Any) -> "ColumnOperators":
+    def __truediv__(self, other: Any) -> ColumnOperators:
         """Implement the ``/`` operator.
 
         In a column context, produces the clause ``a / b``, and
@@ -1401,7 +1417,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(truediv, other)
 
-    def __rtruediv__(self, other: Any) -> "ColumnOperators":
+    def __rtruediv__(self, other: Any) -> ColumnOperators:
         """Implement the ``/`` operator in reverse.
 
         See :meth:`.ColumnOperators.__truediv__`.
@@ -1409,7 +1425,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.reverse_operate(truediv, other)
 
-    def __floordiv__(self, other: Any) -> "ColumnOperators":
+    def __floordiv__(self, other: Any) -> ColumnOperators:
         """Implement the ``//`` operator.
 
         In a column context, produces the clause ``a / b``,
@@ -1421,7 +1437,7 @@ class ColumnOperators(Operators[_OP_RETURN]):
         """
         return self.operate(floordiv, other)
 
-    def __rfloordiv__(self, other: Any) -> "ColumnOperators":
+    def __rfloordiv__(self, other: Any) -> ColumnOperators:
         """Implement the ``//`` operator in reverse.
 
         See :meth:`.ColumnOperators.__floordiv__`.
@@ -1430,43 +1446,47 @@ class ColumnOperators(Operators[_OP_RETURN]):
         return self.reverse_operate(floordiv, other)
 
 
-_commutative = {eq, ne, add, mul}
-_comparison = {eq, ne, lt, gt, ge, le}
+_commutative: Set[Any] = {eq, ne, add, mul}
+_comparison: Set[Any] = {eq, ne, lt, gt, ge, le}
 
 
-def _operator_fn(fn):
+def _operator_fn(fn: Callable[..., Any]) -> OperatorType:
     return cast(OperatorType, fn)
 
 
-def commutative_op(fn):
+def commutative_op(fn: _FN) -> _FN:
     _commutative.add(fn)
     return fn
 
 
-def comparison_op(fn):
+def comparison_op(fn: _FN) -> _FN:
     _comparison.add(fn)
     return fn
 
 
-def from_():
-    raise NotImplementedError()
-
-
-@comparison_op
-def function_as_comparison_op():
-    raise NotImplementedError()
-
-
-def as_():
-    raise NotImplementedError()
-
-
-def exists():
+@_operator_fn
+def from_() -> Any:
     raise NotImplementedError()
 
 
 @_operator_fn
-def is_true(a):
+@comparison_op
+def function_as_comparison_op() -> Any:
+    raise NotImplementedError()
+
+
+@_operator_fn
+def as_() -> Any:
+    raise NotImplementedError()
+
+
+@_operator_fn
+def exists() -> Any:
+    raise NotImplementedError()
+
+
+@_operator_fn
+def is_true(a: Any) -> Any:
     raise NotImplementedError()
 
 
@@ -1475,7 +1495,7 @@ istrue = is_true
 
 
 @_operator_fn
-def is_false(a):
+def is_false(a: Any) -> Any:
     raise NotImplementedError()
 
 
@@ -1485,13 +1505,13 @@ isfalse = is_false
 
 @comparison_op
 @_operator_fn
-def is_distinct_from(a, b):
+def is_distinct_from(a: Any, b: Any) -> Any:
     return a.is_distinct_from(b)
 
 
 @comparison_op
 @_operator_fn
-def is_not_distinct_from(a, b):
+def is_not_distinct_from(a: Any, b: Any) -> Any:
     return a.is_not_distinct_from(b)
 
 
@@ -1501,13 +1521,13 @@ isnot_distinct_from = is_not_distinct_from
 
 @comparison_op
 @_operator_fn
-def is_(a, b):
+def is_(a: Any, b: Any) -> Any:
     return a.is_(b)
 
 
 @comparison_op
 @_operator_fn
-def is_not(a, b):
+def is_not(a: Any, b: Any) -> Any:
     return a.is_not(b)
 
 
@@ -1516,24 +1536,24 @@ isnot = is_not
 
 
 @_operator_fn
-def collate(a, b):
+def collate(a: Any, b: Any) -> Any:
     return a.collate(b)
 
 
 @_operator_fn
-def op(a, opstring, b):
+def op(a: Any, opstring: str, b: Any) -> Any:
     return a.op(opstring)(b)
 
 
 @comparison_op
 @_operator_fn
-def like_op(a, b, escape=None):
+def like_op(a: Any, b: Any, escape: Optional[str] = None) -> Any:
     return a.like(b, escape=escape)
 
 
 @comparison_op
 @_operator_fn
-def not_like_op(a, b, escape=None):
+def not_like_op(a: Any, b: Any, escape: Optional[str] = None) -> Any:
     return a.notlike(b, escape=escape)
 
 
@@ -1543,13 +1563,13 @@ notlike_op = not_like_op
 
 @comparison_op
 @_operator_fn
-def ilike_op(a, b, escape=None):
+def ilike_op(a: Any, b: Any, escape: Optional[str] = None) -> Any:
     return a.ilike(b, escape=escape)
 
 
 @comparison_op
 @_operator_fn
-def not_ilike_op(a, b, escape=None):
+def not_ilike_op(a: Any, b: Any, escape: Optional[str] = None) -> Any:
     return a.not_ilike(b, escape=escape)
 
 
@@ -1559,13 +1579,13 @@ notilike_op = not_ilike_op
 
 @comparison_op
 @_operator_fn
-def between_op(a, b, c, symmetric=False):
+def between_op(a: Any, b: Any, c: Any, symmetric: bool = False) -> Any:
     return a.between(b, c, symmetric=symmetric)
 
 
 @comparison_op
 @_operator_fn
-def not_between_op(a, b, c, symmetric=False):
+def not_between_op(a: Any, b: Any, c: Any, symmetric: bool = False) -> Any:
     return ~a.between(b, c, symmetric=symmetric)
 
 
@@ -1575,13 +1595,13 @@ notbetween_op = not_between_op
 
 @comparison_op
 @_operator_fn
-def in_op(a, b):
+def in_op(a: Any, b: Any) -> Any:
     return a.in_(b)
 
 
 @comparison_op
 @_operator_fn
-def not_in_op(a, b):
+def not_in_op(a: Any, b: Any) -> Any:
     return a.not_in(b)
 
 
@@ -1590,21 +1610,23 @@ notin_op = not_in_op
 
 
 @_operator_fn
-def distinct_op(a):
+def distinct_op(a: Any) -> Any:
     return a.distinct()
 
 
 @_operator_fn
-def any_op(a):
+def any_op(a: Any) -> Any:
     return a.any_()
 
 
 @_operator_fn
-def all_op(a):
+def all_op(a: Any) -> Any:
     return a.all_()
 
 
-def _escaped_like_impl(fn, other: Any, escape, autoescape):
+def _escaped_like_impl(
+    fn: Callable[..., Any], other: Any, escape: Optional[str], autoescape: bool
+) -> Any:
     if autoescape:
         if autoescape is not True:
             util.warn(
@@ -1626,13 +1648,17 @@ def _escaped_like_impl(fn, other: Any, escape, autoescape):
 
 @comparison_op
 @_operator_fn
-def startswith_op(a, b, escape=None, autoescape=False):
+def startswith_op(
+    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+) -> Any:
     return _escaped_like_impl(a.startswith, b, escape, autoescape)
 
 
 @comparison_op
 @_operator_fn
-def not_startswith_op(a, b, escape=None, autoescape=False):
+def not_startswith_op(
+    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+) -> Any:
     return ~_escaped_like_impl(a.startswith, b, escape, autoescape)
 
 
@@ -1642,13 +1668,17 @@ notstartswith_op = not_startswith_op
 
 @comparison_op
 @_operator_fn
-def endswith_op(a, b, escape=None, autoescape=False):
+def endswith_op(
+    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+) -> Any:
     return _escaped_like_impl(a.endswith, b, escape, autoescape)
 
 
 @comparison_op
 @_operator_fn
-def not_endswith_op(a, b, escape=None, autoescape=False):
+def not_endswith_op(
+    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+) -> Any:
     return ~_escaped_like_impl(a.endswith, b, escape, autoescape)
 
 
@@ -1658,13 +1688,17 @@ notendswith_op = not_endswith_op
 
 @comparison_op
 @_operator_fn
-def contains_op(a, b, escape=None, autoescape=False):
+def contains_op(
+    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+) -> Any:
     return _escaped_like_impl(a.contains, b, escape, autoescape)
 
 
 @comparison_op
 @_operator_fn
-def not_contains_op(a, b, escape=None, autoescape=False):
+def not_contains_op(
+    a: Any, b: Any, escape: Optional[str] = None, autoescape: bool = False
+) -> Any:
     return ~_escaped_like_impl(a.contains, b, escape, autoescape)
 
 
@@ -1674,30 +1708,32 @@ notcontains_op = not_contains_op
 
 @comparison_op
 @_operator_fn
-def match_op(a, b, **kw):
+def match_op(a: Any, b: Any, **kw: Any) -> Any:
     return a.match(b, **kw)
 
 
 @comparison_op
 @_operator_fn
-def regexp_match_op(a, b, flags=None):
+def regexp_match_op(a: Any, b: Any, flags: Optional[str] = None) -> Any:
     return a.regexp_match(b, flags=flags)
 
 
 @comparison_op
 @_operator_fn
-def not_regexp_match_op(a, b, flags=None):
+def not_regexp_match_op(a: Any, b: Any, flags: Optional[str] = None) -> Any:
     return ~a.regexp_match(b, flags=flags)
 
 
 @_operator_fn
-def regexp_replace_op(a, b, replacement, flags=None):
+def regexp_replace_op(
+    a: Any, b: Any, replacement: Any, flags: Optional[str] = None
+) -> Any:
     return a.regexp_replace(b, replacement=replacement, flags=flags)
 
 
 @comparison_op
 @_operator_fn
-def not_match_op(a, b, **kw):
+def not_match_op(a: Any, b: Any, **kw: Any) -> Any:
     return ~a.match(b, **kw)
 
 
@@ -1706,32 +1742,32 @@ notmatch_op = not_match_op
 
 
 @_operator_fn
-def comma_op(a, b):
+def comma_op(a: Any, b: Any) -> Any:
     raise NotImplementedError()
 
 
 @_operator_fn
-def filter_op(a, b):
+def filter_op(a: Any, b: Any) -> Any:
     raise NotImplementedError()
 
 
 @_operator_fn
-def concat_op(a, b):
+def concat_op(a: Any, b: Any) -> Any:
     return a.concat(b)
 
 
 @_operator_fn
-def desc_op(a):
+def desc_op(a: Any) -> Any:
     return a.desc()
 
 
 @_operator_fn
-def asc_op(a):
+def asc_op(a: Any) -> Any:
     return a.asc()
 
 
 @_operator_fn
-def nulls_first_op(a):
+def nulls_first_op(a: Any) -> Any:
     return a.nulls_first()
 
 
@@ -1740,7 +1776,7 @@ nullsfirst_op = nulls_first_op
 
 
 @_operator_fn
-def nulls_last_op(a):
+def nulls_last_op(a: Any) -> Any:
     return a.nulls_last()
 
 
@@ -1749,28 +1785,28 @@ nullslast_op = nulls_last_op
 
 
 @_operator_fn
-def json_getitem_op(a, b):
+def json_getitem_op(a: Any, b: Any) -> Any:
     raise NotImplementedError()
 
 
 @_operator_fn
-def json_path_getitem_op(a, b):
+def json_path_getitem_op(a: Any, b: Any) -> Any:
     raise NotImplementedError()
 
 
-def is_comparison(op):
+def is_comparison(op: OperatorType) -> bool:
     return op in _comparison or isinstance(op, custom_op) and op.is_comparison
 
 
-def is_commutative(op):
+def is_commutative(op: OperatorType) -> bool:
     return op in _commutative
 
 
-def is_ordering_modifier(op):
+def is_ordering_modifier(op: OperatorType) -> bool:
     return op in (asc_op, desc_op, nulls_first_op, nulls_last_op)
 
 
-def is_natural_self_precedent(op):
+def is_natural_self_precedent(op: OperatorType) -> bool:
     return (
         op in _natural_self_precedent
         or isinstance(op, custom_op)
@@ -1781,14 +1817,14 @@ def is_natural_self_precedent(op):
 _booleans = (inv, is_true, is_false, and_, or_)
 
 
-def is_boolean(op):
+def is_boolean(op: OperatorType) -> bool:
     return is_comparison(op) or op in _booleans
 
 
 _mirror = {gt: lt, ge: le, lt: gt, le: ge}
 
 
-def mirror(op):
+def mirror(op: OperatorType) -> OperatorType:
     """rotate a comparison operator 180 degrees.
 
     Note this is not the same as negation.
@@ -1800,7 +1836,7 @@ def mirror(op):
 _associative = _commutative.union([concat_op, and_, or_]).difference([eq, ne])
 
 
-def is_associative(op):
+def is_associative(op: OperatorType) -> bool:
     return op in _associative
 
 
@@ -1813,11 +1849,17 @@ parenthesize (a op b).
 """
 
 
-_asbool = util.symbol("_asbool", canonical=-10)
-_smallest = util.symbol("_smallest", canonical=-100)
-_largest = util.symbol("_largest", canonical=100)
+@_operator_fn
+def _asbool(a: Any) -> Any:
+    raise NotImplementedError()
 
-_PRECEDENCE = {
+
+class _OpLimit(IntEnum):
+    _smallest = -100
+    _largest = 100
+
+
+_PRECEDENCE: Dict[OperatorType, int] = {
     from_: 15,
     function_as_comparison_op: 15,
     any_op: 15,
@@ -1870,15 +1912,18 @@ _PRECEDENCE = {
     as_: -1,
     exists: 0,
     _asbool: -10,
-    _smallest: _smallest,
-    _largest: _largest,
 }
 
 
-def is_precedent(operator, against):
+def is_precedent(operator: OperatorType, against: OperatorType) -> bool:
     if operator is against and is_natural_self_precedent(operator):
         return False
     else:
-        return _PRECEDENCE.get(
-            operator, getattr(operator, "precedence", _smallest)
-        ) <= _PRECEDENCE.get(against, getattr(against, "precedence", _largest))
+        return bool(
+            _PRECEDENCE.get(
+                operator, getattr(operator, "precedence", _OpLimit._smallest)
+            )
+            <= _PRECEDENCE.get(
+                against, getattr(against, "precedence", _OpLimit._largest)
+            )
+        )

@@ -231,7 +231,7 @@ class MypyPluginTest(fixtures.TestBase):
                     is_re = bool(m.group(2))
                     is_type = bool(m.group(3))
 
-                    expected_msg = re.sub(r"# noqa ?.*", "", m.group(4))
+                    expected_msg = re.sub(r"# noqa[:]? ?.*", "", m.group(4))
                     if is_type:
                         is_mypy = is_re = True
                         expected_msg = f'Revealed type is "{expected_msg}"'
@@ -281,7 +281,7 @@ class MypyPluginTest(fixtures.TestBase):
                 for idx, (typ, errmsg) in enumerate(output):
                     if is_re:
                         if re.match(
-                            fr".*{filename}\:{num}\: {typ}\: {prefix}{msg}",  # noqa E501
+                            rf".*{filename}\:{num}\: {typ}\: {prefix}{msg}",  # noqa: E501
                             errmsg,
                         ):
                             break

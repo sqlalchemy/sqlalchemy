@@ -10,8 +10,8 @@ from __future__ import annotations
 import typing
 from typing import Any
 from typing import Collection
+from typing import Dict
 from typing import List
-from typing import Mapping
 from typing import Optional
 from typing import overload
 from typing import Set
@@ -460,7 +460,7 @@ def composite(
     class_: Type[_T],
     *attrs: Union[sql.ColumnElement[Any], MappedColumn, str, Mapped[Any]],
     **kwargs: Any,
-) -> "Composite[_T]":
+) -> Composite[_T]:
     ...
 
 
@@ -468,7 +468,7 @@ def composite(
 def composite(
     *attrs: Union[sql.ColumnElement[Any], MappedColumn, str, Mapped[Any]],
     **kwargs: Any,
-) -> "Composite[Any]":
+) -> Composite[Any]:
     ...
 
 
@@ -476,7 +476,7 @@ def composite(
     class_: Any = None,
     *attrs: Union[sql.ColumnElement[Any], MappedColumn, str, Mapped[Any]],
     **kwargs: Any,
-) -> "Composite[Any]":
+) -> Composite[Any]:
     r"""Return a composite column-based property for use with a Mapper.
 
     See the mapping documentation section :ref:`mapper_composite` for a
@@ -713,14 +713,59 @@ def with_loader_criteria(
 
 @overload
 def relationship(
-    argument: Optional[_RelationshipArgumentType[_T]],
-    secondary=None,
+    argument: str,
+    secondary=...,
     *,
-    uselist: Literal[False] = None,
-    collection_class: Literal[None] = None,
-    primaryjoin=None,
-    secondaryjoin=None,
-    back_populates=None,
+    uselist: bool = ...,
+    collection_class: Literal[None] = ...,
+    primaryjoin=...,
+    secondaryjoin=...,
+    back_populates=...,
+    **kw: Any,
+) -> Relationship[Any]:
+    ...
+
+
+@overload
+def relationship(
+    argument: str,
+    secondary=...,
+    *,
+    uselist: bool = ...,
+    collection_class: Type[Set] = ...,
+    primaryjoin=...,
+    secondaryjoin=...,
+    back_populates=...,
+    **kw: Any,
+) -> Relationship[Set[Any]]:
+    ...
+
+
+@overload
+def relationship(
+    argument: str,
+    secondary=...,
+    *,
+    uselist: bool = ...,
+    collection_class: Type[List] = ...,
+    primaryjoin=...,
+    secondaryjoin=...,
+    back_populates=...,
+    **kw: Any,
+) -> Relationship[List[Any]]:
+    ...
+
+
+@overload
+def relationship(
+    argument: Optional[_RelationshipArgumentType[_T]],
+    secondary=...,
+    *,
+    uselist: Literal[False] = ...,
+    collection_class: Literal[None] = ...,
+    primaryjoin=...,
+    secondaryjoin=...,
+    back_populates=...,
     **kw: Any,
 ) -> Relationship[_T]:
     ...
@@ -729,13 +774,13 @@ def relationship(
 @overload
 def relationship(
     argument: Optional[_RelationshipArgumentType[_T]],
-    secondary=None,
+    secondary=...,
     *,
-    uselist: Literal[True] = None,
-    collection_class: Literal[None] = None,
-    primaryjoin=None,
-    secondaryjoin=None,
-    back_populates=None,
+    uselist: Literal[True] = ...,
+    collection_class: Literal[None] = ...,
+    primaryjoin=...,
+    secondaryjoin=...,
+    back_populates=...,
     **kw: Any,
 ) -> Relationship[List[_T]]:
     ...
@@ -744,13 +789,13 @@ def relationship(
 @overload
 def relationship(
     argument: Optional[_RelationshipArgumentType[_T]],
-    secondary=None,
+    secondary=...,
     *,
-    uselist: Union[Literal[None], Literal[True]] = None,
-    collection_class: Type[List] = None,
-    primaryjoin=None,
-    secondaryjoin=None,
-    back_populates=None,
+    uselist: Union[Literal[None], Literal[True]] = ...,
+    collection_class: Type[List] = ...,
+    primaryjoin=...,
+    secondaryjoin=...,
+    back_populates=...,
     **kw: Any,
 ) -> Relationship[List[_T]]:
     ...
@@ -759,13 +804,13 @@ def relationship(
 @overload
 def relationship(
     argument: Optional[_RelationshipArgumentType[_T]],
-    secondary=None,
+    secondary=...,
     *,
-    uselist: Union[Literal[None], Literal[True]] = None,
-    collection_class: Type[Set] = None,
-    primaryjoin=None,
-    secondaryjoin=None,
-    back_populates=None,
+    uselist: Union[Literal[None], Literal[True]] = ...,
+    collection_class: Type[Set] = ...,
+    primaryjoin=...,
+    secondaryjoin=...,
+    back_populates=...,
     **kw: Any,
 ) -> Relationship[Set[_T]]:
     ...
@@ -774,26 +819,26 @@ def relationship(
 @overload
 def relationship(
     argument: Optional[_RelationshipArgumentType[_T]],
-    secondary=None,
+    secondary=...,
     *,
-    uselist: Union[Literal[None], Literal[True]] = None,
-    collection_class: Type[Mapping[Any, Any]] = None,
-    primaryjoin=None,
-    secondaryjoin=None,
-    back_populates=None,
+    uselist: Union[Literal[None], Literal[True]] = ...,
+    collection_class: Type[Dict[Any, Any]] = ...,
+    primaryjoin=...,
+    secondaryjoin=...,
+    back_populates=...,
     **kw: Any,
-) -> Relationship[Mapping[Any, _T]]:
+) -> Relationship[Dict[Any, _T]]:
     ...
 
 
 @overload
 def relationship(
     argument: _RelationshipArgumentType[_T],
-    secondary=None,
+    secondary=...,
     *,
-    uselist: Literal[None] = None,
-    collection_class: Literal[None] = None,
-    primaryjoin=None,
+    uselist: Literal[None] = ...,
+    collection_class: Literal[None] = ...,
+    primaryjoin=...,
     secondaryjoin=None,
     back_populates=None,
     **kw: Any,
@@ -803,14 +848,14 @@ def relationship(
 
 @overload
 def relationship(
-    argument: Optional[_RelationshipArgumentType[_T]] = None,
-    secondary=None,
+    argument: Optional[_RelationshipArgumentType[_T]] = ...,
+    secondary=...,
     *,
-    uselist: Literal[True] = None,
-    collection_class: Any = None,
-    primaryjoin=None,
-    secondaryjoin=None,
-    back_populates=None,
+    uselist: Literal[True] = ...,
+    collection_class: Any = ...,
+    primaryjoin=...,
+    secondaryjoin=...,
+    back_populates=...,
     **kw: Any,
 ) -> Relationship[Any]:
     ...
@@ -818,14 +863,14 @@ def relationship(
 
 @overload
 def relationship(
-    argument: Literal[None] = None,
-    secondary=None,
+    argument: Literal[None] = ...,
+    secondary=...,
     *,
-    uselist: Optional[bool] = None,
-    collection_class: Any = None,
-    primaryjoin=None,
-    secondaryjoin=None,
-    back_populates=None,
+    uselist: Optional[bool] = ...,
+    collection_class: Any = ...,
+    primaryjoin=...,
+    secondaryjoin=...,
+    back_populates=...,
     **kw: Any,
 ) -> Relationship[Any]:
     ...
@@ -2110,6 +2155,7 @@ def with_polymorphic(
     flat=False,
     polymorphic_on=None,
     aliased=False,
+    adapt_on_names=False,
     innerjoin=False,
     _use_mapper_path=False,
 ):
@@ -2173,6 +2219,15 @@ def with_polymorphic(
 
     :param innerjoin: if True, an INNER JOIN will be used.  This should
        only be specified if querying for one specific subtype only
+
+    :param adapt_on_names: Passes through the
+      :paramref:`_orm.aliased.adapt_on_names`
+      parameter to the aliased object.  This may be useful in situations where
+      the given selectable is not directly related to the existing mapped
+      selectable.
+
+      .. versionadded:: 1.4.33
+
     """
     return AliasedInsp._with_polymorphic_factory(
         base,
@@ -2180,6 +2235,7 @@ def with_polymorphic(
         selectable=selectable,
         flat=flat,
         polymorphic_on=polymorphic_on,
+        adapt_on_names=adapt_on_names,
         aliased=aliased,
         innerjoin=innerjoin,
         _use_mapper_path=_use_mapper_path,

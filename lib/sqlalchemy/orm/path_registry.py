@@ -14,6 +14,7 @@ from functools import reduce
 from itertools import chain
 import logging
 from typing import Any
+from typing import Sequence
 from typing import Tuple
 from typing import Union
 
@@ -198,12 +199,12 @@ class PathRegistry(HasCacheKey):
             p = p[0:-1]
         return p
 
-    def serialize(self):
+    def serialize(self) -> Sequence[Any]:
         path = self.path
         return self._serialize_path(path)
 
     @classmethod
-    def deserialize(cls, path: Tuple) -> "PathRegistry":
+    def deserialize(cls, path: Sequence[Any]) -> PathRegistry:
         assert path is not None
         p = cls._deserialize_path(path)
         return cls.coerce(p)

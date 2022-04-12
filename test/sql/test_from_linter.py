@@ -1,6 +1,10 @@
+from sqlalchemy import column
+from sqlalchemy import func
 from sqlalchemy import Integer
+from sqlalchemy import JSON
 from sqlalchemy import select
 from sqlalchemy import sql
+from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import true
 from sqlalchemy.testing import config
@@ -160,6 +164,44 @@ class TestFindUnmatchingFroms(fixtures.TablesTest):
 
         assert start is p3
         assert froms == {p1}
+
+    @testing.combinations(
+        "render_derived", "alias", None, argnames="additional_transformation"
+    )
+    @testing.combinations(True, False, argnames="joins_implicitly")
+    def test_table_valued(
+        self,
+        joins_implicitly,
+        additional_transformation,
+    ):
+        """test #7845"""
+        my_table = table(
+            "tbl",
+            column("id", Integer),
+            column("data", JSON()),
+        )
+
+        sub_dict = my_table.c.data["d"]
+
+        tv = func.json_each(sub_dict)
+
+        tv = tv.table_valued("key", joins_implicitly=joins_implicitly)
+
+        if additional_transformation == "render_derived":
+            tv = tv.render_derived(name="tv", with_types=True)
+        elif additional_transformation == "alias":
+            tv = tv.alias()
+
+        has_key = tv.c.key == "f"
+        stmt = select(my_table.c.id).where(has_key)
+        froms, start = find_unmatching_froms(stmt, my_table)
+
+        if joins_implicitly:
+            is_(start, None)
+            is_(froms, None)
+        else:
+            assert start == my_table
+            assert froms == {tv}
 
     def test_count_non_eq_comparison_operators(self):
         query = select(self.a).where(self.a.c.col_a > self.b.c.col_b)

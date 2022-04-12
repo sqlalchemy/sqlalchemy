@@ -13,7 +13,6 @@ import typing
 from typing import Any
 from typing import Generic
 from typing import Optional
-from typing import overload
 from typing import Tuple
 from typing import Type
 from typing import TypeVar
@@ -22,7 +21,6 @@ import weakref
 
 from . import attributes  # noqa
 from .base import _class_to_mapper  # noqa
-from .base import _IdentityKeyType
 from .base import _never_set  # noqa
 from .base import _none_set  # noqa
 from .base import attribute_str  # noqa
@@ -62,8 +60,12 @@ from ..util.typing import de_stringify_annotation
 from ..util.typing import is_origin_of
 
 if typing.TYPE_CHECKING:
+    from ._typing import _EntityType
+    from ._typing import _IdentityKeyType
+    from ._typing import _InternalEntityType
     from .mapper import Mapper
     from ..engine import Row
+    from ..sql._typing import _PropagateAttrsType
     from ..sql.selectable import Alias
 
 _T = TypeVar("_T", bound=Any)
@@ -296,27 +298,13 @@ def polymorphic_union(
     return sql.union_all(*result).alias(aliasname)
 
 
-@overload
 def identity_key(
-    class_: type, ident: Tuple[Any, ...], *, identity_token: Optional[str]
-) -> _IdentityKeyType:
-    ...
-
-
-@overload
-def identity_key(*, instance: Any) -> _IdentityKeyType:
-    ...
-
-
-@overload
-def identity_key(
-    class_: type, *, row: "Row", identity_token: Optional[str]
-) -> _IdentityKeyType:
-    ...
-
-
-def identity_key(
-    class_=None, ident=None, *, instance=None, row=None, identity_token=None
+    class_: Optional[Type[Any]] = None,
+    ident: Union[Any, Tuple[Any, ...]] = None,
+    *,
+    instance: Optional[Any] = None,
+    row: Optional[Row] = None,
+    identity_token: Optional[Any] = None,
 ) -> _IdentityKeyType:
     r"""Generate "identity key" tuples, as are used as keys in the
     :attr:`.Session.identity_map` dictionary.
@@ -631,9 +619,9 @@ class AliasedInsp(
     ORMEntityColumnsClauseRole,
     ORMFromClauseRole,
     sql_base.HasCacheKey,
-    roles.HasFromClauseElement,
     InspectionAttr,
     MemoizedSlots,
+    Generic[_T],
 ):
     """Provide an inspection interface for an
     :class:`.AliasedClass` object.
@@ -699,8 +687,8 @@ class AliasedInsp(
 
     def __init__(
         self,
-        entity,
-        inspected,
+        entity: _EntityType,
+        inspected: _InternalEntityType,
         selectable,
         name,
         with_polymorphic_mappers,
@@ -757,7 +745,9 @@ class AliasedInsp(
             # are not even the thing we are mapping, such as embedded
             # selectables in subqueries or CTEs.  See issue #6060
             adapt_from_selectables=[
-                m.selectable for m in self.with_polymorphic_mappers
+                m.selectable
+                for m in self.with_polymorphic_mappers
+                if not adapt_on_names
             ],
         )
 
@@ -810,6 +800,7 @@ class AliasedInsp(
         polymorphic_on=None,
         aliased=False,
         innerjoin=False,
+        adapt_on_names=False,
         _use_mapper_path=False,
     ):
 
@@ -830,6 +821,7 @@ class AliasedInsp(
             base,
             selectable,
             with_polymorphic_mappers=mappers,
+            adapt_on_names=adapt_on_names,
             with_polymorphic_discriminator=polymorphic_on,
             use_mapper_path=_use_mapper_path,
             represents_outer_join=not innerjoin,
@@ -1179,8 +1171,7 @@ class LoaderCriteriaOption(CriteriaOption):
         # if options to limit the criteria to immediate query only,
         # use compile_state.attributes instead
 
-        if not compile_state.compile_options._for_refresh_state:
-            self.get_global_criteria(compile_state.global_attributes)
+        self.get_global_criteria(compile_state.global_attributes)
 
     def get_global_criteria(self, attributes):
         for mp in self._all_mappers():
@@ -1234,7 +1225,7 @@ class Bundle(
 
     is_bundle = True
 
-    _propagate_attrs = util.immutabledict()
+    _propagate_attrs: _PropagateAttrsType = util.immutabledict()
 
     def __init__(self, name, *exprs, **kw):
         r"""Construct a new :class:`.Bundle`.
@@ -1794,6 +1785,32 @@ def _is_mapped_annotation(raw_annotation: Union[type, str], cls: type):
     return is_origin_of(annotated, "Mapped", module="sqlalchemy.orm")
 
 
+def _cleanup_mapped_str_annotation(annotation):
+    # fix up an annotation that comes in as the form:
+    # 'Mapped[List[Address]]'  so that it instead looks like:
+    # 'Mapped[List["Address"]]' , which will allow us to get
+    # "Address" as a string
+    mm = re.match(r"^(.+?)\[(.+)\]$", annotation)
+    if mm and mm.group(1) == "Mapped":
+        stack = []
+        inner = mm
+        while True:
+            stack.append(inner.group(1))
+            g2 = inner.group(2)
+            inner = re.match(r"^(.+?)\[(.+)\]$", g2)
+            if inner is None:
+                stack.append(g2)
+                break
+
+        # stack: ['Mapped', 'List', 'Address']
+        if not re.match(r"""^["'].*["']$""", stack[-1]):
+            stack[-1] = f'"{stack[-1]}"'
+            # stack: ['Mapped', 'List', '"Address"']
+
+            annotation = "[".join(stack) + ("]" * (len(stack) - 1))
+    return annotation
+
+
 def _extract_mapped_subtype(
     raw_annotation: Union[type, str],
     cls: type,
@@ -1813,7 +1830,9 @@ def _extract_mapped_subtype(
             )
         return None
 
-    annotated = de_stringify_annotation(cls, raw_annotation)
+    annotated = de_stringify_annotation(
+        cls, raw_annotation, _cleanup_mapped_str_annotation
+    )
 
     if is_dataclass_field:
         return annotated

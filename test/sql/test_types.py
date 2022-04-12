@@ -23,6 +23,7 @@ from sqlalchemy import DateTime
 from sqlalchemy import DECIMAL
 from sqlalchemy import dialects
 from sqlalchemy import distinct
+from sqlalchemy import Double
 from sqlalchemy import Enum
 from sqlalchemy import exc
 from sqlalchemy import FLOAT
@@ -71,7 +72,9 @@ from sqlalchemy.sql import null
 from sqlalchemy.sql import operators
 from sqlalchemy.sql import sqltypes
 from sqlalchemy.sql import table
+from sqlalchemy.sql import type_api
 from sqlalchemy.sql import visitors
+from sqlalchemy.sql.compiler import TypeCompiler
 from sqlalchemy.sql.sqltypes import TypeEngine
 from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
@@ -80,6 +83,7 @@ from sqlalchemy.testing import AssertsExecutionResults
 from sqlalchemy.testing import engines
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_raises
+from sqlalchemy.testing import expect_warnings
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
@@ -115,10 +119,15 @@ def _types_for_mod(mod):
 def _all_types(omit_special_types=False):
     seen = set()
     for typ in _types_for_mod(types):
-        if omit_special_types and typ in (
-            types.TypeDecorator,
-            types.TypeEngine,
-            types.Variant,
+        if omit_special_types and (
+            typ
+            in (
+                TypeEngine,
+                type_api.TypeEngineMixin,
+                types.Variant,
+                types.TypeDecorator,
+            )
+            or type_api.TypeEngineMixin in typ.__bases__
         ):
             continue
 
@@ -139,7 +148,7 @@ class AdaptTest(fixtures.TestBase):
     def test_uppercase_importable(self, typ):
         if typ.__name__ == typ.__name__.upper():
             assert getattr(sa, typ.__name__) is typ
-            assert typ.__name__ in types.__all__
+            assert typ.__name__ in dir(types)
 
     @testing.combinations(
         ((d.name, d) for d in _all_dialects()), argnames="dialect", id_="ia"
@@ -277,6 +286,7 @@ class AdaptTest(fixtures.TestBase):
         eq_(types.Numeric(asdecimal=False).python_type, float)
         eq_(types.LargeBinary().python_type, bytes)
         eq_(types.Float().python_type, float)
+        eq_(types.Double().python_type, float)
         eq_(types.Interval().python_type, datetime.timedelta)
         eq_(types.Date().python_type, datetime.date)
         eq_(types.DateTime().python_type, datetime.datetime)
@@ -2477,13 +2487,44 @@ class EnumTest(AssertsCompiledSQL, fixtures.TablesTest):
             "inherit_schema=True, native_enum=False)",
         )
 
+    def test_repr_two(self):
+        e = Enum("x", "y", name="somename", create_constraint=True)
+        eq_(
+            repr(e),
+            "Enum('x', 'y', name='somename', create_constraint=True)",
+        )
+
+    def test_repr_three(self):
+        e = Enum("x", "y", native_enum=False, length=255)
+        eq_(
+            repr(e),
+            "Enum('x', 'y', native_enum=False, length=255)",
+        )
+
+    def test_repr_four(self):
+        with expect_warnings(
+            "Enum 'length' argument is currently ignored unless native_enum"
+        ):
+            e = Enum("x", "y", length=255)
+        # length is currently ignored if native_enum is not False
+        eq_(
+            repr(e),
+            "Enum('x', 'y')",
+        )
+
     def test_length_native(self):
-        e = Enum("x", "y", "long", length=42)
+        with expect_warnings(
+            "Enum 'length' argument is currently ignored unless native_enum"
+        ):
+            e = Enum("x", "y", "long", length=42)
 
         eq_(e.length, len("long"))
 
         # no error is raised
-        e = Enum("x", "y", "long", length=1)
+        with expect_warnings(
+            "Enum 'length' argument is currently ignored unless native_enum"
+        ):
+            e = Enum("x", "y", "long", length=1)
         eq_(e.length, len("long"))
 
     def test_length_raises(self):
@@ -3413,6 +3454,23 @@ class ExpressionTest(
 class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
+    def test_compile_err_formatting(self):
+        with expect_raises_message(
+            exc.CompileError,
+            r"Don't know how to render literal SQL value: \(1, 2, 3\)",
+        ):
+            func.foo((1, 2, 3)).compile(compile_kwargs={"literal_binds": True})
+
+    def test_strict_bool_err_formatting(self):
+        typ = Boolean()
+
+        dialect = default.DefaultDialect()
+        with expect_raises_message(
+            TypeError,
+            r"Not a boolean value: \(5,\)",
+        ):
+            typ.bind_processor(dialect)((5,))
+
     @testing.requires.unbounded_varchar
     def test_string_plain(self):
         self.assert_compile(String(), "VARCHAR")
@@ -3454,6 +3512,9 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
         self.assert_compile(
             dialects.postgresql.FLOAT(), "FLOAT", allow_dialect_select=True
         )
+
+    def test_default_compile_double(self):
+        self.assert_compile(Double(), "DOUBLE")
 
     def test_default_compile_mysql_integer(self):
         self.assert_compile(
@@ -3499,7 +3560,7 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
                 return "MYINTEGER %s" % kw["type_expression"].name
 
         dialect = default.DefaultDialect()
-        dialect.type_compiler = SomeTypeCompiler(dialect)
+        dialect.type_compiler_instance = SomeTypeCompiler(dialect)
         self.assert_compile(
             ddl.CreateColumn(Column("bar", VARCHAR(50))),
             "bar MYVARCHAR",
@@ -3510,6 +3571,34 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "bar MYINTEGER bar",
             dialect=dialect,
         )
+
+    def test_legacy_typecompiler_attribute(self):
+        """the .type_compiler attribute was broken into
+        .type_compiler_cls and .type_compiler_instance for 2.0 so that it can
+        be properly typed.  However it is expected that the majority of
+        dialects make use of the .type_compiler attribute both at the class
+        level as well as the instance level, so make sure it still functions
+        in exactly the same way, both as the type compiler class to be
+        used as well as that it's present as an instance on an instance
+        of the dialect.
+
+        """
+
+        dialect = default.DefaultDialect()
+        assert isinstance(
+            dialect.type_compiler_instance, dialect.type_compiler_cls
+        )
+        is_(dialect.type_compiler_instance, dialect.type_compiler)
+
+        class MyTypeCompiler(TypeCompiler):
+            pass
+
+        class MyDialect(default.DefaultDialect):
+            type_compiler = MyTypeCompiler
+
+        dialect = MyDialect()
+        assert isinstance(dialect.type_compiler_instance, MyTypeCompiler)
+        is_(dialect.type_compiler_instance, dialect.type_compiler)
 
 
 class TestKWArgPassThru(AssertsCompiledSQL, fixtures.TestBase):

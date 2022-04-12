@@ -111,9 +111,9 @@ underlying :class:`.Session` being maintained by the registry::
     # equivalent to:
     #
     # session = Session()
-    # print(session.query(MyClass).all())
+    # print(session.scalars(select(MyClass)).all())
     #
-    print(Session.query(MyClass).all())
+    print(Session.scalars(select(MyClass)).all())
 
 The above code accomplishes the same task as that of acquiring the current
 :class:`.Session` by calling upon the registry, then using that :class:`.Session`.
@@ -195,7 +195,7 @@ diagram below illustrates this flow::
                                              # be used at any time, creating the
                                              # request-local Session() if not present,
                                              # or returning the existing one
-                                             Session.query(MyClass) # ...
+                                             Session.execute(select(MyClass)) # ...
 
                                              Session.add(some_object) # ...
 

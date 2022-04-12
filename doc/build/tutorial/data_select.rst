@@ -156,6 +156,20 @@ The above :class:`_engine.Row` has just one element, representing the ``User`` e
     >>> row[0]
     User(id=1, name='spongebob', fullname='Spongebob Squarepants')
 
+A highly recommended convenience method of achieving the same result as above
+is to use the :meth:`_orm.Session.scalars` method to execute the statement
+directly; this method will return a :class:`_result.ScalarResult` object
+that delivers the first "column" of each row at once, in this case,
+instances of the ``User`` class::
+
+    >>> user = session.scalars(select(User)).first()
+    {opensql}SELECT user_account.id, user_account.name, user_account.fullname
+    FROM user_account
+    [...] (){stop}
+    >>> user
+    User(id=1, name='spongebob', fullname='Spongebob Squarepants')
+
+
 Alternatively, we can select individual columns of an ORM entity as distinct
 elements within result rows, by using the class-bound attributes; when these
 are passed to a construct such as :func:`_sql.select`, they are resolved into

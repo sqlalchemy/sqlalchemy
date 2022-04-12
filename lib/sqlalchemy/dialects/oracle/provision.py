@@ -63,7 +63,7 @@ def stop_test_class_outside_fixtures(config, db, cls):
     try:
         with db.begin() as conn:
             # run magic command to get rid of identity sequences
-            # https://floo.bar/2019/11/29/drop-the-underlying-sequence-of-an-identity-column/  # noqa E501
+            # https://floo.bar/2019/11/29/drop-the-underlying-sequence-of-an-identity-column/  # noqa: E501
             conn.exec_driver_sql("purge recyclebin")
     except exc.DatabaseError as err:
         log.warning("purge recyclebin command failed: %s", err)

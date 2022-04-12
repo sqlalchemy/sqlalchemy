@@ -25,11 +25,12 @@ from sqlalchemy.testing import mock
 from sqlalchemy.testing import ne_
 from sqlalchemy.testing.util import gc_collect
 from sqlalchemy.testing.util import picklers
-from sqlalchemy.util import _preloaded
 from sqlalchemy.util import classproperty
 from sqlalchemy.util import compat
+from sqlalchemy.util import FastIntFlag
 from sqlalchemy.util import get_callable_argspec
 from sqlalchemy.util import langhelpers
+from sqlalchemy.util import preloaded
 from sqlalchemy.util import WeakSequence
 from sqlalchemy.util._collections import merge_lists_w_ordering
 
@@ -357,8 +358,8 @@ class ImmutableTest(fixtures.TestBase):
             with expect_raises_message(TypeError, "object is immutable"):
                 m()
 
-    def test_immutable_properties(self):
-        d = util.ImmutableProperties({3: 4})
+    def test_readonly_properties(self):
+        d = util.ReadOnlyProperties({3: 4})
         calls = (
             lambda: d.__delitem__(1),
             lambda: d.__setitem__(2, 3),
@@ -563,7 +564,7 @@ class ColumnCollectionCommon(testing.AssertsCompiledSQL):
         eq_(keys, ["c1", "foo", "c3"])
         ne_(id(keys), id(cc.keys()))
 
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
         eq_(ci.keys(), ["c1", "foo", "c3"])
 
     def test_values(self):
@@ -576,7 +577,7 @@ class ColumnCollectionCommon(testing.AssertsCompiledSQL):
         eq_(val, [c1, c2, c3])
         ne_(id(val), id(cc.values()))
 
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
         eq_(ci.values(), [c1, c2, c3])
 
     def test_items(self):
@@ -589,7 +590,7 @@ class ColumnCollectionCommon(testing.AssertsCompiledSQL):
         eq_(items, [("c1", c1), ("foo", c2), ("c3", c3)])
         ne_(id(items), id(cc.items()))
 
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
         eq_(ci.items(), [("c1", c1), ("foo", c2), ("c3", c3)])
 
     def test_key_index_error(self):
@@ -732,7 +733,7 @@ class ColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
 
         self._assert_collection_integrity(cc)
 
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
         eq_(ci._all_columns, [c1, c2a, c3, c2b])
         eq_(list(ci), [c1, c2a, c3, c2b])
         eq_(ci.keys(), ["c1", "c2", "c3", "c2"])
@@ -763,7 +764,7 @@ class ColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
 
         self._assert_collection_integrity(cc)
 
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
         eq_(ci._all_columns, [c1, c2a, c3, c2b])
         eq_(list(ci), [c1, c2a, c3, c2b])
         eq_(ci.keys(), ["c1", "c2", "c3", "c2"])
@@ -786,7 +787,7 @@ class ColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         assert cc.contains_column(c2)
         self._assert_collection_integrity(cc)
 
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
         eq_(ci._all_columns, [c1, c2, c3, c2])
         eq_(list(ci), [c1, c2, c3, c2])
 
@@ -821,7 +822,7 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         c2.key = "foo"
 
         cc = self._column_collection(columns=[("c1", c1), ("foo", c2)])
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
 
         d = {"cc": cc, "ci": ci}
 
@@ -922,7 +923,7 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         assert cc.contains_column(c2)
         self._assert_collection_integrity(cc)
 
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
         eq_(ci._all_columns, [c1, c2, c3])
         eq_(list(ci), [c1, c2, c3])
 
@@ -944,13 +945,13 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         assert cc.contains_column(c2)
         self._assert_collection_integrity(cc)
 
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
         eq_(ci._all_columns, [c1, c2, c3])
         eq_(list(ci), [c1, c2, c3])
 
     def test_replace(self):
         cc = DedupeColumnCollection()
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
 
         c1, c2a, c3, c2b = (
             column("c1"),
@@ -979,7 +980,7 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
 
     def test_replace_key_matches_name_of_another(self):
         cc = DedupeColumnCollection()
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
 
         c1, c2a, c3, c2b = (
             column("c1"),
@@ -1009,7 +1010,7 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
 
     def test_replace_key_matches(self):
         cc = DedupeColumnCollection()
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
 
         c1, c2a, c3, c2b = (
             column("c1"),
@@ -1041,7 +1042,7 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
 
     def test_replace_name_matches(self):
         cc = DedupeColumnCollection()
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
 
         c1, c2a, c3, c2b = (
             column("c1"),
@@ -1073,7 +1074,7 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
 
     def test_replace_no_match(self):
         cc = DedupeColumnCollection()
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
 
         c1, c2, c3, c4 = column("c1"), column("c2"), column("c3"), column("c4")
         c4.key = "X"
@@ -1123,7 +1124,7 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
         cc = DedupeColumnCollection(
             columns=[("c1", c1), ("c2", c2), ("c3", c3)]
         )
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
 
         eq_(cc._all_columns, [c1, c2, c3])
         eq_(list(cc), [c1, c2, c3])
@@ -1184,7 +1185,7 @@ class DedupeColumnCollectionTest(ColumnCollectionCommon, fixtures.TestBase):
 
     def test_dupes_extend(self):
         cc = DedupeColumnCollection()
-        ci = cc.as_immutable()
+        ci = cc.as_readonly()
 
         c1, c2a, c3, c2b = (
             column("c1"),
@@ -2300,6 +2301,20 @@ class SymbolTest(fixtures.TestBase):
         assert sym1 is not sym3
         assert sym1 != sym3
 
+    def test_fast_int_flag(self):
+        class Enum(FastIntFlag):
+            sym1 = 1
+            sym2 = 2
+
+            sym3 = 3
+
+        assert Enum.sym1 is not Enum.sym3
+        assert Enum.sym1 != Enum.sym3
+
+        assert Enum.sym1.name == "sym1"
+
+        eq_(list(Enum), [Enum.sym1, Enum.sym2, Enum.sym3])
+
     def test_pickle(self):
         sym1 = util.symbol("foo")
         sym2 = util.symbol("foo")
@@ -2338,17 +2353,19 @@ class SymbolTest(fixtures.TestBase):
         assert (sym1 | sym2) & (sym2 | sym4)
 
     def test_parser(self):
-        sym1 = util.symbol("sym1", canonical=1)
-        sym2 = util.symbol("sym2", canonical=2)
-        sym3 = util.symbol("sym3", canonical=4)
-        sym4 = util.symbol("sym4", canonical=8)
+        class MyEnum(FastIntFlag):
+            sym1 = 1
+            sym2 = 2
+            sym3 = 4
+            sym4 = 8
 
+        sym1, sym2, sym3, sym4 = tuple(MyEnum)
         lookup_one = {sym1: [], sym2: [True], sym3: [False], sym4: [None]}
         lookup_two = {sym1: [], sym2: [True], sym3: [False]}
         lookup_three = {sym1: [], sym2: ["symbol2"], sym3: []}
 
         is_(
-            util.symbol.parse_user_argument(
+            langhelpers.parse_user_argument_for_enum(
                 "sym2", lookup_one, "some_name", resolve_symbol_names=True
             ),
             sym2,
@@ -2357,35 +2374,41 @@ class SymbolTest(fixtures.TestBase):
         assert_raises_message(
             exc.ArgumentError,
             "Invalid value for 'some_name': 'sym2'",
-            util.symbol.parse_user_argument,
+            langhelpers.parse_user_argument_for_enum,
             "sym2",
             lookup_one,
             "some_name",
         )
         is_(
-            util.symbol.parse_user_argument(
+            langhelpers.parse_user_argument_for_enum(
                 True, lookup_one, "some_name", resolve_symbol_names=False
             ),
             sym2,
         )
 
         is_(
-            util.symbol.parse_user_argument(sym2, lookup_one, "some_name"),
+            langhelpers.parse_user_argument_for_enum(
+                sym2, lookup_one, "some_name"
+            ),
             sym2,
         )
 
         is_(
-            util.symbol.parse_user_argument(None, lookup_one, "some_name"),
+            langhelpers.parse_user_argument_for_enum(
+                None, lookup_one, "some_name"
+            ),
             sym4,
         )
 
         is_(
-            util.symbol.parse_user_argument(None, lookup_two, "some_name"),
+            langhelpers.parse_user_argument_for_enum(
+                None, lookup_two, "some_name"
+            ),
             None,
         )
 
         is_(
-            util.symbol.parse_user_argument(
+            langhelpers.parse_user_argument_for_enum(
                 "symbol2", lookup_three, "some_name"
             ),
             sym2,
@@ -2394,7 +2417,7 @@ class SymbolTest(fixtures.TestBase):
         assert_raises_message(
             exc.ArgumentError,
             "Invalid value for 'some_name': 'foo'",
-            util.symbol.parse_user_argument,
+            langhelpers.parse_user_argument_for_enum,
             "foo",
             lookup_three,
             "some_name",
@@ -3044,7 +3067,7 @@ class TestProperties(fixtures.TestBase):
 
     def test_pickle_immuatbleprops(self):
         data = {"hello": "bla"}
-        props = util.Properties(data).as_immutable()
+        props = util.Properties(data).as_readonly()
 
         for loader, dumper in picklers():
             s = dumper(props)
@@ -3187,7 +3210,7 @@ class TestModuleRegistry(fixtures.TestBase):
         for m in ("xml.dom", "wsgiref.simple_server"):
             to_restore.append((m, sys.modules.pop(m, None)))
         try:
-            mr = _preloaded._ModuleRegistry()
+            mr = preloaded._ModuleRegistry()
 
             ret = mr.preload_module(
                 "xml.dom", "wsgiref.simple_server", "sqlalchemy.sql.util"

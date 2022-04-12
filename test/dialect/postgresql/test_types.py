@@ -12,6 +12,7 @@ from sqlalchemy import cast
 from sqlalchemy import Column
 from sqlalchemy import column
 from sqlalchemy import DateTime
+from sqlalchemy import Double
 from sqlalchemy import Enum
 from sqlalchemy import exc
 from sqlalchemy import Float
@@ -127,14 +128,16 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
             Column("x", postgresql.ARRAY(Float)),
             Column("y", postgresql.ARRAY(REAL)),
             Column("z", postgresql.ARRAY(postgresql.DOUBLE_PRECISION)),
+            Column("w", postgresql.ARRAY(Double)),
             Column("q", postgresql.ARRAY(Numeric)),
         )
         metadata.create_all(connection)
         connection.execute(
-            t1.insert(), dict(x=[5], y=[5], z=[6], q=[decimal.Decimal("6.4")])
+            t1.insert(),
+            dict(x=[5], y=[5], z=[6], w=[7], q=[decimal.Decimal("6.4")]),
         )
         row = connection.execute(t1.select()).first()
-        eq_(row, ([5], [5], [6], [decimal.Decimal("6.4")]))
+        eq_(row, ([5], [5], [6], [7], [decimal.Decimal("6.4")]))
 
     def test_arrays_base(self, connection, metadata):
         t1 = Table(
@@ -143,14 +146,16 @@ class FloatCoercionTest(fixtures.TablesTest, AssertsExecutionResults):
             Column("x", sqltypes.ARRAY(Float)),
             Column("y", sqltypes.ARRAY(REAL)),
             Column("z", sqltypes.ARRAY(postgresql.DOUBLE_PRECISION)),
+            Column("w", sqltypes.ARRAY(Double)),
             Column("q", sqltypes.ARRAY(Numeric)),
         )
         metadata.create_all(connection)
         connection.execute(
-            t1.insert(), dict(x=[5], y=[5], z=[6], q=[decimal.Decimal("6.4")])
+            t1.insert(),
+            dict(x=[5], y=[5], z=[6], w=[7], q=[decimal.Decimal("6.4")]),
         )
         row = connection.execute(t1.select()).first()
-        eq_(row, ([5], [5], [6], [decimal.Decimal("6.4")]))
+        eq_(row, ([5], [5], [6], [7], [decimal.Decimal("6.4")]))
 
 
 class EnumTest(fixtures.TestBase, AssertsExecutionResults):

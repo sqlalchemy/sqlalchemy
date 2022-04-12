@@ -6,15 +6,32 @@
 # the MIT License: https://www.opensource.org/licenses/mit-license.php
 from __future__ import annotations
 
-import typing
+from typing import Any
+from typing import Generic
+from typing import Iterable
+from typing import List
+from typing import Optional
+from typing import TYPE_CHECKING
+from typing import TypeVar
 
-from sqlalchemy.util.langhelpers import TypingOnly
 from .. import util
+from ..util.typing import Literal
 
-
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
+    from ._typing import _PropagateAttrsType
+    from .base import _EntityNamespace
+    from .base import ColumnCollection
+    from .base import ReadOnlyColumnCollection
     from .elements import ClauseElement
+    from .elements import ColumnClause
+    from .elements import ColumnElement
+    from .elements import Label
+    from .elements import NamedColumn
+    from .selectable import _SelectIterable
     from .selectable import FromClause
+    from .selectable import Subquery
+
+_T = TypeVar("_T", bound=Any)
 
 
 class SQLRole:
@@ -35,7 +52,7 @@ class SQLRole:
 
 class UsesInspection:
     __slots__ = ()
-    _post_inspect = None
+    _post_inspect: Literal[None] = None
     uses_inspection = True
 
 
@@ -96,7 +113,7 @@ class ColumnsClauseRole(AllowsLambdaRole, UsesInspection, ColumnListRole):
     _role_name = "Column expression or FROM clause"
 
     @property
-    def _select_iterable(self):
+    def _select_iterable(self) -> _SelectIterable:
         raise NotImplementedError()
 
 
@@ -146,21 +163,30 @@ class WhereHavingRole(OnClauseRole):
     _role_name = "SQL expression for WHERE/HAVING role"
 
 
-class ExpressionElementRole(SQLRole):
+class ExpressionElementRole(Generic[_T], SQLRole):
+    # note when using generics for ExpressionElementRole,
+    # the generic type needs to be in
+    # sqlalchemy.sql.coercions._impl_lookup mapping also.
+    # these are set up for basic types like int, bool, str, float
+    # right now
+
     __slots__ = ()
     _role_name = "SQL expression element"
 
+    def label(self, name: Optional[str]) -> Label[_T]:
+        raise NotImplementedError()
 
-class ConstExprRole(ExpressionElementRole):
+
+class ConstExprRole(ExpressionElementRole[_T]):
     __slots__ = ()
     _role_name = "Constant True/False/None expression"
 
 
-class LabeledColumnExprRole(ExpressionElementRole):
+class LabeledColumnExprRole(ExpressionElementRole[_T]):
     __slots__ = ()
 
 
-class BinaryElementRole(ExpressionElementRole):
+class BinaryElementRole(ExpressionElementRole[_T]):
     __slots__ = ()
     _role_name = "SQL expression element or literal value"
 
@@ -186,26 +212,51 @@ class FromClauseRole(ColumnsClauseRole, JoinTargetRole):
 
     _is_subquery = False
 
-    @property
-    def _hide_froms(self):
-        raise NotImplementedError()
+    named_with_column: bool
+
+    if TYPE_CHECKING:
+
+        @util.ro_non_memoized_property
+        def c(self) -> ReadOnlyColumnCollection[str, ColumnClause[Any]]:
+            ...
+
+        @util.ro_non_memoized_property
+        def columns(self) -> ReadOnlyColumnCollection[str, ColumnClause[Any]]:
+            ...
+
+        @util.ro_non_memoized_property
+        def entity_namespace(self) -> _EntityNamespace:
+            ...
+
+        @util.ro_non_memoized_property
+        def _hide_froms(self) -> Iterable[FromClause]:
+            ...
+
+        @util.ro_non_memoized_property
+        def _from_objects(self) -> List[FromClause]:
+            ...
 
 
 class StrictFromClauseRole(FromClauseRole):
     __slots__ = ()
     # does not allow text() or select() objects
 
-    @property
-    def description(self):
-        raise NotImplementedError()
+    if TYPE_CHECKING:
+
+        @util.ro_non_memoized_property
+        def description(self) -> str:
+            ...
 
 
 class AnonymizedFromClauseRole(StrictFromClauseRole):
     __slots__ = ()
-    # calls .alias() as a post processor
 
-    def _anonymous_fromclause(self, name=None, flat=False):
-        raise NotImplementedError()
+    if TYPE_CHECKING:
+
+        def _anonymous_fromclause(
+            self, name: Optional[str] = None, flat: bool = False
+        ) -> FromClause:
+            ...
 
 
 class ReturnsRowsRole(SQLRole):
@@ -220,14 +271,14 @@ class StatementRole(SQLRole):
     __slots__ = ()
     _role_name = "Executable SQL or text() construct"
 
-    _propagate_attrs = util.immutabledict()
+    _propagate_attrs: _PropagateAttrsType = util.immutabledict()
 
 
 class SelectStatementRole(StatementRole, ReturnsRowsRole):
     __slots__ = ()
     _role_name = "SELECT construct or equivalent text() construct"
 
-    def subquery(self):
+    def subquery(self) -> Subquery:
         raise NotImplementedError(
             "All SelectStatementRole objects should implement a "
             ".subquery() method."
@@ -261,6 +312,16 @@ class DMLTableRole(FromClauseRole):
     __slots__ = ()
     _role_name = "subject table for an INSERT, UPDATE or DELETE"
 
+    if TYPE_CHECKING:
+
+        @util.ro_non_memoized_property
+        def primary_key(self) -> Iterable[NamedColumn[Any]]:
+            ...
+
+        @util.ro_non_memoized_property
+        def columns(self) -> ReadOnlyColumnCollection[str, ColumnClause[Any]]:
+            ...
+
 
 class DMLColumnRole(SQLRole):
     __slots__ = ()
@@ -293,25 +354,3 @@ class DDLReferredColumnRole(DDLConstraintColumnRole):
     _role_name = (
         "String column name or Column object for DDL foreign key constraint"
     )
-
-
-class HasClauseElement(TypingOnly):
-    """indicates a class that has a __clause_element__() method"""
-
-    __slots__ = ()
-
-    if typing.TYPE_CHECKING:
-
-        def __clause_element__(self) -> "ClauseElement":
-            ...
-
-
-class HasFromClauseElement(HasClauseElement, TypingOnly):
-    """indicates a class that has a __clause_element__() method"""
-
-    __slots__ = ()
-
-    if typing.TYPE_CHECKING:
-
-        def __clause_element__(self) -> "FromClause":
-            ...

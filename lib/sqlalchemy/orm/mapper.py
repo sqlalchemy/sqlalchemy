@@ -21,9 +21,14 @@ from functools import reduce
 from itertools import chain
 import sys
 import threading
+from typing import Any
+from typing import Callable
 from typing import Generic
+from typing import Iterator
+from typing import Optional
+from typing import Tuple
 from typing import Type
-from typing import TypeVar
+from typing import TYPE_CHECKING
 import weakref
 
 from . import attributes
@@ -32,9 +37,11 @@ from . import instrumentation
 from . import loading
 from . import properties
 from . import util as orm_util
+from ._typing import _O
 from .base import _class_to_mapper
 from .base import _state_mapper
 from .base import class_mapper
+from .base import PassiveFlag
 from .base import state_str
 from .interfaces import _MappedAttribute
 from .interfaces import EXT_SKIP
@@ -42,6 +49,7 @@ from .interfaces import InspectionAttr
 from .interfaces import MapperProperty
 from .interfaces import ORMEntityColumnsClauseRole
 from .interfaces import ORMFromClauseRole
+from .interfaces import StrategizedProperty
 from .path_registry import PathRegistry
 from .. import event
 from .. import exc as sa_exc
@@ -60,10 +68,15 @@ from ..sql import visitors
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
 from ..util import HasMemoized
 
+if TYPE_CHECKING:
+    from ._typing import _IdentityKeyType
+    from ._typing import _InstanceDict
+    from .instrumentation import ClassManager
+    from .state import InstanceState
+    from ..sql.elements import ColumnElement
+    from ..sql.schema import Column
+
 _mapper_registries = weakref.WeakKeyDictionary()
-
-
-_MC = TypeVar("_MC")
 
 
 def _all_registries():
@@ -97,7 +110,7 @@ class Mapper(
     sql_base.MemoizedHasCacheKey,
     InspectionAttr,
     log.Identified,
-    Generic[_MC],
+    Generic[_O],
 ):
     """Defines an association between a Python class and a database table or
     other relational structure, so that ORM operations against the class may
@@ -113,6 +126,15 @@ class Mapper(
     _dispose_called = False
     _ready_for_configure = False
 
+    class_: Type[_O]
+    """The class to which this :class:`_orm.Mapper` is mapped."""
+
+    _identity_class: Type[_O]
+
+    always_refresh: bool
+    allow_partial_pks: bool
+    version_id_col: Optional[ColumnElement[Any]]
+
     @util.deprecated_params(
         non_primary=(
             "1.3",
@@ -125,7 +147,7 @@ class Mapper(
     )
     def __init__(
         self,
-        class_: Type[_MC],
+        class_: Type[_O],
         local_table=None,
         properties=None,
         primary_key=None,
@@ -808,7 +830,7 @@ class Mapper(
 
     """
 
-    primary_key = None
+    primary_key: Tuple[Column[Any], ...]
     """An iterable containing the collection of :class:`_schema.Column`
     objects
     which comprise the 'primary key' of the mapped table, from the
@@ -832,7 +854,7 @@ class Mapper(
 
     """
 
-    class_ = None
+    class_: Type[_O]
     """The Python class which this :class:`_orm.Mapper` maps.
 
     This is a *read only* attribute determined during mapper construction.
@@ -840,7 +862,7 @@ class Mapper(
 
     """
 
-    class_manager = None
+    class_manager: ClassManager[_O]
     """The :class:`.ClassManager` which maintains event listeners
     and class-bound descriptors for this :class:`_orm.Mapper`.
 
@@ -1363,17 +1385,17 @@ class Mapper(
             # that of the inheriting (unless concrete or explicit)
             self.primary_key = self.inherits.primary_key
         else:
-            # determine primary key from argument or persist_selectable pks -
-            # reduce to the minimal set of columns
+            # determine primary key from argument or persist_selectable pks
             if self._primary_key_argument:
-                primary_key = sql_util.reduce_columns(
-                    [
-                        self.persist_selectable.corresponding_column(c)
-                        for c in self._primary_key_argument
-                    ],
-                    ignore_nonexistent_tables=True,
-                )
+                primary_key = [
+                    self.persist_selectable.corresponding_column(c)
+                    for c in self._primary_key_argument
+                ]
             else:
+                # if heuristically determined PKs, reduce to the minimal set
+                # of columns by eliminating FK->PK pairs for a multi-table
+                # expression.   May over-reduce for some kinds of UNIONs
+                # / CTEs; use explicit PK argument for these special cases
                 primary_key = sql_util.reduce_columns(
                     self._pks_by_table[self.persist_selectable],
                     ignore_nonexistent_tables=True,
@@ -1402,19 +1424,14 @@ class Mapper(
         )
 
     def _configure_properties(self):
-        # Column and other ClauseElement objects which are mapped
 
-        # TODO: technically this should be a DedupeColumnCollection
-        # however DCC needs changes and more tests to fully cover
-        # storing columns under a separate key name
+        # TODO: consider using DedupeColumnCollection
         self.columns = self.c = sql_base.ColumnCollection()
 
         # object attribute names mapped to MapperProperty objects
         self._props = util.OrderedDict()
 
-        # table columns mapped to lists of MapperProperty objects
-        # using a list allows a single column to be defined as
-        # populating multiple object attributes
+        # table columns mapped to MapperProperty
         self._columntoproperty = _ColumnMapping(self)
 
         # load custom properties
@@ -1744,6 +1761,7 @@ class Mapper(
                 col.key = col._tq_key_label = key
 
             self.columns.add(col, key)
+
             for col in prop.columns + prop._orig_columns:
                 for col in col.proxy_set:
                     self._columntoproperty[col] = prop
@@ -1964,7 +1982,7 @@ class Mapper(
             else self.persist_selectable.description,
         )
 
-    def _is_orphan(self, state):
+    def _is_orphan(self, state: InstanceState[_O]) -> bool:
         orphan_possible = False
         for mapper in self.iterate_to_root():
             for (key, cls) in mapper._delete_orphans:
@@ -1984,10 +2002,12 @@ class Mapper(
         else:
             return False
 
-    def has_property(self, key):
+    def has_property(self, key: str) -> bool:
         return key in self._props
 
-    def get_property(self, key, _configure_mappers=True):
+    def get_property(
+        self, key: str, _configure_mappers: bool = True
+    ) -> MapperProperty[Any]:
         """return a MapperProperty associated with the given key."""
 
         if _configure_mappers:
@@ -2374,7 +2394,7 @@ class Mapper(
                 yield c
 
     @HasMemoized.memoized_attribute
-    def attrs(self) -> util.ImmutableProperties["MapperProperty"]:
+    def attrs(self) -> util.ReadOnlyProperties["MapperProperty"]:
         """A namespace of all :class:`.MapperProperty` objects
         associated this mapper.
 
@@ -2409,7 +2429,7 @@ class Mapper(
         """
 
         self._check_configure()
-        return util.ImmutableProperties(self._props)
+        return util.ReadOnlyProperties(self._props)
 
     @HasMemoized.memoized_attribute
     def all_orm_descriptors(self):
@@ -2477,7 +2497,7 @@ class Mapper(
             :attr:`_orm.Mapper.attrs`
 
         """
-        return util.ImmutableProperties(
+        return util.ReadOnlyProperties(
             dict(self.class_manager._all_sqla_attributes())
         )
 
@@ -2564,7 +2584,7 @@ class Mapper(
 
     def _filter_properties(self, type_):
         self._check_configure()
-        return util.ImmutableProperties(
+        return util.ReadOnlyProperties(
             util.OrderedDict(
                 (k, v) for k, v in self._props.items() if isinstance(v, type_)
             )
@@ -2715,7 +2735,7 @@ class Mapper(
         else:
             return _state_mapper(state) is s
 
-    def isa(self, other):
+    def isa(self, other: Mapper[Any]) -> bool:
         """Return True if the this mapper inherits from the given mapper."""
 
         m = self
@@ -2801,16 +2821,24 @@ class Mapper(
             identity_token,
         )
 
-    def identity_key_from_primary_key(self, primary_key, identity_token=None):
+    def identity_key_from_primary_key(
+        self,
+        primary_key: Tuple[Any, ...],
+        identity_token: Optional[Any] = None,
+    ) -> _IdentityKeyType[_O]:
         """Return an identity-map key for use in storing/retrieving an
         item from an identity map.
 
         :param primary_key: A list of values indicating the identifier.
 
         """
-        return self._identity_class, tuple(primary_key), identity_token
+        return (
+            self._identity_class,
+            tuple(primary_key),
+            identity_token,
+        )
 
-    def identity_key_from_instance(self, instance):
+    def identity_key_from_instance(self, instance: _O) -> _IdentityKeyType[_O]:
         """Return the identity key for the given instance, based on
         its primary key attributes.
 
@@ -2827,8 +2855,10 @@ class Mapper(
         return self._identity_key_from_state(state, attributes.PASSIVE_OFF)
 
     def _identity_key_from_state(
-        self, state, passive=attributes.PASSIVE_RETURN_NO_VALUE
-    ):
+        self,
+        state: InstanceState[_O],
+        passive: PassiveFlag = attributes.PASSIVE_RETURN_NO_VALUE,
+    ) -> _IdentityKeyType[_O]:
         dict_ = state.dict
         manager = state.manager
         return (
@@ -2842,7 +2872,7 @@ class Mapper(
             state.identity_token,
         )
 
-    def primary_key_from_instance(self, instance):
+    def primary_key_from_instance(self, instance: _O) -> Tuple[Any, ...]:
         """Return the list of primary key values for the given
         instance.
 
@@ -2900,8 +2930,12 @@ class Mapper(
         return {self._columntoproperty[col].key for col in self._all_pk_cols}
 
     def _get_state_attr_by_column(
-        self, state, dict_, column, passive=attributes.PASSIVE_RETURN_NO_VALUE
-    ):
+        self,
+        state: InstanceState[_O],
+        dict_: _InstanceDict,
+        column: ColumnElement[Any],
+        passive: PassiveFlag = PassiveFlag.PASSIVE_RETURN_NO_VALUE,
+    ) -> Any:
         prop = self._columntoproperty[column]
         return state.manager[prop.key].impl.get(state, dict_, passive=passive)
 
@@ -3071,8 +3105,11 @@ class Mapper(
 
         assert self.inherits
 
-        polymorphic_prop = self._columntoproperty[self.polymorphic_on]
-        keep_props = set([polymorphic_prop] + self._identity_key_props)
+        if self.polymorphic_on is not None:
+            polymorphic_prop = self._columntoproperty[self.polymorphic_on]
+            keep_props = set([polymorphic_prop] + self._identity_key_props)
+        else:
+            keep_props = set(self._identity_key_props)
 
         disable_opt = strategy_options.Load(entity)
         enable_opt = strategy_options.Load(entity)
@@ -3081,6 +3118,9 @@ class Mapper(
             if prop.parent is self or prop in keep_props:
                 # "enable" options, to turn on the properties that we want to
                 # load by default (subject to options from the query)
+                if not isinstance(prop, StrategizedProperty):
+                    continue
+
                 enable_opt = enable_opt._set_generic_strategy(
                     # convert string name to an attribute before passing
                     # to loader strategy
@@ -3137,7 +3177,14 @@ class Mapper(
     def _subclass_load_via_in_mapper(self):
         return self._subclass_load_via_in(self)
 
-    def cascade_iterator(self, type_, state, halt_on=None):
+    def cascade_iterator(
+        self,
+        type_: str,
+        state: InstanceState[_O],
+        halt_on: Optional[Callable[[InstanceState[Any]], bool]] = None,
+    ) -> Iterator[
+        Tuple[object, Mapper[Any], InstanceState[Any], _InstanceDict]
+    ]:
         r"""Iterate each element and its mapper in an object graph,
         for all relationships that meet the given cascade rule.
 
@@ -3595,6 +3642,7 @@ class _ColumnMapping(dict):
     __slots__ = ("mapper",)
 
     def __init__(self, mapper):
+        # TODO: weakref would be a good idea here
         self.mapper = mapper
 
     def __missing__(self, column):

@@ -159,7 +159,7 @@ class MySQLDialect_mysqldb(MySQLDialect):
             return False
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return __import__("MySQLdb")
 
     def on_connect(self):

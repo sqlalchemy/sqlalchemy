@@ -10,6 +10,7 @@ from sqlalchemy.testing import assert_raises
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import eq_
 from sqlalchemy.testing import expect_deprecated
+from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_not
@@ -197,6 +198,50 @@ class EventsTest(TearDownLocalEventsFixture, fixtures.TestBase):
         t2.dispatch.event_one.for_modify(t2.dispatch).exec_once(9, 10)
 
         eq_(m1.mock_calls, [call(5, 6), call(9, 10)])
+
+    def test_real_name_wrong_dispatch(self):
+        m1 = Mock()
+
+        class E1(event.Events):
+            @classmethod
+            def _accept_with(cls, target):
+                if isinstance(target, T1):
+                    return target
+                else:
+                    m1.yup()
+                    return None
+
+            def event_one(self, x, y):
+                pass
+
+            def event_two(self, x):
+                pass
+
+            def event_three(self, x):
+                pass
+
+        class T1:
+            dispatch = event.dispatcher(E1)
+
+        class T2:
+            pass
+
+        class E2(event.Events):
+
+            _dispatch_target = T2
+
+            def event_four(self, x):
+                pass
+
+        with expect_raises_message(
+            exc.InvalidRequestError, "No such event 'event_three'"
+        ):
+
+            @event.listens_for(E2, "event_three")
+            def go(*arg):
+                pass
+
+        eq_(m1.mock_calls, [call.yup()])
 
     def test_exec_once_exception(self):
         m1 = Mock()

@@ -1182,11 +1182,14 @@ Examples from PostgreSQL's reference documentation follow below:
 
     >>> from sqlalchemy import select, func
     >>> stmt = select(
-    ...     func.generate_series(4, 1, -1).table_valued("value", with_ordinality="ordinality")
+    ...     func.generate_series(4, 1, -1).
+    ...     table_valued("value", with_ordinality="ordinality").
+    ...     render_derived()
     ... )
     >>> print(stmt)
     SELECT anon_1.value, anon_1.ordinality
-    FROM generate_series(:generate_series_1, :generate_series_2, :generate_series_3) WITH ORDINALITY AS anon_1
+    FROM generate_series(:generate_series_1, :generate_series_2, :generate_series_3)
+    WITH ORDINALITY AS anon_1(value, ordinality)
 
 .. versionadded:: 1.4.0b2
 
@@ -1418,13 +1421,14 @@ E.g.::
     )
 
 
-"""  # noqa E501
+"""  # noqa: E501
 
 from collections import defaultdict
 import datetime as dt
 import re
 
 from . import array as _array
+from . import dml
 from . import hstore as _hstore
 from . import json as _json
 from . import ranges as _ranges
@@ -1448,6 +1452,7 @@ from ...types import BIGINT
 from ...types import BOOLEAN
 from ...types import CHAR
 from ...types import DATE
+from ...types import DOUBLE_PRECISION
 from ...types import FLOAT
 from ...types import INTEGER
 from ...types import NUMERIC
@@ -1575,10 +1580,6 @@ PGUuid = UUID
 
 class BYTEA(sqltypes.LargeBinary):
     __visit_name__ = "BYTEA"
-
-
-class DOUBLE_PRECISION(sqltypes.Float):
-    __visit_name__ = "DOUBLE_PRECISION"
 
 
 class INET(sqltypes.TypeEngine):
@@ -1716,9 +1717,6 @@ class INTERVAL(sqltypes.NativeForEmulated, sqltypes._AbstractInterval):
     @property
     def python_type(self):
         return dt.timedelta
-
-    def coerce_compared_value(self, op, value):
-        return self
 
 
 PGInterval = INTERVAL
@@ -2090,7 +2088,7 @@ ischema_names = {
 class PGCompiler(compiler.SQLCompiler):
     def render_bind_cast(self, type_, dbapi_type, sqltext):
         return f"""{sqltext}::{
-                self.dialect.type_compiler.process(
+                self.dialect.type_compiler_instance.process(
                     dbapi_type, identifier_preparer=self.preparer
                 )
             }"""
@@ -2240,7 +2238,7 @@ class PGCompiler(compiler.SQLCompiler):
         return "SELECT %s WHERE 1!=1" % (
             ", ".join(
                 "CAST(NULL AS %s)"
-                % self.dialect.type_compiler.process(
+                % self.dialect.type_compiler_instance.process(
                     INTEGER() if type_._isnull else type_
                 )
                 for type_ in element_types or [INTEGER()]
@@ -2322,10 +2320,11 @@ class PGCompiler(compiler.SQLCompiler):
 
         return tmp
 
-    def returning_clause(self, stmt, returning_cols):
-
+    def returning_clause(
+        self, stmt, returning_cols, *, populate_result_map, **kw
+    ):
         columns = [
-            self._label_returning_column(stmt, c)
+            self._label_returning_column(stmt, c, populate_result_map)
             for c in expression._select_iterables(returning_cols)
         ]
 
@@ -2373,6 +2372,24 @@ class PGCompiler(compiler.SQLCompiler):
             target_text = ""
 
         return target_text
+
+    @util.memoized_property
+    def _is_safe_for_fast_insert_values_helper(self):
+        # don't allow fast executemany if _post_values_clause is
+        # present and is not an OnConflictDoNothing. what this means
+        # concretely is that the
+        # "fast insert executemany helper" won't be used, in other
+        # words we won't convert "executemany()" of many parameter
+        # sets into a single INSERT with many elements in VALUES.
+        # We can't apply that optimization safely if for example the
+        # statement includes a clause like "ON CONFLICT DO UPDATE"
+
+        return self.insert_single_values_expr is not None and (
+            self.statement._post_values_clause is None
+            or isinstance(
+                self.statement._post_values_clause, dml.OnConflictDoNothing
+            )
+        )
 
     def visit_on_conflict_do_nothing(self, on_conflict, **kw):
 
@@ -2526,7 +2543,7 @@ class PGDDLCompiler(compiler.DDLCompiler):
             else:
                 colspec += " SERIAL"
         else:
-            colspec += " " + self.dialect.type_compiler.process(
+            colspec += " " + self.dialect.type_compiler_instance.process(
                 column.type,
                 type_expression=column,
                 identifier_preparer=self.preparer,
@@ -2815,8 +2832,8 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
         else:
             return "FLOAT(%(precision)s)" % {"precision": type_.precision}
 
-    def visit_DOUBLE_PRECISION(self, type_, **kw):
-        return "DOUBLE PRECISION"
+    def visit_double(self, type_, **kw):
+        return self.visit_DOUBLE_PRECISION(type, **kw)
 
     def visit_BIGINT(self, type_, **kw):
         return "BIGINT"
@@ -3147,7 +3164,7 @@ class PGDialect(default.DefaultDialect):
 
     statement_compiler = PGCompiler
     ddl_compiler = PGDDLCompiler
-    type_compiler = PGTypeCompiler
+    type_compiler_cls = PGTypeCompiler
     preparer = PGIdentifierPreparer
     execution_ctx_cls = PGExecutionContext
     inspector = PGInspector

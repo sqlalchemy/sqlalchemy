@@ -878,7 +878,7 @@ class PGDialect_asyncpg(PGDialect):
             return (99, 99, 99)
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return AsyncAdapt_asyncpg_dbapi(__import__("asyncpg"))
 
     @util.memoized_property

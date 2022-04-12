@@ -1,6 +1,7 @@
 import itertools
 
 from sqlalchemy import Boolean
+from sqlalchemy import column
 from sqlalchemy import delete
 from sqlalchemy import exc as sa_exc
 from sqlalchemy import func
@@ -10,9 +11,11 @@ from sqlalchemy import MetaData
 from sqlalchemy import select
 from sqlalchemy import Sequence
 from sqlalchemy import String
+from sqlalchemy import table
 from sqlalchemy import testing
 from sqlalchemy import type_coerce
 from sqlalchemy import update
+from sqlalchemy.sql.sqltypes import NullType
 from sqlalchemy.testing import assert_raises_message
 from sqlalchemy.testing import AssertsCompiledSQL
 from sqlalchemy.testing import AssertsExecutionResults
@@ -86,6 +89,113 @@ class ReturnCombinationTests(fixtures.TestBase, AssertsCompiledSQL):
             r"return_defaults\(\) is already configured on this statement",
             stmt.returning,
             t.c.x,
+        )
+
+    def test_named_expressions_selected_columns(self, table_fixture):
+        table = table_fixture
+        stmt = (
+            table.insert()
+            .values(goofy="someOTHERgoofy")
+            .returning(func.lower(table.c.x).label("goof"))
+        )
+        self.assert_compile(
+            select(stmt.exported_columns.goof),
+            "SELECT lower(foo.x) AS goof FROM foo",
+        )
+
+    def test_anon_expressions_selected_columns(self, table_fixture):
+        table = table_fixture
+        stmt = (
+            table.insert()
+            .values(goofy="someOTHERgoofy")
+            .returning(func.lower(table.c.x))
+        )
+        self.assert_compile(
+            select(stmt.exported_columns[0]),
+            "SELECT lower(foo.x) AS lower_1 FROM foo",
+        )
+
+    def test_returning_fromclause(self):
+        t = table("t", column("x"), column("y"), column("z"))
+        stmt = t.update().returning(t)
+
+        self.assert_compile(
+            stmt,
+            "UPDATE t SET x=%(x)s, y=%(y)s, z=%(z)s RETURNING t.x, t.y, t.z",
+        )
+
+        eq_(
+            stmt.returning_column_descriptions,
+            [
+                {
+                    "name": "x",
+                    "type": testing.eq_type_affinity(NullType),
+                    "expr": t.c.x,
+                },
+                {
+                    "name": "y",
+                    "type": testing.eq_type_affinity(NullType),
+                    "expr": t.c.y,
+                },
+                {
+                    "name": "z",
+                    "type": testing.eq_type_affinity(NullType),
+                    "expr": t.c.z,
+                },
+            ],
+        )
+
+        cte = stmt.cte("c")
+
+        stmt = select(cte.c.z)
+        self.assert_compile(
+            stmt,
+            "WITH c AS (UPDATE t SET x=%(x)s, y=%(y)s, z=%(z)s "
+            "RETURNING t.x, t.y, t.z) SELECT c.z FROM c",
+        )
+
+    def test_returning_inspectable(self):
+        t = table("t", column("x"), column("y"), column("z"))
+
+        class HasClauseElement:
+            def __clause_element__(self):
+                return t
+
+        stmt = update(HasClauseElement()).returning(HasClauseElement())
+
+        eq_(
+            stmt.returning_column_descriptions,
+            [
+                {
+                    "name": "x",
+                    "type": testing.eq_type_affinity(NullType),
+                    "expr": t.c.x,
+                },
+                {
+                    "name": "y",
+                    "type": testing.eq_type_affinity(NullType),
+                    "expr": t.c.y,
+                },
+                {
+                    "name": "z",
+                    "type": testing.eq_type_affinity(NullType),
+                    "expr": t.c.z,
+                },
+            ],
+        )
+
+        self.assert_compile(
+            stmt,
+            "UPDATE t SET x=%(x)s, y=%(y)s, z=%(z)s "
+            "RETURNING t.x, t.y, t.z",
+        )
+        cte = stmt.cte("c")
+
+        stmt = select(cte.c.z)
+        self.assert_compile(
+            stmt,
+            "WITH c AS (UPDATE t SET x=%(x)s, y=%(y)s, z=%(z)s "
+            "RETURNING t.x, t.y, t.z) SELECT c.z FROM c",
         )
 
 

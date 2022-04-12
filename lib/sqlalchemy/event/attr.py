@@ -605,14 +605,14 @@ class _ListenerCollection(_CompoundListener[_ET]):
 class _JoinedListener(_CompoundListener[_ET]):
     __slots__ = "parent_dispatch", "name", "local", "parent_listeners"
 
-    parent_dispatch: _Dispatch[_ET]
+    parent_dispatch: _DispatchCommon[_ET]
     name: str
     local: _InstanceLevelDispatch[_ET]
     parent_listeners: Collection[_ListenerFnType]
 
     def __init__(
         self,
-        parent_dispatch: _Dispatch[_ET],
+        parent_dispatch: _DispatchCommon[_ET],
         name: str,
         local: _EmptyListener[_ET],
     ):

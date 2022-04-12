@@ -926,6 +926,12 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
 
         2021-03-15 12:05:57.105542
 
+    The incoming storage format is by default parsed using the
+    Python ``datetime.fromisoformat()`` function.
+
+    .. versionchanged:: 2.0  ``datetime.fromisoformat()`` is used for default
+       datetime string parsing.
+
     The storage format can be customized to some degree using the
     ``storage_format`` and ``regexp`` parameters, such as::
 
@@ -941,7 +947,8 @@ class DATETIME(_DateTimeMixin, sqltypes.DateTime):
      with keys year, month, day, hour, minute, second, and microsecond.
 
     :param regexp: regular expression which will be applied to incoming result
-     rows. If the regexp contains named groups, the resulting match dict is
+     rows, replacing the use of ``datetime.fromisoformat()`` to parse incoming
+     strings. If the regexp contains named groups, the resulting match dict is
      applied to the Python datetime() constructor as keyword arguments.
      Otherwise, if positional groups are used, the datetime() constructor
      is called with positional arguments via
@@ -1027,6 +1034,13 @@ class DATE(_DateTimeMixin, sqltypes.Date):
 
         2011-03-15
 
+    The incoming storage format is by default parsed using the
+    Python ``date.fromisoformat()`` function.
+
+    .. versionchanged:: 2.0  ``date.fromisoformat()`` is used for default
+       date string parsing.
+
+
     The storage format can be customized to some degree using the
     ``storage_format`` and ``regexp`` parameters, such as::
 
@@ -1042,11 +1056,13 @@ class DATE(_DateTimeMixin, sqltypes.Date):
      dict with keys year, month, and day.
 
     :param regexp: regular expression which will be applied to
-     incoming result rows. If the regexp contains named groups, the
-     resulting match dict is applied to the Python date() constructor
-     as keyword arguments. Otherwise, if positional groups are used, the
-     date() constructor is called with positional arguments via
+     incoming result rows, replacing the use of ``date.fromisoformat()`` to
+     parse incoming strings. If the regexp contains named groups, the resulting
+     match dict is applied to the Python date() constructor as keyword
+     arguments. Otherwise, if positional groups are used, the date()
+     constructor is called with positional arguments via
      ``*map(int, match_obj.groups(0))``.
+
     """
 
     _storage_format = "%(year)04d-%(month)02d-%(day)02d"
@@ -1092,6 +1108,12 @@ class TIME(_DateTimeMixin, sqltypes.Time):
 
         12:05:57.10558
 
+    The incoming storage format is by default parsed using the
+    Python ``time.fromisoformat()`` function.
+
+    .. versionchanged:: 2.0  ``time.fromisoformat()`` is used for default
+       time string parsing.
+
     The storage format can be customized to some degree using the
     ``storage_format`` and ``regexp`` parameters, such as::
 
@@ -1107,10 +1129,12 @@ class TIME(_DateTimeMixin, sqltypes.Time):
      with keys hour, minute, second, and microsecond.
 
     :param regexp: regular expression which will be applied to incoming result
-     rows. If the regexp contains named groups, the resulting match dict is
+     rows, replacing the use of ``datetime.fromisoformat()`` to parse incoming
+     strings. If the regexp contains named groups, the resulting match dict is
      applied to the Python time() constructor as keyword arguments. Otherwise,
      if positional groups are used, the time() constructor is called with
      positional arguments via ``*map(int, match_obj.groups(0))``.
+
     """
 
     _storage_format = "%(hour)02d:%(minute)02d:%(second)02d.%(microsecond)06d"
@@ -1179,7 +1203,7 @@ ischema_names = {
     "DATE_CHAR": sqltypes.DATE,
     "DATETIME": sqltypes.DATETIME,
     "DATETIME_CHAR": sqltypes.DATETIME,
-    "DOUBLE": sqltypes.FLOAT,
+    "DOUBLE": sqltypes.DOUBLE,
     "DECIMAL": sqltypes.DECIMAL,
     "FLOAT": sqltypes.FLOAT,
     "INT": sqltypes.INTEGER,
@@ -1426,7 +1450,7 @@ class SQLiteCompiler(compiler.SQLCompiler):
 class SQLiteDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
 
-        coltype = self.dialect.type_compiler.process(
+        coltype = self.dialect.type_compiler_instance.process(
             column.type, type_expression=column
         )
         colspec = self.preparer.format_column(column) + " " + coltype
@@ -1815,7 +1839,7 @@ class SQLiteDialect(default.DefaultDialect):
     execution_ctx_cls = SQLiteExecutionContext
     statement_compiler = SQLiteCompiler
     ddl_compiler = SQLiteDDLCompiler
-    type_compiler = SQLiteTypeCompiler
+    type_compiler_cls = SQLiteTypeCompiler
     preparer = SQLiteIdentifierPreparer
     ischema_names = ischema_names
     colspecs = colspecs
@@ -2395,7 +2419,8 @@ class SQLiteDialect(default.DefaultDialect):
         def parse_uqs():
             UNIQUE_PATTERN = r'(?:CONSTRAINT "?(.+?)"? +)?UNIQUE *\((.+?)\)'
             INLINE_UNIQUE_PATTERN = (
-                r'(?:(".+?")|([a-z0-9]+)) ' r"+[a-z0-9_ ]+? +UNIQUE"
+                r'(?:(".+?")|(?:[\[`])?([a-z0-9_]+)(?:[\]`])?) '
+                r"+[a-z0-9_ ]+? +UNIQUE"
             )
 
             for match in re.finditer(UNIQUE_PATTERN, table_data, re.I):
@@ -2429,17 +2454,21 @@ class SQLiteDialect(default.DefaultDialect):
         if not table_data:
             return []
 
-        CHECK_PATTERN = r"(?:CONSTRAINT (\w+) +)?" r"CHECK *\( *(.+) *\),? *"
+        CHECK_PATTERN = r"(?:CONSTRAINT (.+) +)?" r"CHECK *\( *(.+) *\),? *"
         check_constraints = []
         # NOTE: we aren't using re.S here because we actually are
         # taking advantage of each CHECK constraint being all on one
         # line in the table definition in order to delineate.  This
         # necessarily makes assumptions as to how the CREATE TABLE
         # was emitted.
+
         for match in re.finditer(CHECK_PATTERN, table_data, re.I):
-            check_constraints.append(
-                {"sqltext": match.group(2), "name": match.group(1)}
-            )
+            name = match.group(1)
+
+            if name:
+                name = re.sub(r'^"|"$', "", name)
+
+            check_constraints.append({"sqltext": match.group(2), "name": name})
 
         return check_constraints
 

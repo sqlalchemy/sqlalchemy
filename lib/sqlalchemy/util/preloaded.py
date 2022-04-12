@@ -16,9 +16,17 @@ from types import ModuleType
 import typing
 from typing import Any
 from typing import Callable
+from typing import TYPE_CHECKING
 from typing import TypeVar
 
 _FN = TypeVar("_FN", bound=Callable[..., Any])
+
+if TYPE_CHECKING:
+    from sqlalchemy.engine import default as engine_default
+    from sqlalchemy.orm import session as orm_session
+    from sqlalchemy.orm import util as orm_util
+    from sqlalchemy.sql import dml as sql_dml
+    from sqlalchemy.sql import util as sql_util
 
 
 class _ModuleRegistry:
@@ -67,7 +75,7 @@ class _ModuleRegistry:
                 not path or module.startswith(path)
             ) and key not in self.__dict__:
                 __import__(module, globals(), locals())
-                self.__dict__[key] = sys.modules[module]
+                self.__dict__[key] = globals()[key] = sys.modules[module]
 
     if typing.TYPE_CHECKING:
 
@@ -75,5 +83,11 @@ class _ModuleRegistry:
             ...
 
 
-preloaded = _ModuleRegistry()
-preload_module = preloaded.preload_module
+_reg = _ModuleRegistry()
+preload_module = _reg.preload_module
+import_prefix = _reg.import_prefix
+
+if TYPE_CHECKING:
+
+    def __getattr__(key: str) -> ModuleType:
+        ...

@@ -77,7 +77,7 @@ class MySQLDialect_mysqlconnector(MySQLDialect):
     colspecs = util.update_copy(MySQLDialect.colspecs, {BIT: _myconnpyBIT})
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         from mysql import connector
 
         return connector

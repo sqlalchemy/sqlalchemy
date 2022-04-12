@@ -8,75 +8,76 @@
 from __future__ import annotations
 
 from typing import Any
+from typing import Optional
+from typing import TYPE_CHECKING
 from typing import Union
 
 from . import coercions
 from . import roles
-from ._typing import _ColumnsClauseElement
+from ._typing import _ColumnsClauseArgument
 from .elements import ColumnClause
 from .selectable import Alias
 from .selectable import CompoundSelect
 from .selectable import Exists
+from .selectable import FromClause
 from .selectable import Join
 from .selectable import Lateral
+from .selectable import LateralFromClause
+from .selectable import NamedFromClause
 from .selectable import Select
 from .selectable import TableClause
 from .selectable import TableSample
 from .selectable import Values
-from ..util.typing import _LiteralStar
-from ..util.typing import Literal
+
+if TYPE_CHECKING:
+    from ._typing import _ColumnsClauseArgument
+    from ._typing import _FromClauseArgument
+    from ._typing import _OnClauseArgument
+    from ._typing import _SelectStatementForCompoundArgument
+    from .functions import Function
+    from .selectable import CTE
+    from .selectable import HasCTE
+    from .selectable import ScalarSelect
+    from .selectable import SelectBase
 
 
-def alias(selectable, name=None, flat=False):
-    """Return an :class:`_expression.Alias` object.
+def alias(
+    selectable: FromClause, name: Optional[str] = None, flat: bool = False
+) -> NamedFromClause:
+    """Return a named alias of the given :class:`.FromClause`.
 
-    An :class:`_expression.Alias` represents any
-    :class:`_expression.FromClause`
-    with an alternate name assigned within SQL, typically using the ``AS``
-    clause when generated, e.g. ``SELECT * FROM table AS aliasname``.
+    For :class:`.Table` and :class:`.Join` objects, the return type is the
+    :class:`_expression.Alias` object. Other kinds of :class:`.NamedFromClause`
+    objects may be returned for other kinds of :class:`.FromClause` objects.
 
-    Similar functionality is available via the
+    The named alias represents any :class:`_expression.FromClause` with an
+    alternate name assigned within SQL, typically using the ``AS`` clause when
+    generated, e.g. ``SELECT * FROM table AS aliasname``.
+
+    Equivalent functionality is available via the
     :meth:`_expression.FromClause.alias`
-    method available on all :class:`_expression.FromClause` subclasses.
-    In terms of
-    a SELECT object as generated from the :func:`_expression.select`
-    function, the :meth:`_expression.SelectBase.alias` method returns an
-    :class:`_expression.Alias` or similar object which represents a named,
-    parenthesized subquery.
-
-    When an :class:`_expression.Alias` is created from a
-    :class:`_schema.Table` object,
-    this has the effect of the table being rendered
-    as ``tablename AS aliasname`` in a SELECT statement.
-
-    For :func:`_expression.select` objects, the effect is that of
-    creating a named subquery, i.e. ``(select ...) AS aliasname``.
-
-    The ``name`` parameter is optional, and provides the name
-    to use in the rendered SQL.  If blank, an "anonymous" name
-    will be deterministically generated at compile time.
-    Deterministic means the name is guaranteed to be unique against
-    other constructs used in the same statement, and will also be the
-    same name for each successive compilation of the same statement
-    object.
+    method available on all :class:`_expression.FromClause` objects.
 
     :param selectable: any :class:`_expression.FromClause` subclass,
         such as a table, select statement, etc.
 
     :param name: string name to be assigned as the alias.
-        If ``None``, a name will be deterministically generated
-        at compile time.
+        If ``None``, a name will be deterministically generated at compile
+        time. Deterministic means the name is guaranteed to be unique against
+        other constructs used in the same statement, and will also be the same
+        name for each successive compilation of the same statement object.
 
     :param flat: Will be passed through to if the given selectable
      is an instance of :class:`_expression.Join` - see
-     :meth:`_expression.Join.alias`
-     for details.
+     :meth:`_expression.Join.alias` for details.
 
     """
     return Alias._factory(selectable, name=name, flat=flat)
 
 
-def cte(selectable, name=None, recursive=False):
+def cte(
+    selectable: HasCTE, name: Optional[str] = None, recursive: bool = False
+) -> CTE:
     r"""Return a new :class:`_expression.CTE`,
     or Common Table Expression instance.
 
@@ -88,7 +89,7 @@ def cte(selectable, name=None, recursive=False):
     )
 
 
-def except_(*selects):
+def except_(*selects: _SelectStatementForCompoundArgument) -> CompoundSelect:
     r"""Return an ``EXCEPT`` of multiple selectables.
 
     The returned object is an instance of
@@ -101,7 +102,9 @@ def except_(*selects):
     return CompoundSelect._create_except(*selects)
 
 
-def except_all(*selects):
+def except_all(
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect:
     r"""Return an ``EXCEPT ALL`` of multiple selectables.
 
     The returned object is an instance of
@@ -114,7 +117,11 @@ def except_all(*selects):
     return CompoundSelect._create_except_all(*selects)
 
 
-def exists(__argument=None):
+def exists(
+    __argument: Optional[
+        Union[_ColumnsClauseArgument, SelectBase, ScalarSelect[bool]]
+    ] = None,
+) -> Exists:
     """Construct a new :class:`_expression.Exists` construct.
 
     The :func:`_sql.exists` can be invoked by itself to produce an
@@ -150,12 +157,12 @@ def exists(__argument=None):
         :meth:`_sql.SelectBase.exists` - method to transform a ``SELECT`` to an
         ``EXISTS`` clause.
 
-    """  # noqa E501
+    """  # noqa: E501
 
     return Exists(__argument)
 
 
-def intersect(*selects):
+def intersect(*selects: _SelectStatementForCompoundArgument) -> CompoundSelect:
     r"""Return an ``INTERSECT`` of multiple selectables.
 
     The returned object is an instance of
@@ -168,7 +175,9 @@ def intersect(*selects):
     return CompoundSelect._create_intersect(*selects)
 
 
-def intersect_all(*selects):
+def intersect_all(
+    *selects: _SelectStatementForCompoundArgument,
+) -> CompoundSelect:
     r"""Return an ``INTERSECT ALL`` of multiple selectables.
 
     The returned object is an instance of
@@ -182,7 +191,13 @@ def intersect_all(*selects):
     return CompoundSelect._create_intersect_all(*selects)
 
 
-def join(left, right, onclause=None, isouter=False, full=False):
+def join(
+    left: _FromClauseArgument,
+    right: _FromClauseArgument,
+    onclause: Optional[_OnClauseArgument] = None,
+    isouter: bool = False,
+    full: bool = False,
+) -> Join:
     """Produce a :class:`_expression.Join` object, given two
     :class:`_expression.FromClause`
     expressions.
@@ -234,7 +249,10 @@ def join(left, right, onclause=None, isouter=False, full=False):
     return Join(left, right, onclause, isouter, full)
 
 
-def lateral(selectable, name=None):
+def lateral(
+    selectable: Union[SelectBase, _FromClauseArgument],
+    name: Optional[str] = None,
+) -> LateralFromClause:
     """Return a :class:`_expression.Lateral` object.
 
     :class:`_expression.Lateral` is an :class:`_expression.Alias`
@@ -257,7 +275,12 @@ def lateral(selectable, name=None):
     return Lateral._factory(selectable, name=name)
 
 
-def outerjoin(left, right, onclause=None, full=False):
+def outerjoin(
+    left: _FromClauseArgument,
+    right: _FromClauseArgument,
+    onclause: Optional[_OnClauseArgument] = None,
+    full: bool = False,
+) -> Join:
     """Return an ``OUTER JOIN`` clause element.
 
     The returned object is an instance of :class:`_expression.Join`.
@@ -283,9 +306,7 @@ def outerjoin(left, right, onclause=None, full=False):
     return Join(left, right, onclause, isouter=True, full=full)
 
 
-def select(
-    *entities: Union[_LiteralStar, Literal[1], _ColumnsClauseElement]
-) -> "Select":
+def select(*entities: _ColumnsClauseArgument) -> Select:
     r"""Construct a new :class:`_expression.Select`.
 
 
@@ -326,7 +347,7 @@ def select(
     return Select(*entities)
 
 
-def table(name: str, *columns: ColumnClause, **kw: Any) -> "TableClause":
+def table(name: str, *columns: ColumnClause[Any], **kw: Any) -> TableClause:
     """Produce a new :class:`_expression.TableClause`.
 
     The object returned is an instance of
@@ -353,7 +374,12 @@ def table(name: str, *columns: ColumnClause, **kw: Any) -> "TableClause":
     return TableClause(name, *columns, **kw)
 
 
-def tablesample(selectable, sampling, name=None, seed=None):
+def tablesample(
+    selectable: _FromClauseArgument,
+    sampling: Union[float, Function[Any]],
+    name: Optional[str] = None,
+    seed: Optional[roles.ExpressionElementRole[Any]] = None,
+) -> TableSample:
     """Return a :class:`_expression.TableSample` object.
 
     :class:`_expression.TableSample` is an :class:`_expression.Alias`
@@ -399,7 +425,7 @@ def tablesample(selectable, sampling, name=None, seed=None):
     return TableSample._factory(selectable, sampling, name=name, seed=seed)
 
 
-def union(*selects, **kwargs):
+def union(*selects: _SelectStatementForCompoundArgument) -> CompoundSelect:
     r"""Return a ``UNION`` of multiple selectables.
 
     The returned object is an instance of
@@ -416,10 +442,10 @@ def union(*selects, **kwargs):
       :func:`select`.
 
     """
-    return CompoundSelect._create_union(*selects, **kwargs)
+    return CompoundSelect._create_union(*selects)
 
 
-def union_all(*selects):
+def union_all(*selects: _SelectStatementForCompoundArgument) -> CompoundSelect:
     r"""Return a ``UNION ALL`` of multiple selectables.
 
     The returned object is an instance of
@@ -435,7 +461,11 @@ def union_all(*selects):
     return CompoundSelect._create_union_all(*selects)
 
 
-def values(*columns, name=None, literal_binds=False) -> "Values":
+def values(
+    *columns: ColumnClause[Any],
+    name: Optional[str] = None,
+    literal_binds: bool = False,
+) -> Values:
     r"""Construct a :class:`_expression.Values` construct.
 
     The column expressions and the actual data for

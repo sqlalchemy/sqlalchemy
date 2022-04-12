@@ -8,7 +8,16 @@
 from __future__ import annotations
 
 import itertools
+from typing import Any
+from typing import cast
+from typing import Dict
 from typing import List
+from typing import Optional
+from typing import Set
+from typing import Tuple
+from typing import Type
+from typing import TYPE_CHECKING
+from typing import Union
 
 from . import attributes
 from . import interfaces
@@ -32,16 +41,33 @@ from ..sql import expression
 from ..sql import roles
 from ..sql import util as sql_util
 from ..sql import visitors
+from ..sql._typing import is_dml
+from ..sql._typing import is_insert_update
+from ..sql._typing import is_select_base
 from ..sql.base import _select_iterables
 from ..sql.base import CacheableOptions
 from ..sql.base import CompileState
+from ..sql.base import Executable
 from ..sql.base import Options
+from ..sql.dml import UpdateBase
+from ..sql.elements import GroupedElement
+from ..sql.elements import TextClause
 from ..sql.selectable import LABEL_STYLE_DISAMBIGUATE_ONLY
 from ..sql.selectable import LABEL_STYLE_NONE
 from ..sql.selectable import LABEL_STYLE_TABLENAME_PLUS_COL
+from ..sql.selectable import ReturnsRows
 from ..sql.selectable import Select
+from ..sql.selectable import SelectLabelStyle
 from ..sql.selectable import SelectState
 from ..sql.visitors import InternalTraversal
+
+if TYPE_CHECKING:
+    from ._typing import _InternalEntityType
+    from ..sql.compiler import _CompilerStackEntry
+    from ..sql.dml import _DMLTableElement
+    from ..sql.elements import ColumnElement
+    from ..sql.selectable import _LabelConventionCallable
+    from ..sql.selectable import SelectBase
 
 _path_registry = PathRegistry.root
 
@@ -143,16 +169,6 @@ class QueryContext:
         self.yield_per = load_options._yield_per
         self.identity_token = load_options._refresh_identity_token
 
-        if self.yield_per and compile_state._no_yield_pers:
-            raise sa_exc.InvalidRequestError(
-                "The yield_per Query option is currently not "
-                "compatible with %s eager loading.  Please "
-                "specify lazyload('*') or query.enable_eagerloads(False) in "
-                "order to "
-                "proceed with query.yield_per()."
-                % ", ".join(compile_state._no_yield_pers)
-            )
-
 
 _orm_load_exec_options = util.immutabledict(
     {"_result_disable_adapt_to_context": True, "future_result": True}
@@ -195,7 +211,24 @@ class ORMCompileState(CompileState):
         _for_refresh_state = False
         _render_for_subquery = False
 
-    current_path = _path_registry
+    statement: Union[Select, FromStatement]
+    select_statement: Union[Select, FromStatement]
+    _entities: List[_QueryEntity]
+    _polymorphic_adapters: Dict[_InternalEntityType, ORMAdapter]
+    compile_options: Union[
+        Type[default_compile_options], default_compile_options
+    ]
+    _primary_entity: Optional[_QueryEntity]
+    use_legacy_query_style: bool
+    _label_convention: _LabelConventionCallable
+    primary_columns: List[ColumnElement[Any]]
+    secondary_columns: List[ColumnElement[Any]]
+    dedupe_columns: Set[ColumnElement[Any]]
+    create_eager_joins: List[
+        # TODO: this structure is set up by JoinedLoader
+        Tuple[Any, ...]
+    ]
+    current_path: PathRegistry = _path_registry
 
     def __init__(self, *arg, **kw):
         raise NotImplementedError()
@@ -207,7 +240,9 @@ class ORMCompileState(CompileState):
             col_collection.append(obj)
 
     @classmethod
-    def _column_naming_convention(cls, label_style, legacy):
+    def _column_naming_convention(
+        cls, label_style: SelectLabelStyle, legacy: bool
+    ) -> _LabelConventionCallable:
 
         if legacy:
 
@@ -387,6 +422,10 @@ class ORMFromStatementCompileState(ORMCompileState):
     _from_obj_alias = None
     _has_mapper_entities = False
 
+    statement_container: FromStatement
+    requested_statement: Union[SelectBase, TextClause, UpdateBase]
+    dml_table: _DMLTableElement
+
     _has_orm_entities = False
     multi_row_eager_loaders = False
     compound_eager_adapter = None
@@ -402,6 +441,12 @@ class ORMFromStatementCompileState(ORMCompileState):
         else:
             toplevel = True
 
+        if not toplevel:
+            raise sa_exc.CompileError(
+                "The ORM FromStatement construct only supports being "
+                "invoked as the topmost statement, as it is only intended to "
+                "define how result rows should be returned."
+            )
         self = cls.__new__(cls)
         self._primary_entity = None
 
@@ -416,7 +461,6 @@ class ORMFromStatementCompileState(ORMCompileState):
 
         self._entities = []
         self._polymorphic_adapters = {}
-        self._no_yield_pers = set()
 
         self.compile_options = statement_container._compile_options
 
@@ -473,37 +517,47 @@ class ORMFromStatementCompileState(ORMCompileState):
 
         self.order_by = None
 
-        if isinstance(
-            self.statement, (expression.TextClause, expression.UpdateBase)
-        ):
-
+        if isinstance(self.statement, expression.TextClause):
+            # TextClause has no "column" objects at all.  for this case,
+            # we generate columns from our _QueryEntity objects, then
+            # flip on all the "please match no matter what" parameters.
             self.extra_criteria_entities = {}
 
-            # setup for all entities. Currently, this is not useful
-            # for eager loaders, as the eager loaders that work are able
-            # to do their work entirely in row_processor.
             for entity in self._entities:
                 entity.setup_compile_state(self)
 
-            # we did the setup just to get primary columns.
-            self.statement = expression.TextualSelect(
-                self.statement, self.primary_columns, positional=False
-            )
+            compiler._ordered_columns = (
+                compiler._textual_ordered_columns
+            ) = False
+
+            # enable looser result column matching.  this is shown to be
+            # needed by test_query.py::TextTest
+            compiler._loose_column_name_matching = True
+
+            for c in self.primary_columns:
+                compiler.process(
+                    c,
+                    within_columns_clause=True,
+                    add_to_result_map=compiler._add_to_result_map,
+                )
         else:
-            # allow TextualSelect with implicit columns as well
-            # as select() with ad-hoc columns, see test_query::TextTest
-            self._from_obj_alias = sql.util.ColumnAdapter(
-                self.statement, adapt_on_names=True
+            # for everyone else, Select, Insert, Update, TextualSelect, they
+            # have column objects already.  After much
+            # experimentation here, the best approach seems to be, use
+            # those columns completely, don't interfere with the compiler
+            # at all; just in ORM land, use an adapter to convert from
+            # our ORM columns to whatever columns are in the statement,
+            # before we look in the result row.  If the inner statement is
+            # not ORM enabled, assume looser col matching based on name
+            statement_is_orm = (
+                self.statement._propagate_attrs.get(
+                    "compile_state_plugin", None
+                )
+                == "orm"
             )
-            # set up for eager loaders, however if we fix subqueryload
-            # it should not need to do this here.  the model of eager loaders
-            # that can work entirely in row_processor might be interesting
-            # here though subqueryloader has a lot of upfront work to do
-            # see test/orm/test_query.py -> test_related_eagerload_against_text
-            # for where this part makes a difference.  would rather have
-            # subqueryload figure out what it needs more intelligently.
-            #            for entity in self._entities:
-            #                entity.setup_compile_state(self)
+            self._from_obj_alias = sql.util.ColumnAdapter(
+                self.statement, adapt_on_names=not statement_is_orm
+            )
 
         return self
 
@@ -512,6 +566,111 @@ class ORMFromStatementCompileState(ORMCompileState):
 
     def _get_current_adapter(self):
         return None
+
+
+class FromStatement(GroupedElement, ReturnsRows, Executable):
+    """Core construct that represents a load of ORM objects from various
+    :class:`.ReturnsRows` and other classes including:
+
+    :class:`.Select`, :class:`.TextClause`, :class:`.TextualSelect`,
+    :class:`.CompoundSelect`, :class`.Insert`, :class:`.Update`,
+    and in theory, :class:`.Delete`.
+
+    """
+
+    __visit_name__ = "orm_from_statement"
+
+    _compile_options = ORMFromStatementCompileState.default_compile_options
+
+    _compile_state_factory = ORMFromStatementCompileState.create_for_statement
+
+    _for_update_arg = None
+
+    element: Union[SelectBase, TextClause, UpdateBase]
+
+    _traverse_internals = [
+        ("_raw_columns", InternalTraversal.dp_clauseelement_list),
+        ("element", InternalTraversal.dp_clauseelement),
+    ] + Executable._executable_traverse_internals
+
+    _cache_key_traversal = _traverse_internals + [
+        ("_compile_options", InternalTraversal.dp_has_cache_key)
+    ]
+
+    def __init__(self, entities, element):
+        self._raw_columns = [
+            coercions.expect(
+                roles.ColumnsClauseRole,
+                ent,
+                apply_propagate_attrs=self,
+                post_inspect=True,
+            )
+            for ent in util.to_list(entities)
+        ]
+        self.element = element
+        self.is_dml = element.is_dml
+        self._label_style = (
+            element._label_style if is_select_base(element) else None
+        )
+
+    def _compiler_dispatch(self, compiler, **kw):
+
+        """provide a fixed _compiler_dispatch method.
+
+        This is roughly similar to using the sqlalchemy.ext.compiler
+        ``@compiles`` extension.
+
+        """
+
+        compile_state = self._compile_state_factory(self, compiler, **kw)
+
+        toplevel = not compiler.stack
+
+        if toplevel:
+            compiler.compile_state = compile_state
+
+        return compiler.process(compile_state.statement, **kw)
+
+    @property
+    def column_descriptions(self):
+        """Return a :term:`plugin-enabled` 'column descriptions' structure
+        referring to the columns which are SELECTed by this statement.
+
+        See the section :ref:`queryguide_inspection` for an overview
+        of this feature.
+
+        .. seealso::
+
+            :ref:`queryguide_inspection` - ORM background
+
+        """
+        meth = cast(
+            ORMSelectCompileState, SelectState.get_plugin_class(self)
+        ).get_column_descriptions
+        return meth(self)
+
+    def _ensure_disambiguated_names(self):
+        return self
+
+    def get_children(self, **kw):
+        for elem in itertools.chain.from_iterable(
+            element._from_objects for element in self._raw_columns
+        ):
+            yield elem
+        for elem in super(FromStatement, self).get_children(**kw):
+            yield elem
+
+    @property
+    def _all_selected_columns(self):
+        return self.element._all_selected_columns
+
+    @property
+    def _returning(self):
+        return self.element._returning if is_dml(self.element) else None
+
+    @property
+    def _inline(self):
+        return self.element._inline if is_insert_update(self.element) else None
 
 
 @sql.base.CompileState.plugin_for("orm", "select")
@@ -573,7 +732,6 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
         self._entities = []
         self._primary_entity = None
         self._polymorphic_adapters = {}
-        self._no_yield_pers = set()
 
         self.compile_options = select_statement._compile_options
 
@@ -1897,7 +2055,10 @@ class ORMSelectCompileState(ORMCompileState, SelectState):
 
             single_crit = ext_info.mapper._single_table_criterion
 
-            additional_entity_criteria = self._get_extra_criteria(ext_info)
+            if self.compile_options._for_refresh_state:
+                additional_entity_criteria = []
+            else:
+                additional_entity_criteria = self._get_extra_criteria(ext_info)
 
             if single_crit is not None:
                 additional_entity_criteria += (single_crit,)
@@ -1995,6 +2156,9 @@ class _QueryEntity:
     _non_hashable_value = False
     _null_column_type = False
     use_id_for_hash = False
+
+    def setup_compile_state(self, compile_state: ORMCompileState) -> None:
+        raise NotImplementedError()
 
     @classmethod
     def to_compile_state(

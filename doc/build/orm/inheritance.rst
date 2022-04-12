@@ -648,20 +648,20 @@ Upon select, the polymorphic union produces a query like this:
 
 .. sourcecode:: python+sql
 
-    session.query(Employee).all()
+    session.scalars(select(Employee)).all()
     {opensql}
     SELECT
-        pjoin.id AS pjoin_id,
-        pjoin.name AS pjoin_name,
-        pjoin.type AS pjoin_type,
-        pjoin.manager_data AS pjoin_manager_data,
-        pjoin.engineer_info AS pjoin_engineer_info
+        pjoin.id,
+        pjoin.name,
+        pjoin.type,
+        pjoin.manager_data,
+        pjoin.engineer_info
     FROM (
         SELECT
             employee.id AS id,
             employee.name AS name,
-            CAST(NULL AS VARCHAR(50)) AS manager_data,
-            CAST(NULL AS VARCHAR(50)) AS engineer_info,
+            CAST(NULL AS VARCHAR(40)) AS manager_data,
+            CAST(NULL AS VARCHAR(40)) AS engineer_info,
             'employee' AS type
         FROM employee
         UNION ALL
@@ -669,14 +669,14 @@ Upon select, the polymorphic union produces a query like this:
             manager.id AS id,
             manager.name AS name,
             manager.manager_data AS manager_data,
-            CAST(NULL AS VARCHAR(50)) AS engineer_info,
+            CAST(NULL AS VARCHAR(40)) AS engineer_info,
             'manager' AS type
         FROM manager
         UNION ALL
         SELECT
             engineer.id AS id,
             engineer.name AS name,
-            CAST(NULL AS VARCHAR(50)) AS manager_data,
+            CAST(NULL AS VARCHAR(40)) AS manager_data,
             engineer.engineer_info AS engineer_info,
             'engineer' AS type
         FROM engineer
@@ -726,7 +726,7 @@ base class with the ``__abstract__`` indicator::
 Above, we are not actually making use of SQLAlchemy's inheritance mapping
 facilities; we can load and persist instances of ``Manager`` and ``Engineer``
 normally.   The situation changes however when we need to **query polymorphically**,
-that is, we'd like to emit ``session.query(Employee)`` and get back a collection
+that is, we'd like to emit ``select(Employee)`` and get back a collection
 of ``Manager`` and ``Engineer`` instances.    This brings us back into the
 domain of concrete inheritance, and we must build a special mapper against
 ``Employee`` in order to achieve this.

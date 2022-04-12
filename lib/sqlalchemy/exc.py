@@ -23,13 +23,17 @@ from typing import Tuple
 from typing import Type
 from typing import Union
 
-from .util import _preloaded
 from .util import compat
+from .util import preloaded as _preloaded
 
 if typing.TYPE_CHECKING:
+    from .engine.interfaces import _AnyExecuteParams
+    from .engine.interfaces import _CoreAnyExecuteParams
+    from .engine.interfaces import _CoreMultiExecuteParams
+    from .engine.interfaces import _DBAPIAnyExecuteParams
     from .engine.interfaces import Dialect
-    from .sql._typing import _ExecuteParams
     from .sql.compiler import Compiled
+    from .sql.compiler import TypeCompiler
     from .sql.elements import ClauseElement
 
 if typing.TYPE_CHECKING:
@@ -218,8 +222,8 @@ class UnsupportedCompilationError(CompileError):
 
     def __init__(
         self,
-        compiler: "Compiled",
-        element_type: Type["ClauseElement"],
+        compiler: Union[Compiled, TypeCompiler],
+        element_type: Type[ClauseElement],
         message: Optional[str] = None,
     ):
         super(UnsupportedCompilationError, self).__init__(
@@ -341,6 +345,8 @@ class MultipleResultsFound(InvalidRequestError):
 class NoReferenceError(InvalidRequestError):
     """Raised by ``ForeignKey`` to indicate a reference cannot be resolved."""
 
+    table_name: str
+
 
 class AwaitRequired(InvalidRequestError):
     """Error raised by the async greenlet spawn if no async operation
@@ -446,7 +452,7 @@ class StatementError(SQLAlchemyError):
     statement: Optional[str] = None
     """The string SQL statement being invoked when this exception occurred."""
 
-    params: Optional["_ExecuteParams"] = None
+    params: Optional[_AnyExecuteParams] = None
     """The parameter list being used when this exception occurred."""
 
     orig: Optional[BaseException] = None
@@ -457,11 +463,13 @@ class StatementError(SQLAlchemyError):
     ismulti: Optional[bool] = None
     """multi parameter passed to repr_params().  None is meaningful."""
 
+    connection_invalidated: bool = False
+
     def __init__(
         self,
         message: str,
         statement: Optional[str],
-        params: Optional["_ExecuteParams"],
+        params: Optional[_AnyExecuteParams],
         orig: Optional[BaseException],
         hide_parameters: bool = False,
         code: Optional[str] = None,
@@ -495,10 +503,7 @@ class StatementError(SQLAlchemyError):
 
     @_preloaded.preload_module("sqlalchemy.sql.util")
     def _sql_message(self) -> str:
-        if typing.TYPE_CHECKING:
-            from .sql import util
-        else:
-            util = _preloaded.preloaded.sql_util
+        util = _preloaded.sql_util
 
         details = [self._message()]
         if self.statement:
@@ -553,8 +558,8 @@ class DBAPIError(StatementError):
     @classmethod
     def instance(
         cls,
-        statement: str,
-        params: "_ExecuteParams",
+        statement: Optional[str],
+        params: Optional[_AnyExecuteParams],
         orig: DontWrapMixin,
         dbapi_base_err: Type[Exception],
         hide_parameters: bool = False,
@@ -568,8 +573,8 @@ class DBAPIError(StatementError):
     @classmethod
     def instance(
         cls,
-        statement: str,
-        params: "_ExecuteParams",
+        statement: Optional[str],
+        params: Optional[_AnyExecuteParams],
         orig: Exception,
         dbapi_base_err: Type[Exception],
         hide_parameters: bool = False,
@@ -583,8 +588,8 @@ class DBAPIError(StatementError):
     @classmethod
     def instance(
         cls,
-        statement: str,
-        params: "_ExecuteParams",
+        statement: Optional[str],
+        params: Optional[_AnyExecuteParams],
         orig: BaseException,
         dbapi_base_err: Type[Exception],
         hide_parameters: bool = False,
@@ -597,8 +602,8 @@ class DBAPIError(StatementError):
     @classmethod
     def instance(
         cls,
-        statement: str,
-        params: "_ExecuteParams",
+        statement: Optional[str],
+        params: Optional[_AnyExecuteParams],
         orig: Union[BaseException, DontWrapMixin],
         dbapi_base_err: Type[Exception],
         hide_parameters: bool = False,
@@ -684,8 +689,8 @@ class DBAPIError(StatementError):
 
     def __init__(
         self,
-        statement: str,
-        params: "_ExecuteParams",
+        statement: Optional[str],
+        params: Optional[_AnyExecuteParams],
         orig: BaseException,
         hide_parameters: bool = False,
         connection_invalidated: bool = False,

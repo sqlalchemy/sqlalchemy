@@ -8,8 +8,8 @@
 import datetime
 
 from ... import exc
-from ... import types as sqltypes
 from ... import util
+from ...sql import sqltypes
 
 
 class _NumericType:
@@ -152,7 +152,7 @@ class DECIMAL(_NumericType, sqltypes.DECIMAL):
         )
 
 
-class DOUBLE(_FloatType):
+class DOUBLE(_FloatType, sqltypes.DOUBLE):
     """MySQL DOUBLE type."""
 
     __visit_name__ = "DOUBLE"

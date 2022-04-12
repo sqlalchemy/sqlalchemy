@@ -293,7 +293,7 @@ class _GetColumns:
                 )
 
             desc = mp.all_orm_descriptors[key]
-            if desc.extension_type is interfaces.NOT_EXTENSION:
+            if desc.extension_type is interfaces.NotExtension.NOT_EXTENSION:
                 prop = desc.property
                 if isinstance(prop, Synonym):
                     key = prop.name

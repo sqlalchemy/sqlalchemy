@@ -64,10 +64,10 @@ def _qual_logger_name_for_cls(cls: Type["Identified"]) -> str:
 
 def class_logger(cls: Type[_IT]) -> Type[_IT]:
     logger = logging.getLogger(_qual_logger_name_for_cls(cls))
-    cls._should_log_debug = lambda self: logger.isEnabledFor(  # type: ignore[assignment]  # noqa E501
+    cls._should_log_debug = lambda self: logger.isEnabledFor(  # type: ignore[assignment]  # noqa: E501
         logging.DEBUG
     )
-    cls._should_log_info = lambda self: logger.isEnabledFor(  # type: ignore[assignment]  # noqa E501
+    cls._should_log_info = lambda self: logger.isEnabledFor(  # type: ignore[assignment]  # noqa: E501
         logging.INFO
     )
     cls.logger = logger
@@ -225,7 +225,7 @@ def instance_logger(
     else:
         name = _qual_logger_name_for_cls(instance.__class__)
 
-    instance._echo = echoflag
+    instance._echo = echoflag  # type: ignore
 
     logger: Union[logging.Logger, InstanceLogger]
 
@@ -239,7 +239,7 @@ def instance_logger(
         # levels by calling logger._log()
         logger = InstanceLogger(echoflag, name)
 
-    instance.logger = logger
+    instance.logger = logger  # type: ignore
 
 
 class echo_property:
@@ -255,19 +255,19 @@ class echo_property:
 
     @overload
     def __get__(
-        self, instance: "Literal[None]", owner: "echo_property"
-    ) -> "echo_property":
+        self, instance: Literal[None], owner: Type[Identified]
+    ) -> echo_property:
         ...
 
     @overload
     def __get__(
-        self, instance: Identified, owner: "echo_property"
+        self, instance: Identified, owner: Type[Identified]
     ) -> _EchoFlagType:
         ...
 
     def __get__(
-        self, instance: Optional[Identified], owner: "echo_property"
-    ) -> Union["echo_property", _EchoFlagType]:
+        self, instance: Optional[Identified], owner: Type[Identified]
+    ) -> Union[echo_property, _EchoFlagType]:
         if instance is None:
             return self
         else:

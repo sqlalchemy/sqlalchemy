@@ -3,21 +3,29 @@ from __future__ import annotations
 import sys
 import typing
 from typing import Any
-from typing import Callable  # noqa
+from typing import Callable
 from typing import cast
 from typing import Dict
 from typing import ForwardRef
-from typing import Generic
-from typing import overload
+from typing import Iterable
+from typing import Optional
+from typing import Tuple
 from typing import Type
 from typing import TypeVar
 from typing import Union
 
-from typing_extensions import NotRequired  # noqa
+from typing_extensions import NotRequired as NotRequired  # noqa
 
 from . import compat
 
 _T = TypeVar("_T", bound=Any)
+_KT = TypeVar("_KT")
+_KT_co = TypeVar("_KT_co", covariant=True)
+_KT_contra = TypeVar("_KT_contra", contravariant=True)
+_VT = TypeVar("_VT")
+_VT_co = TypeVar("_VT_co", covariant=True)
+
+Self = TypeVar("Self", bound=Any)
 
 if compat.py310:
     # why they took until py310 to put this in stdlib is beyond me,
@@ -26,19 +34,43 @@ if compat.py310:
 else:
     NoneType = type(None)  # type: ignore
 
+if compat.py310:
+    from typing import TypeGuard as TypeGuard
+    from typing import TypeAlias as TypeAlias
+else:
+    from typing_extensions import TypeGuard as TypeGuard
+    from typing_extensions import TypeAlias as TypeAlias
+
+if typing.TYPE_CHECKING or compat.py38:
+    from typing import SupportsIndex as SupportsIndex
+else:
+    from typing_extensions import SupportsIndex as SupportsIndex
+
 if typing.TYPE_CHECKING or compat.py310:
     from typing import Annotated as Annotated
 else:
-    from typing_extensions import Annotated as Annotated  # noqa F401
+    from typing_extensions import Annotated as Annotated  # noqa: F401
 
 if typing.TYPE_CHECKING or compat.py38:
     from typing import Literal as Literal
     from typing import Protocol as Protocol
     from typing import TypedDict as TypedDict
 else:
-    from typing_extensions import Literal as Literal  # noqa F401
-    from typing_extensions import Protocol as Protocol  # noqa F401
-    from typing_extensions import TypedDict as TypedDict  # noqa F401
+    from typing_extensions import Literal as Literal  # noqa: F401
+    from typing_extensions import Protocol as Protocol  # noqa: F401
+    from typing_extensions import TypedDict as TypedDict  # noqa: F401
+
+# copied from TypeShed, required in order to implement
+# MutableMapping.update()
+
+
+class SupportsKeysAndGetItem(Protocol[_KT, _VT_co]):
+    def keys(self) -> Iterable[_KT]:
+        ...
+
+    def __getitem__(self, __k: _KT) -> _VT_co:
+        ...
+
 
 # work around https://github.com/microsoft/pyright/issues/3025
 _LiteralStar = Literal["*"]
@@ -47,41 +79,14 @@ if typing.TYPE_CHECKING or not compat.py310:
     from typing_extensions import Concatenate as Concatenate
     from typing_extensions import ParamSpec as ParamSpec
 else:
-    from typing import Concatenate as Concatenate  # noqa F401
-    from typing import ParamSpec as ParamSpec  # noqa F401
-
-
-class _TypeToInstance(Generic[_T]):
-    """describe a variable that moves between a class and an instance of
-    that class.
-
-    """
-
-    @overload
-    def __get__(self, instance: None, owner: Any) -> Type[_T]:
-        ...
-
-    @overload
-    def __get__(self, instance: object, owner: Any) -> _T:
-        ...
-
-    def __get__(self, instance: object, owner: Any) -> Union[Type[_T], _T]:
-        ...
-
-    @overload
-    def __set__(self, instance: None, value: Type[_T]) -> None:
-        ...
-
-    @overload
-    def __set__(self, instance: object, value: _T) -> None:
-        ...
-
-    def __set__(self, instance: object, value: Union[Type[_T], _T]) -> None:
-        ...
+    from typing import Concatenate as Concatenate  # noqa: F401
+    from typing import ParamSpec as ParamSpec  # noqa: F401
 
 
 def de_stringify_annotation(
-    cls: Type[Any], annotation: Union[str, Type[Any]]
+    cls: Type[Any],
+    annotation: Union[str, Type[Any]],
+    str_cleanup_fn: Optional[Callable[[str], str]] = None,
 ) -> Union[str, Type[Any]]:
     """Resolve annotations that may be string based into real objects.
 
@@ -104,9 +109,13 @@ def de_stringify_annotation(
         annotation = cast(ForwardRef, annotation).__forward_arg__
 
     if isinstance(annotation, str):
+        if str_cleanup_fn:
+            annotation = str_cleanup_fn(annotation)
+
         base_globals: "Dict[str, Any]" = getattr(
             sys.modules.get(cls.__module__, None), "__dict__", {}
         )
+
         try:
             annotation = eval(annotation, base_globals, None)
         except NameError:
@@ -144,7 +153,9 @@ def make_union_type(*types):
     return cast(Any, Union).__getitem__(types)
 
 
-def expand_unions(type_, include_union=False, discard_none=False):
+def expand_unions(
+    type_: Type[Any], include_union: bool = False, discard_none: bool = False
+) -> Tuple[Type[Any], ...]:
     """Return a type as as a tuple of individual types, expanding for
     ``Union`` types."""
 

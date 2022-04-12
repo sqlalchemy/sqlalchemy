@@ -127,7 +127,7 @@ illustrate this:
     ...     conn.commit()
     {opensql}BEGIN (implicit)
     INSERT INTO user_account (name, fullname) VALUES (?, ?)
-    [...] (('sandy', 'Sandy Cheeks'), ('patrick', 'Patrick Star'))
+    [...] [('sandy', 'Sandy Cheeks'), ('patrick', 'Patrick Star')]
     COMMIT{stop}
 
 The execution above features "executemany" form first illustrated at
@@ -185,8 +185,8 @@ construct automatically.
         INSERT INTO address (user_id, email_address) VALUES ((SELECT user_account.id
         FROM user_account
         WHERE user_account.name = ?), ?)
-        [...] (('spongebob', 'spongebob@sqlalchemy.org'), ('sandy', 'sandy@sqlalchemy.org'),
-        ('sandy', 'sandy@squirrelpower.org'))
+        [...] [('spongebob', 'spongebob@sqlalchemy.org'), ('sandy', 'sandy@sqlalchemy.org'),
+        ('sandy', 'sandy@squirrelpower.org')]
         COMMIT{stop}
 
 .. _tutorial_insert_from_select:

@@ -243,6 +243,18 @@ class CompileTest(fixtures.TestBase, AssertsCompiledSQL):
             "CAST(bar AS someschema.somename) AS bar",
         )
 
+    def test_cast_double_pg_double(self):
+        """test #5465:
+
+        test sqlalchemy Double/DOUBLE to PostgreSQL DOUBLE PRECISION
+        """
+        d1 = sqltypes.Double
+
+        stmt = select(cast(column("foo"), d1))
+        self.assert_compile(
+            stmt, "SELECT CAST(foo AS DOUBLE PRECISION) AS foo"
+        )
+
     def test_cast_enum_schema_translate(self):
         """test #6739"""
         e1 = Enum("x", "y", "z", name="somename")
@@ -2308,6 +2320,28 @@ class InsertOnConflictTest(fixtures.TestBase, AssertsCompiledSQL):
                     "ON CONFLICT clause established",
                 ):
                     meth()
+
+    def test_on_conflict_cte_plus_textual(self):
+        """test #7798"""
+
+        bar = table("bar", column("id"), column("attr"), column("foo_id"))
+        s1 = text("SELECT bar.id, bar.attr FROM bar").columns(
+            bar.c.id, bar.c.attr
+        )
+        s2 = (
+            insert(bar)
+            .from_select(list(s1.selected_columns), s1)
+            .on_conflict_do_update(
+                index_elements=[s1.selected_columns.id],
+                set_={"attr": s1.selected_columns.attr},
+            )
+        )
+
+        self.assert_compile(
+            s2,
+            "INSERT INTO bar (id, attr) SELECT bar.id, bar.attr "
+            "FROM bar ON CONFLICT (id) DO UPDATE SET attr = bar.attr",
+        )
 
     def test_do_nothing_no_target(self):
 

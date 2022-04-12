@@ -1023,6 +1023,23 @@ class RealReconnectTest(fixtures.TestBase):
             eq_(conn.execute(select(1)).scalar(), 1)
             assert not conn.invalidated
 
+    def test_detach_invalidated(self):
+        with self.engine.connect() as conn:
+            conn.invalidate()
+            with expect_raises_message(
+                exc.InvalidRequestError,
+                "Can't detach an invalidated Connection",
+            ):
+                conn.detach()
+
+    def test_detach_closed(self):
+        with self.engine.connect() as conn:
+            pass
+        with expect_raises_message(
+            exc.ResourceClosedError, "This Connection is closed"
+        ):
+            conn.detach()
+
     @testing.requires.independent_connections
     def test_multiple_invalidate(self):
         c1 = self.engine.connect()
@@ -1078,7 +1095,22 @@ class RealReconnectTest(fixtures.TestBase):
             conn.begin()
             trans2 = conn.begin_nested()
             conn.invalidate()
+
+            # this passes silently, as it will often be involved
+            # in error catching schemes
             trans2.rollback()
+
+            # still invalid though
+            with expect_raises(exc.PendingRollbackError):
+                conn.begin_nested()
+
+    def test_no_begin_on_invalid(self):
+        with self.engine.connect() as conn:
+            conn.begin()
+            conn.invalidate()
+
+            with expect_raises(exc.PendingRollbackError):
+                conn.commit()
 
     def test_invalidate_twice(self):
         with self.engine.connect() as conn:

@@ -288,7 +288,7 @@ class MySQLDialect_asyncmy(MySQLDialect_pymysql):
     is_async = True
 
     @classmethod
-    def dbapi(cls):
+    def import_dbapi(cls):
         return AsyncAdapt_asyncmy_dbapi(__import__("asyncmy"))
 
     @classmethod

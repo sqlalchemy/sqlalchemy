@@ -235,16 +235,15 @@ class TestORMInspection(_fixtures.FixtureTest):
     def test_extension_types(self):
         from sqlalchemy.ext.associationproxy import (
             association_proxy,
-            ASSOCIATION_PROXY,
+            AssociationProxyExtensionType,
         )
         from sqlalchemy.ext.hybrid import (
             hybrid_property,
             hybrid_method,
-            HYBRID_PROPERTY,
-            HYBRID_METHOD,
+            HybridExtensionType,
         )
         from sqlalchemy import Table, MetaData, Integer, Column
-        from sqlalchemy.orm.interfaces import NOT_EXTENSION
+        from sqlalchemy.orm.interfaces import NotExtension
 
         class SomeClass(self.classes.User):
             some_assoc = association_proxy("addresses", "email_address")
@@ -290,15 +289,15 @@ class TestORMInspection(_fixtures.FixtureTest):
                 for k, v in list(insp.all_orm_descriptors.items())
             ),
             {
-                "id": NOT_EXTENSION,
-                "name": NOT_EXTENSION,
-                "name_syn": NOT_EXTENSION,
-                "addresses": NOT_EXTENSION,
-                "orders": NOT_EXTENSION,
-                "upper_name": HYBRID_PROPERTY,
-                "foo": HYBRID_PROPERTY,
-                "conv": HYBRID_METHOD,
-                "some_assoc": ASSOCIATION_PROXY,
+                "id": NotExtension.NOT_EXTENSION,
+                "name": NotExtension.NOT_EXTENSION,
+                "name_syn": NotExtension.NOT_EXTENSION,
+                "addresses": NotExtension.NOT_EXTENSION,
+                "orders": NotExtension.NOT_EXTENSION,
+                "upper_name": HybridExtensionType.HYBRID_PROPERTY,
+                "foo": HybridExtensionType.HYBRID_PROPERTY,
+                "conv": HybridExtensionType.HYBRID_METHOD,
+                "some_assoc": AssociationProxyExtensionType.ASSOCIATION_PROXY,
             },
         )
         is_(

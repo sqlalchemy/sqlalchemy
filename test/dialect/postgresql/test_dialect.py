@@ -31,6 +31,7 @@ from sqlalchemy import text
 from sqlalchemy import TypeDecorator
 from sqlalchemy.dialects.postgresql import base as postgresql
 from sqlalchemy.dialects.postgresql import HSTORE
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import psycopg as psycopg_dialect
 from sqlalchemy.dialects.postgresql import psycopg2 as psycopg2_dialect
@@ -322,7 +323,10 @@ class ExecuteManyMode:
             Column("\u6e2c\u8a66", Integer),
         )
 
-    def test_insert(self, connection):
+    @testing.combinations(
+        "insert", "pg_insert", "pg_insert_on_conflict", argnames="insert_type"
+    )
+    def test_insert(self, connection, insert_type):
         from psycopg2 import extras
 
         values_page_size = connection.dialect.executemany_values_page_size
@@ -342,11 +346,23 @@ class ExecuteManyMode:
         else:
             assert False
 
+        if insert_type == "pg_insert_on_conflict":
+            stmt += " ON CONFLICT DO NOTHING"
+
         with mock.patch.object(
             extras, meth.__name__, side_effect=meth
         ) as mock_exec:
+            if insert_type == "insert":
+                ins_stmt = self.tables.data.insert()
+            elif insert_type == "pg_insert":
+                ins_stmt = pg_insert(self.tables.data)
+            elif insert_type == "pg_insert_on_conflict":
+                ins_stmt = pg_insert(self.tables.data).on_conflict_do_nothing()
+            else:
+                assert False
+
             connection.execute(
-                self.tables.data.insert(),
+                ins_stmt,
                 [
                     {"x": "x1", "y": "y1"},
                     {"x": "x2", "y": "y2"},
@@ -368,11 +384,11 @@ class ExecuteManyMode:
                 mock.call(
                     mock.ANY,
                     stmt,
-                    (
+                    [
                         {"x": "x1", "y": "y1"},
                         {"x": "x2", "y": "y2"},
                         {"x": "x3", "y": "y3"},
-                    ),
+                    ],
                     **expected_kwargs,
                 )
             ],
@@ -417,11 +433,11 @@ class ExecuteManyMode:
                 mock.call(
                     mock.ANY,
                     stmt,
-                    (
+                    [
                         {"x": "x1", "y": "y1"},
                         {"x": "x2", "y": "y2"},
                         {"x": "x3", "y": "y3"},
-                    ),
+                    ],
                     **expected_kwargs,
                 )
             ],
@@ -470,11 +486,11 @@ class ExecuteManyMode:
                 mock.call(
                     mock.ANY,
                     stmt,
-                    (
+                    [
                         {"x": "x1", "y": "y1"},
                         {"x": "x2", "y": "y2"},
                         {"x": "x3", "y": "y3"},
-                    ),
+                    ],
                     **expected_kwargs,
                 )
             ],
@@ -524,10 +540,10 @@ class ExecuteManyMode:
                     mock.call(
                         mock.ANY,
                         stmt,
-                        (
+                        [
                             {"xval": "x1", "yval": "y5"},
                             {"xval": "x3", "yval": "y6"},
-                        ),
+                        ],
                         **expected_kwargs,
                     )
                 ],
@@ -714,11 +730,11 @@ class ExecutemanyValuesInsertsTest(ExecuteManyMode, fixtures.TablesTest):
                 mock.call(
                     mock.ANY,
                     "INSERT INTO data (id, x, y, z) VALUES %s",
-                    (
+                    [
                         {"id": 1, "y": "y1", "z": 1},
                         {"id": 2, "y": "y2", "z": 2},
                         {"id": 3, "y": "y3", "z": 3},
-                    ),
+                    ],
                     template="(%(id)s, (SELECT 5 \nFROM data), %(y)s, %(z)s)",
                     fetch=False,
                     page_size=connection.dialect.executemany_values_page_size,

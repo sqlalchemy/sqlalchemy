@@ -12,15 +12,18 @@ as actively in the load/persist ORM loop.
 """
 from __future__ import annotations
 
+from dataclasses import is_dataclass
 import inspect
 import itertools
 import operator
 import typing
 from typing import Any
 from typing import Callable
+from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Tuple
+from typing import Type
 from typing import TypeVar
 from typing import Union
 
@@ -40,12 +43,21 @@ from .. import sql
 from .. import util
 from ..sql import expression
 from ..sql import operators
+from ..util.typing import Protocol
 
 if typing.TYPE_CHECKING:
+    from .attributes import InstrumentedAttribute
     from .properties import MappedColumn
+    from ..sql._typing import _ColumnExpressionArgument
+    from ..sql.schema import Column
 
 _T = TypeVar("_T", bound=Any)
 _PT = TypeVar("_PT", bound=Any)
+
+
+class _CompositeClassProto(Protocol):
+    def __composite_values__(self) -> Tuple[Any, ...]:
+        ...
 
 
 class DescriptorProperty(MapperProperty[_T]):
@@ -109,6 +121,11 @@ class DescriptorProperty(MapperProperty[_T]):
         mapper.class_manager.instrument_attribute(self.key, proxy_attr)
 
 
+_CompositeAttrType = Union[
+    str, "Column[Any]", "MappedColumn[Any]", "InstrumentedAttribute[Any]"
+]
+
+
 class Composite(
     _MapsColumns[_T], _IntrospectsAnnotations, DescriptorProperty[_T]
 ):
@@ -128,12 +145,21 @@ class Composite(
 
     """
 
-    composite_class: Union[type, Callable[..., type]]
-    attrs: Tuple[
-        Union[sql.ColumnElement[Any], "MappedColumn", str, Mapped[Any]], ...
+    composite_class: Union[
+        Type[_CompositeClassProto], Callable[..., Type[_CompositeClassProto]]
     ]
+    attrs: Tuple[_CompositeAttrType, ...]
 
-    def __init__(self, class_=None, *attrs, **kwargs):
+    def __init__(
+        self,
+        class_: Union[None, _CompositeClassProto, _CompositeAttrType] = None,
+        *attrs: _CompositeAttrType,
+        active_history: bool = False,
+        deferred: bool = False,
+        group: Optional[str] = None,
+        comparator_factory: Optional[Type[Comparator]] = None,
+        info: Optional[Dict[Any, Any]] = None,
+    ):
         super().__init__()
 
         if isinstance(class_, (Mapped, str, sql.ColumnElement)):
@@ -144,15 +170,17 @@ class Composite(
             self.composite_class = class_
             self.attrs = attrs
 
-        self.active_history = kwargs.get("active_history", False)
-        self.deferred = kwargs.get("deferred", False)
-        self.group = kwargs.get("group", None)
-        self.comparator_factory = kwargs.pop(
-            "comparator_factory", self.__class__.Comparator
+        self.active_history = active_history
+        self.deferred = deferred
+        self.group = group
+        self.comparator_factory = (
+            comparator_factory
+            if comparator_factory is not None
+            else self.__class__.Comparator
         )
         self._generated_composite_accessor = None
-        if "info" in kwargs:
-            self.info = kwargs.pop("info")
+        if info is not None:
+            self.info = info
 
         util.set_creation_order(self)
         self._create_descriptor()
@@ -161,7 +189,9 @@ class Composite(
         super().instrument_class(mapper)
         self._setup_event_handlers()
 
-    def _composite_values_from_instance(self, value):
+    def _composite_values_from_instance(
+        self, value: _CompositeClassProto
+    ) -> Tuple[Any, ...]:
         if self._generated_composite_accessor:
             return self._generated_composite_accessor(value)
         else:
@@ -248,12 +278,10 @@ class Composite(
         self.descriptor = property(fget, fset, fdel)
 
     @util.preload_module("sqlalchemy.orm.properties")
-    @util.preload_module("sqlalchemy.orm.decl_base")
     def declarative_scan(
         self, registry, cls, key, annotation, is_dataclass_field
     ):
         MappedColumn = util.preloaded.orm_properties.MappedColumn
-        decl_base = util.preloaded.orm_decl_base
 
         argument = _extract_mapped_subtype(
             annotation,
@@ -273,6 +301,17 @@ class Composite(
                     f"class argument"
                 )
             self.composite_class = argument
+
+        if is_dataclass(self.composite_class):
+            self._setup_for_dataclass(registry, cls, key)
+
+    @util.preload_module("sqlalchemy.orm.properties")
+    @util.preload_module("sqlalchemy.orm.decl_base")
+    def _setup_for_dataclass(self, registry, cls, key):
+        MappedColumn = util.preloaded.orm_properties.MappedColumn
+
+        decl_base = util.preloaded.orm_decl_base
+
         insp = inspect.signature(self.composite_class)
         for param, attr in itertools.zip_longest(
             insp.parameters.values(), self.attrs
@@ -289,7 +328,7 @@ class Composite(
             elif isinstance(attr, schema.Column):
                 decl_base._undefer_column_name(param.name, attr)
 
-        if not hasattr(cls, "__composite_values__"):
+        if not hasattr(self.composite_class, "__composite_values__"):
             getter = operator.attrgetter(
                 *[p.name for p in insp.parameters.values()]
             )
@@ -501,7 +540,8 @@ class Composite(
 
         """
 
-        __hash__ = None
+        # https://github.com/python/mypy/issues/4266
+        __hash__ = None  # type: ignore
 
         @util.memoized_property
         def clauses(self):

@@ -25,16 +25,12 @@ from .base import Transaction as Transaction
 from .base import TwoPhaseTransaction as TwoPhaseTransaction
 from .create import create_engine as create_engine
 from .create import engine_from_config as engine_from_config
-from .cursor import BaseCursorResult as BaseCursorResult
-from .cursor import BufferedColumnResultProxy as BufferedColumnResultProxy
-from .cursor import BufferedColumnRow as BufferedColumnRow
-from .cursor import BufferedRowResultProxy as BufferedRowResultProxy
 from .cursor import CursorResult as CursorResult
-from .cursor import FullyBufferedResultProxy as FullyBufferedResultProxy
 from .cursor import ResultProxy as ResultProxy
 from .interfaces import AdaptedConnection as AdaptedConnection
 from .interfaces import BindTyping as BindTyping
 from .interfaces import Compiled as Compiled
+from .interfaces import ConnectArgsType as ConnectArgsType
 from .interfaces import CreateEnginePlugin as CreateEnginePlugin
 from .interfaces import Dialect as Dialect
 from .interfaces import ExceptionContext as ExceptionContext

@@ -187,6 +187,27 @@ it into a form that is interpreted by the receiving :func:`_orm.relationship` as
 arguments to be applied to the new relationship it creates.
 
 
+Cascade behavior for backrefs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+It's important to note that even though a bi-directional relationship
+may be manipulated from either direction, having the same end effect on the
+object structure produced, there is a significant difference in how the
+:ref:`save-update cascade <cascade_save_update>` behaves for two objects
+where one is attached and the other is unattached to a :class:`_orm.Session`,
+depending on the direction in which the relationships are manipulated.
+
+The ``save-update`` cascade will only take effect **uni-directionally**
+in the direction from a parent object that is already associated with a
+:class:`_orm.Session`, towards an object that is being associated with that
+parent directly via an attribute or collection on that parent.  It won't
+take effect if the parent object is instead assigned to an attribute or
+collection on the child, in which case the unattached parent object should be
+added to the :class:`_orm.Session` explicitly using :meth:`_orm.Session.add`.
+
+For a complete example of how this looks in practice, see the section
+:ref:`backref_cascade`.
+
 
 One Way Backrefs
 ~~~~~~~~~~~~~~~~
