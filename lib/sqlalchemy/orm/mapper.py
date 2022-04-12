@@ -1415,19 +1415,14 @@ class Mapper(
         )
 
     def _configure_properties(self):
-        # Column and other ClauseElement objects which are mapped
 
-        # TODO: technically this should be a DedupeColumnCollection
-        # however DCC needs changes and more tests to fully cover
-        # storing columns under a separate key name
+        # TODO: consider using DedupeColumnCollection
         self.columns = self.c = sql_base.ColumnCollection()
 
         # object attribute names mapped to MapperProperty objects
         self._props = util.OrderedDict()
 
-        # table columns mapped to lists of MapperProperty objects
-        # using a list allows a single column to be defined as
-        # populating multiple object attributes
+        # table columns mapped to MapperProperty
         self._columntoproperty = _ColumnMapping(self)
 
         # load custom properties
@@ -3618,6 +3613,7 @@ class _ColumnMapping(dict):
     __slots__ = ("mapper",)
 
     def __init__(self, mapper):
+        # TODO: weakref would be a good idea here
         self.mapper = mapper
 
     def __missing__(self, column):
