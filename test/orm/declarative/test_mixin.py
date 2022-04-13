@@ -43,7 +43,11 @@ Base = None
 mapper_registry = None
 
 
-class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
+class DeclarativeTestBase(
+    testing.AssertsCompiledSQL,
+    fixtures.TestBase,
+    testing.AssertsExecutionResults,
+):
     def setup_test(self):
         global Base, mapper_registry
 
@@ -58,6 +62,19 @@ class DeclarativeTestBase(fixtures.TestBase, testing.AssertsExecutionResults):
 
 
 class DeclarativeMixinTest(DeclarativeTestBase):
+    def test_init_subclass_works(self, registry):
+        class Base:
+            def __init_subclass__(cls):
+                cls.id = Column(Integer, primary_key=True)
+
+        Base = registry.generate_base(cls=Base)
+
+        class Foo(Base):
+            __tablename__ = "foo"
+            name = Column(String)
+
+        self.assert_compile(select(Foo), "SELECT foo.name, foo.id FROM foo")
+
     def test_simple_wbase(self):
         class MyMixin:
 
