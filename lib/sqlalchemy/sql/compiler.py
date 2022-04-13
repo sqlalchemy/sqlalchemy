@@ -5093,18 +5093,6 @@ class DDLCompiler(Compiled):
             drop.element, use_table=True
         )
 
-    def visit_add_system_versioning(self, create, **kw):
-        return (
-            "ALTER TABLE %s ADD SYSTEM VERSIONING"
-            % self.preparer.format_table(create.element)
-        )
-
-    def visit_drop_system_versioning(self, drop, **kw):
-        return (
-            "ALTER TABLE %s ADD SYSTEM VERSIONING"
-            % self.preparer.format_table(drop.element)
-        )
-
     def get_identity_options(self, identity_options):
         text = []
         if identity_options.increment is not None:

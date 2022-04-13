@@ -1348,6 +1348,7 @@ class ConstraintCompilationTest(fixtures.TestBase, AssertsCompiledSQL):
 class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
     __dialect__ = "default"
 
+    @testing.requires.system_versioned_tables_support
     def test_create_table_versioning_no_columns(self):
         m = MetaData()
         t1 = Table("t1", m, Column("x", Integer), system_versioning=True)
@@ -1356,6 +1357,7 @@ class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
             "CREATE TABLE t1 (x INTEGER) WITH SYSTEM VERSIONING",
         )
 
+    @testing.requires.system_versioned_tables_support
     def test_create_table_versioning_columns_specified(self):
         m = MetaData()
         t1 = Table(
@@ -1378,59 +1380,41 @@ class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
             ") WITH SYSTEM VERSIONING",
         )
 
-    # TODO Need assistance compiling an object without assert_compile
-    # def test_catch_versioning_errors(self):
-    #     # Test without both start and end columns
-    #     with pytest.raises(CompileError, match=".*Did you set both.*"):
-    #         m = MetaData()
-    #         t1 = Table(
-    #             "t1",
-    #             m,
-    #             Column("x", Integer),
-    #             Column(
-    #                 "start_timestamp", TIMESTAMP(6),
-    # system_versioning="start"
-    #             ),
-    #             Column("end_timestamp ", TIMESTAMP(6)),
-    #             system_versioning=True,
-    #         )
+    @testing.requires.system_versioned_tables_support
+    def test_missing_system_versioning_column(self):
+        m = MetaData()
+        t1 = Table(
+            "t1",
+            m,
+            Column("x", Integer),
+            Column("start_timestamp", TIMESTAMP(6), system_versioning="start"),
+            Column("end_timestamp ", TIMESTAMP(6)),
+            system_versioning=True,
+        )
 
-    #         schema.CreateTable(t1).compile.__func__(
-    #             dialect="default",
-    #         )
+        assert_raises_message(
+            exc.CompileError,
+            "Unable to compile system versioning period. "
+            'Did you set both "start" and "end" columns?',
+            m.create_all,
+            testing.db,
+        )
 
-    #     # Test with two start columns
-    #     with pytest.raises(
-    #         CompileError, match=".*too many system versioning.*"
-    #     ):
-    #         m = MetaData()
-    #         t2 = Table(
-    #             "t2",
-    #             m,
-    #             Column("x", Integer),
-    #             Column(
-    #                 "start_timestamp", TIMESTAMP(6),system_versioning="start"
-    #             ),
-    #             Column(
-    #                 "end_timestamp ", TIMESTAMP(6), system_versioning="start"
-    #             ),
-    #             system_versioning=True,
-    #         )
-    #         schema.CreateTable(t2)
+    @testing.requires.system_versioned_tables_support
+    def test_too_many_system_versioning_columns(self):
+        m = MetaData()
+        t1 = Table(
+            "t1",
+            m,
+            Column("x", Integer),
+            Column("start_timestamp", TIMESTAMP(6), system_versioning="start"),
+            Column("end_timestamp ", TIMESTAMP(6), system_versioning="start"),
+            system_versioning=True,
+        )
 
-    # Need some better way to verify this
-    # def test_add_versioning(self):
-    #     m = MetaData()
-    #     t = Table("t", Column("x", Integer))
-    #     self.assert_compile(
-    #         schema.AddSystemVersioning(t),
-    #         "ALTER TABLE t ADD SYSTEM VERSIONING",
-    #     )
-
-    # def test_drop_versioning(self):
-    #     m = MetaData()
-    #     t = Table("t", Column("x", Integer))
-    #     self.assert_compile(
-    #         schema.DropSystemVersioning(t),
-    #         "ALTER TABLE t DROP SYSTEM VERSIONING",
-    #     )
+        assert_raises_message(
+            exc.CompileError,
+            ".*too many system versioning.*",
+            m.create_all,
+            testing.db,
+        )

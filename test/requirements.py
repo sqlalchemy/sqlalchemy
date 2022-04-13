@@ -1738,3 +1738,8 @@ class DefaultRequirements(SuiteRequirements):
                 return res is not None
 
         return only_on(["mssql"]) + only_if(check)
+
+    @property
+    def system_versioned_tables_support(self):
+        """Indicates the server supports SQL 2011 system versioning."""
+        return only_on(("mariadb >= 10.3.4", "mssql >= 13"))
