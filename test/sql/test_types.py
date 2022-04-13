@@ -4,7 +4,6 @@ import decimal
 import importlib
 import operator
 import os
-import uuid
 
 import sqlalchemy as sa
 from sqlalchemy import and_
@@ -59,7 +58,6 @@ from sqlalchemy import TypeDecorator
 from sqlalchemy import types
 from sqlalchemy import Unicode
 from sqlalchemy import util
-from sqlalchemy import UUID
 from sqlalchemy import VARCHAR
 import sqlalchemy.dialects.mysql as mysql
 import sqlalchemy.dialects.oracle as oracle
@@ -2963,60 +2961,6 @@ class ArrayTest(fixtures.TestBase):
         # but the slice returns the actual type
         assert isinstance(arrtable.c.intarr[1:3].type, MyArray)
         assert isinstance(arrtable.c.strarr[1:3].type, MyArray)
-
-
-class UUIDTest(fixtures.TestBase):
-    __backend__ = True
-
-    @testing.requires.uuid_data_type
-    @testing.combinations(
-        (
-            "not_as_uuid",
-            UUID(as_uuid=False),
-            str(uuid.uuid4()),
-            str(uuid.uuid4()),
-        ),
-        ("as_uuid", UUID(as_uuid=True), uuid.uuid4(), uuid.uuid4()),
-        id_="iaaa",
-        argnames="datatype, value1, value2",
-    )
-    def test_round_trip(self, datatype, value1, value2, connection):
-        utable = Table("utable", MetaData(), Column("data", datatype))
-        utable.create(connection)
-        connection.execute(utable.insert(), {"data": value1})
-        connection.execute(utable.insert(), {"data": value2})
-        r = connection.execute(
-            select(utable.c.data).where(utable.c.data != value1)
-        )
-        eq_(r.fetchone()[0], value2)
-        eq_(r.fetchone(), None)
-
-    # @testing.combinations(
-    #     (
-    #         "not_as_uuid",
-    #         UUID(as_uuid=False),
-    #         str(uuid.uuid4()),
-    #     ),
-    #     (
-    #         "as_uuid",
-    #         UUID(as_uuid=True),
-    #         uuid.uuid4(),
-    #     ),
-    #     id_="iaa",
-    #     argnames="datatype, value1",
-    # )
-    # def test_uuid_literal(self, datatype, value1, connection):
-    #     v1 = connection.execute(
-    #         select(
-    #             bindparam(
-    #                 "key",
-    #                 value=value1,
-    #                 literal_execute=True,
-    #                 # type_=datatype,
-    #             )
-    #         ),
-    #     )
-    #     eq_(v1.fetchone()[0], value1)
 
 
 MyCustomType = MyTypeDec = None

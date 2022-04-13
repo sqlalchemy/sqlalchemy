@@ -4,6 +4,7 @@ import datetime
 import decimal
 import json
 import re
+import uuid
 
 from .. import config
 from .. import engines
@@ -40,6 +41,7 @@ from ... import type_coerce
 from ... import TypeDecorator
 from ... import Unicode
 from ... import UnicodeText
+from ... import UUID
 from ...orm import declarative_base
 from ...orm import Session
 from ...sql.sqltypes import LargeBinary
@@ -1588,6 +1590,60 @@ class JSONLegacyStringCastIndexTest(
             ),
             "r6",
         )
+
+
+class UUIDTest(fixtures.TestBase):
+    __backend__ = True
+
+    @testing.requires.uuid_data_type
+    @testing.combinations(
+        (
+            "not_as_uuid",
+            UUID(as_uuid=False),
+            str(uuid.uuid4()),
+            str(uuid.uuid4()),
+        ),
+        ("as_uuid", UUID(as_uuid=True), uuid.uuid4(), uuid.uuid4()),
+        id_="iaaa",
+        argnames="datatype, value1, value2",
+    )
+    def test_round_trip(self, datatype, value1, value2, connection):
+        utable = Table("utable", MetaData(), Column("data", datatype))
+        utable.create(connection)
+        connection.execute(utable.insert(), {"data": value1})
+        connection.execute(utable.insert(), {"data": value2})
+        r = connection.execute(
+            select(utable.c.data).where(utable.c.data != value1)
+        )
+        eq_(r.fetchone()[0], value2)
+        eq_(r.fetchone(), None)
+
+    # @testing.combinations(
+    #     (
+    #         "not_as_uuid",
+    #         UUID(as_uuid=False),
+    #         str(uuid.uuid4()),
+    #     ),
+    #     (
+    #         "as_uuid",
+    #         UUID(as_uuid=True),
+    #         uuid.uuid4(),
+    #     ),
+    #     id_="iaa",
+    #     argnames="datatype, value1",
+    # )
+    # def test_uuid_literal(self, datatype, value1, connection):
+    #     v1 = connection.execute(
+    #         select(
+    #             bindparam(
+    #                 "key",
+    #                 value=value1,
+    #                 literal_execute=True,
+    #                 # type_=datatype,
+    #             )
+    #         ),
+    #     )
+    #     eq_(v1.fetchone()[0], value1)
 
 
 __all__ = (
