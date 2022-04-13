@@ -1738,3 +1738,13 @@ class DefaultRequirements(SuiteRequirements):
                 return res is not None
 
         return only_on(["mssql"]) + only_if(check)
+
+    @property
+    def uuid_data_type(self):
+        """Return databases that support the UUID datatype."""
+        return only_on(
+            (
+                "postgresql >= 8.3",
+                "mariadb >= 10.7.0",
+            )
+        )

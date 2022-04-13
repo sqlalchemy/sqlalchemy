@@ -2763,27 +2763,28 @@ class UUIDTest(fixtures.TestBase):
     __only_on__ = "postgresql >= 8.3"
     __backend__ = True
 
-    @testing.combinations(
-        (
-            "not_as_uuid",
-            postgresql.UUID(as_uuid=False),
-            str(uuid.uuid4()),
-            str(uuid.uuid4()),
-        ),
-        ("as_uuid", postgresql.UUID(as_uuid=True), uuid.uuid4(), uuid.uuid4()),
-        id_="iaaa",
-        argnames="datatype, value1, value2",
-    )
-    def test_round_trip(self, datatype, value1, value2, connection):
-        utable = Table("utable", MetaData(), Column("data", datatype))
-        utable.create(connection)
-        connection.execute(utable.insert(), {"data": value1})
-        connection.execute(utable.insert(), {"data": value2})
-        r = connection.execute(
-            select(utable.c.data).where(utable.c.data != value1)
-        )
-        eq_(r.fetchone()[0], value2)
-        eq_(r.fetchone(), None)
+    # @testing.combinations(
+    #     (
+    #         "not_as_uuid",
+    #         postgresql.UUID(as_uuid=False),
+    #         str(uuid.uuid4()),
+    #         str(uuid.uuid4()),
+    #     ),
+    #     ("as_uuid", postgresql.UUID(as_uuid=True), uuid.uuid4(),
+    #       uuid.uuid4()),
+    #     id_="iaaa",
+    #     argnames="datatype, value1, value2",
+    # )
+    # def test_round_trip(self, datatype, value1, value2, connection):
+    #     utable = Table("utable", MetaData(), Column("data", datatype))
+    #     utable.create(connection)
+    #     connection.execute(utable.insert(), {"data": value1})
+    #     connection.execute(utable.insert(), {"data": value2})
+    #     r = connection.execute(
+    #         select(utable.c.data).where(utable.c.data != value1)
+    #     )
+    #     eq_(r.fetchone()[0], value2)
+    #     eq_(r.fetchone(), None)
 
     @testing.combinations(
         (

@@ -2968,6 +2968,7 @@ class ArrayTest(fixtures.TestBase):
 class UUIDTest(fixtures.TestBase):
     __backend__ = True
 
+    @testing.requires.uuid_data_type
     @testing.combinations(
         (
             "not_as_uuid",
