@@ -5210,7 +5210,10 @@ class DDLCompiler(Compiled):
                 )
             column.table._versioning_columns["end"] = column.name
             return "GENERATED ALWAYS AS ROW END"
-        elif column.system_versioning == "disabled":
+        elif (
+            column.system_versioning == "disabled"
+            or column.system_versioning == False
+        ):
             return "WITHOUT SYSTEM VERSIONING"
         return ""
 

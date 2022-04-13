@@ -1364,7 +1364,7 @@ class SystemVersioningTest(fixtures.TestBase, AssertsCompiledSQL):
             "t1",
             m,
             Column("x", Integer),
-            Column("y", Integer, system_versioning="disabled"),
+            Column("y", Integer, system_versioning=False),
             Column("start_timestamp", TIMESTAMP(6), system_versioning="start"),
             Column("end_timestamp", TIMESTAMP(6), system_versioning="end"),
             system_versioning=True,
