@@ -33,6 +33,7 @@ if typing.TYPE_CHECKING:
     from .compiler import Compiled
     from .compiler import DDLCompiler
     from .elements import BindParameter
+    from .schema import Constraint
     from .schema import ForeignKeyConstraint
     from .schema import SchemaItem
     from .schema import Table
@@ -43,7 +44,14 @@ if typing.TYPE_CHECKING:
     from ..engine.interfaces import Dialect
 
 
-class _DDLCompiles(ClauseElement):
+class BaseDDLElement(ClauseElement):
+    """The root of DDL constructs, including those that are sub-elements
+    within the "create table" and other processes.
+
+    .. versionadded:: 2.0
+
+    """
+
     _hierarchy_supports_caching = False
     """disable cache warnings for all _DDLCompiles subclasses. """
 
@@ -71,10 +79,10 @@ class _DDLCompiles(ClauseElement):
 class DDLIfCallable(Protocol):
     def __call__(
         self,
-        ddl: "DDLElement",
-        target: "SchemaItem",
-        bind: Optional["Connection"],
-        tables: Optional[List["Table"]] = None,
+        ddl: BaseDDLElement,
+        target: SchemaItem,
+        bind: Optional[Connection],
+        tables: Optional[List[Table]] = None,
         state: Optional[Any] = None,
         *,
         dialect: Dialect,
@@ -89,7 +97,14 @@ class DDLIf(typing.NamedTuple):
     callable_: Optional[DDLIfCallable]
     state: Optional[Any]
 
-    def _should_execute(self, ddl, target, bind, compiler=None, **kw):
+    def _should_execute(
+        self,
+        ddl: BaseDDLElement,
+        target: SchemaItem,
+        bind: Optional[Connection],
+        compiler: Optional[DDLCompiler] = None,
+        **kw: Any,
+    ) -> bool:
         if bind is not None:
             dialect = bind.dialect
         elif compiler is not None:
@@ -117,18 +132,23 @@ class DDLIf(typing.NamedTuple):
         return True
 
 
-SelfDDLElement = typing.TypeVar("SelfDDLElement", bound="DDLElement")
+SelfExecutableDDLElement = typing.TypeVar(
+    "SelfExecutableDDLElement", bound="ExecutableDDLElement"
+)
 
 
-class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
-    """Base class for DDL expression constructs.
+class ExecutableDDLElement(roles.DDLRole, Executable, BaseDDLElement):
+    """Base class for standalone executable DDL expression constructs.
 
     This class is the base for the general purpose :class:`.DDL` class,
     as well as the various create/drop clause constructs such as
     :class:`.CreateTable`, :class:`.DropTable`, :class:`.AddConstraint`,
     etc.
 
-    :class:`.DDLElement` integrates closely with SQLAlchemy events,
+    .. versionchanged:: 2.0  :class:`.ExecutableDDLElement` is renamed from
+       :class:`.DDLElement`, which still exists for backwards compatibility.
+
+    :class:`.ExecutableDDLElement` integrates closely with SQLAlchemy events,
     introduced in :ref:`event_toplevel`.  An instance of one is
     itself an event receiving callable::
 
@@ -161,29 +181,31 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
         )
 
     @_generative
-    def against(self: SelfDDLElement, target: SchemaItem) -> SelfDDLElement:
-        """Return a copy of this :class:`_schema.DDLElement` which will include
-        the given target.
+    def against(
+        self: SelfExecutableDDLElement, target: SchemaItem
+    ) -> SelfExecutableDDLElement:
+        """Return a copy of this :class:`_schema.ExecutableDDLElement` which
+        will include the given target.
 
-        This essentially applies the given item to the ``.target`` attribute
-        of the returned :class:`_schema.DDLElement` object.  This target
+        This essentially applies the given item to the ``.target`` attribute of
+        the returned :class:`_schema.ExecutableDDLElement` object. This target
         is then usable by event handlers and compilation routines in order to
         provide services such as tokenization of a DDL string in terms of a
         particular :class:`_schema.Table`.
 
-        When a :class:`_schema.DDLElement` object is established as an event
-        handler for the :meth:`_events.DDLEvents.before_create` or
-        :meth:`_events.DDLEvents.after_create` events, and the event
-        then occurs for a given target such as a :class:`_schema.Constraint`
-        or :class:`_schema.Table`, that target is established with a copy
-        of the :class:`_schema.DDLElement` object using this method, which
-        then proceeds to the :meth:`_schema.DDLElement.execute` method
-        in order to invoke the actual DDL instruction.
+        When a :class:`_schema.ExecutableDDLElement` object is established as
+        an event handler for the :meth:`_events.DDLEvents.before_create` or
+        :meth:`_events.DDLEvents.after_create` events, and the event then
+        occurs for a given target such as a :class:`_schema.Constraint` or
+        :class:`_schema.Table`, that target is established with a copy of the
+        :class:`_schema.ExecutableDDLElement` object using this method, which
+        then proceeds to the :meth:`_schema.ExecutableDDLElement.execute`
+        method in order to invoke the actual DDL instruction.
 
         :param target: a :class:`_schema.SchemaItem` that will be the subject
          of a DDL operation.
 
-        :return: a copy of this :class:`_schema.DDLElement` with the
+        :return: a copy of this :class:`_schema.ExecutableDDLElement` with the
          ``.target`` attribute assigned to the given
          :class:`_schema.SchemaItem`.
 
@@ -198,13 +220,14 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
 
     @_generative
     def execute_if(
-        self: SelfDDLElement,
+        self: SelfExecutableDDLElement,
         dialect: Optional[str] = None,
         callable_: Optional[DDLIfCallable] = None,
         state: Optional[Any] = None,
-    ) -> SelfDDLElement:
+    ) -> SelfExecutableDDLElement:
         r"""Return a callable that will execute this
-        :class:`_ddl.DDLElement` conditionally within an event handler.
+        :class:`_ddl.ExecutableDDLElement` conditionally within an event
+        handler.
 
         Used to provide a wrapper for event listening::
 
@@ -302,7 +325,11 @@ class DDLElement(roles.DDLRole, Executable, _DDLCompiles):
         return s
 
 
-class DDL(DDLElement):
+DDLElement = ExecutableDDLElement
+""":class:`.DDLElement` is renamed to :class:`.ExecutableDDLElement`."""
+
+
+class DDL(ExecutableDDLElement):
     """A literal DDL statement.
 
     Specifies literal SQL DDL to be executed by the database.  DDL objects
@@ -390,7 +417,7 @@ class DDL(DDLElement):
         )
 
 
-class _CreateDropBase(DDLElement):
+class _CreateDropBase(ExecutableDDLElement):
     """Base class for DDL constructs that represent CREATE and DROP or
     equivalents.
 
@@ -484,9 +511,11 @@ class CreateTable(_CreateDropBase):
 
     def __init__(
         self,
-        element,
-        include_foreign_key_constraints=None,
-        if_not_exists=False,
+        element: Table,
+        include_foreign_key_constraints: Optional[
+            typing_Sequence[ForeignKeyConstraint]
+        ] = None,
+        if_not_exists: bool = False,
     ):
         """Create a :class:`.CreateTable` construct.
 
@@ -522,12 +551,12 @@ class _DropView(_CreateDropBase):
     __visit_name__ = "drop_view"
 
 
-class CreateConstraint(_DDLCompiles):
-    def __init__(self, element):
+class CreateConstraint(BaseDDLElement):
+    def __init__(self, element: Constraint):
         self.element = element
 
 
-class CreateColumn(_DDLCompiles):
+class CreateColumn(BaseDDLElement):
     """Represent a :class:`_schema.Column`
     as rendered in a CREATE TABLE statement,
     via the :class:`.CreateTable` construct.
@@ -641,7 +670,7 @@ class DropTable(_CreateDropBase):
 
     __visit_name__ = "drop_table"
 
-    def __init__(self, element, if_exists=False):
+    def __init__(self, element: Table, if_exists: bool = False):
         """Create a :class:`.DropTable` construct.
 
         :param element: a :class:`_schema.Table` that's the subject
@@ -761,12 +790,12 @@ class DropColumnComment(_CreateDropBase):
     __visit_name__ = "drop_column_comment"
 
 
-class DDLBase(SchemaVisitor):
+class InvokeDDLBase(SchemaVisitor):
     def __init__(self, connection):
         self.connection = connection
 
 
-class SchemaGenerator(DDLBase):
+class SchemaGenerator(InvokeDDLBase):
     def __init__(
         self, dialect, connection, checkfirst=False, tables=None, **kwargs
     ):
@@ -925,7 +954,7 @@ class SchemaGenerator(DDLBase):
         CreateIndex(index)._invoke_with(self.connection)
 
 
-class SchemaDropper(DDLBase):
+class SchemaDropper(InvokeDDLBase):
     def __init__(
         self, dialect, connection, checkfirst=False, tables=None, **kwargs
     ):

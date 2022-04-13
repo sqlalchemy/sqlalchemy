@@ -14,6 +14,7 @@ from sqlalchemy.testing import eq_
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing import is_false
 from sqlalchemy.testing import is_true
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertsql import AllOf
 from sqlalchemy.testing.assertsql import CompiledSQL
 from sqlalchemy.testing.assertsql import EachOf
@@ -117,14 +118,25 @@ class SequenceExecTest(fixtures.TestBase):
 
     def test_execute(self, connection):
         s = Sequence("my_sequence")
-        self._assert_seq_result(connection.execute(s))
+        self._assert_seq_result(connection.scalar(s))
 
-    def test_execute_optional(self, connection):
+    def test_execute_deprecated(self, connection):
+
+        s = Sequence("my_sequence", optional=True)
+
+        with expect_deprecated(
+            r"Using the .execute\(\) method to invoke a "
+            r"DefaultGenerator object is deprecated; please use "
+            r"the .scalar\(\) method."
+        ):
+            self._assert_seq_result(connection.execute(s))
+
+    def test_scalar_optional(self, connection):
         """test dialect executes a Sequence, returns nextval, whether
         or not "optional" is set"""
 
         s = Sequence("my_sequence", optional=True)
-        self._assert_seq_result(connection.execute(s))
+        self._assert_seq_result(connection.scalar(s))
 
     def test_execute_next_value(self, connection):
         """test func.next_value().execute()/.scalar() works
@@ -341,7 +353,7 @@ class SequenceTest(fixtures.TestBase, testing.AssertsCompiledSQL):
         seq.create(testing.db)
         try:
             with testing.db.connect() as conn:
-                values = [conn.execute(seq) for i in range(3)]
+                values = [conn.scalar(seq) for i in range(3)]
                 start = seq.start or testing.db.dialect.default_sequence_base
                 inc = seq.increment or 1
                 eq_(values, list(range(start, start + inc * 3, inc)))

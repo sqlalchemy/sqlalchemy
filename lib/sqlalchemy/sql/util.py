@@ -1037,6 +1037,9 @@ class ClauseAdapter(visitors.ReplacingExternalTraversal):
         if "adapt_column" in col._annotations:
             col = col._annotations["adapt_column"]
 
+        if TYPE_CHECKING:
+            assert isinstance(col, ColumnElement)
+
         if self.adapt_from_selectables and col not in self.equivalents:
             for adp in self.adapt_from_selectables:
                 if adp.c.corresponding_column(col, False) is not None:

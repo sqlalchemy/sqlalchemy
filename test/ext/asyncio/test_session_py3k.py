@@ -6,6 +6,7 @@ from sqlalchemy import func
 from sqlalchemy import inspect
 from sqlalchemy import Integer
 from sqlalchemy import select
+from sqlalchemy import Sequence
 from sqlalchemy import Table
 from sqlalchemy import testing
 from sqlalchemy import update
@@ -25,6 +26,7 @@ from sqlalchemy.testing import expect_raises_message
 from sqlalchemy.testing import is_
 from sqlalchemy.testing import is_true
 from sqlalchemy.testing import mock
+from sqlalchemy.testing.assertions import expect_deprecated
 from sqlalchemy.testing.assertions import is_false
 from .test_engine_py3k import AsyncFixture as _AsyncFixture
 from ...orm import _fixtures
@@ -67,6 +69,34 @@ class AsyncSessionTest(AsyncFixture):
         binds = {Table: async_engine}
         ss = AsyncSession(binds=binds)
         is_(ss.binds, binds)
+
+    @async_test
+    @testing.combinations((True,), (False,), argnames="use_scalar")
+    @testing.requires.sequences
+    async def test_sequence_execute(
+        self, async_session: AsyncSession, metadata, use_scalar
+    ):
+        seq = Sequence("some_sequence", metadata=metadata)
+
+        sync_connection = (await async_session.connection()).sync_connection
+
+        await (await async_session.connection()).run_sync(metadata.create_all)
+
+        if use_scalar:
+            eq_(
+                await async_session.scalar(seq),
+                sync_connection.dialect.default_sequence_base,
+            )
+        else:
+            with expect_deprecated(
+                r"Using the .execute\(\) method to invoke a "
+                r"DefaultGenerator object is deprecated; please use "
+                r"the .scalar\(\) method."
+            ):
+                eq_(
+                    await async_session.execute(seq),
+                    sync_connection.dialect.default_sequence_base,
+                )
 
 
 class AsyncSessionQueryTest(AsyncFixture):

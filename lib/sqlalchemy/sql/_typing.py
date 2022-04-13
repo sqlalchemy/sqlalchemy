@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import operator
 from typing import Any
+from typing import Dict
 from typing import Type
 from typing import TYPE_CHECKING
 from typing import TypeVar
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
     from .elements import TextClause
     from .roles import ColumnsClauseRole
     from .roles import FromClauseRole
+    from .schema import Column
     from .schema import DefaultGenerator
     from .schema import Sequence
     from .selectable import Alias
@@ -101,6 +103,8 @@ overall which brings in the TextClause object also.
 
 """
 
+_InfoType = Dict[Any, Any]
+"""the .info dictionary accepted and used throughout Core /ORM"""
 
 _FromClauseArgument = Union[
     roles.FromClauseRole,
@@ -144,6 +148,13 @@ the DMLColumnRole to be able to accommodate.
 
 """
 
+
+_DDLColumnArgument = Union[str, "Column[Any]", roles.DDLConstraintColumnRole]
+"""DDL column.
+
+used for :class:`.PrimaryKeyConstraint`, :class:`.UniqueConstraint`, etc.
+
+"""
 
 _DMLTableArgument = Union[
     "TableClause",

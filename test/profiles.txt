@@ -204,7 +204,8 @@ test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results x86_64_linux_
 
 # TEST: test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results_integrated
 
-test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results_integrated x86_64_linux_cpython_3.10_sqlite_pysqlite_dbapiunicode_cextensions 30373,1014,96450
+# wow first time ever decreasing a value, woop.  not sure why though
+test.aaa_profiling.test_orm.JoinedEagerLoadTest.test_fetch_results_integrated x86_64_linux_cpython_3.10_sqlite_pysqlite_dbapiunicode_cextensions 28587,1014,96450
 
 # TEST: test.aaa_profiling.test_orm.LoadManyToOneFromIdentityTest.test_many_to_one_load_identity
 

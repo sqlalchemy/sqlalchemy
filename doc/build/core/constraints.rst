@@ -791,6 +791,10 @@ Constraints API
     :members:
     :inherited-members:
 
+.. autoclass:: HasConditionalDDL
+    :members:
+    :inherited-members:
+
 .. autoclass:: PrimaryKeyConstraint
     :members:
     :inherited-members:

@@ -77,6 +77,7 @@ from ..util.typing import Literal
 
 if typing.TYPE_CHECKING:
     from ._typing import _ColumnExpressionArgument
+    from ._typing import _InfoType
     from ._typing import _PropagateAttrsType
     from ._typing import _TypeEngineArgument
     from .cache_key import _CacheKeyTraversalType
@@ -85,6 +86,7 @@ if typing.TYPE_CHECKING:
     from .compiler import SQLCompiler
     from .functions import FunctionElement
     from .operators import OperatorType
+    from .schema import _ServerDefaultType
     from .schema import Column
     from .schema import DefaultGenerator
     from .schema import FetchedValue
@@ -444,9 +446,8 @@ class ClauseElement(
         connection: Connection,
         distilled_params: _CoreMultiExecuteParams,
         execution_options: _ExecuteOptions,
-        _force: bool = False,
     ) -> Result:
-        if _force or self.supports_execution:
+        if self.supports_execution:
             if TYPE_CHECKING:
                 assert isinstance(self, Executable)
             return connection._execute_clauseelement(
@@ -454,6 +455,22 @@ class ClauseElement(
             )
         else:
             raise exc.ObjectNotExecutableError(self)
+
+    def _execute_on_scalar(
+        self,
+        connection: Connection,
+        distilled_params: _CoreMultiExecuteParams,
+        execution_options: _ExecuteOptions,
+    ) -> Any:
+        """an additional hook for subclasses to provide a different
+        implementation for connection.scalar() vs. connection.execute().
+
+        .. versionadded:: 2.0
+
+        """
+        return self._execute_on_connection(
+            connection, distilled_params, execution_options
+        ).scalar()
 
     def unique_params(
         self: SelfClauseElement,
@@ -1481,6 +1498,7 @@ class ColumnElement(
     def _make_proxy(
         self,
         selectable: FromClause,
+        *,
         name: Optional[str] = None,
         key: Optional[str] = None,
         name_is_truncatable: bool = False,
@@ -4032,12 +4050,14 @@ class NamedColumn(ColumnElement[_T]):
 
     def _make_proxy(
         self,
-        selectable,
-        name=None,
-        name_is_truncatable=False,
-        disallow_is_literal=False,
-        **kw,
-    ):
+        selectable: FromClause,
+        *,
+        name: Optional[str] = None,
+        key: Optional[str] = None,
+        name_is_truncatable: bool = False,
+        disallow_is_literal: bool = False,
+        **kw: Any,
+    ) -> typing_Tuple[str, ColumnClause[_T]]:
         c = ColumnClause(
             coercions.expect(roles.TruncatedLabelRole, name or self.name)
             if name_is_truncatable
@@ -4188,7 +4208,13 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
     def _from_objects(self) -> List[FromClause]:
         return self.element._from_objects
 
-    def _make_proxy(self, selectable, name=None, **kw):
+    def _make_proxy(
+        self,
+        selectable: FromClause,
+        *,
+        name: Optional[str] = None,
+        **kw: Any,
+    ) -> typing_Tuple[str, ColumnClause[_T]]:
         name = self.name if not name else name
 
         key, e = self.element._make_proxy(
@@ -4279,7 +4305,7 @@ class ColumnClause(
 
     onupdate: Optional[DefaultGenerator] = None
     default: Optional[DefaultGenerator] = None
-    server_default: Optional[FetchedValue] = None
+    server_default: Optional[_ServerDefaultType] = None
     server_onupdate: Optional[FetchedValue] = None
 
     _is_multiparam_column = False
@@ -4422,12 +4448,14 @@ class ColumnClause(
 
     def _make_proxy(
         self,
-        selectable,
-        name=None,
-        name_is_truncatable=False,
-        disallow_is_literal=False,
-        **kw,
-    ):
+        selectable: FromClause,
+        *,
+        name: Optional[str] = None,
+        key: Optional[str] = None,
+        name_is_truncatable: bool = False,
+        disallow_is_literal: bool = False,
+        **kw: Any,
+    ) -> typing_Tuple[str, ColumnClause[_T]]:
         # the "is_literal" flag normally should never be propagated; a proxied
         # column is always a SQL identifier and never the actual expression
         # being evaluated. however, there is a case where the "is_literal" flag
@@ -4699,7 +4727,9 @@ class AnnotatedColumnElement(Annotated):
         return self._Annotated__element.key
 
     @util.memoized_property
-    def info(self):
+    def info(self) -> _InfoType:
+        if TYPE_CHECKING:
+            assert isinstance(self._Annotated__element, Column)
         return self._Annotated__element.info
 
     @util.memoized_property

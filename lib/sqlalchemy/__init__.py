@@ -55,6 +55,7 @@ from .pool import PoolProxiedConnection as PoolProxiedConnection
 from .pool import QueuePool as QueuePool
 from .pool import SingletonThreadPool as SingleonThreadPool
 from .pool import StaticPool as StaticPool
+from .schema import BaseDDLElement as BaseDDLElement
 from .schema import BLANK_SCHEMA as BLANK_SCHEMA
 from .schema import CheckConstraint as CheckConstraint
 from .schema import Column as Column
@@ -62,7 +63,9 @@ from .schema import ColumnDefault as ColumnDefault
 from .schema import Computed as Computed
 from .schema import Constraint as Constraint
 from .schema import DDL as DDL
+from .schema import DDLElement as DDLElement
 from .schema import DefaultClause as DefaultClause
+from .schema import ExecutableDDLElement as ExecutableDDLElement
 from .schema import FetchedValue as FetchedValue
 from .schema import ForeignKey as ForeignKey
 from .schema import ForeignKeyConstraint as ForeignKeyConstraint

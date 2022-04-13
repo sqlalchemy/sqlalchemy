@@ -131,7 +131,6 @@ module = [
     "sqlalchemy.sql.lambdas",
     "sqlalchemy.sql.naming",
     "sqlalchemy.sql.selectable",   # would be nice as strict
-    "sqlalchemy.sql.schema",      # would be nice as strict
     "sqlalchemy.sql.sqltypes",   # would be nice as strict
     "sqlalchemy.sql.traversals",
     "sqlalchemy.sql.util",

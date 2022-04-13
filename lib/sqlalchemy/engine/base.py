@@ -12,7 +12,6 @@ import typing
 from typing import Any
 from typing import Callable
 from typing import cast
-from typing import Dict
 from typing import Iterator
 from typing import List
 from typing import Mapping
@@ -65,13 +64,15 @@ if typing.TYPE_CHECKING:
     from ..pool import Pool
     from ..pool import PoolProxiedConnection
     from ..sql import Executable
+    from ..sql._typing import _InfoType
     from ..sql.base import SchemaVisitor
     from ..sql.compiler import Compiled
-    from ..sql.ddl import DDLElement
+    from ..sql.ddl import ExecutableDDLElement
     from ..sql.ddl import SchemaDropper
     from ..sql.ddl import SchemaGenerator
     from ..sql.functions import FunctionElement
     from ..sql.schema import ColumnDefault
+    from ..sql.schema import DefaultGenerator
     from ..sql.schema import HasSchemaAttr
     from ..sql.schema import SchemaItem
 
@@ -561,7 +562,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
         raise exc.ResourceClosedError("This Connection is closed")
 
     @property
-    def info(self) -> Dict[str, Any]:
+    def info(self) -> _InfoType:
         """Info dictionary associated with the underlying DBAPI connection
         referred to by this :class:`_engine.Connection`, allowing user-defined
         data to be associated with the connection.
@@ -1157,7 +1158,17 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
          first row returned.
 
         """
-        return self.execute(statement, parameters, execution_options).scalar()
+        distilled_parameters = _distill_params_20(parameters)
+        try:
+            meth = statement._execute_on_scalar
+        except AttributeError as err:
+            raise exc.ObjectNotExecutableError(statement) from err
+        else:
+            return meth(
+                self,
+                distilled_parameters,
+                execution_options or NO_OPTIONS,
+            )
 
     def scalars(
         self,
@@ -1200,7 +1211,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
          * :class:`_expression.TextClause` and
            :class:`_expression.TextualSelect`
          * :class:`_schema.DDL` and objects which inherit from
-           :class:`_schema.DDLElement`
+           :class:`_schema.ExecutableDDLElement`
 
         :param parameters: parameters which will be bound into the statement.
          This may be either a dictionary of parameter names to values,
@@ -1244,7 +1255,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
     def _execute_default(
         self,
-        default: ColumnDefault,
+        default: DefaultGenerator,
         distilled_parameters: _CoreMultiExecuteParams,
         execution_options: _ExecuteOptionsParameter,
     ) -> Any:
@@ -1303,7 +1314,7 @@ class Connection(ConnectionEventsTarget, inspection.Inspectable["Inspector"]):
 
     def _execute_ddl(
         self,
-        ddl: DDLElement,
+        ddl: ExecutableDDLElement,
         distilled_parameters: _CoreMultiExecuteParams,
         execution_options: _ExecuteOptionsParameter,
     ) -> CursorResult:

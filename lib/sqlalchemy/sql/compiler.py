@@ -85,7 +85,7 @@ if typing.TYPE_CHECKING:
     from .base import _AmbiguousTableNameMap
     from .base import CompileState
     from .cache_key import CacheKey
-    from .ddl import DDLElement
+    from .ddl import ExecutableDDLElement
     from .dml import Insert
     from .dml import UpdateBase
     from .dml import ValuesBase
@@ -4798,7 +4798,7 @@ class DDLCompiler(Compiled):
         def __init__(
             self,
             dialect: Dialect,
-            statement: DDLElement,
+            statement: ExecutableDDLElement,
             schema_translate_map: Optional[_SchemaTranslateMapType] = ...,
             render_schema_translate: bool = ...,
             compile_kwargs: Mapping[str, Any] = ...,

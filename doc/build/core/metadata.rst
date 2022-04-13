@@ -558,27 +558,11 @@ Column, Table, MetaData API
 
 .. attribute:: sqlalchemy.schema.BLANK_SCHEMA
 
-    Symbol indicating that a :class:`_schema.Table` or :class:`.Sequence`
-    should have 'None' for its schema, even if the parent
-    :class:`_schema.MetaData` has specified a schema.
-
-    .. seealso::
-
-        :paramref:`_schema.MetaData.schema`
-
-        :paramref:`_schema.Table.schema`
-
-        :paramref:`.Sequence.schema`
-
-    .. versionadded:: 1.0.14
+    Refers to :attr:`.SchemaConst.BLANK_SCHEMA`.
 
 .. attribute:: sqlalchemy.schema.RETAIN_SCHEMA
 
-    Symbol indicating that a :class:`_schema.Table`, :class:`.Sequence`
-    or in some cases a :class:`_schema.ForeignKey` object, in situations
-    where the object is being copied for a :meth:`.Table.to_metadata`
-    operation, should retain the schema name that it already has.
-
+    Refers to :attr:`.SchemaConst.RETAIN_SCHEMA`
 
 
 .. autoclass:: Column
@@ -589,6 +573,8 @@ Column, Table, MetaData API
 .. autoclass:: MetaData
     :members:
 
+.. autoclass:: SchemaConst
+    :members:
 
 .. autoclass:: SchemaItem
     :members:
