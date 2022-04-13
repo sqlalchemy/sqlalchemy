@@ -4,95 +4,100 @@ import decimal
 import importlib
 import operator
 import os
+import uuid
 
 import sqlalchemy as sa
-from sqlalchemy import and_
-from sqlalchemy import ARRAY
-from sqlalchemy import BigInteger
-from sqlalchemy import bindparam
-from sqlalchemy import BLOB
-from sqlalchemy import BOOLEAN
-from sqlalchemy import Boolean
-from sqlalchemy import cast
-from sqlalchemy import CHAR
-from sqlalchemy import CLOB
-from sqlalchemy import DATE
-from sqlalchemy import Date
-from sqlalchemy import DATETIME
-from sqlalchemy import DateTime
-from sqlalchemy import DECIMAL
-from sqlalchemy import dialects
-from sqlalchemy import distinct
-from sqlalchemy import Double
-from sqlalchemy import Enum
-from sqlalchemy import exc
-from sqlalchemy import FLOAT
-from sqlalchemy import Float
-from sqlalchemy import func
-from sqlalchemy import inspection
-from sqlalchemy import INTEGER
-from sqlalchemy import Integer
-from sqlalchemy import Interval
-from sqlalchemy import JSON
-from sqlalchemy import LargeBinary
-from sqlalchemy import literal
-from sqlalchemy import MetaData
-from sqlalchemy import NCHAR
-from sqlalchemy import NUMERIC
-from sqlalchemy import Numeric
-from sqlalchemy import NVARCHAR
-from sqlalchemy import PickleType
-from sqlalchemy import REAL
-from sqlalchemy import select
-from sqlalchemy import SMALLINT
-from sqlalchemy import SmallInteger
-from sqlalchemy import String
-from sqlalchemy import testing
-from sqlalchemy import Text
-from sqlalchemy import text
-from sqlalchemy import TIME
-from sqlalchemy import Time
-from sqlalchemy import TIMESTAMP
-from sqlalchemy import type_coerce
-from sqlalchemy import TypeDecorator
-from sqlalchemy import types
-from sqlalchemy import Unicode
-from sqlalchemy import util
-from sqlalchemy import VARCHAR
 import sqlalchemy.dialects.mysql as mysql
 import sqlalchemy.dialects.oracle as oracle
 import sqlalchemy.dialects.postgresql as pg
+from sqlalchemy import (
+    ARRAY,
+    BLOB,
+    BOOLEAN,
+    CHAR,
+    CLOB,
+    DATE,
+    DATETIME,
+    DECIMAL,
+    FLOAT,
+    INTEGER,
+    JSON,
+    NCHAR,
+    NUMERIC,
+    NVARCHAR,
+    REAL,
+    SMALLINT,
+    TIME,
+    TIMESTAMP,
+    UUID,
+    VARCHAR,
+    BigInteger,
+    Boolean,
+    Date,
+    DateTime,
+    Double,
+    Enum,
+    Float,
+    Integer,
+    Interval,
+    LargeBinary,
+    MetaData,
+    Numeric,
+    PickleType,
+    SmallInteger,
+    String,
+    Text,
+    Time,
+    TypeDecorator,
+    Unicode,
+    and_,
+    bindparam,
+    cast,
+    dialects,
+    distinct,
+    exc,
+    func,
+    inspection,
+    literal,
+    select,
+    testing,
+    text,
+    type_coerce,
+    types,
+    util,
+)
 from sqlalchemy.engine import default
-from sqlalchemy.schema import AddConstraint
-from sqlalchemy.schema import CheckConstraint
-from sqlalchemy.sql import column
-from sqlalchemy.sql import ddl
-from sqlalchemy.sql import elements
-from sqlalchemy.sql import null
-from sqlalchemy.sql import operators
-from sqlalchemy.sql import sqltypes
-from sqlalchemy.sql import table
-from sqlalchemy.sql import type_api
-from sqlalchemy.sql import visitors
+from sqlalchemy.schema import AddConstraint, CheckConstraint
+from sqlalchemy.sql import (
+    column,
+    ddl,
+    elements,
+    null,
+    operators,
+    sqltypes,
+    table,
+    type_api,
+    visitors,
+)
 from sqlalchemy.sql.compiler import TypeCompiler
 from sqlalchemy.sql.sqltypes import TypeEngine
-from sqlalchemy.testing import assert_raises
-from sqlalchemy.testing import assert_raises_message
-from sqlalchemy.testing import AssertsCompiledSQL
-from sqlalchemy.testing import AssertsExecutionResults
-from sqlalchemy.testing import engines
-from sqlalchemy.testing import eq_
-from sqlalchemy.testing import expect_raises
-from sqlalchemy.testing import expect_warnings
-from sqlalchemy.testing import fixtures
-from sqlalchemy.testing import is_
-from sqlalchemy.testing import is_not
-from sqlalchemy.testing import mock
-from sqlalchemy.testing import pickleable
+from sqlalchemy.testing import (
+    AssertsCompiledSQL,
+    AssertsExecutionResults,
+    assert_raises,
+    assert_raises_message,
+    engines,
+    eq_,
+    expect_raises,
+    expect_warnings,
+    fixtures,
+    is_,
+    is_not,
+    mock,
+    pickleable,
+)
 from sqlalchemy.testing.assertions import expect_raises_message
-from sqlalchemy.testing.schema import Column
-from sqlalchemy.testing.schema import pep435_enum
-from sqlalchemy.testing.schema import Table
+from sqlalchemy.testing.schema import Column, Table, pep435_enum
 from sqlalchemy.testing.util import picklers
 
 
@@ -2961,6 +2966,59 @@ class ArrayTest(fixtures.TestBase):
         # but the slice returns the actual type
         assert isinstance(arrtable.c.intarr[1:3].type, MyArray)
         assert isinstance(arrtable.c.strarr[1:3].type, MyArray)
+
+
+class UUIDTest(fixtures.TestBase):
+    __backend__ = True
+
+    @testing.combinations(
+        (
+            "not_as_uuid",
+            UUID(as_uuid=False),
+            str(uuid.uuid4()),
+            str(uuid.uuid4()),
+        ),
+        ("as_uuid", UUID(as_uuid=True), uuid.uuid4(), uuid.uuid4()),
+        id_="iaaa",
+        argnames="datatype, value1, value2",
+    )
+    def test_round_trip(self, datatype, value1, value2, connection):
+        utable = Table("utable", MetaData(), Column("data", datatype))
+        utable.create(connection)
+        connection.execute(utable.insert(), {"data": value1})
+        connection.execute(utable.insert(), {"data": value2})
+        r = connection.execute(
+            select(utable.c.data).where(utable.c.data != value1)
+        )
+        eq_(r.fetchone()[0], value2)
+        eq_(r.fetchone(), None)
+
+    # @testing.combinations(
+    #     (
+    #         "not_as_uuid",
+    #         UUID(as_uuid=False),
+    #         str(uuid.uuid4()),
+    #     ),
+    #     (
+    #         "as_uuid",
+    #         UUID(as_uuid=True),
+    #         uuid.uuid4(),
+    #     ),
+    #     id_="iaa",
+    #     argnames="datatype, value1",
+    # )
+    # def test_uuid_literal(self, datatype, value1, connection):
+    #     v1 = connection.execute(
+    #         select(
+    #             bindparam(
+    #                 "key",
+    #                 value=value1,
+    #                 literal_execute=True,
+    #                 # type_=datatype,
+    #             )
+    #         ),
+    #     )
+    #     eq_(v1.fetchone()[0], value1)
 
 
 MyCustomType = MyTypeDec = None

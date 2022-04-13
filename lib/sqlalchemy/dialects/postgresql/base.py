@@ -1423,44 +1423,35 @@ E.g.::
 
 """  # noqa: E501
 
-from collections import defaultdict
 import datetime as dt
 import re
+from collections import defaultdict
 
+from ... import exc, schema, sql, util
+from ...engine import characteristics, default, interfaces, reflection
+from ...sql import coercions, compiler, elements, expression, roles, sqltypes
+from ...sql import util as sql_util
+from ...sql.ddl import DDLBase
+from ...types import (
+    BIGINT,
+    BOOLEAN,
+    CHAR,
+    DATE,
+    DOUBLE_PRECISION,
+    FLOAT,
+    INTEGER,
+    NUMERIC,
+    REAL,
+    SMALLINT,
+    TEXT,
+    UUID,
+    VARCHAR,
+)
 from . import array as _array
 from . import dml
 from . import hstore as _hstore
 from . import json as _json
 from . import ranges as _ranges
-from ... import exc
-from ... import schema
-from ... import sql
-from ... import util
-from ...engine import characteristics
-from ...engine import default
-from ...engine import interfaces
-from ...engine import reflection
-from ...sql import coercions
-from ...sql import compiler
-from ...sql import elements
-from ...sql import expression
-from ...sql import roles
-from ...sql import sqltypes
-from ...sql import util as sql_util
-from ...sql.ddl import DDLBase
-from ...types import BIGINT
-from ...types import BOOLEAN
-from ...types import CHAR
-from ...types import DATE
-from ...types import DOUBLE_PRECISION
-from ...types import FLOAT
-from ...types import INTEGER
-from ...types import NUMERIC
-from ...types import REAL
-from ...types import SMALLINT
-from ...types import TEXT
-from ...types import UUID
-from ...types import VARCHAR
 
 IDX_USING = re.compile(r"^(?:btree|hash|gist|gin|[\w_]+)$", re.I)
 
@@ -2917,9 +2908,6 @@ class PGTypeCompiler(compiler.GenericTypeCompiler):
         else:
             compiled = "BIT(%d)" % type_.length
         return compiled
-
-    def visit_UUID(self, type_, **kw):
-        return "UUID"
 
     def visit_large_binary(self, type_, **kw):
         return self.visit_BYTEA(type_, **kw)

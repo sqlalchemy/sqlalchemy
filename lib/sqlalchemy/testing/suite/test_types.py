@@ -5,45 +5,40 @@ import decimal
 import json
 import re
 
-from .. import config
-from .. import engines
-from .. import fixtures
-from .. import mock
-from ..assertions import eq_
-from ..assertions import is_
+from ... import (
+    JSON,
+    TIMESTAMP,
+    BigInteger,
+    Boolean,
+    Date,
+    DateTime,
+    Float,
+    Integer,
+    MetaData,
+    Numeric,
+    String,
+    Text,
+    Time,
+    TypeDecorator,
+    Unicode,
+    UnicodeText,
+    and_,
+    bindparam,
+    case,
+    cast,
+    literal,
+    literal_column,
+    null,
+    select,
+    testing,
+    type_coerce,
+)
+from ...orm import Session, declarative_base
+from ...sql.sqltypes import LargeBinary, PickleType
+from .. import config, engines, fixtures, mock
+from ..assertions import eq_, is_
 from ..config import requirements
-from ..schema import Column
-from ..schema import Table
-from ... import and_
-from ... import BigInteger
-from ... import bindparam
-from ... import Boolean
-from ... import case
-from ... import cast
-from ... import Date
-from ... import DateTime
-from ... import Float
-from ... import Integer
-from ... import JSON
-from ... import literal
-from ... import literal_column
-from ... import MetaData
-from ... import null
-from ... import Numeric
-from ... import select
-from ... import String
-from ... import testing
-from ... import Text
-from ... import Time
-from ... import TIMESTAMP
-from ... import type_coerce
-from ... import TypeDecorator
-from ... import Unicode
-from ... import UnicodeText
-from ...orm import declarative_base
-from ...orm import Session
-from ...sql.sqltypes import LargeBinary
-from ...sql.sqltypes import PickleType
+from ..schema import Column, Table
 
 
 class _LiteralRoundTripFixture:
@@ -1614,4 +1609,5 @@ __all__ = (
     "DateHistoricTest",
     "StringTest",
     "BooleanTest",
+    "UUIDTest",
 )

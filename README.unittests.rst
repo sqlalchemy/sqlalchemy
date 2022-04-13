@@ -261,7 +261,7 @@ intended for production use!
 
     # configure the database
     sleep 20
-    docker exec -ti mysql mysql -u root -ppassword -w -e "CREATE DATABASE test_schema CHARSET utf8mb4; GRANT ALL ON test_schema.* TO scott;"
+    docker exec -ti mysql mysql -u root -ppassword -w -e "CREATE DATABASE test_schema CHARSET utf8mb4; GRANT ALL ON *.* TO scott;"
 
     # To stop the container. It will also remove it.
     docker stop mysql
@@ -273,7 +273,7 @@ intended for production use!
 
     # configure the database
     sleep 20
-    docker exec -ti mariadb mysql -u root -ppassword -w -e "CREATE DATABASE test_schema CHARSET utf8mb4; GRANT ALL ON test_schema.* TO scott;"
+    docker exec -ti mariadb mysql -u root -ppassword -w -e "CREATE DATABASE test_schema CHARSET utf8mb4; GRANT ALL ON *.* TO scott;"
 
     # To stop the container. It will also remove it.
     docker stop mariadb
@@ -334,5 +334,3 @@ DEVELOPING AND TESTING NEW DIALECTS
 -----------------------------------
 
 See the file README.dialects.rst for detail on dialects.
-
-
