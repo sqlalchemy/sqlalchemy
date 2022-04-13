@@ -385,12 +385,14 @@ class PGDialect_psycopg(_PGDialect_common_psycopg):
             != self._psycopg_TransactionStatus.IDLE
         ):
             dbapi_conn.rollback()
-        before = dbapi_conn.autocommit
+        before_autocommit = dbapi_conn.autocommit
         try:
-            self._do_autocommit(dbapi_conn, True)
+            if not before_autocommit:
+                self._do_autocommit(dbapi_conn, True)
             dbapi_conn.execute(command)
         finally:
-            self._do_autocommit(dbapi_conn, before)
+            if not before_autocommit:
+                self._do_autocommit(dbapi_conn, before_autocommit)
 
     def do_rollback_twophase(
         self, connection, xid, is_prepared=True, recover=False
