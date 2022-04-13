@@ -1604,6 +1604,9 @@ class MSTypeCompiler(compiler.GenericTypeCompiler):
     def visit_boolean(self, type_, **kw):
         return self.visit_BIT(type_)
 
+    def visit_UUID(self, type_, **kw):
+        return "UNIQUEIDENTIFIER"
+
     def visit_BIT(self, type_, **kw):
         return "BIT"
 
